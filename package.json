@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "expo": "^55.0.9",
+    "html-to-image": "^1.11.13"
+  }
+}

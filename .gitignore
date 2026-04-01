@@ -1,0 +1,10 @@
+node_modules
+.env
+.expo
+.next
+dist
+build
+*.log
+.DS_Store
+textile-mobile/assets/*.png
+!.gitignore

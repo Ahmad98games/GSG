@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@theme {
+  --color-gold-500: #D4AF37;
+  --color-gold-600: #B8860B;
+}
+
+@layer base {
+  body {
+    @apply bg-zinc-950 text-zinc-400 font-sans text-sm antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-zinc-100 font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 bg-gold-500 hover:bg-gold-600 text-zinc-950 font-medium rounded-md transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none;
+  }
+  
+  .input-field {
+    @apply w-full bg-zinc-950 border border-zinc-800 focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/50 outline-none px-3 py-2 rounded-md transition-all placeholder:text-zinc-600 text-zinc-200 text-sm;
+  }
+
+  .card {
+    @apply bg-zinc-900/40 border border-zinc-800/80 rounded-lg overflow-hidden;
+  }
+
+  .label-xs {
+    @apply text-xs uppercase tracking-wider font-semibold text-zinc-500;
+  }
+}
+
+/* Custom Scrollbar for Theme Consistency */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-zinc-950;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-zinc-800 rounded-full hover:bg-zinc-700 transition-colors;
+}
