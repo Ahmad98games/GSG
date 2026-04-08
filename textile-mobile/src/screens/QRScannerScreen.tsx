@@ -6,19 +6,57 @@ import {
   TouchableOpacity, 
   Dimensions,
   ActivityIndicator,
-  Platform
+  Platform,
+  Animated,
+  Easing
 } from 'react-native';
 import { CameraView } from 'expo-camera';
 import { Shield, Zap, Package, Receipt, X, Terminal } from 'lucide-react-native';
 import { useScanner } from '../hooks/useScanner';
 import { useProductStore } from '../store/useProductStore';
+import HapticEngine from '../lib/HapticEngine';
+import { THEME } from '../lib/theme';
 
 const { width } = Dimensions.get('window');
-import { THEME } from '../lib/theme';
 
 export const QRScannerScreen = () => {
   const { permission, requestPermission, handleBarCodeScanned } = useScanner();
   const { mode, error, resetSession } = useProductStore();
+  
+  const scanAnim = React.useRef(new Animated.Value(0)).current;
+  const shakeAnim = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    if (mode === 'SCANNING' || mode === 'DASHBOARD') {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(scanAnim, {
+            toValue: 1,
+            duration: 2000,
+            easing: Easing.linear,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scanAnim, {
+            toValue: 0,
+            duration: 2000,
+            easing: Easing.linear,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    }
+    
+    if (mode === 'HANDSHAKE') {
+      HapticEngine.heavy();
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
+          Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
+          Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
+        ])
+      ).start();
+    }
+  }, [mode]);
 
   if (!permission) return <View style={styles.container} />;
 
@@ -96,13 +134,30 @@ export const QRScannerScreen = () => {
               <View style={[styles.corner, styles.br]} />
               
               {/* Scanning Ray */}
-              <View style={styles.scanLine} />
-              
-              {mode !== 'SCANNING' && mode !== 'DASHBOARD' && (
-                <View style={[StyleSheet.absoluteFill, styles.processingOverlay]}>
-                   <ActivityIndicator color={THEME.colors.primary} size="large" />
-                </View>
-              )}
+              <Animated.View style={[
+                 styles.scanLine,
+                 {
+                   transform: [{
+                     translateY: scanAnim.interpolate({
+                       inputRange: [0, 1],
+                       outputRange: [0, width * 0.75]
+                     })
+                   }]
+                 }
+               ]} />
+               
+               {(mode !== 'SCANNING' && mode !== 'DASHBOARD') && (
+                 <Animated.View style={[
+                   StyleSheet.absoluteFill, 
+                   styles.processingOverlay,
+                   { transform: [{ translateX: shakeAnim }] }
+                 ]}>
+                    <ActivityIndicator color={THEME.colors.primary} size="large" />
+                    {mode === 'HANDSHAKE' && (
+                      <Text style={styles.securingText}>SECURING_SESSION...</Text>
+                    )}
+                 </Animated.View>
+               )}
             </View>
             <View style={styles.maskSide} />
           </View>
@@ -178,7 +233,8 @@ const styles = StyleSheet.create({
     top: '50%' // Animated in real build, static for now
   },
 
-  processingOverlay: { backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
+  processingOverlay: { backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center', gap: 20 },
+  securingText: { color: THEME.colors.primary, fontSize: 8, fontWeight: '900', letterSpacing: 2 },
 
   // UI Components
   topControl: { position: 'absolute', top: 60, left: 24, right: 24, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

@@ -11,6 +11,8 @@ import {
 import { supabase } from '../lib/supabase';
 import { useProductStore } from '../store/useProductStore';
 import { THEME } from '../lib/theme';
+import HapticEngine from '../lib/HapticEngine';
+import SyncStatusBadge from '../components/SyncStatusBadge';
 
 const SHARED_SECRET = 'GS-TACTICAL-KEY-2026';
 
@@ -82,6 +84,7 @@ export default function TacticalChatScreen() {
         const decrypted = await decryptMessage(payload.content);
         setMessages(prev => [...prev, { ...payload, decryptedContent: decrypted }]);
         setIsTyping(null);
+        HapticEngine.light();
       })
       .on('broadcast', { event: 'TYPING' }, ({ payload }) => {
         if (payload.senderId !== 'FIELD_NODE_01') {
@@ -109,6 +112,7 @@ export default function TacticalChatScreen() {
 
     setMessages(prev => [...prev, newMessage]);
     setInputValue('');
+    HapticEngine.success();
 
     await supabase.channel('tactical_comms').send({
       type: 'broadcast',
@@ -146,8 +150,7 @@ export default function TacticalChatScreen() {
     >
       <View style={styles.header}>
         <View style={styles.headerTitle}>
-          <View style={styles.pulseDot} />
-          <Text style={styles.headerText}>TACTICAL MESSENGER v7.1</Text>
+          <SyncStatusBadge />
         </View>
         <View style={styles.e2eeBadge}>
           <Lock size={10} color={THEME.colors.primary} />
