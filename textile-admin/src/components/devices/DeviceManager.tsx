@@ -32,7 +32,7 @@ export const DeviceManager: React.FC = () => {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Shield className="text-gold" />
+            <Shield className="text-electric-blue" />
             The Gatekeeper
           </h2>
           <p className="text-zinc-400">Manage authorized hardware identifiers</p>
@@ -41,7 +41,7 @@ export const DeviceManager: React.FC = () => {
         <div className="flex items-center gap-4">
           <div className="bg-zinc-900 border border-zinc-800 px-4 py-2 rounded-lg">
             <span className="text-zinc-500 text-sm">Slots: </span>
-            <span className={`font-mono font-bold ${stats.remaining_slots > 0 ? 'text-gold' : 'text-red-500'}`}>
+            <span className={`font-mono font-bold ${stats.remaining_slots > 0 ? 'text-electric-blue' : 'text-red-500'}`}>
               {stats.active_count}/4
             </span>
           </div>
@@ -57,7 +57,7 @@ export const DeviceManager: React.FC = () => {
           <button
             onClick={() => setShowAddModal(true)}
             disabled={stats.remaining_slots === 0}
-            className="flex items-center gap-2 bg-gold hover:bg-gold/90 text-black px-4 py-2 rounded-lg font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 bg-electric-blue hover:bg-electric-blue/90 text-black px-4 py-2 rounded-lg font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus size={20} />
             Add Device
@@ -83,13 +83,13 @@ export const DeviceManager: React.FC = () => {
               key={device.id} 
               className={`p-5 rounded-xl border transition-all ${
                 device.status === 'active' 
-                ? 'bg-zinc-900 border-zinc-800 hover:border-gold/30' 
+                ? 'bg-zinc-900 border-zinc-800 hover:border-electric-blue/30' 
                 : 'bg-zinc-950 border-zinc-900 opacity-60'
               }`}
             >
               <div className="flex justify-between items-start">
                 <div className="flex gap-4">
-                  <div className={`p-3 rounded-lg ${device.status === 'active' ? 'bg-gold/10 text-gold' : 'bg-zinc-800 text-zinc-500'}`}>
+                  <div className={`p-3 rounded-lg ${device.status === 'active' ? 'bg-electric-blue/10 text-electric-blue' : 'bg-zinc-800 text-zinc-500'}`}>
                     {device.device_type === 'pc' ? <Monitor size={24} /> : <Smartphone size={24} />}
                   </div>
                   <div>
@@ -143,7 +143,7 @@ export const DeviceManager: React.FC = () => {
                   type="text"
                   required
                   placeholder="e.g. Workshop iPad, Admin Laptop"
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-white focus:border-gold outline-none transition-all"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-white focus:border-electric-blue outline-none transition-all"
                   value={newDevice.name}
                   onChange={e => setNewDevice({...newDevice, name: e.target.value})}
                 />
@@ -155,7 +155,7 @@ export const DeviceManager: React.FC = () => {
                   type="text"
                   required
                   placeholder="Paste UUID here..."
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-white font-mono text-sm focus:border-gold outline-none transition-all"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-white font-mono text-sm focus:border-electric-blue outline-none transition-all"
                   value={newDevice.uuid}
                   onChange={e => setNewDevice({...newDevice, uuid: e.target.value})}
                 />
@@ -168,7 +168,7 @@ export const DeviceManager: React.FC = () => {
                     type="button"
                     onClick={() => setNewDevice({...newDevice, type: 'mobile'})}
                     className={`flex items-center justify-center gap-2 py-3 rounded-lg border transition-all ${
-                      newDevice.type === 'mobile' ? 'bg-gold/10 border-gold text-gold' : 'bg-zinc-950 border-zinc-800 text-zinc-500'
+                      newDevice.type === 'mobile' ? 'bg-electric-blue/10 border-electric-blue text-electric-blue' : 'bg-zinc-950 border-zinc-800 text-zinc-500'
                     }`}
                   >
                     <Smartphone size={18} />
@@ -178,7 +178,7 @@ export const DeviceManager: React.FC = () => {
                     type="button"
                     onClick={() => setNewDevice({...newDevice, type: 'pc'})}
                     className={`flex items-center justify-center gap-2 py-3 rounded-lg border transition-all ${
-                      newDevice.type === 'pc' ? 'bg-gold/10 border-gold text-gold' : 'bg-zinc-950 border-zinc-800 text-zinc-500'
+                      newDevice.type === 'pc' ? 'bg-electric-blue/10 border-electric-blue text-electric-blue' : 'bg-zinc-950 border-zinc-800 text-zinc-500'
                     }`}
                   >
                     <Monitor size={18} />
@@ -191,7 +191,7 @@ export const DeviceManager: React.FC = () => {
                 <button
                   type="submit"
                   disabled={actionLoading}
-                  className="w-full bg-gold hover:bg-gold/90 text-black font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2"
+                  className="w-full bg-electric-blue hover:bg-electric-blue/90 text-black font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2"
                 >
                   {actionLoading ? <RefreshCw className="animate-spin" /> : <CheckCircle size={20} />}
                   Authorize Device

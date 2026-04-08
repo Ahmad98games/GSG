@@ -43,7 +43,7 @@ export const SettingsView: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-zinc-100 tracking-tight flex items-center gap-3 italic">
-            <Settings className="w-6 h-6 text-gold" />
+            <Settings className="w-6 h-6 text-electric-blue" />
             GLOBAL SETTINGS
           </h2>
           <p className="text-xs text-zinc-500 mt-1 uppercase tracking-widest font-bold">
@@ -54,7 +54,7 @@ export const SettingsView: React.FC = () => {
           onClick={saveSettings}
           className={cn(
             "flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold uppercase tracking-widest text-[10px] transition-all",
-            success ? "bg-green-600 text-white" : "bg-gold text-zinc-950 hover:scale-105 active:scale-95"
+            success ? "bg-green-600 text-white" : "bg-electric-blue text-zinc-950 hover:scale-105 active:scale-95"
           )}
         >
           <Save className="w-4 h-4" />
@@ -67,7 +67,7 @@ export const SettingsView: React.FC = () => {
           <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl">
             <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-900">
               <div className="flex items-center gap-2">
-                <Ruler className="w-4 h-4 text-gold" />
+                <Ruler className="w-4 h-4 text-electric-blue" />
                 <h3 className="text-[10px] font-black uppercase text-zinc-100 tracking-widest">Consumption Matrix (Gaz per Size)</h3>
               </div>
               <span className="text-[10px] text-zinc-500 uppercase font-mono">Standard Anarkali Protocol v1.2</span>
@@ -85,15 +85,15 @@ export const SettingsView: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-zinc-900">
                   {matrix.map((item) => (
-                    <tr key={item.size} className="hover:bg-gold/5 transition-colors group">
-                      <td className="px-6 py-3 text-sm font-mono font-bold text-gold">{item.size}</td>
+                    <tr key={item.size} className="hover:bg-electric-blue/5 transition-colors group">
+                      <td className="px-6 py-3 text-sm font-mono font-bold text-electric-blue">{item.size}</td>
                       <td className="px-6 py-3">
                         <input 
                           type="number" 
                           step="0.01"
                           value={item.kameez}
                           onChange={(e) => handleUpdate(item.size, 'kameez', e.target.value)}
-                          className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs font-mono text-zinc-300 focus:border-gold outline-none"
+                          className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs font-mono text-zinc-300 focus:border-electric-blue outline-none"
                         />
                       </td>
                       <td className="px-6 py-3">
@@ -102,7 +102,7 @@ export const SettingsView: React.FC = () => {
                           step="0.01"
                           value={item.shalwar}
                           onChange={(e) => handleUpdate(item.size, 'shalwar', e.target.value)}
-                          className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs font-mono text-zinc-300 focus:border-gold outline-none"
+                          className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs font-mono text-zinc-300 focus:border-electric-blue outline-none"
                         />
                       </td>
                       <td className="px-6 py-3">
@@ -111,7 +111,7 @@ export const SettingsView: React.FC = () => {
                           step="0.01"
                           value={item.dupatta}
                           onChange={(e) => handleUpdate(item.size, 'dupatta', e.target.value)}
-                          className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs font-mono text-zinc-300 focus:border-gold outline-none"
+                          className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs font-mono text-zinc-300 focus:border-electric-blue outline-none"
                         />
                       </td>
                     </tr>
@@ -125,7 +125,7 @@ export const SettingsView: React.FC = () => {
         <div className="space-y-6">
           <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 space-y-4">
             <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-gold" />
+              <AlertCircle className="w-4 h-4 text-electric-blue" />
               <h4 className="text-[10px] font-black uppercase text-zinc-400 tracking-widest">Proactive Auditing</h4>
             </div>
             <p className="text-[11px] text-zinc-500 leading-relaxed italic">

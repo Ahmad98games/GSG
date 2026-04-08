@@ -3,6 +3,7 @@ import type { Product } from '../../types/database';
 import { QRCodeSVG } from 'qrcode.react';
 import { MoreHorizontal, FileText, Trash2, ArrowUpRight, X } from 'lucide-react';
 import { LabelPreview } from './LabelPreview';
+import { sovereign } from '../../lib/SovereignCore';
 
 interface InventoryListProps {
   products: Product[];
@@ -28,19 +29,24 @@ export const InventoryList = ({ products, loading, onDelete }: InventoryListProp
   const handleExport = () => {
     if (products.length === 0) return;
 
-    const headers = ['QR Code', 'Item Name', 'Category', 'Total Gaz', 'Unit Cost', 'Subtotal', 'Grand Total', 'Created At'];
+    const headers = ['SOVEREIGN_ID', 'ARTICLE_DESCRIPTOR', 'Category', 'INPUT_GAZ', 'Unit Cost', 'Subtotal', 'VALUATION_PKR', 'Created At'];
     const csvContent = [
       headers.join(','),
-      ...products.map(p => [
-        p.qr_code,
-        `"${p.item_name}"`,
-        p.item_category,
-        p.total_gaz,
-        p.unit_cost,
-        p.subtotal || 0,
-        p.grand_total || 0,
-        new Date(p.created_at).toISOString()
-      ].join(','))
+      ...products.map(p => {
+        const date = new Date(p.created_at);
+        const formattedDate = `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+        
+        return [
+          p.qr_code,
+          `"${p.item_name}"`,
+          p.item_category,
+          p.total_gaz,
+          p.unit_cost,
+          p.subtotal || 0,
+          p.grand_total || 0,
+          formattedDate
+        ].join(',');
+      })
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -93,7 +99,7 @@ export const InventoryList = ({ products, loading, onDelete }: InventoryListProp
                       <div className="p-1 bg-white rounded-sm">
                         <QRCodeSVG value={product.qr_code} size={24} />
                       </div>
-                      <span className="font-mono text-[10px] font-bold text-zinc-500 uppercase tracking-tighter group-hover:text-gold-500/70 transition-colors">
+                      <span className="font-mono text-[10px] font-bold text-zinc-500 uppercase tracking-tighter group-hover:text-electric-blue/70 transition-colors">
                         {product.qr_code}
                       </span>
                     </div>
@@ -114,7 +120,7 @@ export const InventoryList = ({ products, loading, onDelete }: InventoryListProp
                     <span className="text-sm font-mono text-zinc-300">{product.total_gaz.toFixed(2)}</span>
                   </td>
                   <td className="px-6 py-3 text-right">
-                    <span className="text-sm font-mono text-zinc-100">${product.unit_cost.toFixed(2)}</span>
+                    <span className="text-sm font-mono text-zinc-100">{sovereign.formatPKR(product.unit_cost)}</span>
                   </td>
                   <td className="px-6 py-3">
                     <span className="text-xs text-zinc-500">

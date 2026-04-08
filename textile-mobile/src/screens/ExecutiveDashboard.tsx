@@ -15,17 +15,16 @@ import {
   ArrowUpRight, 
   ArrowDownLeft, 
   Users, 
-  ChevronRight 
+  ChevronRight,
+  MessageSquare,
+  ShieldAlert
 } from 'lucide-react-native';
 import { useProductStore } from '../store/useProductStore';
 import * as Haptics from 'expo-haptics';
 import type { RootStackParamList } from '../lib/types';
 import type { StackNavigationProp } from '@react-navigation/stack';
 
-const GOLD = '#D4AF37';
-const BG = '#09090b';
-const CARD = '#18181b';
-const BORDER = '#27272a';
+import { THEME } from '../lib/theme';
 
 interface Props {
   navigation: StackNavigationProp<RootStackParamList, 'Dashboard'>;
@@ -64,11 +63,11 @@ export const ExecutiveDashboard = ({ navigation }: Props) => {
       <View style={styles.partyBalance}>
         <Text style={[
           styles.balanceAmount,
-          { color: item.balance >= 0 ? '#10b981' : '#ef4444' }
+          { color: item.balance >= 0 ? THEME.colors.success : THEME.colors.danger }
         ]}>
-          ₹{Math.abs(item.balance).toLocaleString()}
+          PKR {Math.abs(item.balance).toLocaleString()}
         </Text>
-        <ChevronRight size={16} color="#52525b" />
+        <ChevronRight size={16} color={THEME.colors.textSecondary} />
       </View>
     </TouchableOpacity>
   );
@@ -87,7 +86,7 @@ export const ExecutiveDashboard = ({ navigation }: Props) => {
           style={styles.scanButton}
           onPress={handleScanPress}
         >
-          <QrCode size={20} color="black" />
+          <QrCode size={20} color={THEME.colors.background} />
         </TouchableOpacity>
       </View>
 
@@ -95,20 +94,34 @@ export const ExecutiveDashboard = ({ navigation }: Props) => {
       <View style={styles.statsRow}>
         <View style={styles.statBox}>
           <Text style={styles.statLabel}>OUTSTANDING</Text>
-          <Text style={[styles.statValue, { color: '#ef4444' }]}>₹2.4M</Text>
+          <Text style={[styles.statValue, { color: THEME.colors.danger }]}>PKR 2.4M</Text>
         </View>
         <View style={styles.statBox}>
           <Text style={styles.statLabel}>NET FLOW</Text>
-          <Text style={[styles.statValue, { color: '#10b981' }]}>+18%</Text>
+          <Text style={[styles.statValue, { color: THEME.colors.success }]}>+18%</Text>
         </View>
       </View>
 
-      {/* Quick Search */}
+      {/* Tactical Comms Trigger (Phase 7) */}
+      <View style={styles.messengerContainer}>
+        <TouchableOpacity 
+          style={styles.messengerCard}
+          onPress={() => navigation.navigate('TacticalChat')}
+        >
+           <View style={styles.messengerInfo}>
+              <View style={styles.pulseIndicator} />
+              <Text style={styles.messengerLabel}>TACTICAL_CHAT_ACTIVE</Text>
+           </View>
+           <MessageSquare size={16} color={THEME.colors.primary} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Party List */}
       <View style={styles.searchContainer}>
-        <Search size={16} color="#71717a" style={styles.searchIcon} />
+        <Search size={16} color={THEME.colors.textSecondary} style={styles.searchIcon} />
         <TextInput
           placeholder="SEARCH KHATA..."
-          placeholderTextColor="#71717a"
+          placeholderTextColor={THEME.colors.textSecondary}
           style={styles.searchInput}
           value={search}
           onChangeText={setSearch}
@@ -134,7 +147,7 @@ export const ExecutiveDashboard = ({ navigation }: Props) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: BG,
+    backgroundColor: THEME.colors.background,
     paddingTop: 60,
   },
   header: {
@@ -147,7 +160,7 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 10,
     fontWeight: '900',
-    color: GOLD,
+    color: THEME.colors.secondary,
     letterSpacing: 4,
   },
   headerTitle: {
@@ -157,7 +170,7 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
   },
   scanButton: {
-    backgroundColor: GOLD,
+    backgroundColor: THEME.colors.primary,
     padding: 12,
     borderRadius: 12,
   },
@@ -169,16 +182,16 @@ const styles = StyleSheet.create({
   },
   statBox: {
     flex: 1,
-    backgroundColor: CARD,
+    backgroundColor: THEME.colors.surface,
     borderWidth: 1,
-    borderColor: BORDER,
+    borderColor: THEME.colors.border,
     padding: 16,
     borderRadius: 16,
   },
   statLabel: {
     fontSize: 8,
     fontWeight: '900',
-    color: '#71717a',
+    color: THEME.colors.textSecondary,
     letterSpacing: 1,
     marginBottom: 4,
   },
@@ -190,12 +203,12 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: CARD,
+    backgroundColor: THEME.colors.surface,
     marginHorizontal: 24,
     paddingHorizontal: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: BORDER,
+    borderColor: THEME.colors.border,
     marginBottom: 24,
   },
   searchIcon: {
@@ -217,11 +230,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: CARD,
+    backgroundColor: THEME.colors.surface,
     padding: 16,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: BORDER,
+    borderColor: THEME.colors.border,
     marginBottom: 12,
   },
   partyInfo: {
@@ -230,13 +243,13 @@ const styles = StyleSheet.create({
   partyName: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#f4f4f5',
+    color: THEME.colors.textPrimary,
     marginBottom: 2,
   },
   partyType: {
     fontSize: 9,
     fontWeight: '700',
-    color: GOLD,
+    color: THEME.colors.secondary,
     letterSpacing: 1,
   },
   partyBalance: {
@@ -248,12 +261,44 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '900',
   },
+  messengerContainer: {
+    paddingHorizontal: 24,
+    marginBottom: 24,
+  },
+  messengerCard: {
+    backgroundColor: THEME.colors.surfaceRaised,
+    borderWidth: 1,
+    borderColor: THEME.colors.primary + '33',
+    padding: 12,
+    borderRadius: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  messengerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pulseIndicator: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: THEME.colors.primary,
+    opacity: 0.8,
+  },
+  messengerLabel: {
+    color: THEME.colors.primary,
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 2,
+  },
   emptyContainer: {
     padding: 60,
     alignItems: 'center',
   },
   emptyText: {
-    color: '#3f3f46',
+    color: THEME.colors.textSecondary,
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 2,

@@ -1,0 +1,132 @@
+Date : 2026-04-01 22:02:40
+Directory : c:\Users\omnora\OneDrive\Desktop\new system
+Total : 71 files,  35806 codes, 160 comments, 585 blanks, all 36551 lines
+
+Languages
++--------------------+------------+------------+------------+------------+------------+
+| language           | files      | code       | comment    | blank      | total      |
++--------------------+------------+------------+------------+------------+------------+
+| JSON               |         13 |     30,668 |          0 |         17 |     30,685 |
+| TypeScript JSX     |         26 |      3,997 |         92 |        371 |      4,460 |
+| TypeScript         |         18 |        766 |         56 |        143 |        965 |
+| MS SQL             |          1 |        152 |         12 |         19 |        183 |
+| Markdown           |          1 |         60 |          0 |         14 |         74 |
+| JavaScript         |          3 |         53 |          0 |          4 |         57 |
+| CSS                |          1 |         48 |          0 |         11 |         59 |
+| XML                |          4 |         27 |          0 |          2 |         29 |
+| JSON with Comments |          3 |         22 |          0 |          3 |         25 |
+| HTML               |          1 |         13 |          0 |          1 |         14 |
++--------------------+------------+------------+------------+------------+------------+
+
+Directories
++-------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                                        | files      | code       | comment    | blank      | total      |
++-------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                                           |         71 |     35,806 |        160 |        585 |     36,551 |
+| . (Files)                                                                                                   |          2 |      7,456 |          0 |          2 |      7,458 |
+| supabase                                                                                                    |          1 |        152 |         12 |         19 |        183 |
+| supabase\migrations                                                                                         |          1 |        152 |         12 |         19 |        183 |
+| textile-admin                                                                                               |         51 |     16,726 |         99 |        414 |     17,239 |
+| textile-admin (Files)                                                                                       |         11 |      4,164 |          1 |         30 |      4,195 |
+| textile-admin\public                                                                                        |          2 |         25 |          0 |          1 |         26 |
+| textile-admin\src                                                                                           |         32 |      3,512 |         95 |        373 |      3,980 |
+| textile-admin\src (Files)                                                                                   |          3 |        151 |          1 |         28 |        180 |
+| textile-admin\src\assets                                                                                    |          2 |          2 |          0 |          1 |          3 |
+| textile-admin\src\components                                                                                |         17 |      2,862 |         64 |        260 |      3,186 |
+| textile-admin\src\components\admin                                                                          |          9 |      1,797 |         40 |        146 |      1,983 |
+| textile-admin\src\components\auth                                                                           |          1 |        114 |          5 |         16 |        135 |
+| textile-admin\src\components\devices                                                                        |          1 |        190 |          1 |         16 |        207 |
+| textile-admin\src\components\inventory                                                                      |          3 |        513 |         14 |         46 |        573 |
+| textile-admin\src\components\layout                                                                         |          3 |        248 |          4 |         36 |        288 |
+| textile-admin\src\hooks                                                                                     |          3 |        236 |          7 |         38 |        281 |
+| textile-admin\src\lib                                                                                       |          3 |         29 |          3 |         13 |         45 |
+| textile-admin\src\services                                                                                  |          3 |        193 |         16 |         27 |        236 |
+| textile-admin\src\types                                                                                     |          1 |         39 |          4 |          6 |         49 |
+| textile-admin\textile-scanner                                                                               |          6 |      9,025 |          3 |         10 |      9,038 |
+| textile-mobile                                                                                              |         17 |     11,472 |         49 |        150 |     11,671 |
+| textile-mobile (Files)                                                                                      |          6 |     10,229 |          0 |         10 |     10,239 |
+| textile-mobile\src                                                                                          |         11 |      1,243 |         49 |        140 |      1,432 |
+| textile-mobile\src\components                                                                               |          1 |         90 |          1 |          8 |         99 |
+| textile-mobile\src\hooks                                                                                    |          2 |        124 |         12 |         23 |        159 |
+| textile-mobile\src\lib                                                                                      |          3 |         34 |          4 |         14 |         52 |
+| textile-mobile\src\screens                                                                                  |          4 |        892 |         26 |         78 |        996 |
+| textile-mobile\src\store                                                                                    |          1 |        103 |          6 |         17 |        126 |
++-------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++-------------------------------------------------------------------------------------------------------------+--------------------+------------+------------+------------+------------+
+| filename                                                                                                    | language           | code       | comment    | blank      | total      |
++-------------------------------------------------------------------------------------------------------------+--------------------+------------+------------+------------+------------+
+| c:\Users\omnora\OneDrive\Desktop\new system\package-lock.json                                               | JSON               |      7,450 |          0 |          1 |      7,451 |
+| c:\Users\omnora\OneDrive\Desktop\new system\package.json                                                    | JSON               |          6 |          0 |          1 |          7 |
+| c:\Users\omnora\OneDrive\Desktop\new system\supabase\migrations\01_init_schema.sql                          | MS SQL             |        152 |         12 |         19 |        183 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\README.md                                         | Markdown           |         60 |          0 |         14 |         74 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\eslint.config.js                                  | JavaScript         |         22 |          0 |          2 |         24 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\index.html                                        | HTML               |         13 |          0 |          1 |         14 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\package-lock.json                                 | JSON               |      3,932 |          0 |          1 |      3,933 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\package.json                                      | JSON               |         44 |          0 |          1 |         45 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\postcss.config.js                                 | JavaScript         |          6 |          0 |          1 |          7 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\public\favicon.svg                                | XML                |          1 |          0 |          0 |          1 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\public\icons.svg                                  | XML                |         24 |          0 |          1 |         25 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\App.tsx                                       | TypeScript JSX     |         94 |          1 |         15 |        110 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\assets\react.svg                              | XML                |          1 |          0 |          0 |          1 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\assets\vite.svg                               | XML                |          1 |          0 |          1 |          2 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\components\admin\BatchVaultControl.tsx        | TypeScript JSX     |        363 |         12 |         25 |        400 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\components\admin\BillingDashboard.tsx         | TypeScript JSX     |        190 |          5 |         14 |        209 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\components\admin\CreateJobOrder.tsx           | TypeScript JSX     |        154 |          3 |         19 |        176 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\components\admin\JobOrderManager.tsx          | TypeScript JSX     |        230 |          1 |         21 |        252 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\components\admin\KarigarChalanPrint.tsx       | TypeScript JSX     |        133 |          8 |         11 |        152 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\components\admin\KhataModule.tsx              | TypeScript JSX     |        232 |          5 |         18 |        255 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\components\admin\SettingsView.tsx             | TypeScript JSX     |        149 |          0 |         10 |        159 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\components\admin\SmartSourcingForm.tsx        | TypeScript JSX     |        173 |          2 |         15 |        190 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\components\admin\SystemConfigurator.tsx       | TypeScript JSX     |        173 |          4 |         13 |        190 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\components\auth\SecureNodeQR.tsx              | TypeScript JSX     |        114 |          5 |         16 |        135 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\components\devices\DeviceManager.tsx          | TypeScript JSX     |        190 |          1 |         16 |        207 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\components\inventory\AddBatchForm.tsx         | TypeScript JSX     |        216 |          6 |         23 |        245 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\components\inventory\InventoryList.tsx        | TypeScript JSX     |        180 |          1 |         10 |        191 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\components\inventory\LabelPreview.tsx         | TypeScript JSX     |        117 |          7 |         13 |        137 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\components\layout\DashboardLayout.tsx         | TypeScript JSX     |        122 |          2 |         14 |        138 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\components\layout\DeviceGuard.tsx             | TypeScript JSX     |         83 |          2 |         14 |         99 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\components\layout\ErrorBoundary.tsx           | TypeScript JSX     |         43 |          0 |          8 |         51 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\hooks\useDevices.ts                           | TypeScript         |        108 |          3 |         16 |        127 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\hooks\useInventory.ts                         | TypeScript         |         84 |          2 |         14 |        100 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\hooks\useSettings.ts                          | TypeScript         |         44 |          2 |          8 |         54 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\index.css                                     | CSS                |         48 |          0 |         11 |         59 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\lib\protocols.ts                              | TypeScript         |         17 |          3 |          7 |         27 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\lib\supabase.ts                               | TypeScript         |          7 |          0 |          4 |         11 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\lib\utils.ts                                  | TypeScript         |          5 |          0 |          2 |          7 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\main.tsx                                      | TypeScript JSX     |          9 |          0 |          2 |         11 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\services\CalculationEngine.ts                 | TypeScript         |         55 |          0 |          8 |         63 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\services\IndustrialCalculationService.test.ts | TypeScript         |         52 |         14 |          7 |         73 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\services\IndustrialCalculationService.ts      | TypeScript         |         86 |          2 |         12 |        100 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\src\types\database.ts                             | TypeScript         |         39 |          4 |          6 |         49 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\tailwind.config.js                                | JavaScript         |         25 |          0 |          1 |         26 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\textile-scanner\App.tsx                           | TypeScript JSX     |         18 |          0 |          3 |         21 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\textile-scanner\app.json                          | JSON               |         30 |          0 |          1 |         31 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\textile-scanner\index.ts                          | TypeScript         |          3 |          3 |          3 |          9 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\textile-scanner\package-lock.json                 | JSON               |      8,941 |          0 |          1 |      8,942 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\textile-scanner\package.json                      | JSON               |         27 |          0 |          1 |         28 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\textile-scanner\tsconfig.json                     | JSON with Comments |          6 |          0 |          1 |          7 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\tsconfig.app.json                                 | JSON               |         26 |          0 |          3 |         29 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\tsconfig.json                                     | JSON with Comments |          7 |          0 |          1 |          8 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\tsconfig.node.json                                | JSON               |         24 |          0 |          3 |         27 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-admin\vite.config.ts                                    | TypeScript         |          5 |          1 |          2 |          8 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-mobile\App.tsx                                          | TypeScript JSX     |         32 |          0 |          5 |         37 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-mobile\app.json                                         | JSON               |         34 |          0 |          1 |         35 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-mobile\eas.json                                         | JSON               |         23 |          0 |          1 |         24 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-mobile\package-lock.json                                | JSON               |     10,095 |          0 |          1 |     10,096 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-mobile\package.json                                     | JSON               |         36 |          0 |          1 |         37 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-mobile\src\components\BatchLedgerView.tsx               | TypeScript JSX     |         90 |          1 |          8 |         99 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-mobile\src\hooks\useScanner.ts                          | TypeScript         |         67 |          5 |         10 |         82 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-mobile\src\hooks\useTransaction.ts                      | TypeScript         |         57 |          7 |         13 |         77 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-mobile\src\lib\protocols.ts                             | TypeScript         |         19 |          3 |          8 |         30 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-mobile\src\lib\supabase.ts                              | TypeScript         |          4 |          1 |          3 |          8 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-mobile\src\lib\types.ts                                 | TypeScript         |         11 |          0 |          3 |         14 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-mobile\src\screens\ExecutiveDashboard.tsx               | TypeScript JSX     |        244 |          4 |         14 |        262 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-mobile\src\screens\PartyLedgerView.tsx                  | TypeScript JSX     |        277 |          4 |         15 |        296 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-mobile\src\screens\QRScannerScreen.tsx                  | TypeScript JSX     |        170 |          8 |         24 |        202 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-mobile\src\screens\ScannerScreen.tsx                    | TypeScript JSX     |        201 |         10 |         25 |        236 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-mobile\src\store\useProductStore.ts                     | TypeScript         |        103 |          6 |         17 |        126 |
+| c:\Users\omnora\OneDrive\Desktop\new system\textile-mobile\tsconfig.json                                    | JSON with Comments |          9 |          0 |          1 |         10 |
+| Total                                                                                                       |                    |     35,806 |        160 |        585 |     36,551 |
++-------------------------------------------------------------------------------------------------------------+--------------------+------------+------------+------------+------------+

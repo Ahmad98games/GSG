@@ -1,35 +1,55 @@
 @import "tailwindcss";
 
 @theme {
-  --color-gold-500: #D4AF37;
-  --color-gold-600: #B8860B;
+  --color-electric-blue: #60A5FA;
+  --color-sandstone-gold: #C5A059;
+  --color-slate-grey: #94A3B8;
+  --color-deep-onyx: #121417;
+  --color-base-p: #121417;
+  --color-base-s: #1A1D21;
+  --color-base-t: #22262B;
 }
 
 @layer base {
+  :root {
+    --bg-primary: #121417;
+    --bg-secondary: #1A1D21;
+    --bg-tertiary: #22262B;
+    --accent-blue: #60A5FA;
+    --accent-gold: #C5A059;
+    --border-subtle: rgba(148, 163, 184, 0.1);
+  }
+
   body {
-    @apply bg-zinc-950 text-zinc-400 font-sans text-sm antialiased;
+    @apply bg-base-p text-zinc-400 font-sans text-sm antialiased leading-relaxed;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply text-zinc-100 font-semibold tracking-tight;
+    @apply text-zinc-100 font-extrabold tracking-tight;
+  }
+
+  /* JetBrains Mono for data intensive elements */
+  .font-mono {
+    font-family: 'JetBrains Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+    @apply tracking-tighter;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply px-4 py-2 bg-gold-500 hover:bg-gold-600 text-zinc-950 font-medium rounded-md transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none;
+    @apply px-4 py-2 bg-electric-blue text-black font-bold rounded-[2px] transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none uppercase tracking-widest text-xs;
   }
   
   .input-field {
-    @apply w-full bg-zinc-950 border border-zinc-800 focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/50 outline-none px-3 py-2 rounded-md transition-all placeholder:text-zinc-600 text-zinc-200 text-sm;
+    @apply w-full bg-base-p border border-white/5 focus:border-electric-blue/30 focus:shadow-[0_0_15px_rgba(96,165,250,0.05)] outline-none px-3 py-2 rounded-[2px] transition-all placeholder:text-zinc-700 text-zinc-200 text-sm font-mono;
   }
 
   .card {
-    @apply bg-zinc-900/40 border border-zinc-800/80 rounded-lg overflow-hidden;
+    @apply bg-base-s border border-white/[0.03] rounded-[2px] shadow-2xl;
   }
 
   .label-xs {
-    @apply text-xs uppercase tracking-wider font-semibold text-zinc-500;
+    @apply text-[10px] uppercase tracking-[0.2em] font-black text-zinc-600;
   }
 }
 
@@ -43,4 +63,11 @@
 }
 ::-webkit-scrollbar-thumb {
   @apply bg-zinc-800 rounded-full hover:bg-zinc-700 transition-colors;
+}
+
+/* High-Density Shimmer Animation */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }

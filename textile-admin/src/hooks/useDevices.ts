@@ -38,9 +38,10 @@ export const useDevices = () => {
   useEffect(() => {
     fetchDevices();
 
-    // Realtime subscription
-    const subscription = supabase
-      .channel('authorized_devices_changes')
+    // Realtime subscription with unique channel name to avoid collisions
+    const channelName = `auth_devices_${Date.now()}`;
+    const channel = supabase
+      .channel(channelName)
       .on(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         'postgres_changes' as any, 
@@ -52,7 +53,7 @@ export const useDevices = () => {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(subscription);
+      supabase.removeChannel(channel);
     };
   }, []);
 

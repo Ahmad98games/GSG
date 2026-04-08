@@ -5,6 +5,7 @@ export type RootStackParamList = {
   Dashboard: undefined;
   Scanner: undefined;
   Ledger: { partyId: string };
+  TacticalChat: undefined;
 };
 
 export type NavigationProps<T extends keyof RootStackParamList> = {

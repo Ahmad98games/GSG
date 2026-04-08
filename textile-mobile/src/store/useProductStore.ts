@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * Enterprise Resilience: State Machine Definitions
  * We use a strictly typed state machine to prevent illegal transitions
  */
-export type AppMode = 'SCANNING' | 'QUANTITY_INPUT' | 'DASHBOARD' | 'LEDGER';
+export type AppMode = 'SCANNING' | 'QUANTITY_INPUT' | 'DASHBOARD' | 'LEDGER' | 'BATCH_INWARD' | 'SUIT_SALE' | 'AUTH_SYNC' | 'HANDSHAKE' | 'AUDIT';
 export type TransactionType = 'IN' | 'OUT' | 'DEBIT' | 'CREDIT' | null;
 
 interface Party {
@@ -32,9 +32,20 @@ interface ScannedBatch {
   current_gaz: number;
 }
 
+interface ScannedJob {
+  id: string;
+  code: string;
+  article_name: string;
+  karigar_name: string;
+  target_suits: number;
+  gaz_issued: number;
+  per_suit_gaz: number;
+}
+
 interface ProductState {
   // --- Persistent Session State ---
   currentBatch: ScannedBatch | null;
+  currentJob: ScannedJob | null;
   mode: AppMode;
   transactionType: TransactionType;
   parties: Party[];
@@ -47,6 +58,7 @@ interface ProductState {
 
   // --- Actions ---
   setScannedBatch: (batch: ScannedBatch | null) => void;
+  setScannedJob: (job: ScannedJob | null) => void;
   initiateTransaction: (type: TransactionType) => void;
   resetSession: () => void;
   setSubmitting: (flag: boolean) => void;
@@ -66,6 +78,7 @@ export const useProductStore = create<ProductState>()(
     (set) => ({
       // Initial States
       currentBatch: null,
+      currentJob: null,
       mode: 'DASHBOARD',
       transactionType: null,
       parties: [],
@@ -77,8 +90,16 @@ export const useProductStore = create<ProductState>()(
       // State Transitions
       setScannedBatch: (batch) => set({ 
         currentBatch: batch, 
+        currentJob: null, // Clear job when scanning batch
         error: null,
         mode: 'SCANNING' 
+      }),
+
+      setScannedJob: (job) => set({ 
+        currentJob: job, 
+        currentBatch: null, // Clear batch when scanning job
+        error: null,
+        mode: 'AUDIT' 
       }),
 
       initiateTransaction: (type) => set({ 
@@ -105,6 +126,7 @@ export const useProductStore = create<ProductState>()(
 
       resetSession: () => set({
         currentBatch: null,
+        currentJob: null,
         mode: 'DASHBOARD',
         transactionType: null,
         error: null,

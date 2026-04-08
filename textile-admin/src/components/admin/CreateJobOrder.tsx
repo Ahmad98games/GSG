@@ -67,7 +67,7 @@ export const CreateJobOrder: React.FC = () => {
           <h2 className="text-sm font-bold uppercase tracking-widest text-zinc-100">Initialize Job Order</h2>
         </div>
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 bg-gold/50 rounded-full animate-pulse" />
+          <span className="w-2 h-2 bg-electric-blue/50 rounded-full animate-pulse" />
           <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-tighter italic">Anarkali Wholesale Protocol</span>
         </div>
       </div>

@@ -21,10 +21,7 @@ import type { RootStackParamList } from '../lib/types';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RouteProp } from '@react-navigation/native';
 
-const GOLD = '#D4AF37';
-const BG = '#09090b';
-const CARD = '#18181b';
-const BORDER = '#27272a';
+import { THEME } from '../lib/theme';
 
 interface Props {
   navigation: StackNavigationProp<RootStackParamList, 'Ledger'>;
@@ -55,9 +52,9 @@ export const PartyLedgerView = ({ route, navigation }: Props) => {
     <View style={styles.ledgerRow}>
       <View style={styles.ledgerIconContainer}>
         {item.type === 'credit' ? (
-          <ArrowUpRight size={14} color="#10b981" />
+          <ArrowUpRight size={14} color={THEME.colors.success} />
         ) : (
-          <ArrowDownLeft size={14} color="#ef4444" />
+          <ArrowDownLeft size={14} color={THEME.colors.danger} />
         )}
       </View>
       <View style={styles.ledgerDetails}>
@@ -68,9 +65,9 @@ export const PartyLedgerView = ({ route, navigation }: Props) => {
       </View>
       <Text style={[
         styles.ledgerAmount,
-        { color: item.type === 'credit' ? '#10b981' : '#ef4444' }
+        { color: item.type === 'credit' ? THEME.colors.success : THEME.colors.danger }
       ]}>
-        {item.type === 'credit' ? '+' : '-'}₹{item.amount.toLocaleString()}
+        {item.type === 'credit' ? '+' : '-'}PKR {item.amount.toLocaleString()}
       </Text>
     </View>
   );
@@ -84,14 +81,14 @@ export const PartyLedgerView = ({ route, navigation }: Props) => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={20} color="white" />
+          <ArrowLeft size={20} color={THEME.colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>{party.name}</Text>
           <Text style={styles.headerSubtitle}>{party.type.toUpperCase()}</Text>
         </View>
         <TouchableOpacity style={styles.actionButton}>
-          <Share2 size={18} color={GOLD} />
+          <Share2 size={18} color={THEME.colors.primary} />
         </TouchableOpacity>
       </View>
 
@@ -100,9 +97,9 @@ export const PartyLedgerView = ({ route, navigation }: Props) => {
         <Text style={styles.heroLabel}>CURRENT OUTSTANDING</Text>
         <Text style={[
           styles.heroBalance,
-          { color: party.balance >= 0 ? GOLD : '#ef4444' }
+          { color: party.balance >= 0 ? THEME.colors.secondary : THEME.colors.danger }
         ]}>
-          ₹{Math.abs(party.balance).toLocaleString()}
+          PKR {Math.abs(party.balance).toLocaleString()}
         </Text>
         <Text style={styles.heroStatus}>
           {party.balance >= 0 ? 'TOTAL PAYABLE' : 'TOTAL RECEIVABLE'}
@@ -112,12 +109,12 @@ export const PartyLedgerView = ({ route, navigation }: Props) => {
       {/* Action Bar */}
       <View style={styles.actionBar}>
         <TouchableOpacity style={styles.actionItem}>
-          <Receipt size={16} color="white" />
+          <Receipt size={16} color={THEME.colors.primary} />
           <Text style={styles.actionText}>NEW INVOICE</Text>
         </TouchableOpacity>
         <View style={styles.divider} />
         <TouchableOpacity style={styles.actionItem}>
-          <Download size={16} color="white" />
+          <Download size={16} color={THEME.colors.primary} />
           <Text style={styles.actionText}>EXPORT PDF</Text>
         </TouchableOpacity>
       </View>
@@ -144,7 +141,7 @@ export const PartyLedgerView = ({ route, navigation }: Props) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: BG,
+    backgroundColor: THEME.colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -170,7 +167,7 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 8,
     fontWeight: '900',
-    color: GOLD,
+    color: THEME.colors.secondary,
     letterSpacing: 2,
     marginTop: 2,
   },
@@ -181,14 +178,14 @@ const styles = StyleSheet.create({
   heroSection: {
     alignItems: 'center',
     paddingVertical: 40,
-    backgroundColor: CARD,
+    backgroundColor: THEME.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: BORDER,
+    borderBottomColor: THEME.colors.border,
   },
   heroLabel: {
     fontSize: 9,
     fontWeight: '900',
-    color: '#71717a',
+    color: THEME.colors.textSecondary,
     letterSpacing: 3,
     marginBottom: 8,
   },
@@ -201,17 +198,17 @@ const styles = StyleSheet.create({
   heroStatus: {
     fontSize: 10,
     fontWeight: '900',
-    color: '#52525b',
+    color: THEME.colors.textSecondary,
     letterSpacing: 1,
   },
   actionBar: {
     flexDirection: 'row',
-    backgroundColor: CARD,
+    backgroundColor: THEME.colors.surfaceRaised,
     margin: 24,
     padding: 2,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: BORDER,
+    borderColor: THEME.colors.border,
   },
   actionItem: {
     flex: 1,
@@ -224,12 +221,12 @@ const styles = StyleSheet.create({
   actionText: {
     fontSize: 9,
     fontWeight: '900',
-    color: 'white',
+    color: THEME.colors.primary,
     letterSpacing: 1,
   },
   divider: {
     width: 1,
-    backgroundColor: BORDER,
+    backgroundColor: THEME.colors.border,
     marginVertical: 10,
   },
   historySection: {
@@ -239,7 +236,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 10,
     fontWeight: '900',
-    color: '#71717a',
+    color: THEME.colors.textSecondary,
     letterSpacing: 2,
     marginBottom: 20,
   },
@@ -251,15 +248,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: BORDER,
+    borderBottomColor: THEME.colors.border,
   },
   ledgerIconContainer: {
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: BG,
+    backgroundColor: THEME.colors.background,
     borderWidth: 1,
-    borderColor: BORDER,
+    borderColor: THEME.colors.border,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -270,12 +267,12 @@ const styles = StyleSheet.create({
   ledgerCategory: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#f4f4f5',
+    color: THEME.colors.textPrimary,
     marginBottom: 2,
   },
   ledgerDate: {
     fontSize: 9,
-    color: '#52525b',
+    color: THEME.colors.textSecondary,
     fontWeight: '700',
   },
   ledgerAmount: {
@@ -287,7 +284,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    color: '#3f3f46',
+    color: THEME.colors.textSecondary,
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 2,

@@ -3,6 +3,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { toPng } from 'html-to-image';
 import { Download, Printer } from 'lucide-react';
 import type { Product } from '../../types/database';
+import { sovereign } from '../../lib/SovereignCore';
 
 interface LabelPreviewProps {
   product: Product;
@@ -82,8 +83,14 @@ export const LabelPreview = ({ product }: LabelPreviewProps) => {
               </div>
               <div className="flex gap-4">
                 <div>
-                  <p className="text-[7px] font-bold text-zinc-400 uppercase tracking-widest">Quantity</p>
-                  <p className="text-sm font-black text-zinc-900">{product.total_gaz.toFixed(2)} <span className="text-[8px]">GAZ</span></p>
+                  <p className="text-[7px] font-bold text-zinc-400 uppercase tracking-widest">
+                    {product.item_category === 'Fabric' ? 'Quantity' : 'Batch Valuation'}
+                  </p>
+                  <p className="text-sm font-black text-zinc-900">
+                    {product.item_category === 'Fabric' 
+                      ? `${product.total_gaz.toFixed(2)} GAZ` 
+                      : sovereign.formatPKR(product.grand_total)}
+                  </p>
                 </div>
                 <div>
                   <p className="text-[7px] font-bold text-zinc-400 uppercase tracking-widest">Category</p>
@@ -110,7 +117,7 @@ export const LabelPreview = ({ product }: LabelPreviewProps) => {
       <div className="flex gap-3">
         <button 
           onClick={handleDownload}
-          className="flex-1 bg-gold-500 hover:bg-gold-600 text-zinc-950 font-bold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+          className="flex-1 bg-electric-blue hover:bg-electric-blue-600 text-zinc-950 font-bold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
         >
           <Download className="w-4 h-4" />
           Download Production Label (PNG)

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { CheckCircle2, RotateCcw, Calculator, ArrowRight, AlertTriangle } from 'lucide-react';
 import type { ItemCategory, NewProductDto, Product } from '../../types/database';
 import { LabelPreview } from './LabelPreview';
+import { sovereign } from '../../lib/SovereignCore';
 
 interface AddBatchFormProps {
   onAdd: (product: NewProductDto) => Promise<Product>;
@@ -28,10 +29,12 @@ export const AddBatchForm = ({ onAdd, onSuccess }: AddBatchFormProps) => {
   const calculations = useMemo(() => {
     const gaz = parseFloat(formData.total_gaz) || 0;
     const cost = parseFloat(formData.unit_cost) || 0;
+    const overhead = formData.is_dyeing_required ? dyeingOverheadRate : 0;
     
-    const subtotal = gaz * cost;
-    const dyeingOverhead = formData.is_dyeing_required ? subtotal * (dyeingOverheadRate / 100) : 0;
-    const grandTotal = subtotal + dyeingOverhead;
+    // v5.1 Absolute Precision Logic
+    const subtotal = Number((gaz * cost).toFixed(2));
+    const grandTotal = sovereign.calculateBatchValuation(gaz, cost, overhead);
+    const dyeingOverhead = Number((grandTotal - subtotal).toFixed(2));
 
     return {
       subtotal,
@@ -108,7 +111,7 @@ const payload: NewProductDto = {
         <div className="mt-12 pt-8 border-t border-zinc-900 flex justify-center">
           <button 
             onClick={resetForm} 
-            className="flex items-center gap-2 text-xs font-bold text-zinc-500 hover:text-gold-500 transition-colors uppercase tracking-[0.2em]"
+            className="flex items-center gap-2 text-xs font-bold text-zinc-500 hover:text-electric-blue transition-colors uppercase tracking-[0.2em]"
           >
             <RotateCcw className="w-3 h-3" />
             Initialize New Production Run
@@ -123,11 +126,11 @@ const payload: NewProductDto = {
     <div className="card max-w-2xl mx-auto overflow-hidden">
       <div className="px-6 py-4 border-b border-zinc-800/50 flex items-center justify-between bg-zinc-900/20">
         <div className="flex items-center gap-2">
-          <Calculator className="w-4 h-4 text-gold-500" />
+          <Calculator className="w-4 h-4 text-electric-blue" />
           <h2 className="text-sm font-bold uppercase tracking-tight text-zinc-100">Industrial Batch Generator</h2>
         </div>
         <div className="flex items-center gap-2">
-           <span className="text-[10px] font-bold text-zinc-700 bg-zinc-900 px-2 py-0.5 rounded">V1.0.4-STABLE</span>
+           <span className="text-[10px] font-bold text-zinc-700 bg-zinc-900 px-2 py-0.5 rounded italic">SOVEREIGN_PATCH_V5.1</span>
         </div>
       </div>
 
@@ -172,14 +175,14 @@ const payload: NewProductDto = {
                 type="number"
                 step="0.01"
                 required
-                className="input-field text-gold-500 font-mono font-bold"
+                className="input-field text-electric-blue font-mono font-bold"
                 placeholder="0.00"
                 value={formData.total_gaz}
                 onChange={(e) => setFormData({ ...formData, total_gaz: e.target.value })}
               />
             </div>
             <div>
-              <label className="label-xs mb-2 block text-zinc-500">UNIT COST ($)</label>
+              <label className="label-xs mb-2 block text-zinc-500">UNIT COST (PKR)</label>
               <input
                 type="number"
                 step="0.01"
@@ -197,14 +200,14 @@ const payload: NewProductDto = {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div 
-                className={`w-8 h-4 rounded-full transition-colors relative cursor-pointer ${formData.is_dyeing_required ? 'bg-gold-600' : 'bg-zinc-800'}`}
+                className={`w-8 h-4 rounded-full transition-colors relative cursor-pointer ${formData.is_dyeing_required ? 'bg-electric-blue-600' : 'bg-zinc-800'}`}
                 onClick={() => setFormData({ ...formData, is_dyeing_required: !formData.is_dyeing_required })}
               >
                 <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${formData.is_dyeing_required ? 'left-4.5' : 'left-0.5'}`} />
               </div>
               <span className="label-xs text-zinc-400">APPLY PROCESSING OVERHEAD ({dyeingOverheadRate}%)</span>
             </div>
-            <span className={`text-[10px] font-bold ${formData.is_dyeing_required ? 'text-gold-500' : 'text-zinc-700'}`}>
+            <span className={`text-[10px] font-bold ${formData.is_dyeing_required ? 'text-electric-blue' : 'text-zinc-700'}`}>
               {formData.is_dyeing_required ? 'ACTIVE' : 'INACTIVE'}
             </span>
           </div>
@@ -212,15 +215,15 @@ const payload: NewProductDto = {
           <div className="pt-4 border-t border-zinc-900/50 space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-[10px] text-zinc-500 font-medium">SUBTOTAL</span>
-              <span className="text-xs font-mono text-zinc-400">${calculations.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              <span className="text-xs font-mono text-zinc-400">{sovereign.formatPKR(calculations.subtotal)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-[10px] text-zinc-500 font-medium">DYEING/PROCESSING ({dyeingOverheadRate}%)</span>
-              <span className="text-xs font-mono text-gold-500/80">+ ${calculations.dyeingOverhead.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              <span className="text-xs font-mono text-electric-blue/80">+ {sovereign.formatPKR(calculations.dyeingOverhead)}</span>
             </div>
             <div className="flex justify-between items-center pt-2 border-t border-zinc-900">
               <span className="text-[10px] text-zinc-100 font-bold tracking-widest">GRAND TOTAL ESTIMATE</span>
-              <span className="text-sm font-bold text-gold-500 font-mono">${calculations.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              <span className="text-sm font-bold text-electric-blue font-mono">{sovereign.formatPKR(calculations.grandTotal)}</span>
             </div>
           </div>
         </div>
