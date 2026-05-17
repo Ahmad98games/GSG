@@ -1,0 +1,9 @@
+name = "noxishub"
+compatibility_date = "2024-04-01"
+
+[assets]
+directory = "./omnora-prime-v13/out"
+not_found_handling = "single-page-application"
+
+[build]
+command = "cd omnora-prime-v13 && npm ci && npm run build"
