@@ -7,7 +7,7 @@
   "main": "dist-electron/electron/main.js",
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/build-static.js",
+    "build": "node scripts/build-static.mjs",
     "start": "next start",
     "lint": "eslint",
     "audit:check": "npm audit --audit-level=high",
