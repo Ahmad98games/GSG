@@ -31,9 +31,15 @@ const getCSP = () => {
 
 const serverOnlyPackages = ['puppeteer', 'better-sqlite3', 'pino', 'node-cron'];
 
+const isStaticBuild = 
+  process.env.NEXT_PUBLIC_PLATFORM === 'electron' || 
+  process.env.NEXT_PUBLIC_PLATFORM === 'capacitor' || 
+  process.env.CLOUDFLARE_DEPLOY === 'true';
+
 const nextConfig: NextConfig = {
-  output: 'standalone',
+  output: isStaticBuild ? 'export' : 'standalone',
   serverExternalPackages: serverOnlyPackages,
+
   turbopack: {},
   webpack: (config, { isServer }) => {
     if (!isServer) {
