@@ -95,7 +95,7 @@ async function createLicense(params: {
 }) {
   const key = generateKey(params.tier)
   const maxDevices = {
-    lite: 15, pro: 35, elite: 75
+    lite: 5, pro: 15, elite: 50
   }[params.tier]
   
   const expiresAt = new Date()
