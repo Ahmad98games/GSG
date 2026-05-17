@@ -160,3 +160,28 @@ function renderText(text: string) {
     return part;
   });
 }
+
+export async function generateStaticParams() {
+  const docsDir = path.join(process.cwd(), "src", "app", "docs");
+  const params: { slug: string[] }[] = [];
+
+  function walk(dir: string, baseSlug: string[] = []) {
+    if (!fs.existsSync(dir)) return;
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        if (entry.name === "[...slug]") continue;
+        walk(path.join(dir, entry.name), [...baseSlug, entry.name]);
+      } else if (entry.isFile() && entry.name.endsWith(".mdx")) {
+        const nameWithoutExt = entry.name.slice(0, -4);
+        params.push({
+          slug: [...baseSlug, nameWithoutExt],
+        });
+      }
+    }
+  }
+
+  walk(docsDir);
+  return params;
+}

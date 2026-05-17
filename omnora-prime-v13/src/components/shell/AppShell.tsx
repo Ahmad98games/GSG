@@ -114,8 +114,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Hide internal shell components on landing, auth, and setup pages
-  const shouldHideShell = pathname === "/" || pathname === "/login" || pathname === "/signup" || pathname?.startsWith("/setup");
+  // Hide internal shell components on landing, static website, docs, auth, and setup pages
+  const shouldHideShell = 
+    pathname === "/" || 
+    pathname === "/index.html" || 
+    pathname === "/login" || 
+    pathname === "/signup" || 
+    pathname?.startsWith("/setup") ||
+    pathname?.startsWith("/download") ||
+    pathname?.startsWith("/pricing") ||
+    pathname?.startsWith("/privacy") ||
+    pathname?.startsWith("/docs");
   
   if (shouldHideShell) {
     return (
