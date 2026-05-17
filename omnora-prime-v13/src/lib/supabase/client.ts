@@ -49,6 +49,66 @@ export const createClient = () => {
     }
   });
 
+  // Wrap supabaseClient.from to block database write mutations if trial has expired
+  const originalFrom = supabaseClient.from.bind(supabaseClient);
+  supabaseClient.from = (table: string) => {
+    const builder = originalFrom(table);
+
+    const isReadOnly = () => {
+      if (typeof window === 'undefined') return false;
+      try {
+        const tierDataStr = localStorage.getItem('noxis-tier');
+        if (!tierDataStr) return false;
+        const tierData = JSON.parse(tierDataStr);
+        if (tierData.state?.isTrial && tierData.state?.expiresAt) {
+          return new Date(tierData.state.expiresAt) < new Date();
+        }
+      } catch (e) {
+        console.error('Error reading tier store from localStorage:', e);
+      }
+      return false;
+    };
+
+    if (isReadOnly()) {
+      const createMockErrorBuilder = (methodName: string) => {
+        const mockResult: any = {
+          then: (onfulfilled: any) => {
+            return Promise.resolve(
+              onfulfilled({
+                data: null,
+                error: {
+                  message: 'Trial expired. App is in Read-Only Mode. Purchase a license to restore full write capabilities.',
+                  details: `The 3-day trial period has ended. Database write mutations (${methodName}) on table "${table}" are blocked.`,
+                  hint: 'Go to Settings or Activation to upgrade your license.',
+                  code: '42501'
+                },
+                count: null,
+                status: 403,
+                statusText: 'Forbidden'
+              })
+            );
+          },
+          select: () => mockResult,
+          single: () => mockResult,
+          eq: () => mockResult,
+          neq: () => mockResult,
+          match: () => mockResult,
+          csv: () => mockResult,
+          maybeSingle: () => mockResult,
+          throwOnError: () => mockResult,
+        };
+        return mockResult;
+      };
+
+      builder.insert = () => createMockErrorBuilder('insert');
+      builder.update = () => createMockErrorBuilder('update');
+      builder.upsert = () => createMockErrorBuilder('upsert');
+      builder.delete = () => createMockErrorBuilder('delete');
+    }
+
+    return builder;
+  };
+
   return supabaseClient;
 };
 

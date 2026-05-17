@@ -15,6 +15,8 @@ import SentinelAssistant from "@/components/sentinel/SentinelAssistant";
 import { IntroAnimation } from "@/components/shell/IntroAnimation";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { useThemeStore } from "@/stores/themeStore";
+import { useTierStore } from "@/stores/tierStore";
+import { AlertTriangle, Download, ExternalLink } from "lucide-react";
 import { useSidebarState } from "@/hooks/useSidebarState";
 import { useLanguageStore } from "@/stores/languageStore";
 import { cn } from "@/lib/utils";
@@ -37,6 +39,71 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const { language, setLanguage, isRTL: storeIsRTL } = useLanguageStore();
   const locale = useNoxisLocale().locale;
+
+  // Trial state reads and caching
+  const { isTrial, expiresAt } = useTierStore();
+  const [dismissedExpired, setDismissedExpired] = React.useState(false);
+  const [isExporting, setIsExporting] = React.useState(false);
+
+  const trialExpiryDate = expiresAt ? new Date(expiresAt) : null;
+  const isTrialExpired = isTrial && trialExpiryDate && trialExpiryDate < new Date();
+  
+  const getTrialBannerData = () => {
+    if (!trialExpiryDate) return { text: "", isRed: false, isToday: false };
+    const diffMs = trialExpiryDate.getTime() - Date.now();
+    
+    if (diffMs <= 0) {
+      return {
+        text: "Trial ended — read-only mode active",
+        isRed: true,
+        isToday: false
+      };
+    }
+    
+    const diffHours = diffMs / (1000 * 60 * 60);
+    if (diffHours <= 24) {
+      return {
+        text: "⚠ Trial expires TODAY — purchase to continue",
+        isRed: true,
+        isToday: true
+      };
+    }
+    
+    const diffDays = Math.ceil(diffHours / 24);
+    return {
+      text: `🔑 Elite Trial — ${diffDays} days remaining (expires ${trialExpiryDate.toLocaleDateString()})`,
+      isRed: false,
+      isToday: false
+    };
+  };
+
+  const bannerData = getTrialBannerData();
+
+  const handleExportData = async () => {
+    if (!profile?.id) {
+      alert("No business profile found to export.");
+      return;
+    }
+    
+    setIsExporting(true);
+    try {
+      const response = await fetch(`/api/internal/backup?business_id=${profile.id}`);
+      if (!response.ok) throw new Error("Failed to generate backup");
+      const data = await response.json();
+      
+      const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(data, null, 2))}`;
+      const downloadAnchor = document.createElement("a");
+      downloadAnchor.setAttribute("href", jsonString);
+      downloadAnchor.setAttribute("download", `noxis-backup-${(profile.business_name || 'backup').toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    } catch (e: any) {
+      alert(`Export failed: ${e.message}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   React.useEffect(() => {
     queueMicrotask(() => {
@@ -200,6 +267,41 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <IntroAnimation onComplete={handleIntroComplete} />
       )}
       {isElectron && <TitleBar />}
+      
+      {isTrial && bannerData.text && (
+        <div className={cn(
+          "w-full py-2.5 px-6 border-b text-[11px] font-bold tracking-wide transition-all duration-300 flex items-center justify-between z-[40]",
+          bannerData.isRed 
+            ? "bg-red-500/10 border-red-500/20 text-red-400" 
+            : "bg-amber-500/10 border-amber-500/20 text-amber-400"
+        )}>
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0 animate-pulse" />
+            <span>{bannerData.text}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            {!isTrialExpired && (
+              <a 
+                href="https://noxishub.app/pricing" 
+                target="_blank"
+                className="text-[9px] font-black uppercase tracking-widest bg-amber-500 hover:bg-amber-400 text-black px-3 py-1 rounded transition-colors"
+              >
+                Upgrade License
+              </a>
+            )}
+            {isTrialExpired && (
+              <button 
+                onClick={handleExportData}
+                disabled={isExporting}
+                className="text-[9px] font-black uppercase tracking-widest bg-white/5 hover:bg-white/10 px-3 py-1 rounded text-gray-300 transition-colors disabled:opacity-50"
+              >
+                {isExporting ? "Exporting..." : "Export Data"}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <UpdateBanner />
       <ToastContainer />
       <QuickActions />
@@ -222,6 +324,59 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </div>
+
+      {isTrialExpired && !dismissedExpired && (
+        <div className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-md flex items-center justify-center p-6 select-none font-sans">
+          <div className="max-w-xl w-full bg-[#16191C] border border-amber-500/20 p-10 text-center space-y-8 relative overflow-hidden shadow-2xl rounded-2xl">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.03)_0%,transparent_70%)] pointer-events-none" />
+            
+            <div className="flex flex-col items-center space-y-4 relative z-10">
+              <div className="w-16 h-16 bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500 rounded-full animate-pulse shadow-[0_0_20px_rgba(245,158,11,0.1)]">
+                <AlertTriangle className="w-8 h-8" />
+              </div>
+              <div className="space-y-2">
+                <span className="text-[10px] text-amber-500 font-mono font-black uppercase tracking-[0.3em] bg-amber-500/10 px-3 py-1 border border-amber-500/20 rounded-full">
+                  Trial Expired
+                </span>
+                <h2 className="text-3xl font-black uppercase tracking-tight text-white mt-2">
+                  Your 3-Day Trial <span className="text-gray-500">Has Ended</span>
+                </h2>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-400 leading-relaxed font-medium max-w-md mx-auto relative z-10">
+              Your data is fully saved and secure. To continue writing transactions, managing staff, and viewing active Sentinel CCTV cameras, please purchase a license key. You can safely export your local database backup immediately.
+            </p>
+
+            <div className="pt-4 border-t border-white/5 flex flex-col gap-3 relative z-10">
+              <a 
+                href="https://noxishub.app/pricing" 
+                target="_blank"
+                className="w-full py-4 bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest hover:bg-amber-400 transition-all text-center flex items-center justify-center gap-2 rounded-xl font-bold"
+              >
+                <span>Buy Now</span>
+                <ExternalLink className="w-4 h-4" />
+              </a>
+              
+              <button 
+                onClick={handleExportData}
+                disabled={isExporting}
+                className="w-full py-4 bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-gray-300 hover:bg-white/10 hover:text-white transition-all text-center flex items-center justify-center gap-2 rounded-xl disabled:opacity-50 font-bold"
+              >
+                <Download className="w-4 h-4" />
+                <span>{isExporting ? "Exporting Data..." : "Export My Data"}</span>
+              </button>
+
+              <button 
+                onClick={() => setDismissedExpired(true)}
+                className="w-full py-3 bg-transparent text-[9px] font-bold uppercase tracking-widest text-gray-500 hover:text-gray-300 transition-all text-center"
+              >
+                Dismiss to Read-Only Mode
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -85,7 +85,8 @@ interface TierStore {
   tier: Tier
   limits: TierLimits
   expiresAt: string | null
-  setTier: (tier: Tier, expiresAt?: string) => void
+  isTrial: boolean
+  setTier: (tier: Tier, expiresAt?: string, isTrial?: boolean) => void
   hasFeature: (feature: keyof TierLimits) => boolean
   canAddCamera: (currentCount: number) => boolean
   canAddDevice: (currentCount: number) => boolean
@@ -99,16 +100,18 @@ export const useTierStore = create<TierStore>()(
       tier: 'lite',
       limits: TIER_LIMITS.lite,
       expiresAt: null,
+      isTrial: false,
       
-      setTier: (tier, expiresAt) => {
+      setTier: (tier, expiresAt, isTrial) => {
         set({
           tier,
           limits: TIER_LIMITS[tier],
           expiresAt: expiresAt || null,
+          isTrial: !!isTrial,
         })
         // Sync with Electron main process if available
         if (typeof window !== 'undefined' && (window as any).electron) {
-          (window as any).electron.invoke('sync-tier', { tier, expiresAt })
+          (window as any).electron.invoke('sync-tier', { tier, expiresAt, isTrial: !!isTrial })
         }
       },
       
@@ -159,7 +162,8 @@ export const useTierStore = create<TierStore>()(
         if (state && typeof window !== 'undefined' && (window as any).electron) {
           (window as any).electron.invoke('sync-tier', { 
             tier: state.tier, 
-            expiresAt: state.expiresAt 
+            expiresAt: state.expiresAt,
+            isTrial: state.isTrial
           })
         }
       }

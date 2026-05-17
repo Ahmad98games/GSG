@@ -92,16 +92,45 @@ serve(async (req) => {
       )
     }
     
-    // Check expiry
-    if (new Date(license.expires_at) < new Date()) {
+    // First activation of a trial license — set expires_at now
+    if (license.is_trial && !license.expires_at) {
+      const trialExpiresAt = new Date()
+      trialExpiresAt.setDate(trialExpiresAt.getDate() + 3)
+      
+      await supabase
+        .from('licenses')
+        .update({
+          expires_at: trialExpiresAt.toISOString(),
+          activated_at: new Date().toISOString(),
+          business_id: business_id || null
+        })
+        .eq('id', license.id)
+      
+      license.expires_at = trialExpiresAt.toISOString()
+    }
+    
+    // Check trial expiration strictly (for returning trial activations)
+    if (license.is_trial && license.expires_at && new Date(license.expires_at) < new Date()) {
+      return new Response(
+        JSON.stringify({
+          valid: false,
+          error: 'Trial expired. Contact sales to continue.',
+          is_trial_expired: true
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    
+    // Check expiry for regular license
+    if (!license.is_trial && license.expires_at && new Date(license.expires_at) < new Date()) {
       return new Response(
         JSON.stringify({ valid: false, error: 'License expired' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
     
-    // Link to business if not already linked
-    if (!license.business_id && business_id) {
+    // Link to business if not already linked (for regular non-trial licenses)
+    if (!license.is_trial && !license.business_id && business_id) {
       await supabase
         .from('licenses')
         .update({
@@ -119,6 +148,7 @@ serve(async (req) => {
         max_devices: license.max_devices,
         customer_name: license.customer_name,
         expires_at: license.expires_at,
+        is_trial: license.is_trial || false,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

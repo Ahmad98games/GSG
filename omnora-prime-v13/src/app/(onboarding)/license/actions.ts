@@ -4,7 +4,7 @@ import { db } from '@/lib/db/client';
 import * as schema from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
-export async function saveLicenseToLocal(licenseKey: string, tier: string) {
+export async function saveLicenseToLocal(licenseKey: string, tier: string, isTrial?: boolean, expiresAt?: string) {
   try {
     const key = licenseKey.trim().toUpperCase();
     
@@ -29,6 +29,30 @@ export async function saveLicenseToLocal(licenseKey: string, tier: string) {
         target: schema.localConfig.key,
         set: { value: tier, updatedAt: new Date().toISOString() }
       });
+
+    // Store is_trial status
+    await db.insert(schema.localConfig)
+      .values({
+        key: 'is_trial',
+        value: isTrial ? 'true' : 'false'
+      })
+      .onConflictDoUpdate({
+        target: schema.localConfig.key,
+        set: { value: isTrial ? 'true' : 'false', updatedAt: new Date().toISOString() }
+      });
+
+    // Store expires_at
+    if (expiresAt) {
+      await db.insert(schema.localConfig)
+        .values({
+          key: 'expires_at',
+          value: expiresAt
+        })
+        .onConflictDoUpdate({
+          target: schema.localConfig.key,
+          set: { value: expiresAt, updatedAt: new Date().toISOString() }
+        });
+    }
       
     return { success: true };
   } catch (error) {

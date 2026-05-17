@@ -86,7 +86,12 @@ export default function LicensePage() {
       }
 
       // Step 3: Store license in local config (Server Action)
-      const saveRes = await saveLicenseToLocal(licenseKey, licenseData.tier);
+      const saveRes = await saveLicenseToLocal(
+        licenseKey,
+        licenseData.tier,
+        licenseData.is_trial,
+        licenseData.expires_at
+      );
       if (!saveRes.success) throw new Error('Local storage failed');
 
       // Step 4: Restore/Initialize User Data
@@ -101,7 +106,8 @@ export default function LicensePage() {
         // Set Tier in Store
         useTierStore.getState().setTier(
           licenseData.tier,
-          licenseData.expires_at
+          licenseData.expires_at,
+          licenseData.is_trial
         );
 
         if (profile) {

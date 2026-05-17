@@ -27,7 +27,8 @@
     "electron:publish": "npm run compile:electron && next build && electron-builder --publish always",
     "electron:release": "npm run compile:electron && next build && electron-builder --publish onTag",
     "postinstall": "electron-builder install-app-deps",
-    "license:generate": "npx ts-node scripts/generate-license.ts"
+    "license:generate": "npx ts-node scripts/generate-license.ts",
+    "license:trial": "npx ts-node --compiler-options \"{\\\"module\\\": \\\"commonjs\\\"}\" scripts/generate-license.ts --trial"
   },
   "dependencies": {
     "@capacitor/core": "^8.3.1",
