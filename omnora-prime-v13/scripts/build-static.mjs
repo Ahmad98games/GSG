@@ -40,6 +40,7 @@ try {
       CLOUDFLARE_DEPLOY: 'true',
       NEXT_PUBLIC_CLOUDFLARE_DEPLOY: 'true',
       NEXT_PUBLIC_SUPABASE_URL: 'https://dummy.supabase.co',
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: 'dummy',
       SUPABASE_SERVICE_ROLE_KEY: 'dummy'
     }
   });
