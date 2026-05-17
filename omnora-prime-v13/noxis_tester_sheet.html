@@ -1,0 +1,167 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Noxis Hub v13 - Tester Sheet</title>
+        <style>
+            :root {
+                --bg: #080A0C;
+                --surface: #111418;
+                --primary: #D4AF37;
+                --text: #F8FAFC;
+                --text-muted: #64748B;
+                --border: rgba(255,255,255,0.05);
+            }
+            body {
+                background: var(--bg);
+                color: var(--text);
+                font-family: 'Inter', system-ui, sans-serif;
+                margin: 0;
+                padding: 40px;
+                display: flex;
+                justify-content: center;
+            }
+            .container {
+                max-width: 800px;
+                width: 100%;
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                padding: 40px;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            }
+            header {
+                border-bottom: 1px solid var(--border);
+                padding-bottom: 20px;
+                margin-bottom: 30px;
+            }
+            h1 {
+                color: var(--primary);
+                font-size: 24px;
+                margin: 0;
+                letter-spacing: 2px;
+                text-transform: uppercase;
+            }
+            .subtitle {
+                color: var(--text-muted);
+                font-size: 12px;
+                margin-top: 8px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+            section {
+                margin-bottom: 30px;
+            }
+            h2 {
+                font-size: 14px;
+                color: var(--text-muted);
+                text-transform: uppercase;
+                letter-spacing: 2px;
+                border-bottom: 1px solid var(--border);
+                padding-bottom: 8px;
+                margin-bottom: 15px;
+            }
+            .item {
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                padding: 12px;
+                border-radius: 8px;
+                transition: background 0.2s;
+                cursor: pointer;
+            }
+            .item:hover {
+                background: rgba(255,255,255,0.02);
+            }
+            input[type="checkbox"] {
+                accent-color: var(--primary);
+                width: 18px;
+                height: 18px;
+                cursor: pointer;
+            }
+            .label-text {
+                font-size: 14px;
+            }
+            .notes {
+                margin-top: 10px;
+                width: 100%;
+                background: rgba(0,0,0,0.2);
+                border: 1px solid var(--border);
+                border-radius: 4px;
+                color: white;
+                padding: 8px;
+                font-size: 12px;
+            }
+            button {
+                background: var(--primary);
+                color: black;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 6px;
+                font-weight: bold;
+                cursor: pointer;
+                margin-top: 20px;
+                width: 100%;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <header>
+                <h1>Noxis Hub v13</h1>
+                <div class="subtitle">Official QA Testing Sheet</div>
+            </header>
+
+            <section>
+                <h2>1. First Impression</h2>
+                <div class="item">
+                    <input type="checkbox">
+                    <span class="label-text">Intro Animation plays with "Welcome back" personalized message</span>
+                </div>
+                <div class="item">
+                    <input type="checkbox">
+                    <span class="label-text">"Bespoke Industrial System" admin tag visible during intro</span>
+                </div>
+            </section>
+
+            <section>
+                <h2>2. Navigation & UI</h2>
+                <div class="item">
+                    <input type="checkbox">
+                    <span class="label-text">Sidebar items grouped (Core, Ops, Finance, Intel, System)</span>
+                </div>
+                <div class="item">
+                    <input type="checkbox">
+                    <span class="label-text">No duplicate "Production" or "Inventory" entries</span>
+                </div>
+            </section>
+
+            <section>
+                <h2>3. Premium Themes</h2>
+                <div class="item">
+                    <input type="checkbox">
+                    <span class="label-text">Golden Onyx: High-contrast gold accents active</span>
+                </div>
+                <div class="item">
+                    <input type="checkbox">
+                    <span class="label-text">Midnight Emerald: Deep green tones consistent</span>
+                </div>
+            </section>
+
+            <section>
+                <h2>4. System Health</h2>
+                <div class="item">
+                    <input type="checkbox">
+                    <span class="label-text">Updates page shows "Connection / Dev Mode" when offline</span>
+                </div>
+            </section>
+
+            <textarea class="notes" placeholder="Any other issues or feedback?"></textarea>
+            
+            <button onclick="window.print()">Save as PDF / Print Results</button>
+        </div>
+    </body>
+    </html>
+    

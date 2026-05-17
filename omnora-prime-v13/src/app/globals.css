@@ -1,0 +1,278 @@
+@import "tailwindcss";
+
+:root {
+  /* Default Dark (Legacy fallback) */
+  --color-bg: #121417;
+  --color-surface: #1A1D21;
+  --color-primary: #60A5FA;
+  --color-financial: #C5A059;
+  --color-success: #10B981;
+  --color-danger: #EF4444;
+  --color-text: #FFFFFF;
+  --color-text-muted: #6B7280;
+  --color-border: rgba(255,255,255,0.05);
+  --color-overlay: rgba(255,255,255,0.04);
+  --color-overlay-hover: rgba(255,255,255,0.08);
+}
+
+:root.light {
+  --color-bg: #F8F9FA;
+  --color-surface: #FFFFFF;
+  --color-primary: #2563EB;
+  --color-financial: #92400E;
+  --color-success: #059669;
+  --color-danger: #DC2626;
+  --color-text: #111827;
+  --color-text-muted: #6B7280;
+  --color-border: rgba(0,0,0,0.08);
+  --color-overlay: rgba(0,0,0,0.04);
+  --color-overlay-hover: rgba(0,0,0,0.08);
+}
+
+:root.dark {
+  --color-bg: #121417;
+  --color-surface: #1A1D21;
+  --color-primary: #60A5FA;
+  --color-financial: #C5A059;
+  --color-success: #10B981;
+  --color-danger: #EF4444;
+  --color-text: #FFFFFF;
+  --color-text-muted: #6B7280;
+  --color-border: rgba(255,255,255,0.05);
+  --color-overlay: rgba(255,255,255,0.04);
+  --color-overlay-hover: rgba(255,255,255,0.08);
+}
+
+@theme {
+  --color-noxis-bg: var(--color-bg);
+  --color-noxis-surface: var(--color-surface);
+  --color-noxis-accent: var(--color-primary);
+  --color-noxis-financial: var(--color-financial);
+  --color-noxis-success: var(--color-success);
+  --color-noxis-danger: var(--color-danger);
+  --color-noxis-text: var(--color-text);
+  --color-noxis-text-muted: var(--color-text-muted);
+  --color-noxis-border: var(--color-border);
+  --color-noxis-overlay: var(--color-overlay);
+  --color-noxis-overlay-hover: var(--color-overlay-hover);
+
+  --color-electric-blue: var(--color-primary);
+  --color-sandstone-gold: var(--color-financial);
+  
+  --font-inter: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-jetbrains-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  
+  --font-sans: "Inter", "system-ui", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  /* Letter Spacing */
+  --tracking-tighter: -0.02em;
+  --tracking-tight: -0.01em;
+  --tracking-wide-sm: 0.06em;
+  --tracking-wide-md: 0.08em;
+
+  /* Font Sizes */
+  --text-xxs: 0.625rem;
+  --text-xxs--line-height: 1rem;
+  --text-data: 0.8125rem;
+  --text-data--line-height: 1.25rem;
+  --text-data--font-weight: 500;
+
+  /* Globalization Font Variables */
+  --font-nastaliq: 'Noto Nastaliq Urdu', serif;
+  --font-arabic: 'Noto Sans Arabic', sans-serif;
+  --font-devanagari: 'Noto Sans Devanagari', sans-serif;
+  --font-bengali: 'Noto Sans Bengali', sans-serif;
+  --font-tamil: 'Noto Sans Tamil', sans-serif;
+  --font-chinese: 'Noto Sans SC', sans-serif;
+  --font-cyrillic: 'Noto Sans', sans-serif;
+  
+  --background: var(--color-bg);
+  --foreground: var(--color-text);
+}
+
+:root.theme-transitioning,
+:root.theme-transitioning * {
+  transition: 
+    background-color 300ms cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 300ms cubic-bezier(0.4, 0, 0.2, 1),
+    color 300ms cubic-bezier(0.4, 0, 0.2, 1),
+    fill 300ms cubic-bezier(0.4, 0, 0.2, 1),
+    stroke 300ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* --- Professional Typography System --- */
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1, "ss01" 1;
+  transition: direction 0.3s ease;
+}
+
+/* Inter with proper optical sizing */
+.font-ui {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-optical-sizing: auto;
+}
+
+/* JetBrains Mono for ALL data */
+.font-data {
+  font-family: 'JetBrains Mono', monospace;
+  font-feature-settings: "zero" 1, "ss02" 1;
+}
+
+/* Heading scale — tighter tracking at large sizes */
+h1, h2, h3 { letter-spacing: -0.02em; }
+h4, h5, h6 { letter-spacing: -0.01em; }
+
+/* Table headers — uppercase with wider tracking */
+.table-header {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6B7280;
+}
+
+/* Financial amounts — always tabular nums */
+.financial {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.875rem;
+  color: var(--color-financial);
+}
+
+/* Status pills */
+.status-pill {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+/* --- Globalization Engine --- */
+
+.lang-rtl {
+  direction: rtl;
+  text-align: right;
+}
+
+.lang-ltr {
+  direction: ltr;
+  text-align: left;
+}
+
+/* Script Specific Font Overrides */
+[lang="ur"], .lang-ur { font-family: var(--font-nastaliq), serif !important; line-height: 2.2 !important; }
+[lang="ar"], .lang-ar { font-family: var(--font-arabic), sans-serif !important; line-height: 1.8 !important; }
+[lang="hi"], .lang-hi { font-family: var(--font-devanagari), sans-serif !important; }
+[lang="bn"], .lang-bn { font-family: var(--font-bengali), sans-serif !important; }
+[lang="ta"], .lang-ta { font-family: var(--font-tamil), sans-serif !important; }
+[lang="zh"], .lang-zh { font-family: var(--font-chinese), sans-serif !important; }
+[lang="ru"], .lang-ru { font-family: var(--font-cyrillic), sans-serif !important; }
+
+/* Numerical Integrity Class */
+.num-data {
+  font-family: var(--font-jetbrains-mono), monospace !important;
+  direction: ltr !important;
+  unicode-bidi: isolate;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Industrial Data Tables */
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+th, td {
+  border-radius: 2px !important; /* Industrial requirement: max 2px */
+}
+
+/* Financial/Code formatting */
+.font-code {
+  font-family: var(--font-jetbrains-mono), monospace;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+/* Custom Scrollbar Utilities */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+
+.glass-panel {
+  background: rgba(26, 29, 33, 0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 
+    0 25px 50px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+.glass-panel-light {
+  background: rgba(30, 34, 40, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+/* --- RTL Icon Mirroring --- */
+.lang-rtl .lucide-chevron-right,
+.lang-rtl .lucide-chevron-left,
+.lang-rtl .lucide-arrow-right,
+.lang-rtl .lucide-arrow-left,
+.lang-rtl .lucide-move-right,
+.lang-rtl .lucide-move-left {
+  transform: scaleX(-1);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

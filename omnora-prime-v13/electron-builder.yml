@@ -1,0 +1,55 @@
+appId: com.omnoralabs.noxis
+productName: Noxis
+npmRebuild: false
+files:
+  - "**/*"
+  - "!.agents"
+  - "!dist"
+  - "!.claude"
+  - "!.github"
+  - "!src/tests"
+icon: public/logos/noxis.png
+# Quote path: unquoted `dist` is parsed on Windows as drive `D:` + `ist`.
+directories:
+  output: "./dist"
+  buildResources: "build"
+
+extraResources:
+  - from: ".next/standalone"
+    to: "standalone"
+  - from: ".next/static"
+    to: "standalone/.next/static"
+  - from: "public"
+    to: "standalone/public"
+  - from: "electron"
+    to: "electron"
+  - from: ".env.local"
+    to: ".env"
+win:
+  target: nsis
+  # Avoid winCodeSign / asar integrity tooling that extracts symlinks (fails without Dev Mode/admin on Windows).
+  signAndEditExecutable: false
+  icon: public/logos/noxis.png
+asarUnpack:
+  - "**/*.node"
+  - "**/better-sqlite3/**"
+  - "**/better-sqlite3-multiple-ciphers/**"
+  - "**/node_modules/better-sqlite3/**"
+  - "**/node_modules/better-sqlite3-multiple-ciphers/**"
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  # Multi-language stubs (e.g. Korean LangString fallback) emit NSIS warnings; default treats them as errors.
+  warningsAsErrors: false
+  # Stock NSIS (~2GiB+) produces a tiny useless Setup.exe; NSISBI embeds huge app payloads.
+  # Ref: https://github.com/electron-userland/electron-builder/issues/8399
+  customNsisBinary:
+    url: https://github.com/SoundSafari/NSISBI-ElectronBuilder/releases/download/1.0.0/nsisbi-electronbuilder-3.10.3.7z
+    checksum: WRmZUsACjIc2s7bvsFGFRofK31hfS7riPlcfI1V9uFB2Q8s7tidgI/9U16+X0I9X2ZhNxi8N7Z3gKvm6ojvLvg==
+
+publish:
+  provider: github
+  owner: omnoralabs
+  repo: noxis-releases
+  releaseType: release

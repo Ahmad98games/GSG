@@ -1,0 +1,406 @@
+// SHARED SCHEMA — must be identical in both textile-mobile and textile-erp-v7
+syntax = "proto3";
+
+package NOXIS;
+
+/**
+ * GLOBAL PACKET ENVELOPE
+ */
+message Packet {
+  string packetId = 1;
+  string nodeId = 2;
+  int64 timestamp = 3;
+  oneof event {
+    ScanEvent scan = 4;
+    HeartbeatEvent heartbeat = 5;
+    SOSEvent sos = 6;
+    ErrorEvent error = 7;
+    TelemetryEvent telemetry = 8;
+    KhataEntry khata = 9;
+    StockDelta stock = 10;
+    TacticalMessage message = 11;
+    HubAck ack = 12;
+    TypingEvent typing = 13;
+    FetchPendingMessagesRequest fetchPending = 14;
+    ProfileManifest profileManifest = 15;
+    NspEnvelope nsp = 16;
+  }
+}
+
+/**
+ * NOXIS SYNAPSE PROTOCOL (NSP) MESSAGES
+ */
+
+message SentinelBreachEvent {
+  string node_id = 1;
+  string zone_id = 2;
+  string detected_class = 3; // 'person'|'fire'|'material'
+  float confidence = 4;
+  int64 timestamp = 5;
+  bytes jpeg_frame = 6; // thumbnail from Hub CCTV
+}
+
+message SystemLockCommand {
+  string issued_by_node_id = 1;
+  string reason = 2;
+  int64 timestamp = 3;
+  bool lock = 4; // true=lock, false=unlock
+}
+
+message GuardianAuthRequest {
+  string request_id = 1;
+  string hub_action = 2; // what the Hub wants to do
+  int64 expires_at = 3; // 30s TTL from Hub
+  int64 timestamp = 4;
+}
+
+message GuardianAuthResponse {
+  string request_id = 1;
+  bool approved = 2;
+  string node_id = 3;
+  int64 timestamp = 4;
+  // token derived from request_id + expires_at + mesh_key — Hub verifies this
+  string auth_token = 5;
+}
+
+message HeartbeatAlertEvent {
+  string node_id = 1;
+  string alert_type = 2; // 'hub_offline'|'hub_degraded'|'hub_recovered'
+  int64 timestamp = 3;
+}
+
+message VoiceCommandResult {
+  string command_text = 1;
+  string mapped_action = 2; // 'khata_debit'|'khata_credit'|'sos'|'unknown'
+  string entity_name = 3;
+  string amount_pkr = 4; // Decimal as string
+  bool confidence_ok = 5;
+  int64 timestamp = 6;
+}
+
+message NspEnvelope {
+  oneof payload {
+    // --- FIELDS 1-11: Core NSP Events ---
+    SentinelBreachEvent sentinel_breach = 1;
+    SystemLockCommand system_lock = 2;
+    GuardianAuthRequest guardian_request = 3;
+    GuardianAuthResponse guardian_response = 4;
+    HeartbeatAlertEvent heartbeat_alert = 5;
+    VoiceCommandResult voice_command_result = 6;
+    StockLookupRequest stock_lookup_req = 7;
+    StockLookupResponse stock_lookup_res = 8;
+    ReadReceipt read_receipt = 9;
+    PresenceUpdate presence_update = 10;
+    
+    // --- FIELDS 12-19: Financial Intelligence ---
+    LedgerSummaryRequest ledger_summary_req = 12;
+    LedgerSummaryResponse ledger_summary_res = 13;
+    PartyBalanceRequest party_balance_req = 14;
+    PartyBalanceResponse party_balance_res = 15;
+    InvoiceSummaryRequest invoice_summary_req = 16;
+    InvoiceSummaryResponse invoice_summary_res = 17;
+    PaySlipRequest pay_slip_req = 18;
+    PaySlipResponse pay_slip_res = 19;
+    
+    // --- FIELDS 20-23: Branch Orchestration ---
+    BranchListRequest branch_list_req = 20;
+    BranchListResponse branch_list_res = 21;
+    SwitchBranchRequest switch_branch_req = 22;
+    SwitchBranchResponse switch_branch_res = 23;
+    
+    // --- FIELDS 24-27: CCTV Telemetry ---
+    DetectionHistoryRequest detection_history_req = 24;
+    DetectionHistoryResponse detection_history_res = 25;
+    CameraStatusRequest camera_status_req = 26;
+    CameraStatusResponse camera_status_res = 27;
+
+    // --- FIELDS 28+: RESERVED for Future ---
+  }
+}
+
+message DetectionHistoryRequest {
+  string node_id = 1;
+  string camera_node_id = 2;   // empty = all cameras for this business
+  string detected_class = 3;   // empty = all classes
+  int64 since_timestamp = 4;   // Unix ms, 0 = last 24h
+  int32 limit = 5;             // default 50, max 200
+}
+
+message DetectionHistoryResponse {
+  repeated DetectionEvent events = 1;
+  int32 total_count = 2;
+}
+
+message DetectionEvent {
+  string event_id = 1;
+  string camera_label = 2;
+  string install_location = 3;
+  string detected_class = 4;
+  float confidence = 5;
+  string zone_id = 6;
+  string zone_label = 7;
+  int64 created_at = 8;
+  string thumbnail_url = 9;    // Supabase Storage signed URL (Hub generates, 15min expiry)
+}
+
+message CameraStatusRequest {
+  string node_id = 1;
+}
+
+message CameraStatusResponse {
+  repeated CameraStatusItem cameras = 1;
+}
+
+message CameraStatusItem {
+  string camera_id = 1;
+  string label = 2;
+  string location = 3;
+  string brand = 4;
+  string model_number = 5;
+  string status = 6;           // 'online'|'offline'|'obscured'|'degraded'
+  int64 last_frame_at = 7;
+  float bitrate_kbps = 8;
+  float avg_brightness = 9;
+  bool ai_enabled = 10;
+  string active_fault = 11;    // null if healthy
+}
+
+message LedgerSummaryRequest {
+  string node_id = 1;
+  string date_from = 2;   // ISO date string
+  string date_to = 3;
+  int32 limit = 4;         // default 50
+}
+
+message LedgerSummaryResponse {
+  repeated LedgerEntryItem entries = 1;
+  string total_debit = 2;   // Decimal as string
+  string total_credit = 3;
+  string net_balance = 4;
+}
+
+message LedgerEntryItem {
+  string entry_id = 1;
+  string tx_ref = 2;
+  string account_name = 3;
+  string party_name = 4;
+  string entry_type = 5;   // 'debit'|'credit'
+  string amount = 6;       // Decimal as string
+  string description = 7;
+  int64 posted_at = 8;
+}
+
+message PartyBalanceRequest {
+  string node_id = 1;
+  string party_type = 2;   // 'customer'|'supplier'|'both'
+  int32 limit = 3;
+}
+
+message PartyBalanceResponse {
+  repeated PartyBalanceItem parties = 1;
+}
+
+message PartyBalanceItem {
+  string party_id = 1;
+  string name = 2;
+  string current_balance = 3;  // Decimal as string
+  bool is_blocked = 4;
+  string party_type = 5;
+  int32 overdue_days = 6;
+}
+
+message InvoiceSummaryRequest {
+  string node_id = 1;
+  string date_from = 2;
+  string date_to = 3;
+}
+
+message InvoiceSummaryResponse {
+  repeated InvoiceSummaryItem invoices = 1;
+  string total_value = 2;
+  int32 count = 3;
+}
+
+message InvoiceSummaryItem {
+  string invoice_id = 1;
+  string invoice_no = 2;
+  string party_name = 3;
+  string total = 4;
+  string balance_due = 5;
+  string status = 6;
+  int64 issue_date = 7;
+  int64 due_date = 8;
+}
+
+message PaySlipRequest {
+  string node_id = 1;
+  string karigar_id = 2;
+  string period_id = 3;
+}
+
+message PaySlipResponse {
+  string karigar_name = 1;
+  string period_label = 2;
+  string gross_earning = 3;
+  string total_deductions = 4;
+  string net_payable = 5;
+  int32 days_present = 6;
+  string total_units = 7;
+  string efficiency_pct = 8;
+  string advance_deduction = 9;
+}
+
+message BranchListRequest {
+  string node_id = 1;
+}
+
+message BranchListResponse {
+  repeated BranchItem branches = 1;
+  string current_branch_id = 2;
+}
+
+message BranchItem {
+  string branch_id = 1;
+  string name = 2;
+  string city = 3;
+  bool is_hq = 4;
+  string user_role_at_branch = 5;  // 'owner'|'manager'|'operator'
+}
+
+message SwitchBranchRequest {
+  string node_id = 1;
+  string target_branch_id = 2;
+}
+
+message SwitchBranchResponse {
+  bool success = 1;
+  string new_jwt = 2;  // Hub issues a new JWT scoped to the new branch
+  string branch_name = 3;
+}
+
+message ScanEvent {
+  string nodeId = 1;
+  string workerId = 2;
+  string barcode = 3;
+  int64 timestamp = 4;
+  string batchId = 5;
+}
+
+message HeartbeatEvent {
+  string nodeId = 1;
+  int64 timestamp = 2;
+  int32 batteryPercent = 3;
+  int32 signalStrength = 4;
+  int32 queueDepth = 5;
+}
+
+message SOSEvent {
+  string nodeId = 1;
+  string workerId = 2;
+  int64 timestamp = 3;
+  string message = 4;
+  string location = 5;
+}
+
+message ErrorEvent {
+  string nodeId = 1;
+  int64 timestamp = 2;
+  string errorCode = 3;
+  string errorMessage = 4;
+  string context = 5;
+}
+
+message TelemetryEvent {
+  string nodeId = 1;
+  int64 timestamp = 2;
+  float batteryTemp = 3;
+  int64 memUsage = 4;
+  int32 encLatencyMs = 5;
+  int32 packetSizeBytes = 6;
+}
+
+message KhataEntry {
+  string entryId = 1;
+  string nodeId = 2;
+  string workerId = 3;
+  string debitAccount = 4;
+  string creditAccount = 5;
+  int64 amountPkr = 6;
+  int64 timestamp = 7;
+  string syncStatus = 8;
+}
+
+message StockDelta {
+  string deltaId = 1;
+  string nodeId = 2;
+  string operationType = 3;
+  string batchId = 4;
+  int32 qty = 5;
+  int64 timestamp = 6;
+  string vectorClock = 7;
+}
+
+message TacticalMessage {
+  string messageId = 1;
+  string fromNodeId = 2;
+  string toNodeId = 3;
+  string content = 4;
+  string mediaType = 5;
+  int64 timestamp = 6;
+  bool isEncrypted = 7;
+  bytes encryptedPayload = 8;
+}
+
+message TypingEvent {
+  string fromNodeId = 1;
+  string toNodeId = 2;
+  int64 timestamp = 3;
+}
+
+message HubAck {
+  string packetId = 1;
+  string status = 2;
+  int32 syncOffsetMs = 3;
+  int64 timestamp = 4;
+  string activeProfile = 5;
+}
+
+message FetchPendingMessagesRequest {
+  string nodeId = 1;
+  int64 lastReceivedAt = 2;
+}
+
+message ProfileManifest {
+  string activeProfile = 1;
+  repeated string visibleModules = 2;
+  map<string, string> labelOverrides = 3;
+}
+
+message StockLookupRequest {
+  string barcode = 1;
+  string node_id = 2;
+}
+
+message StockLookupResponse {
+  string sku_id = 1;
+  string sku_code = 2;
+  string name = 3;
+  string qty_on_hand = 4;  // Decimal as string
+  string unit = 5;
+  string cost_price = 6;
+  string sale_price = 7;
+  string location = 8;
+}
+
+message ReadReceipt {
+  string message_id = 1;
+  string from_node_id = 2;
+  int64 read_at = 3;
+}
+
+message PresenceUpdate {
+  string node_id = 1;
+  string status = 2;  // 'online'|'offline'
+  int64 timestamp = 3;
+}
+

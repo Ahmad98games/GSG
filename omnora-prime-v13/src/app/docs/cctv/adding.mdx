@@ -1,0 +1,22 @@
+# Adding Cameras
+
+**Persona**: Security Manager / System Admin
+
+Integrate RTSP-capable CCTV cameras into the Noxis Sentinel monitoring system.
+
+### Prerequisites
+- IP Camera supporting the **RTSP** protocol.
+- Camera IP address, username, and password.
+
+### Step-by-Step Instructions
+1. Navigate to **Sentinel CCTV > Manage Nodes**.
+2. Click **Register New Node**.
+3. Enter the **Node Label** (e.g., Gate 1, Loading Bay).
+4. Provide the **RTSP URL** (e.g., `rtsp://admin:pass@192.168.1.50:554/stream1`).
+5. Set the **Detection Sensitivity** for AI motion tracking.
+6. Click **Test Connection** to verify the video feed.
+7. Click **Activate Node**.
+
+### Troubleshooting
+- **No Video Feed**: Ensure the camera is pingable from the Hub workstation.
+- **Protocol Mismatch**: Verify that the RTSP port (default 554) is open on your network firewall.

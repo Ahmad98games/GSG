@@ -1,0 +1,32 @@
+# Financial Invoicing Workflow
+
+Invoices in Noxis Hub are integrated with the double-entry ledger, ensuring every sale is balanced against cash or accounts receivable.
+
+## Invoice Types
+- **Cash Invoice**: Immediate payment settled to the Cash/Bank account.
+- **Credit Invoice**: Posted to the Customer's Khata (ledger).
+- **Proforma**: Temporary invoice for quotation purposes (does not affect ledger).
+
+## Creating an Invoice
+
+1. **Select Counterparty**
+   Search for an existing customer or create a new "Walk-in" party.
+
+2. **Add Line Items**
+   Scan barcodes or search for SKUs. Adjust quantities and manual discounts if authorized.
+   [DIAGRAM]: Select Item -> Apply Discount -> Calculate Tax -> Finalize Total
+
+3. **Choose Payment Mode**
+   Select Cash, Card, Bank Transfer, or JazzCash. For credit sales, select **"Post to Khata"**.
+
+4. **Verify Tax Calculations**
+   Ensure the correct GST/VAT category is applied. Noxis Hub automatically calculates the tax based on your regional settings.
+
+5. **Finalize and Print**
+   Click **"Post Invoice"**. This will:
+   - Deduct stock from Inventory.
+   - Credit the Sales Account.
+   - Debit the Cash/Bank or Accounts Receivable.
+
+## Reversing an Invoice (Returns)
+To return an item, use the **Sales Return** module. Never delete a posted invoice; instead, issue a Credit Note to maintain the audit trail required for industrial compliance.

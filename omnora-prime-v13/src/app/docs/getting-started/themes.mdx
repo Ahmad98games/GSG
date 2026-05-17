@@ -1,0 +1,55 @@
+# Themes & UI Personalization
+
+Noxis Hub features a sophisticated theme engine designed for industrial environments, allowing users to personalize their workspace with 20 distinct industry-tailored themes and dynamic typography.
+
+## The 20-Theme Registry
+
+We've expanded our theme library to cover a broad spectrum of industrial aesthetics, from deep corporate navies to high-visibility "Cyber" modes.
+
+### Industrial Themes
+- **Midnight Blue**: Deep navy for professional finance and consulting services.
+- **Emerald Forest**: Optimized for agricultural and environmental monitoring.
+- **Saffron Bazaar**: Warm, high-contrast palette for retail and trading.
+- **Steel Industrial**: Raw, high-performance gray for heavy manufacturing.
+- **Neon Cyber**: High-visibility dark mode with neon accents for tech-forward floors.
+
+### Aesthetic Themes
+- **Rose Gold**: Premium elegance for boutique management.
+- **Arctic White**: Clean, high-light environment for laboratory settings.
+- **Volcanic Ash**: Brutalist dark mode for minimalists.
+- **Chrome Silver**: Professional metallic finish.
+
+## Dynamic UI Fonts
+
+Each theme now controls the global typography of the interface via the `--font-ui` CSS variable. This ensures that the typeface matches the industry context.
+
+- **Corporate**: Uses clean, geometric sans-serifs (Inter).
+- **Industrial**: High-legibility monospaced variants.
+- **Tech-Forward**: Futuro-brutalist fonts like *Space Grotesk*.
+
+### How to Switch Themes
+1. Navigate to **Settings** > **Appearance**.
+2. Open the **Advanced Theme Picker** (Shortcut: `Ctrl + T`).
+3. Select a theme card. The changes are applied instantly across all modules without a page reload.
+
+## Technical Implementation
+
+The theme system uses CSS Custom Properties (Variables) injected into the `:root` element.
+
+```typescript
+// Example Theme definition
+{
+  id: 'neon-cyber',
+  name: 'Neon Cyber',
+  uiFont: 'Space Grotesk',
+  colors: {
+    primary: '#00F3FF',
+    background: '#050505',
+    // ...
+  }
+}
+```
+
+When a theme is selected, Noxis Hub updates the global CSS state:
+- `--background`, `--foreground`, `--primary`, etc.
+- `--font-ui` (injected as the primary body font family).

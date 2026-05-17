@@ -1,0 +1,83 @@
+import type { Metadata } from "next";
+import { headers } from 'next/headers';
+import { NextIntlClientProvider } from 'next-intl';
+import { getMessages } from 'next-intl/server';
+import "./globals.css";
+
+import QueryProvider from "@/components/providers/QueryProvider";
+import { AuditProvider } from "@/components/providers/AuditProvider";
+import AppShell from "@/components/shell/AppShell";
+import { ThemeInitializer } from "@/components/providers/ThemeInitializer";
+import { IndustryProvider } from "@/components/providers/IndustryProvider";
+import { LicenseInitializer } from "@/components/providers/LicenseInitializer";
+import { isRTL, getFontFamily } from "@/lib/locale-utils";
+import AskNoxis from "@/components/knowledge/AskNoxis";
+import { GlobalErrorBoundary } from "@/components/ui/GlobalErrorBoundary";
+
+export const metadata: Metadata = {
+  title: "Noxis",
+  description: "Industrial ERP Hub for Factories — Stock, Payroll, and Production",
+};
+
+export default async function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  const headerList = headers();
+  const locale = (await headerList).get('x-next-intl-locale') || 'en';
+  const messages = await getMessages({ locale });
+  const direction = isRTL(locale) ? 'rtl' : 'ltr';
+
+  return (
+    <html lang={locale} dir={direction} suppressHydrationWarning>
+      <head>
+        <link
+          rel="preload"
+          href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap"
+          as="style"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap"
+          rel="stylesheet"
+        />
+        {/* Dynamic Font Loading */}
+        {(locale === 'ar' || locale === 'fa') && (
+          <link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&display=swap" rel="stylesheet" />
+        )}
+        {locale === 'hi' && (
+          <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet" />
+        )}
+        {locale === 'zh' && (
+          <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet" />
+        )}
+        <style dangerouslySetInnerHTML={{ __html: `
+          :root {
+            --font-ui-override: ${getFontFamily(locale)};
+          }
+          body {
+            font-family: var(--font-ui-override), Inter, system-ui, sans-serif !important;
+          }
+        `}} />
+      </head>
+      <body className="antialiased">
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <AuditProvider>
+            <QueryProvider>
+              <IndustryProvider>
+                <LicenseInitializer />
+                <ThemeInitializer />
+                <GlobalErrorBoundary>
+                  <AppShell>
+                    {children}
+                    <AskNoxis />
+                  </AppShell>
+                </GlobalErrorBoundary>
+              </IndustryProvider>
+            </QueryProvider>
+          </AuditProvider>
+        </NextIntlClientProvider>
+      </body>
+    </html>
+  );
+}

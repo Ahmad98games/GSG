@@ -1,0 +1,355 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Noxis Hub v13 - Comprehensive Test Report</title>
+        <style>
+            :root {
+                --bg: #080A0C;
+                --surface: #111418;
+                --primary: #D4AF37;
+                --secondary: #60A5FA;
+                --text: #F8FAFC;
+                --text-muted: #64748B;
+                --border: rgba(255,255,255,0.05);
+                --success: #10B981;
+            }
+            body {
+                background: var(--bg);
+                color: var(--text);
+                font-family: 'Inter', system-ui, sans-serif;
+                margin: 0;
+                padding: 40px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+            .container {
+                max-width: 1000px;
+                width: 100%;
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                padding: 50px;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            }
+            header {
+                border-bottom: 2px solid var(--primary);
+                padding-bottom: 30px;
+                margin-bottom: 40px;
+                text-align: center;
+            }
+            h1 {
+                color: var(--primary);
+                font-size: 32px;
+                margin: 0;
+                letter-spacing: 4px;
+                text-transform: uppercase;
+                font-weight: 900;
+            }
+            .subtitle {
+                color: var(--text-muted);
+                font-size: 14px;
+                margin-top: 10px;
+                text-transform: uppercase;
+                letter-spacing: 2px;
+            }
+            .meta-info {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+                margin-bottom: 40px;
+                background: rgba(255,255,255,0.02);
+                padding: 20px;
+                border-radius: 8px;
+            }
+            .meta-item label {
+                display: block;
+                font-size: 10px;
+                color: var(--text-muted);
+                text-transform: uppercase;
+                margin-bottom: 5px;
+            }
+            .meta-item input {
+                width: 100%;
+                background: transparent;
+                border: none;
+                border-bottom: 1px solid var(--border);
+                color: white;
+                padding: 5px 0;
+                font-size: 14px;
+            }
+            section {
+                margin-bottom: 50px;
+                background: rgba(255,255,255,0.01);
+                border-radius: 12px;
+                padding: 25px;
+                border: 1px solid var(--border);
+            }
+            h2 {
+                font-size: 18px;
+                color: var(--primary);
+                text-transform: uppercase;
+                letter-spacing: 2px;
+                margin-top: 0;
+                margin-bottom: 20px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            h2::before {
+                content: '';
+                width: 4px;
+                height: 18px;
+                background: var(--primary);
+                display: inline-block;
+            }
+            .test-group {
+                display: grid;
+                gap: 15px;
+            }
+            .item {
+                display: grid;
+                grid-template-columns: 30px 1fr 200px;
+                align-items: center;
+                gap: 20px;
+                padding: 15px;
+                border-bottom: 1px solid var(--border);
+            }
+            .item:last-child { border-bottom: none; }
+            input[type="checkbox"] {
+                accent-color: var(--success);
+                width: 20px;
+                height: 20px;
+                cursor: pointer;
+            }
+            .desc {
+                font-size: 14px;
+                line-height: 1.5;
+            }
+            .status-select {
+                background: #080A0C;
+                border: 1px solid var(--border);
+                color: var(--text-muted);
+                padding: 5px;
+                border-radius: 4px;
+                font-size: 12px;
+            }
+            .feedback-area {
+                margin-top: 15px;
+                width: 100%;
+                background: rgba(0,0,0,0.3);
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                color: #A0AEC0;
+                padding: 12px;
+                font-size: 13px;
+                resize: vertical;
+                min-height: 60px;
+            }
+            .footer {
+                margin-top: 50px;
+                text-align: center;
+                color: var(--text-muted);
+                font-size: 12px;
+            }
+            .print-btn {
+                position: fixed;
+                bottom: 30px;
+                right: 30px;
+                background: var(--primary);
+                color: black;
+                border: none;
+                padding: 15px 30px;
+                border-radius: 50px;
+                font-weight: 900;
+                text-transform: uppercase;
+                cursor: pointer;
+                box-shadow: 0 10px 30px rgba(212, 175, 55, 0.3);
+                z-index: 100;
+            }
+            @media print {
+                .print-btn { display: none; }
+                body { padding: 0; background: rgb(148, 0, 0); color: black; }
+                .container { border: none; box-shadow: none; max-width: 100%; }
+                section { border: 1px solid #ddd; background: none; page-break-inside: avoid; }
+                input, textarea, select { border: 1px solid #ddd !important; color: black !important; }
+                h1, h2 { color: rgb(255, 147, 147) !important; border-color: black !important; }
+            }
+        </style>
+    </head>
+    <body>
+        <button class="print-btn" onclick="window.print()">Export Test Report (PDF)</button>
+        
+        <div class="container">
+            <header>
+                <h1>Noxis Hub v13</h1>
+                <div class="subtitle">Omnora Labs - Comprehensive Verification Suite</div>
+            </header>
+
+            <div class="meta-info">
+                <div class="meta-item">
+                    <label>Tester Name</label>
+                    <input type="text" placeholder="Enter name...">
+                </div>
+                <div class="meta-item">
+                    <label>Test Date</label>
+                    <input type="text" value="May 12, 2026">
+                </div>
+                <div class="meta-item">
+                    <label>Hardware Environment</label>
+                    <input type="text" placeholder="e.g. Windows 11, Core i7, 16GB RAM">
+                </div>
+                <div class="meta-item">
+                    <label>Build Version</label>
+                    <input type="text" value="v13.0.0-PRIME">
+                </div>
+            </div>
+
+            <!-- 1. CORE EXPERIENCE -->
+            <section>
+                <h2>1. Core Experience & Branding</h2>
+                <div class="test-group">
+                    <div class="item-container">
+                        <div class="item">
+                            <input type="checkbox">
+                            <span class="desc"><strong>Intro Sequence:</strong> Plays on session launch with personalized business branding and "Bespoke System" tag.</span>
+                            <select class="status-select"><option>PASS</option><option>FAIL</option><option>UI GLITCH</option></select>
+                        </div>
+                        <textarea class="feedback-area" placeholder="Detailed feedback on animations/personalization..."></textarea>
+                    </div>
+                    <div class="item-container">
+                        <div class="item">
+                            <input type="checkbox">
+                            <span class="desc"><strong>Sidebar Categorization:</strong> Items grouped logically (Operations, Finance, Intel). No duplicates.</span>
+                            <select class="status-select"><option>PASS</option><option>FAIL</option><option>CLUTTERED</option></select>
+                        </div>
+                        <textarea class="feedback-area" placeholder="Notes on navigation flow..."></textarea>
+                    </div>
+                    <div class="item-container">
+                        <div class="item">
+                            <input type="checkbox">
+                            <span class="desc"><strong>Premium Themes:</strong> Golden Onyx and Midnight Emerald apply correctly across all screens.</span>
+                            <select class="status-select"><option>PASS</option><option>FAIL</option><option>LOW CONTRAST</option></select>
+                        </div>
+                        <textarea class="feedback-area" placeholder="Feedback on specific theme colors..."></textarea>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. OPERATIONS & INDUSTRIAL -->
+            <section>
+                <h2>2. Operations & Manufacturing</h2>
+                <div class="test-group">
+                    <div class="item-container">
+                        <div class="item">
+                            <input type="checkbox">
+                            <span class="desc"><strong>Production Flow:</strong> Ability to start/stop batches and track progress in real-time.</span>
+                            <select class="status-select"><option>PASS</option><option>FAIL</option><option>LAGGY</option></select>
+                        </div>
+                        <textarea class="feedback-area" placeholder="Notes on production throughput/UI..."></textarea>
+                    </div>
+                    <div class="item-container">
+                        <div class="item">
+                            <input type="checkbox">
+                            <span class="desc"><strong>Stock Control:</strong> Real-time inventory updates when production or sales occur.</span>
+                            <select class="status-select"><option>PASS</option><option>FAIL</option><option>CALC ERROR</option></select>
+                        </div>
+                        <textarea class="feedback-area" placeholder="Verify units (Meters/KGs) are correct for the industry..."></textarea>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. FINANCIAL SUITE -->
+            <section>
+                <h2>3. Financial Suite (Khata & Invoices)</h2>
+                <div class="test-group">
+                    <div class="item-container">
+                        <div class="item">
+                            <input type="checkbox">
+                            <span class="desc"><strong>Double-Entry Ledger:</strong> Khata postings accurately reflect Debit/Credit logic.</span>
+                            <select class="status-select"><option>PASS</option><option>FAIL</option><option>OUT OF BALANCE</option></select>
+                        </div>
+                        <textarea class="feedback-area" placeholder="Check balance calculations..."></textarea>
+                    </div>
+                    <div class="item-container">
+                        <div class="item">
+                            <input type="checkbox">
+                            <span class="desc"><strong>Invoice Generation:</strong> Tax calculations (GST/VAT) and PDF export functionality.</span>
+                            <select class="status-select"><option>PASS</option><option>FAIL</option><option>PDF ERROR</option></select>
+                        </div>
+                        <textarea class="feedback-area" placeholder="Feedback on invoice layout..."></textarea>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. INTELLIGENCE & SECURITY -->
+            <section>
+                <h2>4. Sentinel Intelligence & Security</h2>
+                <div class="test-group">
+                    <div class="item-container">
+                        <div class="item">
+                            <input type="checkbox">
+                            <span class="desc"><strong>CCTV Pulse:</strong> Live streams and detection overlays are active and non-blocking.</span>
+                            <select class="status-select"><option>PASS</option><option>FAIL</option><option>HIGH CPU</option></select>
+                        </div>
+                        <textarea class="feedback-area" placeholder="Notes on camera latency..."></textarea>
+                    </div>
+                    <div class="item-container">
+                        <div class="item">
+                            <input type="checkbox">
+                            <span class="desc"><strong>Audit Logs:</strong> Every system action is captured with user ID and timestamp.</span>
+                            <select class="status-select"><option>PASS</option><option>FAIL</option><option>MISSING LOGS</option></select>
+                        </div>
+                        <textarea class="feedback-area" placeholder="Verify log integrity..."></textarea>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5. WORKFORCE & PAYROLL -->
+            <section>
+                <h2>5. Workforce & Payroll</h2>
+                <div class="test-group">
+                    <div class="item-container">
+                        <div class="item">
+                            <input type="checkbox">
+                            <span class="desc"><strong>Karigar Management:</strong> Wage worker tracking, Peshgi (Advances), and piece-rate logic.</span>
+                            <select class="status-select"><option>PASS</option><option>FAIL</option><option>WRONG WAGE</option></select>
+                        </div>
+                        <textarea class="feedback-area" placeholder="Verify South Asian payroll nuances..."></textarea>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 6. SYSTEM STABILITY -->
+            <section>
+                <h2>6. System Infrastructure</h2>
+                <div class="test-group">
+                    <div class="item-container">
+                        <div class="item">
+                            <input type="checkbox">
+                            <span class="desc"><strong>Cloud Sync:</strong> Offline changes sync to Supabase once connectivity is restored.</span>
+                            <select class="status-select"><option>PASS</option><option>FAIL</option><option>CONFLICT</option></select>
+                        </div>
+                        <textarea class="feedback-area" placeholder="Check for data loss during offline testing..."></textarea>
+                    </div>
+                    <div class="item-container">
+                        <div class="item">
+                            <input type="checkbox">
+                            <span class="desc"><strong>Update Banner:</strong> Displays correct status in Settings (Dev Mode vs. Production).</span>
+                            <select class="status-select"><option>PASS</option><option>FAIL</option><option>ALARMING</option></select>
+                        </div>
+                        <textarea class="feedback-area" placeholder="Verify the 'Amber' status in dev mode..."></textarea>
+                    </div>
+                </div>
+            </section>
+
+            <div class="footer">
+                &copy; 2026 NOXIS Labs - By Omnora Labs Powered By Ahmad Mahboob
+            </div>
+        </div>
+    </body>
+    </html>
+    

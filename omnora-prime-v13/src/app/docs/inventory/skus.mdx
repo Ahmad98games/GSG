@@ -1,0 +1,31 @@
+# Adding SKUs
+
+**Persona**: Inventory Manager
+
+Register new products and raw materials into the central inventory system.
+
+### Prerequisites
+- Active business profile configured in the Hub.
+- Unit of Measure (UoM) defined in settings (e.g., Meters, Bags, Kg).
+
+### Visual Workflow
+> [DIAGRAM]: Open Inventory -> Create SKU -> Set Reorder Level -> Save to Database
+
+### Step-by-Step Instructions
+1. Navigate to the **Stock & Inventory** module in the sidebar.
+2. Click the **Add New SKU** button in the top right corner.
+3. Enter the **Product Name** and **SKU Code** (e.g., TEXTILE-PRO-2024).
+4. Assign a **Unit Price** (e.g., Rs. 1,250.00).
+5. Set the **Reorder Level** to receive automated low-stock alerts.
+6. Click **Save Product**.
+
+### Example Configuration
+> [EXAMPLE]:
+> **Item**: Raw Silk Thread
+> **Code**: SILK-YARN-001
+> **Price**: Rs. 2,400.00/kg
+> **Reorder**: 50 kg
+
+### Troubleshooting
+- **Duplicate SKU**: The system prevents duplicate codes. Use a unique identifier for each variant.
+- **Missing Units**: Ensure you have selected a valid UoM before saving.

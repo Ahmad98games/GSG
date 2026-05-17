@@ -1,0 +1,21 @@
+# Creating Invoices
+
+**Persona**: Accounts Manager
+
+Generate industrial-grade invoices for clients and partners.
+
+### Prerequisites
+- Client record created in the **Parties** database.
+- Stock items available for sale.
+
+### Step-by-Step Instructions
+1. Navigate to **Finance > Invoicing**.
+2. Click **Generate New Invoice**.
+3. Select the **Customer Name** from the dropdown.
+4. Add items to the invoice using the search bar or barcode scanner.
+5. Apply any applicable **Regional Taxes** (GST/VAT).
+6. Click **Finalize & Print**.
+
+### Troubleshooting
+- **Negative Stock**: The system will warn if you attempt to invoice items not present in inventory.
+- **Rounding Errors**: Noxis uses `Decimal.js` for all calculations; ensure your input precision matches your regional settings.

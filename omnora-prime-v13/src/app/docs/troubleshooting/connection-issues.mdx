@@ -1,0 +1,35 @@
+# Resolving Connection & Sync Issues
+
+Noxis Hub relies on a resilient network architecture. If nodes are not communicating, follow this diagnostic hierarchy.
+
+## Common Symptoms
+- Mobile app shows "Node Offline".
+- Sentinel CCTV streams are lagging or frozen.
+- Supabase synchronization is showing "Pending" for extended periods.
+
+## Diagnostic Steps
+
+1. **Verify Hub Network Status**
+   Check if the Hub can reach the internet. Open the terminal and run:
+   `ping 8.8.8.8`
+   If this fails, check your physical WAN connection.
+
+2. **Check Local Subnet Integrity**
+   Ensure all devices are on the same WiFi/LAN. The Hub's IP address (e.g., `192.168.1.50`) must be reachable from your mobile device.
+   [DIAGRAM]: Hub (Port 3000) <- Router -> Mobile App
+
+3. **NSP Service Audit**
+   The Noxis System Protocol (NSP) service must be running for IoT and mobile sync.
+   [EXAMPLE]: `npm run status:nsp`
+
+4. **SSL/Time Synchronization**
+   If synchronization with the cloud fails, verify that the Hub's system time matches UTC exactly. Drift of more than 60 seconds will cause security token rejection.
+
+5. **Firewall & Port Access**
+   Ensure Windows Firewall or `ufw` is not blocking Port 3000 (HTTP) and Port 3001 (NSP).
+
+## Advanced Recovery
+If data sync is corrupted, perform a **Force Re-Sync**:
+1. Stop the Hub service.
+2. Clear the local SQLite cache (`rm local.db` — backup first!).
+3. Restart the Hub with the `--refresh` flag.

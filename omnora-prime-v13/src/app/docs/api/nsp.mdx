@@ -1,0 +1,19 @@
+# NSP Protocol Overview
+
+**Persona**: Developer / System Architect
+
+Understand the **Noxis Sync Protocol (NSP)**—the custom TCP/IP binary protocol used for device communication.
+
+### Prerequisites
+- Knowledge of Protocol Buffers (protobuf) and binary sockets.
+
+### Step-by-Step Instructions
+1. Download the `shared.proto` definition file from the Hub's developer portal.
+2. Compile the proto file for your target language (C++, Rust, Go, etc.).
+3. Connect to the Hub's NSP port (default 8080).
+4. Initiate a **Handshake** message containing your API Key.
+5. Once authenticated, you can subscribe to binary telemetry streams.
+
+### Troubleshooting
+- **Protocol Mismatch**: Ensure you are using the correct version of the `shared.proto` file (matching the Hub v13.0).
+- **Binary Encoding**: Verify that your client correctly handles Little-Endian byte order for numeric fields.

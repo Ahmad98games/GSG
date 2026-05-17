@@ -1,0 +1,58 @@
+# WhatsApp Communication Engine
+
+Noxis Hub integrates directly with WhatsApp to streamline industrial communication, from sending invoices to alerting owners about stock depletion.
+
+## Delivery Methods
+
+The Communication Engine supports three distinct delivery tiers depending on your business license and device type.
+
+### 1. WhatsApp Deep-Linking (`wa.me`)
+- **Tier**: Lite & Pro
+- **Mechanism**: Opens the WhatsApp application (Desktop or Mobile) with a pre-filled, formatted message.
+- **Cost**: $0 / No API required.
+
+### 2. WhatsApp Business API (Enterprise)
+- **Status**: Under Development
+- **Tier**: Elite (Future)
+- **Mechanism**: Automated background delivery via official Meta API. 
+- **Requirement**: Verified Meta Business Account.
+
+### 3. Native Mobile Share
+- **Device**: Android / iOS (PWA)
+- **Mechanism**: Uses the OS native sharing sheet for a more integrated feel on industrial mobile hardware.
+
+## Contextual Templates
+
+The engine includes specialized templates for different industrial operations:
+
+| Template | Trigger Location | Data Included |
+| :--- | :--- | :--- |
+| **Invoice** | Invoice Detail Page | Number, Amount, Due Date, View Link |
+| **Payslip** | Payroll Period Page | Gross, Deductions, Net, Worker Name |
+| **Peshgi Receipt** | Khata Entry Modal | Advance Amount, Remaining Balance |
+| **Low Stock Alert** | Reorder Suggestions | SKU Name, Current Qty, Threshold |
+| **Daily Summary** | Reports Hub | Total Revenue, Collections, Anomalies |
+
+## Technical Usage
+
+Developers can trigger the Communication Engine via the `WhatsAppSender` utility:
+
+```typescript
+import { WhatsAppSender, WhatsAppTemplates } from "@/lib/whatsapp/WhatsAppSender";
+
+const message = WhatsAppTemplates.invoice(
+  "My Textile Mill",
+  "INV-2024-001",
+  "PKR 45,000",
+  "2024-06-01",
+  "0300-1234567"
+);
+
+WhatsAppSender.send({ 
+  phone: "923001234567", 
+  message 
+}, "elite");
+```
+
+## Security & Privacy
+Noxis Hub does not store the content of these messages on central servers. Data is encrypted in transit and messages are dispatched directly from your local node or the official WhatsApp API.

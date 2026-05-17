@@ -1,0 +1,35 @@
+# Installation Guide: Noxis Industrial Hub
+
+This guide details the procedure for deploying the Noxis Hub (Omnora Prime v13.0) on factory-floor hardware.
+
+## Prerequisites
+- **Hardware**: Dedicated x64 or ARM64 gateway (Noxis Sentinel Node recommended).
+- **OS**: Windows 10/11 Pro or Ubuntu 22.04 LTS.
+- **Network**: Stable local intranet with static IP allocation.
+- **Power**: Uninterruptible Power Supply (UPS) with at least 30 min backup.
+
+## Step-by-Step Deployment
+
+1. **System Preparation**
+   Ensure all background updates are paused. Disable OS-level sleep mode to prevent node hibernation during synchronization.
+
+2. **Binary Extraction**
+   Download the latest Noxis Hub bundle. Extract to `C:\NoxisHub` or `/opt/noxis`. 
+   > [IMPORTANT]: Do not run the Hub from the 'Downloads' folder as permissions may be restricted.
+
+3. **Environment Configuration**
+   Copy `.env.example` to `.env.local`. 
+   [DIAGRAM]: Set SUPABASE_URL -> Set SUPABASE_KEY -> Set HUB_ID
+
+4. **Initialize Database Connection**
+   Run the connectivity test:
+   [EXAMPLE]: `npm run test:connectivity`
+
+5. **Start the Hub Service**
+   Execute the start command:
+   `npm run start:hub`
+
+## Troubleshooting Initial Boot
+- **Port Conflict**: If port 3000 is occupied, change the `PORT` variable in `.env.local`.
+- **SSL Errors**: Ensure the system clock is synchronized with NTP servers.
+- **Database Refusal**: Verify your `SUPABASE_SERVICE_ROLE_KEY` has permission to bypass RLS for initial sync.

@@ -1,0 +1,13 @@
+{
+  "version": "13.0.4",
+  "releaseDate": "2026-05-02",
+  "tier": "stable",
+  "windowsUrl": "https://zgxmvwxzjmpmesqliwxl.supabase.co/storage/v1/object/public/installers/NOXIS_Prime_v13.0.4_x64.exe",
+  "releaseNotes": [
+    "CCTV Sentinel AI v2 deployed with polygon zone detection.",
+    "Mobile POS Barcode engine optimized for South Asian hardware.",
+    "Mesh Protocol v4: Support for up to 75 simultaneous industrial nodes.",
+    "Financial Engine: Real-time GST/VAT return synchronization."
+  ]
+}
+
