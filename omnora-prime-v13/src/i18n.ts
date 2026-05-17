@@ -1,11 +1,14 @@
 import {getRequestConfig} from 'next-intl/server';
-import {headers} from 'next/headers';
 
 export default getRequestConfig(async () => {
-  // Use the 'NOXIS_LOCALE' cookie or header to determine the locale
-  // In a cookie-based approach without URL prefixes, we read from headers
-  const headerList = headers();
-  const locale = (await headerList).get('x-next-intl-locale') || 'en';
+  let locale = 'en';
+
+  if (process.env.NEXT_PUBLIC_CLOUDFLARE_DEPLOY !== 'true') {
+    const pkg = ['next', 'headers'].join('/');
+    const { headers: getHeaders } = require(pkg);
+    const headerList = getHeaders();
+    locale = (await headerList).get('x-next-intl-locale') || 'en';
+  }
 
   return {
     locale,

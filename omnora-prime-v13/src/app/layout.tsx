@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import { headers } from 'next/headers';
 import { NextIntlClientProvider } from 'next-intl';
-import { getMessages } from 'next-intl/server';
+import enMessages from '@/messages/en.json';
 import "./globals.css";
 
 import QueryProvider from "@/components/providers/QueryProvider";
@@ -24,9 +23,16 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const headerList = headers();
-  const locale = (await headerList).get('x-next-intl-locale') || 'en';
-  const messages = await getMessages({ locale });
+  let locale = 'en';
+  let messages: any = enMessages;
+  if (process.env.NEXT_PUBLIC_CLOUDFLARE_DEPLOY !== 'true') {
+    const pkg = ['next', 'headers'].join('/');
+    const { headers: getHeaders } = require(pkg);
+    const headerList = getHeaders();
+    locale = (await headerList).get('x-next-intl-locale') || 'en';
+    const { getMessages } = require('next-intl/server');
+    messages = await getMessages({ locale });
+  }
   const direction = isRTL(locale) ? 'rtl' : 'ltr';
 
   return (

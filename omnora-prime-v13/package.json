@@ -7,7 +7,7 @@
   "main": "dist-electron/electron/main.js",
   "scripts": {
     "dev": "next dev",
-    "build": "CLOUDFLARE_DEPLOY=true NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co SUPABASE_SERVICE_ROLE_KEY=dummy next build",
+    "build": "node scripts/build-static.js",
     "start": "next start",
     "lint": "eslint",
     "audit:check": "npm audit --audit-level=high",
