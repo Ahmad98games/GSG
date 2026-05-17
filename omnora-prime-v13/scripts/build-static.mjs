@@ -5,7 +5,7 @@ import path from 'path';
 const appPath = path.join(process.cwd(), 'src/app');
 const tempPath = path.join(process.cwd(), 'src/app-temp');
 
-const PUBLIC_DIRECTORIES = ['download', 'pricing', 'privacy', 'docs'];
+const PUBLIC_DIRECTORIES = ['download', 'pricing', 'privacy', 'docs', 'blog'];
 let hiddenDirs = [];
 
 let buildFailed = false;

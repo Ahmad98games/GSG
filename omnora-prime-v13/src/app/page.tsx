@@ -296,6 +296,7 @@ export default function NoxisHubLanding() {
 
           <div className="flex items-center space-x-12 text-[11px] font-bold uppercase tracking-[0.15em] text-white/50">
             <Link href="#pricing" className="hover:text-electric-blue transition-colors">Pricing</Link>
+            <Link href="/blog" className="hover:text-electric-blue transition-colors">Blog</Link>
             <Link href="/docs?source=website" className="hover:text-electric-blue transition-colors">Documentation</Link>
           </div>
         </div>
@@ -805,6 +806,7 @@ export default function NoxisHubLanding() {
             <h5 className="text-[11px] font-black text-white uppercase tracking-widest mb-8">Product</h5>
             <ul className="space-y-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
               <li><Link href="#pricing" className="hover:text-white transition-colors">Pricing</Link></li>
+              <li><Link href="/blog" className="hover:text-white transition-colors">Blog</Link></li>
               <li><Link href="/docs?source=website" className="hover:text-white transition-colors">Documentation</Link></li>
               <li><Link href="/download" className="hover:text-white transition-colors">Download Hub</Link></li>
               <li><Link href="/releases" className="hover:text-white transition-colors">Release Notes</Link></li>
