@@ -55,6 +55,10 @@ export const metadata = {
   alternates: {
     canonical: 'https://noxishub.app',
   },
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/logos/noxis.png',
+  },
 }
 
 export default async function RootLayout({
@@ -77,6 +81,9 @@ export default async function RootLayout({
   return (
     <html lang={locale} dir={direction} suppressHydrationWarning>
       <head>
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/logos/noxis.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/logos/noxis.png" />
         <link
           rel="preload"
           href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap"

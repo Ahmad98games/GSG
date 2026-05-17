@@ -278,11 +278,19 @@ export default function NoxisHubLanding() {
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
           <div className="flex items-center space-x-3 group cursor-pointer">
             <div className="w-10 h-10 flex items-center justify-center bg-white/5 group-hover:bg-electric-blue/10 rounded-sm transition-all shadow-2xl">
-              <Image src="/logos/noxis.png" alt="Noxis Logo" width={28} height={28} className="object-contain" />
+              <img
+                src="/logos/noxis.png"
+                alt="Noxis"
+                width={32}
+                height={32}
+                className="object-contain"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                }}
+              />
             </div>
             <div className="flex flex-col">
               <span className="text-white font-black tracking-tighter leading-none text-xl">NOXIS</span>
-              <span className="text-[10px] text-electric-blue font-mono font-bold uppercase tracking-[0.2em] mt-0.5">Industrial Hub</span>
             </div>
           </div>
 
