@@ -6,4 +6,4 @@ directory = "./omnora-prime-v13/out"
 not_found_handling = "single-page-application"
 
 [build]
-command = "cd omnora-prime-v13 && npm ci --legacy-peer-deps && NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co SUPABASE_SERVICE_ROLE_KEY=dummy npm run build"
+command = "cd omnora-prime-v13 && npm ci --legacy-peer-deps && CLOUDFLARE_DEPLOY=true NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co SUPABASE_SERVICE_ROLE_KEY=dummy npm run build"
