@@ -53,50 +53,158 @@ const PRICING = {
 
 // --- Components ---
 
-const DashboardVisual = () => (
-  <div className="relative w-full aspect-video bg-[#1A1D21] border border-white/10 rounded-sm overflow-hidden shadow-2xl">
-    {/* Top Bar */}
-    <div className="h-8 bg-[#121417] border-b border-white/5 flex items-center px-3 space-x-1.5">
-      <div className="w-2 h-2 rounded-full bg-white/10" />
-      <div className="w-2 h-2 rounded-full bg-white/10" />
-      <div className="w-2 h-2 rounded-full bg-white/10" />
-      <div className="ml-4 h-3 w-32 bg-white/5 rounded-full" />
-    </div>
-    <div className="flex h-[calc(100%-2rem)]">
-      {/* Sidebar */}
-      <div className="w-12 md:w-16 bg-[#121417] border-r border-white/5 p-2 flex flex-col space-y-4 items-center pt-6">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className={`w-6 h-6 rounded-sm ${i === 0 ? 'bg-electric-blue/20' : 'bg-white/5'}`} />
-        ))}
-      </div>
-      {/* Content Area */}
-      <div className="flex-1 p-4 md:p-8 grid grid-cols-3 gap-4 h-fit">
-        <div className="col-span-3 h-12 bg-white/5 border border-white/5 rounded-sm flex items-center px-4">
-          <div className="w-24 h-3 bg-white/10 rounded-full" />
-        </div>
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="bg-[#121417] border border-white/5 p-4 rounded-sm space-y-3">
-            <div className={`w-8 h-8 rounded-full ${i === 0 ? 'bg-electric-blue/20' : i === 1 ? 'bg-sandstone-gold/20' : 'bg-white/5'}`} />
-            <div className="w-full h-2 bg-white/5 rounded-full" />
-            <div className="w-2/3 h-4 bg-white/10 rounded-sm" />
+const LOG_MESSAGES = [
+  "CCTV Sentinel: Camera #2 (Spindle Room #4) Person detected 98.9% parity",
+  "NSP Local Sync: P2P vector clocks converged with Mobile Node #4",
+  "Basmati Mandi Sync: Rates updated in SQLite (PKR 8,200 / Maund)",
+  "Karigar Ledger: Piece-rate ticket loom #12 processed for Sajid Ali",
+  "Sentinel AI: WhatsApp notification auto-routed via jazz-bsp fallback",
+  "TCP Broadcast: Synced 18 active local records with SQLite instance",
+  "CCTV Sentinel: Camera #1 (Gate East) Vehicle registered - OK",
+  "Database Master: Automated local ledger backup generated successfully",
+  "NspService: Pair validation verified for Mobile Node #3 (Elite Tier limit: OK)",
+];
+
+const DashboardVisual = () => {
+  const [logs, setLogs] = useState<string[]>([
+    "Omnora Engine: Local offline mesh network active (5km range)",
+    "Noxis Core: Double-entry khata database initialized successfully",
+    "TCP Daemon: Local host port 4242 online for LAN nodes",
+  ]);
+  const [revenue, setRevenue] = useState(128450);
+  const [activeKarigars, setActiveKarigars] = useState(14);
+  const [meshNodes, setMeshNodes] = useState(4);
+  const logsEndRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const logInterval = setInterval(() => {
+      setLogs((prev) => {
+        const nextMsg = LOG_MESSAGES[Math.floor(Math.random() * LOG_MESSAGES.length)];
+        const timestamp = new Date().toLocaleTimeString();
+        return [...prev.slice(-6), `[${timestamp}] ${nextMsg}`];
+      });
+      setRevenue((prev) => prev + Math.floor(Math.random() * 80) - 30);
+      setActiveKarigars((prev) => {
+        const change = Math.floor(Math.random() * 3) - 1;
+        return Math.max(12, Math.min(18, prev + change));
+      });
+    }, 2500);
+
+    return () => clearInterval(logInterval);
+  }, []);
+
+  useEffect(() => {
+    if (logsEndRef.current) {
+      logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [logs]);
+
+  return (
+    <div className="relative w-full aspect-video bg-[#0A0C0F] border border-white/10 rounded-sm overflow-hidden shadow-2xl flex flex-col font-mono text-xs select-none">
+      {/* Browser/Window Top Bar */}
+      <div className="h-9 bg-[#111317] border-b border-white/5 flex items-center justify-between px-4 shrink-0">
+        <div className="flex items-center space-x-1.5">
+          <div className="w-2.5 h-2.5 rounded-full bg-critical-red/60" />
+          <div className="w-2.5 h-2.5 rounded-full bg-sandstone-gold/60" />
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald/60" />
+          
+          {/* Noxis Tab Logo */}
+          <div className="ml-4 flex items-center space-x-2 bg-[#1A1D21] px-3 py-1 border border-white/5 rounded-sm">
+            <span className="w-2 h-2 rounded-full bg-electric-blue animate-pulse" />
+            <span className="text-[9px] font-black text-white uppercase tracking-widest leading-none">NOXIS HUB v13.0</span>
           </div>
-        ))}
-        <div className="col-span-2 h-32 bg-white/5 border border-white/5 rounded-sm p-4 space-y-3">
-          <div className="w-32 h-3 bg-white/10 rounded-full" />
-          <div className="space-y-2">
-            <div className="w-full h-2 bg-white/5 rounded-full" />
-            <div className="w-full h-2 bg-white/5 rounded-full" />
-            <div className="w-4/5 h-2 bg-white/5 rounded-full" />
-          </div>
         </div>
-        <div className="col-span-1 h-32 bg-white/5 border border-white/5 rounded-sm flex flex-col items-center justify-center space-y-2">
-           <div className="w-12 h-12 rounded-full border-2 border-electric-blue/30 border-t-electric-blue animate-spin" />
-           <div className="w-12 h-2 bg-white/10 rounded-full" />
+
+        {/* LAN Mesh Pulse Indicator */}
+        <div className="flex items-center space-x-2 bg-emerald/10 border border-emerald/20 px-2.5 py-0.5 rounded-full">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald animate-ping" />
+          <span className="text-[8px] font-black text-emerald uppercase tracking-widest">OMNORA MESH: ACTIVE ({meshNodes} NODES)</span>
+        </div>
+      </div>
+
+      <div className="flex flex-1 overflow-hidden">
+        {/* Mockup Sidebar */}
+        <div className="w-12 md:w-16 bg-[#111317] border-r border-white/5 p-2 flex flex-col space-y-4 items-center pt-6 shrink-0">
+          <div className="w-6 h-6 rounded-sm bg-electric-blue/20 flex items-center justify-center text-electric-blue border border-electric-blue/30">
+            <Factory size={12} />
+          </div>
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="w-6 h-6 rounded-sm bg-white/5 border border-white/5 hover:bg-[#1A1D21] transition-colors cursor-pointer" />
+          ))}
+        </div>
+
+        {/* Mockup Workspace */}
+        <div className="flex-1 p-4 md:p-6 flex flex-col justify-between overflow-hidden gap-4">
+          
+          {/* Row 1: KPI Stats */}
+          <div className="grid grid-cols-3 gap-3 md:gap-4 shrink-0">
+            <div className="bg-[#111317] border border-white/5 p-3 rounded-sm relative overflow-hidden group">
+              <div className="absolute top-0 left-0 w-8 h-[1px] bg-electric-blue" />
+              <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Loom Output Velocity</div>
+              <div className="text-[10px] sm:text-xs font-black text-electric-blue mt-1 tabular-nums transition-all">
+                {(revenue / 1000).toFixed(2)}m
+              </div>
+            </div>
+            
+            <div className="bg-[#111317] border border-white/5 p-3 rounded-sm relative overflow-hidden group">
+              <div className="absolute top-0 left-0 w-8 h-[1px] bg-sandstone-gold" />
+              <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Active Karigars</div>
+              <div className="text-[10px] sm:text-xs font-black text-sandstone-gold mt-1 tabular-nums transition-all">
+                {activeKarigars} <span className="text-[9px] text-emerald animate-pulse">●</span>
+              </div>
+            </div>
+
+            <div className="bg-[#111317] border border-white/5 p-3 rounded-sm relative overflow-hidden group">
+              <div className="absolute top-0 left-0 w-8 h-[1px] bg-[#9CA3AF]" />
+              <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Offline sync rate</div>
+              <div className="text-[10px] sm:text-xs font-black text-white mt-1 tabular-nums">
+                99.8%
+              </div>
+            </div>
+          </div>
+
+          {/* Row 2: Live Scrolling Terminal Log Console */}
+          <div className="flex-1 bg-black/80 border border-white/5 rounded-sm p-4 flex flex-col overflow-hidden relative group">
+            <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-2 shrink-0">
+              <div className="flex items-center space-x-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-electric-blue" />
+                <span className="text-[8px] font-black text-white uppercase tracking-widest">OMNORA ENGINE LOCAL LOG CONSOLE</span>
+              </div>
+              <span className="text-[8px] text-slate-600 font-mono">115200 BAUD · LAN ONLY</span>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-1.5 pr-2 custom-scrollbar flex flex-col font-mono text-[9px] text-slate-400 select-text leading-tight">
+              {logs.map((log, i) => {
+                const isCctv = log.includes("CCTV");
+                const isSync = log.includes("Sync") || log.includes("mesh");
+                const isError = log.includes("ERR");
+                return (
+                  <div key={i} className="transition-all duration-300">
+                    <span className="text-slate-600 mr-1.5">›</span>
+                    <span className={
+                      isCctv ? "text-critical-red font-bold" : 
+                      isSync ? "text-emerald font-semibold" : 
+                      isError ? "text-critical-red underline" : 
+                      "text-slate-300"
+                    }>
+                      {log}
+                    </span>
+                  </div>
+                );
+              })}
+              <div ref={logsEndRef} />
+            </div>
+
+            <div className="absolute bottom-4 right-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none select-none">
+              <span className="text-3xl font-black tracking-tightest text-white">OMNORA</span>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const LedgerVisual = () => (
   <div className="bg-[#1A1D21] border border-white/10 p-6 rounded-sm font-mono text-xs shadow-xl w-full">
@@ -804,6 +912,26 @@ export default function NoxisHubLanding() {
         </div>
       </section>
 
+      {/* Section 6.5: Contact Form */}
+      <section id="contact" className="py-20 sm:py-32 px-6 bg-[#121417]/50 border-t border-white/5 relative">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(96,165,250,0.03)_0%,transparent_60%)] pointer-events-none" />
+        <div className="max-w-xl mx-auto relative z-10">
+          <div className="text-center mb-12">
+            <div className="inline-block px-3 py-1 bg-electric-blue/10 border border-electric-blue/30 text-[10px] font-bold text-electric-blue uppercase tracking-widest mb-6">
+              Get in Touch
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tightest mb-4">
+              Request a Live Demo
+            </h2>
+            <p className="text-slate-400 text-sm font-medium">
+              Want to deploy Noxis Hub offline on your factory LAN? Send us a message and our engineers will get back to you within 24 hours.
+            </p>
+          </div>
+          
+          <ContactForm />
+        </div>
+      </section>
+
       {/* Section 7: Footer */}
       <footer className="bg-[#121417] border-t border-white/5 pt-20 sm:pt-24 pb-12 px-6">
         <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-12 sm:gap-16 mb-20 sm:mb-24">
@@ -830,7 +958,7 @@ export default function NoxisHubLanding() {
             <h5 className="text-[11px] font-black text-white uppercase tracking-widest mb-6 sm:mb-8">Support</h5>
             <ul className="space-y-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
               <li><Link href="/docs?source=website" className="hover:text-white transition-colors">Documentation</Link></li>
-              <li><Link href="/contact" className="hover:text-white transition-colors">Contact</Link></li>
+              <li><Link href="#contact" className="hover:text-white transition-colors">Contact</Link></li>
               <li><span className="text-white/20">WhatsApp Support (Elite)</span></li>
             </ul>
           </div>
@@ -869,6 +997,138 @@ export default function NoxisHubLanding() {
     </div>
   );
 }
+
+const ContactForm = () => {
+  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [formData, setFormData] = useState({
+    name: "",
+    factory: "",
+    email: "",
+    phone: "",
+    message: "",
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStatus("submitting");
+    try {
+      const response = await fetch("https://formspree.io/f/xvgzkpee", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+      if (response.ok) {
+        setStatus("success");
+        setFormData({ name: "", factory: "", email: "", phone: "", message: "" });
+      } else {
+        setStatus("error");
+      }
+    } catch (error) {
+      setStatus("error");
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="bg-[#1A1D21] border border-white/10 p-8 sm:p-12 rounded-sm space-y-6 shadow-2xl relative overflow-hidden">
+      {status === "success" ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center space-y-4">
+          <div className="w-16 h-16 bg-emerald/10 border border-emerald/20 text-emerald flex items-center justify-center rounded-full text-2xl">
+            ✓
+          </div>
+          <h3 className="text-lg font-black text-white uppercase tracking-tight">Demo Request Received</h3>
+          <p className="text-xs text-slate-400 max-w-xs leading-relaxed font-semibold">
+            Thank you! Your information has been successfully transmitted via Formspree. Our systems engineer will contact you shortly to coordinate your offline LAN setup.
+          </p>
+          <button 
+            type="button" 
+            onClick={() => setStatus("idle")} 
+            className="text-[10px] font-black text-electric-blue uppercase tracking-widest hover:underline pt-4"
+          >
+            Send another inquiry
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="grid sm:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Full Name</label>
+              <input
+                type="text"
+                required
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full bg-[#121417] border border-white/10 focus:border-electric-blue focus:outline-none px-4 py-3 text-xs text-white uppercase tracking-wider font-semibold rounded-none transition-colors"
+                placeholder="IMRAN KHAN"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Factory / Company</label>
+              <input
+                type="text"
+                required
+                value={formData.factory}
+                onChange={(e) => setFormData({ ...formData, factory: e.target.value })}
+                className="w-full bg-[#121417] border border-white/10 focus:border-electric-blue focus:outline-none px-4 py-3 text-xs text-white uppercase tracking-wider font-semibold rounded-none transition-colors"
+                placeholder="OMNORA TEXTILES"
+              />
+            </div>
+          </div>
+          
+          <div className="grid sm:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Email Address</label>
+              <input
+                type="email"
+                required
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full bg-[#121417] border border-white/10 focus:border-electric-blue focus:outline-none px-4 py-3 text-xs text-white font-mono rounded-none transition-colors"
+                placeholder="inquiry@omnora.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Phone / WhatsApp</label>
+              <input
+                type="text"
+                required
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className="w-full bg-[#121417] border border-white/10 focus:border-electric-blue focus:outline-none px-4 py-3 text-xs text-white font-mono rounded-none transition-colors"
+                placeholder="+92 300 1234567"
+              />
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Message / System Requirements</label>
+            <textarea
+              required
+              rows={4}
+              value={formData.message}
+              onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+              className="w-full bg-[#121417] border border-white/10 focus:border-electric-blue focus:outline-none px-4 py-3 text-xs text-white tracking-wider rounded-none transition-colors resize-none"
+              placeholder="SPECIFY YOUR ESTIMATED BATCH COUNT, LAN COVERAGE AREA, OR SECURITY CAMERA QUANTITY..."
+            />
+          </div>
+
+          {status === "error" && (
+            <div className="text-[10px] font-black text-critical-red uppercase tracking-widest bg-critical-red/5 p-3 border border-critical-red/20 text-center">
+              ⚠️ An error occurred sending your message. Please try again or WhatsApp support directly.
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={status === "submitting"}
+            className="w-full bg-electric-blue text-[#121417] py-5 font-black uppercase tracking-[0.2em] hover:scale-[1.02] disabled:opacity-50 transition-transform cursor-pointer"
+          >
+            {status === "submitting" ? "Transmitting..." : "Submit Inquiry"}
+          </button>
+        </>
+      )}
+    </form>
+  );
+};
 
 function PainItem({ title, desc, pain }: { title: string, desc: string, pain: string }) {
   return (
