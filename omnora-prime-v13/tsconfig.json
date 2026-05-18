@@ -36,7 +36,8 @@
     ".next",
     "out",
     "dist",
-    "supabase"
+    "supabase",
+    "src/tests"
   ]
 }
 

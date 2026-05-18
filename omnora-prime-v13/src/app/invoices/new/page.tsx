@@ -168,7 +168,7 @@ export default function NewInvoicePage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No user session");
 
-      let invId = null;
+      let invId: string | null = null;
       
       // Attempt database RPC first
       const { data, error: rpcError } = await supabase.rpc('create_invoice_atomic', {
@@ -207,11 +207,11 @@ export default function NewInvoicePage() {
 
           if (accError) throw accError;
 
-          const arAcc = accounts?.find(a => a.account_code === '1100')?.id;
-          const salesAcc = accounts?.find(a => a.account_code === '4001')?.id;
-          const taxAcc = accounts?.find(a => a.account_code === '2100')?.id;
-          const cogsAcc = accounts?.find(a => a.account_code === '5001')?.id;
-          const invAcc = accounts?.find(a => a.account_code === '1200')?.id;
+          const arAcc = accounts?.find((a: any) => a.account_code === '1100')?.id;
+          const salesAcc = accounts?.find((a: any) => a.account_code === '4001')?.id;
+          const taxAcc = accounts?.find((a: any) => a.account_code === '2100')?.id;
+          const cogsAcc = accounts?.find((a: any) => a.account_code === '5001')?.id;
+          const invAcc = accounts?.find((a: any) => a.account_code === '1200')?.id;
 
           if (!arAcc || !salesAcc) {
             throw new Error("Core accounts (1100 AR / 4001 Revenue) not configured for this business.");
