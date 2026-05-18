@@ -86,6 +86,10 @@ export default function NewInvoicePage() {
 
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
   const watchValues = watch();
+  const watchItems = watch("items") || [];
+  const watchDiscountPct = watch("discount_pct") || 0;
+  const watchTaxPct = watch("tax_pct") || 0;
+
   const selectedParty = parties.find(p => p.id === watchValues.party_id);
   const selectedBranch = branches.find(b => b.id === watchValues.branch_id);
 
@@ -99,11 +103,11 @@ export default function NewInvoicePage() {
 
   const totals = useMemo(() => {
     return IndustrialMath.calculateInvoiceTotals(
-      watchValues.items.map(i => ({ qty: i.qty || 0, price: i.unit_price || 0 })),
-      watchValues.discount_pct || 0,
-      watchValues.tax_pct || 0
+      watchItems.map(i => ({ qty: i.qty || 0, price: i.unit_price || 0 })),
+      watchDiscountPct || 0,
+      watchTaxPct || 0
     );
-  }, [watchValues.items, watchValues.discount_pct, watchValues.tax_pct]);
+  }, [watchItems, watchDiscountPct, watchTaxPct]);
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -164,9 +168,12 @@ export default function NewInvoicePage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No user session");
 
-      const { data: invId, error } = await supabase.rpc('create_invoice_atomic', {
+      let invId = null;
+      
+      // Attempt database RPC first
+      const { data, error: rpcError } = await supabase.rpc('create_invoice_atomic', {
         p_business_id: profile?.id,
-        p_branch_id: values.branch_id,
+        p_branch_id: values.branch_id || null,
         p_party_id: values.party_id,
         p_invoice_no: values.invoice_no,
         p_issue_date: values.issue_date,
@@ -179,7 +186,230 @@ export default function NewInvoicePage() {
         p_exchange_rate: values.exchange_rate
       });
 
-      if (error) throw error;
+      if (rpcError) {
+        // If stored procedure is not found (PGRST202 or 404), use the graceful client-side fallback
+        const isProcNotFound = 
+          rpcError.code === 'PGRST202' || 
+          rpcError.status === 404 || 
+          (rpcError.message && rpcError.message.includes('create_invoice_atomic'));
+
+        if (isProcNotFound) {
+          console.warn("Stored procedure 'create_invoice_atomic' not found. Executing client-side transaction fallback.");
+          
+          if (!profile?.id) throw new Error("Business profile context missing.");
+
+          // 1. Fetch Core Accounts
+          const { data: accounts, error: accError } = await supabase
+            .from('accounts')
+            .select('id, account_code')
+            .eq('business_id', profile.id)
+            .in('account_code', ['1100', '4001', '2100', '5001', '1200']);
+
+          if (accError) throw accError;
+
+          const arAcc = accounts?.find(a => a.account_code === '1100')?.id;
+          const salesAcc = accounts?.find(a => a.account_code === '4001')?.id;
+          const taxAcc = accounts?.find(a => a.account_code === '2100')?.id;
+          const cogsAcc = accounts?.find(a => a.account_code === '5001')?.id;
+          const invAcc = accounts?.find(a => a.account_code === '1200')?.id;
+
+          if (!arAcc || !salesAcc) {
+            throw new Error("Core accounts (1100 AR / 4001 Revenue) not configured for this business.");
+          }
+
+          // 2. Query SKU Cost Prices to calculate total COGS cost
+          const itemsPayload = values.items;
+          const skuIds = itemsPayload.map(i => i.sku_id).filter(Boolean);
+          let skusData: any[] = [];
+          if (skuIds.length > 0) {
+            const { data: fetchSkus, error: fetchSkusErr } = await supabase
+              .from('skus')
+              .select('id, cost_price')
+              .in('id', skuIds);
+            if (fetchSkusErr) throw fetchSkusErr;
+            if (fetchSkus) skusData = fetchSkus;
+          }
+
+          // 3. Compute Totals Client-side
+          let subtotal = 0;
+          let totalCost = 0;
+          for (const item of itemsPayload) {
+            const qty = item.qty || 0;
+            const price = item.unit_price || 0;
+            subtotal += qty * price;
+            
+            if (item.sku_id) {
+              const skuCost = skusData.find(s => s.id === item.sku_id)?.cost_price || 0;
+              totalCost += skuCost * qty;
+            }
+          }
+
+          const discAmt = subtotal * ((values.discount_pct || 0) / 100);
+          const taxAmt = (subtotal - discAmt) * ((values.tax_pct || 0) / 100);
+          const netTotal = subtotal - discAmt + taxAmt;
+
+          // 4. Insert Invoice record
+          const { data: invRecord, error: invInsError } = await supabase
+            .from('invoices')
+            .insert({
+              business_id: profile.id,
+              branch_id: values.branch_id || null,
+              party_id: values.party_id,
+              invoice_no: values.invoice_no,
+              status: 'issued',
+              issue_date: values.issue_date,
+              due_date: values.due_date,
+              subtotal,
+              discount_pct: values.discount_pct || 0,
+              discount_amount: discAmt,
+              tax_pct: values.tax_pct || 0,
+              tax_amount: taxAmt,
+              total: netTotal,
+              currency: values.currency,
+              exchange_rate: values.exchange_rate || 1.0
+            })
+            .select('id')
+            .single();
+
+          if (invInsError) throw invInsError;
+          if (!invRecord?.id) throw new Error("Failed to retrieve generated invoice UUID.");
+          invId = invRecord.id;
+
+          // 5. Insert Invoice Items
+          const itemInserts = itemsPayload.map(item => ({
+            invoice_id: invId,
+            sku_id: item.sku_id || null,
+            description: item.description,
+            qty: item.qty,
+            unit: item.unit,
+            unit_price: item.unit_price
+          }));
+
+          const { error: itemsError } = await supabase
+            .from('invoice_items')
+            .insert(itemInserts);
+          if (itemsError) throw itemsError;
+
+          // 6. Update SKU Stocks (and decrement Qty on Hand)
+          for (const item of itemsPayload) {
+            if (item.sku_id) {
+              const { data: skuRecord } = await supabase
+                .from('skus')
+                .select('qty_on_hand')
+                .eq('id', item.sku_id)
+                .single();
+              const currentQty = skuRecord?.qty_on_hand || 0;
+              await supabase
+                .from('skus')
+                .update({ qty_on_hand: currentQty - (item.qty || 0), updated_at: new Date().toISOString() })
+                .eq('id', item.sku_id);
+            }
+          }
+
+          // 7. Generate Ledger Double-Entries
+          const ledgerInserts = [];
+          const exRate = values.exchange_rate || 1.0;
+
+          // DEBIT: Accounts Receivable
+          ledgerInserts.push({
+            business_id: profile.id,
+            branch_id: values.branch_id || null,
+            tx_ref: values.invoice_no,
+            entry_type: 'debit',
+            account_id: arAcc,
+            party_id: values.party_id,
+            amount: netTotal,
+            description: `Sales Invoice: ${values.invoice_no}`,
+            posted_by: user.id,
+            invoice_id: invId,
+            currency: values.currency,
+            exchange_rate: exRate,
+            amount_base_currency: netTotal * exRate
+          });
+
+          // CREDIT: Sales Revenue
+          ledgerInserts.push({
+            business_id: profile.id,
+            branch_id: values.branch_id || null,
+            tx_ref: values.invoice_no,
+            entry_type: 'credit',
+            account_id: salesAcc,
+            party_id: values.party_id,
+            amount: subtotal - discAmt,
+            description: `Sales Revenue: ${values.invoice_no}`,
+            posted_by: user.id,
+            invoice_id: invId,
+            currency: values.currency,
+            exchange_rate: exRate,
+            amount_base_currency: (subtotal - discAmt) * exRate
+          });
+
+          // CREDIT: Sales Tax (if applicable)
+          if (taxAmt > 0 && taxAcc) {
+            ledgerInserts.push({
+              business_id: profile.id,
+              branch_id: values.branch_id || null,
+              tx_ref: values.invoice_no,
+              entry_type: 'credit',
+              account_id: taxAcc,
+              party_id: values.party_id,
+              amount: taxAmt,
+              description: `Sales Tax: ${values.invoice_no}`,
+              posted_by: user.id,
+              invoice_id: invId,
+              currency: values.currency,
+              exchange_rate: exRate,
+              amount_base_currency: taxAmt * exRate
+            });
+          }
+
+          // DEBIT/CREDIT COGS & Inventory (if totalCost > 0)
+          if (totalCost > 0 && cogsAcc && invAcc) {
+            // DEBIT: Cost of Goods Sold
+            ledgerInserts.push({
+              business_id: profile.id,
+              branch_id: values.branch_id || null,
+              tx_ref: values.invoice_no,
+              entry_type: 'debit',
+              account_id: cogsAcc,
+              amount: totalCost,
+              description: `Cost of Goods Sold: ${values.invoice_no}`,
+              posted_by: user.id,
+              invoice_id: invId,
+              currency: values.currency,
+              exchange_rate: exRate,
+              amount_base_currency: totalCost * exRate
+            });
+
+            // CREDIT: Inventory Account
+            ledgerInserts.push({
+              business_id: profile.id,
+              branch_id: values.branch_id || null,
+              tx_ref: values.invoice_no,
+              entry_type: 'credit',
+              account_id: invAcc,
+              amount: totalCost,
+              description: `Inventory Deduction: ${values.invoice_no}`,
+              posted_by: user.id,
+              invoice_id: invId,
+              currency: values.currency,
+              exchange_rate: exRate,
+              amount_base_currency: totalCost * exRate
+            });
+          }
+
+          const { error: ledgerError } = await supabase
+            .from('ledger_entries')
+            .insert(ledgerInserts);
+          if (ledgerError) throw ledgerError;
+
+        } else {
+          throw rpcError;
+        }
+      } else {
+        invId = data;
+      }
+
       router.push(`/invoices/${invId}`);
     } catch (err: any) {
       console.error(err);

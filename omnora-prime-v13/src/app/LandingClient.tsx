@@ -777,6 +777,91 @@ export default function NoxisHubLanding() {
         </div>
       </section>
 
+      {/* Section 5.5: Comparison Table */}
+      <section style={{
+        padding: '80px 20px',
+        maxWidth: 900,
+        margin: '0 auto',
+      }}>
+        <div style={{
+          textAlign: 'center', marginBottom: 48,
+        }}>
+          <h2 style={{
+            fontSize: 36, fontWeight: 800,
+            letterSpacing: '-0.02em', marginBottom: 16,
+          }}>
+            How Noxis compares
+          </h2>
+          <p style={{
+            color: '#9CA3AF', fontSize: 16,
+          }}>
+            Built for factories that cannot afford downtime
+            or complexity.
+          </p>
+        </div>
+        
+        <div style={{
+          overflowX: 'auto',
+        }}>
+          <table style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            fontSize: 14,
+          }}>
+            <thead>
+              <tr>
+                {['Feature', 'Noxis', 'Odoo', 'SAP', 'Excel'].map(h => (
+                  <th key={h} style={{
+                    padding: '12px 16px',
+                    textAlign: h === 'Feature' ? 'left' : 'center',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    color: h === 'Noxis' ? '#60A5FA' : '#6B7280',
+                    borderBottom: '1px solid rgba(255,255,255,0.08)',
+                  }}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ['Works offline 100%', '✅', '❌', '❌', '✅'],
+                ['Urdu / RTL language', '✅', '⚠️', '❌', '❌'],
+                ['Karigar & Peshgi', '✅', '❌', '❌', '❌'],
+                ['PKR Lakh/Crore format', '✅', '❌', '❌', '❌'],
+                ['Mobile + Desktop sync', '✅', '✅', '✅', '❌'],
+                ['CCTV + AI detection', '✅', '❌', '❌', '❌'],
+                ['Price (per month)', 'PKR 2,500', 'PKR 15,000+', 'PKR 200,000+', 'Free'],
+                ['Setup time', '10 min', '1-3 months', '6-18 months', 'Forever'],
+              ].map((row, i) => (
+                <tr key={i} style={{
+                  backgroundColor: i % 2 === 0
+                    ? 'transparent'
+                    : 'rgba(255,255,255,0.01)',
+                }}>
+                  {row.map((cell, j) => (
+                    <td key={j} style={{
+                      padding: '14px 16px',
+                      textAlign: j === 0 ? 'left' : 'center',
+                      color: j === 1 ? 'white' : '#9CA3AF',
+                      fontWeight: j === 1 ? 600 : 400,
+                      borderBottom:
+                        '1px solid rgba(255,255,255,0.04)',
+                      fontSize: 14,
+                    }}>
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       {/* Section 6: Pricing Preview */}
       <section id="pricing" className="py-20 sm:py-32 px-6">
         <div className="max-w-7xl mx-auto">

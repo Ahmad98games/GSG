@@ -21,7 +21,9 @@ export function useNoxisLocale() {
 
         if (error) {
           console.error('Failed to sync locale to Supabase:', error);
-        } else if (profile) {
+        }
+        
+        if (profile) {
           // Update local state to prevent loop
           setProfile({ ...profile, preferred_locale: locale });
         }

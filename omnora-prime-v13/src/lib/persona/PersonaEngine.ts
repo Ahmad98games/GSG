@@ -15,18 +15,8 @@ class PersonaEngineClass {
       i => i.id === (industryId as IndustryId)
     ) || INDUSTRIES[0]
     
-    // Auto-apply suggested theme if available
-    // NOTE: This uses store which might be client-only in practice but technically safe to import
-    if (this.profile?.suggestedTheme) {
-      try {
-        const { setThemeByIndustry } = useThemeStore.getState()
-        if (typeof setThemeByIndustry === 'function') {
-          setThemeByIndustry(industryId)
-        }
-      } catch (e) {
-        // Silently fail if store is not available (e.g. server side)
-      }
-    }
+    // NOTE: Auto-applying suggested theme here on every page mount resets manual user selections.
+    // Suggested theme is already applied explicitly during onboarding and profile loading.
   }
   
   // Get the industry profile
