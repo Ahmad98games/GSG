@@ -202,7 +202,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   );
 
   // Block web browser access to secured software dashboard paths
-  if (!shouldHideShell && !isElectron) {
+  if (!shouldHideShell && !isElectron && process.env.NODE_ENV !== 'development') {
     return (
       <div className="min-h-screen bg-[#0F1113] text-gray-300 font-inter flex flex-col items-center justify-center p-6 select-none">
         <ToastContainer />

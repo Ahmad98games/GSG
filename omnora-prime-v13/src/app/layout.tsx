@@ -69,12 +69,10 @@ export default async function RootLayout({
   let locale = 'en';
   let messages: any = enMessages;
   if (process.env.NEXT_PUBLIC_CLOUDFLARE_DEPLOY !== 'true') {
-    const pkg = ['next', 'headers'].join('/');
-    const { headers: getHeaders } = require(pkg);
+    const { headers: getHeaders } = eval('require("next/headers")');
     const headerList = getHeaders();
     locale = (await headerList).get('x-next-intl-locale') || 'en';
-    const { getMessages } = require('next-intl/server');
-    messages = await getMessages({ locale });
+    messages = (await import(`../messages/${locale}.json`)).default;
   }
   const direction = isRTL(locale) ? 'rtl' : 'ltr';
 
