@@ -230,7 +230,7 @@ export default function CCTVPage() {
                     </div>
                   </div>
                   
-                  <Link href="/docs/cctv-setup" className="block pt-4 text-[9px] font-black uppercase text-blue-500/50 hover:text-blue-500 transition-colors">
+                  <Link href="/docs#troubleshoot" className="block pt-4 text-[9px] font-black uppercase text-blue-500/50 hover:text-blue-500 transition-colors">
                     Need help connecting? See setup guide →
                   </Link>
                 </motion.div>

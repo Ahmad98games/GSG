@@ -418,7 +418,7 @@ export default function CameraSettings({ isOpen, onClose, cameras, tierLimit, on
                       <span className="text-[10px] font-black uppercase text-gray-500 group-hover:text-white">Add Camera</span>
                     </button>
                     
-                    <Link href="/docs/cctv-setup" className="block text-center text-[9px] font-black uppercase text-blue-500/50 hover:text-blue-500 transition-colors">
+                    <Link href="/docs#troubleshoot" className="block text-center text-[9px] font-black uppercase text-blue-500/50 hover:text-blue-500 transition-colors">
                       Need help connecting? See setup guide →
                     </Link>
                   </div>

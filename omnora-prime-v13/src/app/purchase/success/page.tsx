@@ -60,7 +60,7 @@ export default function SuccessPage() {
               </div>
            </Link>
            <Link 
-             href="/docs/getting-started/installation"
+             href="/docs#install"
              className="bg-white/5 border border-white/10 p-8 flex flex-col items-center justify-center space-y-4 hover:bg-white/10 transition-all rounded-sm"
            >
               <BookOpen size={32} className="text-white" />
