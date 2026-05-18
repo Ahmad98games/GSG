@@ -417,14 +417,14 @@ export default function NoxisHubLanding() {
             className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-electric-blue/10 border border-electric-blue/30 mb-8"
           >
             <Zap className="w-3 h-3 text-electric-blue" />
-            <span className="text-[9px] sm:text-[10px] font-bold text-electric-blue uppercase tracking-widest leading-none">Industrial ERP · Offline-First · v13.0</span>
+            <span className="text-[9px] sm:text-[10px] font-bold text-electric-blue uppercase tracking-widest leading-none">Factory Software · Works Without Internet · Version 13.0</span>
           </motion.div>
 
           <motion.h1 
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
             className="text-4xl xs:text-5xl sm:text-7xl md:text-8xl font-black text-white tracking-tightest mb-8 leading-[0.95] sm:leading-[0.9]"
           >
-            Industrial ERP that works<br />
+            Factory Software that works<br />
             <span className="text-electric-blue">without the internet.</span>
           </motion.h1>
 
@@ -432,8 +432,8 @@ export default function NoxisHubLanding() {
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
             className="text-sm sm:text-base md:text-xl text-slate-400 max-w-3xl mx-auto mb-12 leading-relaxed font-medium"
           >
-            Noxis runs your factory floor, warehouse, or wholesale operation entirely offline. 
-            Stock, payroll, ledger, and CCTV — all on your local network. Cloud sync when you want it.
+            Noxis helps you run your factory, warehouse, or shop entirely offline. 
+            Easily manage your stock, worker salaries, simple accounts, and cameras. Sync to the cloud only when you want to.
           </motion.p>
 
           <motion.div 
@@ -454,9 +454,9 @@ export default function NoxisHubLanding() {
             className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 max-w-4xl mx-auto border-t border-white/5 pt-12 text-slate-500"
           >
             {[
-              { icon: Zap, text: "850ms cold start" },
-              { icon: Lock, text: "AES-256-GCM encrypted" },
-              { icon: WifiOff, text: "Works on local LAN only" },
+              { icon: Zap, text: "Opens in 1 second" },
+              { icon: Lock, text: "100% Safe & Private" },
+              { icon: WifiOff, text: "No Internet Needed" },
               { icon: Globe, text: "Pakistan · UAE · UK · Global" }
             ].map((item, i) => (
               <div key={i} className="flex items-center justify-center space-x-2 text-[10px] sm:text-[11px] font-bold uppercase tracking-widest">
@@ -485,29 +485,29 @@ export default function NoxisHubLanding() {
               <div className="space-y-4">
                 <h3 className="text-critical-red text-[10px] font-black uppercase tracking-[0.4em] flex items-center">
                   <AlertTriangle className="w-3 h-3 mr-2 shrink-0" />
-                  Industrial Leakage Analysis
+                  Stop Factory Losses
                 </h3>
                 <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tightest leading-tight">
-                  Stop the bleed.<br />
-                  <span className="text-slate-600 italic">Ghost stock does not pay bills.</span>
+                  Stop losing money.<br />
+                  <span className="text-slate-600 italic">Save on missing stock and salary mistakes.</span>
                 </h2>
               </div>
               
               <div className="space-y-8">
                 <PainItem 
-                  title="Inventory Shrinkage" 
-                  desc="Unrecorded material loss averages 8-12% in manual factories. Noxis ties every gram to a barcode." 
-                  pain="SHRINKAGE"
+                  title="Missing Stock" 
+                  desc="Factories lose about 8-12% of their stock due to manual counting mistakes. Noxis helps you track every item using simple barcodes." 
+                  pain="MISSING ITEMS"
                 />
                 <PainItem 
-                  title="The Peshgi Spiral" 
-                  desc="Manual advance tracking leads to over-payment and ghost workers. Automated deduction logic breaks the cycle." 
-                  pain="OVER-PAYMENT"
+                  title="Worker Advances (Peshgi)" 
+                  desc="Tracking worker advances by hand often leads to paying too much or losing track. Our automated system does the math and cuts out mistakes." 
+                  pain="PAYROLL LEAKS"
                 />
                 <PainItem 
-                  title="Stock Blindness" 
-                  desc="Knowing your stock only during month-end audits is a liability. Real-time sub-ledger tracking is a necessity." 
-                  pain="BLINDNESS"
+                  title="Out-of-Stock Surprises" 
+                  desc="Waiting until the end of the month to count your stock is risky. With Noxis, you see live stock levels instantly on your screen." 
+                  pain="LATE COUNTS"
                 />
               </div>
             </div>
@@ -558,23 +558,23 @@ export default function NoxisHubLanding() {
       <section className="py-20 sm:py-32 px-6 bg-black border-y border-white/5 relative">
         <div className="max-w-7xl mx-auto text-center mb-16 sm:mb-24">
            <h3 className="text-electric-blue text-[10px] font-black uppercase tracking-[0.4em] mb-4">Under the Hood</h3>
-           <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tightest">Enterprise Data Integrity</h2>
+           <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tightest">How We Keep Your Data Safe</h2>
         </div>
         <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-px bg-white/5 border border-white/5">
            <TechItem 
              icon={Database} 
-             title="Local-First SQLite Node" 
-             desc="Ultra-fast local database engine that handles millions of records with sub-10ms latency. No cloud dependency for core operations."
+             title="Works Without Internet" 
+             desc="Noxis runs completely on your office computer. It is super fast and does not require an active internet connection to do daily work."
            />
            <TechItem 
              icon={Server} 
-             title="Vector Clock Sync" 
-             desc="Advanced conflict resolution protocol that ensures data consistency between offline branches when they eventually reconnect."
+             title="Automatic Branch Sync" 
+             desc="If you have multiple branches, their data will automatically sync up the moment they connect to the internet, without overwriting each other."
            />
            <TechItem 
              icon={ShieldCheck} 
-             title="PostgreSQL Mirror" 
-             desc="Optional enterprise-tier mirroring to hosted PostgreSQL instances for centralized business intelligence and reporting."
+             title="Secure Cloud Backup" 
+             desc="Get a secure backup of all your data on the cloud so you can view factory reports from anywhere in the world."
            />
         </div>
       </section>
@@ -588,17 +588,17 @@ export default function NoxisHubLanding() {
               Core Accounting
             </div>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tightest mb-8">
-              Double-entry Khata Management.
+              Simple & Accurate Khata (Accounts).
             </h2>
             <p className="text-base sm:text-lg text-slate-400 mb-10 leading-relaxed font-medium">
-              Every transaction — sale, purchase, payroll, advance — recorded with debit and credit entries. 
-              Trial balance stays accurate in real time. Posted entries are immutable. No editing history.
+              Every sale, purchase, wage payment, and advance is recorded automatically in your accounts. 
+              Your balances stay 100% correct in real-time, preventing any unauthorized edits.
             </p>
             <div className="space-y-4">
               {[
-                "Audit-ready Trial Balance and P&L",
-                "Automated tax return filing (GST/VAT)",
-                "Reversal entries — never delete posted records"
+                "Ready-made Profit & Loss reports",
+                "Easy tax calculation (GST/VAT)",
+                "Safe entry records — entries cannot be secretly changed"
               ].map((bullet, i) => (
                 <div key={i} className="flex items-center space-x-3 text-sm font-bold text-white/80">
                   <Check className="w-5 h-5 text-electric-blue shrink-0" />
@@ -622,11 +622,11 @@ export default function NoxisHubLanding() {
               Workforce Management
             </div>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tightest mb-8">
-              Industrial Workforce Payroll.
+              Easy Worker Wages & Payroll.
             </h2>
             <p className="text-base sm:text-lg text-slate-400 mb-10 leading-relaxed font-medium">
-              Piece-rate, daily, and monthly wages calculated from production logs. 
-              Peshgi (advance) deductions automated per period. Pay slips generated and optionally sent via WhatsApp.
+              Calculate piece-rate (per item), daily, or monthly wages automatically from work logs. 
+              Advances (Peshgi) are automatically deducted from the final pay. Send payslips to workers via WhatsApp with one click.
             </p>
             <div className="space-y-4">
               {[
@@ -650,11 +650,11 @@ export default function NoxisHubLanding() {
               Security Intelligence
             </div>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tightest mb-8">
-              AI-Assisted Sentinel Monitoring.
+              Smart Security Camera Alerts.
             </h2>
             <p className="text-base sm:text-lg text-slate-400 mb-10 leading-relaxed font-medium">
-              Connect RTSP cameras from any brand. The Python-based vision engine detects persons, fire, 
-              and material breach in defined zones. Alerts push to mobile devices instantly via the mesh network.
+              Connect your existing security cameras easily. Noxis can automatically detect people, fire, 
+              or unwanted movements in restricted areas, sending instant alerts to your phone.
             </p>
             <div className="space-y-4">
               {[
@@ -725,20 +725,20 @@ export default function NoxisHubLanding() {
               </div>
               <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tightest leading-tight">
                 Noxis Mobile Bridge.<br />
-                <span className="text-slate-600 italic">Control your factory from your pocket.</span>
+                <span className="text-slate-600 italic">View your factory from your phone.</span>
               </h2>
               <p className="text-base sm:text-lg text-slate-400 mb-10 leading-relaxed font-medium">
-                Our proprietary mesh protocol allows your mobile devices to communicate with the Central Hub over local Wi-Fi. 
-                Get instant CCTV alerts, scan barcodes, and authorize payroll payments without a cellular data plan.
+                Our mobile app connects to your main computer over your office Wi-Fi. 
+                You can view camera alerts, scan barcodes, and check worker wages on your phone without needing a paid mobile data package.
               </p>
               <div className="grid grid-cols-2 gap-8">
                  <div className="space-y-2">
-                    <h4 className="text-xs font-black text-white uppercase tracking-widest">P2P Broadcaster</h4>
-                    <p className="text-[10px] text-gray-500 leading-relaxed">Direct node-to-node communication with 0.4ms latency.</p>
+                    <h4 className="text-xs font-black text-white uppercase tracking-widest">Instant Mobile Sync</h4>
+                    <p className="text-[10px] text-gray-500 leading-relaxed">No delays — your phone and computer sync up instantly over your Wi-Fi.</p>
                  </div>
                  <div className="space-y-2">
-                    <h4 className="text-xs font-black text-white uppercase tracking-widest">Biometric Auth</h4>
-                    <p className="text-[10px] text-gray-500 leading-relaxed">Use FaceID or Fingerprint to sign critical financial records.</p>
+                    <h4 className="text-xs font-black text-white uppercase tracking-widest">Fingerprint Security</h4>
+                    <p className="text-[10px] text-gray-500 leading-relaxed">Approve payments or view reports securely using your phone's fingerprint or face lock.</p>
                  </div>
               </div>
            </div>
@@ -832,7 +832,7 @@ export default function NoxisHubLanding() {
                 ['PKR Lakh/Crore format', '✅', '❌', '❌', '❌'],
                 ['Mobile + Desktop sync', '✅', '✅', '✅', '❌'],
                 ['CCTV + AI detection', '✅', '❌', '❌', '❌'],
-                ['Price (per month)', 'PKR 2,500', 'PKR 15,000+', 'PKR 200,000+', '44,557.68(One Time Payment)'],
+                ['Price (per month)', 'PKR 2,500', 'PKR 15,000+', 'PKR 200,000+', 'PKR44,557.68(One Time Payment)'],
                 ['Setup time', '10 min', '1-3 months', '6-18 months', 'Forever'],
               ].map((row, i) => (
                 <tr key={i} style={{
@@ -1003,10 +1003,10 @@ export default function NoxisHubLanding() {
               Get in Touch
             </div>
             <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tightest mb-4">
-              Request a Live Demo
+              Request a Free Demo
             </h2>
             <p className="text-slate-400 text-sm font-medium">
-              Want to deploy Noxis Hub offline on your factory LAN? Send us a message and our engineers will get back to you within 24 hours.
+              Want to try Noxis in your factory or shop? Send us a quick message below and our team will contact you within 24 hours to help you set up.
             </p>
           </div>
           
