@@ -12,7 +12,7 @@ export const ROLE_ROUTE_PERMISSIONS: Record<StaffRole, string[]> = {
   manager: [
     '/dashboard', '/inventory', '/karigars', '/production', '/payroll',
     '/dispatch', '/invoices', '/parties', '/purchase', '/orders',
-    '/khata', '/cashflow', '/reports', '/audit', '/cctv', '/lens',
+    '/khata', '/cashflow', '/reports', '/audit', '/cctv', '/quick-entry',
     '/analytics', '/stock', '/generators', '/calculators', '/converters',
     '/file-morph', '/messaging', '/pairing', '/portal',
     // Manager cannot access /settings (billing/users)
@@ -43,7 +43,7 @@ export const ROLE_MODULE_MAP: Record<StaffRole, string[]> = {
   manager: [
     'dashboard', 'inventory', 'karigars', 'production', 'payroll',
     'dispatch', 'invoices', 'parties', 'purchase', 'orders',
-    'khata', 'cashflow', 'reports', 'audit', 'cctv', 'lens',
+    'khata', 'cashflow', 'reports', 'audit', 'cctv', 'quick-entry',
     'analytics', 'generators', 'calculators', 'converters',
     'file-morph', 'messaging', 'pairing',
   ],

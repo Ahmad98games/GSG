@@ -4,6 +4,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Lock, Crown, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { useToast } from "@/hooks/useToast";
 
 interface FeatureLockProps {
   title?: string;
@@ -16,6 +17,16 @@ export default function FeatureLock({
   description = "This advanced module is reserved for our Elite tier partners. Upgrade now to unlock WhatsApp Business API, real-time anomalies, and multi-branch intelligence.",
   requiredTier = "elite"
 }: FeatureLockProps) {
+  const { info } = useToast();
+
+  const handleUpgradeClick = () => {
+    window.open('https://noxishub.app/pricing', '_blank');
+    info(
+      'Visit noxishub.app/pricing to upgrade.',
+      'After payment, enter your new license key in Settings → License.'
+    );
+  };
+
   return (
     <div className="relative w-full h-full min-h-[400px] flex items-center justify-center overflow-hidden rounded-2xl bg-[#0A0A0B] border border-white/5">
       {/* Background Glow */}
@@ -42,13 +53,13 @@ export default function FeatureLock({
         </p>
 
         <div className="flex flex-col gap-4">
-          <Link 
-            href="/pricing"
-            className="flex items-center justify-center gap-3 px-8 py-4 bg-[#C5A059] text-black rounded-xl font-bold uppercase tracking-widest text-[10px] hover:scale-[1.02] active:scale-95 transition-all shadow-[0_20px_40px_rgba(197,160,89,0.2)]"
+          <button 
+            onClick={handleUpgradeClick}
+            className="flex items-center justify-center gap-3 px-8 py-4 bg-[#C5A059] text-black rounded-xl font-bold uppercase tracking-widest text-[10px] hover:scale-[1.02] active:scale-95 transition-all shadow-[0_20px_40px_rgba(197,160,89,0.2)] cursor-pointer"
           >
-            <span>Upgrade to {requiredTier.toUpperCase()}</span>
+            <span>{requiredTier.toLowerCase() === 'elite' ? 'View Elite Plans' : 'View Pro Plans'}</span>
             <ArrowRight size={14} />
-          </Link>
+          </button>
           
           <Link 
             href="/dashboard"

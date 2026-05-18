@@ -4,6 +4,8 @@ import React from 'react'
 import { Lock } from 'lucide-react'
 import { useTierStore, Tier, TierLimits } from '@/stores/tierStore'
 
+import { useToast } from '@/hooks/useToast'
+
 interface FeatureGateProps {
   feature: keyof TierLimits
   children: React.ReactNode
@@ -36,6 +38,15 @@ export function UpgradePrompt({
   currentTier: Tier
 }) {
   const requiredTier = getRequiredTier(feature)
+  const { info } = useToast()
+  
+  const handleUpgradeClick = () => {
+    window.open('https://noxishub.app/pricing', '_blank')
+    info(
+      'Visit noxishub.app/pricing to upgrade.',
+      'After payment, enter your new license key in Settings → License.'
+    )
+  }
   
   return (
     <div className="relative rounded-sm overflow-hidden border border-white/5 bg-black/20">
@@ -58,10 +69,10 @@ export function UpgradePrompt({
         </p>
         
         <button
-          onClick={() => window.open('/pricing', '_blank')}
-          className="mt-4 px-4 py-2 text-xs bg-[#C5A059] text-black font-semibold hover:bg-[#D4B069] transition-colors rounded-md"
+          onClick={handleUpgradeClick}
+          className="mt-4 px-4 py-2 text-xs bg-[#C5A059] text-black font-semibold hover:bg-[#D4B069] transition-colors rounded-md cursor-pointer"
         >
-          Upgrade to {requiredTier}
+          {requiredTier.toLowerCase() === 'elite' ? 'View Elite Plans' : 'View Pro Plans'}
         </button>
       </div>
       

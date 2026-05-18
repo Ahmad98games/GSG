@@ -20,6 +20,19 @@ import { useNoxisLocale } from '@/hooks/useLocale'
 import { useTranslations } from 'next-intl'
 import { TierBadge } from '../ui/TierBadge'
 
+const PRESET_AVATARS = [
+  { id: 1, bg: '#1e3a5f', border: '#60A5FA' },
+  { id: 2, bg: '#1a2e1a', border: '#10B981' },
+  { id: 3, bg: '#3d1a00', border: '#C5A059' },
+  { id: 4, bg: '#2d1515', border: '#EF4444' },
+  { id: 5, bg: '#1a1a2e', border: '#8B5CF6' },
+  { id: 6, bg: '#0d2626', border: '#06B6D4' },
+  { id: 7, bg: '#2e2a1a', border: '#F59E0B' },
+  { id: 8, bg: '#1e1a2e', border: '#EC4899' },
+  { id: 9, bg: '#141414', border: '#6B7280' },
+  { id: 10, bg: '#1a1a1a', border: '#FFFFFF' },
+];
+
 export default React.memo(function GlobalTopBar() {
   const pathname = usePathname()
   const { profile } = useBusinessProfile()
@@ -199,13 +212,37 @@ export default React.memo(function GlobalTopBar() {
             onClick={() => setIsProfileOpen(!isProfileOpen)}
             className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
           >
-            <div className="w-8 h-8 rounded-full bg-electric-blue flex items-center justify-center text-[11px] font-black text-white font-mono overflow-hidden">
-              {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
-              ) : (
-                getInitials(profile?.business_name || 'Noxis Hub')
-              )}
-            </div>
+            {(() => {
+              const initials = (() => {
+                const name = (profile as any)?.owner_name?.trim() || profile?.business_name?.trim() || 'N';
+                const parts = name.split(/\s+/).filter(Boolean);
+                if (parts.length >= 2) {
+                  return (parts[0][0] + parts[1][0]).toUpperCase();
+                }
+                return name.substring(0, Math.min(name.length, 2)).toUpperCase();
+              })();
+
+              if (profile?.avatar_type === 'custom' && profile?.avatar_url) {
+                return (
+                  <div className="w-8 h-8 rounded-full border border-noxis-border bg-noxis-overlay overflow-hidden flex items-center justify-center">
+                    <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                  </div>
+                );
+              }
+
+              // Fallback to preset
+              const presetId = Number(profile?.avatar_preset_id || 1);
+              const preset = PRESET_AVATARS.find(p => p.id === presetId) || PRESET_AVATARS[0];
+
+              return (
+                <div 
+                  style={{ backgroundColor: preset.bg, borderColor: preset.border }}
+                  className="w-8 h-8 rounded-full border-2 flex items-center justify-center text-[10px] font-black text-white font-mono overflow-hidden"
+                >
+                  {initials}
+                </div>
+              );
+            })()}
             <div className="text-left hidden md:block">
               <div className="flex items-center gap-2">
                 <p className="text-[10px] font-black text-white uppercase tracking-tight truncate max-w-[120px]">

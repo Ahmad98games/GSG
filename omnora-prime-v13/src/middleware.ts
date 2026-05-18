@@ -141,7 +141,7 @@ export async function middleware(request: NextRequest) {
       // If staff record exists (not the owner), check permissions
       if (staffRecord && staffRecord.role !== 'owner') {
         const ROLE_ROUTES: Record<string, string[]> = {
-          manager: ['/dashboard', '/inventory', '/karigars', '/production', '/payroll', '/dispatch', '/invoices', '/parties', '/purchase', '/orders', '/khata', '/cashflow', '/reports', '/audit', '/cctv', '/lens', '/analytics', '/stock', '/generators', '/calculators', '/converters', '/file-morph', '/messaging', '/pairing', '/portal'],
+          manager: ['/dashboard', '/inventory', '/karigars', '/production', '/payroll', '/dispatch', '/invoices', '/parties', '/purchase', '/orders', '/khata', '/cashflow', '/reports', '/audit', '/cctv', '/quick-entry', '/analytics', '/stock', '/generators', '/calculators', '/converters', '/file-morph', '/messaging', '/pairing', '/portal'],
           accountant: ['/dashboard', '/khata', '/invoices', '/reports', '/parties', '/cashflow', '/audit', '/purchase', '/stock', '/calculators', '/converters', '/generators', '/file-morph'],
           supervisor: ['/dashboard', '/production', '/karigars', '/payroll', '/dispatch', '/stock', '/inventory'],
           salesman: ['/dashboard', '/invoices', '/parties', '/stock', '/orders', '/calculators', '/converters'],

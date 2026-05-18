@@ -284,7 +284,7 @@ const SupportForm = () => {
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 className="w-full bg-[#080A0C] border border-white/5 focus:border-electric-blue focus:outline-none px-3 py-2 text-[10px] text-white font-mono rounded-none transition-colors"
-                placeholder="+923334355475"
+                placeholder="+923000000000"
               />
             </div>
             <div className="space-y-1">

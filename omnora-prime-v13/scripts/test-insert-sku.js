@@ -1,6 +1,6 @@
-const dotenv = require('dotenv');
-const { createClient } = require('@supabase/supabase-js');
-dotenv.config({ path: '.env.local' });
+import { config } from 'dotenv';
+import { createClient } from '@supabase/supabase-js';
+config({ path: '.env.local' });
 
 async function testSKUInsertion() {
   const supabase = createClient(

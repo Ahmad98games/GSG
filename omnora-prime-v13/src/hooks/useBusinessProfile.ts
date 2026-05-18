@@ -36,20 +36,52 @@ export const useBusinessProfile = () => {
           }
           console.error('Profile fetch error:', error);
           setOffline(true);
+
+          // Secondary Fallback Layer: Load from local SQLite config
+          try {
+            const localRes = await fetch('/api/settings');
+            const localData = await localRes.json();
+            const configMap = (localData.localConfig || []).reduce((acc: any, c: any) => ({ ...acc, [c.key]: c.value }), {});
+            
+            if (configMap.business_id) {
+              const fallbackProfile: any = {
+                id: configMap.business_id,
+                business_name: configMap.business_name || 'Noxis Business',
+                owner_name: configMap.owner_name || 'Noxis Owner',
+                avatar_type: (configMap.avatar_type || 'preset') as any,
+                avatar_preset_id: Number(configMap.avatar_preset_id || 1),
+                avatar_url: configMap.avatar_url || '',
+                avatar_last_changed: configMap.avatar_last_changed || '',
+                tier: configMap.tier || 'lite',
+              };
+              setProfile(fallbackProfile);
+            }
+          } catch (localErr) {
+            console.error('Failed to load local config fallback:', localErr);
+          }
         } else {
           setProfile(data);
           setOffline(false);
 
-          // Persist business_id to local SQLite for background processes (TCP Server)
+          // Persist business_id and details to local SQLite for background processes and fallbacks
           if (data?.id) {
             fetch('/api/settings', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 type: 'local_config',
-                data: { business_id: data.id }
+                data: { 
+                  business_id: data.id,
+                  business_name: data.business_name || '',
+                  owner_name: (data as any).owner_name || '',
+                  avatar_type: data.avatar_type || 'preset',
+                  avatar_preset_id: data.avatar_preset_id || 1,
+                  avatar_url: data.avatar_url || '',
+                  avatar_last_changed: data.avatar_last_changed || '',
+                  tier: data.tier || 'lite'
+                }
               })
-            }).catch(e => console.error('Failed to sync business_id to local DB', e));
+            }).catch(e => console.error('Failed to sync business details to local DB', e));
           }
         }
       } catch (err) {

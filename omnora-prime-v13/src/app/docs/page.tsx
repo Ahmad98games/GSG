@@ -64,6 +64,8 @@ export default function DocsPage() {
               href: '#inventory' },
             { icon: '📄', title: 'Creating Invoices',
               href: '#invoices' },
+            { icon: '⚡', title: 'Quick Entry Console',
+              href: '#quickentry' },
             { icon: '❓', title: 'Troubleshooting',
               href: '#troubleshoot' },
           ].map(link => (
@@ -313,14 +315,60 @@ export default function DocsPage() {
           </ol>
         </section>
         
-        {/* Section 6: Troubleshooting */}
+        {/* Section 6: Quick Entry Console */}
+        <section id="quickentry" style={{ marginBottom: 64 }}>
+          <h2 style={{
+            fontSize: 28, fontWeight: 700,
+            marginBottom: 24,
+            paddingTop: 64,
+          }}>
+            6. The Quick Entry Console
+          </h2>
+          
+          <p style={{
+            color: '#D1D5DB', lineHeight: 1.7,
+            marginBottom: 16,
+          }}>
+            The Quick Entry Console provides a fast, touch-friendly interface designed specifically for high-speed factory floor inputs. It is structured into three unified logging tabs:
+          </p>
+          
+          <ul style={{
+            color: '#9CA3AF',
+            paddingLeft: 24,
+            lineHeight: 2,
+            marginBottom: 24,
+          }}>
+            <li>
+              <strong>Production Log:</strong> Search for any Karigar, input their production quantity, select their quality grade (A, B, C, or Rejected), and submit. Instantly updates the running output total.
+            </li>
+            <li>
+              <strong>Payment Slip:</strong> Log payments received from customers or paid to suppliers. Supports selecting payment modes (Cash, Bank, JazzCash, EasyPaisa) and automatically records corresponding double-entry ledger items (credits for receivables, debits for payables).
+            </li>
+            <li>
+              <strong>Attendance Slip:</strong> Pick dates, mark recent Karigars present/absent/late, or perform a bulk "Mark All Present" action to quickly log attendance sheets.
+            </li>
+          </ul>
+          
+          <div style={{
+            backgroundColor: 'rgba(96,165,250,0.05)',
+            border: '1px solid rgba(96,165,250,0.2)',
+            borderRadius: 4,
+            padding: 16,
+            fontSize: 13,
+            color: '#60A5FA',
+          }}>
+            <strong>Live Floor Feed:</strong> The right side of the Quick Entry Console houses a reactive vertical timeline stream, showing the last 10 log actions recorded today in real-time.
+          </div>
+        </section>
+
+        {/* Section 7: Troubleshooting */}
         <section id="troubleshoot" style={{ marginBottom: 64 }}>
           <h2 style={{
             fontSize: 28, fontWeight: 700,
             marginBottom: 24,
             paddingTop: 64,
           }}>
-            6. Common Issues
+            7. Common Issues
           </h2>
           
           {[
@@ -384,7 +432,7 @@ export default function DocsPage() {
             </p>
             
             <a
-              href="https://wa.me/923000000000"
+              href="https://wa.me/923334355475"
               style={{
                 display: 'inline-block',
                 backgroundColor: '#25D366',

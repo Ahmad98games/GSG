@@ -496,7 +496,7 @@ export default function OnboardingPage() {
                          <label className="text-[10px] uppercase font-black text-gray-500 tracking-widest">Primary WhatsApp Number</label>
                          <input 
                            type="text" 
-                           placeholder="+923334355475" 
+                           placeholder="+923000000000" 
                            className="industrial-input h-14"
                            onChange={(e) => {
                              const nums = (watch('whatsapp_numbers' as any) || []);

@@ -20,13 +20,19 @@ electron_1.contextBridge.exposeInMainWorld('electron', {
     fileMorph: {
         compressImages: (files) => electron_1.ipcRenderer.invoke('compress-images', files),
         convertHeic: (files) => electron_1.ipcRenderer.invoke('convert-heic', files)
+    },
+    invoke: (channel, ...args) => electron_1.ipcRenderer.invoke(channel, ...args),
+    onLicenseExpired: (callback) => {
+        const listener = () => callback();
+        electron_1.ipcRenderer.on('license-expired', listener);
+        return () => electron_1.ipcRenderer.removeListener('license-expired', listener);
     }
 });
 electron_1.contextBridge.exposeInMainWorld('electronWindow', {
     minimize: () => electron_1.ipcRenderer.send('window-minimize'),
     maximize: () => electron_1.ipcRenderer.send('window-maximize'),
     close: () => electron_1.ipcRenderer.send('window-close'),
-    isMaximized: () => electron_1.ipcRenderer.sendSync('window-is-maximized'),
+    isMaximized: () => electron_1.ipcRenderer.invoke('window-is-maximized'),
     onMaximizeChange: (cb) => {
         const listener = (_, isMax) => cb(isMax);
         electron_1.ipcRenderer.on('maximize-changed', listener);

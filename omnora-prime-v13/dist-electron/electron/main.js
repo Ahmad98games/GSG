@@ -56,6 +56,7 @@ let visionProcess = null;
 let sessionTimeoutTimer = null;
 let warningTimer = null;
 let PORT = Number(process.env.PORT || 3000);
+let isReadOnly = false;
 const isDev = !electron_1.app.isPackaged;
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 const WARNING_LEAD_MS = 60 * 1000;
@@ -170,6 +171,10 @@ else {
             startupLog('[Vision] Skipped in dev mode');
             return;
         }
+        if (isReadOnly) {
+            startupLog('[Vision] Blocked: System in Read-Only mode (License Expired)');
+            return;
+        }
         const visionScriptPath = path.join(process.resourcesPath, 'vision', 'vision_engine.py');
         if (!fs.existsSync(visionScriptPath)) {
             startupLog(`[Vision] Script not found at ${visionScriptPath} — skipping`);
@@ -277,6 +282,23 @@ else {
     electron_1.ipcMain.handle('install-update', () => {
         electron_updater_1.autoUpdater.quitAndInstall(false, true);
     });
+    electron_1.ipcMain.handle('sync-tier', (_, data) => {
+        startupLog(`[Tier] Sync: ${data.tier} (Expires: ${data.expiresAt || 'Never'})`);
+        if (data.expiresAt && new Date() > new Date(data.expiresAt)) {
+            isReadOnly = true;
+            startupLog("[Security] License expired. Enabling Read-Only mode.");
+            mainWindow?.webContents.send('license-expired');
+            if (visionProcess) {
+                startupLog("[Vision] Terminating background processes...");
+                visionProcess.kill();
+                visionProcess = null;
+            }
+        }
+        else {
+            isReadOnly = false;
+        }
+        return { success: true, isReadOnly };
+    });
     // ─────────────────────────────────────────────
     // FILE MORPH IPC HANDLERS (Local Processing)
     // ─────────────────────────────────────────────
@@ -346,6 +368,10 @@ else {
             webPreferences: {
                 nodeIntegration: false,
                 contextIsolation: true,
+                sandbox: true,
+                webSecurity: true,
+                allowRunningInsecureContent: false,
+                experimentalFeatures: false,
                 preload: path.join(__dirname, 'preload.js'),
                 partition: 'persist:noxis',
             },
@@ -424,7 +450,14 @@ else {
         }
         process.on('uncaughtException', (error) => {
             startupLog(`[CRITICAL] Uncaught Exception: ${error.message}`);
+            if (error.stack)
+                startupLog(error.stack);
             Sentry.captureException(error);
+            // Don't quit immediately — let Sentry flush and maybe show a dialog if critical
+        });
+        process.on('unhandledRejection', (reason, promise) => {
+            startupLog(`[CRITICAL] Unhandled Rejection at: ${promise} reason: ${reason}`);
+            Sentry.captureException(reason instanceof Error ? reason : new Error(String(reason)));
         });
         // ── Find available port ──
         PORT = await findAvailablePort(PORT);

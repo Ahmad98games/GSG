@@ -1176,7 +1176,7 @@ const ContactForm = () => {
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 className="w-full bg-[#121417] border border-white/10 focus:border-electric-blue focus:outline-none px-4 py-3 text-xs text-white font-mono rounded-none transition-colors"
-                placeholder="+923334355475"
+                placeholder="+923000000000"
               />
             </div>
           </div>

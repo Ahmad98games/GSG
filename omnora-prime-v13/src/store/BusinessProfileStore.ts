@@ -33,6 +33,9 @@ export interface BusinessProfile {
   tier?: string;
   owner_phone?: string;
   avatar_url?: string;
+  avatar_type?: 'preset' | 'custom';
+  avatar_preset_id?: number;
+  avatar_last_changed?: string;
   worker_term?: string;
   preferred_locale?: string;
   whatsapp_numbers?: { name: string; phone: string }[];

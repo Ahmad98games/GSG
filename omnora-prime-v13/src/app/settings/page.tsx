@@ -23,7 +23,8 @@ import {
   Loader2,
   Info,
   Globe,
-  Users
+  Users,
+  X
 } from "lucide-react";
 
 import { useSidebarState } from "@/hooks/useSidebarState";
@@ -32,8 +33,9 @@ import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import ThemePicker from "@/components/shell/ThemePicker";
 import { useThemeStore } from "@/stores/themeStore";
-
-
+import { useToast } from "@/hooks/useToast";
+import { useTierStore } from "@/stores/tierStore";
+import { saveLicenseToLocal } from "../(onboarding)/license/actions";
 
 interface HubInfo {
   ip: string;
@@ -51,10 +53,24 @@ interface LocalConfig {
   [key: string]: string | number | undefined;
 }
 
+const PRESET_AVATARS = [
+  { id: 1, bg: '#1e3a5f', border: '#60A5FA' },
+  { id: 2, bg: '#1a2e1a', border: '#10B981' },
+  { id: 3, bg: '#3d1a00', border: '#C5A059' },
+  { id: 4, bg: '#2d1515', border: '#EF4444' },
+  { id: 5, bg: '#1a1a2e', border: '#8B5CF6' },
+  { id: 6, bg: '#0d2626', border: '#06B6D4' },
+  { id: 7, bg: '#2e2a1a', border: '#F59E0B' },
+  { id: 8, bg: '#1e1a2e', border: '#EC4899' },
+  { id: 9, bg: '#141414', border: '#6B7280' },
+  { id: 10, bg: '#1a1a1a', border: '#FFFFFF' },
+];
+
 const TABS = [
   { id: 'profile', label: 'Business Profile', icon: Building2 },
   { id: 'regional', label: 'Regional Settings', icon: Globe },
   { id: 'appearance', label: 'Appearance', icon: Activity },
+  { id: 'subscription', label: 'Subscription', icon: Shield },
   { id: 'network', label: 'TCP / Network', icon: Network },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'security', label: 'Security', icon: Lock },
@@ -71,6 +87,8 @@ export default function SettingsPage() {
    const { profile, setProfile } = useBusinessProfile();
    const { mode, setMode } = useThemeStore();
    const supabase = createClient();
+   const { tier: currentTier, expiresAt: tierExpiresAt, isTrial: tierIsTrial, setTier } = useTierStore();
+   const { success: toastSuccess, error: toastError, warning: toastWarning } = useToast();
   
   const [activeTab, setActiveTab] = useState('profile');
   const [localConfig, setLocalConfig] = useState<LocalConfig>({});
@@ -81,6 +99,13 @@ export default function SettingsPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [manualLogoPreview, setManualLogoPreview] = useState<string | null>(null);
   const logoPreview = manualLogoPreview || profile?.logo_url || null;
+
+  const [isLicenseModalOpen, setIsLicenseModalOpen] = useState(false);
+  const [newLicenseKey, setNewLicenseKey] = useState('');
+  const [isVerifyingLicense, setIsVerifyingLicense] = useState(false);
+  const [licenseVerifyError, setLicenseVerifyError] = useState<string | null>(null);
+  const [pendingLicenseData, setPendingLicenseData] = useState<any>(null);
+  const [showDowngradeCaution, setShowDowngradeCaution] = useState(false);
 
   
 
@@ -98,6 +123,86 @@ export default function SettingsPage() {
     }
     fetchData();
   }, []);
+
+  const handleLicenseInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    let formatted = '';
+    for (let i = 0; i < val.length; i++) {
+      if (i > 0 && i % 4 === 0) formatted += '-';
+      formatted += val[i];
+    }
+    setNewLicenseKey(formatted.substring(0, 19));
+    setLicenseVerifyError(null);
+  };
+
+  const handleVerifyLicense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newLicenseKey || newLicenseKey.length < 14) {
+      setLicenseVerifyError('Please enter a valid license key');
+      return;
+    }
+
+    setIsVerifyingLicense(true);
+    setLicenseVerifyError(null);
+
+    try {
+      const { data: licenseData, error: verifyError } = await supabase.functions.invoke('verify-license', {
+        body: { license_key: newLicenseKey.trim().toUpperCase() }
+      });
+
+      if (verifyError || !licenseData?.valid) {
+        setLicenseVerifyError(licenseData?.error || 'Invalid or expired license key');
+        setIsVerifyingLicense(false);
+        return;
+      }
+
+      // Check if it is a downgrade
+      const tierRank: Record<string, number> = { lite: 1, pro: 2, elite: 3 };
+      const currentRank = tierRank[currentTier.toLowerCase()] || 1;
+      const newRank = tierRank[licenseData.tier.toLowerCase() as string] || 1;
+
+      if (newRank < currentRank) {
+        setPendingLicenseData(licenseData);
+        setShowDowngradeCaution(true);
+      } else {
+        await applyLicense(licenseData);
+      }
+    } catch (err: any) {
+      setLicenseVerifyError(err.message || 'Verification failed');
+    } finally {
+      setIsVerifyingLicense(false);
+    }
+  };
+
+  const applyLicense = async (licenseData: any) => {
+    try {
+      const res = await saveLicenseToLocal(
+        newLicenseKey,
+        licenseData.tier,
+        licenseData.is_trial,
+        licenseData.expires_at
+      );
+
+      if (!res.success) {
+        throw new Error('Failed to persist license locally');
+      }
+
+      // Update Zustand tier store
+      setTier(
+        licenseData.tier,
+        licenseData.expires_at,
+        licenseData.is_trial
+      );
+
+      toastSuccess('License activated successfully!', `Your ${licenseData.tier.toUpperCase()} features are now active.`);
+      setIsLicenseModalOpen(false);
+      setNewLicenseKey('');
+      setPendingLicenseData(null);
+      setShowDowngradeCaution(false);
+    } catch (err: any) {
+      setLicenseVerifyError(err.message || 'Failed to apply license');
+    }
+  };
 
   const handleSaveProfile = async () => {
     setIsSaving(true);
@@ -129,19 +234,47 @@ export default function SettingsPage() {
           currency: profile.currency,
           industry_key: profile.industry_key,
           worker_term: profile.worker_term,
-          logo_url: logoUrl
+          logo_url: logoUrl,
+          avatar_type: profile.avatar_type || 'preset',
+          avatar_preset_id: profile.avatar_preset_id ? Number(profile.avatar_preset_id) : 1,
+          avatar_url: profile.avatar_url || logoUrl || '',
+          avatar_last_changed: profile.avatar_last_changed || null
         })
         .eq('id', profile.id)
 
       if (error) {
-        alert('Failed to save: ' + error.message)
+        toastError('Failed to save profile', error.message);
       } else {
-        alert('Profile saved successfully')
-        const updatedProfile = { ...profile, logo_url: logoUrl };
+        // Sync to local SQLite backup for high-speed local offline loading
+        await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'local_config',
+            data: { 
+              business_id: profile.id,
+              business_name: profile.business_name || '',
+              owner_name: (profile as any).owner_name || '',
+              avatar_type: profile.avatar_type || 'preset',
+              avatar_preset_id: profile.avatar_preset_id ? Number(profile.avatar_preset_id) : 1,
+              avatar_url: profile.avatar_url || '',
+              avatar_last_changed: profile.avatar_last_changed || ''
+            }
+          })
+        }).catch(e => console.error('Failed to sync to local SQLite backup:', e));
+
+        toastSuccess('Profile updated successfully!', 'Your corporate identity node was updated successfully.');
+        const updatedProfile = { 
+          ...profile, 
+          logo_url: logoUrl,
+          avatar_type: profile.avatar_type || 'preset',
+          avatar_preset_id: profile.avatar_preset_id ? Number(profile.avatar_preset_id) : 1,
+          avatar_url: profile.avatar_url || logoUrl || ''
+        };
         setProfile(updatedProfile as any);
       }
     } catch (err: any) {
-      alert("Failed to update profile: " + err.message);
+      toastError("Failed to update profile", err.message);
     } finally {
       setIsSaving(false);
     }
@@ -197,7 +330,8 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-slate-200 font-inter flex">
+    <>
+      <div className="min-h-screen bg-black text-slate-200 font-inter flex">
       
       <main className={cn( "flex-1 transition-all duration-300 flex flex-col h-screen overflow-hidden")}>
         <div className="flex items-center justify-between mb-6 px-6 pt-6">
@@ -265,31 +399,142 @@ export default function SettingsPage() {
                       <p className="text-slate-500 text-sm mt-1">Configure your corporate identity and regional tax requirements.</p>
                     </div>
 
-                    <div className="flex items-center gap-8 p-6 bg-white/5 border border-white/10 rounded-2xl">
-                      <div className="relative w-24 h-24 group">
-                        <div className="w-full h-full bg-black rounded-xl border border-dashed border-white/10 flex items-center justify-center overflow-hidden">
-                          {logoPreview ? (
-                            <img src={logoPreview} alt="Logo" className="w-full h-full object-contain p-2" />
+                    {(() => {
+                      const initials = (() => {
+                        const name = (profile as any)?.owner_name?.trim() || profile?.business_name?.trim() || 'N';
+                        const parts = name.split(/\s+/).filter(Boolean);
+                        if (parts.length >= 2) {
+                          return (parts[0][0] + parts[1][0]).toUpperCase();
+                        }
+                        return name.substring(0, Math.min(name.length, 2)).toUpperCase();
+                      })();
+
+                      const lastChanged = profile?.avatar_last_changed ? new Date(profile.avatar_last_changed) : null;
+                      const now = new Date();
+                      const diffTime = lastChanged ? now.getTime() - lastChanged.getTime() : null;
+                      const diffDays = diffTime !== null ? diffTime / (1000 * 60 * 60 * 24) : null;
+                      const isAvatarLocked = diffDays !== null && diffDays < 14;
+                      const lockExpiryDate = lastChanged ? new Date(lastChanged.getTime() + 14 * 24 * 60 * 60 * 1000) : null;
+
+                      return (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[10px] uppercase font-black text-gray-500 tracking-[0.2em] block">
+                              Profile Avatar Selector
+                            </label>
+                            {isAvatarLocked && lockExpiryDate && (
+                              <div className="flex items-center gap-1.5 text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded text-[9px] font-black uppercase tracking-wider">
+                                <Lock size={10} />
+                                <span>Locked until {lockExpiryDate.toLocaleDateString()}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-6 sm:grid-cols-11 gap-3 p-6 bg-white/5 border border-white/10 rounded-2xl relative overflow-hidden">
+                            {/* 10 Preset SVG Avatars */}
+                            {PRESET_AVATARS.map((preset) => {
+                              const isSelected = profile?.avatar_type === 'preset' && Number(profile?.avatar_preset_id) === preset.id;
+                              return (
+                                <button
+                                  key={preset.id}
+                                  type="button"
+                                  disabled={isAvatarLocked}
+                                  onClick={() => {
+                                    if (profile) {
+                                      setProfile({
+                                        ...profile,
+                                        avatar_type: 'preset',
+                                        avatar_preset_id: preset.id,
+                                        avatar_url: '',
+                                        avatar_last_changed: new Date().toISOString()
+                                      });
+                                    }
+                                  }}
+                                  style={{ backgroundColor: preset.bg, borderColor: preset.border }}
+                                  className={cn(
+                                    "aspect-square rounded-xl flex items-center justify-center font-black text-xs border-2 text-white relative transition-all group cursor-pointer hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40",
+                                    isSelected ? "ring-2 ring-white shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "opacity-80 hover:opacity-100"
+                                  )}
+                                >
+                                  {initials}
+                                  {isSelected && (
+                                    <div className="absolute -bottom-1 -right-1 bg-white text-black rounded-full p-0.5 border border-black shadow">
+                                      <CheckCircle2 size={10} className="fill-white stroke-black" />
+                                    </div>
+                                  )}
+                                </button>
+                              );
+                            })}
+
+                            {/* 11th Custom Photo Camera Upload */}
+                            <div className="relative aspect-square">
+                              <label className={cn(
+                                "w-full h-full rounded-xl border-2 border-dashed border-white/20 flex flex-col items-center justify-center cursor-pointer transition-all hover:bg-white/5 hover:border-white/40",
+                                profile?.avatar_type === 'custom' ? "bg-white/10 border-electric-blue border-solid" : "",
+                                isAvatarLocked && "pointer-events-none opacity-30"
+                              )}>
+                                {profile?.avatar_type === 'custom' && (profile?.avatar_url || logoPreview) ? (
+                                  <img 
+                                    src={profile.avatar_url || logoPreview || ''} 
+                                    alt="Custom" 
+                                    className="w-full h-full object-cover rounded-lg p-0.5" 
+                                  />
+                                ) : (
+                                  <Upload size={14} className="text-gray-500 group-hover:text-white" />
+                                )}
+                                <input
+                                  type="file"
+                                  disabled={isAvatarLocked}
+                                  className="hidden"
+                                  accept="image/*"
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file && profile) {
+                                      setIsSaving(true);
+                                      try {
+                                        const ext = file.name.split('.').pop();
+                                        const path = `avatars/${profile.id}-${Date.now()}.${ext}`;
+                                        const { error: uploadError } = await supabase.storage
+                                          .from('logos')
+                                          .upload(path, file, { upsert: true });
+
+                                        if (uploadError) throw uploadError;
+
+                                        const { data: { publicUrl } } = supabase.storage.from('logos').getPublicUrl(path);
+                                        
+                                        setProfile({
+                                          ...profile,
+                                          avatar_type: 'custom',
+                                          avatar_preset_id: undefined,
+                                          avatar_url: publicUrl,
+                                          avatar_last_changed: new Date().toISOString()
+                                        });
+                                        setManualLogoPreview(publicUrl);
+                                        toastSuccess("Photo uploaded successfully!", "Please save changes to persist.");
+                                      } catch (err: any) {
+                                        toastError("Upload failed", err.message);
+                                      } finally {
+                                        setIsSaving(false);
+                                      }
+                                    }
+                                  }}
+                                />
+                              </label>
+                            </div>
+                          </div>
+                          
+                          {isAvatarLocked ? (
+                            <p className="text-[10px] text-amber-500/80 font-bold uppercase tracking-wide">
+                              * Avatar settings are locked to maintain corporate identity. You can change your avatar again on {lockExpiryDate?.toLocaleDateString()}.
+                            </p>
                           ) : (
-                            <Building2 className="text-slate-700" size={32} />
+                            <p className="text-[9px] text-gray-500 uppercase tracking-tighter">
+                              Select one of the 10 colored identity presets or upload a custom company logo/photo.
+                            </p>
                           )}
                         </div>
-                        <label className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-xl">
-                          <Upload size={20} className="text-white" />
-                          <input type="file" className="hidden" accept="image/*" onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              setLogoFile(file);
-                              setManualLogoPreview(URL.createObjectURL(file));
-                            }
-                          }} />
-                        </label>
-                      </div>
-                      <div className="space-y-1">
-                        <h3 className="text-white font-bold">{profile?.business_name || 'Noxis Business'}</h3>
-                        <p className="text-[10px] text-slate-500 uppercase font-bold">Business Logo</p>
-                      </div>
-                    </div>
+                      );
+                    })()}
 
                     <div className="grid grid-cols-2 gap-6">
                       <div className="space-y-2">
@@ -877,6 +1122,83 @@ export default function SettingsPage() {
                   </motion.div>
                 )}
 
+                {activeTab === 'subscription' && (
+                  <motion.div
+                    key="subscription"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="space-y-8"
+                  >
+                    <div>
+                      <h2 className="text-2xl font-bold text-white tracking-tight">Subscription & Licensing</h2>
+                      <p className="text-slate-500 text-sm mt-1">Manage your active identity node license key, tier capabilities, and expiry thresholds.</p>
+                    </div>
+
+                    <div className="p-8 bg-[#0A0A0B] border border-white/5 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                      <div className="space-y-3">
+                        <span className="text-[10px] uppercase font-black text-gray-500 tracking-widest block">Active License Node</span>
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-3xl font-black text-white tracking-tight capitalize">
+                            Noxis {currentTier}
+                          </h3>
+                          <span className={cn(
+                            "px-2.5 py-1 text-[9px] font-black uppercase tracking-widest rounded border",
+                            currentTier === 'elite' ? "bg-amber-500/10 border-amber-500/30 text-[#C5A059]" :
+                            currentTier === 'pro' ? "bg-electric-blue/10 border-electric-blue/30 text-electric-blue" :
+                            "bg-white/5 border-white/10 text-slate-400"
+                          )}>
+                            {currentTier} tier
+                          </span>
+                        </div>
+                        {tierExpiresAt ? (
+                          <p className="text-xs text-slate-400">
+                            License active until <span className="text-white font-semibold">{new Date(tierExpiresAt).toLocaleDateString()}</span>
+                            {tierIsTrial && <span className="text-[#C5A059] ml-1 font-bold">(Trial Key)</span>}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-slate-400">
+                            Lifetime persistent enterprise node license activated.
+                          </p>
+                        )}
+                      </div>
+
+                      <button 
+                        onClick={() => setIsLicenseModalOpen(true)}
+                        className="px-6 py-3.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl text-xs font-black uppercase tracking-[0.2em] transition-all cursor-pointer shadow-[0_10px_20px_rgba(255,255,255,0.02)]"
+                      >
+                        Change License Key
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="p-6 bg-white/5 border border-white/10 rounded-xl space-y-2">
+                        <span className="text-[10px] uppercase font-bold text-gray-500">Camera Nodes</span>
+                        <div className="text-2xl font-black text-white font-mono">
+                          {currentTier === 'elite' ? '20' : currentTier === 'pro' ? '8' : '2'}
+                        </div>
+                        <p className="text-[10px] text-slate-500 uppercase tracking-tighter">Simultaneous CCTV feeds</p>
+                      </div>
+
+                      <div className="p-6 bg-white/5 border border-white/10 rounded-xl space-y-2">
+                        <span className="text-[10px] uppercase font-bold text-gray-500">Mobile Handshakes</span>
+                        <div className="text-2xl font-black text-white font-mono">
+                          {currentTier === 'elite' ? '50' : currentTier === 'pro' ? '15' : '5'}
+                        </div>
+                        <p className="text-[10px] text-slate-500 uppercase tracking-tighter">Floor terminal devices</p>
+                      </div>
+
+                      <div className="p-6 bg-white/5 border border-white/10 rounded-xl space-y-2">
+                        <span className="text-[10px] uppercase font-bold text-gray-500">Staff Accounts</span>
+                        <div className="text-2xl font-black text-white font-mono">
+                          {currentTier === 'elite' ? '25' : currentTier === 'pro' ? '5' : '1'}
+                        </div>
+                        <p className="text-[10px] text-slate-500 uppercase tracking-tighter">Authorized RBAC accounts</p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
                 {activeTab === 'hardware' && (
                   <motion.div
                     key="hardware"
@@ -924,6 +1246,125 @@ export default function SettingsPage() {
         </div>
       </main>
     </div>
+
+      {/* License Activation Modal */}
+      <AnimatePresence>
+        {isLicenseModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/95 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-[#0A0A0B] border border-white/10 w-full max-w-md shadow-2xl overflow-hidden rounded-2xl"
+            >
+              <div className="p-6 border-b border-white/5 flex items-center justify-between bg-black/50">
+                <div className="flex items-center space-x-3">
+                   <div className="p-2 bg-electric-blue/10 text-electric-blue rounded-lg">
+                      <Shield size={18} />
+                   </div>
+                   <div>
+                      <h2 className="text-xs font-black text-white uppercase tracking-widest">Change License Key</h2>
+                      <p className="text-[9px] text-gray-500 font-bold uppercase tracking-tighter">Noxis Identity Node</p>
+                   </div>
+                </div>
+                <button 
+                  onClick={() => {
+                    setIsLicenseModalOpen(false);
+                    setNewLicenseKey('');
+                    setPendingLicenseData(null);
+                    setShowDowngradeCaution(false);
+                    setLicenseVerifyError(null);
+                  }} 
+                  className="text-gray-500 hover:text-white transition-colors cursor-pointer"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="p-8 space-y-6">
+                {!showDowngradeCaution ? (
+                  <form onSubmit={handleVerifyLicense} className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest block">New License Key</label>
+                      <input 
+                        type="text"
+                        value={newLicenseKey}
+                        onChange={handleLicenseInputChange}
+                        placeholder="LITE-XXXX-XXXX-XXXX"
+                        maxLength={19}
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-center text-lg font-mono text-white focus:outline-none focus:border-electric-blue/50"
+                        autoFocus
+                      />
+                      <p className="text-[9px] text-gray-500 uppercase tracking-tighter">
+                        Format: XXXX-XXXX-XXXX-XXXX. Validated instantly against Edge registry.
+                      </p>
+                    </div>
+
+                    {licenseVerifyError && (
+                      <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-3 text-red-500 text-xs">
+                        <AlertTriangle size={16} className="flex-shrink-0" />
+                        <span>{licenseVerifyError}</span>
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={isVerifyingLicense || newLicenseKey.length < 14}
+                      className="w-full py-3.5 bg-electric-blue hover:brightness-110 text-black font-bold uppercase tracking-widest text-[11px] transition-all flex items-center justify-center space-x-2 rounded-xl disabled:opacity-50 cursor-pointer"
+                    >
+                      {isVerifyingLicense ? (
+                        <>
+                          <Loader2 className="animate-spin" size={14} />
+                          <span>Verifying with Cloud edge...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Activate New License</span>
+                          <CheckCircle2 size={14} />
+                        </>
+                      )}
+                    </button>
+                  </form>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="p-6 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex gap-4">
+                      <AlertTriangle className="text-amber-500 w-8 h-8 flex-shrink-0" />
+                      <div className="space-y-2">
+                        <p className="text-sm font-bold text-amber-500 uppercase tracking-tight">CAUTION: License Downgrade</p>
+                        <p className="text-xs text-slate-300 leading-relaxed">
+                          You are downgrading your subscription tier from <span className="font-bold text-white uppercase">{currentTier}</span> to <span className="font-bold text-white uppercase">{pendingLicenseData?.tier}</span>. 
+                        </p>
+                        <p className="text-xs text-slate-400 leading-relaxed">
+                          Downgrading might lock some existing high-tier features (e.g. AI Camera, WhatsApp Auto-alerts) and lower your camera/device limits.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4">
+                      <button
+                        onClick={() => {
+                          setShowDowngradeCaution(false);
+                          setPendingLicenseData(null);
+                        }}
+                        className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold uppercase tracking-widest text-[10px] rounded-xl transition-all cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => applyLicense(pendingLicenseData)}
+                        className="flex-1 py-3 bg-amber-500 hover:bg-amber-600 text-black font-bold uppercase tracking-widest text-[10px] rounded-xl transition-all cursor-pointer"
+                      >
+                        Confirm Downgrade
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
