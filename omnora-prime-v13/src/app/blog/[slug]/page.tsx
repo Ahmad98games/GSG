@@ -15,37 +15,24 @@ export async function generateStaticParams() {
   }));
 }
 
-export async function generateMetadata({ params }: Props) {
+export async function generateMetadata(
+  { params }: { params: Promise<{ slug: string }> | { slug: string } }
+) {
   const resolvedParams = await params;
   const post = getBlogPostBySlug(resolvedParams.slug);
   if (!post) return { title: 'Post Not Found' };
   
   return {
-    title: `${post.title} — Noxis Blog`,
+    title: `${post.title} | Noxis Blog`,
     description: post.description,
     keywords: post.keywords,
-    alternates: {
-      canonical: `https://noxishub.app/blog/${post.slug}`,
-    },
     openGraph: {
-      title: `${post.title} — Noxis Blog`,
+      title: post.title,
       description: post.description,
-      url: `https://noxishub.app/blog/${post.slug}`,
-      siteName: 'Noxis',
       type: 'article',
-      images: [{
-        url: 'https://noxishub.app/og-image.png',
-        width: 1200,
-        height: 630,
-        alt: post.title,
-      }],
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: `${post.title} — Noxis Blog`,
-      description: post.description,
-      images: ['https://noxishub.app/og-image.png'],
-    },
+      publishedTime: post.date,
+      url: `https://noxishub.app/blog/${resolvedParams.slug}`,
+    }
   };
 }
 
