@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { 
   Info, Shield, ExternalLink, Mail, 
@@ -151,25 +151,32 @@ export default function AboutPage() {
 
           {/* SECTION 5: Legal & Contact */}
           <section className="pt-12 border-t border-white/5 space-y-12">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-              <div className="space-y-4">
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-white">Legal</h4>
-                <div className="space-y-2">
-                  <p className="text-[10px] text-gray-600 font-medium">© 2025 Omnora Labs. All rights reserved.</p>
-                  <p className="text-[10px] text-gray-600 font-medium">Noxis is a trademark of Omnora Labs.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-white">Legal</h4>
+                  <div className="space-y-2">
+                    <p className="text-[10px] text-gray-600 font-medium">© 2025 Omnora Labs. All rights reserved.</p>
+                    <p className="text-[10px] text-gray-600 font-medium">Noxis is a trademark of Omnora Labs.</p>
+                  </div>
+                  <div className="flex space-x-4 pt-2">
+                    <Link href="/privacy" className="text-[10px] text-electric-blue font-bold uppercase tracking-widest hover:underline">Privacy Policy</Link>
+                    <Link href="/terms" className="text-[10px] text-electric-blue font-bold uppercase tracking-widest hover:underline">Terms of Service</Link>
+                  </div>
                 </div>
-                <div className="flex space-x-4 pt-2">
-                  <Link href="/privacy" className="text-[10px] text-electric-blue font-bold uppercase tracking-widest hover:underline">Privacy Policy</Link>
-                  <Link href="/terms" className="text-[10px] text-electric-blue font-bold uppercase tracking-widest hover:underline">Terms of Service</Link>
+
+                <div className="h-px bg-white/5" />
+
+                <div className="space-y-4">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-white font-mono">Backup Inquiries</h4>
+                  <div className="space-y-3">
+                    <ContactLink icon={Mail} label="Support Email" email="omnorainfo28@gmail.com" />
+                  </div>
                 </div>
               </div>
               
               <div className="space-y-4">
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-white">Contact & Support</h4>
-                <div className="space-y-3">
-                  <ContactLink icon={Mail} label="Support" email="omnorainfo28@gmail.com" />
-                  <ContactLink icon={Shield} label="Sales" email="omnorainfo28@gmail.com" />
-                </div>
+                <SupportForm />
               </div>
             </div>
             
@@ -183,6 +190,149 @@ export default function AboutPage() {
     </div>
   );
 }
+
+const SupportForm = () => {
+  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    subject: "Software Feedback",
+    message: "",
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStatus("submitting");
+    try {
+      const response = await fetch("https://formspree.io/f/xvgzkpee", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+      if (response.ok) {
+        setStatus("success");
+        setFormData({ name: "", email: "", phone: "", subject: "Software Feedback", message: "" });
+      } else {
+        setStatus("error");
+      }
+    } catch (error) {
+      setStatus("error");
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="bg-[#0C0E12] border border-white/5 p-6 rounded-sm space-y-4 shadow-xl">
+      <h4 className="text-xs font-black uppercase tracking-widest text-white mb-2 flex items-center">
+        <Mail size={14} className="text-electric-blue mr-2 animate-pulse" />
+        In-App Support Ticket
+      </h4>
+      <p className="text-[10px] text-gray-500 font-semibold leading-relaxed">
+        Submit feedback, feature requests, or report system anomalies directly to Omnora Labs support engineers.
+      </p>
+
+      {status === "success" ? (
+        <div className="flex flex-col items-center justify-center py-6 text-center space-y-2">
+          <div className="w-10 h-10 bg-emerald/10 border border-emerald/20 text-emerald flex items-center justify-center rounded-full text-lg">
+            ✓
+          </div>
+          <h5 className="text-[10px] font-black text-white uppercase tracking-tight">Support Ticket Received</h5>
+          <p className="text-[9px] text-slate-500 max-w-xs leading-relaxed font-semibold">
+            Thank you! Your ticket has been logged with Formspree. Our team will review the system parameters and email you.
+          </p>
+          <button 
+            type="button" 
+            onClick={() => setStatus("idle")} 
+            className="text-[9px] font-black text-electric-blue uppercase tracking-widest hover:underline pt-2"
+          >
+            Create new ticket
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-[8px] font-black text-gray-500 uppercase tracking-widest">Full Name</label>
+              <input
+                type="text"
+                required
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full bg-[#080A0C] border border-white/5 focus:border-electric-blue focus:outline-none px-3 py-2 text-[10px] text-white uppercase tracking-wider font-semibold rounded-none transition-colors"
+                placeholder="YOUR NAME"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[8px] font-black text-gray-500 uppercase tracking-widest">Email Address</label>
+              <input
+                type="email"
+                required
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full bg-[#080A0C] border border-white/5 focus:border-electric-blue focus:outline-none px-3 py-2 text-[10px] text-white font-mono rounded-none transition-colors"
+                placeholder="you@factory.com"
+              />
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-[8px] font-black text-gray-500 uppercase tracking-widest">Phone / WhatsApp</label>
+              <input
+                type="text"
+                required
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className="w-full bg-[#080A0C] border border-white/5 focus:border-electric-blue focus:outline-none px-3 py-2 text-[10px] text-white font-mono rounded-none transition-colors"
+                placeholder="+92 300 0000000"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[8px] font-black text-gray-500 uppercase tracking-widest">Subject</label>
+              <select
+                value={formData.subject}
+                onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                className="w-full bg-[#080A0C] border border-white/5 focus:border-electric-blue focus:outline-none px-3 py-2 text-[10px] text-white uppercase tracking-wider font-semibold rounded-none transition-colors"
+              >
+                <option value="Software Feedback">Software Feedback</option>
+                <option value="Feature Request">Feature Request</option>
+                <option value="Report Bug / Anomaly">Report Bug / Anomaly</option>
+                <option value="Hardware Integration">Hardware Integration</option>
+                <option value="Upgrade Inquiry">Upgrade Inquiry</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[8px] font-black text-gray-500 uppercase tracking-widest">Support Request Details</label>
+            <textarea
+              required
+              rows={3}
+              value={formData.message}
+              onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+              className="w-full bg-[#080A0C] border border-white/5 focus:border-electric-blue focus:outline-none px-3 py-2 text-[10px] text-white tracking-wider rounded-none transition-colors resize-none"
+              placeholder="SPECIFY SYSTEM DETAILS, OR ANY ISSUES ENCOUNTERED..."
+            />
+          </div>
+
+          {status === "error" && (
+            <div className="text-[9px] font-black text-critical-red uppercase tracking-widest bg-critical-red/5 p-2 border border-critical-red/20 text-center">
+              ⚠️ Transmission failed. Please email omnorainfo28@gmail.com instead.
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={status === "submitting"}
+            className="w-full bg-electric-blue text-[#080A0C] py-3 text-[10px] font-black uppercase tracking-[0.2em] hover:scale-[1.01] disabled:opacity-50 transition-transform cursor-pointer"
+          >
+            {status === "submitting" ? "Transmitting Support Ticket..." : "Submit Support Ticket"}
+          </button>
+        </>
+      )}
+    </form>
+  );
+};
 
 function Pill({ children, className }: { children: React.ReactNode, className?: string }) {
   return (

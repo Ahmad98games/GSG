@@ -74,7 +74,7 @@ const DashboardVisual = () => {
   const [revenue, setRevenue] = useState(128450);
   const [activeKarigars, setActiveKarigars] = useState(14);
   const [meshNodes, setMeshNodes] = useState(4);
-  const logsEndRef = React.useRef<HTMLDivElement>(null);
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const logInterval = setInterval(() => {
@@ -94,8 +94,8 @@ const DashboardVisual = () => {
   }, []);
 
   useEffect(() => {
-    if (logsEndRef.current) {
-      logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
   }, [logs]);
 
@@ -173,7 +173,7 @@ const DashboardVisual = () => {
               <span className="text-[8px] text-slate-600 font-mono">115200 BAUD · LAN ONLY</span>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-1.5 pr-2 custom-scrollbar flex flex-col font-mono text-[9px] text-slate-400 select-text leading-tight">
+            <div ref={containerRef} className="flex-1 overflow-y-auto space-y-1.5 pr-2 custom-scrollbar flex flex-col font-mono text-[9px] text-slate-400 select-text leading-tight">
               {logs.map((log, i) => {
                 const isCctv = log.includes("CCTV");
                 const isSync = log.includes("Sync") || log.includes("mesh");
@@ -192,7 +192,6 @@ const DashboardVisual = () => {
                   </div>
                 );
               })}
-              <div ref={logsEndRef} />
             </div>
 
             <div className="absolute bottom-4 right-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none select-none">
