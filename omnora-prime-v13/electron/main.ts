@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as dotenv from 'dotenv';
-import { spawn, ChildProcess } from 'child_process';
+import { spawn, ChildProcess, exec } from 'child_process';
 import * as Sentry from '@sentry/electron/main';
 import * as http from 'http';
 import * as net from 'net';
@@ -64,6 +64,30 @@ function startupLog(msg: string): void {
 
 startupLog('════════════ NOXIS STARTUP ════════════');
 startupLog(`Platform: ${process.platform} | Arch: ${process.arch} | isDev: ${isDev}`);
+
+/**
+ * Safely and recursively terminates a child process and all of its spawned children.
+ * Crucial on Windows to prevent lingering standalone Next.js server zombie processes.
+ */
+function killProcess(child: ChildProcess | null, name: string): void {
+  if (!child) return;
+  startupLog(`[Cleanup] Terminating ${name} (PID: ${child.pid})...`);
+  try {
+    if (process.platform === 'win32') {
+      exec(`taskkill /pid ${child.pid} /T /F`, (err) => {
+        if (err) {
+          startupLog(`[Cleanup ERR] Failed to taskkill ${name}: ${err.message}`);
+        } else {
+          startupLog(`[Cleanup] Successfully taskkilled ${name}`);
+        }
+      });
+    } else {
+      child.kill('SIGKILL');
+    }
+  } catch (e: any) {
+    startupLog(`[Cleanup ERR] Error killing ${name}: ${e.message}`);
+  }
+}
 
 // ─────────────────────────────────────────────
 // 2. SINGLE INSTANCE LOCK
@@ -300,7 +324,7 @@ if (!gotTheLock) {
       
       if (visionProcess) {
         startupLog("[Vision] Terminating background processes...");
-        visionProcess.kill();
+        killProcess(visionProcess, 'Vision Engine');
         visionProcess = null;
       }
     } else {
@@ -572,7 +596,7 @@ if (!gotTheLock) {
       // ── Wait for server BEFORE creating window ──
       try {
         startupLog('[Electron] Waiting for Next.js to be ready...');
-        await waitForNextJS(PORT, 60);
+        await waitForNextJS(PORT, 120);
         startupLog('[Electron] Server ready ✓');
       } catch (err: any) {
         startupLog(`[Electron] Server never became ready: ${err.message}`);
@@ -609,13 +633,13 @@ if (!gotTheLock) {
 
     if (visionProcess) {
       startupLog('[Vision] Killing vision process...');
-      visionProcess.kill();
+      killProcess(visionProcess, 'Vision Engine');
       visionProcess = null;
     }
 
     if (nextServer) {
       startupLog('[Next.js] Killing server process...');
-      nextServer.kill();
+      killProcess(nextServer, 'Next.js Server');
       nextServer = null;
     }
 
