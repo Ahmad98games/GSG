@@ -30,6 +30,7 @@ import WelcomeGuide from "@/components/onboarding/WelcomeGuide";
 import CCTVWidget from "@/components/dashboard/CCTVWidget";
 import DeadStockWidget from "@/components/dashboard/DeadStockWidget";
 import { useIndustry, useIndustryLabels } from "@/components/providers/IndustryProvider";
+import { MobileAppBanner } from "@/components/dashboard/MobileAppBanner";
 
 
 export default function DashboardPage() {
@@ -344,6 +345,8 @@ export default function DashboardPage() {
             <DailyBrief />
             <PatternAlerts />
           </div>
+
+          <MobileAppBanner />
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <KpiCard 
