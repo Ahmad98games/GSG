@@ -832,7 +832,7 @@ export default function NoxisHubLanding() {
                 ['PKR Lakh/Crore format', '✅', '❌', '❌', '❌'],
                 ['Mobile + Desktop sync', '✅', '✅', '✅', '❌'],
                 ['CCTV + AI detection', '✅', '❌', '❌', '❌'],
-                ['Price (per month)', 'PKR 2,500', 'PKR 15,000+', 'PKR 200,000+', 'Free'],
+                ['Price (per month)', 'PKR 2,500', 'PKR 15,000+', 'PKR 200,000+', '44,557.68(One Time Payment)'],
                 ['Setup time', '10 min', '1-3 months', '6-18 months', 'Forever'],
               ].map((row, i) => (
                 <tr key={i} style={{
