@@ -384,15 +384,13 @@ export default function NoxisHubLanding() {
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-3 group cursor-pointer">
             <div className="w-10 h-10 flex items-center justify-center bg-white/5 group-hover:bg-electric-blue/10 rounded-sm transition-all shadow-2xl">
-              <img
-                src="/logos/noxis.png"
+              <Image
+                src="/logos/resized-image.png"
                 alt="Noxis"
                 width={32}
                 height={32}
                 className="object-contain"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
+                unoptimized
               />
             </div>
             <div className="flex flex-col">
@@ -1062,7 +1060,7 @@ export default function NoxisHubLanding() {
 
         <div className="max-w-7xl mx-auto pt-12 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 md:gap-6">
-             <Image src="/logos/omnoralabs.png" alt="Omnora Labs" width={80} height={40} className="object-contain opacity-40 hover:opacity-100 transition-opacity" />
+             <Image src="/logos/omnoralabs.png" alt="Omnora Labs" width={80} height={40} className="object-contain opacity-40 hover:opacity-100 transition-opacity" unoptimized />
              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest text-center">© 2024 Omnora Labs. Noxis v13.0</span>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-8 text-[10px] font-bold text-slate-600 uppercase tracking-widest">

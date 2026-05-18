@@ -56,8 +56,8 @@ export const metadata = {
     canonical: 'https://noxishub.app',
   },
   icons: {
-    icon: '/logos/omnoralabs.png',
-    apple: '/logos/omnoralabs.png',
+    icon: '/favicon.ico',
+    apple: '/favicon.ico',
   },
 }
 
@@ -79,8 +79,30 @@ export default async function RootLayout({
   return (
     <html lang={locale} dir={direction} suppressHydrationWarning>
       <head>
-        <link rel="icon" href="/logos/omnoralabs.png" type="image/png" />
-        <link rel="apple-touch-icon" href="/logos/omnoralabs.png" />
+        <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+        <link rel="apple-touch-icon" href="/favicon.ico" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "SoftwareApplication",
+              "name": "Noxis Hub",
+              "operatingSystem": "Windows, Web",
+              "applicationCategory": "BusinessApplication",
+              "description": "Offline-first Industrial ERP and Factory Management Software for manufacturing, textiles, and wholesale operations.",
+              "offers": {
+                "@type": "Offer",
+                "price": "2500",
+                "priceCurrency": "PKR"
+              },
+              "publisher": {
+                "@type": "Organization",
+                "name": "Omnora Labs"
+              }
+            })
+          }}
+        />
         <link
           rel="preload"
           href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap"
