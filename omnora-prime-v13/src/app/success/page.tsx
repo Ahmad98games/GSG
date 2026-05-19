@@ -281,10 +281,10 @@ function SuccessContent() {
         </a>
         {' '}or email{' '}
         <a
-          href="mailto:support@omnoralabs.com"
+          href="mailto:[EMAIL_ADDRESS]"
           style={{ color: '#60A5FA' }}
         >
-          support@omnoralabs.com
+          [EMAIL_ADDRESS]
         </a>
       </div>
       

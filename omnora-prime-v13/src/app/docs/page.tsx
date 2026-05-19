@@ -436,9 +436,8 @@ export default function DocsPage() {
                 <span style={{ display: 'block', fontSize: 11, color: '#60A5FA', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
                   Enterprise Technical Support
                 </span>
-                <a href="mailto:support@omnoralabs.com" style={{ color: 'white', fontSize: 14, fontWeight: 600, textDecoration: 'underline' }}>
-                  support@omnoralabs.com
-                </a>
+                <a href="mailto:[EMAIL_ADDRESS]" style={{ color: 'white', fontSize: 14, fontWeight: 600, textDecoration: 'underline' }}>
+omnorainfo28@gmail.com                </a>
               </div>
               <div>
                 <span style={{ display: 'block', fontSize: 11, color: '#25D366', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
