@@ -321,7 +321,13 @@ export default function NoxisHubLanding() {
   const [currency, setCurrency] = useState<'PKR' | 'USD'>('PKR');
   const router = useRouter();
   const supabase = createClient();
-  const [checking, setChecking] = useState(true);
+  const [checking, setChecking] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const isElectron = window.navigator.userAgent.toLowerCase().includes('electron');
+      return isElectron;
+    }
+    return false;
+  });
 
   useEffect(() => {
     async function handleAuthRedirect() {

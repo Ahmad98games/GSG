@@ -3,7 +3,7 @@ import LandingClient from "./LandingClient";
 
 export const metadata = {
   title: 'Noxis — Industrial ERP & Factory Management Software | Offline First',
-  description: 'Noxis is a local-first offline factory management and ERP software for textile, pharma, rice mill, and manufacturing industries. Works in Pakistan, UAE, GCC, UK, and worldwide. Karigar payroll, inventory, CCTV, invoicing. Free trial.',
+  description: 'Noxis is the premier offline-first factory ERP for textile, pharma, and manufacturing. Manage karigar payroll, inventory, and CCTV securely.',
   keywords: [
     'industrial ERP software',
     'factory management software',
