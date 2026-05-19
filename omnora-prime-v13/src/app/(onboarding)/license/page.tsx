@@ -218,7 +218,7 @@ export default function LicensePage() {
                 Already have an account? Sign in with license key
               </button>
               <a 
-                href="https://wa.me/923000000000" 
+                href="https://wa.me/923334355475" 
                 target="_blank"
                 className="text-blue-500/60 hover:text-blue-500 transition-colors text-xs font-bold uppercase tracking-widest"
               >

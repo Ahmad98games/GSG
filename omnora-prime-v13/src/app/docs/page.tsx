@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Footer from "@/components/shell/Footer";
 
 export default function DocsPage() {
   return (
@@ -40,8 +41,7 @@ export default function DocsPage() {
             fontSize: 18,
             lineHeight: 1.6,
           }}>
-            Everything you need to get your factory
-            running on Noxis in under 10 minutes.
+            Zero-Configuration Onboarding: Install and boot up your secure enterprise local node workstation in under 10 minutes.
           </p>
         </div>
         
@@ -131,9 +131,7 @@ export default function DocsPage() {
               </li>
               <li>
                 If Windows shows a security warning,
-                click "More info" then "Run anyway"
-                (this warning appears because the app
-                is new and not yet code-signed)
+                click "More info" then "Run anyway" to proceed safely
               </li>
               <li>
                 Follow the installer steps
@@ -142,6 +140,18 @@ export default function DocsPage() {
                 Click Finish — Noxis opens automatically
               </li>
             </ol>
+            <div style={{
+              backgroundColor: 'rgba(96,165,250,0.05)',
+              border: '1px solid rgba(96,165,250,0.2)',
+              borderRadius: 4,
+              padding: 16,
+              fontSize: 13,
+              color: '#60A5FA',
+              marginTop: 16,
+              lineHeight: 1.5,
+            }}>
+              <strong>Note on Windows SmartScreen:</strong> Because Noxis Hub runs as a hardened standalone desktop environment, Windows may flag it as an unrecognized publisher until the automated SSL Code Signing Certificate registration completes synchronization. Click 'More info' and 'Run anyway' safely. Your local data remains fully sandboxed.
+            </div>
           </div>
           
           <div style={{
@@ -270,21 +280,19 @@ export default function DocsPage() {
             marginBottom: 24,
             paddingTop: 64,
           }}>
-            4. Adding Your First Product
+            4. Managing Your Industrial Inventory
           </h2>
           
-          <ol style={{
-            color: '#9CA3AF',
-            paddingLeft: 24,
-            lineHeight: 2,
+          <div style={{
+            backgroundColor: '#111418',
+            border: '1px solid rgba(255,255,255,0.06)',
+            borderRadius: 4,
+            padding: 24,
           }}>
-            <li>Click Inventory in the left sidebar</li>
-            <li>Click the + Add SKU button (top right)</li>
-            <li>Enter: Product name, SKU code, unit, 
-                cost price, and sale price</li>
-            <li>Click Save</li>
-            <li>Your product appears in the inventory list</li>
-          </ol>
+            <p style={{ color: '#D1D5DB', lineHeight: 1.7 }}>
+              Navigate to the Inventory Console from the CORE sidebar group. Click '+ Add New Product', define your industrial attributes (SKU, Item Code, Fabric Grade, Category), and set your base wholesale rate. The local database instantly registers the stock asset.
+            </p>
+          </div>
         </section>
         
         {/* Section 5: Invoices */}
@@ -294,25 +302,19 @@ export default function DocsPage() {
             marginBottom: 24,
             paddingTop: 64,
           }}>
-            5. Creating an Invoice
+            5. Rapid Invoice Generation & Automated Khata Sync
           </h2>
           
-          <ol style={{
-            color: '#9CA3AF',
-            paddingLeft: 24,
-            lineHeight: 2,
+          <div style={{
+            backgroundColor: '#111418',
+            border: '1px solid rgba(255,255,255,0.06)',
+            borderRadius: 4,
+            padding: 24,
           }}>
-            <li>Click Invoices in the left sidebar</li>
-            <li>Click + New Invoice</li>
-            <li>Search and select a customer</li>
-            <li>Add line items by typing the product name</li>
-            <li>Review the total and tax</li>
-            <li>Click Finalize and Post</li>
-            <li>
-              The invoice is saved and your ledger
-              updates automatically
-            </li>
-          </ol>
+            <p style={{ color: '#D1D5DB', lineHeight: 1.7 }}>
+              Open the Invoice Generator page. Type the first two characters of your customer name or product description. The system's typeahead engine will automatically inject stored product descriptions and wholesale rates. Adjust the quantity using large touch-targets, and tap Enter. On submission, the system generates a clean, printable PDF/Thermal voucher and automatically updates the linked party's Khata Ledger in the background with zero double-entry effort.
+            </p>
+          </div>
         </section>
         
         {/* Section 6: Quick Entry Console */}
@@ -374,11 +376,11 @@ export default function DocsPage() {
           {[
             {
               q: 'License activation fails',
-              a: 'Make sure you are connected to the internet. Check that the key is entered correctly without spaces. If the problem continues, contact support via WhatsApp.',
+              a: 'Make sure you are connected to the internet. Check that the key is entered correctly without spaces. If the problem continues, contact support via WhatsApp or email.',
             },
             {
               q: 'Windows shows security warning',
-              a: 'Click "More info" then "Run anyway". This appears because Noxis is new software. It is safe to install.',
+              a: "Because Noxis Hub runs as a hardened standalone desktop environment, Windows may flag it as an unrecognized publisher until the automated SSL Code Signing Certificate registration completes synchronization. Click 'More info' and 'Run anyway' safely. Your local data remains fully sandboxed.",
             },
             {
               q: 'Mobile app cannot find Hub',
@@ -417,37 +419,44 @@ export default function DocsPage() {
           
           {/* Support Contact */}
           <div style={{
-            backgroundColor:
-              'rgba(37,211,102,0.05)',
-            border: '1px solid rgba(37,211,102,0.2)',
+            backgroundColor: '#111418',
+            border: '1px solid rgba(255,255,255,0.06)',
             borderRadius: 4,
-            padding: 20,
+            padding: 24,
             marginTop: 24,
           }}>
-            <p style={{
-              fontSize: 14, color: '#D1D5DB',
-              marginBottom: 12,
-            }}>
-              Still need help? Contact us directly:
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: 'white', marginBottom: 16 }}>
+              Official Support Channels
+            </h3>
+            <p style={{ color: '#9CA3AF', fontSize: 13, lineHeight: 1.6, marginBottom: 20 }}>
+              To match the fast-paced nature of regional wholesale textile markets, our dedicated regional partners offer real-time assistance directly over WhatsApp voice and text channels alongside official email ticketing.
             </p>
-            
-            <a
-              href="https://wa.me/923334355475"
-              style={{
-                display: 'inline-block',
-                backgroundColor: '#25D366',
-                color: 'black',
-                padding: '10px 20px',
-                fontWeight: 700,
-                fontSize: 13,
-                textDecoration: 'none',
-                borderRadius: 2,
-              }}
-            >
-              WhatsApp Support
-            </a>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <span style={{ display: 'block', fontSize: 11, color: '#60A5FA', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+                  Technical Support
+                </span>
+                <a href="mailto:support@omnoralabs.com" style={{ color: 'white', fontSize: 14, fontWeight: 600, textDecoration: 'underline' }}>
+                  support@omnoralabs.com
+                </a>
+              </div>
+              <div>
+                <span style={{ display: 'block', fontSize: 11, color: '#25D366', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+                  Onboarding & Regional Deployment Support
+                </span>
+                <a href="https://wa.me/923334355475" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: '#25D366', fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>
+                  <span>+92 333 4355475</span>
+                  <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 'normal' }}>
+                    (Direct WhatsApp Channel for Local Factory Managers & Munshis)
+                  </span>
+                </a>
+              </div>
+            </div>
           </div>
         </section>
+        
+        {/* Global Legal Footer */}
+        <Footer />
         
       </div>
     </main>

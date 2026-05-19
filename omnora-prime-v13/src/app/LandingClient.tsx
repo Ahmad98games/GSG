@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Footer from "@/components/shell/Footer";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { motion } from "framer-motion";
@@ -1085,6 +1086,9 @@ export default function NoxisHubLanding() {
              <span>Open Protocol (NSP)</span>
           </div>
         </div>
+        
+        {/* Global Legal Footer Identity Moat */}
+        <Footer style={{ marginTop: '48px' }} />
       </footer>
     </div>
   );
