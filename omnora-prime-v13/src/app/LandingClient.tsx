@@ -556,6 +556,10 @@ export default function NoxisHubLanding() {
 
       {/* Section 2.7: Technical Credibility Grid */}
       <section className="py-20 sm:py-32 px-6 bg-black border-y border-white/5 relative">
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/0 to-black/40" />
+        </div>
+        <div className="absolute inset-0 bg-white/5 pointer-events-none" />
         <div className="max-w-7xl mx-auto text-center mb-16 sm:mb-24">
            <h3 className="text-electric-blue text-[10px] font-black uppercase tracking-[0.4em] mb-4">Under the Hood</h3>
            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tightest">How We Keep Your Data Safe</h2>
@@ -1080,7 +1084,7 @@ export default function NoxisHubLanding() {
   );
 }
 
-const ContactForm = () => {
+function ContactForm() {
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [formData, setFormData] = useState({
     name: "",
