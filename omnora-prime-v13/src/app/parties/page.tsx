@@ -13,6 +13,7 @@ import DataFreshness from "@/components/ui/DataFreshness";
 import { SummaryCard } from "@/components/ui/SummaryCard";
 import { usePersona } from "@/hooks/usePersona";
 import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 import { useForm } from "react-hook-form";
@@ -58,11 +59,28 @@ export default function PartiesPage() {
   const queryClient = useQueryClient();
   
 
+  const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<'all' | 'customer' | 'supplier'>('all');
   const [successToast, setSuccessToast] = useState<string | null>(null);
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+
+  const handleToggleBlock = async (party: Party) => {
+    try {
+      const { error } = await supabase
+        .from('parties')
+        .update({ is_blocked: !party.is_blocked })
+        .eq('id', party.id);
+      
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['parties_registry'] });
+      setSuccessToast(`${party.name} is now ${!party.is_blocked ? 'blocked' : 'unblocked'}`);
+    } catch (err: any) {
+      alert(`Failed to update party status: ${err.message}`);
+    }
+  };
 
   // Queries
   const { data: parties = [], isLoading } = useQuery({
@@ -186,7 +204,11 @@ export default function PartiesPage() {
                     key={party.id} 
                     party={party} 
                     fmt={fmt} 
-                    onView={() => {}}
+                    onView={() => router.push(`/parties/${party.id}`)}
+                    openMenu={openMenu}
+                    setOpenMenu={setOpenMenu}
+                    onToggleBlock={() => handleToggleBlock(party)}
+                    onEdit={() => router.push(`/parties/${party.id}/edit`)}
                   />
                 ))
               )}
@@ -217,7 +239,23 @@ export default function PartiesPage() {
 }
 
 
-const PartyCard = React.memo(function PartyCard({ party, fmt, onView }: { party: Party, fmt: (n: number) => string, onView: () => void }) {
+const PartyCard = React.memo(function PartyCard({ 
+  party, 
+  fmt, 
+  onView,
+  openMenu,
+  setOpenMenu,
+  onToggleBlock,
+  onEdit
+}: { 
+  party: Party, 
+  fmt: (n: number) => string, 
+  onView: () => void,
+  openMenu: string | null,
+  setOpenMenu: (id: string | null) => void,
+  onToggleBlock: () => void,
+  onEdit: () => void
+}) {
   const balance = Number(party.current_balance);
   const isOwed = balance > 0;
   const isPayable = balance < 0;
@@ -246,7 +284,66 @@ const PartyCard = React.memo(function PartyCard({ party, fmt, onView }: { party:
                    {party.credit_limit > 0 && <span>Limit: {fmt(party.credit_limit)}</span>}
                 </div>
              </div>
-             <button className="text-gray-700 hover:text-white transition-colors"><MoreVertical size={16} /></button>
+             <div className="relative">
+               <button 
+                 onClick={(e) => {
+                   e.stopPropagation();
+                   setOpenMenu(openMenu === party.id ? null : party.id);
+                 }}
+                 className="text-gray-700 hover:text-white transition-colors p-1"
+               >
+                 <MoreVertical size={16} />
+               </button>
+               {openMenu === party.id && (
+                 <div className="absolute right-0 mt-2 w-48 bg-[#1A1D21] border border-white/10 rounded-sm shadow-2xl z-50 text-left py-1 text-xs">
+                   <button 
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       onView();
+                       setOpenMenu(null);
+                     }}
+                     className="w-full text-left px-4 py-2 hover:bg-white/5 text-gray-300 hover:text-white transition-colors"
+                   >
+                     View Details
+                   </button>
+                   {party.phone && (
+                     <a 
+                       href={`https://wa.me/${party.phone.replace(/[^0-9]/g, '')}`}
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       onClick={(e) => {
+                         e.stopPropagation();
+                         setOpenMenu(null);
+                       }}
+                       className="block w-full text-left px-4 py-2 hover:bg-white/5 text-gray-300 hover:text-white transition-colors"
+                     >
+                       Send WhatsApp
+                     </a>
+                   )}
+                   <button 
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       onEdit();
+                       setOpenMenu(null);
+                     }}
+                     className="w-full text-left px-4 py-2 hover:bg-white/5 text-gray-300 hover:text-white transition-colors"
+                   >
+                     Edit Party
+                   </button>
+                   <button 
+                     type="button"
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       onToggleBlock();
+                       setOpenMenu(null);
+                     }}
+                     className="w-full text-left px-4 py-2 hover:bg-white/5 text-red-400 hover:text-red-300 hover:bg-red-500/5 transition-colors font-bold"
+                   >
+                     {party.is_blocked ? "Unblock Account" : "Block Account"}
+                   </button>
+                 </div>
+               )}
+             </div>
           </div>
 
           <div className="space-y-3">
@@ -270,7 +367,13 @@ const PartyCard = React.memo(function PartyCard({ party, fmt, onView }: { party:
                    {isPayable ? `(${fmt(Math.abs(balance))})` : fmt(balance)}
                 </p>
              </div>
-             <button onClick={onView} className="p-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all">
+             <button 
+               onClick={(e) => {
+                 e.stopPropagation();
+                 onView();
+               }}
+               className="p-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all border border-white/10 hover:border-white/30"
+             >
                 <ChevronRight size={18} />
              </button>
           </div>

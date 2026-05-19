@@ -23,7 +23,7 @@ export default function ThemePicker({ hideTrigger = false }: { hideTrigger?: boo
     customFinancialColor,
     setCustomColors
   } = useThemeStore();
-  const { profile } = useBusinessProfile();
+  const { profile, setProfile } = useBusinessProfile();
   const { toast } = useToast();
   const [hoveredThemeId, setHoveredThemeId] = useState<ThemeId | null>(null);
 
@@ -46,6 +46,11 @@ export default function ThemePicker({ hideTrigger = false }: { hideTrigger?: boo
 
   const handleThemeSelect = async (id: ThemeId) => {
     setTheme(id);
+    
+    // Save to local profile store immediately to prevent AppShell reverting it
+    if (profile) {
+      setProfile({ ...profile, visual_theme: id } as any);
+    }
     
     // Save to Database if profile exists
     if (profile?.id) {

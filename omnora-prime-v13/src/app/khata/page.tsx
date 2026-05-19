@@ -263,7 +263,7 @@ export default function KhataPage() {
            </div>
         </header>
 
-        <div className="p-8 max-w-[1600px] mx-auto space-y-8 w-full flex-1">
+        <div className="p-8 max-w-full mx-auto space-y-8 w-full flex-1">
            <AnimatePresence mode="wait">
               {activeTab === 'entries' && (
                 <motion.div 

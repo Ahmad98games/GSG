@@ -1091,7 +1091,29 @@ export default function SettingsPage() {
                         ].map(m => (
                           <button
                             key={m.id}
-                            onClick={() => setMode(m.id as any)}
+                            onClick={async () => {
+                              setMode(m.id as any);
+                              const systemPrefersDark = typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)').matches : true;
+                              const effectiveThemeId = m.id === 'auto'
+                                ? (systemPrefersDark ? 'electric-slate' : 'light-slate')
+                                : (m.id === 'dark' ? 'electric-slate' : 'light-slate');
+                              
+                              if (profile) {
+                                setProfile({ ...profile, visual_theme: effectiveThemeId } as any);
+                                try {
+                                  await fetch('/api/settings', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ 
+                                      type: 'business_profile', 
+                                      data: { ...profile, visual_theme: effectiveThemeId } 
+                                    })
+                                  });
+                                } catch (err) {
+                                  console.error("Failed to persist theme to database:", err);
+                                }
+                              }
+                            }}
                             className={cn(
                               "flex flex-col items-center justify-center p-6 border rounded-xl transition-all space-y-3 group",
                               mode === m.id 

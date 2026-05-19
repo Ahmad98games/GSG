@@ -54,9 +54,9 @@ export default function LanguageSwitcher() {
     <div className="relative" ref={containerRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-3 px-3 py-1.5 bg-white/5 border border-white/10 rounded-sm hover:bg-white/10 transition-all group"
+        className="flex items-center space-x-3 px-3 py-1.5 bg-noxis-overlay border border-noxis-border rounded-sm hover:bg-noxis-overlay-hover transition-all group"
       >
-        <span className="text-[10px] font-black uppercase tracking-widest text-white hidden md:block">
+        <span className="text-[10px] font-black uppercase tracking-widest text-noxis-text hidden md:block">
           {currentLang.code}
         </span>
         <ChevronDown size={14} className={cn("text-gray-500 transition-transform", isOpen && "rotate-180")} />
@@ -68,10 +68,10 @@ export default function LanguageSwitcher() {
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="absolute top-full right-0 mt-2 w-64 bg-[#1A1D21] border border-white/10 shadow-2xl z-[100] overflow-hidden rounded-sm"
+            className="absolute top-full right-0 mt-2 w-64 bg-noxis-surface border border-noxis-border shadow-2xl z-[100] overflow-hidden rounded-sm"
           >
-            <div className="p-2 border-b border-white/5 bg-white/[0.02]">
-              <p className="text-[9px] font-black uppercase tracking-widest text-gray-500 flex items-center">
+            <div className="p-2 border-b border-noxis-border bg-noxis-overlay">
+              <p className="text-[9px] font-black uppercase tracking-widest text-noxis-text-muted flex items-center">
                 <Globe size={10} className="mr-2" />
                 Select Platform Language
               </p>
@@ -81,7 +81,7 @@ export default function LanguageSwitcher() {
               {Object.entries(LANGUAGES).map(([group, list]) => (
                 <div key={group} className="mb-2 last:mb-0">
                   <div className="px-3 py-1">
-                    <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-600">
+                    <p className="text-[8px] font-black uppercase tracking-[0.2em] text-noxis-text-muted">
                       {group} Script
                     </p>
                   </div>
@@ -93,7 +93,7 @@ export default function LanguageSwitcher() {
                         setIsOpen(false)
                       }}
                       className={cn(
-                        "w-full flex items-center justify-between px-3 py-2 text-left hover:bg-white/5 transition-colors group",
+                        "w-full flex items-center justify-between px-3 py-2 text-left hover:bg-noxis-overlay transition-colors group",
                         locale === lang.code && "bg-electric-blue/10"
                       )}
                     >
@@ -101,12 +101,12 @@ export default function LanguageSwitcher() {
                         <span className="text-lg">{lang.flag}</span>
                         <div className="flex flex-col">
                           <span className={cn(
-                            "text-[11px] font-bold text-white",
+                            "text-[11px] font-bold text-noxis-text",
                             lang.code === 'ur' && "font-urdu"
                           )}>
                             {lang.nativeName}
                           </span>
-                          <span className="text-[9px] text-gray-500 uppercase tracking-tighter">
+                          <span className="text-[9px] text-noxis-text-muted uppercase tracking-tighter">
                             {lang.name}
                           </span>
                         </div>

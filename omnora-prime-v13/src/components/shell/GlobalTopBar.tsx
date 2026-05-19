@@ -159,7 +159,7 @@ export default React.memo(function GlobalTopBar() {
                 />
               )}
             </div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+            <span className="text-[10px] font-black uppercase tracking-widest text-noxis-text-muted">
               {isOnline ? 'Hub Online' : 'Hub Offline'}
             </span>
           </div>
@@ -167,7 +167,7 @@ export default React.memo(function GlobalTopBar() {
           {/* Connected Devices */}
           <div className="flex items-center space-x-2 px-6 border-x border-noxis-border">
             <Smartphone size={14} className="text-gray-500" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-white">
+            <span className="text-[10px] font-black uppercase tracking-widest text-noxis-text">
               {deviceCount} {deviceCount === 1 ? 'Device' : 'Devices'}
             </span>
           </div>
@@ -245,12 +245,12 @@ export default React.memo(function GlobalTopBar() {
             })()}
             <div className="text-left hidden md:block">
               <div className="flex items-center gap-2">
-                <p className="text-[10px] font-black text-white uppercase tracking-tight truncate max-w-[120px]">
+                <p className="text-[10px] font-black text-noxis-text uppercase tracking-tight truncate max-w-[120px]">
                   {profile?.business_name || 'Noxis Hub'}
                 </p>
                 <TierBadge />
               </div>
-              <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Administrator</p>
+              <p className="text-[9px] text-noxis-text-muted font-bold uppercase tracking-widest">Administrator</p>
             </div>
           </button>
         </div>
@@ -277,7 +277,7 @@ export default React.memo(function GlobalTopBar() {
               )}
             >
               <div className="h-14 border-b border-noxis-border flex items-center justify-between px-6">
-                <h3 className="text-[11px] font-black uppercase tracking-widest text-white">Notifications</h3>
+                <h3 className="text-[11px] font-black uppercase tracking-widest text-noxis-text">Notifications</h3>
                 <button className="text-[9px] font-bold text-electric-blue uppercase tracking-widest hover:underline">Mark all read</button>
               </div>
 

@@ -276,3 +276,30 @@ th, td {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+@media print {
+  /* Hide everything except invoice preview */
+  body * { visibility: hidden; }
+  
+  .invoice-preview,
+  .invoice-preview * {
+    visibility: visible;
+  }
+  
+  .invoice-preview {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: auto !important;
+    overflow: visible !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: white !important;
+    color: black !important;
+  }
+  
+  /* Hide buttons, sidebar, header */
+  .no-print,
+  .no-print * { display: none !important; }
+}

@@ -94,6 +94,33 @@ function startupLog(msg) {
 }
 startupLog('════════════ NOXIS STARTUP ════════════');
 startupLog(`Platform: ${process.platform} | Arch: ${process.arch} | isDev: ${isDev}`);
+/**
+ * Safely and recursively terminates a child process and all of its spawned children.
+ * Crucial on Windows to prevent lingering standalone Next.js server zombie processes.
+ */
+function killProcess(child, name) {
+    if (!child)
+        return;
+    startupLog(`[Cleanup] Terminating ${name} (PID: ${child.pid})...`);
+    try {
+        if (process.platform === 'win32') {
+            (0, child_process_1.exec)(`taskkill /pid ${child.pid} /T /F`, (err) => {
+                if (err) {
+                    startupLog(`[Cleanup ERR] Failed to taskkill ${name}: ${err.message}`);
+                }
+                else {
+                    startupLog(`[Cleanup] Successfully taskkilled ${name}`);
+                }
+            });
+        }
+        else {
+            child.kill('SIGKILL');
+        }
+    }
+    catch (e) {
+        startupLog(`[Cleanup ERR] Error killing ${name}: ${e.message}`);
+    }
+}
 // ─────────────────────────────────────────────
 // 2. SINGLE INSTANCE LOCK
 // ─────────────────────────────────────────────
@@ -290,7 +317,7 @@ else {
             mainWindow?.webContents.send('license-expired');
             if (visionProcess) {
                 startupLog("[Vision] Terminating background processes...");
-                visionProcess.kill();
+                killProcess(visionProcess, 'Vision Engine');
                 visionProcess = null;
             }
         }
@@ -518,7 +545,7 @@ else {
             // ── Wait for server BEFORE creating window ──
             try {
                 startupLog('[Electron] Waiting for Next.js to be ready...');
-                await waitForNextJS(PORT, 60);
+                await waitForNextJS(PORT, 120);
                 startupLog('[Electron] Server ready ✓');
             }
             catch (err) {
@@ -548,12 +575,12 @@ else {
             clearTimeout(warningTimer);
         if (visionProcess) {
             startupLog('[Vision] Killing vision process...');
-            visionProcess.kill();
+            killProcess(visionProcess, 'Vision Engine');
             visionProcess = null;
         }
         if (nextServer) {
             startupLog('[Next.js] Killing server process...');
-            nextServer.kill();
+            killProcess(nextServer, 'Next.js Server');
             nextServer = null;
         }
         startupLog('[Electron] Shutdown complete ✓');

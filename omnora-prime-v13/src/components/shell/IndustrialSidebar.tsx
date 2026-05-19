@@ -208,7 +208,7 @@ export default React.memo(function IndustrialSidebar() {
             onClick={() => setIsProductionModalOpen(true)}
             className="flex items-center space-x-3 overflow-hidden group hover:opacity-80 transition-opacity"
           >
-            <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center bg-white/5 group-hover:bg-electric-blue/20 rounded-sm transition-colors relative overflow-hidden">
+            <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center bg-noxis-overlay group-hover:bg-electric-blue/20 rounded-sm transition-colors relative overflow-hidden">
               {profile?.logo_url ? (
                 <Image src={profile.logo_url} alt={profile.business_name || 'Business Logo'} fill className="object-contain p-1" />
               ) : (
@@ -220,8 +220,8 @@ export default React.memo(function IndustrialSidebar() {
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                 className="flex flex-col text-left"
               >
-                <span className="text-xs font-black text-white tracking-tighter uppercase italic">Noxis Hub</span>
-                <span className="text-[8px] text-gray-500 font-bold uppercase tracking-widest leading-none">PersonaEngine v2.0</span>
+                <span className="text-xs font-black text-noxis-text tracking-tighter uppercase italic">Noxis Hub</span>
+                <span className="text-[8px] text-noxis-text-muted font-bold uppercase tracking-widest leading-none">PersonaEngine v2.0</span>
               </motion.div>
             )}
           </button>
@@ -232,7 +232,7 @@ export default React.memo(function IndustrialSidebar() {
           {isLoading ? (
             <div className="space-y-4 px-2">
               {[1, 2, 3, 4, 5].map(i => (
-                <div key={i} className="h-10 bg-white/5 animate-pulse rounded-sm" />
+                <div key={i} className="h-10 bg-noxis-overlay animate-pulse rounded-sm" />
               ))}
             </div>
           ) : (
@@ -246,7 +246,7 @@ export default React.memo(function IndustrialSidebar() {
               return (
                 <div key={idx} className="space-y-2">
                   {!isCollapsed && (
-                    <p className="text-[9px] uppercase font-black text-gray-600 tracking-widest px-4 mb-2">
+                    <p className="text-[9px] uppercase font-black text-noxis-text-muted tracking-widest px-4 mb-2">
                       {group.label}
                     </p>
                   )}
@@ -269,15 +269,15 @@ export default React.memo(function IndustrialSidebar() {
           )}
         </nav>
 
-        <div className="p-4 border-t border-white/5 bg-white/[0.01]">
+        <div className="p-4 border-t border-noxis-border bg-noxis-overlay/10">
           {!isCollapsed ? (
             <div className="flex items-center space-x-3 mb-4 px-2">
               {renderSidebarAvatar()}
               <div className="flex flex-col">
-                <span className="text-xs font-bold text-white truncate max-w-[120px]">
+                <span className="text-xs font-bold text-noxis-text truncate max-w-[120px]">
                   {profile?.business_name || "Ahmad Mahboob"}
                 </span>
-                <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">
+                <span className="text-[9px] text-noxis-text-muted font-bold uppercase tracking-wider">
                   Administrator
                 </span>
                 <div className="mt-1">
@@ -293,20 +293,20 @@ export default React.memo(function IndustrialSidebar() {
           
           <button 
             className={cn(
-              "w-full flex items-center h-8 rounded-sm px-2 text-gray-500 hover:text-white transition-all group",
+              "w-full flex items-center h-8 rounded-sm px-2 text-noxis-text-muted hover:text-noxis-text hover:bg-noxis-overlay transition-all group",
               isCollapsed && "justify-center"
             )}
           >
-            <LogOut className="w-4 h-4 flex-shrink-0" />
+            <LogOut className="w-4 h-4 flex-shrink-0 text-noxis-text-muted group-hover:text-noxis-text" />
             {!isCollapsed && <span className="ml-3 text-[10px] font-black uppercase tracking-widest">Log Out</span>}
           </button>
         </div>
 
         {/* Collapse Toggle */}
-        <div className="p-4 border-t border-white/5 bg-[#121417]">
+        <div className="p-4 border-t border-noxis-border bg-noxis-bg">
           <button 
             onClick={toggle}
-            className="w-full h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-gray-500 hover:text-white transition-all rounded-sm"
+            className="w-full h-10 flex items-center justify-center bg-noxis-overlay hover:bg-noxis-overlay-hover text-noxis-text-muted hover:text-noxis-text transition-all rounded-sm"
           >
             {isCollapsed ? <ChevronRight size={16} /> : (
               <div className="flex items-center space-x-2 text-[10px] font-black uppercase tracking-widest">
@@ -341,7 +341,7 @@ const SidebarItem = React.memo(function SidebarItem({ href, icon: Icon, label, i
         "flex items-center h-10 rounded-sm px-3 transition-all duration-150 group relative",
         isActive 
           ? "text-electric-blue bg-electric-blue/10 border-r-2 border-electric-blue" 
-          : "text-gray-400 hover:bg-white/5 hover:text-white border-r-2 border-transparent"
+          : "text-noxis-text-muted hover:bg-noxis-overlay hover:text-noxis-text border-r-2 border-transparent"
       )}
     >
       <Icon className={cn("w-5 h-5 flex-shrink-0", isActive && "text-electric-blue")} />
@@ -349,7 +349,7 @@ const SidebarItem = React.memo(function SidebarItem({ href, icon: Icon, label, i
         <>
           <span className={cn(
             "ml-3 text-xs font-semibold whitespace-nowrap",
-            isActive ? "text-white" : "text-gray-400"
+            isActive ? "text-noxis-text font-black" : "text-noxis-text-muted"
           )}>
             {label}
           </span>
@@ -373,10 +373,10 @@ const SidebarItem = React.memo(function SidebarItem({ href, icon: Icon, label, i
           <Tooltip.Content
             side="right"
             sideOffset={10}
-            className="bg-[#1A1D21] border border-white/10 px-3 py-1.5 text-[10px] text-white font-bold uppercase tracking-wider shadow-2xl z-[60] rounded-sm"
+            className="bg-noxis-surface border border-noxis-border px-3 py-1.5 text-noxis-text font-bold uppercase tracking-wider shadow-2xl z-[60] rounded-sm"
           >
             {label}
-            <Tooltip.Arrow className="fill-[#1A1D21]" />
+            <Tooltip.Arrow className="fill-noxis-surface" />
           </Tooltip.Content>
         </Tooltip.Portal>
       </Tooltip.Root>

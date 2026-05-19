@@ -23,9 +23,9 @@ import { numberToWords } from "@/utils/NumberToWords";
 interface LineItem {
   id: string;
   description: string;
-  qty: number;
+  qty: string | number;
   unit: string;
-  rate: number;
+  rate: string | number;
   total: number;
 }
 
@@ -112,7 +112,9 @@ export default function InvoiceGenerator() {
       if (item.id === id) {
         const updatedItem = { ...item, [field]: value };
         if (field === 'qty' || field === 'rate') {
-          updatedItem.total = new Decimal(updatedItem.qty).times(new Decimal(updatedItem.rate)).toNumber();
+          const q = new Decimal(updatedItem.qty || 0);
+          const r = new Decimal(updatedItem.rate || 0);
+          updatedItem.total = q.times(r).toNumber();
         }
         return updatedItem;
       }
@@ -178,7 +180,7 @@ export default function InvoiceGenerator() {
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
             {/* Form Panel */}
-            <div className="glass-panel p-8 space-y-8">
+            <div className="glass-panel p-8 space-y-8 no-print">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Bill To */}
                 <div className="space-y-4">
@@ -335,8 +337,8 @@ export default function InvoiceGenerator() {
                           <td className="py-2 px-2">
                             <input 
                               type="number"
-                              value={item.qty}
-                              onChange={(e) => handleUpdateItem(item.id, 'qty', Number(e.target.value))}
+                              value={item.qty || ''}
+                              onChange={(e) => handleUpdateItem(item.id, 'qty', e.target.value)}
                               className="w-full bg-transparent border-none focus:ring-0 text-sm text-center text-white"
                             />
                           </td>
@@ -351,8 +353,10 @@ export default function InvoiceGenerator() {
                           <td className="py-2 px-2">
                             <input 
                               type="number"
-                              value={item.rate}
-                              onChange={(e) => handleUpdateItem(item.id, 'rate', Number(e.target.value))}
+                              min="0"
+                              step="0.01"
+                              value={item.rate || ''}
+                              onChange={(e) => handleUpdateItem(item.id, 'rate', e.target.value)}
                               className="w-full bg-transparent border-none focus:ring-0 text-sm text-right text-white"
                             />
                           </td>
@@ -417,7 +421,7 @@ export default function InvoiceGenerator() {
               <div className="flex justify-end pt-4">
                 <button 
                   onClick={handlePrint}
-                  className="bg-electric-blue text-white px-8 py-3 rounded-sm text-[10px] font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-lg flex items-center space-x-3"
+                  className="no-print bg-electric-blue text-white px-8 py-3 rounded-sm text-[10px] font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-lg flex items-center space-x-3"
                 >
                   <Printer size={16} />
                   <span>Generate & Print</span>
@@ -426,7 +430,7 @@ export default function InvoiceGenerator() {
             </div>
 
             {/* Preview Panel */}
-            <div className="sticky top-24 overflow-hidden rounded-sm border border-white/10 bg-white shadow-2xl flex flex-col h-[842px] w-full max-w-[595px] mx-auto text-black font-sans print:fixed print:inset-0 print:m-0 print:border-none print:shadow-none print:w-full print:max-w-none print:h-auto">
+            <div className="sticky top-24 overflow-hidden rounded-sm border border-white/10 bg-white shadow-2xl flex flex-col h-[842px] w-full max-w-[595px] mx-auto text-black font-sans print:fixed print:inset-0 print:m-0 print:border-none print:shadow-none print:w-full print:max-w-none print:h-auto invoice-preview">
               <div className="flex-1 p-12 space-y-12 overflow-y-auto print:overflow-visible custom-scrollbar print:p-8">
                 {/* Header */}
                 <div className="flex justify-between items-start">
@@ -443,7 +447,6 @@ export default function InvoiceGenerator() {
                       )}
                       <div>
                         <h2 className="text-2xl font-black uppercase tracking-tighter">{profile?.business_name || "Noxis Industrial Hub"}</h2>
-                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Industry Standard Infrastructure</p>
                       </div>
                     </div>
                     <div className="text-[10px] text-gray-600 leading-relaxed uppercase font-medium">
