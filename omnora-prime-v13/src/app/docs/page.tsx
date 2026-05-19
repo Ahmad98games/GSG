@@ -41,7 +41,7 @@ export default function DocsPage() {
             fontSize: 18,
             lineHeight: 1.6,
           }}>
-            Zero-Configuration Onboarding: Install and boot up your secure enterprise local node workstation in under 10 minutes.
+            Zero-Configuration Onboarding: Install, connect, and boot up your secure local workshop node in under 10 minutes without any external IT infrastructure.
           </p>
         </div>
         
@@ -150,7 +150,7 @@ export default function DocsPage() {
               marginTop: 16,
               lineHeight: 1.5,
             }}>
-              <strong>Note on Windows SmartScreen:</strong> Because Noxis Hub runs as a hardened standalone desktop environment, Windows may flag it as an unrecognized publisher until the automated SSL Code Signing Certificate registration completes synchronization. Click 'More info' and 'Run anyway' safely. Your local data remains fully sandboxed.
+              <strong>Important Security Note:</strong> Because Noxis Hub is engineered as a highly optimized standalone desktop environment, Windows SmartScreen may flag it as an 'Unrecognized App' during this early deployment phase. This occurs simply because the executable is not yet attached to a commercial Code Signing Certificate. Rest assured, your software runs completely sandboxed and localized. Click 'More info' and then 'Run anyway' safely.
             </div>
           </div>
           
@@ -280,7 +280,7 @@ export default function DocsPage() {
             marginBottom: 24,
             paddingTop: 64,
           }}>
-            4. Managing Your Industrial Inventory
+            4. Populating Your Local Inventory
           </h2>
           
           <div style={{
@@ -290,7 +290,7 @@ export default function DocsPage() {
             padding: 24,
           }}>
             <p style={{ color: '#D1D5DB', lineHeight: 1.7 }}>
-              Navigate to the Inventory Console from the CORE sidebar group. Click '+ Add New Product', define your industrial attributes (SKU, Item Code, Fabric Grade, Category), and set your base wholesale rate. The local database instantly registers the stock asset.
+              Navigate to the Inventory Console from your main dashboard. Click '+ Add Item' to input your first product asset. Define attributes like SKU, raw materials, fabric grades, and base wholesale rates. Once saved, these items are securely cached locally for instant access.
             </p>
           </div>
         </section>
@@ -302,7 +302,7 @@ export default function DocsPage() {
             marginBottom: 24,
             paddingTop: 64,
           }}>
-            5. Rapid Invoice Generation & Automated Khata Sync
+            5. Generating Invoices & Automatic Khata Logging
           </h2>
           
           <div style={{
@@ -312,7 +312,7 @@ export default function DocsPage() {
             padding: 24,
           }}>
             <p style={{ color: '#D1D5DB', lineHeight: 1.7 }}>
-              Open the Invoice Generator page. Type the first two characters of your customer name or product description. The system's typeahead engine will automatically inject stored product descriptions and wholesale rates. Adjust the quantity using large touch-targets, and tap Enter. On submission, the system generates a clean, printable PDF/Thermal voucher and automatically updates the linked party's Khata Ledger in the background with zero double-entry effort.
+              Open the Invoice Generator page. Type the first two letters of any registered product description. The typeahead engine will instantly fetch the item and auto-fill the wholesale rate. Adjust your quantities using the high-visibility touch targets, and press Enter. Upon submission, the platform generates a professional print-ready PDF invoice while automatically updating the linked party's Khata Ledger in the background.
             </p>
           </div>
         </section>
@@ -380,7 +380,7 @@ export default function DocsPage() {
             },
             {
               q: 'Windows shows security warning',
-              a: "Because Noxis Hub runs as a hardened standalone desktop environment, Windows may flag it as an unrecognized publisher until the automated SSL Code Signing Certificate registration completes synchronization. Click 'More info' and 'Run anyway' safely. Your local data remains fully sandboxed.",
+              a: "Because Noxis Hub is engineered as a highly optimized standalone desktop environment, Windows SmartScreen may flag it as an 'Unrecognized App' during this early deployment phase. This occurs simply because the executable is not yet attached to a commercial Code Signing Certificate. Rest assured, your software runs completely sandboxed and localized. Click 'More info' and then 'Run anyway' safely.",
             },
             {
               q: 'Mobile app cannot find Hub',
@@ -429,12 +429,12 @@ export default function DocsPage() {
               Official Support Channels
             </h3>
             <p style={{ color: '#9CA3AF', fontSize: 13, lineHeight: 1.6, marginBottom: 20 }}>
-              To match the fast-paced nature of regional wholesale textile markets, our dedicated regional partners offer real-time assistance directly over WhatsApp voice and text channels alongside official email ticketing.
+              To match the fast-paced nature of local wholesale mandi operations and regional textile markets, our team provides instant real-time troubleshooting directly via WhatsApp text and voice channels alongside official email logging.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
                 <span style={{ display: 'block', fontSize: 11, color: '#60A5FA', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
-                  Technical Support
+                  Enterprise Technical Support
                 </span>
                 <a href="mailto:support@omnoralabs.com" style={{ color: 'white', fontSize: 14, fontWeight: 600, textDecoration: 'underline' }}>
                   support@omnoralabs.com
@@ -442,12 +442,12 @@ export default function DocsPage() {
               </div>
               <div>
                 <span style={{ display: 'block', fontSize: 11, color: '#25D366', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
-                  Onboarding & Regional Deployment Support
+                  Onboarding & Regional Support
                 </span>
                 <a href="https://wa.me/923334355475" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: '#25D366', fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>
                   <span>+92 333 4355475</span>
                   <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 'normal' }}>
-                    (Direct WhatsApp Channel for Local Factory Managers & Munshis)
+                    (Direct WhatsApp Channel for Factory Floor Managers)
                   </span>
                 </a>
               </div>

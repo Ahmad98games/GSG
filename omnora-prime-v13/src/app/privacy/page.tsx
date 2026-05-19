@@ -37,19 +37,19 @@ function PrivacyContent() {
     {
       id: "intro",
       icon: <Shield className="w-5 h-5" />,
-      title: "1. Introduction & Ownership",
-      content: "Noxis is a proprietary industrial enterprise software developed by Ahmad Mahboob under the parent organization Omnora Labs. We are committed to protecting the sensitive operational data of your business. This policy explains how data is handled within the Noxis ecosystem (Desktop, Mobile Bridge, and Cloud Sync)."
+      title: "1. Introduction & Enterprise Entity",
+      content: "Noxis Hub and the Noxis Core Ecosystem are proprietary assets owned and managed exclusively by Omnora Labs LLC. Registered Office: Lahore, Pakistan. We are committed to protecting the sensitive operational data of your business. This policy explains how data is handled within the Noxis ecosystem."
     },
     {
       id: "local",
       icon: <Lock className="w-5 h-5" />,
-      title: "2. The Local-First Principle (Core Privacy)",
+      title: "2. Data Localization Guarantee",
       content: (
         <>
-          <p className="mb-2">Unlike standard SaaS tools, Noxis is built on a Local-First Architecture.</p>
+          <p className="mb-2">Unlike standard SaaS tools, Noxis is built on a hardened Local-First Architecture with a strict Data Localization Guarantee.</p>
           <ul className="list-disc pl-5 space-y-2 text-gray-400">
-            <li><strong className="text-gray-300">Primary Storage:</strong> All your business intelligence—including Inventory, Double-Entry Ledgers, Karigar Payroll, and Production logs—is stored locally on your PC’s Master Node in an encrypted SQLite database.</li>
-            <li><strong className="text-gray-300">No Access:</strong> Omnora Labs or Ahmad Mahboob cannot access, view, or sell your local data. You have 100% ownership and physical control over your information.</li>
+            <li><strong className="text-gray-300">Data Localization Guarantee:</strong> Noxis Hub does not upload your factory's ledger balances, karigar files, or production volumes to external clouds. Your financial records are 100% sandboxed within your local SQLite/workstation partition.</li>
+            <li><strong className="text-gray-300">No Access:</strong> Omnora Labs cannot access, view, or sell your local data. You have 100% ownership and physical control over your information.</li>
           </ul>
         </>
       )
@@ -186,7 +186,7 @@ function PrivacyContent() {
             <span className="text-[10px] uppercase tracking-[0.4em] font-black text-white/40">Industrial Security Protocol v13.0</span>
           </div>
           <p className="text-[11px] font-mono text-gray-600 font-bold">
-            © 2026 Omnora Labs. Engineered by <span className="text-gray-400">Ahmad Mahboob</span>. All Rights Reserved.
+            © 2026 Noxis Hub. Engineered by Omnora Labs. All trade records remain completely localized within your local workstation node.
           </p>
         </motion.footer>
       </div>
