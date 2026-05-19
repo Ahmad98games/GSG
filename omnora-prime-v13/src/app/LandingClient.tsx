@@ -455,6 +455,17 @@ export default function NoxisHubLanding() {
             </Link>
           </motion.div>
 
+          {/* Nox Player Disclaimer */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.35 }}
+            className="text-[10px] sm:text-xs text-slate-500 max-w-xl mx-auto mb-16 px-4 py-2.5 bg-white/[0.02] border border-white/5 rounded-sm tracking-wide"
+          >
+            <span className="font-bold text-slate-400 uppercase mr-1">Disclaimer:</span> 
+            Noxis Hub is NOT related to Nox Player (the Android emulator). We are a factory management solution.
+          </motion.div>
+
           {/* Trust Bar */}
           <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
