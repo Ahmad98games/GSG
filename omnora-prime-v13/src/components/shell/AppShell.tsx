@@ -315,13 +315,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         className={cn(
           "relative min-h-screen flex flex-col transition-all duration-300",
           isElectron ? "pt-10" : "pt-0",
-          isCollapsed ? "ps-[60px]" : "ps-[240px]"
+          isCollapsed ? "ps-[64px]" : "ps-[240px]"
         )}
-        style={{ "--sidebar-width": isCollapsed ? "60px" : "240px" } as React.CSSProperties}
+        style={{ "--sidebar-width": isCollapsed ? "64px" : "240px" } as React.CSSProperties}
       >
         <GlobalTopBar />
         <IndustrialSidebar />
-        <div className="flex-1 relative">
+        <div className="flex-1 w-full flex flex-col min-h-0 relative">
           {children}
         </div>
       </div>

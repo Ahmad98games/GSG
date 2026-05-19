@@ -348,7 +348,7 @@ export default function DashboardPage() {
 
           <MobileAppBanner />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-max">
             <KpiCard 
               label="Monthly Revenue" 
               value={kpis?.totalSales || 0} 

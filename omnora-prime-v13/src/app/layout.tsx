@@ -12,6 +12,7 @@ import { LicenseInitializer } from "@/components/providers/LicenseInitializer";
 import { isRTL, getFontFamily } from "@/lib/locale-utils";
 import AskNoxis from "@/components/knowledge/AskNoxis";
 import { GlobalErrorBoundary } from "@/components/ui/GlobalErrorBoundary";
+import Script from "next/script";
 
 export const metadata = {
   title: 'Noxis — Industrial ERP for Factories',
@@ -82,11 +83,7 @@ export default async function RootLayout({
         <link rel="icon" href="/favicon.ico" type="image/x-icon" />
         <link rel="apple-touch-icon" href="/favicon.ico" />
         <script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8531123967455923"
-          crossOrigin="anonymous"
-        />
-        <script
+          id="ld-json-schema"
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
@@ -137,6 +134,12 @@ export default async function RootLayout({
         `}} />
       </head>
       <body className="antialiased">
+        <Script
+          id="adsense-loader"
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8531123967455923"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
         <NextIntlClientProvider locale={locale} messages={messages}>
           <AuditProvider>
             <QueryProvider>

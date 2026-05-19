@@ -293,7 +293,7 @@ export default function WhatsAppSettingsPage() {
             {/* Right Column: Preview & Test */}
             <div className="space-y-8">
               {/* Live Preview */}
-              <div className="bg-black border border-white/10 rounded-2xl p-6 relative overflow-hidden h-[500px] flex flex-col">
+              <div className="bg-black border border-white/10 rounded-2xl p-6 relative overflow-hidden min-h-[500px] h-auto flex flex-col">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-[10px] font-bold">N</div>

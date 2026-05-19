@@ -274,7 +274,7 @@ export default function KhataPage() {
                   className="space-y-8"
                 >
                    {/* Summary Cards */}
-                   <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                   <div className="grid grid-cols-1 md:grid-cols-4 gap-6 auto-rows-max">
                       <SummaryCard label="Total Debits" value={summary.totalDebits} icon={ArrowUpRight} />
                       <SummaryCard label="Total Credits" value={summary.totalCredits} icon={ArrowDownLeft} />
                       <SummaryCard label="Net Balance" value={summary.netBalance} icon={Wallet} />
@@ -326,7 +326,7 @@ export default function KhataPage() {
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
-                            className="grid grid-cols-1 md:grid-cols-4 gap-6 pt-4 border-t border-white/5 overflow-hidden"
+                            className="grid grid-cols-1 md:grid-cols-4 gap-6 pt-4 border-t border-white/5 overflow-hidden auto-rows-max"
                           >
                             <div className="space-y-2">
                               <label className="text-[9px] uppercase font-black text-gray-600 tracking-widest">Filter by Party</label>
