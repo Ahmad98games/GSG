@@ -322,6 +322,32 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <GlobalTopBar />
         <IndustrialSidebar />
         <div className="flex-1 w-full flex flex-col min-h-0 relative">
+          <div
+            className="fixed inset-0 pointer-events-none z-0 overflow-hidden"
+            aria-hidden="true"
+          >
+            {/* Omnora Labs OM watermark */}
+            <div style={{
+              position: 'absolute',
+              bottom: -20,
+              right: -20,
+              opacity: 0.015,
+              transform: 'rotate(-15deg)',
+              userSelect: 'none',
+              pointerEvents: 'none',
+            }}>
+              <img
+                src="/logos/omnoralabs.png"
+                alt=""
+                style={{
+                  width: 400,
+                  height: 400,
+                  objectFit: 'contain',
+                  filter: 'grayscale(1) brightness(10)',
+                }}
+              />
+            </div>
+          </div>
           {children}
         </div>
       </div>

@@ -430,8 +430,8 @@ export default function InvoiceGenerator() {
             </div>
 
             {/* Preview Panel */}
-            <div className="sticky top-24 overflow-hidden rounded-sm border border-white/10 bg-white shadow-2xl flex flex-col h-[842px] w-full max-w-[595px] mx-auto text-black font-sans print:fixed print:inset-0 print:m-0 print:border-none print:shadow-none print:w-full print:max-w-none print:h-auto invoice-preview">
-              <div className="flex-1 p-12 space-y-12 overflow-y-auto print:overflow-visible custom-scrollbar print:p-8">
+            <div className="sticky top-24 overflow-hidden rounded-sm border border-white/10 bg-white shadow-2xl flex flex-col h-[842px] w-full max-w-[595px] mx-auto text-black font-sans print:fixed print:inset-0 print:m-0 print:border-none print:shadow-none print:w-full print:max-w-none print:h-auto invoice-preview relative">
+              <div className="flex-1 p-12 pb-24 space-y-12 overflow-y-auto print:overflow-visible custom-scrollbar print:p-8">
                 {/* Header */}
                 <div className="flex justify-between items-start">
                   <div className="space-y-4">
@@ -583,6 +583,35 @@ export default function InvoiceGenerator() {
                     <span className="text-[120px] font-black tracking-[0.5em]">NOXIS</span>
                   </div>
                 )}
+              </div>
+              <div style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                borderTop: '1px solid #e5e7eb',
+                padding: '8px 24px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backgroundColor: '#ffffff'
+              }}>
+                <span style={{
+                  fontSize: 9,
+                  color: '#9CA3AF',
+                  fontFamily: 'Inter, sans-serif',
+                  letterSpacing: '0.05em',
+                }}>
+                  🔒 Securely logged by Noxis Hub
+                </span>
+                <span style={{
+                  fontSize: 9,
+                  color: '#9CA3AF',
+                  fontFamily: 'Inter, sans-serif',
+                  letterSpacing: '0.05em',
+                }}>
+                  Powered by Omnora Labs · noxishub.app
+                </span>
               </div>
             </div>
           </div>

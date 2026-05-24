@@ -1,3 +1,9 @@
+const WHATSAPP_FOOTER = `
+
+─────────────────
+🔒 Securely logged by Noxis Hub
+Powered by Omnora Labs | noxishub.app`;
+
 export const ALERT_TEMPLATES = {
   daily_summary: (data: {
     date: string,
@@ -15,7 +21,7 @@ export const ALERT_TEMPLATES = {
 ${data.lowStockCount > 0 ?
   `⚠️ Low Stock: *${data.lowStockCount} items*` : ''}
 
-_Powered by Noxis — Omnora Labs_
+_Powered by Noxis — Omnora Labs_${WHATSAPP_FOOTER}
   `.trim(),
   
   low_stock: (sku: {
@@ -30,7 +36,7 @@ Reorder Level: ${sku.reorderLevel} ${sku.unit}
 
 Tap to reorder: [link]
 
-_Noxis Inventory Alert_
+_Noxis Inventory Alert_${WHATSAPP_FOOTER}
   `.trim(),
   
   advance_request: (k: {
@@ -42,7 +48,7 @@ _Noxis Inventory Alert_
 Amount: *${k.amount}*
 Reason: ${k.reason}
 
-Please approve or reject in Noxis.
+Please approve or reject in Noxis.${WHATSAPP_FOOTER}
   `.trim(),
   
   invoice_reminder: (inv: {
@@ -59,7 +65,7 @@ Due Date: *${inv.dueDate}*
 
 Please arrange payment at your earliest.
 
-Thank you.
+Thank you.${WHATSAPP_FOOTER}
   `.trim(),
   
   production_target: (data: {
@@ -76,7 +82,7 @@ ${data.percentage >= 100 ? '✅ Target achieved!' :
   data.percentage >= 80 ? '⚡ Almost there!' :
   '⚠️ Behind target — check production floor'}
 
-_Noxis Production Alert_
+_Noxis Production Alert_${WHATSAPP_FOOTER}
   `.trim(),
 };
 

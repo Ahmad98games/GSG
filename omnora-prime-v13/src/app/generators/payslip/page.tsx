@@ -346,8 +346,8 @@ export default function PayslipGenerator() {
             </div>
 
             {/* Preview Side */}
-            <div className="sticky top-24 w-full max-w-[500px] mx-auto bg-white text-black p-8 shadow-2xl flex flex-col space-y-8 min-h-[600px] print:fixed print:inset-0 print:m-0 print:shadow-none print:max-w-none">
-              <div className="flex-1 space-y-8">
+            <div className="sticky top-24 w-full max-w-[500px] mx-auto bg-white text-black p-8 shadow-2xl flex flex-col space-y-8 min-h-[600px] print:fixed print:inset-0 print:m-0 print:shadow-none print:max-w-none relative">
+              <div className="flex-1 space-y-8 pb-20">
                 {/* Header */}
                 <div className="flex justify-between items-start border-b-2 border-black pb-6">
                   <div className="space-y-1">
@@ -455,6 +455,35 @@ export default function PayslipGenerator() {
                 <div className="text-center opacity-10 pointer-events-none">
                   <p className="text-[60px] font-black tracking-tighter uppercase italic leading-none">NOXIS</p>
                 </div>
+              </div>
+              <div style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                borderTop: '1px solid #e5e7eb',
+                padding: '8px 24px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backgroundColor: '#ffffff'
+              }}>
+                <span style={{
+                  fontSize: 9,
+                  color: '#9CA3AF',
+                  fontFamily: 'Inter, sans-serif',
+                  letterSpacing: '0.05em',
+                }}>
+                  🔒 Securely logged by Noxis Hub
+                </span>
+                <span style={{
+                  fontSize: 9,
+                  color: '#9CA3AF',
+                  fontFamily: 'Inter, sans-serif',
+                  letterSpacing: '0.05em',
+                }}>
+                  Powered by Omnora Labs · noxishub.app
+                </span>
               </div>
             </div>
           </div>

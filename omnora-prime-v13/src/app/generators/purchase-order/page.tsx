@@ -304,7 +304,7 @@ export default function POGenerator() {
             </div>
 
             {/* Preview Panel */}
-            <div className="w-full max-w-[595px] mx-auto bg-white text-black p-12 shadow-2xl space-y-12 min-h-[842px] print:fixed print:inset-0 print:m-0 print:shadow-none">
+            <div className="w-full max-w-[595px] mx-auto bg-white text-black p-12 pb-24 shadow-2xl space-y-12 min-h-[842px] relative print:fixed print:inset-0 print:m-0 print:shadow-none">
                <div className="flex justify-between items-start">
                   <div className="space-y-4">
                     <h2 className="text-2xl font-black uppercase tracking-tighter">{profile?.business_name || "Noxis Industrial"}</h2>
@@ -395,6 +395,36 @@ export default function POGenerator() {
 
                <div className="text-center opacity-5 pointer-events-none absolute bottom-12 left-0 right-0">
                   <p className="text-[80px] font-black tracking-tighter uppercase italic opacity-20">NOXIS HUB</p>
+               </div>
+
+               <div style={{
+                 position: 'absolute',
+                 bottom: 0,
+                 left: 0,
+                 right: 0,
+                 borderTop: '1px solid #e5e7eb',
+                 padding: '8px 24px',
+                 display: 'flex',
+                 alignItems: 'center',
+                 justifyContent: 'space-between',
+                 backgroundColor: '#ffffff'
+               }}>
+                 <span style={{
+                   fontSize: 9,
+                   color: '#9CA3AF',
+                   fontFamily: 'Inter, sans-serif',
+                   letterSpacing: '0.05em',
+                 }}>
+                   🔒 Securely logged by Noxis Hub
+                 </span>
+                 <span style={{
+                   fontSize: 9,
+                   color: '#9CA3AF',
+                   fontFamily: 'Inter, sans-serif',
+                   letterSpacing: '0.05em',
+                 }}>
+                   Powered by Omnora Labs · noxishub.app
+                 </span>
                </div>
             </div>
           </div>

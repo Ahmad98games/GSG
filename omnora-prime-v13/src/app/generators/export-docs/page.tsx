@@ -122,7 +122,7 @@ function CommercialInvoiceTab({ profile }: { profile: any }) {
         </div>
       </div>
 
-      <div className="glass-panel p-12 bg-white text-black min-h-[1000px] shadow-2xl relative overflow-hidden">
+      <div className="glass-panel p-12 pb-24 bg-white text-black min-h-[1000px] shadow-2xl relative overflow-hidden">
         {/* Simplified Preview */}
         <div className="flex justify-between items-start border-b-2 border-black pb-8 mb-8">
           <div className="space-y-1">
@@ -147,6 +147,36 @@ function CommercialInvoiceTab({ profile }: { profile: any }) {
         </div>
         <div className="flex items-center justify-center h-96 border border-dashed border-gray-200">
           <span className="text-gray-300 font-mono text-[10px] uppercase">Line Items Table Area</span>
+        </div>
+
+        <div style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          borderTop: '1px solid #e5e7eb',
+          padding: '8px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          backgroundColor: '#ffffff'
+        }}>
+          <span style={{
+            fontSize: 9,
+            color: '#9CA3AF',
+            fontFamily: 'Inter, sans-serif',
+            letterSpacing: '0.05em',
+          }}>
+            🔒 Securely logged by Noxis Hub
+          </span>
+          <span style={{
+            fontSize: 9,
+            color: '#9CA3AF',
+            fontFamily: 'Inter, sans-serif',
+            letterSpacing: '0.05em',
+          }}>
+            Powered by Omnora Labs · noxishub.app
+          </span>
         </div>
       </div>
     </motion.div>
