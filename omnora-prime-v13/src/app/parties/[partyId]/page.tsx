@@ -15,6 +15,8 @@ import {
 import { usePersona } from "@/hooks/usePersona";
 import { createClient } from "@/lib/supabase/client";
 import { sendWhatsAppAlert } from "@/lib/whatsapp/alertEngine";
+import { formatCurrency } from "@/lib/currency/currencyEngine";
+import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 
 import { useParams, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -147,6 +149,38 @@ export default function PartyDetailPage() {
   const router = useRouter();
   const { fmt, businessId } = usePersona();
   const supabase = createClient();
+  const { profile } = useBusinessProfile();
+
+  const handleWhatsAppReminder = (party: Party) => {
+    const phone = formatPhoneForWhatsApp(party.phone || "")
+    
+    const balance = party.current_balance
+    const isOwed = balance > 0 // They owe us
+    
+    let message = ''
+    if (isOwed) {
+      message = `Assalam o Alaikum ${party.name},\n\nThis is a friendly reminder that you have an outstanding balance of ${formatCurrency(balance, (profile?.currency || 'PKR') as any)} with ${profile?.business_name}.\n\nPlease arrange payment at your earliest convenience. Thank you.\n\n🔒 Sent via Noxis Hub | Omnora Labs`
+    } else {
+      message = `Assalam o Alaikum ${party.name},\n\nPlease contact us regarding your account with ${profile?.business_name}.\n\nThank you.\n\n🔒 Noxis Hub | Omnora Labs`
+    }
+    
+    const encoded = encodeURIComponent(message)
+    const url = `https://wa.me/${phone}?text=${encoded}`
+    window.open(url, '_blank')
+  }
+
+  function formatPhoneForWhatsApp(phone: string): string {
+    const digits = (phone || '').replace(/[^0-9]/g, '')
+    if (digits.startsWith('03') &&
+        digits.length === 11) {
+      return '92' + digits.slice(1)
+    }
+    if (digits.startsWith('0') &&
+        digits.length === 11) {
+      return '92' + digits.slice(1)
+    }
+    return digits
+  }
   
   const partyId = params.partyId as string;
   const [activeTab, setActiveTab] = useState("history");
@@ -357,6 +391,25 @@ export default function PartyDetailPage() {
            </button>
            <div className="h-4 w-px bg-white/10 mx-4" />
            <h1 className="text-[10px] uppercase font-black tracking-[0.3em] text-gray-400">Party Identity: {party.name}</h1>
+           
+           {party.phone && (
+              <div className="ml-auto flex items-center gap-2">
+                 <a
+                    href={`tel:${party.phone}`}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                 >
+                    <Phone size={12} />
+                    Call
+                 </a>
+                 <button
+                    onClick={() => handleWhatsAppReminder(party)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-[#25D366]/30 text-[#25D366] hover:bg-[#25D366]/10 transition-colors"
+                 >
+                    <MessageCircle size={12} />
+                    WhatsApp Reminder
+                 </button>
+              </div>
+           )}
         </header>
 
         <div className="p-8 max-w-[1600px] mx-auto w-full flex flex-col lg:flex-row gap-8">

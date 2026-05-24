@@ -143,11 +143,23 @@ export default React.memo(function IndustrialSidebar() {
     {
       label: 'TOOLS',
       items: [
+        { 
+          id: 'import', 
+          name: "Import Data", 
+          href: "/import", 
+          icon: Upload,
+          badge: (() => {
+            const launchDate = new Date("2025-05-19");
+            const currentDate = new Date();
+            const diffTime = currentDate.getTime() - launchDate.getTime();
+            const diffDays = diffTime / (1000 * 60 * 60 * 24);
+            return diffDays >= 0 && diffDays <= 30 ? "NEW" : undefined;
+          })()
+        },
         { id: 'generators', name: t('nav_generators', "Generators"), href: "/generators", icon: FileText },
         { id: 'calculators', name: t('nav_calculators', "Calculators"), href: "/calculators", icon: Calculator },
         { id: 'converters', name: t('nav_converters', "Unit Converters"), href: "/converters", icon: ArrowLeftRight },
         { id: 'file-morph', name: t('nav_file_morph', "PDF & File Tools"), href: "/file-morph", icon: Layers },
-        { id: 'import', name: t('nav_import', "Smart Import"), href: "/import", icon: Upload },
       ]
     },
     {

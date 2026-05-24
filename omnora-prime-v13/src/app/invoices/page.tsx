@@ -13,6 +13,7 @@ import { sendWhatsAppAlert, ALERT_TEMPLATES } from "@/lib/whatsapp/alertEngine";
 import { usePersona } from "@/hooks/usePersona";
 import { createClient } from "@/lib/supabase/client";
 import { useSidebarState } from "@/hooks/useSidebarState";
+import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import EmptyState from "@/components/ui/EmptyState";
@@ -164,6 +165,31 @@ function InvoiceRow({ inv }: { inv: any }) {
   const controls = useRowHighlight(inv.status);
   const { fmt, fmtDate } = usePersona();
   const router = useRouter();
+  const { profile } = useBusinessProfile();
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const isOverdue = (inv.status === 'posted' || inv.status === 'issued' || inv.status === 'overdue') && inv.due_date && inv.due_date < todayStr;
+
+  const handleWhatsAppSend = () => {
+    if (!inv.party?.phone) return;
+    const msg = `Assalam o Alaikum ${inv.party.name},\n\nThis is a reminder for Invoice ${inv.invoice_no} of ${fmt(inv.balance_due)} which was due on ${fmtDate(inv.due_date || inv.issue_date)}.\n\nPlease arrange payment at your earliest.\n\nThank you,\n${profile?.business_name || 'our business'}\n\n🔒 Noxis Hub | Omnora Labs`;
+    const phone = formatPhoneForWhatsApp(inv.party.phone);
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+    window.open(url, '_blank');
+  };
+
+  function formatPhoneForWhatsApp(phone: string): string {
+    const digits = (phone || '').replace(/[^0-9]/g, '')
+    if (digits.startsWith('03') &&
+        digits.length === 11) {
+      return '92' + digits.slice(1)
+    }
+    if (digits.startsWith('0') &&
+        digits.length === 11) {
+      return '92' + digits.slice(1)
+    }
+    return digits
+  }
 
   const getStatusStyle = (status: string) => {
     switch (status) {
@@ -237,25 +263,41 @@ function InvoiceRow({ inv }: { inv: any }) {
       </td>
       <td className="px-8 py-5 text-right">
         <div className="flex items-center justify-end space-x-2">
-          {inv.status !== 'paid' && (
+          {isOverdue ? (
             <button 
-              onClick={() => {
-                const msg = ALERT_TEMPLATES.invoice_reminder({
-                  partyName: inv.party?.name || 'Customer',
-                  amount: fmt(inv.balance_due),
-                  dueDate: fmtDate(inv.due_date || inv.issue_date),
-                  invoiceNo: inv.invoice_no
-                });
-                sendWhatsAppAlert(inv.party?.phone || '', msg);
+              onClick={(e) => {
+                e.stopPropagation();
+                handleWhatsAppSend();
               }}
-              className="p-2 bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 transition-all rounded-sm"
-              title="Send WhatsApp Reminder"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider border border-[#25D366]/30 text-[#25D366] hover:bg-[#25D366]/10 transition-colors rounded-sm"
+              title="Send Reminder"
             >
-              <MessageCircle size={16} />
+              <MessageCircle size={12} />
+              <span>Send Reminder</span>
             </button>
+          ) : (
+            inv.status !== 'paid' && (
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const msg = ALERT_TEMPLATES.invoice_reminder({
+                    partyName: inv.party?.name || 'Customer',
+                    amount: fmt(inv.balance_due),
+                    dueDate: fmtDate(inv.due_date || inv.issue_date),
+                    invoiceNo: inv.invoice_no
+                  });
+                  sendWhatsAppAlert(inv.party?.phone || '', msg);
+                }}
+                className="p-2 bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 transition-all rounded-sm"
+                title="Send WhatsApp Reminder"
+              >
+                <MessageCircle size={16} />
+              </button>
+            )
           )}
           <Link 
             href={`/invoices/${inv.id}`}
+            onClick={(e) => e.stopPropagation()}
             className="p-2 bg-white/5 text-gray-500 hover:text-white hover:bg-white/10 transition-all inline-block rounded-sm"
           >
             <ChevronRight size={16} />
