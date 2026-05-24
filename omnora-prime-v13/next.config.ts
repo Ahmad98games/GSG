@@ -37,7 +37,10 @@ const isStaticBuild =
   process.env.CLOUDFLARE_DEPLOY === 'true';
 
 const nextConfig: NextConfig = {
-  output: isStaticBuild ? 'export' : 'standalone',
+  output: 'export',
+  images: {
+    unoptimized: true,
+  },
   serverExternalPackages: serverOnlyPackages,
 
   turbopack: {},

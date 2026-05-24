@@ -57,3 +57,5 @@ Industrial deployment requires an active license. For activation issues, contact
 ---
 © 2024 NOXIS Labs. Built for the Factory Floor.
 
+<!-- deployment-trigger -->
+

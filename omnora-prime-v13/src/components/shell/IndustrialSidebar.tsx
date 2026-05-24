@@ -32,7 +32,8 @@ import {
   Cpu,
   ShieldAlert,
   LayoutGrid,
-  Microscope
+  Microscope,
+  Upload
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import * as Tooltip from "@radix-ui/react-tooltip";
@@ -144,6 +145,7 @@ export default React.memo(function IndustrialSidebar() {
         { id: 'calculators', name: t('nav_calculators', "Calculators"), href: "/calculators", icon: Calculator },
         { id: 'converters', name: t('nav_converters', "Unit Converters"), href: "/converters", icon: ArrowLeftRight },
         { id: 'file-morph', name: t('nav_file_morph', "PDF & File Tools"), href: "/file-morph", icon: Layers },
+        { id: 'import', name: t('nav_import', "Smart Import"), href: "/import", icon: Upload },
       ]
     },
     {
@@ -221,7 +223,7 @@ export default React.memo(function IndustrialSidebar() {
                 className="flex flex-col text-left"
               >
                 <span className="text-xs font-black text-noxis-text tracking-tighter uppercase italic">Noxis Hub</span>
-                <span className="text-[8px] text-noxis-text-muted font-bold uppercase tracking-widest leading-none">PersonaEngine v2.0</span>
+                <span className="text-[8px] text-noxis-text-muted font-bold uppercase tracking-widest leading-none">{profile?.business_name || 'Noxis Hub'}</span>
               </motion.div>
             )}
           </button>
@@ -238,7 +240,7 @@ export default React.memo(function IndustrialSidebar() {
           ) : (
             NAVIGATION_GROUPS.map((group, idx) => {
               const visibleItems = group.items.filter(item => 
-                hasModule(item.id as string) && 
+                (item.id === 'import' || hasModule(item.id as string)) && 
                 (role && hasModulePermission(role, item.id))
               );
               if (visibleItems.length === 0) return null;
@@ -326,7 +328,7 @@ export default React.memo(function IndustrialSidebar() {
   );
 });
 
-const SidebarItem = React.memo(function SidebarItem({ href, icon: Icon, label, isCollapsed, isActive, badge }: { 
+const SidebarItem = React.memo(function SidebarItem({ href, icon: Icon, label: rawLabel, isCollapsed, isActive, badge }: { 
   href: string; 
   icon: React.ElementType; 
   label: string; 
@@ -334,6 +336,7 @@ const SidebarItem = React.memo(function SidebarItem({ href, icon: Icon, label, i
   isActive?: boolean;
   badge?: string;
 }) {
+  const label = rawLabel ? (rawLabel.charAt(0).toUpperCase() + rawLabel.slice(1)) : '';
   const content = (
     <Link
       href={href}

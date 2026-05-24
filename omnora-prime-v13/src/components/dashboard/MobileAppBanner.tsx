@@ -11,10 +11,10 @@ export function MobileAppBanner() {
   const { profile } = useBusinessProfile();
   const supabase = createClient();
 
-  const [dismissed, setDismissed] = useState(true);
+  const [showBanner, setShowBanner] = useState(false);
 
   useEffect(() => {
-    setDismissed(localStorage.getItem('mobile_banner_dismissed') === 'true');
+    setShowBanner(localStorage.getItem('apk_banner_dismissed') !== 'true');
   }, []);
 
   const { data: devices } = useQuery({
@@ -30,40 +30,30 @@ export function MobileAppBanner() {
     enabled: !!profile?.id
   });
 
-  if (dismissed) return null;
+  if (!showBanner) return null;
   if (devices && devices.length > 0) return null;
 
   const APK_URL = 'https://github.com/omnoralabs/noxis-releases/releases/latest/download/noxis.apk';
 
   return (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-[#111418] border border-white/[0.06] rounded-sm mb-6 gap-4">
-      <div className="flex items-center gap-4">
-        <div className="text-2xl shrink-0">📱</div>
-        <div>
-          <p className="text-sm font-medium text-white">
-            Get Noxis on your phone
-          </p>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Scan barcodes, log production, and get alerts from anywhere in the factory.
-            {tier !== 'lite' && ' Included in your plan.'}
-          </p>
-        </div>
+    <div className="flex items-center justify-between px-4 py-2.5 bg-[#0F1114] border border-[#10B981]/20 rounded-sm mb-4">
+      <div className="flex items-center gap-3">
+        <span className="text-sm">📱</span>
+        <p className="text-xs text-gray-400">
+          Get the Android app — scan barcodes and get alerts on the go
+        </p>
       </div>
-      
-      <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
-        <a
-          href={APK_URL}
-          className="px-4 py-2 bg-[#10B981] text-black text-xs font-bold uppercase tracking-widest hover:bg-[#34d399] transition-colors"
-        >
+      <div className="flex items-center gap-3 flex-shrink-0">
+        <a href={APK_URL}
+          className="text-xs font-semibold text-[#10B981] hover:text-emerald-300 transition-colors">
           Download APK
         </a>
         <button
           onClick={() => {
-            localStorage.setItem('mobile_banner_dismissed', 'true');
-            setDismissed(true);
+            localStorage.setItem('apk_banner_dismissed', 'true');
+            setShowBanner(false);
           }}
-          className="text-gray-600 hover:text-gray-400 text-xs cursor-pointer font-bold uppercase tracking-wider px-2 py-1 transition-colors"
-        >
+          className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
           Dismiss
         </button>
       </div>

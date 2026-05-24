@@ -28,7 +28,11 @@
     "electron:release": "npm run compile:electron && next build && electron-builder --publish onTag",
     "postinstall": "electron-builder install-app-deps",
     "license:generate": "npx ts-node scripts/generate-license.ts",
-    "license:trial": "npx ts-node --compiler-options \"{\\\"module\\\": \\\"commonjs\\\"}\" scripts/generate-license.ts --trial"
+    "license:trial": "npx ts-node --compiler-options \"{\\\"module\\\": \\\"commonjs\\\"}\" scripts/generate-license.ts --trial",
+    "mobile:init": "npm install @capacitor/core @capacitor/cli && npx cap init \"Noxis Hub\" \"com.omnora.noxishub\" --web-dir=out",
+    "mobile:add-android": "npm install @capacitor/android && npx cap add android",
+    "mobile:build": "npm run build && npx cap sync android",
+    "mobile:open": "npx cap open android"
   },
   "dependencies": {
     "@capacitor/core": "^8.3.1",

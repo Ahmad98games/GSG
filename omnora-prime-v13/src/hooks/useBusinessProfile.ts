@@ -9,6 +9,38 @@ export const useBusinessProfile = () => {
   const fetchAttempted = useRef(false);
 
   useEffect(() => {
+    // 1. Try localStorage first (instant, 0ms)
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem('noxis_avatar');
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (profile) {
+            if (profile.avatar_type !== parsed.type || 
+                profile.avatar_preset_id !== parsed.preset_id || 
+                profile.avatar_url !== parsed.url) {
+              setProfile({
+                ...profile,
+                avatar_type: parsed.type,
+                avatar_preset_id: parsed.preset_id,
+                avatar_url: parsed.url,
+                avatar_last_changed: parsed.saved_at,
+              });
+            }
+          } else {
+            setProfile({
+              avatar_type: parsed.type,
+              avatar_preset_id: parsed.preset_id,
+              avatar_url: parsed.url,
+              avatar_last_changed: parsed.saved_at,
+            } as any);
+          }
+        } catch (e) {
+          console.error('Failed to parse cached avatar on hook mount:', e);
+        }
+      }
+    }
+
     // Skip if we already attempted fetching in this session to prevent infinite loops
     if (fetchAttempted.current) return;
     fetchAttempted.current = true;

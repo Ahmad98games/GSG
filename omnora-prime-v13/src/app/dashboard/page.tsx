@@ -355,6 +355,7 @@ export default function DashboardPage() {
               icon={DollarSign} 
               isLoading={isKpiLoading} 
               chartData={chartData} 
+              sub={Number(kpis?.totalSales || 0) > 0 ? "This month" : "No invoices posted yet"}
             />
             <KpiCard 
               label="Net Profit (MTD)" 
@@ -362,6 +363,7 @@ export default function DashboardPage() {
               icon={TrendingUp} 
               isLoading={isKpiLoading}
               chartData={chartData.map(d => ({ ...d, velocity: d.velocity * 0.2 }))} 
+              sub={Number(kpis?.netProfit || 0) > 0 ? "After expenses" : "Add transactions to calculate"}
             />
             <KpiCard 
               label="Accounts Receivable" 
@@ -369,6 +371,7 @@ export default function DashboardPage() {
               icon={Clock} 
               isLoading={isKpiLoading}
               chartData={chartData.map(d => ({ ...d, velocity: d.velocity * 0.5 }))} 
+              sub={Number(kpis?.totalReceivables || 0) > 0 ? "Owed to you by customers" : "All accounts settled ✓"}
             />
             <KpiCard 
               label={getIndustryLabel('stock') + " Value"} 
@@ -376,6 +379,7 @@ export default function DashboardPage() {
               icon={Package} 
               isLoading={isKpiLoading}
               chartData={chartData.map(d => ({ ...d, velocity: d.velocity * 0.3 }))} 
+              sub="Current inventory value"
             />
             
             {/* Contextual Industry Widgets */}
@@ -391,8 +395,20 @@ export default function DashboardPage() {
               <KpiCard label="Avg. Moisture" value="14.2%" icon={Activity} trend="Stable" />
             )}
 
-            <KpiCard label="Pending Logistics" value={kpis?.pendingDeliveries || 0} icon={Truck} isLoading={isKpiLoading} />
-            <KpiCard label="Liquidity (Cash)" value={kpis?.cashOnHand || 0} icon={Wallet} isLoading={isKpiLoading} />
+            <KpiCard 
+              label="Pending Logistics" 
+              value={kpis?.pendingDeliveries || 0} 
+              icon={Truck} 
+              isLoading={isKpiLoading} 
+              sub={Number(kpis?.pendingDeliveries || 0) > 0 ? "Awaiting delivery" : "No pending dispatches"}
+            />
+            <KpiCard 
+              label="Liquidity (Cash)" 
+              value={kpis?.cashOnHand || 0} 
+              icon={Wallet} 
+              isLoading={isKpiLoading} 
+              sub={Number(kpis?.cashOnHand || 0) > 0 ? "Available cash" : "Record a cash entry to start"}
+            />
             <KpiCard label="Estimated Tax Liab." value={kpis?.taxLiability || 0} icon={ShieldCheck} isLoading={isKpiLoading} />
             <CCTVWidget />
           </div>
@@ -529,7 +545,7 @@ function KpiCard({ label, value, sub, isLoading }: any) {
       
       {/* Sub label */}
       {sub && (
-        <p className="mt-1 text-xxs text-gray-600">
+        <p className="text-[11px] text-gray-600 mt-1">
           {sub}
         </p>
       )}

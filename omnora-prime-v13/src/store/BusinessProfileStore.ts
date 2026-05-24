@@ -72,7 +72,32 @@ export const useBusinessProfileStore = create<BusinessProfileState>()(
       name: 'NOXIS-profile-cache',
       storage: createJSONStorage(() => (typeof window !== 'undefined' ? localStorage : (null as any))),
       onRehydrateStorage: () => (state: BusinessProfileState | undefined) => {
-        if (state) state.setLoaded(true);
+        if (state) {
+          state.setLoaded(true);
+          if (typeof window !== 'undefined') {
+            const cached = localStorage.getItem('noxis_avatar');
+            if (cached) {
+              try {
+                const parsed = JSON.parse(cached);
+                if (state.profile) {
+                  state.profile.avatar_type = parsed.type;
+                  state.profile.avatar_preset_id = parsed.preset_id;
+                  state.profile.avatar_url = parsed.url;
+                  state.profile.avatar_last_changed = parsed.saved_at;
+                } else {
+                  state.profile = {
+                    avatar_type: parsed.type,
+                    avatar_preset_id: parsed.preset_id,
+                    avatar_url: parsed.url,
+                    avatar_last_changed: parsed.saved_at,
+                  } as any;
+                }
+              } catch (e) {
+                console.error('Failed to parse cached avatar on hydration:', e);
+              }
+            }
+          }
+        }
       },
     }
   )

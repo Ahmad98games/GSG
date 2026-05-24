@@ -9,6 +9,7 @@ export type Dictionary = {
     cctv: string;
     generators: string;
     settings: string;
+    import: string;
   };
   inventory: {
     stock: string;
@@ -43,7 +44,8 @@ const en: Dictionary = {
     payroll: "Payroll",
     cctv: "Sentinel CCTV",
     generators: "Generators",
-    settings: "Settings"
+    settings: "Settings",
+    import: "Smart Import"
   },
   inventory: {
     stock: "Current Stock",
@@ -78,7 +80,8 @@ const ur: Partial<Dictionary> = {
     payroll: "تنخواہیں",
     cctv: "کیمرے",
     generators: "ڈاکومنٹ جنریٹر",
-    settings: "ترتیبات"
+    settings: "ترتیبات",
+    import: "اسمارٹ امپورٹ"
   },
   inventory: {
     stock: "موجودہ مال",
@@ -113,7 +116,8 @@ const ar: Partial<Dictionary> = {
     payroll: "الرواتب",
     cctv: "المراقبة",
     generators: "المولدات",
-    settings: "الإعدادات"
+    settings: "الإعدادات",
+    import: "الاستيراد الذكي"
   },
   inventory: {
     stock: "المخزون الحالي",
@@ -140,7 +144,8 @@ const hi: Partial<Dictionary> = {
     payroll: "पेरोल",
     cctv: "सीसीटीवी",
     generators: "जनरेटर",
-    settings: "सेटिंग्स"
+    settings: "सेटिंग्स",
+    import: "स्मार्ट आयात"
   },
   inventory: {
     stock: "वर्तमान स्टॉक",

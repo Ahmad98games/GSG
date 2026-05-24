@@ -223,8 +223,41 @@ export default function SettingsPage() {
       }
 
       if (!profile) return;
-      
-      const { error } = await supabase
+
+      const avatarType = profile.avatar_type || 'preset';
+      const avatarPresetId = profile.avatar_preset_id ? Number(profile.avatar_preset_id) : 1;
+      const avatarUrl = profile.avatar_url || logoUrl || '';
+      const avatarLastChanged = new Date().toISOString();
+
+      // Layer 1: localStorage immediately
+      localStorage.setItem('noxis_avatar', JSON.stringify({
+        type: avatarType,
+        preset_id: avatarPresetId,
+        url: avatarUrl || null,
+        saved_at: avatarLastChanged,
+      }));
+
+      // Persist the 14-day lock date in localStorage
+      localStorage.setItem('noxis_avatar_lock', avatarLastChanged);
+
+      // Layer 2: SQLite local config via window.electronAPI
+      if ((window as any).electronAPI?.setConfig) {
+        try {
+          await (window as any).electronAPI.setConfig(
+            'avatar',
+            JSON.stringify({
+              type: avatarType,
+              preset_id: avatarPresetId,
+              url: avatarUrl || null,
+            })
+          );
+        } catch (err) {
+          console.error('Failed to set local SQLite config via electronAPI:', err);
+        }
+      }
+
+      // Layer 3: Supabase (async, background, fire-and-forget)
+      supabase
         .from('business_profiles')
         .update({
           business_name: profile.business_name,
@@ -235,44 +268,46 @@ export default function SettingsPage() {
           industry_key: profile.industry_key,
           worker_term: profile.worker_term,
           logo_url: logoUrl,
-          avatar_type: profile.avatar_type || 'preset',
-          avatar_preset_id: profile.avatar_preset_id ? Number(profile.avatar_preset_id) : 1,
-          avatar_url: profile.avatar_url || logoUrl || '',
-          avatar_last_changed: profile.avatar_last_changed || null
+          avatar_type: avatarType,
+          avatar_preset_id: avatarPresetId,
+          avatar_url: avatarUrl,
+          avatar_last_changed: avatarLastChanged
         })
         .eq('id', profile.id)
+        .then(({ error }: { error: any }) => {
+          if (error) {
+            console.error('Background Supabase profile update error:', error);
+          }
+        });
 
-      if (error) {
-        toastError('Failed to save profile', error.message);
-      } else {
-        // Sync to local SQLite backup for high-speed local offline loading
-        await fetch('/api/settings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'local_config',
-            data: { 
-              business_id: profile.id,
-              business_name: profile.business_name || '',
-              owner_name: (profile as any).owner_name || '',
-              avatar_type: profile.avatar_type || 'preset',
-              avatar_preset_id: profile.avatar_preset_id ? Number(profile.avatar_preset_id) : 1,
-              avatar_url: profile.avatar_url || '',
-              avatar_last_changed: profile.avatar_last_changed || ''
-            }
-          })
-        }).catch(e => console.error('Failed to sync to local SQLite backup:', e));
+      // Sync to local SQLite backup for high-speed local offline loading
+      fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'local_config',
+          data: { 
+            business_id: profile.id,
+            business_name: profile.business_name || '',
+            owner_name: (profile as any).owner_name || '',
+            avatar_type: avatarType,
+            avatar_preset_id: avatarPresetId,
+            avatar_url: avatarUrl,
+            avatar_last_changed: avatarLastChanged
+          }
+        })
+      }).catch(e => console.error('Failed to sync to local SQLite backup:', e));
 
-        toastSuccess('Profile updated successfully!', 'Your corporate identity node was updated successfully.');
-        const updatedProfile = { 
-          ...profile, 
-          logo_url: logoUrl,
-          avatar_type: profile.avatar_type || 'preset',
-          avatar_preset_id: profile.avatar_preset_id ? Number(profile.avatar_preset_id) : 1,
-          avatar_url: profile.avatar_url || logoUrl || ''
-        };
-        setProfile(updatedProfile as any);
-      }
+      toastSuccess('Profile updated successfully!', 'Your corporate identity node was updated successfully.');
+      const updatedProfile = { 
+        ...profile, 
+        logo_url: logoUrl,
+        avatar_type: avatarType,
+        avatar_preset_id: avatarPresetId,
+        avatar_url: avatarUrl,
+        avatar_last_changed: avatarLastChanged
+      };
+      setProfile(updatedProfile as any);
     } catch (err: any) {
       toastError("Failed to update profile", err.message);
     } finally {
@@ -409,7 +444,8 @@ export default function SettingsPage() {
                         return name.substring(0, Math.min(name.length, 2)).toUpperCase();
                       })();
 
-                      const lastChanged = profile?.avatar_last_changed ? new Date(profile.avatar_last_changed) : null;
+                      const lastChangedStr = profile?.avatar_last_changed || (typeof window !== 'undefined' ? localStorage.getItem('noxis_avatar_lock') : null);
+                      const lastChanged = lastChangedStr ? new Date(lastChangedStr) : null;
                       const now = new Date();
                       const diffTime = lastChanged ? now.getTime() - lastChanged.getTime() : null;
                       const diffDays = diffTime !== null ? diffTime / (1000 * 60 * 60 * 24) : null;

@@ -239,6 +239,22 @@ export default function DownloadPage() {
                 )}
               </button>
 
+              {/* Deep Link Launch shortcut */}
+              <button
+                onClick={() => {
+                  window.location.href = 'noxishub://open'
+                  setTimeout(() => {
+                    if (document.hasFocus()) {
+                      alert("If the Noxis Hub app is not opening, please download and install the APK first.")
+                    }
+                  }, 2000)
+                }}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-white/5 border border-white/10 hover:bg-white/10 text-gray-300 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition-all"
+              >
+                <Smartphone className="w-3.5 h-3.5" />
+                <span>Open Noxis Hub App</span>
+              </button>
+
               {/* Trial Support Segment */}
               <div className="pt-6 border-t border-white/5 space-y-4">
                 <div className="flex flex-col items-center justify-center text-center space-y-2">
@@ -359,6 +375,22 @@ export default function DownloadPage() {
                   <Smartphone className="w-4 h-4" />
                   <span>Download for Android (.apk)</span>
                 </a>
+
+                {/* Deep Link Launch Shortcut */}
+                <button
+                  onClick={() => {
+                    window.location.href = 'noxishub://open'
+                    setTimeout(() => {
+                      if (document.hasFocus()) {
+                        alert("If the Noxis Hub app is not opening, please verify that it is installed on your Android device.")
+                      }
+                    }, 2000)
+                  }}
+                  className="w-full flex items-center justify-center gap-3 py-4 bg-white/5 border border-white/10 hover:bg-white/10 text-gray-300 text-xs font-black uppercase tracking-[0.2em] rounded-xl transition-all"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span>Launch Android App</span>
+                </button>
               </div>
 
               {/* Walkthrough Guide */}

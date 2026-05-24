@@ -71,6 +71,22 @@ export default function CCTVWidget() {
 
   if (isLoading) return <div className="col-span-2 h-64 bg-white/[0.02] animate-pulse rounded-sm border border-white/5" />;
 
+  if (cameras.length === 0) {
+    return (
+      <div className="col-span-2 flex items-center justify-between p-3 bg-[#0F1114] border border-white/[0.05] rounded-sm mt-4">
+        <div className="flex items-center gap-3">
+          <div className="text-gray-600 text-sm">📹</div>
+          <div>
+            <p className="text-xs text-gray-500">No cameras configured</p>
+          </div>
+        </div>
+        <a href="/cctv" className="text-xs text-[#60A5FA] hover:text-blue-300 transition-colors">
+          Add camera →
+        </a>
+      </div>
+    );
+  }
+
   return (
     <div className={cn(
       "col-span-2 relative glass-panel border overflow-hidden transition-all duration-300",

@@ -14,7 +14,7 @@ export const ROLE_ROUTE_PERMISSIONS: Record<StaffRole, string[]> = {
     '/dispatch', '/invoices', '/parties', '/purchase', '/orders',
     '/khata', '/cashflow', '/reports', '/audit', '/cctv', '/quick-entry',
     '/analytics', '/stock', '/generators', '/calculators', '/converters',
-    '/file-morph', '/messaging', '/pairing', '/portal',
+    '/file-morph', '/messaging', '/pairing', '/portal', '/import',
     // Manager cannot access /settings (billing/users)
   ],
   accountant: [
@@ -45,7 +45,7 @@ export const ROLE_MODULE_MAP: Record<StaffRole, string[]> = {
     'dispatch', 'invoices', 'parties', 'purchase', 'orders',
     'khata', 'cashflow', 'reports', 'audit', 'cctv', 'quick-entry',
     'analytics', 'generators', 'calculators', 'converters',
-    'file-morph', 'messaging', 'pairing',
+    'file-morph', 'messaging', 'pairing', 'import',
   ],
   accountant: [
     'dashboard', 'khata', 'invoices', 'reports', 'parties',

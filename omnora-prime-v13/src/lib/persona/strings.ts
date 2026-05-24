@@ -177,7 +177,8 @@ export const phase11Strings = {
     "nav_inventory": "Inventory",
     "nav_lens": "Noxis Lens",
     "nav_converters": "Unit Converters",
-    "nav_file_morph": "PDF & File Tools"
+    "nav_file_morph": "PDF & File Tools",
+    "nav_import": "Smart Import"
   },
 
   // --- SOUTH ASIAN (Urdu/Roman Urdu Context) ---
@@ -347,7 +348,8 @@ export const phase11Strings = {
     "nav_inventory": "انوینٹری",
     "nav_lens": "نوکس لینس",
     "nav_converters": "یونٹ کنورٹرز",
-    "nav_file_morph": "پی ڈی ایف اور فائل ٹولز"
+    "nav_file_morph": "پی ڈی ایف اور فائل ٹولز",
+    "nav_import": "اسمارٹ امپورٹ"
   },
 
   // --- REGIONAL (Specialized Textile/Industrial) ---
