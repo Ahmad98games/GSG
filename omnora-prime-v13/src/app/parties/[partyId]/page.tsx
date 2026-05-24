@@ -234,6 +234,20 @@ export default function PartyDetailPage() {
     enabled: !!party && (party.party_type === 'supplier' || party.party_type === 'both')
   });
 
+  const { data: commitments = [] } = useQuery<any[]>({
+    queryKey: ['party_commitments', partyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('payment_promises')
+        .select('*')
+        .eq('party_id', partyId)
+        .order('promise_date', { ascending: false });
+      if (error) return [];
+      return data || [];
+    },
+    enabled: !!party
+  });
+
   // Portal link generation
   const generatePortalLink = async () => {
     if (!businessId) return;
@@ -640,18 +654,49 @@ export default function PartyDetailPage() {
                                </div>
                             </div>
 
-                            <div className="space-y-4">
-                               <div className="flex justify-between items-center">
-                                  <h3 className="text-[10px] uppercase font-black text-gray-500 tracking-widest">Commitment Log</h3>
-                                  <button className="flex items-center space-x-2 bg-white/5 hover:bg-white/10 px-4 py-2 text-[10px] uppercase font-black tracking-widest border border-white/5 transition-all">
-                                     <Plus size={12} />
-                                     <span>Log Commitment</span>
-                                  </button>
-                               </div>
-                               <div className="border border-white/5 p-8 text-center text-gray-600 italic text-xs uppercase tracking-widest bg-white/[0.01]">
-                                  No specific commitments logged for this identity node.
-                               </div>
-                            </div>
+                             <div className="space-y-4">
+                                <div className="flex justify-between items-center">
+                                   <h3 className="text-[10px] uppercase font-black text-gray-500 tracking-widest">Commitment Log</h3>
+                                   <button 
+                                      onClick={() => router.push(`/promises?partyId=${party.id}`)}
+                                      className="flex items-center space-x-2 bg-white/5 hover:bg-white/10 px-4 py-2 text-[10px] uppercase font-black tracking-widest border border-white/5 transition-all text-[#60A5FA]"
+                                   >
+                                      <Plus size={12} />
+                                      <span>Record Promise</span>
+                                   </button>
+                                </div>
+                                {commitments && commitments.length > 0 ? (
+                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      {commitments.map((c: any) => (
+                                         <div key={c.id} className="bg-white/[0.02] border border-white/5 p-4 flex flex-col justify-between hover:border-white/10 transition-colors">
+                                            <div className="flex justify-between items-start">
+                                               <span className="text-[11px] font-mono font-bold text-[#C5A059]">{fmt(c.promised_amount)}</span>
+                                               <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-[2px] ${
+                                                  c.status === 'fulfilled' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' :
+                                                  c.status === 'broken' ? 'bg-white/5 text-gray-400 border border-white/10' :
+                                                  'bg-amber-500/10 text-[#C5A059] border border-[#C5A059]/20'
+                                               }`}>
+                                                  {c.status}
+                                               </span>
+                                            </div>
+                                            <div className="mt-3 flex justify-between text-[10px] text-gray-500">
+                                               <span>Promise Date:</span>
+                                               <span className="font-mono text-white">{c.promise_date}</span>
+                                            </div>
+                                            {c.notes && (
+                                               <p className="text-[10px] text-gray-400 italic mt-2 border-t border-white/[0.03] pt-2">
+                                                  "{c.notes}"
+                                               </p>
+                                            )}
+                                         </div>
+                                      ))}
+                                   </div>
+                                ) : (
+                                   <div className="border border-white/5 p-8 text-center text-gray-600 italic text-xs uppercase tracking-widest bg-white/[0.01]">
+                                      No specific commitments logged for this identity node.
+                                   </div>
+                                )}
+                             </div>
                          </motion.div>
                        )}
                     </AnimatePresence>

@@ -11,14 +11,14 @@ export const ROLE_ROUTE_PERMISSIONS: Record<StaffRole, string[]> = {
   owner: ['*'], // all routes
   manager: [
     '/dashboard', '/inventory', '/karigars', '/production', '/payroll',
-    '/dispatch', '/invoices', '/parties', '/purchase', '/orders',
+    '/dispatch', '/invoices', '/parties', '/purchase', '/orders', '/promises',
     '/khata', '/cashflow', '/reports', '/audit', '/cctv', '/quick-entry',
     '/analytics', '/stock', '/generators', '/calculators', '/converters',
     '/file-morph', '/messaging', '/pairing', '/portal', '/import',
     // Manager cannot access /settings (billing/users)
   ],
   accountant: [
-    '/dashboard', '/khata', '/invoices', '/reports', '/parties',
+    '/dashboard', '/khata', '/invoices', '/reports', '/parties', '/promises',
     '/cashflow', '/audit', '/purchase', '/stock',
     '/calculators', '/converters', '/generators', '/file-morph',
   ],
@@ -27,7 +27,7 @@ export const ROLE_ROUTE_PERMISSIONS: Record<StaffRole, string[]> = {
     '/dispatch', '/stock', '/inventory',
   ],
   salesman: [
-    '/dashboard', '/invoices', '/parties', '/stock', '/orders',
+    '/dashboard', '/invoices', '/parties', '/stock', '/orders', '/promises',
     '/calculators', '/converters',
   ],
   viewer: [
@@ -42,13 +42,13 @@ export const ROLE_MODULE_MAP: Record<StaffRole, string[]> = {
   owner: ['*'],
   manager: [
     'dashboard', 'inventory', 'karigars', 'production', 'payroll',
-    'dispatch', 'invoices', 'parties', 'purchase', 'orders',
+    'dispatch', 'invoices', 'parties', 'purchase', 'orders', 'promises',
     'khata', 'cashflow', 'reports', 'audit', 'cctv', 'quick-entry',
     'analytics', 'generators', 'calculators', 'converters',
     'file-morph', 'messaging', 'pairing', 'import',
   ],
   accountant: [
-    'dashboard', 'khata', 'invoices', 'reports', 'parties',
+    'dashboard', 'khata', 'invoices', 'reports', 'parties', 'promises',
     'cashflow', 'audit', 'purchase', 'calculators', 'converters',
     'generators', 'file-morph', 'settings',
   ],
@@ -57,7 +57,7 @@ export const ROLE_MODULE_MAP: Record<StaffRole, string[]> = {
     'dispatch', 'inventory',
   ],
   salesman: [
-    'dashboard', 'invoices', 'parties', 'orders',
+    'dashboard', 'invoices', 'parties', 'orders', 'promises',
     'calculators', 'converters',
   ],
   viewer: [

@@ -389,6 +389,24 @@ export default function InvoiceDetailPage() {
                           <h4 className="text-lg font-mono font-black text-red-500">{fmt(invoice.balance_due)}</h4>
                        </div>
                     </div>
+                    {invoice.balance_due > 0 && (
+                      <div className="p-4 bg-[#C5A059]/5 border border-[#C5A059]/20 rounded-sm space-y-3 relative overflow-hidden group">
+                         <div className="absolute top-0 left-0 w-1 h-full bg-[#C5A059]" />
+                         <div className="flex items-center space-x-2 text-[#C5A059]">
+                            <AlertTriangle size={14} className="animate-pulse" />
+                            <span className="text-[9px] uppercase font-black tracking-widest">Verbal Payment Promise</span>
+                         </div>
+                         <p className="text-[11px] text-gray-400 leading-normal">
+                            Has the customer verbally committed to a collection date? Log it in the promises registry.
+                         </p>
+                         <button 
+                            onClick={() => router.push(`/promises?partyId=${invoice.party_id}`)}
+                            className="w-full py-2 bg-[#C5A059] text-black text-[9px] font-black uppercase tracking-widest text-center hover:bg-[#C5A059]/90 transition-all rounded-[2px]"
+                         >
+                            Record Promise (PKR {invoice.balance_due})
+                         </button>
+                      </div>
+                    )}
                  </div>
 
                  <div className="space-y-4">

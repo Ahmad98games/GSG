@@ -33,7 +33,8 @@ import {
   ShieldAlert,
   LayoutGrid,
   Microscope,
-  Upload
+  Upload,
+  CalendarCheck
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import * as Tooltip from "@radix-ui/react-tooltip";
@@ -120,6 +121,7 @@ export default React.memo(function IndustrialSidebar() {
         { id: 'parties', name: term('parties'), href: "/parties", icon: ShieldCheck },
         { id: 'purchase', name: term('purchase'), href: "/purchase", icon: Truck },
         { id: 'orders', name: "Orders", href: "/orders", icon: ClipboardList },
+        { id: 'promises', name: "Promises", href: "/promises", icon: CalendarCheck },
       ]
     },
     {
@@ -343,11 +345,14 @@ const SidebarItem = React.memo(function SidebarItem({ href, icon: Icon, label: r
       className={cn(
         "flex items-center h-10 rounded-sm px-3 transition-all duration-150 group relative",
         isActive 
-          ? "text-electric-blue bg-electric-blue/10 border-r-2 border-electric-blue" 
-          : "text-noxis-text-muted hover:bg-noxis-overlay hover:text-noxis-text border-r-2 border-transparent"
+          ? "text-electric-blue bg-electric-blue/10 border-l-2 border-electric-blue" 
+          : "text-noxis-text-muted hover:bg-noxis-overlay hover:text-noxis-text border-l-2 border-transparent"
       )}
     >
-      <Icon className={cn("w-5 h-5 flex-shrink-0", isActive && "text-electric-blue")} />
+      <Icon className={cn(
+        "w-5 h-5 flex-shrink-0 transition-colors duration-150", 
+        isActive ? "text-electric-blue" : "text-noxis-text-muted group-hover:text-electric-blue"
+      )} />
       {!isCollapsed && (
         <>
           <span className={cn(

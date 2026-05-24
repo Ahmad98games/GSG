@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 
 import SentinelAlertOverlay from "@/components/alerts/SentinelAlertOverlay";
 import { useSidebarState } from "@/hooks/useSidebarState";
@@ -29,6 +30,7 @@ import AnimatedNumber from "@/components/ui/AnimatedNumber";
 import WelcomeGuide from "@/components/onboarding/WelcomeGuide";
 import CCTVWidget from "@/components/dashboard/CCTVWidget";
 import DeadStockWidget from "@/components/dashboard/DeadStockWidget";
+import PromiseAlertWidget from "@/components/dashboard/PromiseAlertWidget";
 import { useIndustry, useIndustryLabels } from "@/components/providers/IndustryProvider";
 import { MobileAppBanner } from "@/components/dashboard/MobileAppBanner";
 
@@ -341,7 +343,8 @@ export default function DashboardPage() {
 
           <OnboardingChecklist />
 
-          <div className="space-y-2">
+          <div className="space-y-4">
+            <PromiseAlertWidget />
             <DailyBrief />
             <PatternAlerts />
           </div>
@@ -355,7 +358,7 @@ export default function DashboardPage() {
               icon={DollarSign} 
               isLoading={isKpiLoading} 
               chartData={chartData} 
-              sub={Number(kpis?.totalSales || 0) > 0 ? "This month" : "No invoices posted yet"}
+              sub={Number(kpis?.totalSales || 0) > 0 ? "This month" : <Link href="/invoices" className="text-electric-blue hover:underline">Create your first invoice →</Link>}
             />
             <KpiCard 
               label="Net Profit (MTD)" 
@@ -363,7 +366,7 @@ export default function DashboardPage() {
               icon={TrendingUp} 
               isLoading={isKpiLoading}
               chartData={chartData.map(d => ({ ...d, velocity: d.velocity * 0.2 }))} 
-              sub={Number(kpis?.netProfit || 0) > 0 ? "After expenses" : "Add transactions to calculate"}
+              sub={Number(kpis?.netProfit || 0) > 0 ? "After expenses" : <Link href="/khata" className="text-electric-blue hover:underline">Record transactions →</Link>}
             />
             <KpiCard 
               label="Accounts Receivable" 
@@ -371,7 +374,7 @@ export default function DashboardPage() {
               icon={Clock} 
               isLoading={isKpiLoading}
               chartData={chartData.map(d => ({ ...d, velocity: d.velocity * 0.5 }))} 
-              sub={Number(kpis?.totalReceivables || 0) > 0 ? "Owed to you by customers" : "All accounts settled ✓"}
+              sub={Number(kpis?.totalReceivables || 0) > 0 ? "Owed to you by customers" : <Link href="/promises" className="text-electric-blue hover:underline">View payment promises →</Link>}
             />
             <KpiCard 
               label={getIndustryLabel('stock') + " Value"} 
@@ -400,14 +403,14 @@ export default function DashboardPage() {
               value={kpis?.pendingDeliveries || 0} 
               icon={Truck} 
               isLoading={isKpiLoading} 
-              sub={Number(kpis?.pendingDeliveries || 0) > 0 ? "Awaiting delivery" : "No pending dispatches"}
+              sub={Number(kpis?.pendingDeliveries || 0) > 0 ? "Awaiting delivery" : <Link href="/dispatch" className="text-electric-blue hover:underline">Create dispatch →</Link>}
             />
             <KpiCard 
               label="Liquidity (Cash)" 
               value={kpis?.cashOnHand || 0} 
               icon={Wallet} 
               isLoading={isKpiLoading} 
-              sub={Number(kpis?.cashOnHand || 0) > 0 ? "Available cash" : "Record a cash entry to start"}
+              sub={Number(kpis?.cashOnHand || 0) > 0 ? "Available cash" : <Link href="/khata" className="text-electric-blue hover:underline">Record a cash entry →</Link>}
             />
             <KpiCard label="Estimated Tax Liab." value={kpis?.taxLiability || 0} icon={ShieldCheck} isLoading={isKpiLoading} />
             <CCTVWidget />

@@ -42,14 +42,48 @@ export const useToastStore = create<ToastStore>((set) => ({
     })),
 }));
 
+interface ToastOptions {
+  message?: string;
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
+}
+
 export const useToast = () => {
   const addToast = useToastStore((state) => state.addToast);
 
+  const trigger = (
+    type: ToastType,
+    title: string,
+    messageOrOptions?: string | ToastOptions,
+    options?: ToastOptions
+  ) => {
+    let message: string | undefined = undefined;
+    let action: { label: string; onClick: () => void } | undefined = undefined;
+
+    if (typeof messageOrOptions === 'string') {
+      message = messageOrOptions;
+      if (options && typeof options === 'object') {
+        action = options.action;
+      }
+    } else if (messageOrOptions && typeof messageOrOptions === 'object') {
+      message = messageOrOptions.message;
+      action = messageOrOptions.action;
+    }
+
+    addToast({ type, title, message, action });
+  };
+
   return {
-    success: (title: string, message?: string) => addToast({ type: 'success', title, message }),
-    error: (title: string, message?: string) => addToast({ type: 'error', title, message }),
-    warning: (title: string, message?: string) => addToast({ type: 'warning', title, message }),
-    info: (title: string, message?: string) => addToast({ type: 'info', title, message }),
+    success: (title: string, messageOrOptions?: string | ToastOptions, options?: ToastOptions) =>
+      trigger('success', title, messageOrOptions, options),
+    error: (title: string, messageOrOptions?: string | ToastOptions, options?: ToastOptions) =>
+      trigger('error', title, messageOrOptions, options),
+    warning: (title: string, messageOrOptions?: string | ToastOptions, options?: ToastOptions) =>
+      trigger('warning', title, messageOrOptions, options),
+    info: (title: string, messageOrOptions?: string | ToastOptions, options?: ToastOptions) =>
+      trigger('info', title, messageOrOptions, options),
     toast: (toast: Omit<Toast, 'id'>) => addToast(toast),
   };
 };

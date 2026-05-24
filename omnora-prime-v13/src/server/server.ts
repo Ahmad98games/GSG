@@ -75,6 +75,65 @@ export function startHubServer(onActivity?: () => void) {
     }
   });
 
+  // Daily 07:00 AM: Promise Statuses and Warnings
+  cron.schedule('0 7 * * *', async () => {
+    logger.info('[Automation] Executing payment promises daily checks at 07:00 AM...');
+    try {
+      const sb = getSupabase();
+      if (!sb) {
+        logger.warn('[Automation] Supabase client missing — skipping daily promise check');
+        return;
+      }
+
+      // 1. Run global status updater RPC
+      const { error: rpcError } = await sb.rpc('update_promise_statuses');
+      if (rpcError) throw rpcError;
+      logger.info('[Automation] Global promise status update RPC executed successfully');
+
+      // 2. Query all overdue promises
+      const { data: overduePromises, error: queryError } = await sb
+        .from('payment_promises')
+        .select('*, party:parties(name)')
+        .eq('status', 'overdue');
+
+      if (queryError) throw queryError;
+
+      if (overduePromises && overduePromises.length > 0) {
+        logger.info(`[Automation] Detected ${overduePromises.length} overdue payment commitments`);
+
+        for (const promise of overduePromises) {
+          // Check if an unresolved alert already exists for this promise to avoid duplication
+          const { data: existing } = await sb
+            .from('anomaly_alerts')
+            .select('id')
+            .eq('business_id', promise.business_id)
+            .eq('alert_type', 'payment_promise_overdue')
+            .eq('resolved', false)
+            .eq('payload->promise_id', promise.id);
+
+          if (!existing || existing.length === 0) {
+            // Insert warning sentinel anomaly alert
+            await sb.from('anomaly_alerts').insert({
+              business_id: promise.business_id,
+              alert_type: 'payment_promise_overdue',
+              severity: 'warning',
+              payload: {
+                promise_id: promise.id,
+                message: `Client ${promise.party?.name || 'Party'} broke their payment commitment of PKR ${promise.promised_amount} due on ${promise.promise_date}.`,
+                promised_amount: promise.promised_amount,
+                promise_date: promise.promise_date
+              },
+              resolved: false
+            });
+            logger.info(`[Automation] Logged overdue commitment alert for party ${promise.party?.name || 'Party'}`);
+          }
+        }
+      }
+    } catch (err) {
+      logger.error({ err }, 'Daily payment promises automation failed');
+    }
+  });
+
   // Daily 08:00: Send Sales Report (Backup / Legacy)
   cron.schedule('0 8 * * *', async () => {
     logger.info('[Automation] Generating daily sales report for WhatsApp...');
