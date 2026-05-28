@@ -22,13 +22,15 @@ import { cn } from "@/lib/utils";
 
 import { Decimal } from 'decimal.js';
 import CreditRiskBadge from "@/components/invoices/CreditRiskBadge";
+import { useDebounce } from "@/hooks/useDebounce";
+import { FieldError } from "@/components/ui/StateViews";
 
 import { CURRENCIES, formatCurrency, CurrencyCode } from '@/lib/currency/currencyEngine';
 
 const CURRENCY_CODES = Object.keys(CURRENCIES) as CurrencyCode[];
 
 const invoiceSchema = z.object({
-  party_id: z.string().min(1, "Customer required"),
+  party_id: z.string().min(1, "Select a customer"),
   party_search: z.string().optional(),
   invoice_no: z.string().min(1),
   issue_date: z.string(),
@@ -38,11 +40,11 @@ const invoiceSchema = z.object({
   exchange_rate: z.coerce.number().min(0.000001).default(1.0),
   items: z.array(z.object({
     sku_id: z.string().optional(),
-    description: z.string().min(1),
-    qty: z.coerce.number().positive(),
+    description: z.string().min(1, "Item description required"),
+    qty: z.coerce.number().positive("Quantity must be greater than 0"),
     unit: z.string(),
-    unit_price: z.coerce.number().positive(),
-  })).min(1, "At least one item required"),
+    unit_price: z.coerce.number().min(0, "Rate cannot be negative"),
+  })).min(1, "Add at least one item"),
   discount_pct: z.coerce.number().min(0).max(100),
   tax_pct: z.coerce.number().min(0).max(100),
   payment_terms: z.string().optional(),
@@ -69,6 +71,7 @@ export default function NewInvoicePage() {
 
   const { register, control, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceSchema) as any,
+    mode: "onChange",
     defaultValues: {
       party_id: "",
       party_search: "",
@@ -108,6 +111,18 @@ export default function NewInvoicePage() {
       watchTaxPct || 0
     );
   }, [watchItems, watchDiscountPct, watchTaxPct]);
+
+  const partySearchValue = watch("party_search") || "";
+  const debouncedPartySearch = useDebounce(partySearchValue, 300);
+  const debouncedSkuSearch = useDebounce(skuSearch, 300);
+
+  const [debouncedTotals, setDebouncedTotals] = useState(totals);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedTotals(totals);
+    }, 100);
+    return () => clearTimeout(handler);
+  }, [totals]);
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -155,12 +170,12 @@ export default function NewInvoicePage() {
   }, [watchValues.currency, businessCurrency, watchValues.issue_date, supabase, setValue]);
 
   const filteredSkus = useMemo(() => {
-    if (!skuSearch) return [];
+    if (!debouncedSkuSearch) return [];
     return skus.filter(s => 
-      s.sku_code.toLowerCase().includes(skuSearch.toLowerCase()) || 
-      s.name.toLowerCase().includes(skuSearch.toLowerCase())
+      s.sku_code.toLowerCase().includes(debouncedSkuSearch.toLowerCase()) || 
+      s.name.toLowerCase().includes(debouncedSkuSearch.toLowerCase())
     ).slice(0, 10);
-  }, [skus, skuSearch]);
+  }, [skus, debouncedSkuSearch]);
 
   const onSubmit = async (values: InvoiceFormValues) => {
     setIsSubmitting(true);
@@ -502,7 +517,6 @@ export default function NewInvoicePage() {
               <div className="space-y-2">
                 <label className="text-[9px] uppercase font-bold text-gray-500 tracking-widest flex items-center justify-between">
                   <span>Customer</span>
-                  {errors.party_id && <span className="text-red-500 lowercase">! required</span>}
                 </label>
                 <div className="relative">
                   <input
@@ -515,10 +529,10 @@ export default function NewInvoicePage() {
                     placeholder="Search customer name..."
                     className="industrial-field"
                   />
-                  {(watch("party_search") || "").length > 0 && !watch("party_id") && (
+                  {debouncedPartySearch.length > 0 && !watch("party_id") && (
                     <div className="absolute top-full left-0 right-0 bg-[#1A1D21] border border-white/10 z-50 max-h-48 overflow-y-auto shadow-2xl">
                       {parties
-                        .filter(p => p.name.toLowerCase().includes((watch("party_search") || "").toLowerCase()))
+                        .filter(p => p.name.toLowerCase().includes(debouncedPartySearch.toLowerCase()))
                         .map(p => (
                           <div
                             key={p.id}
@@ -535,12 +549,12 @@ export default function NewInvoicePage() {
                               </span>
                             )}
                           </div>
-                        ))
-                      }
+                        ))}
                     </div>
                   )}
                 </div>
                 <CreditRiskBadge partyId={watchValues.party_id} />
+                <FieldError message={errors.party_id?.message} />
               </div>
 
               {/* Dates Block */}
@@ -584,6 +598,7 @@ export default function NewInvoicePage() {
                               setSkuSearch(e.target.value);
                             }}
                           />
+                          <FieldError message={errors.items?.[index]?.description?.message} />
                           {/* Sku Search Results */}
                           {activeSkuIndex === index && filteredSkus.length > 0 && (
                             <div className="absolute left-4 right-4 top-12 z-50 bg-[#2D3139] border border-white/10 shadow-2xl rounded-sm">
@@ -618,10 +633,12 @@ export default function NewInvoicePage() {
                         <div className="bg-[#0F1113] p-2 border border-white/5">
                            <span className="text-[8px] uppercase text-gray-600 font-bold block mb-1">Qty</span>
                            <input type="number" {...register(`items.${index}.qty`)} className="w-full bg-transparent border-none outline-none text-xs font-mono text-white" />
+                           <FieldError message={errors.items?.[index]?.qty?.message} />
                         </div>
                         <div className="bg-[#0F1113] p-2 border border-white/5">
                            <span className="text-[8px] uppercase text-gray-600 font-bold block mb-1">Unit Price</span>
                            <input type="number" {...register(`items.${index}.unit_price`)} className="w-full bg-transparent border-none outline-none text-xs font-mono text-white" />
+                           <FieldError message={errors.items?.[index]?.unit_price?.message} />
                         </div>
                         <div className="bg-[#0F1113] p-2 border border-white/5 flex flex-col justify-center items-end">
                            <span className="text-[8px] uppercase text-gray-600 font-bold block mb-1">Line Total</span>
@@ -633,6 +650,7 @@ export default function NewInvoicePage() {
                     </div>
                   ))}
                 </div>
+                <FieldError message={errors.items?.message} />
               </div>
 
               {/* Adjustments Block */}
@@ -720,46 +738,45 @@ export default function NewInvoicePage() {
 
               {/* Totals Block */}
               <div className="shrink-0 pt-10 border-t border-black/5 flex justify-end">
-                <div className="w-72 space-y-3">
-                   <div className="flex justify-between text-[10px] uppercase font-bold text-gray-500">
+                <div className="w-72 space-y-3">                   <div className="flex justify-between text-[10px] uppercase font-bold text-gray-500">
                      <span>Subtotal (Gross)</span>
-                     <span className="font-mono text-black">{totals.subtotal.toFixed(2)}</span>
+                     <span className="font-mono text-black">{debouncedTotals.subtotal.toFixed(2)}</span>
                    </div>
-                   {totals.discountAmount > 0 && (
+                   {debouncedTotals.discountAmount > 0 && (
                      <div className="flex justify-between text-[10px] uppercase font-bold text-red-500">
                        <span>Trade Discount ({watchValues.discount_pct}%)</span>
-                       <span className="font-mono">-{totals.discountAmount.toFixed(2)}</span>
+                       <span className="font-mono">-{debouncedTotals.discountAmount.toFixed(2)}</span>
                      </div>
                    )}
                    <div className="flex justify-between text-[10px] uppercase font-bold text-gray-500">
                      <span>{taxName} ({watchValues.tax_pct}%)</span>
-                     <span className="font-mono text-black">+{totals.taxAmount.toFixed(2)}</span>
+                     <span className="font-mono text-black">+{debouncedTotals.taxAmount.toFixed(2)}</span>
                    </div>
                    <div className="pt-4 border-t-2 border-black flex justify-between items-baseline">
                      <span className="text-xs font-black uppercase tracking-[0.2em]">Net Payable</span>
                      <div className="text-right">
                        <span className="text-[10px] font-bold mr-2 uppercase">{watchValues.currency}</span>
-                       <span className="text-3xl font-black font-mono tracking-tighter">{totals.total.toFixed(2)}</span>
+                       <span className="text-3xl font-black font-mono tracking-tighter">{debouncedTotals.total.toFixed(2)}</span>
                      </div>
                    </div>
-
+ 
                    {/* Multi-Currency Conversion Info */}
                    {watchValues.currency !== businessCurrency && (
                      <div className="p-3 bg-blue-50 border border-blue-200 mt-2">
                         <p className="text-[7px] uppercase font-black text-blue-400 mb-1 tracking-widest">Base Currency Equivalent</p>
                         <div className="flex justify-between items-center">
-                           <span className="text-[10px] font-black font-mono text-blue-800">{businessCurrency} {new Decimal(totals.total).times(watchValues.exchange_rate).toFixed(2)}</span>
+                           <span className="text-[10px] font-black font-mono text-blue-800">{businessCurrency} {new Decimal(debouncedTotals.total).times(watchValues.exchange_rate).toFixed(2)}</span>
                            <span className="text-[8px] font-bold text-blue-400">Rate: {watchValues.exchange_rate}</span>
                         </div>
                      </div>
                    )}
-
+ 
                    <div className="p-3 bg-gray-50 border border-black/5 mt-4">
                      <p className="text-[7px] uppercase font-black text-gray-400 mb-1 tracking-widest">Amount in Words</p>
                      <p className="text-[9px] font-bold italic leading-tight text-gray-800">
-                        {numberToWords(totals.total, watchValues.currency)}
+                        {numberToWords(debouncedTotals.total, watchValues.currency)}
                      </p>
-                   </div>
+                    </div>
                 </div>
               </div>
 

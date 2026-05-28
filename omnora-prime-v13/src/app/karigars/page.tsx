@@ -36,6 +36,9 @@ import Image from 'next/image';
 import FinancialAmount from "@/components/ui/FinancialAmount";
 import { useRowHighlight } from "@/hooks/useRowHighlight";
 import AnimatedNumber from "@/components/ui/AnimatedNumber";
+import { Skeleton, KpiCardSkeleton, CardGridSkeleton } from "@/components/ui/Skeleton";
+import { ErrorState, EmptyState as NewEmptyState, FieldError } from "@/components/ui/StateViews";
+import { useDebounce } from "@/hooks/useDebounce";
 
 // --- Types ---
 
@@ -66,16 +69,32 @@ const columnHelper = createColumnHelper<Karigar>();
 // --- Validation Schemas ---
 
 const karigarSchema = z.object({
-  name: z.string().min(1, "Name is required"),
+  name: z.string().min(1, "Worker name is required"),
   father_name: z.string().optional(),
   cnic: z.string().optional(),
-  phone: z.string().optional(),
+  phone: z.string().optional().refine(val => {
+    if (!val) return true;
+    const digits = val.replace(/[^0-9]/g, '');
+    return digits.length >= 10 && digits.length <= 13;
+  }, "Enter a valid phone number"),
   address: z.string().optional(),
   skill_type: z.string().min(1, "Skill type is required"),
   grade_id: z.string().min(1, "Grade is required"),
   wage_type: z.enum(['piece_rate', 'daily_wage', 'monthly_salary']),
-  rate: z.coerce.number().min(0),
+  rate: z.coerce.number().min(0, "Rate cannot be negative"),
   joining_date: z.string().min(1, "Joining date is required"),
+}).refine(data => {
+  if (data.wage_type === 'piece_rate' && data.rate <= 0) return false;
+  return true;
+}, {
+  message: "Enter piece rate amount",
+  path: ["rate"]
+}).refine(data => {
+  if (data.wage_type === 'daily_wage' && data.rate <= 0) return false;
+  return true;
+}, {
+  message: "Enter daily rate amount",
+  path: ["rate"]
 });
 
 type KarigarFormValues = z.infer<typeof karigarSchema>;
@@ -109,7 +128,7 @@ export default function KarigarsPage() {
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
 
   // Queries
-  const { data: karigars = [], isLoading } = useQuery({
+  const { data: karigars = [], isLoading, error: karigarsError, refetch: refetchKarigars } = useQuery({
     queryKey: ['karigars', profile?.id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -122,6 +141,7 @@ export default function KarigarsPage() {
       return data as Karigar[];
     },
     enabled: !!profile?.id,
+    staleTime: 10 * 60 * 1000,
   });
 
   const { data: attendanceToday = [] } = useQuery({
@@ -274,15 +294,61 @@ export default function KarigarsPage() {
     })
   ], [fmt, t, workerTerm, workerTermPlural]);
 
+  const debouncedSearch = useDebounce(searchTerm, 300);
+
   const table = useReactTable({
-    data: karigars.filter(k => k.name.toLowerCase().includes(searchTerm.toLowerCase())),
+    data: karigars.filter(k => k.name.toLowerCase().includes(debouncedSearch.toLowerCase())),
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     initialState: { pagination: { pageSize: 20 } }
   });
 
-  
+  if (isLoading) return (
+    <div className="p-6 bg-noxis-bg">
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <KpiCardSkeleton key={i} />
+        ))}
+      </div>
+      <CardGridSkeleton count={6} />
+    </div>
+  );
+
+  if (karigarsError) return (
+    <div className="min-h-screen bg-noxis-bg flex items-center justify-center p-8">
+      <ErrorState
+        message="Could not load workers registry"
+        detail={(karigarsError as Error).message}
+        onRetry={refetchKarigars}
+      />
+    </div>
+  );
+
+  if (!karigars || karigars.length === 0) return (
+    <div className="min-h-screen bg-noxis-bg text-slate-200 p-6 flex flex-col justify-center">
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <KpiCardSkeleton key={i} />
+        ))}
+      </div>
+      <NewEmptyState
+        icon="👷"
+        title="No workers registered"
+        description="Register your first Karigar to track attendance and wages"
+        action={{ label: 'Add Karigar', onClick: () => setIsRegisterOpen(true) }}
+      />
+      <AnimatePresence>
+         {isRegisterOpen && (
+           <RegisterKarigarModal 
+            grades={grades}
+            onClose={() => setIsRegisterOpen(false)} 
+            onSuccess={(msg) => { setSuccessToast(msg); setIsRegisterOpen(false); queryClient.invalidateQueries({ queryKey: ['karigars'] }); }} 
+           />
+         )}
+      </AnimatePresence>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-noxis-bg text-slate-200 p-6">
@@ -452,6 +518,7 @@ function RegisterKarigarModal({ grades, onClose, onSuccess }: { grades: Grade[],
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm<KarigarFormValues>({
     resolver: zodResolver(karigarSchema),
+    mode: "onChange",
     defaultValues: {
       joining_date: new Date().toISOString().split('T')[0],
       wage_type: 'piece_rate',
@@ -517,7 +584,7 @@ function RegisterKarigarModal({ grades, onClose, onSuccess }: { grades: Grade[],
                    <div className="col-span-2 space-y-2">
                       <Label>Full Name</Label>
                       <Input {...register("name")} placeholder="e.g. Muhammad Ahmed" />
-                      {errors.name && <ErrorMsg>{errors.name.message}</ErrorMsg>}
+                      <FieldError message={errors.name?.message} />
                    </div>
                    <div className="space-y-2">
                       <Label>Father&apos;s Name</Label>
@@ -526,6 +593,11 @@ function RegisterKarigarModal({ grades, onClose, onSuccess }: { grades: Grade[],
                    <div className="space-y-2">
                       <Label>CNIC Number</Label>
                       <Input {...register("cnic")} placeholder="XXXXX-XXXXXXX-X" />
+                   </div>
+                   <div className="space-y-2 col-span-2">
+                      <Label>Phone Number</Label>
+                      <Input {...register("phone")} placeholder="e.g. 03001234567" />
+                      <FieldError message={errors.phone?.message} />
                    </div>
                 </div>
              </div>
@@ -539,10 +611,12 @@ function RegisterKarigarModal({ grades, onClose, onSuccess }: { grades: Grade[],
                          <option value="">Select Grade</option>
                          {grades.map(g => <option key={g.id} value={g.id}>{g.grade_name}</option>)}
                       </select>
+                      <FieldError message={errors.grade_id?.message} />
                    </div>
                    <div className="space-y-2">
                       <Label>Skill Vertical</Label>
                       <Input {...register("skill_type")} placeholder="e.g. Stitching" />
+                      <FieldError message={errors.skill_type?.message} />
                    </div>
                    <div className="space-y-2">
                       <Label>Pay Model</Label>
@@ -557,6 +631,7 @@ function RegisterKarigarModal({ grades, onClose, onSuccess }: { grades: Grade[],
                          {wageType === 'piece_rate' ? 'Rate per Piece (PKR)' : wageType === 'daily_wage' ? 'Daily Rate (PKR)' : 'Monthly Base (PKR)'}
                       </Label>
                       <Input type="number" {...register("rate")} />
+                      <FieldError message={errors.rate?.message} />
                    </div>
                 </div>
              </div>

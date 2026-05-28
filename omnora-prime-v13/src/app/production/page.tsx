@@ -18,6 +18,8 @@ import { format, subDays } from "date-fns";
 import { useForm } from "react-hook-form";
 import { Decimal } from "decimal.js";
 import EmptyState from "@/components/ui/EmptyState";
+import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
+import { ErrorState, EmptyState as NewEmptyState } from "@/components/ui/StateViews";
 import MomentumBar from "@/components/production/MomentumBar";
 
 interface Bottleneck {
@@ -100,7 +102,7 @@ export default function ProductionCommandCenter() {
   });
 
   // 2. Active Batches
-  const { data: batches = [] } = useQuery({
+  const { data: batches = [], isLoading: isBatchesLoading, error: isBatchesError, refetch: refetchBatches } = useQuery({
     queryKey: ['active_batches', businessId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -155,6 +157,41 @@ export default function ProductionCommandCenter() {
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, []);
+
+  if (isBatchesLoading) return (
+    <div className="p-6 bg-[#0F1113]">
+      <div className="flex justify-between mb-4">
+        <Skeleton className="h-8 w-32" />
+        <Skeleton className="h-9 w-28" />
+      </div>
+      <TableSkeleton rows={8} cols={5} />
+    </div>
+  );
+
+  if (isBatchesError) return (
+    <div className="min-h-screen bg-[#0F1113] flex items-center justify-center p-8">
+      <ErrorState
+        message="Could not load production command center"
+        detail={(isBatchesError as Error).message}
+        onRetry={refetchBatches}
+      />
+    </div>
+  );
+
+  if (!batches || (batches.length === 0 && deptLogs.length === 0)) return (
+    <div className="min-h-screen bg-[#0F1113] text-slate-200 p-6 flex flex-col justify-center">
+      <div className="flex justify-between mb-4">
+        <Skeleton className="h-8 w-32" />
+        <Skeleton className="h-9 w-28" />
+      </div>
+      <NewEmptyState
+        icon="🏭"
+        title="No production logged today"
+        description="Log your first production entry to track output"
+        action={{ label: 'Log production', href: '/quick-entry' }}
+      />
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#0F1113] text-slate-200 font-inter">

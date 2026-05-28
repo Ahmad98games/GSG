@@ -14,6 +14,8 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { format, isToday, isBefore, isAfter, parseISO } from "date-fns";
 import { useSearchParams } from "next/navigation";
+import { ErrorState, EmptyState } from "@/components/ui/StateViews";
+import { Skeleton, KpiCardSkeleton } from "@/components/ui/Skeleton";
 
 export default function PromisesPage() {
   const { businessId, fmt } = usePersona();
@@ -62,7 +64,7 @@ export default function PromisesPage() {
   const [isFulfilling, setIsFulfilling] = useState(false);
 
   // Fetch Promises
-  const { data: promises = [], isLoading, refetch } = useQuery({
+  const { data: promises = [], isLoading, error: promisesError, refetch } = useQuery({
     queryKey: ["payment-promises", businessId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -325,6 +327,207 @@ export default function PromisesPage() {
       return true;
     });
   }, [promises, activeTab, searchTerm]);
+
+  if (isLoading) return (
+    <div className="p-6 bg-[#070809] min-h-screen">
+      <div className="flex justify-between mb-4">
+        <Skeleton className="h-8 w-32" />
+        <Skeleton className="h-9 w-28" />
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <KpiCardSkeleton key={i} />
+        ))}
+      </div>
+    </div>
+  );
+
+  if (promisesError) return (
+    <div className="min-h-screen bg-[#070809] flex items-center justify-center p-8">
+      <ErrorState
+        message="Could not load payment promises registry"
+        detail={(promisesError as Error).message}
+        onRetry={refetch}
+      />
+    </div>
+  );
+
+  if (!promises || promises.length === 0) return (
+    <div className="min-h-screen bg-[#070809] text-white p-6 flex flex-col justify-center">
+      <div className="flex justify-between mb-4 border-b border-white/5 pb-5">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-white flex items-center gap-2">
+            <span>Payment Promises</span>
+            <span className="text-[10px] bg-electric-blue/10 border border-electric-blue/20 text-[#60A5FA] px-2 py-0.5 rounded-sm uppercase tracking-widest font-mono">
+              Verbal Registry
+            </span>
+          </h1>
+          <p className="text-xs text-gray-500 mt-1">
+            Registry to track cash commitments and verbal collection guarantees.
+          </p>
+        </div>
+        <button
+          onClick={() => setIsRecordModalOpen(true)}
+          className="flex items-center space-x-2 px-5 py-2.5 bg-[#C5A059] text-black text-[10px] font-black uppercase tracking-widest hover:bg-[#C5A059]/90 transition-all rounded-sm shrink-0 shadow-lg"
+        >
+          <Plus size={14} />
+          <span>Record Promise</span>
+        </button>
+      </div>
+      <EmptyState
+        icon="🤲"
+        title="No payment promises recorded"
+        description="When a customer promises to pay on a date, record it here"
+        action={{ label: 'Record promise', onClick: () => setIsRecordModalOpen(true) }}
+      />
+      <AnimatePresence>
+        {isRecordModalOpen && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[999] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-[#0F1114] border border-white/10 p-6 w-full max-w-md relative overflow-hidden shadow-2xl text-left"
+            >
+              <div className="absolute top-0 left-0 w-1.5 h-full bg-[#C5A059]" />
+
+              <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                <h3 className="text-xs font-black uppercase text-white tracking-widest font-mono flex items-center space-x-2">
+                  <Plus size={14} className="text-[#C5A059]" />
+                  <span>Record Payment Promise</span>
+                </h3>
+                <button
+                  onClick={() => {
+                    setIsRecordModalOpen(false);
+                    resetForm();
+                  }}
+                  className="text-gray-500 hover:text-white transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreatePromise} className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <label className="text-[9px] uppercase font-bold text-gray-500 tracking-widest block">
+                    Customer Name *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={partySearch}
+                      onChange={(e) => {
+                        setPartySearch(e.target.value);
+                        if (e.target.value === "") setSelectedPartyId("");
+                      }}
+                      placeholder="Search customer..."
+                      className="w-full bg-[#070809] border border-white/5 px-4 py-2.5 text-xs text-white outline-none focus:border-[#C5A059] transition-all rounded-sm"
+                    />
+                    {partySearch && !selectedPartyId && (
+                      <div className="absolute top-full left-0 right-0 bg-[#0F1114] border border-white/10 z-50 max-h-40 overflow-y-auto shadow-2xl">
+                        {parties
+                          .filter((p) => p.name.toLowerCase().includes(partySearch.toLowerCase()))
+                          .map((p) => (
+                            <div
+                              key={p.id}
+                              onClick={() => {
+                                setSelectedPartyId(p.id);
+                                setPartySearch(p.name);
+                              }}
+                              className="px-4 py-2 text-xs hover:bg-white/5 cursor-pointer border-b border-white/5 text-left text-white"
+                            >
+                              {p.name}
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[9px] uppercase font-bold text-gray-500 tracking-widest block">
+                    Linked Invoice (Optional)
+                  </label>
+                  <select
+                    value={selectedInvoiceId}
+                    onChange={(e) => handleInvoiceChange(e.target.value)}
+                    disabled={!selectedPartyId}
+                    className="w-full bg-[#070809] border border-white/5 px-4 py-2.5 text-xs text-white outline-none focus:border-[#C5A059] transition-all rounded-sm disabled:opacity-40"
+                  >
+                    <option value="">-- No linked invoice --</option>
+                    {unpaidInvoices.map((inv) => (
+                      <option key={inv.id} value={inv.id}>
+                        {inv.invoice_no} (Owed: PKR {inv.balance_due})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[9px] uppercase font-bold text-gray-500 tracking-widest block">
+                    Promised Amount (PKR) *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    value={promisedAmount}
+                    onChange={(e) => setPromisedAmount(e.target.value)}
+                    placeholder="Enter amount customer committed to pay..."
+                    className="w-full bg-[#070809] border border-white/5 px-4 py-2.5 text-xs text-white font-mono outline-none focus:border-[#C5A059] transition-all rounded-sm"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[9px] uppercase font-bold text-gray-500 tracking-widest block">
+                    Promise Commitment Date *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={promiseDate}
+                    onChange={(e) => setPromiseDate(e.target.value)}
+                    className="w-full bg-[#070809] border border-white/5 px-4 py-2.5 text-xs text-white outline-none focus:border-[#C5A059] transition-all rounded-sm"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[9px] uppercase font-bold text-gray-500 tracking-widest block">
+                    Notes / Verbal Agreement Details
+                  </label>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="E.g., Client committed to clear invoice balance via bank transfer by 3 PM..."
+                    className="w-full h-20 bg-[#070809] border border-white/5 px-4 py-2.5 text-xs text-white outline-none focus:border-[#C5A059] transition-all rounded-sm resize-none"
+                  />
+                </div>
+
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsRecordModalOpen(false);
+                      resetForm();
+                    }}
+                    className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white text-[9px] font-black uppercase tracking-widest transition-colors rounded-sm text-center"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex-1 py-3 bg-[#C5A059] text-black text-[9px] font-black uppercase tracking-widest hover:bg-[#C5A059]/90 disabled:opacity-50 transition-colors rounded-sm text-center"
+                  >
+                    {isSubmitting ? "Saving..." : "Record Commitment"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#070809] text-white p-6 max-w-[1600px] mx-auto space-y-6">

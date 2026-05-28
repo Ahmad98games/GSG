@@ -21,8 +21,10 @@ import ForecastBadge from "@/components/intelligence/ForecastBadge";
 import { useFloorVoice } from "@/hooks/useFloorVoice";
 
 import { motion, AnimatePresence } from "framer-motion";
-import EmptyState from "@/components/ui/EmptyState";
+import EmptyState from "@/components/ui/EmptyState"; // Keep if needed for subcomponents, but we'll import from StateViews
+import { ErrorState, EmptyState as NewEmptyState, FieldError } from "@/components/ui/StateViews";
 import DataFreshness from "@/components/ui/DataFreshness";
+import { useDebounce } from "@/hooks/useDebounce";
 import { 
   createColumnHelper, 
   flexRender, 
@@ -42,6 +44,7 @@ import Image from 'next/image';
 import FinancialAmount from "@/components/ui/FinancialAmount";
 import { useRowHighlight } from "@/hooks/useRowHighlight";
 import AnimatedNumber from "@/components/ui/AnimatedNumber";
+import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 
 // --- Types ---
 
@@ -68,7 +71,7 @@ const columnHelper = createColumnHelper<SKU>();
 // --- Validation Schemas ---
 
 const skuSchema = z.object({
-  name: z.string().min(1, "Product name is required"),
+  name: z.string().min(2, "Name must be at least 2 characters").max(200, "Name must be under 200 characters"),
   sku_code: z.string().min(1, "SKU code is required"),
   category: z.string().optional(),
   unit: z.string().min(1, "Unit is required"),
@@ -78,9 +81,6 @@ const skuSchema = z.object({
   current_location: z.enum(['karkhana', 'warehouse', 'retail_shop', 'in_transit', 'disposed']),
   description: z.string().max(500, "Description too long").optional(),
   barcode: z.string().optional(),
-}).refine(data => data.sale_price >= data.cost_price, {
-  message: "Sale price should be greater than or equal to cost price",
-  path: ["sale_price"]
 });
 
 type SKUFormValues = z.infer<typeof skuSchema>;
@@ -156,7 +156,7 @@ export default function InventoryPage() {
   });
 
   // Data Fetching
-  const { data: skus = [], isLoading: skusLoading, error: skusError } = useQuery({
+  const { data: skus = [], isLoading: skusLoading, error: skusError, refetch: refetchSkus } = useQuery({
     queryKey: ['inventory', profile?.id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -169,6 +169,7 @@ export default function InventoryPage() {
       return data as SKU[];
     },
     enabled: !!profile?.id,
+    staleTime: 5 * 60 * 1000,
   });
 
   // Derived Categories
@@ -177,11 +178,13 @@ export default function InventoryPage() {
     return ["All", ...Array.from(cats)];
   }, [skus]);
 
+  const debouncedSearch = useDebounce(searchTerm, 300);
+
   // Filtering Logic
   const filteredData = useMemo(() => {
     return skus.filter(sku => {
-      const matchesSearch = sku.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            sku.sku_code.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = sku.name.toLowerCase().includes(debouncedSearch.toLowerCase()) || 
+                            sku.sku_code.toLowerCase().includes(debouncedSearch.toLowerCase());
       const matchesCategory = categoryFilter === "All" || sku.category === categoryFilter;
       
       let matchesStatus = true;
@@ -191,7 +194,7 @@ export default function InventoryPage() {
 
       return matchesSearch && matchesCategory && matchesStatus;
     });
-  }, [skus, searchTerm, categoryFilter, statusFilter]);
+  }, [skus, debouncedSearch, categoryFilter, statusFilter]);
 
   // Table Config
   const columns = useMemo(() => [
@@ -297,18 +300,45 @@ export default function InventoryPage() {
 
   // Table Config
 
-  if (skusError) {
-    return (
-      <div className="h-screen bg-onyx flex items-center justify-center p-8">
-        <div className="bg-surface border border-critical-red/20 p-8 text-center space-y-4 max-w-md">
-          <AlertCircle className="w-12 h-12 text-critical-red mx-auto" />
-          <h2 className="text-white font-bold uppercase tracking-widest">Database Error</h2>
-          <p className="text-gray-500 text-sm">Failed to sync inventory. This may be due to network instability on the factory mesh.</p>
-          <button onClick={() => window.location.reload()} className="px-6 py-2 bg-critical-red text-white text-xs font-bold uppercase tracking-widest">Retry Connection</button>
-        </div>
+  if (skusLoading) return (
+    <div className="p-6 bg-[#121417]">
+      <div className="flex justify-between mb-4">
+        <Skeleton className="h-8 w-32" />
+        <Skeleton className="h-9 w-28" />
       </div>
-    );
-  }
+      <TableSkeleton rows={10} cols={6} />
+    </div>
+  );
+
+  if (skusError) return (
+    <div className="h-screen bg-[#121417] flex items-center justify-center p-8">
+      <ErrorState
+        message="Could not load inventory data"
+        detail={(skusError as Error).message}
+        onRetry={refetchSkus}
+      />
+    </div>
+  );
+
+  if (!skus || skus.length === 0) return (
+    <div className="min-h-screen bg-[#121417] text-slate-200 p-6 flex flex-col justify-center">
+      <NewEmptyState
+        icon="📦"
+        title="No products yet"
+        description="Add your first product to start tracking inventory"
+        action={{ label: 'Add product', onClick: () => setIsAddModalOpen(true) }}
+      />
+      <AnimatePresence>
+        {isAddModalOpen && (
+          <AddProductModal 
+            initialBarcode={prefilledBarcode}
+            onClose={() => { setIsAddModalOpen(false); setPrefilledBarcode(""); }} 
+            onSuccess={(msg) => { setSuccessToast(msg); setIsAddModalOpen(false); setPrefilledBarcode(""); queryClient.invalidateQueries({ queryKey: ['inventory'] }); }}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#121417] text-slate-200 p-6">
@@ -629,6 +659,7 @@ function AddProductModal({ onClose, onSuccess, initialBarcode }: { onClose: () =
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<SKUFormValues>({
     resolver: zodResolver(skuSchema),
+    mode: "onChange",
     defaultValues: {
       unit: "pcs",
       current_location: "warehouse",
@@ -638,6 +669,10 @@ function AddProductModal({ onClose, onSuccess, initialBarcode }: { onClose: () =
       barcode: initialBarcode || ""
     }
   });
+
+  const watchCostPrice = watch("cost_price") || 0;
+  const watchSalePrice = watch("sale_price") || 0;
+  const showPriceWarning = watchSalePrice > 0 && watchCostPrice > 0 && watchSalePrice < watchCostPrice;
 
   useEffect(() => {
     if (initialBarcode) {
@@ -750,12 +785,12 @@ function AddProductModal({ onClose, onSuccess, initialBarcode }: { onClose: () =
                    <div className="space-y-2 col-span-2">
                       <Label>Product Name</Label>
                       <Input {...register("name")} placeholder="e.g. Industrial Drill Bits" />
-                      {errors.name && <ErrorMsg>{errors.name.message}</ErrorMsg>}
+                      <FieldError message={errors.name?.message} />
                    </div>
                    <div className="space-y-2">
                       <Label>SKU Code</Label>
                       <Input {...register("sku_code")} placeholder="GEN-1234" />
-                      {errors.sku_code && <ErrorMsg>{errors.sku_code.message}</ErrorMsg>}
+                      <FieldError message={errors.sku_code?.message} />
                    </div>
                    <div className="space-y-2">
                       <Label>Category</Label>
@@ -814,7 +849,12 @@ function AddProductModal({ onClose, onSuccess, initialBarcode }: { onClose: () =
                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sandstone-gold font-mono text-[10px]">{profile?.currency || 'PKR'}</span>
                          <input type="number" step="0.01" {...register("sale_price")} className="w-full bg-onyx border border-white/10 pl-10 pr-4 py-3 font-mono text-sm text-sandstone-gold focus:border-sandstone-gold outline-none transition-all" />
                       </div>
-                      {errors.sale_price && <ErrorMsg>{errors.sale_price.message}</ErrorMsg>}
+                      <FieldError message={errors.sale_price?.message} />
+                      {showPriceWarning && (
+                        <p className="text-xs text-amber-500 mt-1 flex items-center gap-1 font-medium font-sans">
+                          <span>⚠</span> Warning: Sale price is below cost price
+                        </p>
+                      )}
                    </div>
                 </div>
              </div>

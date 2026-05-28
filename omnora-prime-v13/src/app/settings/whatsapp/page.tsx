@@ -84,11 +84,11 @@ export default function WhatsAppSettingsPage() {
         .eq("id", profile?.id);
 
       if (error) throw error;
-      alert("Configuration saved successfully.");
+      toast.success("Configuration saved", "WhatsApp business parameters committed successfully.");
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       console.error(err);
-      alert("Failed to save: " + message);
+      toast.error("Failed to save", message);
     } finally {
       setIsSaving(false);
     }
@@ -96,7 +96,7 @@ export default function WhatsAppSettingsPage() {
 
   const handleTestMessage = async () => {
     if (!config.owner_phone) {
-      alert("Please enter an owner WhatsApp number first.");
+      toast.warning("Missing phone number", "Please enter an owner WhatsApp number first.");
       return;
     }
     setTestStatus("sending");
@@ -114,10 +114,12 @@ export default function WhatsAppSettingsPage() {
 
       setTestStatus("success");
       setTestResult("Test message dispatched to " + config.owner_phone);
+      toast.success("Test message sent!", "Check your WhatsApp for the verification text.");
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       setTestStatus("error");
       setTestResult(message);
+      toast.error("Failed to send test", message);
     }
   };
 

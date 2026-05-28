@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -19,6 +19,9 @@ import { cn } from "@/lib/utils";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { Skeleton, KpiCardSkeleton, CardGridSkeleton } from "@/components/ui/Skeleton";
+import { ErrorState, EmptyState, FieldError } from "@/components/ui/StateViews";
+import { useDebounce } from "@/hooks/useDebounce";
 
 interface Party {
   id: string;
@@ -42,9 +45,17 @@ interface Stats {
 }
 
 const partySchema = z.object({
-  name: z.string().min(1, "Name is required"),
+  name: z.string().min(2, "Name too short"),
   party_type: z.enum(['customer', 'supplier', 'both']),
-  phone: z.string().optional(),
+  phone: z.string().optional().refine(val => {
+    if (!val) return true;
+    const digits = val.replace(/[^0-9]/g, '');
+    return digits.length >= 10;
+  }, "Enter a valid phone number"),
+  email: z.string().optional().refine(val => {
+    if (!val) return true;
+    return val.includes('@');
+  }, "Enter a valid email address"),
   address: z.string().optional(),
   credit_limit: z.coerce.number().min(0).default(0),
   credit_days: z.coerce.number().min(0).default(0),
@@ -83,7 +94,7 @@ export default function PartiesPage() {
   };
 
   // Queries
-  const { data: parties = [], isLoading } = useQuery({
+  const { data: parties = [], isLoading, error: partiesError, refetch: refetchParties } = useQuery({
     queryKey: ['parties_registry', businessId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -95,17 +106,20 @@ export default function PartiesPage() {
       setLastFetchedAt(new Date());
       return data;
     },
-    enabled: !!businessId
+    enabled: !!businessId,
+    staleTime: 10 * 60 * 1000,
   });
+
+  const debouncedSearch = useDebounce(searchTerm, 300);
 
   const filteredParties = useMemo(() => {
     return parties.filter((p: Party) => {
-      const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                           p.phone?.includes(searchTerm);
+      const matchesSearch = p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) || 
+                           p.phone?.includes(debouncedSearch);
       const matchesType = filterType === 'all' || p.party_type === filterType || p.party_type === 'both';
       return matchesSearch && matchesType;
     });
-  }, [parties, searchTerm, filterType]);
+  }, [parties, debouncedSearch, filterType]);
 
   const stats = useMemo<Stats>(() => {
     const totalReceivable = parties
@@ -120,6 +134,46 @@ export default function PartiesPage() {
       blocked: parties.filter((p: Party) => p.is_blocked).length
     };
   }, [parties]);
+
+  if (isLoading) return (
+    <div className="p-6 bg-[#0F1113]">
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <KpiCardSkeleton key={i} />
+        ))}
+      </div>
+      <CardGridSkeleton count={6} />
+    </div>
+  );
+
+  if (partiesError) return (
+    <div className="min-h-screen bg-[#0F1113] flex items-center justify-center p-8">
+      <ErrorState
+        message="Could not load parties registry"
+        detail={(partiesError as Error).message}
+        onRetry={refetchParties}
+      />
+    </div>
+  );
+
+  if (!parties || parties.length === 0) return (
+    <div className="min-h-screen bg-[#0F1113] text-slate-200 p-6 flex flex-col justify-center">
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <KpiCardSkeleton key={i} />
+        ))}
+      </div>
+      <EmptyState
+        icon="🤝"
+        title="No customers or suppliers"
+        description="Add your first business contact"
+        action={{ label: 'Add party', onClick: () => setIsModalOpen(true) }}
+      />
+      <AnimatePresence>
+        {isModalOpen && <AddPartyModal onClose={() => setIsModalOpen(false)} onSuccess={(msg: string) => { setSuccessToast(msg); queryClient.invalidateQueries({ queryKey: ['parties_registry'] }); setIsModalOpen(false); }} />}
+      </AnimatePresence>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#0F1113] text-slate-200">
@@ -387,8 +441,17 @@ function AddPartyModal({ onClose, onSuccess }: { onClose: () => void, onSuccess:
   const supabase = createClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+
   const { register, handleSubmit, formState: { errors } } = useForm<PartyFormValues>({
     resolver: zodResolver(partySchema),
+    mode: "onChange",
     defaultValues: { party_type: 'customer', credit_limit: 0, credit_days: 0 }
   });
 
@@ -438,8 +501,8 @@ function AddPartyModal({ onClose, onSuccess }: { onClose: () => void, onSuccess:
              <div className="grid grid-cols-2 gap-6">
                 <div className="col-span-2 space-y-2">
                    <label className="text-[10px] uppercase font-black text-gray-600">Legal Name</label>
-                   <input {...register("name")} className="w-full bg-[#0F1113] border border-white/10 p-4 text-sm text-white focus:border-[#0070F3] outline-none" placeholder="e.g. Acme Industrial Ltd" />
-                   {errors.name && <p className="text-[9px] text-red-500 font-bold uppercase">{errors.name.message}</p>}
+                    <input {...register("name")} className="w-full bg-[#0F1113] border border-white/10 p-4 text-sm text-white focus:border-[#0070F3] outline-none" placeholder="e.g. Acme Industrial Ltd" />
+                    <FieldError message={errors.name?.message} />
                 </div>
 
                 <div className="space-y-2">
@@ -451,10 +514,17 @@ function AddPartyModal({ onClose, onSuccess }: { onClose: () => void, onSuccess:
                    </select>
                 </div>
 
-                <div className="space-y-2">
-                   <label className="text-[10px] uppercase font-black text-gray-600">Contact Number</label>
-                   <input {...register("phone")} className="w-full bg-[#0F1113] border border-white/10 p-4 text-sm text-white outline-none" placeholder="+92 300 0000000" />
-                </div>
+                 <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-black text-gray-600">Contact Number</label>
+                    <input {...register("phone")} className="w-full bg-[#0F1113] border border-white/10 p-4 text-sm text-white outline-none" placeholder="+92 300 0000000" />
+                    <FieldError message={errors.phone?.message} />
+                 </div>
+
+                 <div className="space-y-2 col-span-2">
+                    <label className="text-[10px] uppercase font-black text-gray-600">Email Address</label>
+                    <input {...register("email")} className="w-full bg-[#0F1113] border border-white/10 p-4 text-sm text-white outline-none" placeholder="e.g. billing@acme.com" />
+                    <FieldError message={errors.email?.message} />
+                 </div>
 
                 <div className="col-span-2 space-y-2">
                    <label className="text-[10px] uppercase font-black text-gray-600">Physical Address</label>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -229,16 +229,100 @@ function StatusPill({ status }: any) {
 }
 
 function AddAuditModal({ onClose, onSubmit }: any) {
+  const { businessId } = usePersona();
+  const supabase = createClient();
   const { register, handleSubmit, watch, setValue } = useForm({ 
     defaultValues: {
       label: `Stock Count ${new Date().toLocaleDateString()}`,
       scope: 'full',
-      scopeDetails: [],
+      scopeDetails: [] as string[],
       notes: ''
     }
   });
 
   const selectedScope = watch('scope');
+  const watchedDetails = watch('scopeDetails') || [];
+
+  // Reset details when scope changes
+  useEffect(() => {
+    setValue('scopeDetails', []);
+  }, [selectedScope, setValue]);
+
+  // Fetch unique categories
+  const { data: categories = [], isLoading: isCategoriesLoading } = useQuery({
+    queryKey: ['sku_categories_audit', businessId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('skus')
+        .select('category')
+        .eq('business_id', businessId);
+      if (error) throw error;
+      const unique = Array.from(new Set((data || []).map((s: any) => s.category).filter(Boolean))) as string[];
+      return unique;
+    },
+    enabled: !!businessId && selectedScope === 'category'
+  });
+
+  // Custom SKU search
+  const [skuSearchTerm, setSkuSearchTerm] = useState("");
+  const { data: searchedSkus = [], isLoading: isSkuSearching } = useQuery({
+    queryKey: ['sku_search_audit', businessId, skuSearchTerm],
+    queryFn: async () => {
+      if (!skuSearchTerm || skuSearchTerm.length < 2) return [];
+      const { data, error } = await supabase
+        .from('skus')
+        .select('id, name, sku_code')
+        .eq('business_id', businessId)
+        .ilike('name', `%${skuSearchTerm}%`)
+        .limit(5);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!businessId && skuSearchTerm.length >= 2 && selectedScope === 'custom'
+  });
+
+  // Fetch detailed info of selected custom SKUs for display
+  const { data: selectedSkusList = [] } = useQuery({
+    queryKey: ['selected_skus_details_audit', businessId, watchedDetails],
+    queryFn: async () => {
+      if (watchedDetails.length === 0) return [];
+      const { data, error } = await supabase
+        .from('skus')
+        .select('id, name, sku_code')
+        .in('id', watchedDetails);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!businessId && watchedDetails.length > 0 && selectedScope === 'custom'
+  });
+
+  // Escape key handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  const handleCategoryToggle = (cat: string) => {
+    if (watchedDetails.includes(cat)) {
+      setValue('scopeDetails', watchedDetails.filter((c: string) => c !== cat));
+    } else {
+      setValue('scopeDetails', [...watchedDetails, cat]);
+    }
+  };
+
+  const handleAddCustomSku = (sku: any) => {
+    if (!watchedDetails.includes(sku.id)) {
+      setValue('scopeDetails', [...watchedDetails, sku.id]);
+    }
+    setSkuSearchTerm("");
+  };
+
+  const handleRemoveCustomSku = (skuId: string) => {
+    setValue('scopeDetails', watchedDetails.filter((id: string) => id !== skuId));
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md" onClick={onClose}>
@@ -297,23 +381,82 @@ function AddAuditModal({ onClose, onSubmit }: any) {
              <div className="space-y-6">
                 {selectedScope === 'category' && (
                   <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
-                    <label className="text-[10px] uppercase font-black text-gray-500 tracking-widest">Select Categories</label>
-                    <div className="p-4 bg-[#0F1113] border border-white/5 min-h-[100px] max-h-[150px] overflow-y-auto custom-scrollbar">
-                       {/* This would ideally be populated from categories query */}
-                       <p className="text-[10px] text-gray-700 italic uppercase font-bold">Select from list...</p>
+                    <label className="text-[10px] uppercase font-black text-gray-500 tracking-widest block">Select Categories</label>
+                    <div className="p-4 bg-[#0F1113] border border-white/5 min-h-[100px] max-h-[150px] overflow-y-auto custom-scrollbar space-y-2">
+                      {isCategoriesLoading ? (
+                        <p className="text-[9px] uppercase tracking-widest text-gray-600 animate-pulse font-bold">Loading Categories...</p>
+                      ) : categories.length === 0 ? (
+                        <p className="text-[9px] uppercase tracking-widest text-gray-600 italic font-bold">No categories found</p>
+                      ) : (
+                        categories.map((cat: string) => (
+                          <label key={cat} className="flex items-center space-x-3 cursor-pointer text-xs text-gray-300 hover:text-white uppercase font-bold">
+                            <input 
+                              type="checkbox"
+                              checked={watchedDetails.includes(cat)}
+                              onChange={() => handleCategoryToggle(cat)}
+                              className="rounded bg-black border-white/10 text-electric-blue focus:ring-0"
+                            />
+                            <span>{cat}</span>
+                          </label>
+                        ))
+                      )}
                     </div>
                   </div>
                 )}
 
                 {selectedScope === 'custom' && (
                   <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
-                    <label className="text-[10px] uppercase font-black text-gray-500 tracking-widest">Custom SKU Selection</label>
+                    <label className="text-[10px] uppercase font-black text-gray-500 tracking-widest block">Custom SKU Selection</label>
                     <div className="relative">
                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={14} />
-                       <input placeholder="Search SKU..." className="w-full bg-[#0F1113] border border-white/5 p-3 pl-10 text-xs text-white focus:border-electric-blue outline-none" />
+                       <input 
+                         placeholder="Type at least 2 chars to search..." 
+                         value={skuSearchTerm}
+                         onChange={(e) => setSkuSearchTerm(e.target.value)}
+                         className="w-full bg-[#0F1113] border border-white/5 p-3 pl-10 text-xs text-white focus:border-electric-blue outline-none rounded-sm transition-all font-mono" 
+                       />
+                       {skuSearchTerm.length >= 2 && (
+                         <div className="absolute top-full left-0 right-0 bg-[#1A1D21] border border-white/10 z-50 mt-1 shadow-2xl rounded-sm overflow-hidden divide-y divide-white/5">
+                           {isSkuSearching ? (
+                             <p className="p-3 text-[9px] uppercase text-gray-500 animate-pulse font-bold">Searching SKUs...</p>
+                           ) : searchedSkus.length === 0 ? (
+                             <p className="p-3 text-[9px] uppercase text-gray-500 font-bold italic">No matching SKUs found</p>
+                           ) : (
+                             searchedSkus.map((sku: any) => (
+                               <button 
+                                 key={sku.id}
+                                 type="button"
+                                 onClick={() => handleAddCustomSku(sku)}
+                                 className="w-full px-4 py-3 text-left text-xs text-gray-300 hover:bg-electric-blue/10 hover:text-white transition-colors flex justify-between items-center"
+                               >
+                                 <span>{sku.name}</span>
+                                 <span className="font-mono text-[9px] text-gray-500">{sku.sku_code}</span>
+                               </button>
+                             ))
+                           )}
+                         </div>
+                       )}
                     </div>
-                    <div className="p-4 bg-[#0F1113] border border-white/5 min-h-[100px] max-h-[150px] overflow-y-auto custom-scrollbar">
-                       <p className="text-[10px] text-gray-700 italic uppercase font-bold text-center mt-4">Search and add SKUs</p>
+                    <div className="p-4 bg-[#0F1113] border border-white/5 min-h-[100px] max-h-[150px] overflow-y-auto custom-scrollbar space-y-2">
+                       {selectedSkusList.length === 0 ? (
+                         <p className="text-[9px] text-gray-600 italic uppercase font-bold text-center mt-6">Search and select SKUs above</p>
+                       ) : (
+                         selectedSkusList.map((sku: any) => (
+                           <div key={sku.id} className="flex justify-between items-center bg-white/5 px-3 py-1.5 rounded-sm">
+                             <div className="flex flex-col">
+                               <span className="text-[10px] font-bold text-white uppercase">{sku.name}</span>
+                               <span className="text-[8px] font-mono text-gray-500 mt-0.5">{sku.sku_code}</span>
+                             </div>
+                             <button 
+                               type="button" 
+                               onClick={() => handleRemoveCustomSku(sku.id)} 
+                               className="p-1 hover:bg-white/5 rounded text-gray-500 hover:text-red-500 transition-colors"
+                             >
+                               <X size={12} />
+                             </button>
+                           </div>
+                         ))
+                       )}
                     </div>
                   </div>
                 )}

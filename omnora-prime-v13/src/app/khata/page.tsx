@@ -25,6 +25,9 @@ import {
 import { Decimal } from "decimal.js";
 import { cn } from "@/lib/utils";
 import { format, isWithinInterval, parseISO } from "date-fns";
+import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
+import { ErrorState, EmptyState as NewEmptyState } from "@/components/ui/StateViews";
+import { useDebounce } from "@/hooks/useDebounce";
 
 // Components
 import { KhataEntryModal } from "@/components/khata/KhataEntryModal";
@@ -127,7 +130,7 @@ export default function KhataPage() {
     enabled: !!businessId,
   });
 
-  const { data: rawEntries = [], isLoading: entriesLoading } = useQuery({
+  const { data: rawEntries = [], isLoading: entriesLoading, error: entriesError, refetch: refetchEntries } = useQuery({
     queryKey: ['ledger_entries', businessId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -173,11 +176,13 @@ export default function KhataPage() {
     return Object.values(groups);
   }, [rawEntries]);
 
+  const debouncedSearch = useDebounce(searchTerm, 300);
+
   // Filtering Logic
   const filteredTransactions = useMemo(() => {
     return groupedTransactions.filter(tx => {
-      const matchesSearch = tx.tx_ref.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                           tx.description.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = tx.tx_ref.toLowerCase().includes(debouncedSearch.toLowerCase()) || 
+                           tx.description.toLowerCase().includes(debouncedSearch.toLowerCase());
       const matchesParty = partyFilter === "all" || tx.party_id === partyFilter;
       const matchesAccountType = accountTypeFilter === "all" || tx.accountType === accountTypeFilter;
       
@@ -192,7 +197,7 @@ export default function KhataPage() {
 
       return matchesSearch && matchesParty && matchesAccountType && matchesDate;
     });
-  }, [groupedTransactions, searchTerm, partyFilter, accountTypeFilter, dateRange]);
+  }, [groupedTransactions, debouncedSearch, partyFilter, accountTypeFilter, dateRange]);
 
   // Summary Cards Data
   const summary = useMemo(() => {
@@ -220,6 +225,67 @@ export default function KhataPage() {
       setPrintingTx(null);
     }, 100);
   };
+
+  const isLoading = accountsLoading || entriesLoading;
+  if (isLoading) return (
+    <div className="p-6 bg-[#0F1113]">
+      <div className="flex justify-between mb-4">
+        <Skeleton className="h-8 w-32" />
+        <Skeleton className="h-9 w-28" />
+      </div>
+      <TableSkeleton rows={8} cols={5} />
+    </div>
+  );
+
+  if (entriesError) return (
+    <div className="min-h-screen bg-[#0F1113] flex items-center justify-center p-8">
+      <ErrorState
+        message="Could not load Khata registry"
+        detail={(entriesError as Error).message}
+        onRetry={refetchEntries}
+      />
+    </div>
+  );
+
+  if (!rawEntries || rawEntries.length === 0) return (
+    <div className="min-h-screen bg-[#0F1113] text-slate-200 p-6 flex flex-col justify-center">
+      <div className="flex justify-between mb-4">
+        <Skeleton className="h-8 w-32" />
+        <Skeleton className="h-9 w-28" />
+      </div>
+      <NewEmptyState
+        icon="📒"
+        title="Khata is empty"
+        description="Record your first financial transaction"
+        action={{ label: 'New entry', onClick: () => setIsEntryModalOpen(true) }}
+      />
+      <KhataEntryModal 
+        isOpen={isEntryModalOpen} 
+        onClose={() => setIsEntryModalOpen(false)} 
+        onSuccess={(msg) => {
+          setSuccessToast(msg);
+          queryClient.invalidateQueries({ queryKey: ['ledger_entries'] });
+          queryClient.invalidateQueries({ queryKey: ['parties'] });
+        }}
+        accounts={accounts}
+        parties={parties}
+      />
+      <AnimatePresence>
+        {successToast && (
+          <motion.div 
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 50, opacity: 0 }}
+            className="fixed bottom-8 right-24 z-[100] bg-emerald text-onyx px-6 py-3 flex items-center space-x-3 shadow-2xl rounded-sm font-bold uppercase text-xs tracking-widest"
+          >
+            <CheckCircle2 size={18} />
+            <span>{successToast}</span>
+            <button onClick={() => setSuccessToast(null)} className="ml-4 opacity-50 hover:opacity-100"><X size={14} /></button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#0F1113] text-slate-200">

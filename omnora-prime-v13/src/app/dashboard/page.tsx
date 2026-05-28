@@ -33,6 +33,8 @@ import DeadStockWidget from "@/components/dashboard/DeadStockWidget";
 import PromiseAlertWidget from "@/components/dashboard/PromiseAlertWidget";
 import { useIndustry, useIndustryLabels } from "@/components/providers/IndustryProvider";
 import { MobileAppBanner } from "@/components/dashboard/MobileAppBanner";
+import { Skeleton, KpiCardSkeleton } from "@/components/ui/Skeleton";
+import { ErrorState } from "@/components/ui/StateViews";
 
 
 export default function DashboardPage() {
@@ -66,7 +68,7 @@ export default function DashboardPage() {
   }, [businessId, supabase, queryClient]);
 
   // Fetch KPIs
-  const { data: kpis, isLoading: isKpiLoading } = useQuery({
+  const { data: kpis, isLoading: isKpiLoading, error: kpiError, refetch: refetchKpis } = useQuery({
     queryKey: ['dashboard-kpis', businessId],
     queryFn: async () => {
       const now = new Date();
@@ -121,7 +123,8 @@ export default function DashboardPage() {
       };
     },
     enabled: !!businessId,
-    refetchInterval: 60000
+    refetchInterval: 60000,
+    staleTime: 60 * 1000
   });
 
 
@@ -133,7 +136,8 @@ export default function DashboardPage() {
       if (error) throw error;
       return data;
     },
-    enabled: !!businessId
+    enabled: !!businessId,
+    staleTime: 30 * 1000,
   });
 
   // Fetch Chart Data (Last 7 Days Sales)
@@ -253,6 +257,37 @@ export default function DashboardPage() {
     
     queryClient.invalidateQueries({ queryKey: ['onboarding-data'] });
   };
+
+  const isLoading = isKpiLoading || isPersonaLoading;
+  if (isLoading) return (
+    <div className="p-6">
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <KpiCardSkeleton key={i} />
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-[#0F1114] border border-white/[0.06] rounded-sm p-4">
+          <Skeleton className="h-4 w-32 mb-4" />
+          <Skeleton className="h-40 w-full" />
+        </div>
+        <div className="bg-[#0F1114] border border-white/[0.06] rounded-sm p-4">
+          <Skeleton className="h-4 w-28 mb-4" />
+          <Skeleton className="h-40 w-full" />
+        </div>
+      </div>
+    </div>
+  );
+
+  if (kpiError) return (
+    <div className="p-6 min-h-screen bg-noxis-bg flex items-center justify-center">
+      <ErrorState
+        message="Could not load Dashboard KPIs"
+        detail={(kpiError as Error).message}
+        onRetry={refetchKpis}
+      />
+    </div>
+  );
 
   const ownerName = profile?.owner_name || userEmail.split('@')[0] || 'User';
 

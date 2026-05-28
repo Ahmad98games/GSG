@@ -30,6 +30,7 @@ import {
 import { useSidebarState } from "@/hooks/useSidebarState";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { cn } from "@/lib/utils";
+import { FormSkeleton } from "@/components/ui/Skeleton";
 import { createClient } from "@/lib/supabase/client";
 import ThemePicker from "@/components/shell/ThemePicker";
 import { useThemeStore } from "@/stores/themeStore";
@@ -90,6 +91,7 @@ export default function SettingsPage() {
    const { tier: currentTier, expiresAt: tierExpiresAt, isTrial: tierIsTrial, setTier } = useTierStore();
    const { success: toastSuccess, error: toastError, warning: toastWarning } = useToast();
   
+  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('profile');
   const [localConfig, setLocalConfig] = useState<LocalConfig>({});
   const [sessionCount, setSessionCount] = useState(0);
@@ -111,15 +113,21 @@ export default function SettingsPage() {
 
   useEffect(() => {
     async function fetchData() {
-      const res = await fetch('/api/settings');
-      const data = await res.json();
-      const configMap = (data.localConfig || []).reduce((acc: LocalConfig, c: { key: string; value: string | number }) => ({ ...acc, [c.key]: c.value }), {});
-      setLocalConfig(configMap);
-      setSessionCount(data.sessionCount || 0);
+      try {
+        const res = await fetch('/api/settings');
+        const data = await res.json();
+        const configMap = (data.localConfig || []).reduce((acc: LocalConfig, c: { key: string; value: string | number }) => ({ ...acc, [c.key]: c.value }), {});
+        setLocalConfig(configMap);
+        setSessionCount(data.sessionCount || 0);
 
-      const infoRes = await fetch('/api/hub/info');
-      const infoData = await infoRes.json();
-      setHubInfo(infoData);
+        const infoRes = await fetch('/api/hub/info');
+        const infoData = await infoRes.json();
+        setHubInfo(infoData);
+      } catch (err) {
+        console.error("Settings fetch error:", err);
+      } finally {
+        setIsLoading(false);
+      }
     }
     fetchData();
   }, []);
@@ -326,6 +334,9 @@ export default function SettingsPage() {
         body: JSON.stringify({ type: 'local_config', data: newData })
       });
       setLocalConfig({ ...localConfig, ...newData });
+      toastSuccess('Setting updated', 'Local configuration synced successfully.');
+    } catch (err: any) {
+      toastError('Save failed', err.message);
     } finally {
       setIsSaving(false);
     }
@@ -363,6 +374,12 @@ export default function SettingsPage() {
     const data = await res.json();
     setLocalConfig({ ...localConfig, pairing_key: data.pairingKey });
   };
+
+  if (isLoading) return (
+    <div className="p-12 max-w-3xl mx-auto bg-black min-h-screen">
+      <FormSkeleton fields={5} />
+    </div>
+  );
 
   return (
     <>

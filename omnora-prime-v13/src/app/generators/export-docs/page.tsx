@@ -54,7 +54,10 @@ export default function ExportDocsPage() {
         </div>
 
         <div className="flex items-center space-x-3">
-          <button className="px-6 py-2 bg-electric-blue text-[#0A0C0E] text-[10px] font-black uppercase tracking-widest hover:bg-blue-400 transition-all flex items-center space-x-2">
+          <button 
+            onClick={() => window.print()}
+            className="px-6 py-2 bg-electric-blue text-[#0A0C0E] text-[10px] font-black uppercase tracking-widest hover:bg-blue-400 transition-all flex items-center space-x-2 rounded-sm active:scale-95 transition-transform duration-150 cursor-pointer"
+          >
             <Printer size={14} />
             <span>Generate PDF</span>
           </button>

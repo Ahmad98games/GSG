@@ -11,12 +11,14 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { useToast } from "@/hooks/useToast";
 
 export default function NewCameraPage() {
   const { t } = usePersona();
   const { profile } = useBusinessProfile();
   const supabase = createClient();
   const router = useRouter();
+  const toast = useToast();
 
   const [brands, setBrands] = useState<any[]>([]);
   const [types, setTypes] = useState<any[]>([]);
@@ -55,18 +57,23 @@ export default function NewCameraPage() {
 
   const handleTestConnection = async () => {
     setTestStatus('testing');
-    // Call Python Vision Engine health endpoint
     try {
-      const response = await fetch('http://localhost:8000/health', {
+      const response = await fetch('http://localhost:5001/test-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           rtsp_url: `rtsp://${form.username}:${form.password}@${form.ip_address}:${form.port}/stream`
         })
       });
-      if (response.ok) setTestStatus('ok');
-      else setTestStatus('fail');
+      if (response.ok) {
+        setTestStatus('ok');
+        toast.success("Stream accessible ✓", "Connection established with camera.");
+      } else {
+        setTestStatus('fail');
+        toast.error("Connection failed", "Cannot reach camera — check IP and credentials.");
+      }
     } catch (e) {
+      toast.error("Test requires Hub to be running", "Ensure Python sidecar is active.");
       setTestStatus('fail');
     }
   };

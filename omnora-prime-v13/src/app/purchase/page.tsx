@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { 
   Plus, Search, Filter, 
   FileText, Truck, AlertCircle,
@@ -10,6 +10,9 @@ import {
 import { motion } from "framer-motion";
 import { usePersona } from "@/hooks/usePersona";
 import { usePurchaseOrders } from "@/hooks/usePurchaseQueries";
+import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
+import { ErrorState, EmptyState } from "@/components/ui/StateViews";
+import { useDebounce } from "@/hooks/useDebounce";
 
 import { useSidebarState } from "@/hooks/useSidebarState";
 import Link from "next/link";
@@ -19,7 +22,19 @@ import IndustrialEmptyState from "@/components/ui/IndustrialEmptyState";
 export default function PurchaseOrdersPage() {
   const { t, fmt, fmtDate, currency } = usePersona();
   const { isCollapsed } = useSidebarState();
-  const { data: pos, isLoading } = usePurchaseOrders();
+  const { data: pos, isLoading, error, refetch } = usePurchaseOrders();
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 300);
+
+  const filteredPos = useMemo(() => {
+    if (!pos) return [];
+    return pos.filter((po: any) => {
+      const matchNo = po.po_number?.toLowerCase().includes(debouncedSearch.toLowerCase());
+      const matchSupplier = po.supplier?.name?.toLowerCase().includes(debouncedSearch.toLowerCase());
+      return matchNo || matchSupplier;
+    });
+  }, [pos, debouncedSearch]);
 
   const summary = useMemo(() => {
     if (!pos) return { open: 0, pending: 0, monthValue: 0 };
@@ -36,7 +51,40 @@ export default function PurchaseOrdersPage() {
     };
   }, [pos]);
 
-  
+  if (isLoading) return (
+    <div className="p-6 bg-onyx">
+      <div className="flex justify-between mb-4">
+        <Skeleton className="h-8 w-32" />
+        <Skeleton className="h-9 w-28" />
+      </div>
+      <TableSkeleton rows={8} cols={6} />
+    </div>
+  );
+
+  if (error) return (
+    <div className="min-h-screen bg-onyx flex items-center justify-center p-8">
+      <ErrorState
+        message="Could not load purchase orders registry"
+        detail={(error as Error).message}
+        onRetry={refetch}
+      />
+    </div>
+  );
+
+  if (!pos || pos.length === 0) return (
+    <div className="min-h-screen bg-onyx text-slate-200 p-6 flex flex-col justify-center">
+      <div className="flex justify-between mb-4">
+        <Skeleton className="h-8 w-32" />
+        <Skeleton className="h-9 w-28" />
+      </div>
+      <EmptyState
+        icon="🚚"
+        title="No purchase orders"
+        description="Create a purchase order to track supplier deliveries"
+        action={{ label: 'New order', href: '/purchase/new' }}
+      />
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-onyx text-slate-200 font-inter">
@@ -61,6 +109,8 @@ export default function PurchaseOrdersPage() {
                    type="text" 
                    placeholder="Search PO # or Supplier..."
                    className="bg-white/5 border border-white/10 text-[10px] text-white pl-10 pr-4 py-1.5 focus:border-electric-blue outline-none transition-all w-64"
+                   value={searchTerm}
+                   onChange={(e) => setSearchTerm(e.target.value)}
                  />
               </div>
               <Link 
@@ -117,7 +167,7 @@ export default function PurchaseOrdersPage() {
                       <tr>
                         <td colSpan={6} className="py-20 text-center text-[10px] uppercase tracking-[0.4em] text-gray-600 animate-pulse">Synchronizing Procurement Registry...</td>
                       </tr>
-                    ) : pos?.length === 0 ? (
+                    ) : filteredPos.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="py-20">
                           <IndustrialEmptyState 
@@ -127,7 +177,7 @@ export default function PurchaseOrdersPage() {
                           />
                         </td>
                       </tr>
-                    ) : pos?.map((po: any) => (
+                    ) : filteredPos.map((po: any) => (
                       <tr 
                         key={po.id} 
                         className="h-14 hover:bg-white/[0.01] transition-all group cursor-pointer border-b border-white/5"

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from "next/link";
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -46,6 +46,14 @@ export default function CameraSettings({ isOpen, onClose, cameras, tierLimit, on
   const { canAddCamera } = useTierStore();
   const [isAdding, setIsAdding] = useState(false);
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) onClose();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
   
   const [newCamera, setNewCamera] = useState({
     node_label: '',

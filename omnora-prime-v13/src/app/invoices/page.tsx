@@ -22,6 +22,9 @@ import FinancialAmount from "@/components/ui/FinancialAmount";
 import { useRowHighlight } from "@/hooks/useRowHighlight";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
+import { ErrorState, EmptyState as NewEmptyState } from "@/components/ui/StateViews";
+import { useDebounce } from "@/hooks/useDebounce";
 
 export default function InvoiceListPage() {
   const router = useRouter();
@@ -33,20 +36,22 @@ export default function InvoiceListPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
 
-  const { data: invoices, isLoading } = useQuery({
-    queryKey: ['invoices', businessId, searchTerm, statusFilter],
+  const debouncedSearch = useDebounce(searchTerm, 300);
+
+  const { data: invoices, isLoading, error: invoicesError, refetch: refetchInvoices } = useQuery({
+    queryKey: ['invoices', businessId, debouncedSearch, statusFilter],
     queryFn: async () => {
       let query = supabase
-        .from('invoices')
-        .select(`
+          .from('invoices')
+          .select(`
           *,
           party:parties(name, phone)
         `)
-        .eq('business_id', businessId)
-        .order('created_at', { ascending: false });
+          .eq('business_id', businessId)
+          .order('created_at', { ascending: false });
 
-      if (searchTerm) {
-        query = query.or(`invoice_no.ilike.%${searchTerm}%, party.name.ilike.%${searchTerm}%`);
+      if (debouncedSearch) {
+        query = query.or(`invoice_no.ilike.%${debouncedSearch}%, party.name.ilike.%${debouncedSearch}%`);
       }
       if (statusFilter !== 'all') {
         query = query.eq('status', statusFilter);
@@ -57,8 +62,43 @@ export default function InvoiceListPage() {
       setLastFetchedAt(new Date());
       return data;
     },
-    enabled: !!businessId
+    enabled: !!businessId && (debouncedSearch.length >= 2 || debouncedSearch.length === 0)
   });
+
+  if (isLoading) return (
+    <div className="p-6 bg-[#0F1113]">
+      <div className="flex justify-between mb-4">
+        <Skeleton className="h-8 w-32" />
+        <Skeleton className="h-9 w-28" />
+      </div>
+      <TableSkeleton rows={10} cols={7} />
+    </div>
+  );
+
+  if (invoicesError) return (
+    <div className="min-h-screen bg-[#0F1113] flex items-center justify-center p-8">
+      <ErrorState
+        message="Could not load invoices registry"
+        detail={(invoicesError as Error).message}
+        onRetry={refetchInvoices}
+      />
+    </div>
+  );
+
+  if (!invoices || invoices.length === 0) return (
+    <div className="min-h-screen bg-[#0F1113] text-slate-200 p-6 flex flex-col justify-center">
+      <div className="flex justify-between mb-4">
+        <Skeleton className="h-8 w-32" />
+        <Skeleton className="h-9 w-28" />
+      </div>
+      <NewEmptyState
+        icon="📄"
+        title="No invoices yet"
+        description="Create your first invoice when you make a sale"
+        action={{ label: 'New invoice', href: '/invoices/new' }}
+      />
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#0F1113] text-slate-200 p-6">

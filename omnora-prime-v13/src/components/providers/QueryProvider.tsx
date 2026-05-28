@@ -3,15 +3,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useBranchStore } from '@/stores/branchStore';
+import { queryClientOptions } from '@/lib/queryClient';
 
 export default function QueryProvider({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient({
-    defaultOptions: {
-      queries: {
-        staleTime: 60 * 1000,
-      },
-    },
-  }));
+  const [queryClient] = useState(() => new QueryClient(queryClientOptions));
 
   const activeBranchId = useBranchStore(state => state.activeBranchId);
 

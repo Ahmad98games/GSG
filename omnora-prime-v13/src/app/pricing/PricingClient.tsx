@@ -6,6 +6,7 @@ import { Check, X, ShieldCheck, Zap, Globe } from "lucide-react";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { formatCurrency } from "@/lib/currency/currencyEngine";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 const FAQS = [
   { q: "Can I use it without internet?", a: "Yes, fully offline. All core industrial logic runs on your local machine. Cloud sync is only used for license verification and optional multi-location data aggregation." },
@@ -32,53 +33,103 @@ export default function PricingClient() {
     }
   }, [region]);
 
+  const staggerContainer = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  };
+
+  const fadeInUp = {
+    hidden: { opacity: 0, y: 30 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
+  };
+
   return (
-    <div className="bg-[#0A0C0E] min-h-screen text-gray-400 font-inter selection:bg-electric-blue selection:text-onyx pt-32 pb-20">
+    <div className="bg-[#0A0C0E] min-h-screen text-gray-400 font-inter selection:bg-blue-500 selection:text-black pt-24 pb-20 overflow-x-hidden">
+      
+      {/* Glow Effects */}
+      <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-[120px] pointer-events-none" />
+
       <div className="max-w-7xl mx-auto px-6">
-        <div className="text-center mb-16">
-          <h1 className="text-5xl font-black text-white tracking-tighter mb-4 italic uppercase">Noxis<span className="text-electric-blue">Hub</span> Pricing</h1>
-          <p className="text-gray-600 uppercase tracking-[0.4em] text-[9px] font-black">Industrial Scalability. Predictable Growth.</p>
+        
+        {/* Header Section */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-16 pt-8"
+        >
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-tighter mb-4 italic uppercase">
+            Noxis<span className="text-blue-400">Hub</span> Pricing
+          </h1>
+          <p className="text-gray-500 uppercase tracking-[0.3em] text-[9px] sm:text-[10px] font-black">
+            Industrial Scalability. Predictable Growth.
+          </p>
           
-          <div className="flex flex-col md:flex-row items-center justify-center gap-6 mt-12">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mt-10">
             {/* Billing Toggle */}
-            <div className="bg-[#121417] p-1.5 rounded-sm border border-white/5 flex">
+            <div className="bg-[#121417] p-1.5 rounded-sm border border-white/5 flex w-fit">
               <button 
                 onClick={() => setBillingCycle('monthly')}
-                className={`px-8 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all ${billingCycle === 'monthly' ? 'bg-electric-blue text-onyx shadow-2xl' : 'text-gray-500 hover:text-gray-300'}`}
+                className={cn(
+                  "px-6 sm:px-8 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all rounded-sm",
+                  billingCycle === 'monthly' 
+                    ? 'bg-blue-500 text-black shadow-2xl' 
+                    : 'text-gray-500 hover:text-gray-300'
+                )}
               >
                 Monthly
               </button>
               <button 
                 onClick={() => setBillingCycle('annual')}
-                className={`px-8 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all relative ${billingCycle === 'annual' ? 'bg-electric-blue text-onyx shadow-2xl' : 'text-gray-500 hover:text-gray-300'}`}
+                className={cn(
+                  "px-6 sm:px-8 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all relative rounded-sm",
+                  billingCycle === 'annual' 
+                    ? 'bg-blue-500 text-black shadow-2xl' 
+                    : 'text-gray-500 hover:text-gray-300'
+                )}
               >
                 Annual
-                <span className="absolute -top-4 -right-4 bg-emerald text-[8px] px-2 py-0.5 rounded-none text-onyx font-black">SAVE 20%</span>
+                <span className="absolute -top-4 -right-4 bg-emerald-500 text-[8px] px-2 py-0.5 rounded-sm text-black font-black">SAVE 20%</span>
               </button>
             </div>
 
             {/* Currency Toggle (International only) */}
             {region === 'international' && (
-              <div className="bg-[#121417] p-1.5 rounded-sm border border-white/5 flex">
+              <div className="bg-[#121417] p-1.5 rounded-sm border border-white/5 flex w-fit">
                 <button 
                   onClick={() => setDisplayCurrency('LOCAL')}
-                  className={`px-6 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all ${displayCurrency === 'LOCAL' ? 'bg-white/10 text-white' : 'text-gray-600'}`}
+                  className={cn(
+                    "px-4 sm:px-6 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all rounded-sm",
+                    displayCurrency === 'LOCAL' ? 'bg-white/10 text-white' : 'text-gray-600'
+                  )}
                 >
                   {localCurrency}
                 </button>
                 <button 
                   onClick={() => setDisplayCurrency('USD')}
-                  className={`px-6 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all ${displayCurrency === 'USD' ? 'bg-white/10 text-white' : 'text-gray-600'}`}
+                  className={cn(
+                    "px-4 sm:px-6 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all rounded-sm",
+                    displayCurrency === 'USD' ? 'bg-white/10 text-white' : 'text-gray-600'
+                  )}
                 >
                   USD
                 </button>
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
 
-        {/* Pricing Grid */}
-        <div className="grid md:grid-cols-3 gap-10 mb-32">
+        {/* Pricing Cards Grid */}
+        <motion.div 
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-50px" }}
+          variants={staggerContainer}
+          className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-24"
+        >
           <PricingCard 
             tier="Lite"
             region={region}
@@ -88,7 +139,7 @@ export default function PricingClient() {
             priceUSD={billingCycle === 'monthly' ? 15 : 150}
             sub="Small Industrial Outlets & Shops"
             features={[
-              { label: "Double-entry Khata (Leger)", included: true },
+              { label: "Double-entry Khata (Ledger)", included: true },
               { label: "Inventory & Stock Tracking", included: true },
               { label: "Dynamic Invoice Generation", included: true },
               { label: "Up to 5 Paired Devices", included: true },
@@ -99,6 +150,7 @@ export default function PricingClient() {
             ]}
             cta="Deploy Lite"
             href="/purchase?plan=lite"
+            variant={fadeInUp}
           />
 
           <PricingCard 
@@ -121,6 +173,7 @@ export default function PricingClient() {
             ]}
             cta="Deploy Pro"
             href="/purchase?plan=pro"
+            variant={fadeInUp}
           />
 
           <PricingCard 
@@ -143,60 +196,79 @@ export default function PricingClient() {
             cta="Request Elite"
             href="/purchase?plan=elite"
             primary
+            variant={fadeInUp}
           />
-        </div>
+        </motion.div>
 
         {/* Global Infrastructure Banner */}
-        <div className="bg-[#121417] border border-white/5 p-12 relative overflow-hidden">
-           <div className="absolute top-0 right-0 w-64 h-64 bg-electric-blue/5 rounded-full blur-3xl -mr-32 -mt-32" />
-           <div className="relative z-10 grid md:grid-cols-2 gap-12 items-center">
-              <div>
-                 <h2 className="text-3xl font-black text-white tracking-tighter uppercase italic mb-4">Localized Infrastructure</h2>
-                 <p className="text-gray-500 text-sm leading-relaxed mb-8">
-                    Noxis is a global-first platform. We automatically adapt our core logic for tax compliance, 
-                    currency formatting (Lakh/Crore vs Million/Billion), and language based on your business profile.
-                 </p>
-                 <div className="flex gap-4">
-                    <div className="flex items-center gap-2 text-[10px] font-black uppercase text-gray-400">
-                       <ShieldCheck size={14} className="text-emerald" />
-                       PCI Secure
-                    </div>
-                    <div className="flex items-center gap-2 text-[10px] font-black uppercase text-gray-400">
-                       <Globe size={14} className="text-electric-blue" />
-                       30+ Currencies
-                    </div>
-                 </div>
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="bg-[#121417] border border-white/5 p-8 md:p-12 relative overflow-hidden rounded-sm mb-24"
+        >
+          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
+          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tighter uppercase italic mb-4">
+                Localized Infrastructure
+              </h2>
+              <p className="text-gray-400 text-xs sm:text-sm leading-relaxed mb-6 font-medium">
+                Noxis is a global-first platform. We automatically adapt our core logic for tax compliance, 
+                currency formatting (Lakh/Crore vs Million/Billion), and language based on your business profile.
+              </p>
+              <div className="flex gap-6">
+                <div className="flex items-center gap-2 text-[10px] font-black uppercase text-gray-300">
+                  <ShieldCheck size={14} className="text-emerald-400" />
+                  PCI Secure
+                </div>
+                <div className="flex items-center gap-2 text-[10px] font-black uppercase text-gray-300">
+                  <Globe size={14} className="text-blue-400" />
+                  30+ Currencies
+                </div>
               </div>
-              <div className="flex justify-end gap-4">
-                 <div className="p-6 bg-black/40 border border-white/5 space-y-4 w-48">
-                    <p className="text-[8px] font-black text-gray-600 uppercase tracking-widest">South Asia</p>
-                    <div className="space-y-2 opacity-30 grayscale">
-                       <p className="text-[10px] font-bold text-white uppercase">JazzCash</p>
-                       <p className="text-[10px] font-bold text-white uppercase">EasyPaisa</p>
-                       <p className="text-[10px] font-bold text-white uppercase">Bank Wire</p>
-                    </div>
-                 </div>
-                 <div className="p-6 bg-black/40 border border-white/5 space-y-4 w-48">
-                    <p className="text-[8px] font-black text-gray-600 uppercase tracking-widest">International</p>
-                    <div className="space-y-2 opacity-30 grayscale">
-                       <p className="text-[10px] font-bold text-white uppercase">Stripe</p>
-                       <p className="text-[10px] font-bold text-white uppercase">Paddle</p>
-                       <p className="text-[10px] font-bold text-white uppercase">Swift</p>
-                    </div>
-                 </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 bg-black/40 border border-white/5 space-y-4 rounded-sm">
+                <p className="text-[8px] font-black text-gray-600 uppercase tracking-widest">South Asia</p>
+                <div className="space-y-2 opacity-50 font-mono text-[9px] text-gray-400">
+                  <p>✔ JazzCash Local</p>
+                  <p>✔ EasyPaisa Instants</p>
+                  <p>✔ PKR Local Invoicing</p>
+                </div>
               </div>
-           </div>
-        </div>
+              <div className="p-4 bg-black/40 border border-white/5 space-y-4 rounded-sm">
+                <p className="text-[8px] font-black text-gray-600 uppercase tracking-widest">International</p>
+                <div className="space-y-2 opacity-50 font-mono text-[9px] text-gray-400">
+                  <p>✔ Stripe Integration</p>
+                  <p>✔ Paddle Checkouts</p>
+                  <p>✔ SWIFT Transfers</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
 
         {/* FAQs */}
-        <div className="mt-32 max-w-4xl mx-auto">
-          <h2 className="text-3xl font-black text-white tracking-tighter uppercase italic text-center mb-16">Frequently Asked Questions</h2>
-          <div className="grid md:grid-cols-2 gap-8">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tighter uppercase italic text-center mb-12">
+            Frequently Asked Questions
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {FAQS.map((faq, i) => (
-              <div key={i} className="bg-[#121417]/50 border border-white/5 p-8 rounded-sm">
-                <h4 className="text-sm font-bold text-white mb-3">{faq.q}</h4>
-                <p className="text-xs text-gray-500 leading-relaxed font-medium">{faq.a}</p>
-              </div>
+              <motion.div 
+                key={i} 
+                initial={{ opacity: 0, y: 15 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: (i % 2) * 0.1 }}
+                className="bg-[#121417]/50 border border-white/5 p-6 rounded-sm hover:border-white/10 transition-colors"
+              >
+                <h4 className="text-xs sm:text-sm font-bold text-white mb-2 uppercase tracking-wide">{faq.q}</h4>
+                <p className="text-[11px] sm:text-xs text-gray-500 leading-relaxed font-medium">{faq.a}</p>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -207,7 +279,7 @@ export default function PricingClient() {
 
 function PricingCard({ 
   tier, pricePKR, priceUSD, sub, features, cta, href, 
-  popular, primary, region, displayCurrency, localCurrency 
+  popular, primary, region, displayCurrency, localCurrency, variant 
 }: any) {
   
   const isSA = region === 'south_asian';
@@ -220,39 +292,41 @@ function PricingCard({
       : formatCurrency(pricePKR, localCurrency); // approximated
 
   return (
-    <div className={cn(
-      "relative flex flex-col p-10 border transition-all duration-500",
-      popular ? "bg-[#121417] border-electric-blue shadow-[0_30px_60px_rgba(0,112,243,0.1)] sm:scale-105 z-10" : "bg-[#0F1113] border-white/5 hover:border-white/10"
-    )}>
+    <motion.div 
+      variants={variant}
+      className={cn(
+        "relative flex flex-col p-8 sm:p-10 border transition-all duration-300 rounded-sm",
+        popular 
+          ? "bg-[#121417] border-blue-500 shadow-[0_20px_50px_rgba(96,165,250,0.1)] lg:scale-105 z-10" 
+          : "bg-[#0F1113] border-white/5 hover:border-white/10"
+      )}
+    >
       {popular && (
-        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-electric-blue text-onyx text-[9px] font-black uppercase tracking-[0.3em] px-6 py-2 whitespace-nowrap">
+        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-blue-500 text-black text-[9px] font-black uppercase tracking-[0.3em] px-6 py-2.5 whitespace-nowrap rounded-sm">
            Industrial Standard
         </div>
       )}
 
-      <div className="mb-10">
+      <div className="mb-8">
         <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-2">{tier}</h3>
-        <p className="text-[9px] text-gray-600 font-black uppercase tracking-widest leading-relaxed h-10">{sub}</p>
+        <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest leading-relaxed h-8">{sub}</p>
       </div>
 
-      <div className="mb-10">
+      <div className="mb-8">
          <div className="flex items-baseline gap-1">
-            <span className="text-4xl font-black text-white tracking-tighter font-mono">{displayPrice.split(' ')[1]}</span>
-            <span className="text-[10px] font-black text-gray-600 uppercase">{displayPrice.split(' ')[0]} / Mo</span>
+            <span className="text-3xl sm:text-4xl font-mono font-black text-white tracking-tighter">{displayPrice.split(' ')[1]}</span>
+            <span className="text-[9px] font-bold text-gray-500 uppercase">{displayPrice.split(' ')[0]} / Mo</span>
          </div>
-         {!isSA && !useUSD && (
-           <p className="text-[8px] text-gray-700 font-bold uppercase mt-1 italic">≈ {formatCurrency(priceUSD, 'USD')}</p>
-         )}
-         {isSA && (
-           <p className="text-[8px] text-gray-700 font-bold uppercase mt-1 italic">≈ {formatCurrency(priceUSD, 'USD')}</p>
+         {(isSA || !useUSD) && (
+           <p className="text-[8px] text-gray-600 font-bold uppercase mt-1.5 italic">≈ {formatCurrency(priceUSD, 'USD')}</p>
          )}
       </div>
 
-      <div className="flex-1 space-y-4 mb-12">
+      <div className="flex-1 space-y-3.5 mb-10">
         {features.map((f: any, i: number) => (
           <div key={i} className={cn("flex items-start space-x-3 text-[11px]", f.included ? "text-gray-400" : "text-gray-700")}>
             {f.included ? (
-              <Check size={14} className={f.highlight ? "text-electric-blue shrink-0" : "text-emerald shrink-0"} />
+              <Check size={14} className={f.highlight ? "text-blue-400 shrink-0" : "text-emerald-500 shrink-0"} />
             ) : (
               <X size={14} className="text-gray-800 shrink-0" />
             )}
@@ -264,16 +338,16 @@ function PricingCard({
       <Link 
         href={href}
         className={cn(
-          "w-full py-5 text-center text-[10px] font-black uppercase tracking-[0.2em] transition-all",
+          "w-full py-4 text-center text-[10px] font-black uppercase tracking-[0.2em] transition-all rounded-sm",
           primary 
-            ? "bg-sandstone-gold text-onyx hover:brightness-110" 
+            ? "bg-[#C5A059] text-black hover:brightness-110 active:scale-95" 
             : popular 
-              ? "bg-electric-blue text-onyx hover:brightness-110 shadow-2xl" 
-              : "bg-white/5 text-white hover:bg-white/10"
+              ? "bg-blue-500 text-black hover:brightness-110 active:scale-95 shadow-lg shadow-blue-500/20" 
+              : "bg-white/5 text-white hover:bg-white/10 active:scale-95"
         )}
       >
         {cta}
       </Link>
-    </div>
+    </motion.div>
   );
 }

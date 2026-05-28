@@ -1,463 +1,430 @@
-"use client";
+'use client'
 
-import React from "react";
-import Footer from "@/components/shell/Footer";
+import React, { useState } from 'react'
+import Link from 'next/link'
+import { motion } from 'framer-motion'
+import { 
+  BookOpen, 
+  Terminal, 
+  KeyRound, 
+  Smartphone, 
+  Layers, 
+  FileText, 
+  Zap, 
+  FlameKindling,
+  HelpCircle,
+  ArrowLeft,
+  ChevronRight,
+  Database,
+  ShieldCheck,
+  Check
+} from 'lucide-react'
+import Footer from "@/components/shell/Footer"
 
 export default function DocsPage() {
-  return (
-    <main style={{
-      minHeight: '100vh',
-      backgroundColor: '#0A0C0F',
-      color: 'white',
-      fontFamily: 'Inter, sans-serif',
-      padding: '80px 20px',
-    }}>
-      <div style={{
-        maxWidth: 760,
-        margin: '0 auto',
-      }}>
-        
-        {/* Header */}
-        <div style={{ marginBottom: 64 }}>
-          <div style={{
-            fontSize: 11,
-            color: '#60A5FA',
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
-            marginBottom: 16,
-          }}>
-            Documentation
-          </div>
-          <h1 style={{
-            fontSize: 48,
-            fontWeight: 800,
-            letterSpacing: '-0.02em',
-            marginBottom: 16,
-          }}>
-            Getting Started with Noxis
-          </h1>
-          <p style={{
-            color: '#9CA3AF',
-            fontSize: 18,
-            lineHeight: 1.6,
-          }}>
-            Zero-Configuration Onboarding: Install, connect, and boot up your secure local workshop node in under 10 minutes without any external IT infrastructure.
-          </p>
-        </div>
-        
-        {/* Quick Links */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns:
-            'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: 16,
-          marginBottom: 64,
-        }}>
-          {[
-            { icon: '⬇️', title: 'Installation',
-              href: '#install' },
-            { icon: '🔑', title: 'License Activation',
-              href: '#license' },
-            { icon: '📱', title: 'Mobile Pairing',
-              href: '#mobile' },
-            { icon: '📦', title: 'Adding Products',
-              href: '#inventory' },
-            { icon: '📄', title: 'Creating Invoices',
-              href: '#invoices' },
-            { icon: '⚡', title: 'Quick Entry Console',
-              href: '#quickentry' },
-            { icon: '❓', title: 'Troubleshooting',
-              href: '#troubleshoot' },
-          ].map(link => (
-            <a
-              key={link.href}
-              href={link.href}
-              style={{
-                backgroundColor: '#111418',
-                border: '1px solid rgba(255,255,255,0.06)',
-                borderRadius: 4,
-                padding: '16px 20px',
-                textDecoration: 'none',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                color: 'white',
-              }}
-            >
-              <span style={{ fontSize: 20 }}>
-                {link.icon}
-              </span>
-              <span style={{
-                fontSize: 14, fontWeight: 500,
-              }}>
-                {link.title}
-              </span>
-            </a>
-          ))}
-        </div>
-        
-        {/* Section 1: Installation */}
-        <section id="install" style={{ marginBottom: 64 }}>
-          <h2 style={{
-            fontSize: 28, fontWeight: 700,
-            marginBottom: 24,
-            paddingTop: 64,
-          }}>
-            1. Installation
-          </h2>
-          
-          <div style={{
-            backgroundColor: '#111418',
-            border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: 4,
-            padding: 24,
-            marginBottom: 24,
-          }}>
-            <p style={{
-              color: '#D1D5DB', lineHeight: 1.7,
-              marginBottom: 16,
-            }}>
-              Download the Noxis installer from the
-              download page. The file is named
-              NoxisSetup.exe.
-            </p>
-            <ol style={{
-              color: '#9CA3AF',
-              paddingLeft: 24,
-              lineHeight: 2,
-            }}>
-              <li>
-                Double-click NoxisSetup.exe to run
-              </li>
-              <li>
-                If Windows shows a security warning,
-                click "More info" then "Run anyway" to proceed safely
-              </li>
-              <li>
-                Follow the installer steps
-              </li>
-              <li>
-                Click Finish — Noxis opens automatically
-              </li>
-            </ol>
-            <div style={{
-              backgroundColor: 'rgba(96,165,250,0.05)',
-              border: '1px solid rgba(96,165,250,0.2)',
-              borderRadius: 4,
-              padding: 16,
-              fontSize: 13,
-              color: '#60A5FA',
-              marginTop: 16,
-              lineHeight: 1.5,
-            }}>
-              <strong>Important Security Note:</strong> Because Noxis Hub is engineered as a highly optimized standalone desktop environment, Windows SmartScreen may flag it as an 'Unrecognized App' during this early deployment phase. This occurs simply because the executable is not yet attached to a commercial Code Signing Certificate. Rest assured, your software runs completely sandboxed and localized. Click 'More info' and then 'Run anyway' safely.
-            </div>
-          </div>
-          
-          <div style={{
-            backgroundColor: 'rgba(245,158,11,0.05)',
-            border: '1px solid rgba(245,158,11,0.2)',
-            borderRadius: 4,
-            padding: 16,
-            fontSize: 13,
-            color: '#D97706',
-          }}>
-            <strong>System Requirements:</strong>{' '}
-            Windows 10 or 11 (64-bit).
-            Minimum 4GB RAM and 2GB free disk space.
-            Internet required only for first activation.
-          </div>
-        </section>
-        
-        {/* Section 2: License */}
-        <section id="license" style={{ marginBottom: 64 }}>
-          <h2 style={{
-            fontSize: 28, fontWeight: 700,
-            marginBottom: 24,
-            paddingTop: 64,
-          }}>
-            2. Activating Your License
-          </h2>
-          
-          <p style={{
-            color: '#D1D5DB', lineHeight: 1.7,
-            marginBottom: 16,
-          }}>
-            When Noxis opens for the first time,
-            you will see the license activation screen.
-          </p>
-          
-          <ol style={{
-            color: '#9CA3AF',
-            paddingLeft: 24,
-            lineHeight: 2,
-            marginBottom: 16,
-          }}>
-            <li>
-              Enter your license key in the format:
-              XXXX-XXXX-XXXX-XXXX
-            </li>
-            <li>
-              Make sure you are connected to the internet
-              for this step only
-            </li>
-            <li>
-              Click Activate
-            </li>
-            <li>
-              After activation, internet is no longer
-              required to use Noxis
-            </li>
-          </ol>
-          
-          <div style={{
-            backgroundColor: 'rgba(239,68,68,0.05)',
-            border: '1px solid rgba(239,68,68,0.2)',
-            borderRadius: 4,
-            padding: 16,
-            fontSize: 13,
-            color: '#EF4444',
-          }}>
-            <strong>Important:</strong> Your license key
-            is your password. Save it somewhere safe.
-            Do not share it with anyone.
-          </div>
-        </section>
-        
-        {/* Section 3: Mobile Pairing */}
-        <section id="mobile" style={{ marginBottom: 64 }}>
-          <h2 style={{
-            fontSize: 28, fontWeight: 700,
-            marginBottom: 24,
-            paddingTop: 64,
-          }}>
-            3. Pairing Your Android Phone
-          </h2>
-          
-          <p style={{
-            color: '#D1D5DB', lineHeight: 1.7,
-            marginBottom: 16,
-          }}>
-            The Noxis mobile app connects to your Hub
-            PC over local WiFi. Both devices must be
-            on the same network.
-          </p>
-          
-          <ol style={{
-            color: '#9CA3AF',
-            paddingLeft: 24,
-            lineHeight: 2,
-          }}>
-            <li>
-              Download the Noxis APK on your Android
-              phone from the download page
-            </li>
-            <li>
-              Install the APK (enable "Install from
-              unknown sources" in Android settings)
-            </li>
-            <li>
-              On your PC: open Noxis and go to Pairing
-              in the sidebar
-            </li>
-            <li>
-              A QR code appears on screen
-            </li>
-            <li>
-              On your phone: open Noxis Mobile and
-              scan the QR code
-            </li>
-            <li>
-              The phone connects to the Hub instantly
-            </li>
-          </ol>
-        </section>
-        
-        {/* Section 4: Inventory */}
-        <section id="inventory" style={{ marginBottom: 64 }}>
-          <h2 style={{
-            fontSize: 28, fontWeight: 700,
-            marginBottom: 24,
-            paddingTop: 64,
-          }}>
-            4. Populating Your Local Inventory
-          </h2>
-          
-          <div style={{
-            backgroundColor: '#111418',
-            border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: 4,
-            padding: 24,
-          }}>
-            <p style={{ color: '#D1D5DB', lineHeight: 1.7 }}>
-              Navigate to the Inventory Console from your main dashboard. Click '+ Add Item' to input your first product asset. Define attributes like SKU, raw materials, fabric grades, and base wholesale rates. Once saved, these items are securely cached locally for instant access.
-            </p>
-          </div>
-        </section>
-        
-        {/* Section 5: Invoices */}
-        <section id="invoices" style={{ marginBottom: 64 }}>
-          <h2 style={{
-            fontSize: 28, fontWeight: 700,
-            marginBottom: 24,
-            paddingTop: 64,
-          }}>
-            5. Generating Invoices & Automatic Khata Logging
-          </h2>
-          
-          <div style={{
-            backgroundColor: '#111418',
-            border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: 4,
-            padding: 24,
-          }}>
-            <p style={{ color: '#D1D5DB', lineHeight: 1.7 }}>
-              Open the Invoice Generator page. Type the first two letters of any registered product description. The typeahead engine will instantly fetch the item and auto-fill the wholesale rate. Adjust your quantities using the high-visibility touch targets, and press Enter. Upon submission, the platform generates a professional print-ready PDF invoice while automatically updating the linked party's Khata Ledger in the background.
-            </p>
-          </div>
-        </section>
-        
-        {/* Section 6: Quick Entry Console */}
-        <section id="quickentry" style={{ marginBottom: 64 }}>
-          <h2 style={{
-            fontSize: 28, fontWeight: 700,
-            marginBottom: 24,
-            paddingTop: 64,
-          }}>
-            6. The Quick Entry Console
-          </h2>
-          
-          <p style={{
-            color: '#D1D5DB', lineHeight: 1.7,
-            marginBottom: 16,
-          }}>
-            The Quick Entry Console provides a fast, touch-friendly interface designed specifically for high-speed factory floor inputs. It is structured into three unified logging tabs:
-          </p>
-          
-          <ul style={{
-            color: '#9CA3AF',
-            paddingLeft: 24,
-            lineHeight: 2,
-            marginBottom: 24,
-          }}>
-            <li>
-              <strong>Production Log:</strong> Search for any Karigar, input their production quantity, select their quality grade (A, B, C, or Rejected), and submit. Instantly updates the running output total.
-            </li>
-            <li>
-              <strong>Payment Slip:</strong> Log payments received from customers or paid to suppliers. Supports selecting payment modes (Cash, Bank, JazzCash, EasyPaisa) and automatically records corresponding double-entry ledger items (credits for receivables, debits for payables).
-            </li>
-            <li>
-              <strong>Attendance Slip:</strong> Pick dates, mark recent Karigars present/absent/late, or perform a bulk "Mark All Present" action to quickly log attendance sheets.
-            </li>
-          </ul>
-          
-          <div style={{
-            backgroundColor: 'rgba(96,165,250,0.05)',
-            border: '1px solid rgba(96,165,250,0.2)',
-            borderRadius: 4,
-            padding: 16,
-            fontSize: 13,
-            color: '#60A5FA',
-          }}>
-            <strong>Live Floor Feed:</strong> The right side of the Quick Entry Console houses a reactive vertical timeline stream, showing the last 10 log actions recorded today in real-time.
-          </div>
-        </section>
+  const [activeSection, setActiveSection] = useState('install')
 
-        {/* Section 7: Troubleshooting */}
-        <section id="troubleshoot" style={{ marginBottom: 64 }}>
-          <h2 style={{
-            fontSize: 28, fontWeight: 700,
-            marginBottom: 24,
-            paddingTop: 64,
-          }}>
-            7. Common Issues
-          </h2>
-          
-          {[
-            {
-              q: 'License activation fails',
-              a: 'Make sure you are connected to the internet. Check that the key is entered correctly without spaces. If the problem continues, contact support via WhatsApp or email.',
-            },
-            {
-              q: 'Windows shows security warning',
-              a: "Because Noxis Hub is engineered as a highly optimized standalone desktop environment, Windows SmartScreen may flag it as an 'Unrecognized App' during this early deployment phase. This occurs simply because the executable is not yet attached to a commercial Code Signing Certificate. Rest assured, your software runs completely sandboxed and localized. Click 'More info' and then 'Run anyway' safely.",
-            },
-            {
-              q: 'Mobile app cannot find Hub',
-              a: 'Make sure both your PC and phone are connected to the same WiFi network. The Hub must be running on the PC before scanning the QR code.',
-            },
-            {
-              q: 'Cannot add products or invoices',
-              a: 'Make sure you have completed the initial setup (industry selection and business profile). If the issue continues, try restarting the Hub.',
-            },
-            {
-              q: 'Data not syncing to cloud',
-              a: 'Check your internet connection. Noxis works completely offline and syncs automatically when internet is available. Your data is never lost.',
-            },
-          ].map((item, i) => (
-            <div key={i} style={{
-              backgroundColor: '#111418',
-              border: '1px solid rgba(255,255,255,0.06)',
-              borderRadius: 4,
-              padding: 20,
-              marginBottom: 12,
-            }}>
-              <p style={{
-                fontWeight: 600, fontSize: 15,
-                marginBottom: 8, color: 'white',
-              }}>
-                {item.q}
-              </p>
-              <p style={{
-                color: '#9CA3AF', fontSize: 14,
-                lineHeight: 1.6,
-              }}>
-                {item.a}
-              </p>
+  const sections = [
+    { id: 'install', icon: <Terminal size={16} />, title: '1. Platform Installation' },
+    { id: 'license', icon: <KeyRound size={16} />, title: '2. Cryptographic Activation' },
+    { id: 'sqlite', icon: <Database size={16} />, title: '3. Local SQLite Architecture' },
+    { id: 'mobile', icon: <Smartphone size={16} />, title: '4. Local WiFi Phone Pairing' },
+    { id: 'inventory', icon: <Layers size={16} />, title: '5. Barcode & Inventory Config' },
+    { id: 'invoices', icon: <FileText size={16} />, title: '6. Ledger & Invoicing Setup' },
+    { id: 'quickentry', icon: <Zap size={16} />, title: '7. Floor Quick Entry Console' },
+    { id: 'troubleshoot', icon: <HelpCircle size={16} />, title: '8. Regional Troubleshooting' }
+  ]
+
+  return (
+    <div className="bg-[#070809] text-slate-300 font-sans min-h-screen selection:bg-blue-500 selection:text-black">
+      
+      {/* ═══ HEADER NAVIGATION ═══ */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#070809]/80 backdrop-blur-xl border-b border-white/[0.06] py-4">
+        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
+          <Link href="/" className="flex items-center space-x-3 group cursor-pointer">
+            <div className="w-8 h-8 flex items-center justify-center bg-white/5 group-hover:bg-blue-500/10 border border-white/10 group-hover:border-blue-500/30 rounded-sm transition-all shadow-2xl">
+              <img
+                src="/logos/noxis.png"
+                alt="Noxis Logo"
+                width={20}
+                height={20}
+                className="object-contain"
+              />
             </div>
-          ))}
+            <div className="flex flex-col">
+              <span className="text-white font-extrabold tracking-wider leading-none">NOXIS</span>
+              <span className="text-[8px] text-gray-500 font-mono tracking-widest uppercase mt-0.5">Core Documentation</span>
+            </div>
+          </Link>
+
+          <Link href="/" className="text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-white flex items-center space-x-2 transition-colors">
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Back Home</span>
+          </Link>
+        </div>
+      </nav>
+
+      {/* ═══ DOCS LAYOUT ═══ */}
+      <div className="max-w-7xl mx-auto px-6 pt-24 pb-32">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
           
-          {/* Support Contact */}
-          <div style={{
-            backgroundColor: '#111418',
-            border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: 4,
-            padding: 24,
-            marginTop: 24,
-          }}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, color: 'white', marginBottom: 16 }}>
-              Official Support Channels
-            </h3>
-            <p style={{ color: '#9CA3AF', fontSize: 13, lineHeight: 1.6, marginBottom: 20 }}>
-              To match the fast-paced nature of local wholesale mandi operations and regional textile markets, our team provides instant real-time troubleshooting directly via WhatsApp text and voice channels alongside official email logging.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div>
-                <span style={{ display: 'block', fontSize: 11, color: '#60A5FA', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
-                  Enterprise Technical Support
-                </span>
-                <a href="mailto:[EMAIL_ADDRESS]" style={{ color: 'white', fontSize: 14, fontWeight: 600, textDecoration: 'underline' }}>
-omnorainfo28@gmail.com                </a>
+          {/* Left Sidebar Navigation - sticky */}
+          <div className="lg:col-span-4 lg:sticky lg:top-24 h-fit space-y-6">
+            <div className="bg-[#0F1114] border border-white/5 p-6 rounded-sm space-y-4">
+              <div className="flex items-center gap-2">
+                <BookOpen size={18} className="text-[#60A5FA]" />
+                <h3 className="text-xs font-bold uppercase tracking-widest text-white">System Guidebook</h3>
               </div>
-              <div>
-                <span style={{ display: 'block', fontSize: 11, color: '#25D366', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
-                  Onboarding & Regional Support
-                </span>
-                <a href="https://wa.me/923334355475" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: '#25D366', fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>
-                  <span>+92 333 4355475</span>
-                  <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 'normal' }}>
-                    (Direct WhatsApp Channel for Factory Floor Managers)
-                  </span>
-                </a>
+              <p className="text-[11px] text-gray-500 leading-relaxed font-medium">
+                Detailed setup guidelines for local node operators and industrial workshop managers.
+              </p>
+              
+              {/* Navigation list */}
+              <div className="space-y-1 pt-4">
+                {sections.map(section => (
+                  <a
+                    key={section.id}
+                    href={`#${section.id}`}
+                    onClick={() => setActiveSection(section.id)}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 text-xs font-bold uppercase tracking-wider rounded-sm transition-all border ${
+                      activeSection === section.id
+                        ? 'bg-blue-500/10 border-blue-500/30 text-white shadow-[0_0_15px_rgba(96,165,250,0.05)]'
+                        : 'bg-transparent border-transparent text-gray-500 hover:text-gray-300 hover:bg-white/[0.02]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      {section.icon}
+                      <span>{section.title}</span>
+                    </div>
+                    <ChevronRight size={12} className={`transform transition-transform ${activeSection === section.id ? 'translate-x-0.5 text-blue-400' : 'opacity-20'}`} />
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            {/* Quick Server Info Panel */}
+            <div className="bg-[#0F1114] border border-white/5 p-6 rounded-sm space-y-4">
+              <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Security Architecture</h4>
+              <div className="space-y-2 text-[11px] font-mono">
+                <div className="flex justify-between border-b border-white/5 pb-1.5">
+                  <span className="text-gray-600">ENCRYPTION</span>
+                  <span className="text-emerald-400 font-bold">AES-256 GCM</span>
+                </div>
+                <div className="flex justify-between border-b border-white/5 pb-1.5">
+                  <span className="text-gray-600">LOCAL DATAGRID</span>
+                  <span className="text-blue-400 font-bold">SQLite-Cipher</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">RTSP SIGNING</span>
+                  <span className="text-amber-500 font-bold">HMAC-SHA256</span>
+                </div>
               </div>
             </div>
           </div>
-        </section>
-        
-        {/* Global Legal Footer */}
-        <Footer />
-        
+
+          {/* Right Content Area */}
+          <div className="lg:col-span-8 space-y-16">
+            
+            {/* Header introduction */}
+            <motion.div 
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-4"
+            >
+              <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full">
+                <span className="text-[9px] font-bold text-blue-400 uppercase tracking-widest">Platform Manuals</span>
+              </div>
+              <h1 className="text-4xl sm:text-6xl font-extrabold text-white tracking-tighter leading-none">
+                Zero-Configuration Onboarding Guide
+              </h1>
+              <p className="text-gray-400 text-base sm:text-lg leading-relaxed font-medium">
+                Set up, pair, configure local databases, configure security networks, and manage your manufacturing workshop assets securely within ten minutes.
+              </p>
+            </motion.div>
+
+            {/* 1. INSTALLATION */}
+            <motion.section 
+              id="install"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true, margin: '-100px' }}
+              className="space-y-6 pt-12 border-t border-white/5"
+            >
+              <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
+                <span className="text-blue-400">01.</span> Platform Installation
+              </h2>
+              <p className="text-sm text-gray-400 leading-relaxed font-medium">
+                The Noxis Hub is engineered as a highly optimized desktop application. Download and execute the binary directly to initialize the local node.
+              </p>
+              
+              <div className="bg-[#0F1114] border border-white/5 p-6 rounded-sm space-y-4">
+                <h4 className="text-xs font-bold uppercase tracking-widest text-white">Setup Checklist</h4>
+                <ol className="list-decimal list-inside space-y-2 text-xs text-gray-400 leading-relaxed">
+                  <li>Download the stable setup installer: <span className="font-mono text-white bg-white/5 px-2 py-0.5 rounded">NoxisSetup.exe</span></li>
+                  <li>Double-click the setup file to trigger local installation script.</li>
+                  <li>If prompted with Windows Defender SmartScreen filters, click <strong className="text-white">"More Info"</strong> followed by <strong className="text-white">"Run Anyway"</strong>.</li>
+                  <li>Complete the installation wizard. Noxis Hub boots automatically on completion.</li>
+                </ol>
+
+                <div className="bg-blue-500/5 border border-blue-500/20 p-4 text-xs text-blue-400 leading-relaxed rounded-sm space-y-2">
+                  <div className="font-bold flex items-center gap-2">
+                    <ShieldCheck size={14} />
+                    <span>CODE SIGNING NOTE</span>
+                  </div>
+                  <p className="text-[11px] text-gray-400 leading-relaxed">
+                    Because Noxis Hub operates entirely localized and offline on standalone workstation environments, Windows Defender SmartScreen flags the executable as unrecognized simply due to the absence of active web certificate signing. This warning is safe to bypass.
+                  </p>
+                </div>
+              </div>
+            </motion.section>
+
+            {/* 2. CRYPTOGRAPHIC ACTIVATION */}
+            <motion.section 
+              id="license"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true, margin: '-100px' }}
+              className="space-y-6 pt-12 border-t border-white/5"
+            >
+              <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
+                <span className="text-blue-400">02.</span> Cryptographic License Activation
+              </h2>
+              <p className="text-sm text-gray-400 leading-relaxed font-medium">
+                To guarantee zero external tracking while retaining offline licensing control, activation takes place upon the initial application startup.
+              </p>
+
+              <div className="bg-[#0F1114] border border-white/5 p-6 rounded-sm space-y-4">
+                <ol className="list-decimal list-inside space-y-2.5 text-xs text-gray-400 leading-relaxed">
+                  <li>Confirm that your workstation has active internet access for this licensing step only.</li>
+                  <li>Enter your acquired unique license key inside the primary entry terminal: <span className="font-mono text-white bg-white/5 px-2 py-0.5 rounded">XXXX-XXXX-XXXX-XXXX</span></li>
+                  <li>Click the activation button. The local client syncs keys directly with verified registration servers.</li>
+                  <li>Upon completion, the application goes permanently offline. Your verified license states are saved in secure local blocks.</li>
+                </ol>
+                <div className="bg-red-500/5 border border-red-500/20 p-4 text-xs text-red-400 leading-relaxed rounded-sm">
+                  <strong>Retention Directive:</strong> Your unique cryptographic activation key also acts as the recovery key for your localized SQLite database block. Store it securely in a physical format.
+                </div>
+              </div>
+            </motion.section>
+
+            {/* 3. LOCAL SQLITE ARCHITECTURE */}
+            <motion.section 
+              id="sqlite"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true, margin: '-100px' }}
+              className="space-y-6 pt-12 border-t border-white/5"
+            >
+              <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
+                <span className="text-blue-400">03.</span> Local SQLite Database & Sync
+              </h2>
+              <p className="text-sm text-gray-400 leading-relaxed font-medium">
+                Noxis Hub operates an offline-first data fabric. All active data logs are replicated between a highly optimized local database block and the cloud.
+              </p>
+
+              <div className="bg-[#0F1114] border border-white/5 p-6 rounded-sm space-y-4 font-mono text-xs">
+                <h4 className="font-sans font-bold uppercase tracking-widest text-white text-[10px] mb-2">Technical Specifications</h4>
+                <div className="p-4 bg-[#08090C] border border-white/5 text-slate-400 space-y-2 rounded-sm">
+                  <p className="text-blue-400">// SQLite Local Transaction Logging</p>
+                  <p>Database: <span className="text-white">SQLite Multiple-Ciphers v12.9</span></p>
+                  <p>Encryption: <span className="text-white">AES-256 Bit block ciphering</span></p>
+                  <p>Replicator Engine: <span className="text-white">Dynamic WAL-sync and transactional backlogs</span></p>
+                  <p className="text-gray-600">// Reconciles automatically in the background when network changes are triggered.</p>
+                </div>
+                <p className="font-sans text-[11px] text-gray-500 leading-relaxed font-medium">
+                  When internet connections are down, transactions are securely accumulated inside an offline log stack. On re-establishing external telemetry, the queue replicates blocks to the cloud via Supabase, resolving potential duplicate items dynamically.
+                </p>
+              </div>
+            </motion.section>
+
+            {/* 4. LOCAL WIFI PHONE PAIRING */}
+            <motion.section 
+              id="mobile"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true, margin: '-100px' }}
+              className="space-y-6 pt-12 border-t border-white/5"
+            >
+              <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
+                <span className="text-blue-400">04.</span> Local WiFi Pairing (Android Application)
+              </h2>
+              <p className="text-sm text-gray-400 leading-relaxed font-medium">
+                The handheld Android companion app hooks directly into the PC server using localized networks, completely bypassing the cloud.
+              </p>
+
+              <div className="bg-[#0F1114] border border-white/5 p-6 rounded-sm space-y-4">
+                <ol className="list-decimal list-inside space-y-2.5 text-xs text-gray-400 leading-relaxed">
+                  <li>Ensure your workstation PC and the Android device are connected to the <strong className="text-white">same local WiFi router/access point</strong>.</li>
+                  <li>Download the companion Android APK directly from the download area.</li>
+                  <li>Perform the installation on the phone (allow installation from unknown local sources).</li>
+                  <li>On the PC Hub, navigate to the <strong className="text-white">Pairing Console</strong>. A local system pairing QR Code is rendered.</li>
+                  <li>Open the Android application and tap <strong className="text-white">"Scan Node QR"</strong>. Scan the QR code rendered on the PC.</li>
+                  <li>Handheld devices are successfully paired and can immediately submit attendance, payment entries, and inventory levels.</li>
+                </ol>
+              </div>
+            </motion.section>
+
+            {/* 5. BARCODE & INVENTORY CONFIG */}
+            <motion.section 
+              id="inventory"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true, margin: '-100px' }}
+              className="space-y-6 pt-12 border-t border-white/5"
+            >
+              <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
+                <span className="text-blue-400">05.</span> Barcode Setup & Inventory Configurations
+              </h2>
+              <p className="text-sm text-gray-400 leading-relaxed font-medium">
+                Input and catalog raw fabric grades, chemical batches, or manufactured assets in high-speed scanning systems.
+              </p>
+
+              <div className="bg-[#0F1114] border border-white/5 p-6 rounded-sm space-y-4">
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  Head to the main <strong className="text-white">Inventory Console</strong>. Under adding new product nodes, you can either auto-generate standard barcode keys or use physical barcode readers to scan code sequences directly into the system.
+                </p>
+                <ul className="list-disc list-inside space-y-1.5 text-xs text-gray-400 leading-relaxed">
+                  <li><strong className="text-white">Category Tags</strong>: Map units to raw materials, fabrics, or accessories.</li>
+                  <li><strong className="text-white">Reorder Safety Limits</strong>: Define safe thresholds that trigger automatic visual stock warnings.</li>
+                  <li><strong className="text-white">Piece Weights</strong>: Record baseline weights (kilograms or yards) to feed local mandi calculation engines.</li>
+                </ul>
+              </div>
+            </motion.section>
+
+            {/* 6. LEDGER & INVOICING SETUP */}
+            <motion.section 
+              id="invoices"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true, margin: '-100px' }}
+              className="space-y-6 pt-12 border-t border-white/5"
+            >
+              <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
+                <span className="text-blue-400">06.</span> Automatic Double-Entry Ledger & Invoices
+              </h2>
+              <p className="text-sm text-gray-400 leading-relaxed font-medium">
+                Create professional print invoices while double-entry khata ledgers keep balances reconciled in real-time.
+              </p>
+
+              <div className="bg-[#0F1114] border border-white/5 p-6 rounded-sm space-y-4">
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  Every bill issued automatically triggers debit/credit entries mapped to the designated customer accounts. In the event of offline states, these balances update locally and reflect inside printable PDFs instantly.
+                </p>
+                <div className="p-4 bg-[#08090C] border border-white/5 text-[11px] leading-relaxed text-gray-400 rounded-sm">
+                  <span className="text-blue-400">Automatic Khata Journal Sync Example:</span>
+                  <div className="grid grid-cols-2 gap-4 mt-2">
+                    <div>
+                      <p className="font-bold text-white">DEBIT:</p>
+                      <p>Receivables Ledger — PKR 84,500</p>
+                    </div>
+                    <div>
+                      <p className="font-bold text-amber-500">CREDIT:</p>
+                      <p>Fabric Stock Sales — PKR 84,500</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.section>
+
+            {/* 7. FLOOR QUICK ENTRY CONSOLE */}
+            <motion.section 
+              id="quickentry"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true, margin: '-100px' }}
+              className="space-y-6 pt-12 border-t border-white/5"
+            >
+              <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
+                <span className="text-blue-400">07.</span> High-Speed Floor Quick Entry Console
+              </h2>
+              <p className="text-sm text-gray-400 leading-relaxed font-medium">
+                Designed for high-speed touch screen monitors deployed right next to the workshop floor.
+              </p>
+
+              <div className="bg-[#0F1114] border border-white/5 p-6 rounded-sm space-y-4">
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  The Quick Entry Console provides large touch layouts, allowing supervisors to log production records, attendance parameters, or ledger receipts under 3 seconds.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {[
+                    { title: 'Production Tab', desc: 'Select karigar, enter pieces/weights, tag grades (A, B, C).' },
+                    { title: 'Payment Slip', desc: 'Accept customer peshgi, logs payments to JazzCash/EasyPaisa.' },
+                    { title: 'Attendance Slip', desc: 'Mark absences, present states, or perform bulk check-ins.' }
+                  ].map(tab => (
+                    <div key={tab.title} className="p-4 bg-white/[0.02] border border-white/5 rounded-sm">
+                      <h4 className="text-xs font-bold text-white mb-2">{tab.title}</h4>
+                      <p className="text-[10px] text-gray-500 leading-relaxed">{tab.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.section>
+
+            {/* 8. REGIONAL TROUBLESHOOTING */}
+            <motion.section 
+              id="troubleshoot"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true, margin: '-100px' }}
+              className="space-y-6 pt-12 border-t border-white/5"
+            >
+              <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
+                <span className="text-blue-400">08.</span> Troubleshooting & Diagnostics
+              </h2>
+              <p className="text-sm text-gray-400 leading-relaxed font-medium">
+                Solutions to the most common local networking and system validation challenges.
+              </p>
+
+              <div className="space-y-4">
+                {[
+                  {
+                    q: 'Workstation activation fails continuously',
+                    a: 'Confirm that your device is actively connected to the internet during key verification. Ensure that characters are input exactly without spaces. If issues persist, verify that security filters or anti-virus apps are not blocking system background API connections.'
+                  },
+                  {
+                    q: 'Android paired terminal shows connecting endlessly',
+                    a: 'Diagnostics confirm this happens when the Hub workstation PC and phone are partitioned on separate routers or virtual subnets. Verify that both terminals show active connected states to the identical local router IP.'
+                  },
+                  {
+                    q: 'Local backup is not logging correctly',
+                    a: 'Go to Settings -> Database. Under the backup path, confirm that your mapped folder directory actually has valid write authorization from the OS system user.'
+                  }
+                ].map(faq => (
+                  <div key={faq.q} className="bg-[#0F1114] border border-white/5 p-6 rounded-sm space-y-2">
+                    <h4 className="text-sm font-bold text-white">{faq.q}</h4>
+                    <p className="text-xs text-gray-400 leading-relaxed">{faq.a}</p>
+                  </div>
+                ))}
+
+                {/* Support Card */}
+                <div className="bg-[#0F1114] border border-white/5 p-6 rounded-sm space-y-4">
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-white">Need Regional Technical Support?</h4>
+                  <p className="text-[11px] text-gray-400 leading-relaxed">
+                    To meet the fast-paced nature of local mandi and regional textile mills, our technical teams provide immediate real-time solutions via direct WhatsApp or enterprise email logging.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div>
+                      <span className="text-[9px] text-emerald-400 font-bold uppercase tracking-widest block mb-1">Direct Floor WhatsApp Support</span>
+                      <a href="https://wa.me/923334355475" target="_blank" rel="noopener noreferrer" className="text-xs font-mono font-bold text-emerald-400 hover:underline">
+                        +92 333 4355475
+                      </a>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-blue-400 font-bold uppercase tracking-widest block mb-1">Enterprise Email Support</span>
+                      <a href="mailto:omnorainfo28@gmail.com" className="text-xs font-mono font-bold text-blue-400 hover:underline">
+                        omnorainfo28@gmail.com
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.section>
+
+          </div>
+        </div>
       </div>
-    </main>
-  );
+
+      {/* Footer */}
+      <Footer />
+    </div>
+  )
 }

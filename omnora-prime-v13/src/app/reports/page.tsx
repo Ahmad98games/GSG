@@ -19,6 +19,8 @@ import { WhatsAppSender, WhatsAppTemplates } from "@/lib/whatsapp/WhatsAppSender
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { MessageCircle } from "lucide-react";
 import { format } from "date-fns";
+import { Skeleton, KpiCardSkeleton } from "@/components/ui/Skeleton";
+import { ErrorState, EmptyState } from "@/components/ui/StateViews";
 
 export default function ReportsHubPage() {
   const { taxLabel, fmt, businessId } = usePersona();
@@ -56,7 +58,7 @@ export default function ReportsHubPage() {
   }, []);
 
   // Live Data Fetches
-  const { data: plData } = useQuery({
+  const { data: plData, error: plError, refetch: refetchPl } = useQuery({
     queryKey: ['report-summary-pl', businessId],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_profit_loss', {
@@ -88,7 +90,7 @@ export default function ReportsHubPage() {
     enabled: !!businessId
   });
 
-  const { data: bsData } = useQuery({
+  const { data: bsData, error: bsError, refetch: refetchBs } = useQuery({
     queryKey: ['report-summary-bs', businessId],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_balance_sheet', {
@@ -103,7 +105,7 @@ export default function ReportsHubPage() {
     enabled: !!businessId
   });
 
-  const { data: receivablesData } = useQuery({
+  const { data: receivablesData, error: recError, refetch: refetchRec } = useQuery({
     queryKey: ['report-summary-receivables', businessId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -249,6 +251,48 @@ export default function ReportsHubPage() {
       color: "text-white",
     },
   ];
+
+  const isLoading = !plData || !bsData || !receivablesData || ledgerData === undefined;
+  if (isLoading) return (
+    <div className="p-6 bg-[#0F1113]">
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <KpiCardSkeleton key={i} />
+        ))}
+      </div>
+      <div className="bg-[#0F1114] border border-white/[0.06] rounded-sm p-4 h-80">
+        <Skeleton className="h-4 w-32 mb-4" />
+        <Skeleton className="h-full w-full" />
+      </div>
+    </div>
+  );
+
+  const reportsError = plError || bsError || recError;
+  if (reportsError) return (
+    <div className="min-h-screen bg-[#0F1113] flex items-center justify-center p-8">
+      <ErrorState
+        message="Could not load reports"
+        detail={(reportsError as Error).message}
+        onRetry={() => { refetchPl(); refetchBs(); refetchRec(); }}
+      />
+    </div>
+  );
+
+  if (ledgerData === 0) return (
+    <div className="min-h-screen bg-[#0F1113] text-slate-200 p-6 flex flex-col justify-center">
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <KpiCardSkeleton key={i} />
+        ))}
+      </div>
+      <EmptyState
+        icon="📊"
+        title="No data for this period"
+        description="Post some transactions to see reports"
+        action={{ label: 'Create invoice', href: '/invoices/new' }}
+      />
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#0F1113] text-slate-200 p-6">
