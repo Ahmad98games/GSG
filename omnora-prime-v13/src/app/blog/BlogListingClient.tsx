@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, type Variants } from 'framer-motion'
 import { Calendar, ArrowRight, Search, BookOpen, Clock } from 'lucide-react'
 import { BlogPost } from '@/lib/blog-utils'
 
@@ -21,7 +21,7 @@ export default function BlogListingClient({ posts }: { posts: BlogPost[] }) {
     return matchesSearch && matchesTag
   })
 
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0 },
     show: {
       opacity: 1,
@@ -31,9 +31,9 @@ export default function BlogListingClient({ posts }: { posts: BlogPost[] }) {
     }
   }
 
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { opacity: 0, y: 30 },
-    show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 100 } }
+    show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 100 } }
   }
 
   return (
