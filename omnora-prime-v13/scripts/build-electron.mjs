@@ -1,4 +1,8 @@
 import { execSync } from 'child_process';
+import * as dotenv from 'dotenv';
+
+// Load local environment variables so Next.js can embed the actual Supabase URL/keys into the client bundle at build-time.
+dotenv.config({ path: '.env.local' });
 
 let buildFailed = false;
 
@@ -8,10 +12,7 @@ try {
     stdio: 'inherit',
     env: {
       ...process.env,
-      NEXT_PUBLIC_PLATFORM: 'electron',
-      NEXT_PUBLIC_SUPABASE_URL: 'https://dummy.supabase.co',
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: 'dummy',
-      SUPABASE_SERVICE_ROLE_KEY: 'dummy'
+      NEXT_PUBLIC_PLATFORM: 'electron'
     }
   });
   console.log('[Electron Build] Next.js compilation completed successfully ✓');

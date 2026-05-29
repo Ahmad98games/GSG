@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.omnoralabs.prime',
-  appName: 'Omnora Prime',
+  appId: 'com.omnoralabs.noxishub',
+  appName: 'NoxisHub',
   webDir: 'out'
 };
 
