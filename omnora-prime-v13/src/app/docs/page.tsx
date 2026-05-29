@@ -31,8 +31,9 @@ export default function DocsPage() {
     { id: 'mobile', icon: <Smartphone size={16} />, title: '4. Local WiFi Phone Pairing' },
     { id: 'inventory', icon: <Layers size={16} />, title: '5. Barcode & Inventory Config' },
     { id: 'invoices', icon: <FileText size={16} />, title: '6. Ledger & Invoicing Setup' },
-    { id: 'quickentry', icon: <Zap size={16} />, title: '7. Floor Quick Entry Console' },
-    { id: 'troubleshoot', icon: <HelpCircle size={16} />, title: '8. Regional Troubleshooting' }
+    { id: 'data-safety', icon: <ShieldCheck size={16} />, title: '7. Data Safety Protocol' },
+    { id: 'quickentry', icon: <Zap size={16} />, title: '8. Floor Quick Entry Console' },
+    { id: 'troubleshoot', icon: <HelpCircle size={16} />, title: '9. Regional Troubleshooting' }
   ]
 
   return (
@@ -325,7 +326,61 @@ export default function DocsPage() {
               </div>
             </motion.section>
 
-            {/* 7. FLOOR QUICK ENTRY CONSOLE */}
+            {/* Section 7: Data safety */}
+            <motion.section 
+              id="data-safety"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true, margin: '-100px' }}
+              className="space-y-6 pt-12 border-t border-white/5"
+            >
+              <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
+                <span className="text-blue-400">07.</span> Your Data is Always Safe
+              </h2>
+              
+              <p className="text-sm text-gray-400 leading-relaxed font-medium">
+                Noxis stores your data in two places: locally on your PC and synced to Supabase cloud when internet is available. This means your data survives even if your PC fails.
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[
+                  {
+                    title: 'Local backup',
+                    desc: 'Settings → Backup → Download Backup. Creates an encrypted JSON file you can save anywhere.',
+                    icon: '💾',
+                  },
+                  {
+                    title: 'Cloud sync',
+                    desc: 'Your data automatically syncs to secure Supabase servers when internet is available.',
+                    icon: '☁️',
+                  },
+                  {
+                    title: 'Excel export',
+                    desc: 'Export any module (inventory, parties, invoices) to Excel with one click.',
+                    icon: '📊',
+                  },
+                  {
+                    title: 'Your data, your control',
+                    desc: 'You own your data. You can export it, back it up, or delete it anytime.',
+                    icon: '🔑',
+                  },
+                ].map(item => (
+                  <div key={item.title} className="bg-[#111418] border border-white/[0.06] p-5 rounded-sm">
+                    <span className="text-2xl">
+                      {item.icon}
+                    </span>
+                    <p className="font-bold text-sm text-white mb-1.5 mt-2.5">
+                      {item.title}
+                    </p>
+                    <p className="text-gray-400 text-xs leading-relaxed">
+                      {item.desc}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </motion.section>
+
+            {/* 8. FLOOR QUICK ENTRY CONSOLE */}
             <motion.section 
               id="quickentry"
               initial={{ opacity: 0 }}
@@ -334,7 +389,7 @@ export default function DocsPage() {
               className="space-y-6 pt-12 border-t border-white/5"
             >
               <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
-                <span className="text-blue-400">07.</span> High-Speed Floor Quick Entry Console
+                <span className="text-blue-400">08.</span> High-Speed Floor Quick Entry Console
               </h2>
               <p className="text-sm text-gray-400 leading-relaxed font-medium">
                 Designed for high-speed touch screen monitors deployed right next to the workshop floor.
@@ -359,7 +414,7 @@ export default function DocsPage() {
               </div>
             </motion.section>
 
-            {/* 8. REGIONAL TROUBLESHOOTING */}
+            {/* 9. REGIONAL TROUBLESHOOTING */}
             <motion.section 
               id="troubleshoot"
               initial={{ opacity: 0 }}
@@ -368,7 +423,7 @@ export default function DocsPage() {
               className="space-y-6 pt-12 border-t border-white/5"
             >
               <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
-                <span className="text-blue-400">08.</span> Troubleshooting & Diagnostics
+                <span className="text-blue-400">09.</span> Troubleshooting & Diagnostics
               </h2>
               <p className="text-sm text-gray-400 leading-relaxed font-medium">
                 Solutions to the most common local networking and system validation challenges.
