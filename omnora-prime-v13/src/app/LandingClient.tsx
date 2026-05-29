@@ -98,6 +98,22 @@ export default function LandingClient() {
   const heroRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll()
   const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30 })
+  
+  const [testimonials, setTestimonials] = useState<any[]>([])
+
+  useEffect(() => {
+    async function fetchTestimonials() {
+      const { data, error } = await supabase
+        .from('testimonials')
+        .select('*')
+        .eq('status', 'approved')
+        .order('created_at', { ascending: false })
+      if (!error && data) {
+        setTestimonials(data)
+      }
+    }
+    fetchTestimonials()
+  }, [supabase])
 
   // Parallax for hero
   const { scrollY } = useScroll()
@@ -747,6 +763,58 @@ export default function LandingClient() {
           Noxis is currently in beta — be among the first factories to run on it.
         </p>
       </section>
+
+      {/* ── REAL TESTIMONIALS ───────────────────────────────────────── */}
+      {testimonials.length > 0 && (
+        <section className="py-24 px-6 max-w-6xl mx-auto border-t border-white/[0.06]">
+          <SectionReveal className="text-center mb-16 space-y-4">
+            <p className="text-xs font-bold text-[#60A5FA] uppercase tracking-widest">User Reviews</p>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-none">
+              Hear from our community
+            </h2>
+            <p className="text-gray-400 text-xs max-w-sm mx-auto">
+              Verified feedback from factory owners who use Noxis Hub.
+            </p>
+          </SectionReveal>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {testimonials.map((t, i) => (
+              <GlowCard key={t.id} delay={i * 0.08} glowColor="rgba(96,165,250,0.08)"
+                className="bg-[#0F1114] border border-white/[0.06] p-7 rounded-xl flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h4 className="text-xs font-bold text-white uppercase tracking-wider">{t.display_name}</h4>
+                      <p className="text-[10px] text-gray-500 font-semibold uppercase">
+                        {t.business_type || 'Factory Owner'} {t.city ? `· ${t.city}` : ''}
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-bold text-gray-600 bg-white/5 px-2 py-0.5 rounded font-mono uppercase">
+                      {t.tier || 'Starter'}
+                    </span>
+                  </div>
+                  
+                  {/* Stars */}
+                  <div className="flex gap-0.5 mb-4 text-xs text-[#C5A059]">
+                    {Array.from({ length: 5 }).map((_, idx) => (
+                      <span key={idx}>{idx < t.rating ? '★' : '☆'}</span>
+                    ))}
+                  </div>
+
+                  <p className="text-xs text-gray-400 italic leading-relaxed">
+                    "{t.feedback_text}"
+                  </p>
+                </div>
+                
+                <p className="text-[9px] text-gray-600 font-semibold mt-6 pt-2 border-t border-white/[0.04]">
+                  Verified user · {t.country_code || 'PK'}
+                </p>
+              </GlowCard>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── BETA EARLY ACCESS ────────────────────────────────────────── */}
       <section className="py-16 px-6 max-w-xl mx-auto text-center border-t border-white/[0.06]">
