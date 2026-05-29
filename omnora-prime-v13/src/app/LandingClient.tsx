@@ -26,12 +26,16 @@ function ParticleCanvas() {
     const ctx = canvas.getContext('2d')!
     canvas.width = window.innerWidth
     canvas.height = window.innerHeight
-    const pts = Array.from({ length: 60 }, () => ({
+    
+    const isMobile = window.innerWidth < 768
+    const count = isMobile ? 15 : 60
+    
+    const pts = Array.from({ length: count }, () => ({
       x: Math.random() * canvas.width,
       y: Math.random() * canvas.height,
-      vx: (Math.random() - 0.5) * 0.4,
-      vy: (Math.random() - 0.5) * 0.4,
-      r: Math.random() * 1.5 + 0.5,
+      vx: (Math.random() - 0.5) * (isMobile ? 0.25 : 0.4),
+      vy: (Math.random() - 0.5) * (isMobile ? 0.25 : 0.4),
+      r: Math.random() * 1.5 + (isMobile ? 0.3 : 0.5),
       a: Math.random(),
     }))
     let frame: number
@@ -46,19 +50,23 @@ function ParticleCanvas() {
         ctx.fillStyle = `rgba(96,165,250,${p.a * 0.35})`
         ctx.fill()
       })
-      // draw connections
-      pts.forEach((a, i) => {
-        pts.slice(i + 1).forEach(b => {
-          const d = Math.hypot(a.x - b.x, a.y - b.y)
-          if (d < 120) {
-            ctx.beginPath()
-            ctx.moveTo(a.x, a.y)
-            ctx.lineTo(b.x, b.y)
-            ctx.strokeStyle = `rgba(96,165,250,${0.08 * (1 - d / 120)})`
-            ctx.stroke()
-          }
+      
+      // draw connections - completely bypass on mobile to achieve solid 60fps
+      if (!isMobile) {
+        pts.forEach((a, i) => {
+          pts.slice(i + 1).forEach(b => {
+            const d = Math.hypot(a.x - b.x, a.y - b.y)
+            if (d < 120) {
+              ctx.beginPath()
+              ctx.moveTo(a.x, a.y)
+              ctx.lineTo(b.x, b.y)
+              ctx.strokeStyle = `rgba(96,165,250,${0.08 * (1 - d / 120)})`
+              ctx.stroke()
+            }
+          })
         })
-      })
+      }
+      
       frame = requestAnimationFrame(draw)
     }
     draw()
@@ -98,6 +106,7 @@ export default function LandingClient() {
   )
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [navScrolled, setNavScrolled] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const heroRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll()
   const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30 })
@@ -106,6 +115,13 @@ export default function LandingClient() {
   const { scrollY } = useScroll()
   const heroY = useTransform(scrollY, [0, 600], [0, -80])
   const heroOpacity = useTransform(scrollY, [0, 500], [1, 0])
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   useEffect(() => {
     const off = scrollY.on('change', v => setNavScrolled(v > 20))
@@ -262,10 +278,10 @@ export default function LandingClient() {
         <AnimatePresence>
           {mobileMenuOpen && (
             <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.25, ease }}
+              initial={{ opacity: 0, y: -15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.22, ease }}
               className="md:hidden border-b border-white/[0.06] bg-[#070809] overflow-hidden"
             >
               <div className="px-6 py-8 flex flex-col gap-6">
@@ -292,7 +308,7 @@ export default function LandingClient() {
 
       {/* ── HERO ────────────────────────────────────────────────────── */}
       <section ref={heroRef} className="relative pt-32 pb-24 md:pt-48 md:pb-36 px-6 max-w-7xl mx-auto min-h-screen flex items-center">
-        <motion.div style={{ y: heroY, opacity: heroOpacity }} className="w-full">
+        <motion.div style={isMobile ? undefined : { y: heroY, opacity: heroOpacity }} className="w-full">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
 
             {/* Left text */}

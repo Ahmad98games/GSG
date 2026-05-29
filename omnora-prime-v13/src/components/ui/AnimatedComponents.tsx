@@ -82,6 +82,33 @@ export function FloatingOrb({
   blur = 120,
   opacity = 1,
 }: FloatingOrbProps) {
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  if (isMobile) {
+    return (
+      <div
+        className="absolute pointer-events-none select-none"
+        style={{
+          left: x,
+          top: y,
+          width: size * 0.7,
+          height: size * 0.7,
+          transform: 'translate(-50%, -50%)',
+          background: `radial-gradient(circle, ${color} 0%, transparent 75%)`,
+          filter: `blur(${Math.min(blur, 40)}px)`,
+          opacity: opacity * 0.8,
+        }}
+      />
+    )
+  }
+
   return (
     <motion.div
       className="absolute pointer-events-none select-none"
@@ -174,11 +201,20 @@ export function SectionReveal({
   direction = 'up',
 }: SectionRevealProps) {
   const ref = useRef(null)
-  const inView = useInView(ref, { once: true, margin: '-80px' })
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  const inView = useInView(ref, { once: true, margin: isMobile ? '-15px' : '-80px' })
 
   const initial = {
     opacity: 0,
-    y: direction === 'up' ? 50 : 0,
+    y: direction === 'up' ? (isMobile ? 25 : 50) : 0,
     x: direction === 'left' ? -50 : direction === 'right' ? 50 : 0,
     scale: direction === 'none' ? 0.95 : 1,
   }
@@ -189,8 +225,8 @@ export function SectionReveal({
       initial={initial}
       animate={inView ? { opacity: 1, y: 0, x: 0, scale: 1 } : initial}
       transition={{
-        duration: 0.7,
-        delay,
+        duration: isMobile ? 0.4 : 0.7,
+        delay: isMobile ? delay * 0.5 : delay,
         ease: [0.16, 1, 0.3, 1],
       }}
       className={className}
@@ -338,13 +374,10 @@ export function MarqueeTicker({
 
   return (
     <div className={`overflow-hidden flex whitespace-nowrap ${className}`}>
-      <motion.div
-        className="flex"
-        animate={{ x: ['0%', '-50%'] }}
-        transition={{
-          duration: speed,
-          repeat: Infinity,
-          ease: 'linear',
+      <div
+        className="flex animate-marquee"
+        style={{
+          animationDuration: `${speed}s`,
         }}
       >
         {doubled.map((item, i) => (
@@ -353,7 +386,7 @@ export function MarqueeTicker({
             <span className="mx-6 opacity-30">{separator}</span>
           </span>
         ))}
-      </motion.div>
+      </div>
     </div>
   )
 }
@@ -369,31 +402,42 @@ interface GlowCardProps {
 
 export function GlowCard({ children, className = '', glowColor = 'rgba(96,165,250,0.1)', delay = 0 }: GlowCardProps) {
   const ref = useRef(null)
-  const inView = useInView(ref, { once: true, margin: '-60px' })
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  const inView = useInView(ref, { once: true, margin: isMobile ? '-15px' : '-60px' })
   const [isHovered, setIsHovered] = useState(false)
 
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: 30 }}
-      animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
-      transition={{ duration: 0.6, delay, ease: [0.16, 1, 0.3, 1] }}
-      onHoverStart={() => setIsHovered(true)}
-      onHoverEnd={() => setIsHovered(false)}
-      whileHover={{ y: -6, scale: 1.01 }}
+      initial={{ opacity: 0, y: isMobile ? 15 : 30 }}
+      animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: isMobile ? 15 : 30 }}
+      transition={{ duration: isMobile ? 0.4 : 0.6, delay: isMobile ? delay * 0.5 : delay, ease: [0.16, 1, 0.3, 1] }}
+      onHoverStart={() => !isMobile && setIsHovered(true)}
+      onHoverEnd={() => !isMobile && setIsHovered(false)}
+      whileHover={isMobile ? undefined : { y: -6, scale: 1.01 }}
       className={`relative cursor-default ${className}`}
     >
       {/* Animated glow */}
-      <motion.div
-        className="absolute inset-0 rounded-inherit pointer-events-none"
-        animate={{
-          boxShadow: isHovered
-            ? `0 0 40px ${glowColor}, 0 20px 60px rgba(0,0,0,0.4)`
-            : '0 0 0 transparent',
-        }}
-        transition={{ duration: 0.4 }}
-        style={{ borderRadius: 'inherit' }}
-      />
+      {!isMobile && (
+        <motion.div
+          className="absolute inset-0 rounded-inherit pointer-events-none"
+          animate={{
+            boxShadow: isHovered
+              ? `0 0 40px ${glowColor}, 0 20px 60px rgba(0,0,0,0.4)`
+              : '0 0 0 transparent',
+          }}
+          transition={{ duration: 0.4 }}
+          style={{ borderRadius: 'inherit' }}
+        />
+      )}
       {children}
     </motion.div>
   )
