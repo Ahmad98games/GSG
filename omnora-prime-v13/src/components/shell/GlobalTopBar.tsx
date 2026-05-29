@@ -19,6 +19,7 @@ import LanguageSwitcher from './LanguageSwitcher'
 import { useNoxisLocale } from '@/hooks/useLocale'
 import { useTranslations } from 'next-intl'
 import { TierBadge } from '../ui/TierBadge'
+import { FeedbackModal } from '@/components/ui/FeedbackModal'
 
 const PRESET_AVATARS = [
   { id: 1, bg: '#1e3a5f', border: '#60A5FA' },
@@ -43,6 +44,7 @@ export default React.memo(function GlobalTopBar() {
   
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [isOnline, setIsOnline] = useState(() => 
     typeof navigator !== 'undefined' ? navigator.onLine : true
   )
@@ -190,6 +192,14 @@ export default React.memo(function GlobalTopBar() {
 
         {/* RIGHT: Notifications & User */}
         <div className="flex-1 flex items-center justify-end space-x-4">
+          <button
+            onClick={() => setFeedbackOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-[#C5A059]/30 text-[#C5A059] hover:bg-[#C5A059]/10 transition-colors"
+            title="Share feedback"
+          >
+            ★ Feedback
+          </button>
+
           <button 
             onClick={() => setIsNotificationPanelOpen(true)}
             className="p-2 relative hover:bg-noxis-overlay rounded-full transition-colors"
@@ -309,7 +319,12 @@ export default React.memo(function GlobalTopBar() {
           </>
         )}
       </AnimatePresence>
-
+      
+      <FeedbackModal
+        isOpen={feedbackOpen}
+        onClose={() => setFeedbackOpen(false)}
+        trigger="manual"
+      />
     </>
   )
-});
+})

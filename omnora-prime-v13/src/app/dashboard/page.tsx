@@ -35,6 +35,7 @@ import { useIndustry, useIndustryLabels } from "@/components/providers/IndustryP
 import { MobileAppBanner } from "@/components/dashboard/MobileAppBanner";
 import { Skeleton, KpiCardSkeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/StateViews";
+import { FeedbackModal } from "@/components/ui/FeedbackModal";
 
 
 export default function DashboardPage() {
@@ -44,8 +45,24 @@ export default function DashboardPage() {
   const { getIndustryLabel } = useIndustryLabels();
 
   const [showWelcome, setShowWelcome] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [show7DayPrompt, setShow7DayPrompt] = useState(false);
   const supabase = createClient();
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const installDate = localStorage.getItem('noxis_install_date');
+    if (!installDate) {
+      localStorage.setItem('noxis_install_date', new Date().toISOString());
+      return;
+    }
+    const days = Math.floor((Date.now() - new Date(installDate).getTime()) / (1000 * 60 * 60 * 24));
+    const feedbackShown = localStorage.getItem('feedback_7day_shown');
+    if (days >= 7 && !feedbackShown) {
+      localStorage.setItem('feedback_7day_shown', 'true');
+      setShow7DayPrompt(true);
+    }
+  }, []);
   
 
   // Realtime Subscriptions
@@ -376,6 +393,35 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          {/* 7-day banner (subtle, dismissable): */}
+          {show7DayPrompt && (
+            <div className="flex items-center justify-between p-3 mb-4 bg-[#C5A059]/5 border border-[#C5A059]/20 rounded-sm">
+              <p className="text-xs text-gray-400">
+                You have been using Noxis for a week.
+                <span className="text-[#C5A059] ml-1">
+                  How is it going?
+                </span>
+              </p>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    setFeedbackOpen(true);
+                    setShow7DayPrompt(false);
+                  }}
+                  className="text-xs font-semibold text-[#C5A059] hover:text-amber-300 transition-colors"
+                >
+                  Share feedback →
+                </button>
+                <button
+                  onClick={() => setShow7DayPrompt(false)}
+                  className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
+
           <OnboardingChecklist />
 
           <div className="space-y-4">
@@ -561,6 +607,12 @@ export default function DashboardPage() {
           background: rgba(255,255,255,0.1);
         }
       `}</style>
+      
+      <FeedbackModal
+        isOpen={feedbackOpen}
+        onClose={() => setFeedbackOpen(false)}
+        trigger="milestone"
+      />
     </div>
   );
 }

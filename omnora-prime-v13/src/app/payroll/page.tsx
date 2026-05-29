@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { usePersona } from "@/hooks/usePersona";
 import { createClient } from "@/lib/supabase/client";
+import { FeedbackModal } from "@/components/ui/FeedbackModal";
 
 import { cn } from "@/lib/utils";
 import { Decimal } from "decimal.js";
@@ -38,6 +39,7 @@ export default function PayrollPage() {
 
   const [isRunModalOpen, setIsRunModalOpen] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   // Queries
   const { data: periods = [], isLoading: periodsLoading, error: periodsError } = useQuery({
@@ -201,7 +203,22 @@ export default function PayrollPage() {
       </main>
   
       <AnimatePresence>
-        {isRunModalOpen && <RunPayrollModal onClose={() => setIsRunModalOpen(false)} onSuccess={(msg: string) => { setSuccessToast(msg); queryClient.invalidateQueries({ queryKey: ['payroll_periods'] }); setIsRunModalOpen(false); }} />}
+        {isRunModalOpen && (
+          <RunPayrollModal 
+            onClose={() => setIsRunModalOpen(false)} 
+            onSuccess={(msg: string) => { 
+              setSuccessToast(msg); 
+              queryClient.invalidateQueries({ queryKey: ['payroll_periods'] }); 
+              setIsRunModalOpen(false); 
+              
+              const hasShownPayrollFeedback = localStorage.getItem('payroll_feedback_shown');
+              if (!hasShownPayrollFeedback) {
+                localStorage.setItem('payroll_feedback_shown', 'true');
+                setTimeout(() => setFeedbackOpen(true), 3000);
+              }
+            }} 
+          />
+        )}
       </AnimatePresence>
 
       <AnimatePresence>
@@ -218,6 +235,12 @@ export default function PayrollPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <FeedbackModal
+        isOpen={feedbackOpen}
+        onClose={() => setFeedbackOpen(false)}
+        trigger="post_payroll"
+      />
     </div>
   );
 }

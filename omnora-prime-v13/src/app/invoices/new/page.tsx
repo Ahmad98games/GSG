@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import React from 'react';
 import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
+import { FeedbackModal } from '@/components/ui/FeedbackModal';
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { createClient } from "@/lib/supabase/client";
@@ -64,6 +65,8 @@ export default function NewInvoicePage() {
   const [activeSkuIndex, setActiveSkuIndex] = useState<number | null>(null);
   const [skuSearch, setSkuSearch] = useState("");
   const [docHash, setDocHash] = useState("");
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [pendingRedirectUrl, setPendingRedirectUrl] = useState<string | null>(null);
 
   useEffect(() => {
     setDocHash(Math.random().toString(36).substring(2, 15).toUpperCase());
@@ -425,7 +428,21 @@ export default function NewInvoicePage() {
         invId = data;
       }
 
-      router.push(`/invoices/${invId}`);
+      // Check invoice count
+      const { count } = await supabase
+        .from('invoices')
+        .select('id', { count: 'exact', head: true })
+        .eq('business_id', profile?.id || '');
+
+      // Show feedback prompt after 5th, 20th, 50th
+      if (count === 5 || count === 20 || count === 50) {
+        setPendingRedirectUrl(`/invoices/${invId}`);
+        setTimeout(() => {
+          setFeedbackOpen(true);
+        }, 2000); // 2 second delay after success toast
+      } else {
+        router.push(`/invoices/${invId}`);
+      }
     } catch (err: any) {
       console.error(err);
       alert("Post failed: " + err.message);
@@ -829,6 +846,17 @@ export default function NewInvoicePage() {
           background: rgba(255,255,255,0.1);
         }
       `}</style>
+      
+      <FeedbackModal
+        isOpen={feedbackOpen}
+        onClose={() => {
+          setFeedbackOpen(false);
+          if (pendingRedirectUrl) {
+            router.push(pendingRedirectUrl);
+          }
+        }}
+        trigger="post_invoice"
+      />
     </div>
   );
 }
