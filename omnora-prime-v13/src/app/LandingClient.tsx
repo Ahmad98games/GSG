@@ -10,7 +10,7 @@ import {
   Check, BarChart4, Download, ArrowRight, Database, Globe2, Zap
 } from 'lucide-react'
 import {
-  FloatingOrb, ScrollProgressBar, AnimatedCounter,
+  FloatingOrb, ScrollProgressBar,
   SectionReveal, MarqueeTicker, GlowCard, TypedText
 } from '@/components/ui/AnimatedComponents'
 
@@ -80,22 +80,7 @@ function ParticleCanvas() {
   return <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none opacity-50" />
 }
 
-/* ─── animated stat number ─── */
-function StatNum({ to, suffix = '', prefix = '' }: { to: number; suffix?: string; prefix?: string }) {
-  const ref = useRef<HTMLSpanElement>(null)
-  const inView = useInView(ref, { once: true })
-  useEffect(() => {
-    if (!inView || !ref.current) return
-    const node = ref.current
-    const ctrl = animate(0, to, {
-      duration: 1.6,
-      ease,
-      onUpdate: v => { node.textContent = prefix + Math.round(v) + suffix }
-    })
-    return () => ctrl.stop()
-  }, [inView, to, suffix, prefix])
-  return <span ref={ref}>{prefix}0{suffix}</span>
-}
+// (Animated stat counter removed to ensure 100% reliable, professional static numbers)
 
 /* ─── main component ─── */
 export default function LandingClient() {
@@ -418,8 +403,8 @@ export default function LandingClient() {
                 variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { duration: 0.6, delay: 0.2, ease } } }}
                 className="pt-8 border-t border-white/5 flex flex-wrap items-center gap-x-8 gap-y-3"
               >
-                <span className="text-xs font-bold text-gray-600 uppercase tracking-widest block w-full mb-1">Trusted across global manufacturing hubs</span>
-                {[{ flag: '🇵🇰', label: 'Pakistan' }, { flag: '🇦🇪', label: 'UAE / GCC' }, { flag: '🇹🇷', label: 'Turkey' }, { flag: '🇧🇩', label: 'Bangladesh' }, { flag: '🌍', label: '+36 countries' }].map((c, i) => (
+                <span className="text-xs font-bold text-gray-600 uppercase tracking-widest block w-full mb-1">Built for factories in Pakistan, UAE, and beyond</span>
+                {[{ flag: '🇵🇰', label: 'Pakistan' }, { flag: '🇦🇪', label: 'UAE / GCC' }, { flag: '🇹🇷', label: 'Turkey' }, { flag: '🇧🇩', label: 'Bangladesh' }].map((c, i) => (
                   <motion.div key={c.label}
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -578,16 +563,16 @@ export default function LandingClient() {
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-5 gap-8 md:gap-4">
             {[
-              { to: 40, suffix: '+', label: 'Manufacturing Industries' },
-              { to: 30, suffix: '+', label: 'Currencies Supported' },
-              { to: 6, suffix: '+', label: 'Multilingual Scripts' },
-              { to: 100, suffix: '%', label: 'Offline Capability' },
-              { to: 2500, prefix: '₨ ', label: 'Starting / Month' },
+              { value: '40+', label: 'Industries supported' },
+              { value: '30+', label: 'Currencies' },
+              { value: '6', label: 'Languages' },
+              { value: '100%', label: 'Offline capable' },
+              { value: 'PKR 2,500', label: 'Starting price' },
             ].map((s, i) => (
               <SectionReveal key={s.label} delay={i * 0.08} className="text-center">
                 <motion.div whileHover={{ scale: 1.06 }} transition={{ type: 'spring', stiffness: 300 }}>
                   <div className="font-mono text-3xl sm:text-4xl font-black text-white mb-2">
-                    <StatNum to={s.to} suffix={s.suffix} prefix={s.prefix} />
+                    {s.value}
                   </div>
                   <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{s.label}</p>
                   <motion.div
