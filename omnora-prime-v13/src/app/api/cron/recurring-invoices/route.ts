@@ -1,6 +1,8 @@
 // src/app/api/cron/recurring-invoices/route.ts
 // Cron endpoint: processes recurring invoices and creates new invoices on schedule
 
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 

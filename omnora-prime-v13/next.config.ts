@@ -36,8 +36,14 @@ const isStaticBuild =
   process.env.NEXT_PUBLIC_PLATFORM === 'capacitor' || 
   process.env.CLOUDFLARE_DEPLOY === 'true';
 
+// Electron needs 'standalone' to spawn standalone nextServer inside the packaged app.
+// Static website deployment (Cloudflare) needs 'export'.
+const isStaticExport = 
+  process.env.NEXT_PUBLIC_PLATFORM === 'capacitor' || 
+  process.env.CLOUDFLARE_DEPLOY === 'true';
+
 const nextConfig: NextConfig = {
-  output: 'export',
+  output: isStaticExport ? 'export' : 'standalone',
   images: {
     unoptimized: true,
   },

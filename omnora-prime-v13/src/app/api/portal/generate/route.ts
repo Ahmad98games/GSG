@@ -1,6 +1,8 @@
 // src/app/api/portal/generate/route.ts
 // API endpoint to generate a portal token for a customer party
 
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { generatePortalToken } from '@/lib/portal/portal-token-utils';

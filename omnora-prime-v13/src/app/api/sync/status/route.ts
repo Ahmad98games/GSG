@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { syncQueue } from '@/lib/db/schema';
 import { count, eq } from 'drizzle-orm';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     // Dynamic import to prevent route failure if client.ts fails at top-level
