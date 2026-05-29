@@ -50,9 +50,9 @@ export function FeedbackModal({
       setError('Please write something')
       return
     }
-    if (text.trim().length < 20) {
+    if (text.trim().length < 200) {
       setError(
-        'Please write at least 20 characters'
+        'Please write at least 200 characters to share a proper review'
       )
       return
     }
@@ -292,10 +292,10 @@ export function FeedbackModal({
                     autoFocus
                   />
                   <p className={`text-[10px] mt-1
-                    ${text.length < 20
+                    ${text.length < 200
                       ? 'text-gray-700'
                       : 'text-emerald-500'}`}>
-                    {text.length}/20 minimum
+                    {text.length}/200 minimum
                   </p>
                 </div>
                 
