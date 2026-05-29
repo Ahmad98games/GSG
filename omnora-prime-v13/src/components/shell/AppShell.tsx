@@ -191,6 +191,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname?.startsWith("/download") ||
     pathname?.startsWith("/pricing") ||
     pathname?.startsWith("/privacy") ||
+    pathname?.startsWith("/reviews") ||
     pathname?.startsWith("/docs") ||
     pathname?.startsWith("/blog");
   
