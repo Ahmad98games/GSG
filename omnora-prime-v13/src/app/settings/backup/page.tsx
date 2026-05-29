@@ -19,9 +19,12 @@ import {
   HardDrive,
   RefreshCw,
   Eye,
+  FileSpreadsheet,
 } from "lucide-react";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { cn } from "@/lib/utils";
+import * as XLSX from 'xlsx';
+import { useToast } from "@/hooks/useToast";
 
 // ─────────────────────────────────────────────
 // Web Crypto AES-GCM Helpers
@@ -98,11 +101,14 @@ interface RestorePreview {
 
 export default function BackupPage() {
   const { profile } = useBusinessProfile();
+  const toast = useToast();
   
   // Backup state
   const [backupLoading, setBackupLoading] = useState(false);
   const [backupPassword, setBackupPassword] = useState("");
   const [backupSuccess, setBackupSuccess] = useState(false);
+  const [excelBackupLoading, setExcelBackupLoading] = useState(false);
+  const [excelBackupSuccess, setExcelBackupSuccess] = useState(false);
 
   // Restore state
   const [restoreLoading, setRestoreLoading] = useState(false);
@@ -162,6 +168,115 @@ export default function BackupPage() {
       alert("Backup failed: " + err.message);
     } finally {
       setBackupLoading(false);
+    }
+  };
+
+  // ── Download Excel Backup ──
+  const handleDownloadBackupExcel = async () => {
+    if (!profile?.id) return;
+    setExcelBackupLoading(true);
+    setExcelBackupSuccess(false);
+
+    try {
+      const res = await fetch(`/api/internal/backup?business_id=${profile.id}`);
+      if (!res.ok) throw new Error("Failed to generate backup data");
+
+      const data = await res.json();
+      const backupObj = data.backup || {};
+
+      const wb = XLSX.utils.book_new();
+
+      // Sheet 1: Inventory
+      const skusList = backupObj.skus || [];
+      const skusData = skusList.map((sku: any) => ({
+        'SKU Code': sku.sku_code,
+        'Product Name': sku.name,
+        'Category': sku.category || '',
+        'Unit': sku.unit,
+        'Qty on Hand': sku.qty_on_hand,
+        'Cost Price': sku.cost_price,
+        'Sale Price': sku.sale_price,
+        'Reorder Level': sku.reorder_level || 0,
+        'Status': sku.is_active ? 'Active' : 'Inactive',
+      }));
+      const wsSkus = XLSX.utils.json_to_sheet(skusData);
+      XLSX.utils.book_append_sheet(wb, wsSkus, 'Inventory');
+
+      // Sheet 2: Parties
+      const partiesList = backupObj.parties || [];
+      const partiesData = partiesList.map((party: any) => ({
+        'Party Name': party.name,
+        'Classification': party.party_type,
+        'Phone': party.phone || '',
+        'Address': party.address || '',
+        'Credit Limit': party.credit_limit || 0,
+        'Credit Days': party.credit_days || 0,
+        'Current Balance': party.current_balance || 0,
+        'Status': party.is_blocked ? 'Blocked' : 'Active',
+      }));
+      const wsParties = XLSX.utils.json_to_sheet(partiesData);
+      XLSX.utils.book_append_sheet(wb, wsParties, 'Parties');
+
+      // Sheet 3: Karigars
+      const karigarsList = backupObj.karigars || [];
+      const karigarsData = karigarsList.map((k: any) => ({
+        'Karigar Code': k.karigar_code,
+        'Name': k.name,
+        'Phone': k.phone || '',
+        'Wage Type': k.wage_type,
+        'Piece Rate': k.piece_rate || 0,
+        'Daily Rate': k.daily_rate || 0,
+        'Monthly Salary': k.monthly_salary || 0,
+        'Current Advance': k.current_advance || 0,
+        'Status': k.status,
+        'Skill Type': k.skill_type || '',
+        'Joining Date': k.joining_date || '',
+      }));
+      const wsKarigars = XLSX.utils.json_to_sheet(karigarsData);
+      XLSX.utils.book_append_sheet(wb, wsKarigars, 'Karigars');
+
+      // Sheet 4: Invoices
+      const invoicesList = backupObj.invoices || [];
+      const invoicesData = invoicesList.map((inv: any) => ({
+        'Invoice No': inv.invoice_no,
+        'Issue Date': inv.issue_date || inv.created_at?.split('T')[0],
+        'Total Amount': inv.total || 0,
+        'Balance Due': inv.balance_due || 0,
+        'Status': inv.status,
+        'Due Date': inv.due_date || '',
+      }));
+      const wsInvoices = XLSX.utils.json_to_sheet(invoicesData);
+      XLSX.utils.book_append_sheet(wb, wsInvoices, 'Invoices');
+
+      // Sheet 5: Ledger
+      const ledgerList = backupObj.ledger_entries || [];
+      const ledgerData = ledgerList.map((entry: any) => ({
+        'Date': entry.posted_at || entry.created_at?.split('T')[0],
+        'Tx Ref': entry.tx_ref || '',
+        'Debit': entry.debit || 0,
+        'Credit': entry.credit || 0,
+        'Type': entry.entry_type || '',
+        'Amount': entry.amount || 0,
+        'Description': entry.description || '',
+      }));
+      const wsLedger = XLSX.utils.json_to_sheet(ledgerData);
+      XLSX.utils.book_append_sheet(wb, wsLedger, 'Ledger');
+
+      const businessName = (profile.business_name || "noxis")
+        .replace(/[^a-zA-Z0-9]/g, "_")
+        .toLowerCase();
+      const dateStr = new Date().toISOString().split("T")[0];
+      const filename = `noxis_data_export_${businessName}_${dateStr}.xlsx`;
+
+      XLSX.writeFile(wb, filename);
+
+      setExcelBackupSuccess(true);
+      toast.success('All data exported to Excel workbook successfully');
+      setTimeout(() => setExcelBackupSuccess(false), 5000);
+    } catch (err: any) {
+      toast.error('Excel Export Failed', err.message);
+    } finally {
+      setExcelBackupLoading(false);
     }
   };
 
@@ -386,6 +501,26 @@ export default function BackupPage() {
                   <><CheckCircle2 size={18} /> Backup Downloaded Successfully</>
                 ) : (
                   <><Download size={18} /> Download Full Backup</>
+                )}
+              </button>
+
+              {/* Excel Export Button */}
+              <button
+                id="export-excel-backup-btn"
+                onClick={handleDownloadBackupExcel}
+                disabled={excelBackupLoading || !profile?.id}
+                className={cn(
+                  "w-full py-4 rounded-xl text-sm font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 border border-white/10 hover:border-white/20 text-gray-300 hover:text-white bg-white/5 hover:bg-white/10",
+                  excelBackupSuccess && "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30",
+                  "disabled:opacity-40 disabled:cursor-not-allowed"
+                )}
+              >
+                {excelBackupLoading ? (
+                  <><Loader2 className="animate-spin" size={18} /> Generating Excel...</>
+                ) : excelBackupSuccess ? (
+                  <><CheckCircle2 size={18} /> Excel Exported Successfully</>
+                ) : (
+                  <><FileSpreadsheet size={18} /> Export All Data as Excel</>
                 )}
               </button>
             </motion.div>

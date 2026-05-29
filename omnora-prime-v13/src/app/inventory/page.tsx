@@ -19,6 +19,8 @@ import { useBarcodeScan } from "@/hooks/useBarcodeScan";
 import { useVirtualizer } from '@tanstack/react-virtual';
 import ForecastBadge from "@/components/intelligence/ForecastBadge";
 import { useFloorVoice } from "@/hooks/useFloorVoice";
+import * as XLSX from 'xlsx';
+import { useToast } from "@/hooks/useToast";
 
 import { motion, AnimatePresence } from "framer-motion";
 import EmptyState from "@/components/ui/EmptyState"; // Keep if needed for subcomponents, but we'll import from StateViews
@@ -99,6 +101,7 @@ type AdjustStockValues = z.infer<typeof adjustStockSchema>;
 export default function InventoryPage() {
   const { profile } = useBusinessProfile();
   const { t, fmt, term } = usePersona();
+  const toast = useToast();
 
   const supabase = createClient();
   const queryClient = useQueryClient();
@@ -298,6 +301,34 @@ export default function InventoryPage() {
     document.body.removeChild(link);
   };
 
+  const exportToExcel = () => {
+    if (!skus || skus.length === 0) {
+      toast.error('No data to export')
+      return
+    }
+    
+    const data = skus.map((sku: SKU) => ({
+      'SKU Code': sku.sku_code,
+      'Product Name': sku.name,
+      'Category': sku.category || '',
+      'Unit': sku.unit,
+      'Qty on Hand': sku.qty_on_hand,
+      'Cost Price': sku.cost_price,
+      'Sale Price': sku.sale_price,
+      'Reorder Level': sku.reorder_level || 0,
+      'Status': sku.is_active ? 'Active' : 'Inactive',
+    }))
+    
+    const ws = XLSX.utils.json_to_sheet(data)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Inventory')
+    XLSX.writeFile(wb,
+      `noxis_inventory_${new Date().toISOString().split('T')[0]}.xlsx`
+    )
+    
+    toast.success('Inventory exported to Excel')
+  }
+
   // Table Config
 
   if (skusLoading) return (
@@ -431,8 +462,18 @@ export default function InventoryPage() {
                 <button 
                   onClick={handleExportCSV}
                   className="p-2 border border-white/5 text-gray-500 hover:text-white hover:bg-white/5 transition-all"
+                  title="Export CSV"
                 >
                    <Download size={16} />
+                </button>
+
+                <button onClick={exportToExcel}
+                  className="flex items-center gap-1.5
+                    px-3 py-1.5 text-xs font-medium
+                    border border-white/10 text-gray-400
+                    hover:border-white/20 hover:text-white
+                    transition-colors">
+                  ↓ Export Excel
                 </button>
              </div>
           </div>

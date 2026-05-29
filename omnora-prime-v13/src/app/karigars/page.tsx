@@ -19,6 +19,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import EmptyState from "@/components/ui/EmptyState";
 import DataFreshness from "@/components/ui/DataFreshness";
 import { SummaryCard } from "@/components/ui/SummaryCard";
+import * as XLSX from 'xlsx';
+import { useToast } from "@/hooks/useToast";
 import { 
   createColumnHelper, 
   flexRender, 
@@ -118,6 +120,7 @@ export default function KarigarsPage() {
   const { t, fmt, workerTerm, workerTermPlural } = usePersona();
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const toast = useToast();
 
   // State
   const [searchTerm, setSearchTerm] = useState("");
@@ -193,6 +196,36 @@ export default function KarigarsPage() {
       monthlyPayrollEst: estMonthlyPayroll
     };
   }, [karigars, attendanceToday]);
+
+  const exportToExcel = () => {
+    if (!karigars || karigars.length === 0) {
+      toast.error('No data to export')
+      return
+    }
+    
+    const data = karigars.map((k: Karigar) => ({
+      'Karigar Code': k.karigar_code,
+      'Name': k.name,
+      'Phone': k.phone || '',
+      'Wage Type': k.wage_type,
+      'Piece Rate': k.piece_rate || 0,
+      'Daily Rate': k.daily_rate || 0,
+      'Monthly Salary': k.monthly_salary || 0,
+      'Current Advance': k.current_advance || 0,
+      'Status': k.status,
+      'Skill Type': k.skill_type || '',
+      'Joining Date': k.joining_date || '',
+    }))
+    
+    const ws = XLSX.utils.json_to_sheet(data)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Karigars')
+    XLSX.writeFile(wb,
+      `noxis_karigars_${new Date().toISOString().split('T')[0]}.xlsx`
+    )
+    
+    toast.success('Karigars registry exported to Excel')
+  }
 
   const columns = useMemo(() => [
     columnHelper.accessor("photo_url", {
@@ -401,6 +434,14 @@ export default function KarigarsPage() {
               </div>
               <div className="flex items-center space-x-2">
                  <button className="p-2 border border-white/5 text-gray-500 hover:text-white hover:bg-white/5"><Filter size={16} /></button>
+                 <button onClick={exportToExcel}
+                   className="flex items-center gap-1.5
+                     px-3 py-1.5 text-xs font-medium
+                     border border-white/10 text-gray-400
+                     hover:border-white/20 hover:text-white
+                     transition-colors">
+                   ↓ Export Excel
+                 </button>
               </div>
            </div>
 

@@ -25,12 +25,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { ErrorState, EmptyState as NewEmptyState } from "@/components/ui/StateViews";
 import { useDebounce } from "@/hooks/useDebounce";
+import * as XLSX from 'xlsx';
+import { useToast } from "@/hooks/useToast";
 
 export default function InvoiceListPage() {
   const router = useRouter();
   const { businessId } = usePersona();
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const toast = useToast();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -64,6 +67,33 @@ export default function InvoiceListPage() {
     },
     enabled: !!businessId && (debouncedSearch.length >= 2 || debouncedSearch.length === 0)
   });
+
+  const exportToExcel = () => {
+    if (!invoices || invoices.length === 0) {
+      toast.error('No data to export')
+      return
+    }
+    
+    const data = invoices.map((inv: any) => ({
+      'Invoice No': inv.invoice_no,
+      'Issue Date': inv.issue_date || inv.created_at?.split('T')[0],
+      'Customer Name': inv.party?.name || '',
+      'Phone': inv.party?.phone || '',
+      'Total Amount': inv.total || 0,
+      'Balance Due': inv.balance_due || 0,
+      'Status': inv.status,
+      'Due Date': inv.due_date || '',
+    }))
+    
+    const ws = XLSX.utils.json_to_sheet(data)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Invoices')
+    XLSX.writeFile(wb,
+      `noxis_invoices_${new Date().toISOString().split('T')[0]}.xlsx`
+    )
+    
+    toast.success('Invoices registry exported to Excel')
+  }
 
   if (isLoading) return (
     <div className="p-6 bg-[#0F1113]">
@@ -142,25 +172,36 @@ export default function InvoiceListPage() {
 
         <div className="p-8 space-y-6">
           {/* Filters Bar */}
-          <div className="flex items-center space-x-4 bg-[#1A1D21] border border-white/5 p-4">
-             <div className="flex items-center space-x-2 text-[10px] uppercase font-bold text-gray-500 mr-4">
-                <Filter size={14} />
-                <span>Quick Filters:</span>
+          <div className="flex items-center justify-between bg-[#1A1D21] border border-white/5 p-4">
+             <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2 text-[10px] uppercase font-bold text-gray-500 mr-4">
+                   <Filter size={14} />
+                   <span>Quick Filters:</span>
+                </div>
+                {['all', 'issued', 'paid', 'overdue', 'cancelled'].map(status => (
+                  <button 
+                    key={status}
+                    onClick={() => setStatusFilter(status)}
+                    className={cn(
+                      "px-4 py-1.5 text-[9px] uppercase font-bold border transition-all rounded-sm",
+                      statusFilter === status 
+                       ? "bg-[#C5A059] text-black border-[#C5A059]" 
+                       : "bg-white/5 text-gray-400 border-white/5 hover:border-white/20"
+                    )}
+                  >
+                    {status}
+                  </button>
+                ))}
              </div>
-             {['all', 'issued', 'paid', 'overdue', 'cancelled'].map(status => (
-               <button 
-                 key={status}
-                 onClick={() => setStatusFilter(status)}
-                 className={cn(
-                   "px-4 py-1.5 text-[9px] uppercase font-bold border transition-all rounded-sm",
-                   statusFilter === status 
-                    ? "bg-[#C5A059] text-black border-[#C5A059]" 
-                    : "bg-white/5 text-gray-400 border-white/5 hover:border-white/20"
-                 )}
-               >
-                 {status}
-               </button>
-             ))}
+
+             <button onClick={exportToExcel}
+               className="flex items-center gap-1.5
+                 px-3 py-1.5 text-xs font-medium
+                 border border-white/10 text-gray-400
+                 hover:border-white/20 hover:text-white
+                 transition-colors">
+               ↓ Export Excel
+             </button>
           </div>
 
           {isLoading ? (

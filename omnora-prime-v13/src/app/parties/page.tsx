@@ -22,6 +22,8 @@ import * as z from "zod";
 import { Skeleton, KpiCardSkeleton, CardGridSkeleton } from "@/components/ui/Skeleton";
 import { ErrorState, EmptyState, FieldError } from "@/components/ui/StateViews";
 import { useDebounce } from "@/hooks/useDebounce";
+import * as XLSX from 'xlsx';
+import { useToast } from "@/hooks/useToast";
 
 interface Party {
   id: string;
@@ -68,6 +70,7 @@ export default function PartiesPage() {
   const { businessId, fmt, term } = usePersona();
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const toast = useToast();
   
 
   const router = useRouter();
@@ -134,6 +137,33 @@ export default function PartiesPage() {
       blocked: parties.filter((p: Party) => p.is_blocked).length
     };
   }, [parties]);
+
+  const exportToExcel = () => {
+    if (!parties || parties.length === 0) {
+      toast.error('No data to export')
+      return
+    }
+    
+    const data = parties.map((party: Party) => ({
+      'Party Name': party.name,
+      'Classification': party.party_type,
+      'Phone': party.phone || '',
+      'Address': party.address || '',
+      'Credit Limit': party.credit_limit || 0,
+      'Credit Days': party.credit_days || 0,
+      'Current Balance': party.current_balance || 0,
+      'Status': party.is_blocked ? 'Blocked' : 'Active',
+    }))
+    
+    const ws = XLSX.utils.json_to_sheet(data)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Parties')
+    XLSX.writeFile(wb,
+      `noxis_parties_${new Date().toISOString().split('T')[0]}.xlsx`
+    )
+    
+    toast.success('Parties registry exported to Excel')
+  }
 
   if (isLoading) return (
     <div className="p-6 bg-[#0F1113]">
@@ -241,6 +271,15 @@ export default function PartiesPage() {
                    onChange={(e) => setSearchTerm(e.target.value)}
                  />
               </div>
+
+              <button onClick={exportToExcel}
+                className="flex items-center gap-1.5
+                  px-3 py-1.5 text-xs font-medium
+                  border border-white/10 text-gray-400
+                  hover:border-white/20 hover:text-white
+                  transition-colors">
+                ↓ Export Excel
+              </button>
            </div>
 
            {/* Parties List */}
