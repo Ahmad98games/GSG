@@ -10,12 +10,14 @@ import {
 import { 
   SectionReveal, GlowCard, FloatingOrb 
 } from '@/components/ui/AnimatedComponents'
+import { FeedbackModal } from '@/components/ui/FeedbackModal'
 
 export default function ReviewsPage() {
   const supabase = createClient()
   const [testimonials, setTestimonials] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
 
   const { scrollYProgress } = useScroll()
   const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30 })
@@ -108,8 +110,16 @@ export default function ReviewsPage() {
             User Reviews
           </h1>
           <p className="text-gray-400 text-sm max-w-md mx-auto leading-relaxed">
-            Verified feedback submitted by factory owners and floor managers directly from inside the Noxis Hub software.
+            Verified feedback submitted by factory owners and floor managers. Share your experience directly from the website or from inside the Noxis Hub software.
           </p>
+          <div className="pt-2">
+            <button
+              onClick={() => setFeedbackOpen(true)}
+              className="inline-flex items-center gap-2 bg-[#60A5FA] hover:bg-blue-400 text-black text-xs font-bold uppercase tracking-widest px-6 py-3 rounded-sm transition-all shadow-[0_0_20px_rgba(96,165,250,0.2)] animate-pulse"
+            >
+              ★ Share Feedback
+            </button>
+          </div>
         </SectionReveal>
 
         {loading ? (
@@ -204,6 +214,12 @@ export default function ReviewsPage() {
           </p>
         </div>
       </footer>
+
+      <FeedbackModal
+        isOpen={feedbackOpen}
+        onClose={() => setFeedbackOpen(false)}
+        trigger="manual"
+      />
     </div>
   )
 }

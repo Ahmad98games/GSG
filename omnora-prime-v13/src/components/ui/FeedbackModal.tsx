@@ -1,5 +1,4 @@
-'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient }
   from '@/lib/supabase/client'
 import { useBusinessProfile }
@@ -36,6 +35,13 @@ export function FeedbackModal({
   const [submitting, setSubmitting] =
     useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (profile) {
+      if (!displayName) setDisplayName(profile.business_name || '')
+      if (!businessType) setBusinessType(profile.industry_type || '')
+    }
+  }, [profile, displayName, businessType])
   
   if (!isOpen) return null
   
@@ -63,7 +69,7 @@ export function FeedbackModal({
         await supabase
           .from('testimonials')
           .insert({
-            business_id: profile?.id,
+            business_id: profile?.id || null,
             feedback_text: text.trim(),
             display_name: displayName.trim(),
             business_type: businessType || null,
@@ -71,7 +77,7 @@ export function FeedbackModal({
             country_code:
               profile?.country_code || 'PK',
             rating,
-            tier,
+            tier: tier || 'Starter',
             status: shareOnWebsite
               ? 'pending'
               : 'private',
