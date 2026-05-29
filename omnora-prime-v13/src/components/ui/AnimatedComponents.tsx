@@ -401,8 +401,13 @@ interface GlowCardProps {
 }
 
 export function GlowCard({ children, className = '', glowColor = 'rgba(96,165,250,0.1)', delay = 0 }: GlowCardProps) {
-  const ref = useRef(null)
+  const ref = useRef<HTMLDivElement>(null)
   const [isMobile, setIsMobile] = useState(false)
+  const [isHovered, setIsHovered] = useState(false)
+  const [rotateX, setRotateX] = useState(0)
+  const [rotateY, setRotateY] = useState(0)
+  const [shineX, setShineX] = useState(50)
+  const [shineY, setShineY] = useState(50)
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768)
@@ -412,7 +417,36 @@ export function GlowCard({ children, className = '', glowColor = 'rgba(96,165,25
   }, [])
 
   const inView = useInView(ref, { once: true, margin: isMobile ? '-15px' : '-60px' })
-  const [isHovered, setIsHovered] = useState(false)
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isMobile || !ref.current) return
+    const card = ref.current
+    const rect = card.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    const xc = rect.width / 2
+    const yc = rect.height / 2
+
+    const rX = ((yc - y) / yc) * 8
+    const rY = ((x - xc) / xc) * 8
+    setRotateX(rX)
+    setRotateY(rY)
+
+    const sX = (x / rect.width) * 100
+    const sY = (y / rect.height) * 100
+    setShineX(sX)
+    setShineY(sY)
+  }
+
+  const handleMouseLeave = () => {
+    setIsHovered(false)
+    setRotateX(0)
+    setRotateY(0)
+  }
+
+  const handleMouseEnter = () => {
+    if (!isMobile) setIsHovered(true)
+  }
 
   return (
     <motion.div
@@ -420,25 +454,49 @@ export function GlowCard({ children, className = '', glowColor = 'rgba(96,165,25
       initial={{ opacity: 0, y: isMobile ? 15 : 30 }}
       animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: isMobile ? 15 : 30 }}
       transition={{ duration: isMobile ? 0.4 : 0.6, delay: isMobile ? delay * 0.5 : delay, ease: [0.16, 1, 0.3, 1] }}
-      onHoverStart={() => !isMobile && setIsHovered(true)}
-      onHoverEnd={() => !isMobile && setIsHovered(false)}
-      whileHover={isMobile ? undefined : { y: -6, scale: 1.01 }}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        transformStyle: 'preserve-3d',
+        transform: isMobile 
+          ? 'none' 
+          : `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(${isHovered ? -6 : 0}px)`,
+        transition: isHovered 
+          ? 'transform 0.08s ease-out' 
+          : 'transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
+      }}
       className={`relative cursor-default ${className}`}
     >
+      {/* Specular Shine Overlay */}
+      {!isMobile && isHovered && (
+        <div
+          className="absolute inset-0 pointer-events-none rounded-inherit mix-blend-overlay opacity-30 z-10"
+          style={{
+            borderRadius: 'inherit',
+            background: `radial-gradient(circle at ${shineX}% ${shineY}%, rgba(255,255,255,0.22) 0%, transparent 60%)`,
+            transition: 'background 0.05s ease-out',
+          }}
+        />
+      )}
+
       {/* Animated glow */}
       {!isMobile && (
         <motion.div
           className="absolute inset-0 rounded-inherit pointer-events-none"
           animate={{
             boxShadow: isHovered
-              ? `0 0 40px ${glowColor}, 0 20px 60px rgba(0,0,0,0.4)`
+              ? `0 0 45px ${glowColor}, 0 25px 50px rgba(0,0,0,0.5)`
               : '0 0 0 transparent',
           }}
           transition={{ duration: 0.4 }}
           style={{ borderRadius: 'inherit' }}
         />
       )}
-      {children}
+      
+      <div style={{ transform: isMobile ? 'none' : 'translateZ(15px)', transformStyle: 'preserve-3d' }}>
+        {children}
+      </div>
     </motion.div>
   )
 }

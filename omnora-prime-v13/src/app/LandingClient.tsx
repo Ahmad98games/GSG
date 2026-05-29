@@ -107,6 +107,9 @@ export default function LandingClient() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [navScrolled, setNavScrolled] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [heroRotateX, setHeroRotateX] = useState(12)
+  const [heroRotateY, setHeroRotateY] = useState(-18)
+  const [heroIsHovered, setHeroIsHovered] = useState(false)
   const heroRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll()
   const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30 })
@@ -122,6 +125,31 @@ export default function LandingClient() {
     window.addEventListener('resize', checkMobile)
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
+
+  const handleHeroMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isMobile) return
+    const el = e.currentTarget
+    const rect = el.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    const xc = rect.width / 2
+    const yc = rect.height / 2
+
+    const rX = 12 + ((yc - y) / yc) * 6
+    const rY = -18 + ((x - xc) / xc) * 6
+    setHeroRotateX(rX)
+    setHeroRotateY(rY)
+  }
+
+  const handleHeroMouseEnter = () => {
+    if (!isMobile) setHeroIsHovered(true)
+  }
+
+  const handleHeroMouseLeave = () => {
+    setHeroIsHovered(false)
+    setHeroRotateX(12)
+    setHeroRotateY(-18)
+  }
 
   useEffect(() => {
     const off = scrollY.on('change', v => setNavScrolled(v > 20))
@@ -256,7 +284,11 @@ export default function LandingClient() {
                 </Link>
               </motion.div>
             ))}
-            <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>
+            <motion.div 
+              whileHover={{ y: -3, scale: 1.02 }} 
+              whileTap={{ y: 1, scale: 0.98 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+            >
               <Link
                 href="/download"
                 className="btn-shine text-xs font-bold tracking-widest uppercase text-black bg-[#60A5FA] hover:bg-blue-400 px-6 py-2.5 rounded-sm transition-all shadow-[0_0_20px_rgba(96,165,250,0.2)]"
@@ -361,7 +393,11 @@ export default function LandingClient() {
                 variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { duration: 0.6, ease } } }}
                 className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2"
               >
-                <motion.div whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.97 }}>
+                <motion.div 
+                  whileHover={{ y: -5, scale: 1.02 }} 
+                  whileTap={{ y: 1, scale: 0.98 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                >
                   <Link href="/download"
                     className="btn-shine flex items-center justify-center gap-2.5 bg-[#60A5FA] hover:bg-blue-400 text-black font-extrabold text-sm tracking-wider px-8 py-4 rounded-sm transition-all shadow-[0_0_30px_rgba(96,165,250,0.25)]"
                   >
@@ -402,18 +438,34 @@ export default function LandingClient() {
               initial={{ opacity: 0, x: 60, scale: 0.95 }}
               animate={{ opacity: 1, x: 0, scale: 1 }}
               transition={{ duration: 0.9, delay: 0.35, ease }}
+              onMouseMove={handleHeroMouseMove}
+              onMouseEnter={handleHeroMouseEnter}
+              onMouseLeave={handleHeroMouseLeave}
               className="lg:col-span-5 relative"
+              style={{ perspective: '1200px', transformStyle: 'preserve-3d' }}
             >
               <motion.div
-                animate={{ y: [0, -10, 0] }}
+                animate={heroIsHovered ? undefined : { y: [0, -10, 0] }}
                 transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+                style={{ transformStyle: 'preserve-3d' }}
               >
                 {/* Backdrop glow */}
                 <div className="absolute inset-0 bg-blue-500/15 blur-[80px] pointer-events-none rounded-full" />
 
-                <div className="relative bg-[#0F1114] border border-white/10 rounded-xl overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.8)]">
+                <div 
+                  className="relative bg-[#0F1114] border border-white/10 rounded-xl overflow-hidden transition-all duration-700 ease-out"
+                  style={{
+                    transformStyle: 'preserve-3d',
+                    transform: isMobile 
+                      ? 'none' 
+                      : `perspective(1200px) rotateX(${heroRotateX}deg) rotateY(${heroRotateY}deg) rotateZ(1deg)`,
+                    boxShadow: isMobile
+                      ? '0 20px 40px rgba(0,0,0,0.6)'
+                      : `0 40px 100px rgba(0,0,0,0.95), inset 0 1px 0 rgba(255,255,255,0.08), ${heroRotateY * -0.6}px ${heroRotateX * 0.6}px 60px rgba(96,165,250,0.1)`,
+                  }}
+                >
                   {/* Title bar */}
-                  <div className="bg-[#0A0C0F] border-b border-white/5 px-4 py-3 flex items-center justify-between">
+                  <div className="bg-[#0A0C0F] border-b border-white/5 px-4 py-3 flex items-center justify-between" style={{ transform: isMobile ? 'none' : 'translateZ(10px)' }}>
                     <div className="flex items-center gap-2">
                       <motion.span className="w-3 h-3 rounded-full bg-red-500/80" whileHover={{ scale: 1.3 }} />
                       <motion.span className="w-3 h-3 rounded-full bg-yellow-500/80" whileHover={{ scale: 1.3 }} />
@@ -429,9 +481,9 @@ export default function LandingClient() {
                     </motion.span>
                   </div>
 
-                  <div className="p-5 space-y-4">
+                  <div className="p-5 space-y-4" style={{ transformStyle: 'preserve-3d' }}>
                     {/* KPI grid */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-3" style={{ transform: isMobile ? 'none' : 'translateZ(25px)', transformStyle: 'preserve-3d' }}>
                       {[
                         { label: 'Mandi Output', value: '45,820 kg', color: 'text-amber-400', delay: 0.5 },
                         { label: 'Active Karigars', value: '142 Live', color: 'text-blue-400', delay: 0.6 },
@@ -458,7 +510,7 @@ export default function LandingClient() {
                     </div>
 
                     {/* Live feed */}
-                    <div className="bg-[#08090C] border border-white/5 p-4 rounded-lg font-mono text-[10px] space-y-2">
+                    <div className="bg-[#08090C] border border-white/5 p-4 rounded-lg font-mono text-[10px] space-y-2" style={{ transform: isMobile ? 'none' : 'translateZ(15px)' }}>
                       <div className="flex justify-between items-center text-gray-600 mb-2">
                         <span className="font-bold uppercase tracking-widest">SYS FEED</span>
                         <motion.span animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.5, repeat: Infinity }} className="text-emerald-500">● LIVE</motion.span>
@@ -486,6 +538,7 @@ export default function LandingClient() {
                       animate={{ opacity: 1 }}
                       transition={{ delay: 1.2 }}
                       className="p-3 bg-white/[0.02] border border-white/5 rounded-lg flex items-center justify-between"
+                      style={{ transform: isMobile ? 'none' : 'translateZ(20px)' }}
                     >
                       <div className="flex items-center gap-3">
                         <Smartphone size={18} className="text-blue-400" />
@@ -668,7 +721,12 @@ export default function LandingClient() {
 
         <SectionReveal delay={0.24}>
           <div className="flex flex-col sm:flex-row justify-center items-stretch sm:items-center gap-4 max-w-md mx-auto">
-            <motion.div whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }} className="flex-1">
+            <motion.div 
+              whileHover={{ y: -5, scale: 1.02 }} 
+              whileTap={{ y: 1, scale: 0.98 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+              className="flex-1"
+            >
               <Link href="/download"
                 className="btn-shine flex items-center justify-center gap-2 bg-[#60A5FA] hover:bg-blue-400 text-black font-extrabold text-sm tracking-wider py-4 rounded-lg transition-all shadow-[0_0_40px_rgba(96,165,250,0.25)] w-full"
               >
@@ -676,7 +734,12 @@ export default function LandingClient() {
                 Download Free Trial
               </Link>
             </motion.div>
-            <motion.div whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }} className="flex-1">
+            <motion.div 
+              whileHover={{ y: -5, scale: 1.02 }} 
+              whileTap={{ y: 1, scale: 0.98 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+              className="flex-1"
+            >
               <a
                 href="https://wa.me/923334355475?text=Hi,%20I%20want%20to%20schedule%20a%20demo%20for%20Noxis%20ERP"
                 target="_blank" rel="noopener noreferrer"
