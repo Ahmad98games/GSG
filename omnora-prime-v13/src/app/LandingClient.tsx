@@ -272,7 +272,7 @@ export default function LandingClient() {
             transition={{ duration: 0.5, delay: 0.1, ease }}
             className="hidden md:flex items-center gap-8"
           >
-            {[{ label: 'Pricing', href: '/pricing' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }].map((link, i) => (
+            {[{ label: 'Pricing', href: '/pricing' }, { label: 'Reviews', href: '/reviews' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }].map((link, i) => (
               <motion.div key={link.href} whileHover={{ y: -1 }}>
                 <Link href={link.href} className="text-sm text-gray-400 hover:text-white font-medium transition-colors relative group">
                   {link.label}
@@ -318,7 +318,7 @@ export default function LandingClient() {
               className="md:hidden border-b border-white/[0.06] bg-[#070809] overflow-hidden"
             >
               <div className="px-6 py-8 flex flex-col gap-6">
-                {[{ label: 'Pricing', href: '/pricing' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }, { label: 'Download', href: '/download' }].map((link, i) => (
+                {[{ label: 'Pricing', href: '/pricing' }, { label: 'Reviews', href: '/reviews' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }, { label: 'Download', href: '/download' }].map((link, i) => (
                   <motion.div key={link.href}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -925,7 +925,7 @@ export default function LandingClient() {
           </motion.div>
 
           <div className="flex flex-wrap justify-center gap-8 text-xs font-semibold uppercase tracking-widest text-gray-500">
-            {[{ label: 'Download', href: '/download' }, { label: 'Pricing', href: '/pricing' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }, { label: 'Privacy', href: '/privacy' }].map(l => (
+            {[{ label: 'Download', href: '/download' }, { label: 'Pricing', href: '/pricing' }, { label: 'Reviews', href: '/reviews' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }, { label: 'Privacy', href: '/privacy' }].map(l => (
               <motion.div key={l.href} whileHover={{ y: -2, color: '#fff' }}>
                 <Link href={l.href} className="hover:text-white transition-colors">{l.label}</Link>
               </motion.div>
