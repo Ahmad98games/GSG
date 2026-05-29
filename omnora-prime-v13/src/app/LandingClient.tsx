@@ -676,6 +676,115 @@ export default function LandingClient() {
         </div>
       </section>
 
+      {/* ── WHO USES NOXIS ─────────────────────────────────────────── */}
+      <section className="py-24 px-6 max-w-6xl mx-auto border-t border-white/[0.06]">
+        <SectionReveal className="text-center mb-16 space-y-4">
+          <p className="text-xs font-bold text-blue-400 uppercase tracking-widest">Built For</p>
+          <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-none">
+            Factory owners who are done<br />with spreadsheets.
+          </h2>
+        </SectionReveal>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            {
+              industry: 'Textile factory',
+              location: 'Faisalabad, Pakistan',
+              problem: 'Tracking 40 karigars piece-rate wages in Excel took 3 days every month.',
+              solution: 'With Noxis: wages calculate automatically. Payslips go out in minutes.',
+              flag: '🇵🇰',
+              color: 'blue',
+            },
+            {
+              industry: 'Rice mill',
+              location: 'Lahore, Pakistan',
+              problem: 'Dealer payments were tracked in a register. Disputes happened every month.',
+              solution: 'With Noxis: every dealer has a live balance. No more disputes.',
+              flag: '🇵🇰',
+              color: 'amber',
+            },
+            {
+              industry: 'Auto parts manufacturer',
+              location: 'Dubai, UAE',
+              problem: 'Cloud ERP cost AED 800/month and required constant internet.',
+              solution: 'With Noxis: works offline, costs less, speaks both English and Urdu.',
+              flag: '🇦🇪',
+              color: 'emerald',
+            },
+          ].map((card, i) => {
+            const glowColorMap: Record<string, string> = {
+              blue: 'rgba(96,165,250,0.08)',
+              amber: 'rgba(251,191,36,0.06)',
+              emerald: 'rgba(16,185,129,0.06)',
+            }
+            return (
+              <GlowCard key={i} delay={i * 0.08} glowColor={glowColorMap[card.color]}
+                className="bg-[#0F1114] border border-white/[0.06] p-7 rounded-xl flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center gap-3.5 mb-5">
+                    <span className="text-2xl select-none">{card.flag}</span>
+                    <div>
+                      <h4 className="text-xs font-bold text-white uppercase tracking-wider">{card.industry}</h4>
+                      <p className="text-[10px] text-gray-500 font-semibold">{card.location}</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-400 italic leading-relaxed mb-4">
+                    "{card.problem}"
+                  </p>
+                </div>
+                <p className="text-xs text-emerald-400 font-bold leading-relaxed pt-2 border-t border-white/[0.04]">
+                  {card.solution}
+                </p>
+              </GlowCard>
+            )
+          })}
+        </div>
+
+        {/* Honest disclaimer */}
+        <p className="text-center text-[10px] text-gray-600 font-semibold mt-10 max-w-md mx-auto leading-relaxed">
+          These scenarios represent common problems in South Asian manufacturing.
+          Noxis is currently in beta — be among the first factories to run on it.
+        </p>
+      </section>
+
+      {/* ── BETA EARLY ACCESS ────────────────────────────────────────── */}
+      <section className="py-16 px-6 max-w-xl mx-auto text-center border-t border-white/[0.06]">
+        <SectionReveal>
+          <div className="bg-[#0F1114] border border-[#C5A059]/25 rounded-xl p-8 relative overflow-hidden">
+            {/* Ambient gold glow */}
+            <div className="absolute -inset-10 bg-[#C5A059]/5 blur-3xl pointer-events-none rounded-full" />
+            
+            <p className="text-[10px] font-bold text-[#C5A059] uppercase tracking-widest mb-3">
+              Currently in beta
+            </p>
+            <h3 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight mb-3">
+              Be a founding user
+            </h3>
+            <p className="text-xs text-gray-500 leading-relaxed mb-6 max-w-sm mx-auto">
+              Noxis is actively being tested by factories in Pakistan and UAE.
+              Early users get direct access to the development team and influence what gets built next.
+            </p>
+            
+            <motion.div 
+              whileHover={{ y: -4, scale: 1.02 }} 
+              whileTap={{ y: 1, scale: 0.98 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+              className="inline-block"
+            >
+              <a
+                href="https://wa.me/923334355475?text=Hi,%20I%20want%20to%20be%20a%20founding%20user%20of%20Noxis%20ERP"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-shine inline-flex items-center gap-2 bg-[#25D366] hover:bg-[#20ba59] text-black font-extrabold text-xs uppercase tracking-wider py-3.5 px-7 rounded-lg transition-all shadow-[0_0_20px_rgba(37,211,102,0.15)]"
+              >
+                Apply for Early Access
+              </a>
+            </motion.div>
+          </div>
+        </SectionReveal>
+      </section>
+
       {/* ── CTA ─────────────────────────────────────────────────────── */}
       <section className="py-32 px-6 text-center max-w-4xl mx-auto relative z-10">
         <div className="absolute inset-0 bg-blue-500/5 blur-[100px] pointer-events-none rounded-full" />
