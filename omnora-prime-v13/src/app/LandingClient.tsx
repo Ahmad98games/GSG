@@ -7,7 +7,8 @@ import { createClient } from '@/lib/supabase/client'
 import { motion, useScroll, useTransform, useSpring, useInView, AnimatePresence, animate } from 'framer-motion'
 import { 
   Menu, X, ChevronRight, Sparkles, Layers, Smartphone, ShieldCheck,
-  Check, BarChart4, Download, ArrowRight, Database, Globe2, Zap
+  Check, BarChart4, Download, ArrowRight, Database, Globe2, Zap,
+  KeyRound, BookOpen, Clock, Banknote
 } from 'lucide-react'
 import {
   FloatingOrb, ScrollProgressBar,
@@ -78,6 +79,478 @@ function ParticleCanvas() {
     return () => { cancelAnimationFrame(frame); window.removeEventListener('resize', onResize) }
   }, [])
   return <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none opacity-50" />
+}
+
+// Naya Pay inspired Scroll Morphing Cards Section
+function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end end"]
+  })
+
+  // Smooth springs for tracking scroll progress
+  const smoothProgress = useSpring(scrollYProgress, { stiffness: 80, damping: 26, restDelta: 0.001 })
+
+  // Animations for the viewport container morph
+  const containerScale = useTransform(smoothProgress, [0, 0.22], [1, 0.95])
+  const containerRadius = useTransform(smoothProgress, [0, 0.22], ["0px", "28px"])
+  const containerBorder = useTransform(smoothProgress, [0, 0.22], ["rgba(139,92,246,0)", "rgba(139,92,246,0.15)"])
+  const containerBg = useTransform(smoothProgress, [0, 0.22], ["rgba(8,4,16,0)", "rgba(18,10,36,0.8)"])
+  
+  // Title animations
+  const titleOpacity = useTransform(smoothProgress, [0, 0.16, 0.25], [1, 0.7, 0.12])
+  const titleScale = useTransform(smoothProgress, [0, 0.25], [1, 0.88])
+  const titleBlur = useTransform(smoothProgress, [0, 0.25], ["blur(0px)", "blur(8px)"])
+  const purpleBarScale = useTransform(smoothProgress, [0, 0.25], [1, 0.95])
+  const purpleBarY = useTransform(smoothProgress, [0, 0.25], [0, 20])
+  const textScale = useTransform(smoothProgress, [0, 0.25], [1, 0.92])
+
+  // Cards content data
+  const cards = [
+    {
+      id: 1,
+      title: "Industry Intelligence Engine",
+      subtitle: "REAL-TIME REGIONAL INDEXES",
+      icon: <Sparkles className="text-[#00E5FF] w-6 h-6" />,
+      desc: "Calculates average pieces-rates and commodity price benchmarks dynamically across major global hubs (Pakistan, UAE, Turkey, Bangladesh). Keeps workshop operations aligned with real-time regional trends.",
+      color: "from-[#00E5FF]/10 via-[#8B5CF6]/5 to-transparent",
+      accent: "#00E5FF",
+      stat: "₨ Piece Rate benchmark: +12% this month",
+      metric: "Active in 10 Global Regions"
+    },
+    {
+      id: 2,
+      title: "Active Predictions Model",
+      subtitle: "ON-DEVICE MACHINE LEARNING",
+      icon: <Zap className="text-[#A3E635] w-6 h-6" />,
+      desc: "Autonomously forecasts raw material stock-outs, identifies customer churn risks, and flags profit margin drops using localized on-device metrics. No server latencies or cloud subscription costs.",
+      color: "from-[#A3E635]/10 via-[#8B5CF6]/5 to-transparent",
+      accent: "#A3E635",
+      stat: "Inventory Alert: Bales stock-out risk in 4 days",
+      metric: "94% Forecasting Precision"
+    },
+    {
+      id: 3,
+      title: "Working Capital Portal",
+      subtitle: "EMBEDDED FACTORY FINTECH",
+      icon: <Layers className="text-[#00E5FF] w-6 h-6" />,
+      desc: "Evaluates standard credit scoring indexes (Grades A-D) directly from ledger accounts and work logs. Connects eligible factories to financial and loan institutions for frictionless liquidity flow.",
+      color: "from-[#00E5FF]/10 via-[#8B5CF6]/5 to-transparent",
+      accent: "#00E5FF",
+      stat: "Liquidity rating: Grade A (Highly Eligible)",
+      metric: "₨ 50L Max Credit Limit"
+    },
+    {
+      id: 4,
+      title: "Open Developer APIs",
+      subtitle: "ELITE B2B INTEGRATIONS",
+      icon: <Database className="text-[#8B5CF6] w-6 h-6" />,
+      desc: "Provides secure cryptographically signed API keys and real-time webhook subscriptions for multi-branch ledger sync, inventory tracking, and custom third-party accounting integrations.",
+      color: "from-[#8B5CF6]/10 via-[#00E5FF]/5 to-transparent",
+      accent: "#8B5CF6",
+      stat: "Webhook Dispatch: 0.04ms average response time",
+      metric: "HMAC-SHA256 Signed Feeds"
+    },
+    {
+      id: 5,
+      title: "Verified Worker Identities",
+      subtitle: "DIGITAL TALENT LEDGER",
+      icon: <ShieldCheck className="text-[#A3E635] w-6 h-6" />,
+      desc: "Empowers field staff and karigars with QR-verifiable digital identity profiles containing cumulative verified attendance metrics, skill classifications, and peshgi advances logs.",
+      color: "from-[#A3E635]/10 via-[#8B5CF6]/5 to-transparent",
+      accent: "#A3E635",
+      stat: "Verified: Hamid (Senior Weaver, 98% attendance)",
+      metric: "Zero-Trust Verified Cards"
+    }
+  ]
+
+  // Sequenced transform positions for cards
+  const card1Y = useTransform(smoothProgress, [0.2, 0.35], [450, 0])
+  const card1Opacity = useTransform(smoothProgress, [0.18, 0.32], [0, 1])
+  
+  const card2Y = useTransform(smoothProgress, [0.35, 0.5], [450, 0])
+  const card2Opacity = useTransform(smoothProgress, [0.33, 0.47], [0, 1])
+
+  const card3Y = useTransform(smoothProgress, [0.5, 0.65], [450, 0])
+  const card3Opacity = useTransform(smoothProgress, [0.48, 0.62], [0, 1])
+
+  const card4Y = useTransform(smoothProgress, [0.65, 0.8], [450, 0])
+  const card4Opacity = useTransform(smoothProgress, [0.63, 0.77], [0, 1])
+
+  const card5Y = useTransform(smoothProgress, [0.8, 0.95], [450, 0])
+  const card5Opacity = useTransform(smoothProgress, [0.78, 0.92], [0, 1])
+
+  // Sequential dims to focus on the active card
+  const card1Dim = useTransform(smoothProgress, [0.35, 0.42], [1, 0.22])
+  const card2Dim = useTransform(smoothProgress, [0.5, 0.57], [1, 0.22])
+  const card3Dim = useTransform(smoothProgress, [0.65, 0.72], [1, 0.22])
+  const card4Dim = useTransform(smoothProgress, [0.8, 0.87], [1, 0.22])
+
+  // Progress dot tracker
+  const [activeTab, setActiveTab] = useState(0)
+  useEffect(() => {
+    return scrollYProgress.on("change", (v) => {
+      if (v < 0.22) setActiveTab(0)
+      else if (v < 0.37) setActiveTab(1)
+      else if (v < 0.52) setActiveTab(2)
+      else if (v < 0.67) setActiveTab(3)
+      else if (v < 0.82) setActiveTab(4)
+      else setActiveTab(5)
+    })
+  }, [scrollYProgress])
+
+  // Mobile Tab State
+  const [mobileActive, setMobileActive] = useState(0)
+
+  // Mobile layout - Premium Tabs with beautiful transition physics
+  if (isMobile) {
+    return (
+      <section className="py-20 px-6 bg-[#080410] border-y border-white/[0.04] overflow-hidden relative">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-72 h-72 bg-[#8B5CF6]/5 rounded-full blur-[80px] pointer-events-none" />
+        
+        {/* Naya Pay Mobile Typography Header */}
+        <div className="text-center mb-10 relative z-10 flex flex-col items-center justify-center">
+          <span className="text-[9px] font-black text-[#8B5CF6] tracking-widest uppercase mb-3">Enterprise Suite</span>
+          <div className="relative inline-block w-full py-4 flex flex-col justify-center items-center">
+            <h2 className="text-5xl font-black tracking-tightest text-white uppercase leading-none font-sans z-20">
+              SIMPLE
+            </h2>
+            {/* Elegant thin purple bar */}
+            <div className="h-7 w-[90%] bg-[#8B5CF6] my-1.5 flex items-center justify-center rounded shadow-[0_0_20px_rgba(139,92,246,0.3)] z-10">
+              <span className="text-[10px] font-black uppercase text-black tracking-widest leading-none">BY DESIGN</span>
+            </div>
+            <h2 className="text-5xl font-black tracking-tightest text-white uppercase leading-none font-sans mt-0.5 z-20">
+              POWERFUL
+            </h2>
+            <div className="text-[10px] font-bold text-[#9E97C2] tracking-[0.15em] uppercase mt-3">
+              BY IMPACT
+            </div>
+          </div>
+        </div>
+
+        {/* Tab selection buttons */}
+        <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-none snap-x relative z-10 scroll-smooth">
+          {cards.map((c, idx) => (
+            <button
+              key={c.id}
+              onClick={() => setMobileActive(idx)}
+              className={`flex-none snap-center px-4 py-3 rounded-lg border text-xs font-bold uppercase tracking-wider transition-all duration-300 ${
+                mobileActive === idx 
+                  ? "bg-[#8B5CF6] border-[#8B5CF6] text-black shadow-[0_0_15px_rgba(139,92,246,0.25)]" 
+                  : "bg-[#120A24] border-white/5 text-[#9E97C2] hover:border-white/10"
+              }`}
+            >
+              {c.title.split(" ")[0]}
+            </button>
+          ))}
+        </div>
+
+        {/* Mobile Detail Display */}
+        <div className="mt-4 relative z-10">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={mobileActive}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.22 }}
+              className={`p-6 rounded-2xl border border-white/5 bg-gradient-to-br ${cards[mobileActive].color} backdrop-blur-xl relative overflow-hidden`}
+            >
+              <div className="absolute -top-4 -right-4 w-20 h-20 bg-white/5 rounded-bl-full flex items-center justify-center opacity-30">
+                {cards[mobileActive].icon}
+              </div>
+
+              <div className="space-y-4">
+                <span className="text-[9px] font-black tracking-widest text-[#00E5FF] uppercase">
+                  {cards[mobileActive].subtitle}
+                </span>
+                <h3 className="text-xl font-bold text-white tracking-tight leading-snug">
+                  {cards[mobileActive].title}
+                </h3>
+                <p className="text-xs text-[#9E97C2] leading-relaxed">
+                  {cards[mobileActive].desc}
+                </p>
+
+                {/* Simulated metric */}
+                <div className="p-3 bg-black/40 border border-white/5 rounded-lg space-y-1 mt-4">
+                  <div className="text-[9px] font-bold text-emerald-400 flex items-center gap-1.5 uppercase font-mono">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    {cards[mobileActive].stat}
+                  </div>
+                  <div className="text-[8px] text-gray-500 uppercase tracking-wider font-semibold">
+                    {cards[mobileActive].metric}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </section>
+    )
+  }
+
+  // Desktop/Tablet Interactive Scroll Morphing
+  return (
+    <section ref={containerRef} className="relative h-[360vh] bg-[#080410] overflow-visible">
+      <div className="sticky top-0 h-screen w-full flex flex-col justify-center items-center overflow-hidden">
+        
+        {/* Naya Pay Typography - SIMPLE BY DESIGN / POWERFUL BY IMPACT */}
+        <motion.div 
+          style={{ opacity: titleOpacity, scale: titleScale, filter: titleBlur }}
+          className="absolute inset-0 flex flex-col justify-center items-center pointer-events-none z-10"
+        >
+          <div className="flex flex-col items-center justify-center text-center scale-90 sm:scale-100">
+            <span className="text-xs font-bold text-[#8B5CF6] tracking-widest uppercase mb-4">ENGINEERED FOR MODERN WORKSHOPS</span>
+            <h2 className="text-6xl md:text-8xl font-black tracking-tightest text-white uppercase leading-none font-sans">
+              SIMPLE
+            </h2>
+            {/* Premium Naya Pay style vibrant purple horizontal bar */}
+            <motion.div 
+              style={{ scaleX: purpleBarScale, y: purpleBarY }}
+              className="h-16 md:h-20 w-screen bg-[#8B5CF6] my-2 flex items-center justify-center shadow-[0_0_60px_rgba(139,92,246,0.4)]"
+            >
+              <motion.span 
+                style={{ scale: textScale }}
+                className="text-lg md:text-2xl font-black uppercase text-black tracking-widest leading-none font-sans"
+              >
+                BY DESIGN
+              </motion.span>
+            </motion.div>
+            <h2 className="text-6xl md:text-8xl font-black tracking-tightest text-white uppercase leading-none font-sans mt-2">
+              POWERFUL
+            </h2>
+            <div className="text-sm font-bold text-[#9E97C2] tracking-[0.2em] uppercase mt-4">
+              BY IMPACT
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Morphing Viewport Shell Container */}
+        <motion.div
+          style={{
+            scale: containerScale,
+            borderRadius: containerRadius,
+            borderColor: containerBorder,
+            backgroundColor: containerBg,
+          }}
+          className="w-full max-w-7xl mx-auto h-[80vh] border flex items-center justify-center p-6 sm:p-12 relative overflow-hidden backdrop-blur-sm transition-all duration-300"
+        >
+          {/* Top banner / active index indicator */}
+          <div className="absolute top-6 left-12 right-12 flex justify-between items-center z-30">
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] font-black tracking-widest text-[#8B5CF6] uppercase">NOXIS ELITE FEATURES</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            </div>
+            
+            {/* Scroll Indicator dots */}
+            <div className="flex gap-1.5">
+              {cards.map((_, idx) => (
+                <div
+                  key={idx}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    activeTab === idx + 1 
+                      ? "w-6 bg-[#00E5FF]" 
+                      : "w-1.5 bg-white/20"
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Scrolling Detail Cards Stack */}
+          <div className="w-full max-w-4xl h-full flex flex-col justify-center items-center relative">
+            
+            {/* Card 1: Intelligence */}
+            <motion.div
+              style={{ y: card1Y, opacity: card1Opacity, scale: card1Dim }}
+              className="absolute w-full p-8 rounded-2xl border border-white/5 bg-gradient-to-br from-[#00E5FF]/10 via-transparent to-transparent backdrop-blur-xl flex flex-col md:flex-row justify-between items-start gap-8"
+            >
+              <div className="space-y-4 max-w-xl">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/5 rounded-lg border border-white/10">
+                    {cards[0].icon}
+                  </div>
+                  <span className="text-[10px] font-black tracking-widest text-[#00E5FF] uppercase">
+                    {cards[0].subtitle}
+                  </span>
+                </div>
+                <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight leading-none">
+                  {cards[0].title}
+                </h3>
+                <p className="text-sm text-[#9E97C2] leading-relaxed">
+                  {cards[0].desc}
+                </p>
+                <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                  {cards[0].metric}
+                </div>
+              </div>
+              <div className="p-4 bg-black/60 border border-white/5 rounded-lg flex-1 w-full max-w-[280px]">
+                <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest block mb-2">Live Floor Benchmarking</span>
+                <p className="text-xs font-mono font-bold text-emerald-400 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  {cards[0].stat}
+                </p>
+                <div className="mt-4 pt-3 border-t border-white/5 flex justify-between text-[9px] text-gray-500 font-mono">
+                  <span>PKR AVERAGE</span>
+                  <span className="text-white">₨ 1,240 / piece</span>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Card 2: Predictions */}
+            <motion.div
+              style={{ y: card2Y, opacity: card2Opacity, scale: card2Dim }}
+              className="absolute w-full p-8 rounded-2xl border border-white/5 bg-gradient-to-br from-[#A3E635]/10 via-transparent to-transparent backdrop-blur-xl flex flex-col md:flex-row justify-between items-start gap-8"
+            >
+              <div className="space-y-4 max-w-xl">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/5 rounded-lg border border-white/10">
+                    {cards[1].icon}
+                  </div>
+                  <span className="text-[10px] font-black tracking-widest text-[#A3E635] uppercase">
+                    {cards[1].subtitle}
+                  </span>
+                </div>
+                <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight leading-none">
+                  {cards[1].title}
+                </h3>
+                <p className="text-sm text-[#9E97C2] leading-relaxed">
+                  {cards[1].desc}
+                </p>
+                <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                  {cards[1].metric}
+                </div>
+              </div>
+              <div className="p-4 bg-black/60 border border-white/5 rounded-lg flex-1 w-full max-w-[280px]">
+                <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest block mb-2">Automated Forecast Stream</span>
+                <p className="text-xs font-mono font-bold text-[#A3E635] flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#A3E635] animate-pulse" />
+                  {cards[1].stat}
+                </p>
+                <div className="mt-4 pt-3 border-t border-white/5 flex justify-between text-[9px] text-gray-500 font-mono">
+                  <span>CONFIDENCE</span>
+                  <span className="text-white">92% accuracy</span>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Card 3: Finance */}
+            <motion.div
+              style={{ y: card3Y, opacity: card3Opacity, scale: card3Dim }}
+              className="absolute w-full p-8 rounded-2xl border border-white/5 bg-gradient-to-br from-[#00E5FF]/10 via-transparent to-transparent backdrop-blur-xl flex flex-col md:flex-row justify-between items-start gap-8"
+            >
+              <div className="space-y-4 max-w-xl">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/5 rounded-lg border border-white/10">
+                    {cards[2].icon}
+                  </div>
+                  <span className="text-[10px] font-black tracking-widest text-[#00E5FF] uppercase">
+                    {cards[2].subtitle}
+                  </span>
+                </div>
+                <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight leading-none">
+                  {cards[2].title}
+                </h3>
+                <p className="text-sm text-[#9E97C2] leading-relaxed">
+                  {cards[2].desc}
+                </p>
+                <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                  {cards[2].metric}
+                </div>
+              </div>
+              <div className="p-4 bg-black/60 border border-white/5 rounded-lg flex-1 w-full max-w-[280px]">
+                <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest block mb-2">Automated Credit Scoring</span>
+                <p className="text-xs font-mono font-bold text-emerald-400 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  {cards[2].stat}
+                </p>
+                <div className="mt-4 pt-3 border-t border-white/5 flex justify-between text-[9px] text-gray-500 font-mono">
+                  <span>PARTNER BANK</span>
+                  <span className="text-white">Habib Metropolitan</span>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Card 4: APIs */}
+            <motion.div
+              style={{ y: card4Y, opacity: card4Opacity, scale: card4Dim }}
+              className="absolute w-full p-8 rounded-2xl border border-white/5 bg-gradient-to-br from-[#8B5CF6]/10 via-transparent to-transparent backdrop-blur-xl flex flex-col md:flex-row justify-between items-start gap-8"
+            >
+              <div className="space-y-4 max-w-xl">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/5 rounded-lg border border-white/10">
+                    {cards[3].icon}
+                  </div>
+                  <span className="text-[10px] font-black tracking-widest text-[#8B5CF6] uppercase">
+                    {cards[3].subtitle}
+                  </span>
+                </div>
+                <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight leading-none">
+                  {cards[3].title}
+                </h3>
+                <p className="text-sm text-[#9E97C2] leading-relaxed">
+                  {cards[3].desc}
+                </p>
+                <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                  {cards[3].metric}
+                </div>
+              </div>
+              <div className="p-4 bg-black/60 border border-white/5 rounded-lg flex-1 w-full max-w-[280px]">
+                <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest block mb-2">Cryptographic API Console</span>
+                <p className="text-xs font-mono font-bold text-[#8B5CF6] flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#8B5CF6] animate-pulse" />
+                  {cards[3].stat}
+                </p>
+                <div className="mt-4 pt-3 border-t border-white/5 flex justify-between text-[9px] text-gray-500 font-mono">
+                  <span>PROTOCOL</span>
+                  <span className="text-white">Webhooks v2.5</span>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Card 5: Identity */}
+            <motion.div
+              style={{ y: card5Y, opacity: card5Opacity }}
+              className="absolute w-full p-8 rounded-2xl border border-white/5 bg-gradient-to-br from-[#A3E635]/10 via-transparent to-transparent backdrop-blur-xl flex flex-col md:flex-row justify-between items-start gap-8"
+            >
+              <div className="space-y-4 max-w-xl">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/5 rounded-lg border border-white/10">
+                    {cards[4].icon}
+                  </div>
+                  <span className="text-[10px] font-black tracking-widest text-[#A3E635] uppercase">
+                    {cards[4].subtitle}
+                  </span>
+                </div>
+                <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight leading-none">
+                  {cards[4].title}
+                </h3>
+                <p className="text-sm text-[#9E97C2] leading-relaxed">
+                  {cards[4].desc}
+                </p>
+                <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                  {cards[4].metric}
+                </div>
+              </div>
+              <div className="p-4 bg-black/60 border border-white/5 rounded-lg flex-1 w-full max-w-[280px]">
+                <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest block mb-2">Worker Verification Profile</span>
+                <p className="text-xs font-mono font-bold text-[#A3E635] flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#A3E635] animate-pulse" />
+                  {cards[4].stat}
+                </p>
+                <div className="mt-4 pt-3 border-t border-white/5 flex justify-between text-[9px] text-gray-500 font-mono">
+                  <span>LEDGER STATUS</span>
+                  <span className="text-white">Verified Ledger</span>
+                </div>
+              </div>
+            </motion.div>
+
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  )
 }
 
 // (Animated stat counter removed to ensure 100% reliable, professional static numbers)
@@ -604,6 +1077,9 @@ export default function LandingClient() {
           </div>
         </div>
       </section>
+
+      {/* ── NAYA PAY SCROLL MORPH SECTIONS ───────────────────────────── */}
+      <ScrollMorphSection isMobile={isMobile} />
 
       {/* ── FEATURES GRID ───────────────────────────────────────────── */}
       <section className="py-28 px-6 max-w-7xl mx-auto">

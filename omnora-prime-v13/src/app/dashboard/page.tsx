@@ -36,6 +36,7 @@ import { MobileAppBanner } from "@/components/dashboard/MobileAppBanner";
 import { Skeleton, KpiCardSkeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/StateViews";
 import { FeedbackModal } from "@/components/ui/FeedbackModal";
+import { IntelligenceWidget } from "@/components/dashboard/IntelligenceWidget";
 
 
 export default function DashboardPage() {
@@ -431,6 +432,8 @@ export default function DashboardPage() {
           </div>
 
           <MobileAppBanner />
+
+          <IntelligenceWidget />
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-max">
             <KpiCard 

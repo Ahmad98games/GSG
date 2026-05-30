@@ -5,6 +5,34 @@ import { createClient } from '@/lib/supabase/client';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Globe, Shield, Users, Inbox, ArrowUpRight, ArrowLeftRight, CheckCircle2 } from 'lucide-react';
+import { GLOBAL_INDUSTRIES, getIndustryLabel } from '@/lib/network/industries';
+
+const COUNTRY_NAMES: Record<string, string> = {
+  PK: 'Pakistan',
+  AE: 'UAE',
+  BD: 'Bangladesh',
+  TR: 'Turkey',
+  ID: 'Indonesia',
+  VN: 'Vietnam',
+  MA: 'Morocco',
+  GB: 'UK',
+  ET: 'Ethiopia',
+  CA: 'Canada',
+};
+
+const getPrivacyNotice = (countryCode: string) => {
+  if (['GB', 'DE', 'FR', 'IT', 'ES',
+       'NL', 'BE', 'SE', 'NO'].includes(
+    countryCode
+  )) {
+    return `Under GDPR, you have the right to access, correct, and delete your data. Only your industry and city are shown publicly. Contact support@omnoralabs.com to exercise your rights.`
+  }
+  if (countryCode === 'US') {
+    return `Your data is processed according to our Privacy Policy. Only your industry and city are shown publicly.`
+  }
+  // Default (Pakistan, UAE, etc.)
+  return `Only your industry and city are shown publicly. No financial data. No customer lists. You can leave the network anytime.`
+}
 
 export default function NetworkPage() {
   const { profile } = useBusinessProfile();
@@ -14,26 +42,48 @@ export default function NetworkPage() {
   const [joining, setJoining] = useState(false);
   const [joined, setJoined] = useState(false);
   const [stats, setStats] = useState({
-    factories: 0,
-    industries: 40,
-    countries: 4,
+    inYourCountry: 0,
+    inYourCity: 0,
+    inYourIndustry: 0,
   });
+  
+  const lang = profile?.preferred_locale || 'en';
   
   useEffect(() => {
     loadNetworkStats();
     loadOwnProfile();
-  }, [profile?.id]);
+  }, [profile?.id, profile?.country_code, profile?.city, profile?.industry_key]);
   
   const loadNetworkStats = async () => {
-    const { count } = await supabase
-      .from('network_profiles')
-      .select('id', { count: 'exact', head: true })
-      .eq('is_visible', true);
+    const userCountry = profile?.country_code || 'PK';
+    const userCity = profile?.city || '';
+    const userIndustry = profile?.industry_key || '';
     
-    setStats(prev => ({
-      ...prev,
-      factories: count || 0,
-    }));
+    const [countryCount, cityCount, industryCount] = await Promise.all([
+      supabase
+        .from('network_profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_visible', true)
+        .eq('country_code', userCountry),
+      
+      supabase
+        .from('network_profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_visible', true)
+        .ilike('city', `%${userCity}%`),
+      
+      supabase
+        .from('network_profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_visible', true)
+        .eq('industry', userIndustry),
+    ]);
+    
+    setStats({
+      inYourCountry: countryCount.count || 0,
+      inYourCity: cityCount.count || 0,
+      inYourIndustry: industryCount.count || 0,
+    });
   };
   
   const loadOwnProfile = async () => {
@@ -85,7 +135,7 @@ export default function NetworkPage() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="relative z-10 text-center md:text-left flex flex-col md:flex-row md:items-center justify-between gap-6"
+          className="relative z-10 text-center md:text-left space-y-6"
         >
           <div className="space-y-3">
             <div className="inline-flex items-center gap-2 bg-[#60A5FA]/8 border border-[#60A5FA]/20 px-3.5 py-1.5 rounded-full mb-2">
@@ -100,8 +150,47 @@ export default function NetworkPage() {
               <span>Noxis Factory Network</span>
             </h1>
             <p className="text-gray-400 text-sm max-w-xl leading-relaxed">
-              Connect with verified factories. Find reliable suppliers. Liquidate excess or surplus stock. All inside the secure Noxis Hub infrastructure.
+              Connect with verified factories across Pakistan, UAE, Bangladesh, Turkey and beyond. Find suppliers. Sell surplus. Trade directly.
             </p>
+          </div>
+
+          {/* Scrolling country chips */}
+          <div className="flex gap-2 overflow-x-auto pb-2 mb-2 scrollbar-thin scrollbar-thumb-white/5 scrollbar-track-transparent">
+            {[
+              { code: 'PK', flag: '🇵🇰', name: 'Pakistan' },
+              { code: 'AE', flag: '🇦🇪', name: 'UAE' },
+              { code: 'BD', flag: '🇧🇩', name: 'Bangladesh' },
+              { code: 'TR', flag: '🇹🇷', name: 'Turkey' },
+              { code: 'ID', flag: '🇮🇩', name: 'Indonesia' },
+              { code: 'VN', flag: '🇻🇳', name: 'Vietnam' },
+              { code: 'MA', flag: '🇲🇦', name: 'Morocco' },
+              { code: 'GB', flag: '🇬🇧', name: 'UK' },
+              { code: 'ET', flag: '🇪🇹', name: 'Ethiopia' },
+              { code: 'CA', flag: '🇨🇦', name: 'Canada' },
+            ].map(c => (
+              <div key={c.code}
+                className="flex items-center gap-1.5 px-3 py-1.5 flex-shrink-0 bg-[#0F1114] border border-white/6 rounded-full text-xs text-gray-400"
+              >
+                <span>{c.flag}</span>
+                <span>{c.name}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* International industries grid */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-3">
+              Active industries
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(GLOBAL_INDUSTRIES).map(([key, names]) => (
+                <div key={key}
+                  className="px-3 py-1.5 bg-[#0F1114] border border-white/6 rounded-full text-xs text-gray-400"
+                >
+                  {names.en}
+                </div>
+              ))}
+            </div>
           </div>
         </motion.div>
         
@@ -114,19 +203,19 @@ export default function NetworkPage() {
         >
           {[
             {
-              value: stats.factories || '—',
-              label: 'Factories joined',
+              value: stats.inYourCountry,
+              label: `${COUNTRY_NAMES[profile?.country_code || 'PK'] || profile?.country_code || 'PK'} factories`,
+              icon: Globe,
+            },
+            {
+              value: stats.inYourCity,
+              label: `in ${profile?.city || 'Your City'}`,
               icon: Users,
             },
             {
-              value: '40+',
-              label: 'Industries',
+              value: stats.inYourIndustry,
+              label: `in ${getIndustryLabel(profile?.industry_key || '', lang)} globally`,
               icon: Inbox,
-            },
-            {
-              value: '4',
-              label: 'Countries',
-              icon: Globe,
             },
           ].map((s, idx) => {
             const Icon = s.icon;
@@ -233,8 +322,8 @@ export default function NetworkPage() {
               >
                 {joining ? 'Connecting Node...' : 'Join the Network — Free'}
               </button>
-              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest text-center">
-                🔒 Only your industry and city are shown publicly. You can opt out instantly at any time.
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest text-center max-w-lg mx-auto leading-relaxed">
+                🔒 {getPrivacyNotice(profile?.country_code || 'PK')}
               </p>
             </div>
           )}

@@ -17,7 +17,9 @@ import {
   ChevronRight,
   Database,
   ShieldCheck,
-  Check
+  Check,
+  Sparkles,
+  Banknote
 } from 'lucide-react'
 import Footer from "@/components/shell/Footer"
 
@@ -33,7 +35,10 @@ export default function DocsPage() {
     { id: 'invoices', icon: <FileText size={16} />, title: '6. Ledger & Invoicing Setup' },
     { id: 'data-safety', icon: <ShieldCheck size={16} />, title: '7. Data Safety Protocol' },
     { id: 'quickentry', icon: <Zap size={16} />, title: '8. Floor Quick Entry Console' },
-    { id: 'troubleshoot', icon: <HelpCircle size={16} />, title: '9. Regional Troubleshooting' }
+    { id: 'troubleshoot', icon: <HelpCircle size={16} />, title: '9. Regional Troubleshooting' },
+    { id: 'intelligence', icon: <Sparkles size={16} />, title: '10. Predictive Intelligence' },
+    { id: 'finance', icon: <Banknote size={16} />, title: '11. Credit Scoring & Peshgi' },
+    { id: 'api-worker', icon: <KeyRound size={16} />, title: '12. Digital Worker IDs & APIs' }
   ]
 
   return (
@@ -472,6 +477,87 @@ export default function DocsPage() {
                   </div>
                 </div>
               </div>
+            </motion.section>
+
+            {/* 10. PREDICTIVE INTELLIGENCE */}
+            <motion.section 
+               id="intelligence"
+               initial={{ opacity: 0 }}
+               whileInView={{ opacity: 1 }}
+               viewport={{ once: true, margin: '-100px' }}
+               className="space-y-6 pt-12 border-t border-white/5"
+            >
+               <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
+                 <span className="text-blue-400">10.</span> Predictive Intelligence Telemetry
+               </h2>
+               <p className="text-sm text-gray-400 leading-relaxed font-medium">
+                 The Predictive Intelligence telemetry engine processes dynamic regional signals to empower workshop owners with raw pricing power and profit-margin security.
+               </p>
+
+               <div className="bg-[#0F1114] border border-white/5 p-6 rounded-sm space-y-4">
+                 <h4 className="text-xs font-bold uppercase tracking-widest text-white">Advanced Operations Guide</h4>
+                 <ul className="list-disc list-inside space-y-2 text-xs text-gray-400 leading-relaxed">
+                   <li><strong className="text-white">Live Benchmark Tracking</strong>: Computes pieces-rate labor index and mandi output rates across target markets (Pakistan, UAE, Bangladesh, Turkey) using local telemetry.</li>
+                   <li><strong className="text-white">Active Reorder Predictions</strong>: Triggers preemptive inventory alerts 4 days prior to a stockout based on moving average usage.</li>
+                   <li><strong className="text-white">Margin Analysis & Churn Models</strong>: Performs customer churn assessments via Supabase stored RPC aggregators to highlight at-risk partnerships early.</li>
+                 </ul>
+               </div>
+            </motion.section>
+
+            {/* 11. CREDIT SCORING & PESHGI */}
+            <motion.section 
+               id="finance"
+               initial={{ opacity: 0 }}
+               whileInView={{ opacity: 1 }}
+               viewport={{ once: true, margin: '-100px' }}
+               className="space-y-6 pt-12 border-t border-white/5"
+            >
+               <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
+                 <span className="text-blue-400">11.</span> Embedded Credit Scoring & Peshgi
+               </h2>
+               <p className="text-sm text-gray-400 leading-relaxed font-medium">
+                 Modernize your workshop capital with integrated credit scoring formulas and secure payout structures paired directly with financial institutions.
+               </p>
+
+               <div className="bg-[#0F1114] border border-white/5 p-6 rounded-sm space-y-4">
+                 <h4 className="text-xs font-bold uppercase tracking-widest text-white">Fintech Score Metric Calculations</h4>
+                 <div className="p-4 bg-[#08090C] border border-white/5 rounded-sm space-y-2 text-xs text-slate-400 font-mono">
+                   <p className="text-blue-400">// Embedded Credit Grading Rubric</p>
+                   <p>1. Noxis Ledger History (0-20 pts): Length of active ledger records.</p>
+                   <p>2. Transaction Volume (0-35 pts): Cumulative monthly revenue flows.</p>
+                   <p>3. Margin Stability (0-25 pts): Standard deviation of profit margins.</p>
+                   <p>4. Peshgi Leverage (0-20 pts): Advance-to-wage ratios under 30%.</p>
+                   <p>Total Grade Scale: <span className="text-[#A3E635]">A (80+ pts)</span> | <span className="text-[#00E5FF]">B (60-79 pts)</span> | <span className="text-[#C5A059]">C (40-59 pts)</span></p>
+                 </div>
+                 <p className="text-xs text-gray-400 leading-relaxed">
+                   Eligible factory owners with Grade A or B rankings gain automated access to direct credit programs and local partner payout channels (JazzCash, EasyPaisa).
+                 </p>
+               </div>
+            </motion.section>
+
+            {/* 12. DIGITAL WORKER IDS & APIS */}
+            <motion.section 
+               id="api-worker"
+               initial={{ opacity: 0 }}
+               whileInView={{ opacity: 1 }}
+               viewport={{ once: true, margin: '-100px' }}
+               className="space-y-6 pt-12 border-t border-white/5"
+            >
+               <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
+                 <span className="text-blue-400">12.</span> Digital Worker Identities & Developer APIs
+               </h2>
+               <p className="text-sm text-gray-400 leading-relaxed font-medium">
+                 Seamlessly bridge physical staff records with cryptographic digital certificates and coordinate inventory sync using open webhook protocols.
+               </p>
+
+               <div className="bg-[#0F1114] border border-white/5 p-6 rounded-sm space-y-4">
+                 <h4 className="text-xs font-bold uppercase tracking-widest text-white">API Keys & Worker QR Setup</h4>
+                 <ol className="list-decimal list-inside space-y-2.5 text-xs text-gray-400 leading-relaxed">
+                   <li><strong className="text-white">API Platform</strong>: Create cryptographically generated API keys wrapped with read/write access controls.</li>
+                   <li><strong className="text-white">Webhooks</strong>: Hook custom endpoints to receive instant pushes on transaction logs or stock movements.</li>
+                   <li><strong className="text-white">Worker Profiles</strong>: Empower floor staff with public QR-enabled performance cards, displaying verified attendance and skill certifications.</li>
+                 </ol>
+               </div>
             </motion.section>
 
           </div>

@@ -602,7 +602,8 @@ function RegisterKarigarModal({ grades, onClose, onSuccess }: { grades: Grade[],
           profile.city,
           profile.country_code || 'PK',
           values.wage_type,
-          pieceRate || dailyRate || monthlySalary || 0
+          pieceRate || dailyRate || monthlySalary || 0,
+          profile.currency || 'PKR'
         ).catch(() => {});
       }
 

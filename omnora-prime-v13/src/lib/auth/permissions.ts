@@ -15,12 +15,14 @@ export const ROLE_ROUTE_PERMISSIONS: Record<StaffRole, string[]> = {
     '/khata', '/cashflow', '/reports', '/audit', '/cctv', '/quick-entry',
     '/analytics', '/stock', '/generators', '/calculators', '/converters',
     '/file-morph', '/messaging', '/pairing', '/portal', '/import', '/network',
+    '/intelligence', '/finance',
     // Manager cannot access /settings (billing/users)
   ],
   accountant: [
     '/dashboard', '/khata', '/invoices', '/reports', '/parties', '/promises',
     '/cashflow', '/audit', '/purchase', '/stock',
     '/calculators', '/converters', '/generators', '/file-morph', '/network',
+    '/intelligence', '/finance',
   ],
   supervisor: [
     '/dashboard', '/production', '/karigars', '/payroll',
@@ -31,7 +33,7 @@ export const ROLE_ROUTE_PERMISSIONS: Record<StaffRole, string[]> = {
     '/calculators', '/converters', '/network',
   ],
   viewer: [
-    '/dashboard', '/reports', '/analytics', '/network',
+    '/dashboard', '/reports', '/analytics', '/network', '/intelligence', '/finance',
   ],
 };
 
@@ -46,22 +48,23 @@ export const ROLE_MODULE_MAP: Record<StaffRole, string[]> = {
     'khata', 'cashflow', 'reports', 'audit', 'cctv', 'quick-entry',
     'analytics', 'generators', 'calculators', 'converters',
     'file-morph', 'messaging', 'pairing', 'import', 'network',
+    'intelligence', 'finance', 'worker-network',
   ],
   accountant: [
     'dashboard', 'khata', 'invoices', 'reports', 'parties', 'promises',
     'cashflow', 'audit', 'purchase', 'calculators', 'converters',
-    'generators', 'file-morph', 'settings', 'network',
+    'generators', 'file-morph', 'settings', 'network', 'intelligence', 'finance',
   ],
   supervisor: [
     'dashboard', 'production', 'karigars', 'payroll',
-    'dispatch', 'inventory', 'network',
+    'dispatch', 'inventory', 'network', 'worker-network',
   ],
   salesman: [
     'dashboard', 'invoices', 'parties', 'orders', 'promises',
     'calculators', 'converters', 'network',
   ],
   viewer: [
-    'dashboard', 'reports', 'analytics', 'network',
+    'dashboard', 'reports', 'analytics', 'network', 'intelligence', 'finance',
   ],
 };
 

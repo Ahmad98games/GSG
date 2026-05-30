@@ -22,6 +22,8 @@ export type TierLimits = {
   advancedAnalytics: boolean
   fireDetection: boolean
   customThemes: boolean
+  whatsappApi: boolean
+  apiAccess: boolean
 }
 
 const TIER_LIMITS: Record<Tier, TierLimits> = {
@@ -42,6 +44,8 @@ const TIER_LIMITS: Record<Tier, TierLimits> = {
     advancedAnalytics: false,
     fireDetection: false,
     customThemes: false,
+    whatsappApi: false,
+    apiAccess: false,
   },
   pro: {
     maxMobileDevices: 15,
@@ -60,6 +64,8 @@ const TIER_LIMITS: Record<Tier, TierLimits> = {
     advancedAnalytics: true,
     fireDetection: false,
     customThemes: false,
+    whatsappApi: false,
+    apiAccess: false,
   },
   elite: {
     maxMobileDevices: 50,
@@ -78,6 +84,8 @@ const TIER_LIMITS: Record<Tier, TierLimits> = {
     advancedAnalytics: true,
     fireDetection: true,
     customThemes: true,
+    whatsappApi: true,
+    apiAccess: true,
   },
 }
 

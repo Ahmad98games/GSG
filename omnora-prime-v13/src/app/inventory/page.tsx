@@ -781,7 +781,8 @@ function AddProductModal({ onClose, onSuccess, initialBarcode }: { onClose: () =
           profile.country_code || 'PK',
           values.category || 'general',
           values.cost_price,
-          values.unit
+          values.unit,
+          profile.currency || 'PKR'
         ).catch(() => {});
       }
 

@@ -34,7 +34,8 @@ import {
   LayoutGrid,
   Microscope,
   Upload,
-  CalendarCheck
+  CalendarCheck,
+  TrendingUp
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import * as Tooltip from "@radix-ui/react-tooltip";
@@ -109,6 +110,7 @@ export default React.memo(function IndustrialSidebar() {
         { id: 'dashboard', name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
         { id: 'inventory', name: term('inventory'), href: "/inventory", icon: Package },
         { id: 'karigars', name: workerTermPlural, href: "/karigars", icon: Users },
+        { id: 'worker-network', name: t('nav_worker_network', "Worker Network"), href: "/karigars/network", icon: Users, badge: "NEW" },
         { id: 'production', name: term('production'), href: "/production", icon: Factory },
         { id: 'payroll', name: term('payroll'), href: "/payroll", icon: Banknote },
         { id: 'dispatch', name: "Dispatch", href: "/dispatch", icon: Truck },
@@ -123,6 +125,7 @@ export default React.memo(function IndustrialSidebar() {
         { id: 'orders', name: "Orders", href: "/orders", icon: ClipboardList },
         { id: 'promises', name: "Promises", href: "/promises", icon: CalendarCheck },
         { id: 'network', name: t('nav_network', "Factory Network"), href: "/network", icon: Globe, badge: "NEW" },
+        { id: 'finance', name: t('nav_finance', "Finance"), href: "/finance", icon: Banknote, badge: "NEW" },
       ]
     },
     {
@@ -144,6 +147,7 @@ export default React.memo(function IndustrialSidebar() {
     {
       label: 'TOOLS',
       items: [
+        { id: 'intelligence', name: t('nav_intelligence', "Noxis Intelligence"), href: "/intelligence", icon: TrendingUp, badge: "NEW" },
         { 
           id: 'import', 
           name: "Import Data", 
@@ -255,7 +259,7 @@ export default React.memo(function IndustrialSidebar() {
           ) : (
             NAVIGATION_GROUPS.map((group, idx) => {
               const visibleItems = group.items.filter(item => 
-                (item.id === 'import' || item.id === 'network' || hasModule(item.id as string)) && 
+                (item.id === 'import' || item.id === 'network' || item.id === 'intelligence' || item.id === 'finance' || item.id === 'worker-network' || hasModule(item.id as string)) && 
                 (role && hasModulePermission(role, item.id))
               );
               if (visibleItems.length === 0) return null;

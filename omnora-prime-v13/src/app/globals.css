@@ -1,46 +1,46 @@
 @import "tailwindcss";
 
 :root {
-  /* Default Dark (Legacy fallback) */
-  --color-bg: #121417;
-  --color-surface: #1A1D21;
-  --color-primary: #60A5FA;
-  --color-financial: #C5A059;
-  --color-success: #10B981;
+  /* Naya Pay inspired Premium Deep Purple/Black Dark Theme */
+  --color-bg: #080410;
+  --color-surface: #120A24;
+  --color-primary: #8B5CF6;
+  --color-financial: #00E5FF;
+  --color-success: #A3E635;
   --color-danger: #EF4444;
   --color-text: #FFFFFF;
-  --color-text-muted: #6B7280;
-  --color-border: rgba(255,255,255,0.05);
-  --color-overlay: rgba(255,255,255,0.04);
-  --color-overlay-hover: rgba(255,255,255,0.08);
+  --color-text-muted: #9E97C2;
+  --color-border: rgba(139, 92, 246, 0.15);
+  --color-overlay: rgba(139, 92, 246, 0.05);
+  --color-overlay-hover: rgba(139, 92, 246, 0.12);
 }
 
 :root.light {
   --color-bg: #F8F9FA;
   --color-surface: #FFFFFF;
-  --color-primary: #2563EB;
-  --color-financial: #92400E;
-  --color-success: #059669;
+  --color-primary: #8B5CF6;
+  --color-financial: #008B9B;
+  --color-success: #15803D;
   --color-danger: #DC2626;
   --color-text: #111827;
-  --color-text-muted: #6B7280;
+  --color-text-muted: #4B5563;
   --color-border: rgba(0,0,0,0.08);
   --color-overlay: rgba(0,0,0,0.04);
   --color-overlay-hover: rgba(0,0,0,0.08);
 }
 
 :root.dark {
-  --color-bg: #121417;
-  --color-surface: #1A1D21;
-  --color-primary: #60A5FA;
-  --color-financial: #C5A059;
-  --color-success: #10B981;
+  --color-bg: #080410;
+  --color-surface: #120A24;
+  --color-primary: #8B5CF6;
+  --color-financial: #00E5FF;
+  --color-success: #A3E635;
   --color-danger: #EF4444;
   --color-text: #FFFFFF;
-  --color-text-muted: #6B7280;
-  --color-border: rgba(255,255,255,0.05);
-  --color-overlay: rgba(255,255,255,0.04);
-  --color-overlay-hover: rgba(255,255,255,0.08);
+  --color-text-muted: #9E97C2;
+  --color-border: rgba(139, 92, 246, 0.15);
+  --color-overlay: rgba(139, 92, 246, 0.05);
+  --color-overlay-hover: rgba(139, 92, 246, 0.12);
 }
 
 @theme {
