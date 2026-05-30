@@ -14,24 +14,24 @@ export const ROLE_ROUTE_PERMISSIONS: Record<StaffRole, string[]> = {
     '/dispatch', '/invoices', '/parties', '/purchase', '/orders', '/promises',
     '/khata', '/cashflow', '/reports', '/audit', '/cctv', '/quick-entry',
     '/analytics', '/stock', '/generators', '/calculators', '/converters',
-    '/file-morph', '/messaging', '/pairing', '/portal', '/import',
+    '/file-morph', '/messaging', '/pairing', '/portal', '/import', '/network',
     // Manager cannot access /settings (billing/users)
   ],
   accountant: [
     '/dashboard', '/khata', '/invoices', '/reports', '/parties', '/promises',
     '/cashflow', '/audit', '/purchase', '/stock',
-    '/calculators', '/converters', '/generators', '/file-morph',
+    '/calculators', '/converters', '/generators', '/file-morph', '/network',
   ],
   supervisor: [
     '/dashboard', '/production', '/karigars', '/payroll',
-    '/dispatch', '/stock', '/inventory',
+    '/dispatch', '/stock', '/inventory', '/network',
   ],
   salesman: [
     '/dashboard', '/invoices', '/parties', '/stock', '/orders', '/promises',
-    '/calculators', '/converters',
+    '/calculators', '/converters', '/network',
   ],
   viewer: [
-    '/dashboard', '/reports', '/analytics',
+    '/dashboard', '/reports', '/analytics', '/network',
   ],
 };
 
@@ -45,23 +45,23 @@ export const ROLE_MODULE_MAP: Record<StaffRole, string[]> = {
     'dispatch', 'invoices', 'parties', 'purchase', 'orders', 'promises',
     'khata', 'cashflow', 'reports', 'audit', 'cctv', 'quick-entry',
     'analytics', 'generators', 'calculators', 'converters',
-    'file-morph', 'messaging', 'pairing', 'import',
+    'file-morph', 'messaging', 'pairing', 'import', 'network',
   ],
   accountant: [
     'dashboard', 'khata', 'invoices', 'reports', 'parties', 'promises',
     'cashflow', 'audit', 'purchase', 'calculators', 'converters',
-    'generators', 'file-morph', 'settings',
+    'generators', 'file-morph', 'settings', 'network',
   ],
   supervisor: [
     'dashboard', 'production', 'karigars', 'payroll',
-    'dispatch', 'inventory',
+    'dispatch', 'inventory', 'network',
   ],
   salesman: [
     'dashboard', 'invoices', 'parties', 'orders', 'promises',
-    'calculators', 'converters',
+    'calculators', 'converters', 'network',
   ],
   viewer: [
-    'dashboard', 'reports', 'analytics',
+    'dashboard', 'reports', 'analytics', 'network',
   ],
 };
 

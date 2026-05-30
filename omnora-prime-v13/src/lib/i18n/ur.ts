@@ -19,6 +19,7 @@ export const urdu: Record<string, string> = {
   nav_generators: 'دستاویز',
   nav_lens: 'لینس',
   nav_import: 'اسمارٹ امپورٹ',
+  nav_network: 'نیٹ ورک',
   
   // Dashboard
   dashboard_title: 'ڈیش بورڈ',

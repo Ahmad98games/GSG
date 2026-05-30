@@ -21,6 +21,7 @@ import DataFreshness from "@/components/ui/DataFreshness";
 import { SummaryCard } from "@/components/ui/SummaryCard";
 import * as XLSX from 'xlsx';
 import { useToast } from "@/hooks/useToast";
+import { emitWageSignal } from "@/lib/network/signalCollector";
 import { 
   createColumnHelper, 
   flexRender, 
@@ -590,6 +591,21 @@ function RegisterKarigarModal({ grades, onClose, onSuccess }: { grades: Grade[],
       }).select().single();
 
       if (error) throw error;
+
+      // Telemetry — Emit anonymous wage signal silently
+      if (profile?.industry_key && profile?.city) {
+        const pieceRate = values.wage_type === 'piece_rate' ? values.rate : null;
+        const dailyRate = values.wage_type === 'daily_wage' ? values.rate : null;
+        const monthlySalary = values.wage_type === 'monthly_salary' ? values.rate : null;
+        emitWageSignal(
+          profile.industry_key,
+          profile.city,
+          profile.country_code || 'PK',
+          values.wage_type,
+          pieceRate || dailyRate || monthlySalary || 0
+        ).catch(() => {});
+      }
+
       onSuccess(`Successfully registered ${values.name} into the registry.`);
     } catch (err: unknown) {
       const error = err as Error;

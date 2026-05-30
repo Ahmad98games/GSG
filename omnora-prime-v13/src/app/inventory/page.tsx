@@ -21,6 +21,7 @@ import ForecastBadge from "@/components/intelligence/ForecastBadge";
 import { useFloorVoice } from "@/hooks/useFloorVoice";
 import * as XLSX from 'xlsx';
 import { useToast } from "@/hooks/useToast";
+import { emitSkuPriceSignal } from "@/lib/network/signalCollector";
 
 import { motion, AnimatePresence } from "framer-motion";
 import EmptyState from "@/components/ui/EmptyState"; // Keep if needed for subcomponents, but we'll import from StateViews
@@ -770,6 +771,18 @@ function AddProductModal({ onClose, onSuccess, initialBarcode }: { onClose: () =
       if (insertError) {
         console.error("Supabase SKU Insert Error:", insertError);
         throw new Error(`DATABASE_REJECT: ${insertError.message} (Code: ${insertError.code})`);
+      }
+
+      // Telemetry — Emit anonymous SKU price signal silently
+      if (profile?.industry_key && profile?.city && values.cost_price) {
+        emitSkuPriceSignal(
+          profile.industry_key,
+          profile.city,
+          profile.country_code || 'PK',
+          values.category || 'general',
+          values.cost_price,
+          values.unit
+        ).catch(() => {});
       }
 
       // 2. Upload Image if provided

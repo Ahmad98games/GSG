@@ -122,6 +122,7 @@ export default React.memo(function IndustrialSidebar() {
         { id: 'purchase', name: term('purchase'), href: "/purchase", icon: Truck },
         { id: 'orders', name: "Orders", href: "/orders", icon: ClipboardList },
         { id: 'promises', name: "Promises", href: "/promises", icon: CalendarCheck },
+        { id: 'network', name: t('nav_network', "Factory Network"), href: "/network", icon: Globe, badge: "NEW" },
       ]
     },
     {
@@ -254,7 +255,7 @@ export default React.memo(function IndustrialSidebar() {
           ) : (
             NAVIGATION_GROUPS.map((group, idx) => {
               const visibleItems = group.items.filter(item => 
-                (item.id === 'import' || hasModule(item.id as string)) && 
+                (item.id === 'import' || item.id === 'network' || hasModule(item.id as string)) && 
                 (role && hasModulePermission(role, item.id))
               );
               if (visibleItems.length === 0) return null;

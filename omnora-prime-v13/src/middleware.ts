@@ -74,7 +74,7 @@ export async function middleware(request: NextRequest) {
   const { data: { session } } = await supabase.auth.getSession()
   
   // Public routes — no auth needed
-  const publicRoutes = ['/', '/login', '/pricing', '/docs', '/download', '/portal', '/api', '/license']
+  const publicRoutes = ['/', '/login', '/pricing', '/docs', '/download', '/portal', '/api', '/license', '/admin']
   const isPublic = publicRoutes.some(r => pathname === r || pathname.startsWith(r))
   
   // A. License Check (Industrial Gate)

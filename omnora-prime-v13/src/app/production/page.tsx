@@ -13,6 +13,8 @@ import { usePersona } from "@/hooks/usePersona";
 import { createClient } from "@/lib/supabase/client";
 import { useSidebarState } from "@/hooks/useSidebarState";
 import { useToast } from "@/hooks/useToast";
+import { useBusinessProfile } from "@/hooks/useBusinessProfile";
+import { emitProductionSignal } from "@/lib/network/signalCollector";
 import { cn } from "@/lib/utils";
 import { format, subDays } from "date-fns";
 import { useForm } from "react-hook-form";
@@ -521,6 +523,7 @@ function QuickLogPanel({ businessId, batches, qtyRef }: {
   batches: ProductionBatch[];
   qtyRef: React.RefObject<HTMLInputElement | null>;
 }) {
+  const { profile } = useBusinessProfile();
   const { success: showSuccess, error: showError } = useToast();
   const supabase = createClient();
   const queryClient = useQueryClient();
@@ -543,6 +546,18 @@ function QuickLogPanel({ businessId, batches, qtyRef }: {
       });
 
       if (error) throw error;
+
+      // Telemetry — Emit anonymous production signal silently
+      if (profile?.industry_key && profile?.city) {
+        const gradeAPercent = data.grade === 'A' ? 100 : 0;
+        emitProductionSignal(
+          profile.industry_key,
+          profile.city,
+          profile.country_code || 'PK',
+          Number(data.qty),
+          gradeAPercent
+        ).catch(() => {});
+      }
 
       showSuccess(`SUCCESSFULLY LOGGED ${data.qty} UNITS`);
       reset({ ...data, qty: '', grade: '' }); 

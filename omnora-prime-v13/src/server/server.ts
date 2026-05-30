@@ -224,6 +224,74 @@ export function startHubServer(onActivity?: () => void) {
     }
   });
 
+  // ─────────────────────────────────────────────
+  // Automated Weekly Invoice Signal Collection — Every Sunday at 8:00 PM
+  // ─────────────────────────────────────────────
+  cron.schedule('0 20 * * 0', async () => {
+    logger.info('[Automation] Executing weekly invoice signal collection at 08:00 PM...');
+    try {
+      const sb = getSupabase();
+      if (!sb) {
+        logger.warn('[Automation] Supabase client missing — skipping weekly invoice signal');
+        return;
+      }
+
+      // Get all businesses with industry, city, and country_code
+      const { data: businesses, error: bizError } = await sb
+        .from('business_profiles')
+        .select('id, industry, city, country_code');
+
+      if (bizError) throw bizError;
+      if (!businesses || businesses.length === 0) return;
+
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      const oneWeekAgoStr = oneWeekAgo.toISOString();
+
+      const now = new Date();
+      const day = now.getDay();
+      const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+      const monday = new Date(now.setDate(diff));
+      const weekBucket = monday.toISOString().split('T')[0];
+
+      for (const biz of businesses) {
+        if (!biz.industry || !biz.city) continue;
+
+        // Fetch invoice stats for this business over the last 7 days
+        const { data: invoices, error: invError } = await sb
+          .from('invoices')
+          .select('total_amount')
+          .eq('business_id', biz.id)
+          .gte('created_at', oneWeekAgoStr);
+
+        if (invError) {
+          logger.error({ err: invError }, `Failed to fetch invoices for business ${biz.id}`);
+          continue;
+        }
+
+        const count = invoices?.length || 0;
+        const total_revenue = invoices?.reduce((sum: number, inv: any) => sum + Number(inv.total_amount || 0), 0) || 0;
+
+        // Insert into industry_signals using server client
+        await sb.from('industry_signals').insert({
+          signal_type: 'invoice_volume',
+          industry: biz.industry,
+          city: biz.city,
+          country_code: biz.country_code || 'PK',
+          metric_name: 'weekly_invoices',
+          metric_value: count,
+          metric_unit: 'count',
+          week_bucket: weekBucket,
+        });
+
+        logger.info(`[Automation] Emitted invoice volume signal for business ${biz.id}: ${count} invoices, PKR ${total_revenue}`);
+      }
+      logger.info('[Automation] Weekly invoice signal collection complete ✓');
+    } catch (err) {
+      logger.error({ err }, 'Weekly invoice signal automation failed');
+    }
+  });
+
   // 3. Global Webhook Dispatcher
   // Reserved for future industrial event triggers
   /*
