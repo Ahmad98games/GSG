@@ -338,7 +338,7 @@ function PricingCard({
       <Link 
         href={href}
         className={cn(
-          "w-full py-4 text-center text-[10px] font-black uppercase tracking-[0.2em] transition-all rounded-sm",
+          "block w-full py-4 text-center text-[10px] font-black uppercase tracking-[0.2em] transition-all rounded-sm",
           primary 
             ? "bg-[#C5A059] text-black hover:brightness-110 active:scale-95" 
             : popular 

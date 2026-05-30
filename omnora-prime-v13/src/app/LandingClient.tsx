@@ -170,14 +170,17 @@ function ScrollCard3D({ card, index, isMobile }: { card: any; index: number; isM
   return (
     <motion.div
       ref={cardRef}
-      // Mobile: simple whileInView entrance. Desktop: scroll-linked transforms.
-      initial={isMobile ? { opacity: 0, y: 60, rotateX: 15 } : undefined}
-      whileInView={isMobile ? { opacity: 1, y: 0, rotateX: 0 } : undefined}
-      viewport={isMobile ? { once: true, margin: "-60px" } : undefined}
-      transition={isMobile ? { duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: index * 0.06 } : undefined}
+      initial={isMobile ? { opacity: 0, y: 40 } : undefined}
+      whileInView={isMobile ? { opacity: 1, y: 0 } : undefined}
+      viewport={isMobile ? { once: true, margin: "-40px" } : undefined}
+      transition={isMobile ? { duration: 0.5, ease: [0.16, 1, 0.3, 1] } : undefined}
       style={isMobile ? {
-        transformPerspective: 800,
-        transformStyle: "preserve-3d" as const,
+        filter: "none",
+        opacity: 1,
+        y: 0,
+        scale: 1,
+        rotateX: 0,
+        z: 0,
       } : {
         y: cardY,
         scale: cardScale,
@@ -189,7 +192,7 @@ function ScrollCard3D({ card, index, isMobile }: { card: any; index: number; isM
         transformStyle: "preserve-3d" as const,
         willChange: "transform, opacity, filter"
       }}
-      className={`relative w-full max-w-4xl p-6 md:p-10 rounded-3xl border bg-gradient-to-br ${card.color} backdrop-blur-xl flex flex-col md:flex-row justify-between items-start gap-6 md:gap-10 overflow-hidden preserve-3d shadow-[0_20px_50px_rgba(0,0,0,0.65)] transition-[border-color,box-shadow] duration-700 ${
+      className={`relative w-full max-w-4xl p-6 md:p-10 rounded-3xl border bg-gradient-to-br ${card.color} bg-[#121417] md:bg-transparent backdrop-blur-none md:backdrop-blur-xl flex flex-col md:flex-row justify-between items-start gap-6 md:gap-10 overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.65)] transition-[border-color,box-shadow] duration-700 ${
         isActive ? "border-[#7C3AED]/45 shadow-[0_30px_70px_rgba(124,58,237,0.22)]" : "border-white/5 shadow-[0_10px_30px_rgba(0,0,0,0.4)]"
       }`}
     >
@@ -303,8 +306,8 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
   return (
     <section className="relative py-28 px-6 bg-[#0B0B0C] border-y border-[#4C1D95]/15 overflow-visible space-y-16 md:space-y-24">
       {/* Cinematic neon purple lens blooms */}
-      <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 lens-bloom opacity-40 pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 lens-bloom opacity-35 pointer-events-none" />
+      <div className="hidden md:block absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 lens-bloom opacity-40 pointer-events-none" />
+      <div className="hidden md:block absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 lens-bloom opacity-35 pointer-events-none" />
 
       {/* Typography Headline - scrolls naturally down the page */}
       <div className="text-center max-w-4xl mx-auto flex flex-col items-center justify-center mb-16">
@@ -531,15 +534,10 @@ export default function LandingClient() {
             className="hidden md:flex items-center gap-8"
           >
             {[{ label: 'Pricing', href: '/pricing' }, { label: 'Reviews', href: '/reviews' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }].map((link, i) => (
-              <motion.div key={link.href} whileHover={{ y: -1 }}>
-                <Link href={link.href} className="text-sm text-gray-400 hover:text-white font-medium transition-colors relative group">
+              <motion.div key={link.href} whileHover={{ y: -1 }} className="flex items-center">
+                <Link href={link.href} className="inline-block text-sm text-gray-400 hover:text-white font-medium transition-colors relative group py-1.5 px-0.5">
                   {link.label}
-                  <motion.div
-                    className="absolute -bottom-0.5 left-0 right-0 h-px bg-blue-400"
-                    initial={{ scaleX: 0 }}
-                    whileHover={{ scaleX: 1 }}
-                    transition={{ duration: 0.2 }}
-                  />
+                  <span className="absolute -bottom-0.5 left-0 right-0 h-px bg-blue-400 scale-x-0 group-hover:scale-x-100 transition-transform duration-200 origin-left" />
                 </Link>
               </motion.div>
             ))}
@@ -547,10 +545,11 @@ export default function LandingClient() {
               whileHover={{ y: -3, scale: 1.02 }} 
               whileTap={{ y: 1, scale: 0.98 }}
               transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+              className="flex items-center"
             >
               <Link
                 href="/download"
-                className="btn-shine text-xs font-bold tracking-widest uppercase text-black bg-[#60A5FA] hover:bg-blue-400 px-6 py-2.5 rounded-sm transition-all shadow-[0_0_20px_rgba(96,165,250,0.2)]"
+                className="btn-shine inline-flex items-center justify-center text-xs font-bold tracking-widest uppercase text-black bg-[#60A5FA] hover:bg-blue-400 px-6 py-2.5 rounded-sm transition-all shadow-[0_0_20px_rgba(96,165,250,0.2)]"
               >
                 Download
               </Link>
