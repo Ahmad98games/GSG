@@ -137,12 +137,14 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
   // Smooth springs for tracking scroll progress
   const smoothProgress = useSpring(scrollYProgress, { stiffness: 60, damping: 25, restDelta: 0.001 })
 
-  // Ethereal viewport container mask transitions - expands to swallow the viewport
-  const containerY = useTransform(smoothProgress, [0, 0.18], [280, 0])
-  const containerScale = useTransform(smoothProgress, [0, 0.18, 0.72, 0.88], [0.85, 0.95, 0.95, 1.05])
-  const containerRadius = useTransform(smoothProgress, [0, 0.18, 0.72, 0.88], ["32px", "24px", "24px", "0px"])
-  const containerBorder = useTransform(smoothProgress, [0, 0.18, 0.72, 0.88], ["rgba(124,58,237,0.15)", "rgba(124,58,237,0.3)", "rgba(124,58,237,0.3)", "rgba(124,58,237,0)"])
-  const containerBg = useTransform(smoothProgress, [0, 0.18, 0.72, 0.88], ["rgba(11,11,12,0.4)", "rgba(11,11,12,0.85)", "rgba(11,11,12,0.85)", "rgba(11,11,12,1)"])
+  // Ethereal viewport container mask transitions - expands to swallow the viewport, and exits smoothly at the end
+  const containerY = useTransform(smoothProgress, [0, 0.18, 0.82, 0.98], [280, 0, 0, -1200])
+  const containerScale = useTransform(smoothProgress, [0, 0.18, 0.72, 0.82, 0.98], [0.85, 0.95, 0.95, 1.05, 0.92])
+  const containerRadius = useTransform(smoothProgress, [0, 0.18, 0.72, 0.82, 0.98], ["32px", "24px", "24px", "0px", "40px"])
+  const containerBorder = useTransform(smoothProgress, [0, 0.18, 0.72, 0.82, 0.98], ["rgba(124,58,237,0.15)", "rgba(124,58,237,0.3)", "rgba(124,58,237,0.3)", "rgba(124,58,237,0)", "rgba(124,58,237,0.2)"])
+  const containerBg = useTransform(smoothProgress, [0, 0.18, 0.72, 0.82, 0.98], ["rgba(11,11,12,0.4)", "rgba(11,11,12,0.85)", "rgba(11,11,12,0.85)", "rgba(11,11,12,1)", "rgba(11,11,12,0.4)"])
+  const containerOpacity = useTransform(smoothProgress, [0.82, 0.98], [1, 0])
+
   
   // Fast typographic fade/blur: central headline blurs and moves out instantly
   const titleOpacity = useTransform(smoothProgress, [0, 0.08, 0.15], [1, 0.5, 0])
@@ -308,7 +310,8 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
             borderRadius: containerRadius,
             borderColor: containerBorder,
             backgroundColor: containerBg,
-            willChange: "transform, border-radius, border-color, background-color"
+            opacity: containerOpacity,
+            willChange: "transform, border-radius, border-color, background-color, opacity"
           }}
           className="w-[92%] md:w-full max-w-7xl mx-auto h-[80vh] border flex items-center justify-center p-4 md:p-12 relative overflow-hidden backdrop-blur-md transition-all duration-300 shadow-[0_30px_100px_rgba(0,0,0,0.65)]"
         >
