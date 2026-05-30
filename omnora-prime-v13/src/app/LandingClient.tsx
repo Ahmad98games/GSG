@@ -448,12 +448,12 @@ export default function LandingClient() {
   )
 
   const features = [
-    { icon: <Database size={22} className="text-blue-400" />, title: 'Offline-First SQLite', desc: 'Double-ciphered local database that reconciles with cloud on reconnect. Zero reliance on continuous internet.', color: 'blue' },
-    { icon: <Layers size={22} className="text-amber-400" />, title: 'Barcode & SKU Engine', desc: 'Scan, store, and manage raw bales, fabric yards, chemical batches. Auto-triggers reorder level alerts.', color: 'amber' },
-    { icon: <Smartphone size={22} className="text-emerald-400" />, title: 'Mobile Floor Handhelds', desc: 'Workers log piece-rate counts and attendance from Android terminals paired via local WiFi instantly.', color: 'emerald' },
-    { icon: <ShieldCheck size={22} className="text-red-400" />, title: 'AI Sentinel CCTV', desc: 'Draw virtual zone boundaries. Triggers instant local alerts for unauthorized entries — no cloud storage fees.', color: 'red' },
-    { icon: <BarChart4 size={22} className="text-indigo-400" />, title: 'Double-Entry Accounting', desc: 'Log receipts, bank entries, and ledger credits. Generate P&L and aging accounts with one click.', color: 'indigo' },
-    { icon: <Globe2 size={22} className="text-teal-400" />, title: 'Multilingual Scripts', desc: 'Switch Urdu Nastaliq and English instantly to accommodate local workers and international administrators.', color: 'teal' },
+    { icon: <Database size={22} className="text-blue-400" />, title: 'Offline-First SQLite', desc: 'Double-ciphered local database that reconciles with cloud on reconnect. Zero reliance on continuous internet.', color: 'blue', href: '/docs#sqlite' },
+    { icon: <Layers size={22} className="text-amber-400" />, title: 'Barcode & SKU Engine', desc: 'Scan, store, and manage raw bales, fabric yards, chemical batches. Auto-triggers reorder level alerts.', color: 'amber', href: '/docs#inventory' },
+    { icon: <Smartphone size={22} className="text-emerald-400" />, title: 'Mobile Floor Handhelds', desc: 'Workers log piece-rate counts and attendance from Android terminals paired via local WiFi instantly.', color: 'emerald', href: '/docs#mobile' },
+    { icon: <ShieldCheck size={22} className="text-red-400" />, title: 'AI Sentinel CCTV', desc: 'Draw virtual zone boundaries. Triggers instant local alerts for unauthorized entries — no cloud storage fees.', color: 'red', href: '/docs#data-safety' },
+    { icon: <BarChart4 size={22} className="text-indigo-400" />, title: 'Double-Entry Accounting', desc: 'Log receipts, bank entries, and ledger credits. Generate P&L and aging accounts with one click.', color: 'indigo', href: '/docs#invoices' },
+    { icon: <Globe2 size={22} className="text-teal-400" />, title: 'Multilingual Scripts', desc: 'Switch Urdu Nastaliq and English instantly to accommodate local workers and international administrators.', color: 'teal', href: '/docs#troubleshoot' },
   ]
 
   const glowColors: Record<string, string> = {
@@ -892,13 +892,15 @@ export default function LandingClient() {
                 </motion.div>
                 <h3 className="text-base font-bold text-white uppercase tracking-tight">{f.title}</h3>
                 <p className="text-xs text-gray-400 leading-relaxed">{f.desc}</p>
-                <motion.div
-                  className="flex items-center gap-1 text-[10px] font-bold text-blue-400/60 uppercase tracking-widest mt-2"
-                  whileHover={{ gap: '8px', color: '#60A5FA' }}
-                >
-                  <span>Learn more</span>
-                  <ChevronRight size={10} />
-                </motion.div>
+                <Link href={f.href} className="inline-block mt-2">
+                  <motion.div
+                    className="flex items-center gap-1 text-[10px] font-bold text-blue-400/60 hover:text-[#60A5FA] uppercase tracking-widest cursor-pointer group/learn"
+                    whileHover={{ gap: '8px', color: '#60A5FA' }}
+                  >
+                    <span>Learn more</span>
+                    <ChevronRight size={10} className="transform group-hover/learn:translate-x-0.5 transition-transform" />
+                  </motion.div>
+                </Link>
               </div>
             </GlowCard>
           ))}

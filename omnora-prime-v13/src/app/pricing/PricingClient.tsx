@@ -7,6 +7,7 @@ import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { formatCurrency } from "@/lib/currency/currencyEngine";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { FloatingOrb } from "@/components/ui/AnimatedComponents";
 
 const FAQS = [
   { q: "Can I use it without internet?", a: "Yes, fully offline. All core industrial logic runs on your local machine. Cloud sync is only used for license verification and optional multi-location data aggregation." },
@@ -47,12 +48,15 @@ export default function PricingClient() {
   };
 
   return (
-    <div className="bg-[#0A0C0E] min-h-screen text-gray-400 font-inter selection:bg-blue-500 selection:text-black pt-24 pb-20 overflow-x-hidden">
+    <div className="bg-[#0A0C0E] min-h-screen text-gray-400 font-inter selection:bg-blue-500 selection:text-black pt-24 pb-20 overflow-x-hidden relative">
       
-      {/* Glow Effects */}
-      <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-[120px] pointer-events-none" />
+      {/* Background Orbs */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <FloatingOrb color="rgba(96,165,250,0.06)" size={600} x="15%" y="25%" delay={0} blur={130} />
+        <FloatingOrb color="rgba(197,160,89,0.04)" size={500} x="85%" y="65%" delay={3} blur={125} />
+      </div>
 
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="max-w-7xl mx-auto px-6 relative z-10">
         
         {/* Header Section */}
         <motion.div 

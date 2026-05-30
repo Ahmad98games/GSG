@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   RefreshCw
 } from 'lucide-react'
+import { FloatingOrb } from '@/components/ui/AnimatedComponents'
 
 const SUPABASE_URL = 'https://zgxmvwxzjmpmesqliwxl.supabase.co'
 
@@ -131,8 +132,11 @@ export default function DownloadPage() {
 
   return (
     <main className="min-h-screen bg-[#070809] text-white font-sans flex flex-col items-center justify-between py-16 px-6 relative overflow-hidden select-none">
-      {/* Background Radial Light Glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.03)_0%,transparent_70%)] pointer-events-none z-0" />
+      {/* Background Orbs */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <FloatingOrb color="rgba(96,165,250,0.05)" size={500} x="20%" y="20%" delay={0} blur={120} />
+        <FloatingOrb color="rgba(197,160,89,0.04)" size={400} x="80%" y="70%" delay={4} blur={115} />
+      </div>
       
       {/* Header / Logo */}
       <div className="flex items-center gap-3 z-10 select-none mb-12">
