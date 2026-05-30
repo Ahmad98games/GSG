@@ -81,7 +81,52 @@ function ParticleCanvas() {
   return <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none opacity-50" />
 }
 
-// Cinematic Viewport Mask Section Switcher (Ethereal Cyberpunk Aesthetic)
+// Decrypting Scrambler text decipher component
+function DecryptingTicker({ text, active }: { text: string; active: boolean }) {
+  const [displayedText, setDisplayedText] = useState("")
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  
+  useEffect(() => {
+    if (!active) {
+      setDisplayedText("")
+      return
+    }
+
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;':\",./<>?₨"
+    let iterations = 0
+    const target = text
+
+    if (intervalRef.current) clearInterval(intervalRef.current)
+
+    intervalRef.current = setInterval(() => {
+      setDisplayedText(
+        target
+          .split("")
+          .map((char, index) => {
+            if (char === " ") return " "
+            if (index < iterations) {
+              return target[index]
+            }
+            return chars[Math.floor(Math.random() * chars.length)]
+          })
+          .join("")
+      )
+
+      if (iterations >= target.length) {
+        if (intervalRef.current) clearInterval(intervalRef.current)
+      }
+      iterations += 1.5
+    }, 24)
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
+  }, [text, active])
+
+  return <span className="font-mono">{displayedText || text}</span>
+}
+
+// Cinematic Viewport Mask Section Switcher (Advanced 3D Responsive Stacking Deck)
 function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
@@ -93,21 +138,21 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
   const smoothProgress = useSpring(scrollYProgress, { stiffness: 60, damping: 25, restDelta: 0.001 })
 
   // Ethereal viewport container mask transitions - expands to swallow the viewport
-  const containerY = useTransform(smoothProgress, [0, 0.28], [320, 0])
-  const containerScale = useTransform(smoothProgress, [0, 0.28, 0.65, 0.88], [0.85, 0.95, 0.95, 1.05])
-  const containerRadius = useTransform(smoothProgress, [0, 0.28, 0.65, 0.88], ["32px", "24px", "24px", "0px"])
-  const containerBorder = useTransform(smoothProgress, [0, 0.28, 0.65, 0.88], ["rgba(124,58,237,0.15)", "rgba(124,58,237,0.3)", "rgba(124,58,237,0.3)", "rgba(124,58,237,0)"])
-  const containerBg = useTransform(smoothProgress, [0, 0.28, 0.65, 0.88], ["rgba(11,11,12,0.4)", "rgba(11,11,12,0.85)", "rgba(11,11,12,0.85)", "rgba(11,11,12,1)"])
+  const containerY = useTransform(smoothProgress, [0, 0.18], [280, 0])
+  const containerScale = useTransform(smoothProgress, [0, 0.18, 0.72, 0.88], [0.85, 0.95, 0.95, 1.05])
+  const containerRadius = useTransform(smoothProgress, [0, 0.18, 0.72, 0.88], ["32px", "24px", "24px", "0px"])
+  const containerBorder = useTransform(smoothProgress, [0, 0.18, 0.72, 0.88], ["rgba(124,58,237,0.15)", "rgba(124,58,237,0.3)", "rgba(124,58,237,0.3)", "rgba(124,58,237,0)"])
+  const containerBg = useTransform(smoothProgress, [0, 0.18, 0.72, 0.88], ["rgba(11,11,12,0.4)", "rgba(11,11,12,0.85)", "rgba(11,11,12,0.85)", "rgba(11,11,12,1)"])
   
-  // Dynamic headline transforms: scales down and fades into an ethereal blur
-  const titleOpacity = useTransform(smoothProgress, [0, 0.16, 0.26], [1, 0.6, 0])
-  const titleScale = useTransform(smoothProgress, [0, 0.26], [1.1, 0.82])
-  const titleBlur = useTransform(smoothProgress, [0, 0.26], ["blur(0px)", "blur(16px)"])
-  const purpleBarScale = useTransform(smoothProgress, [0, 0.26], [1, 0.92])
-  const purpleBarY = useTransform(smoothProgress, [0, 0.26], [0, 25])
-  const textScale = useTransform(smoothProgress, [0, 0.26], [1, 0.9])
+  // Fast typographic fade/blur: central headline blurs and moves out instantly
+  const titleOpacity = useTransform(smoothProgress, [0, 0.08, 0.15], [1, 0.5, 0])
+  const titleScale = useTransform(smoothProgress, [0, 0.15], [1.05, 0.8])
+  const titleBlur = useTransform(smoothProgress, [0, 0.15], ["blur(0px)", "blur(12px)"])
+  const purpleBarScale = useTransform(smoothProgress, [0, 0.15], [1, 0.85])
+  const purpleBarY = useTransform(smoothProgress, [0, 0.15], [0, 15])
+  const textScale = useTransform(smoothProgress, [0, 0.15], [1, 0.88])
 
-  // Cards content data mapped with cyber-purple accents
+  // Cards content data
   const cards = [
     {
       id: 1,
@@ -166,132 +211,53 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
     }
   ]
 
-  // Sequenced transform positions for cards (60fps optimized layers)
-  const card1Y = useTransform(smoothProgress, [0.22, 0.36], [420, 0])
-  const card1Opacity = useTransform(smoothProgress, [0.2, 0.34], [0, 1])
-  
-  const card2Y = useTransform(smoothProgress, [0.36, 0.5], [420, 0])
-  const card2Opacity = useTransform(smoothProgress, [0.34, 0.48], [0, 1])
+  // Sequenced 3D kinetic transform positions for cards
+  const card1Y = useTransform(smoothProgress, [0.15, 0.28, 0.28, 0.35], [300, 0, 0, 0])
+  const card1Scale = useTransform(smoothProgress, [0.15, 0.28, 0.28, 0.35], [0.95, 1, 1, 0.92])
+  const card1RotateX = useTransform(smoothProgress, [0.15, 0.28, 0.28, 0.35], [12, 0, 0, -12])
+  const card1TranslateZ = useTransform(smoothProgress, [0.15, 0.28, 0.28, 0.35], [50, 0, 0, -80])
+  const card1Opacity = useTransform(smoothProgress, [0.13, 0.18, 0.28, 0.35], [0, 1, 1, 0.22])
+  const card1Blur = useTransform(smoothProgress, [0.28, 0.35], ["blur(0px)", "blur(4px)"])
 
-  const card3Y = useTransform(smoothProgress, [0.5, 0.64], [420, 0])
-  const card3Opacity = useTransform(smoothProgress, [0.48, 0.62], [0, 1])
+  const card2Y = useTransform(smoothProgress, [0.28, 0.41, 0.41, 0.48], [300, 0, 0, 0])
+  const card2Scale = useTransform(smoothProgress, [0.28, 0.41, 0.41, 0.48], [0.95, 1, 1, 0.92])
+  const card2RotateX = useTransform(smoothProgress, [0.28, 0.41, 0.41, 0.48], [12, 0, 0, -12])
+  const card2TranslateZ = useTransform(smoothProgress, [0.28, 0.41, 0.41, 0.48], [50, 0, 0, -80])
+  const card2Opacity = useTransform(smoothProgress, [0.26, 0.31, 0.41, 0.48], [0, 1, 1, 0.22])
+  const card2Blur = useTransform(smoothProgress, [0.41, 0.48], ["blur(0px)", "blur(4px)"])
 
-  const card4Y = useTransform(smoothProgress, [0.64, 0.78], [420, 0])
-  const card4Opacity = useTransform(smoothProgress, [0.62, 0.76], [0, 1])
+  const card3Y = useTransform(smoothProgress, [0.41, 0.54, 0.54, 0.61], [300, 0, 0, 0])
+  const card3Scale = useTransform(smoothProgress, [0.41, 0.54, 0.54, 0.61], [0.95, 1, 1, 0.92])
+  const card3RotateX = useTransform(smoothProgress, [0.41, 0.54, 0.54, 0.61], [12, 0, 0, -12])
+  const card3TranslateZ = useTransform(smoothProgress, [0.41, 0.54, 0.54, 0.61], [50, 0, 0, -80])
+  const card3Opacity = useTransform(smoothProgress, [0.39, 0.44, 0.54, 0.61], [0, 1, 1, 0.22])
+  const card3Blur = useTransform(smoothProgress, [0.54, 0.61], ["blur(0px)", "blur(4px)"])
 
-  const card5Y = useTransform(smoothProgress, [0.78, 0.92], [420, 0])
-  const card5Opacity = useTransform(smoothProgress, [0.76, 0.9], [0, 1])
+  const card4Y = useTransform(smoothProgress, [0.54, 0.67, 0.67, 0.74], [300, 0, 0, 0])
+  const card4Scale = useTransform(smoothProgress, [0.54, 0.67, 0.67, 0.74], [0.95, 1, 1, 0.92])
+  const card4RotateX = useTransform(smoothProgress, [0.54, 0.67, 0.67, 0.74], [12, 0, 0, -12])
+  const card4TranslateZ = useTransform(smoothProgress, [0.54, 0.67, 0.67, 0.74], [50, 0, 0, -80])
+  const card4Opacity = useTransform(smoothProgress, [0.52, 0.57, 0.67, 0.74], [0, 1, 1, 0.22])
+  const card4Blur = useTransform(smoothProgress, [0.67, 0.74], ["blur(0px)", "blur(4px)"])
 
-  // Sequential dims to maintain focus on the active card
-  const card1Dim = useTransform(smoothProgress, [0.36, 0.42], [1, 0.22])
-  const card2Dim = useTransform(smoothProgress, [0.5, 0.56], [1, 0.22])
-  const card3Dim = useTransform(smoothProgress, [0.64, 0.7], [1, 0.22])
-  const card4Dim = useTransform(smoothProgress, [0.78, 0.84], [1, 0.22])
+  const card5Y = useTransform(smoothProgress, [0.67, 0.80], [300, 0])
+  const card5Scale = useTransform(smoothProgress, [0.67, 0.80], [0.95, 1])
+  const card5RotateX = useTransform(smoothProgress, [0.67, 0.80], [12, 0])
+  const card5TranslateZ = useTransform(smoothProgress, [0.67, 0.80], [50, 0])
+  const card5Opacity = useTransform(smoothProgress, [0.65, 0.72], [0, 1])
 
   // Progress dot tracker
   const [activeTab, setActiveTab] = useState(0)
   useEffect(() => {
     return scrollYProgress.on("change", (v) => {
-      if (v < 0.28) setActiveTab(0)
-      else if (v < 0.42) setActiveTab(1)
-      else if (v < 0.56) setActiveTab(2)
-      else if (v < 0.7) setActiveTab(3)
-      else if (v < 0.84) setActiveTab(4)
-      else setActiveTab(5)
+      if (v < 0.22) setActiveTab(0)
+      else if (v < 0.36) setActiveTab(1)
+      else if (v < 0.50) setActiveTab(2)
+      else if (v < 0.64) setActiveTab(3)
+      else setActiveTab(4)
     })
   }, [scrollYProgress])
 
-  // Mobile Tab State
-  const [mobileActive, setMobileActive] = useState(0)
-
-  // Mobile Switcher Layout - Premium Swiping Deck that mirrors scale expansion
-  if (isMobile) {
-    return (
-      <section className="py-20 px-6 bg-[#0B0B0C] border-y border-[#4C1D95]/20 overflow-hidden relative">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-80 h-80 bg-[#7C3AED]/5 rounded-full blur-[90px] pointer-events-none" />
-        
-        {/* Cinematic Mobile Header with glowing center-limited lens bar */}
-        <div className="text-center mb-10 relative z-10 flex flex-col items-center justify-center">
-          <span className="text-[9px] font-black text-[#7C3AED] tracking-widest uppercase mb-3">Enterprise Suite</span>
-          <div className="relative inline-block w-full py-4 flex flex-col justify-center items-center">
-            <h2 className="text-5xl font-black tracking-tightest text-white uppercase leading-none font-sans z-20">
-              SIMPLE
-            </h2>
-            {/* Center-limited premium glowing lens bar */}
-            <div className="h-7 w-[75%] max-w-[280px] bg-gradient-to-r from-[#4C1D95] via-[#7C3AED] to-[#4C1D95] my-2 flex items-center justify-center rounded-full shadow-[0_0_20px_rgba(124,58,237,0.5)] border border-[#7C3AED]/30 z-10">
-              <span className="text-[10px] font-black uppercase text-white tracking-widest leading-none">BY DESIGN</span>
-            </div>
-            <h2 className="text-5xl font-black tracking-tightest text-white uppercase leading-none font-sans mt-0.5 z-20">
-              POWERFUL
-            </h2>
-            <div className="text-[10px] font-bold text-[#94A3B8] tracking-[0.15em] uppercase mt-3">
-              BY IMPACT
-            </div>
-          </div>
-        </div>
-
-        {/* Tab selector buttons */}
-        <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-none snap-x relative z-10 scroll-smooth">
-          {cards.map((c, idx) => (
-            <button
-              key={c.id}
-              onClick={() => setMobileActive(idx)}
-              className={`flex-none snap-center px-4 py-3 rounded-lg border text-xs font-bold uppercase tracking-wider transition-all duration-300 ${
-                mobileActive === idx 
-                  ? "bg-[#7C3AED] border-[#7C3AED] text-white shadow-[0_0_15px_rgba(124,58,237,0.25)]" 
-                  : "bg-[#1E293B]/40 border-white/5 text-[#94A3B8] hover:border-white/10"
-              }`}
-            >
-              {c.title.split(" ")[0]}
-            </button>
-          ))}
-        </div>
-
-        {/* Mobile Detail Display with scaling expansion transition */}
-        <div className="mt-4 relative z-10">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={mobileActive}
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: -15 }}
-              transition={{ duration: 0.24 }}
-              className={`p-6 rounded-2xl border border-frosted bg-gradient-to-br ${cards[mobileActive].color} backdrop-blur-xl relative overflow-hidden`}
-            >
-              <div className="absolute -top-4 -right-4 w-20 h-20 bg-white/5 rounded-bl-full flex items-center justify-center opacity-30">
-                {cards[mobileActive].icon}
-              </div>
-
-              <div className="space-y-4">
-                <span className="text-[9px] font-black tracking-widest text-[#00E5FF] uppercase font-mono">
-                  {cards[mobileActive].subtitle}
-                </span>
-                <h3 className="text-xl font-bold text-white tracking-tight leading-snug">
-                  {cards[mobileActive].title}
-                </h3>
-                <p className="text-xs text-[#94A3B8] leading-relaxed">
-                  {cards[mobileActive].desc}
-                </p>
-
-                {/* Simulated metric */}
-                <div className="p-3 bg-black/40 border border-[#4C1D95]/20 rounded-lg space-y-1 mt-4">
-                  <div className="text-[9px] font-bold text-emerald-400 flex items-center gap-1.5 uppercase font-mono">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    {cards[mobileActive].stat}
-                  </div>
-                  <div className="text-[8px] text-gray-500 uppercase tracking-wider font-semibold">
-                    {cards[mobileActive].metric}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      </section>
-    )
-  }
-
-  // Desktop/Tablet Interactive Scroll Viewport Mask Switcher
   return (
     <section ref={containerRef} className="relative h-[360vh] bg-[#0B0B0C] overflow-visible">
       
@@ -306,29 +272,29 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
           style={{ opacity: titleOpacity, scale: titleScale, filter: titleBlur }}
           className="absolute inset-0 flex flex-col justify-center items-center pointer-events-none z-10"
         >
-          <div className="flex flex-col items-center justify-center text-center scale-90 sm:scale-100 will-change-transform-opacity">
-            <span className="text-xs font-bold text-[#7C3AED] tracking-widest uppercase mb-4">ENGINEERED FOR MODERN WORKSHOPS</span>
-            <h2 className="text-6xl md:text-8xl font-black tracking-tightest text-white uppercase leading-none font-sans">
+          <div className="flex flex-col items-center justify-center text-center scale-75 md:scale-100 will-change-transform-opacity">
+            <span className="text-[10px] md:text-xs font-bold text-[#7C3AED] tracking-widest uppercase mb-2 md:mb-4">ENGINEERED FOR MODERN WORKSHOPS</span>
+            <h2 className="text-4xl md:text-8xl font-black tracking-tightest text-white uppercase leading-none font-sans">
               SIMPLE
             </h2>
             
-            {/* Centered premium glowing lens bar - center-limited and beautifully styled */}
+            {/* Centered premium glowing lens bar */}
             <motion.div 
               style={{ scaleX: purpleBarScale, y: purpleBarY }}
-              className="h-16 md:h-20 w-[80%] max-w-[580px] bg-gradient-to-r from-[#4C1D95] via-[#7C3AED] to-[#4C1D95] my-3 flex items-center justify-center rounded-full shadow-[0_0_50px_rgba(124,58,237,0.7)] border border-[#7C3AED]/35"
+              className="h-12 md:h-20 w-[85%] md:w-[80%] max-w-[580px] bg-gradient-to-r from-[#4C1D95] via-[#7C3AED] to-[#4C1D95] my-2 md:my-3 flex items-center justify-center rounded-full shadow-[0_0_50px_rgba(124,58,237,0.7)] border border-[#7C3AED]/35"
             >
               <motion.span 
                 style={{ scale: textScale }}
-                className="text-lg md:text-2xl font-black uppercase text-white tracking-widest leading-none font-sans"
+                className="text-sm md:text-2xl font-black uppercase text-white tracking-widest leading-none font-sans"
               >
                 BY DESIGN
               </motion.span>
             </motion.div>
             
-            <h2 className="text-6xl md:text-8xl font-black tracking-tightest text-white uppercase leading-none font-sans mt-2">
+            <h2 className="text-4xl md:text-8xl font-black tracking-tightest text-white uppercase leading-none font-sans mt-1 md:mt-2">
               POWERFUL
             </h2>
-            <div className="text-sm font-bold text-[#94A3B8] tracking-[0.2em] uppercase mt-4">
+            <div className="text-[10px] md:text-sm font-bold text-[#94A3B8] tracking-[0.2em] uppercase mt-2 md:mt-4">
               BY IMPACT
             </div>
           </div>
@@ -344,17 +310,24 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
             backgroundColor: containerBg,
             willChange: "transform, border-radius, border-color, background-color"
           }}
-          className="w-full max-w-7xl mx-auto h-[80vh] border flex items-center justify-center p-6 sm:p-12 relative overflow-hidden backdrop-blur-md transition-all duration-300 shadow-[0_30px_100px_rgba(0,0,0,0.65)]"
+          className="w-[92%] md:w-full max-w-7xl mx-auto h-[80vh] border flex items-center justify-center p-4 md:p-12 relative overflow-hidden backdrop-blur-md transition-all duration-300 shadow-[0_30px_100px_rgba(0,0,0,0.65)]"
         >
+          {/* Satisfying Vector Coordinate Blueprint Grid backdrop */}
+          <div className="absolute inset-0 holographic-grid pointer-events-none z-0 opacity-80" />
+          <div className="absolute inset-0 pointer-events-none z-0">
+            <div className="absolute top-1/2 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#7C3AED]/20 to-transparent" />
+            <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-[#7C3AED]/20 to-transparent" />
+          </div>
+
           {/* Top banner / active index indicator */}
-          <div className="absolute top-6 left-12 right-12 flex justify-between items-center z-30">
-            <div className="flex items-center gap-3">
-              <span className="text-[10px] font-black tracking-widest text-[#7C3AED] uppercase">NOXIS ELITE FEATURES</span>
+          <div className="absolute top-4 md:top-6 left-6 md:left-12 right-6 md:right-12 flex justify-between items-center z-30">
+            <div className="flex items-center gap-2 md:gap-3">
+              <span className="text-[9px] md:text-[10px] font-black tracking-widest text-[#7C3AED] uppercase">NOXIS ELITE FEATURES</span>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             </div>
             
-            {/* Scroll Indicator dots */}
-            <div className="flex gap-1.5">
+            {/* Scroll Indicator dots (hidden on mobile to clear room for bottom nav dock) */}
+            <div className="hidden md:flex gap-1.5">
               {cards.map((_, idx) => (
                 <div
                   key={idx}
@@ -368,40 +341,58 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
             </div>
           </div>
 
-          {/* Scrolling Detail Cards Stack */}
-          <div className="w-full max-w-4xl h-full flex flex-col justify-center items-center relative">
+          {/* Scrolling Detail 3D Kinetic Stacking Cards Deck */}
+          <div className="w-full max-w-4xl h-full flex flex-col justify-center items-center relative perspective-1200 z-10">
             
             {/* Card 1: Intelligence */}
             <motion.div
-              style={{ y: card1Y, opacity: card1Opacity, scale: card1Dim, willChange: "transform, opacity" }}
-              className="absolute w-full p-8 rounded-2xl border border-[#4C1D95]/20 bg-gradient-to-br from-[#00E5FF]/10 via-[#7C3AED]/5 to-transparent backdrop-blur-xl flex flex-col md:flex-row justify-between items-start gap-8"
+              style={{ 
+                y: card1Y, 
+                scale: card1Scale, 
+                rotateX: card1RotateX, 
+                transformPerspective: 1200,
+                transformStyle: "preserve-3d",
+                z: card1TranslateZ,
+                opacity: card1Opacity, 
+                filter: card1Blur,
+                willChange: "transform, opacity, filter" 
+              }}
+              className="absolute w-full p-5 md:p-8 rounded-2xl border border-[#4C1D95]/20 bg-gradient-to-br from-[#00E5FF]/10 via-[#7C3AED]/5 to-transparent backdrop-blur-xl flex flex-col md:flex-row justify-between items-start gap-4 md:gap-8 overflow-hidden preserve-3d"
             >
-              <div className="space-y-4 max-w-xl">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white/5 rounded-lg border border-white/10">
+              {/* Dual-Axis Holographic Intersecting Scanlines Sweep */}
+              {activeTab === 0 && (
+                <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
+                  <div className="laser-scanner-sweep" />
+                  <div className="laser-scanner-sweep-x" />
+                </div>
+              )}
+
+              <div className="space-y-3 md:space-y-4 max-w-xl relative z-10 preserve-3d">
+                <div className="flex items-center gap-2 md:gap-3">
+                  <div className="p-1.5 md:p-2 bg-white/5 rounded-lg border border-white/10">
                     {cards[0].icon}
                   </div>
-                  <span className="text-[10px] font-black tracking-widest text-[#00E5FF] uppercase font-mono">
+                  <span className="text-[9px] md:text-[10px] font-black tracking-widest text-[#00E5FF] uppercase font-mono">
                     {cards[0].subtitle}
                   </span>
                 </div>
-                <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight leading-none">
+                <h3 className="text-lg md:text-3xl font-bold text-white tracking-tight leading-none">
                   {cards[0].title}
                 </h3>
-                <p className="text-sm text-[#94A3B8] leading-relaxed">
+                <p className="text-xs md:text-sm text-[#94A3B8] leading-relaxed">
                   {cards[0].desc}
                 </p>
-                <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                <div className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-wider">
                   {cards[0].metric}
                 </div>
               </div>
-              <div className="p-4 bg-black/60 border border-[#4C1D95]/25 rounded-lg flex-1 w-full max-w-[280px]">
-                <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest block mb-2">Live Floor Benchmarking</span>
+              <div className="p-3 md:p-4 bg-black/60 border border-[#4C1D95]/25 rounded-lg flex-none w-full md:w-auto md:flex-1 md:max-w-[280px] relative z-10 preserve-3d">
+                <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest block mb-1 md:mb-2">Live Floor Benchmarking</span>
                 <p className="text-xs font-mono font-bold text-emerald-400 flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  {cards[0].stat}
+                  <DecryptingTicker text={cards[0].stat} active={activeTab === 0} />
                 </p>
-                <div className="mt-4 pt-3 border-t border-white/5 flex justify-between text-[9px] text-gray-500 font-mono">
+                <div className="mt-3 md:mt-4 pt-2 md:pt-3 border-t border-white/5 flex justify-between text-[9px] text-gray-500 font-mono">
                   <span>PKR AVERAGE</span>
                   <span className="text-white">₨ 1,240 / piece</span>
                 </div>
@@ -410,35 +401,53 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
 
             {/* Card 2: Predictions */}
             <motion.div
-              style={{ y: card2Y, opacity: card2Opacity, scale: card2Dim, willChange: "transform, opacity" }}
-              className="absolute w-full p-8 rounded-2xl border border-[#4C1D95]/20 bg-gradient-to-br from-[#A3E635]/10 via-[#7C3AED]/5 to-transparent backdrop-blur-xl flex flex-col md:flex-row justify-between items-start gap-8"
+              style={{ 
+                y: card2Y, 
+                scale: card2Scale, 
+                rotateX: card2RotateX, 
+                transformPerspective: 1200,
+                transformStyle: "preserve-3d",
+                z: card2TranslateZ,
+                opacity: card2Opacity, 
+                filter: card2Blur,
+                willChange: "transform, opacity, filter" 
+              }}
+              className="absolute w-full p-5 md:p-8 rounded-2xl border border-[#4C1D95]/20 bg-gradient-to-br from-[#A3E635]/10 via-[#7C3AED]/5 to-transparent backdrop-blur-xl flex flex-col md:flex-row justify-between items-start gap-4 md:gap-8 overflow-hidden preserve-3d"
             >
-              <div className="space-y-4 max-w-xl">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white/5 rounded-lg border border-white/10">
+              {/* Dual-Axis Holographic Intersecting Scanlines Sweep */}
+              {activeTab === 1 && (
+                <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
+                  <div className="laser-scanner-sweep" />
+                  <div className="laser-scanner-sweep-x" />
+                </div>
+              )}
+
+              <div className="space-y-3 md:space-y-4 max-w-xl relative z-10 preserve-3d">
+                <div className="flex items-center gap-2 md:gap-3">
+                  <div className="p-1.5 md:p-2 bg-white/5 rounded-lg border border-white/10">
                     {cards[1].icon}
                   </div>
-                  <span className="text-[10px] font-black tracking-widest text-[#A3E635] uppercase font-mono">
+                  <span className="text-[9px] md:text-[10px] font-black tracking-widest text-[#A3E635] uppercase font-mono">
                     {cards[1].subtitle}
                   </span>
                 </div>
-                <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight leading-none">
+                <h3 className="text-lg md:text-3xl font-bold text-white tracking-tight leading-none">
                   {cards[1].title}
                 </h3>
-                <p className="text-sm text-[#94A3B8] leading-relaxed">
+                <p className="text-xs md:text-sm text-[#94A3B8] leading-relaxed">
                   {cards[1].desc}
                 </p>
-                <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                <div className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-wider">
                   {cards[1].metric}
                 </div>
               </div>
-              <div className="p-4 bg-black/60 border border-[#4C1D95]/25 rounded-lg flex-1 w-full max-w-[280px]">
-                <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest block mb-2">Automated Forecast Stream</span>
+              <div className="p-3 md:p-4 bg-black/60 border border-[#4C1D95]/25 rounded-lg flex-none w-full md:w-auto md:flex-1 md:max-w-[280px] relative z-10 preserve-3d">
+                <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest block mb-1 md:mb-2">Automated Forecast Stream</span>
                 <p className="text-xs font-mono font-bold text-[#A3E635] flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#A3E635] animate-pulse" />
-                  {cards[1].stat}
+                  <DecryptingTicker text={cards[1].stat} active={activeTab === 1} />
                 </p>
-                <div className="mt-4 pt-3 border-t border-white/5 flex justify-between text-[9px] text-gray-500 font-mono">
+                <div className="mt-3 md:mt-4 pt-2 md:pt-3 border-t border-white/5 flex justify-between text-[9px] text-gray-500 font-mono">
                   <span>CONFIDENCE</span>
                   <span className="text-white">92% accuracy</span>
                 </div>
@@ -447,35 +456,53 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
 
             {/* Card 3: Finance */}
             <motion.div
-              style={{ y: card3Y, opacity: card3Opacity, scale: card3Dim, willChange: "transform, opacity" }}
-              className="absolute w-full p-8 rounded-2xl border border-[#4C1D95]/20 bg-gradient-to-br from-[#00E5FF]/10 via-[#7C3AED]/5 to-transparent backdrop-blur-xl flex flex-col md:flex-row justify-between items-start gap-8"
+              style={{ 
+                y: card3Y, 
+                scale: card3Scale, 
+                rotateX: card3RotateX, 
+                transformPerspective: 1200,
+                transformStyle: "preserve-3d",
+                z: card3TranslateZ,
+                opacity: card3Opacity, 
+                filter: card3Blur,
+                willChange: "transform, opacity, filter" 
+              }}
+              className="absolute w-full p-5 md:p-8 rounded-2xl border border-[#4C1D95]/20 bg-gradient-to-br from-[#00E5FF]/10 via-[#7C3AED]/5 to-transparent backdrop-blur-xl flex flex-col md:flex-row justify-between items-start gap-4 md:gap-8 overflow-hidden preserve-3d"
             >
-              <div className="space-y-4 max-w-xl">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white/5 rounded-lg border border-white/10">
+              {/* Dual-Axis Holographic Intersecting Scanlines Sweep */}
+              {activeTab === 2 && (
+                <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
+                  <div className="laser-scanner-sweep" />
+                  <div className="laser-scanner-sweep-x" />
+                </div>
+              )}
+
+              <div className="space-y-3 md:space-y-4 max-w-xl relative z-10 preserve-3d">
+                <div className="flex items-center gap-2 md:gap-3">
+                  <div className="p-1.5 md:p-2 bg-white/5 rounded-lg border border-white/10">
                     {cards[2].icon}
                   </div>
-                  <span className="text-[10px] font-black tracking-widest text-[#00E5FF] uppercase font-mono">
+                  <span className="text-[9px] md:text-[10px] font-black tracking-widest text-[#00E5FF] uppercase font-mono">
                     {cards[2].subtitle}
                   </span>
                 </div>
-                <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight leading-none">
+                <h3 className="text-lg md:text-3xl font-bold text-white tracking-tight leading-none">
                   {cards[2].title}
                 </h3>
-                <p className="text-sm text-[#94A3B8] leading-relaxed">
+                <p className="text-xs md:text-sm text-[#94A3B8] leading-relaxed">
                   {cards[2].desc}
                 </p>
-                <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                <div className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-wider">
                   {cards[2].metric}
                 </div>
               </div>
-              <div className="p-4 bg-black/60 border border-[#4C1D95]/25 rounded-lg flex-1 w-full max-w-[280px]">
-                <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest block mb-2">Automated Credit Scoring</span>
+              <div className="p-3 md:p-4 bg-black/60 border border-[#4C1D95]/25 rounded-lg flex-none w-full md:w-auto md:flex-1 md:max-w-[280px] relative z-10 preserve-3d">
+                <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest block mb-1 md:mb-2">Automated Credit Scoring</span>
                 <p className="text-xs font-mono font-bold text-emerald-400 flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  {cards[2].stat}
+                  <DecryptingTicker text={cards[2].stat} active={activeTab === 2} />
                 </p>
-                <div className="mt-4 pt-3 border-t border-white/5 flex justify-between text-[9px] text-gray-500 font-mono">
+                <div className="mt-3 md:mt-4 pt-2 md:pt-3 border-t border-white/5 flex justify-between text-[9px] text-gray-500 font-mono">
                   <span>PARTNER BANK</span>
                   <span className="text-white">Habib Metropolitan</span>
                 </div>
@@ -484,35 +511,53 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
 
             {/* Card 4: APIs */}
             <motion.div
-              style={{ y: card4Y, opacity: card4Opacity, scale: card4Dim, willChange: "transform, opacity" }}
-              className="absolute w-full p-8 rounded-2xl border border-[#4C1D95]/20 bg-gradient-to-br from-[#7C3AED]/10 via-[#00E5FF]/5 to-transparent backdrop-blur-xl flex flex-col md:flex-row justify-between items-start gap-8"
+              style={{ 
+                y: card4Y, 
+                scale: card4Scale, 
+                rotateX: card4RotateX, 
+                transformPerspective: 1200,
+                transformStyle: "preserve-3d",
+                z: card4TranslateZ,
+                opacity: card4Opacity, 
+                filter: card4Blur,
+                willChange: "transform, opacity, filter" 
+              }}
+              className="absolute w-full p-5 md:p-8 rounded-2xl border border-[#4C1D95]/20 bg-gradient-to-br from-[#7C3AED]/10 via-[#00E5FF]/5 to-transparent backdrop-blur-xl flex flex-col md:flex-row justify-between items-start gap-4 md:gap-8 overflow-hidden preserve-3d"
             >
-              <div className="space-y-4 max-w-xl">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white/5 rounded-lg border border-white/10">
+              {/* Dual-Axis Holographic Intersecting Scanlines Sweep */}
+              {activeTab === 3 && (
+                <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
+                  <div className="laser-scanner-sweep" />
+                  <div className="laser-scanner-sweep-x" />
+                </div>
+              )}
+
+              <div className="space-y-3 md:space-y-4 max-w-xl relative z-10 preserve-3d">
+                <div className="flex items-center gap-2 md:gap-3">
+                  <div className="p-1.5 md:p-2 bg-white/5 rounded-lg border border-white/10">
                     {cards[3].icon}
                   </div>
-                  <span className="text-[10px] font-black tracking-widest text-[#7C3AED] uppercase font-mono">
+                  <span className="text-[9px] md:text-[10px] font-black tracking-widest text-[#7C3AED] uppercase font-mono">
                     {cards[3].subtitle}
                   </span>
                 </div>
-                <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight leading-none">
+                <h3 className="text-lg md:text-3xl font-bold text-white tracking-tight leading-none">
                   {cards[3].title}
                 </h3>
-                <p className="text-sm text-[#94A3B8] leading-relaxed">
+                <p className="text-xs md:text-sm text-[#94A3B8] leading-relaxed">
                   {cards[3].desc}
                 </p>
-                <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                <div className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-wider">
                   {cards[3].metric}
                 </div>
               </div>
-              <div className="p-4 bg-black/60 border border-[#4C1D95]/25 rounded-lg flex-1 w-full max-w-[280px]">
-                <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest block mb-2">Cryptographic API Console</span>
+              <div className="p-3 md:p-4 bg-black/60 border border-[#4C1D95]/25 rounded-lg flex-none w-full md:w-auto md:flex-1 md:max-w-[280px] relative z-10 preserve-3d">
+                <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest block mb-1 md:mb-2">Cryptographic API Console</span>
                 <p className="text-xs font-mono font-bold text-[#7C3AED] flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#7C3AED] animate-pulse" />
-                  {cards[3].stat}
+                  <DecryptingTicker text={cards[3].stat} active={activeTab === 3} />
                 </p>
-                <div className="mt-4 pt-3 border-t border-white/5 flex justify-between text-[9px] text-gray-500 font-mono">
+                <div className="mt-3 md:mt-4 pt-2 md:pt-3 border-t border-white/5 flex justify-between text-[9px] text-gray-500 font-mono">
                   <span>PROTOCOL</span>
                   <span className="text-white">Webhooks v2.5</span>
                 </div>
@@ -521,35 +566,52 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
 
             {/* Card 5: Identity */}
             <motion.div
-              style={{ y: card5Y, opacity: card5Opacity, willChange: "transform, opacity" }}
-              className="absolute w-full p-8 rounded-2xl border border-[#4C1D95]/20 bg-gradient-to-br from-[#A3E635]/10 via-[#7C3AED]/5 to-transparent backdrop-blur-xl flex flex-col md:flex-row justify-between items-start gap-8"
+              style={{ 
+                y: card5Y, 
+                scale: card5Scale, 
+                rotateX: card5RotateX, 
+                transformPerspective: 1200,
+                transformStyle: "preserve-3d",
+                z: card5TranslateZ,
+                opacity: card5Opacity,
+                willChange: "transform, opacity" 
+              }}
+              className="absolute w-full p-5 md:p-8 rounded-2xl border border-[#4C1D95]/20 bg-gradient-to-br from-[#A3E635]/10 via-[#7C3AED]/5 to-transparent backdrop-blur-xl flex flex-col md:flex-row justify-between items-start gap-4 md:gap-8 overflow-hidden preserve-3d"
             >
-              <div className="space-y-4 max-w-xl">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white/5 rounded-lg border border-white/10">
+              {/* Dual-Axis Holographic Intersecting Scanlines Sweep */}
+              {activeTab === 4 && (
+                <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
+                  <div className="laser-scanner-sweep" />
+                  <div className="laser-scanner-sweep-x" />
+                </div>
+              )}
+
+              <div className="space-y-3 md:space-y-4 max-w-xl relative z-10 preserve-3d">
+                <div className="flex items-center gap-2 md:gap-3">
+                  <div className="p-1.5 md:p-2 bg-white/5 rounded-lg border border-white/10">
                     {cards[4].icon}
                   </div>
-                  <span className="text-[10px] font-black tracking-widest text-[#A3E635] uppercase font-mono">
+                  <span className="text-[9px] md:text-[10px] font-black tracking-widest text-[#A3E635] uppercase font-mono">
                     {cards[4].subtitle}
                   </span>
                 </div>
-                <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight leading-none">
+                <h3 className="text-lg md:text-3xl font-bold text-white tracking-tight leading-none">
                   {cards[4].title}
                 </h3>
-                <p className="text-sm text-[#94A3B8] leading-relaxed">
+                <p className="text-xs md:text-sm text-[#94A3B8] leading-relaxed">
                   {cards[4].desc}
                 </p>
-                <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                <div className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-wider">
                   {cards[4].metric}
                 </div>
               </div>
-              <div className="p-4 bg-black/60 border border-[#4C1D95]/25 rounded-lg flex-1 w-full max-w-[280px]">
-                <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest block mb-2">Worker Verification Profile</span>
+              <div className="p-3 md:p-4 bg-black/60 border border-[#4C1D95]/25 rounded-lg flex-none w-full md:w-auto md:flex-1 md:max-w-[280px] relative z-10 preserve-3d">
+                <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest block mb-1 md:mb-2">Worker Verification Profile</span>
                 <p className="text-xs font-mono font-bold text-[#A3E635] flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#A3E635] animate-pulse" />
-                  {cards[4].stat}
+                  <DecryptingTicker text={cards[4].stat} active={activeTab === 4} />
                 </p>
-                <div className="mt-4 pt-3 border-t border-white/5 flex justify-between text-[9px] text-gray-500 font-mono">
+                <div className="mt-3 md:mt-4 pt-2 md:pt-3 border-t border-white/5 flex justify-between text-[9px] text-gray-500 font-mono">
                   <span>LEDGER STATUS</span>
                   <span className="text-white">Verified Ledger</span>
                 </div>
@@ -557,6 +619,30 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
             </motion.div>
 
           </div>
+
+          {/* Floating mini quick-access navigation dock on mobile screens */}
+          {isMobile && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/75 border border-[#7C3AED]/30 px-3 py-1.5 rounded-full flex gap-3.5 backdrop-blur-xl z-30 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+              {cards.map((c, idx) => (
+                <button
+                  key={c.id}
+                  onClick={() => {
+                    const scrollMap = [0.22, 0.36, 0.50, 0.64, 0.78]
+                    const targetY = containerRef.current!.offsetTop + (containerRef.current!.offsetHeight * scrollMap[idx])
+                    window.scrollTo({ top: targetY, behavior: 'smooth' })
+                  }}
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-extrabold border transition-all duration-300 ${
+                    activeTab === idx 
+                      ? "bg-[#7C3AED] border-[#7C3AED] text-white shadow-[0_0_10px_rgba(124,58,237,0.5)] scale-110" 
+                      : "bg-white/5 border-white/10 text-gray-400 hover:text-white"
+                  }`}
+                >
+                  {c.id}
+                </button>
+              ))}
+            </div>
+          )}
+
         </motion.div>
       </div>
     </section>
