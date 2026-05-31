@@ -4,562 +4,35 @@ import React, { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { motion, useScroll, useTransform, useSpring, useInView, AnimatePresence, useMotionValue } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  Menu, X, ChevronRight, Sparkles, Layers, Smartphone, ShieldCheck,
-  BarChart4, Download, ArrowRight, Database, Globe2, Zap
+  Database, Layers, Smartphone, ShieldCheck, BarChart4, Globe2, 
+  Zap, ArrowRight, Download, Check, X, Menu, Terminal, CircleDollarSign, 
+  ShieldAlert, Sparkles, ChevronRight, MessageSquare
 } from 'lucide-react'
-import {
-  FloatingOrb, GlowCard, TypedText,
-  ScrollReveal3D, StretchingGridCanvas,
-  MarqueeTicker
-} from '@/components/ui/AnimatedComponents'
 
-/* ─── shared easing ─── */
-const ease = [0.16, 1, 0.3, 1] as const
-
-/* ─── particle canvas component ─── */
-function ParticleCanvas() {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')!
-    canvas.width = window.innerWidth
-    canvas.height = window.innerHeight
-    
-    const isMobile = window.innerWidth < 768
-    const count = isMobile ? 15 : 60
-    
-    const pts = Array.from({ length: count }, () => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
-      vx: (Math.random() - 0.5) * (isMobile ? 0.25 : 0.4),
-      vy: (Math.random() - 0.5) * (isMobile ? 0.25 : 0.4),
-      r: Math.random() * 1.5 + (isMobile ? 0.3 : 0.5),
-      a: Math.random(),
-    }))
-    let frame: number
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-      pts.forEach(p => {
-        p.x += p.vx; p.y += p.vy
-        if (p.x < 0 || p.x > canvas.width) p.vx *= -1
-        if (p.y < 0 || p.y > canvas.height) p.vy *= -1
-        ctx.beginPath()
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(96,165,250,${p.a * 0.35})`
-        ctx.fill()
-      })
-      
-      if (!isMobile) {
-        pts.forEach((a, i) => {
-          pts.slice(i + 1).forEach(b => {
-            const d = Math.hypot(a.x - b.x, a.y - b.y)
-            if (d < 120) {
-              ctx.beginPath()
-              ctx.moveTo(a.x, a.y)
-              ctx.lineTo(b.x, b.y)
-              ctx.strokeStyle = `rgba(96,165,250,${0.08 * (1 - d / 120)})`
-              ctx.stroke()
-            }
-          })
-        })
-      }
-      
-      frame = requestAnimationFrame(draw)
-    }
-    draw()
-    const onResize = () => {
-      if (!canvas) return
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
-    }
-    window.addEventListener('resize', onResize)
-    return () => { cancelAnimationFrame(frame); window.removeEventListener('resize', onResize) }
-  }, [])
-  return <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none opacity-50" />
-}
-
-/* ─── decrypting ticker text component ─── */
-function DecryptingTicker({ text, active }: { text: string; active: boolean }) {
-  const [displayedText, setDisplayedText] = useState("")
-  const intervalRef = useRef<NodeJS.Timeout | null>(null)
-  
-  useEffect(() => {
-    if (!active) {
-      setDisplayedText("")
-      return
-    }
-
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()₨"
-    let iterations = 0
-    const target = text
-
-    if (intervalRef.current) clearInterval(intervalRef.current)
-
-    intervalRef.current = setInterval(() => {
-      setDisplayedText(
-        target
-          .split("")
-          .map((char, index) => {
-            if (char === " ") return " "
-            if (index < iterations) return target[index]
-            return chars[Math.floor(Math.random() * chars.length)]
-          })
-          .join("")
-      )
-
-      if (iterations >= target.length) {
-        if (intervalRef.current) clearInterval(intervalRef.current)
-      }
-      iterations += 1.5
-    }, 35)
-
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
-  }, [text, active])
-
-  return <span className="font-mono">{displayedText || text}</span>
-}
-
-/* ─── enhanced scroll morph section component ─── */
-function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
-  const cards = [
-    { id: 1, title: "Industry Intelligence Engine", subtitle: "REAL-TIME REGIONAL INDEXES", icon: <Sparkles className="text-[#00E5FF] w-6 h-6" />, desc: "Calculates average piece-rates and commodity price benchmarks dynamically across major global hubs — Pakistan, UAE, Turkey, Bangladesh. Keeps workshop operations aligned with real-time regional trends.", accent: "#00E5FF", stat: "₨ Piece Rate benchmark: +12% this month", metric: "Active in 10 Global Regions" },
-    { id: 2, title: "Active Predictions Model", subtitle: "ON-DEVICE MACHINE LEARNING", icon: <Zap className="text-[#A3E635] w-6 h-6" />, desc: "Autonomously forecasts raw material stock-outs, identifies customer churn risks, and flags profit margin drops using localized on-device metrics. No server latencies or cloud subscription costs.", accent: "#A3E635", stat: "Inventory Alert: Bales stock-out risk in 4 days", metric: "94% Forecasting Precision" },
-    { id: 3, title: "Working Capital Portal", subtitle: "EMBEDDED FACTORY FINTECH", icon: <Layers className="text-[#00E5FF] w-6 h-6" />, desc: "Evaluates credit scoring grades A–D directly from ledger accounts and work logs. Connects eligible factories to financial institutions for frictionless working capital flow.", accent: "#00E5FF", stat: "Liquidity rating: Grade A — Highly Eligible", metric: "₨ 50L Max Credit Limit" },
-    { id: 4, title: "Open Developer APIs", subtitle: "ELITE B2B INTEGRATIONS", icon: <Database className="text-[#7C3AED] w-6 h-6" />, desc: "Provides secure cryptographically signed API keys and real-time webhook subscriptions for multi-branch ledger sync, inventory tracking, and custom third-party integrations.", accent: "#7C3AED", stat: "Webhook Dispatch: 0.04ms average response", metric: "HMAC-SHA256 Signed Feeds" },
-    { id: 5, title: "Verified Worker Identities", subtitle: "DIGITAL TALENT LEDGER", icon: <ShieldCheck className="text-[#A3E635] w-6 h-6" />, desc: "Empowers karigars with QR-verifiable digital profiles containing verified attendance metrics, skill classifications, and peshgi advance logs — portable across factories.", accent: "#A3E635", stat: "Verified: Hamid · Senior Weaver · 98% attendance", metric: "Zero-Trust Verified Cards" },
-  ]
-
-  // ── Entire section ref wraps heading + scroll track for earlier detection ──
-  const sectionRef = useRef<HTMLDivElement>(null)
-  const isInView = useInView(sectionRef, { amount: 0.08 })
-
-  // Progress mapped across the entire section (heading + sticky track)
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ["start end", "end start"],
-  })
-
-  // Map the raw scroll into a 0→1 card progress range
-  // Cards start animating when the heading is ~30% scrolled into view
-  // and finish before the section exits. This makes the full card animation
-  // happen with much less total scrolling.
-  const cardProgress = useTransform(scrollYProgress, [0.15, 0.65], [0, 1], { clamp: true })
-
-  const targetVal = useMotionValue(0)
-  const displayProgress = useSpring(targetVal, { stiffness: 100, damping: 30, restDelta: 0.0005 })
-
-  const [activeIndex, setActiveIndex] = useState(0)
-  const [progressVal, setProgressVal] = useState(0)
-  const lastScrollTime = useRef(0)
-  const isAutoplayActive = useRef(false)
-
-  // Sync scroll → spring target (scroll overrides autoplay)
-  useEffect(() => {
-    return cardProgress.on("change", (v) => {
-      lastScrollTime.current = Date.now()
-      isAutoplayActive.current = false
-      targetVal.set(v)
-    })
-  }, [cardProgress, targetVal])
-
-  // Track spring output for active card index
-  useEffect(() => {
-    return displayProgress.on("change", (v) => {
-      setProgressVal(v)
-      const clampedV = Math.max(0, Math.min(1, v))
-      const idx = Math.min(cards.length - 1, Math.floor(clampedV * cards.length))
-      setActiveIndex(Math.max(0, idx))
-    })
-  }, [displayProgress, cards.length])
-
-  // ── Autoplay ping-pong: starts after 1.2s idle, pauses on any scroll ──
-  const autoDir = useRef(1)
-  const autoIdx = useRef(0)
-
-  useEffect(() => {
-    let intervalId: NodeJS.Timeout | null = null
-    let checkId: NodeJS.Timeout | null = null
-
-    const tick = () => {
-      // If user scrolled recently, stop autoplay
-      if (Date.now() - lastScrollTime.current < 1200) {
-        isAutoplayActive.current = false
-        if (intervalId) { clearInterval(intervalId); intervalId = null }
-        return
-      }
-
-      if (!isInView) return
-
-      // Advance index
-      let next = autoIdx.current + autoDir.current
-      if (next >= cards.length) {
-        autoDir.current = -1
-        next = cards.length - 2
-      } else if (next < 0) {
-        autoDir.current = 1
-        next = 1
-      }
-      autoIdx.current = next
-      const prog = next / (cards.length - 1)
-      isAutoplayActive.current = true
-      targetVal.set(prog)
-    }
-
-    const monitor = () => {
-      const idleMs = Date.now() - lastScrollTime.current
-      const scrollP = cardProgress.get()
-
-      if (idleMs >= 1200 && isInView && scrollP > 0.05 && scrollP < 0.95 && !intervalId) {
-        // Sync autoIdx with current displayed index before starting
-        autoIdx.current = activeIndex
-        intervalId = setInterval(tick, 2800)
-      } else if ((idleMs < 1200 || !isInView) && intervalId) {
-        clearInterval(intervalId)
-        intervalId = null
-      }
-      checkId = setTimeout(monitor, 600)
-    }
-
-    monitor()
-    return () => {
-      if (intervalId) clearInterval(intervalId)
-      if (checkId) clearTimeout(checkId)
-    }
-  }, [isInView, activeIndex, targetVal, cardProgress, cards.length])
-
-  const activeColor = cards[activeIndex]?.accent ?? "#7C3AED"
-
-  const bgScale = useTransform(displayProgress, [0, 0.08, 0.92, 1], [0.97, 1, 1, 0.97])
-  const bgOpacity = useTransform(displayProgress, [0, 0.04, 0.96, 1], [0.75, 1, 1, 0.75])
-
-  // ── Dynamic Responsive Screen Width Tracking ──
-  const [windowWidth, setWindowWidth] = useState(() => 
-    typeof window !== 'undefined' ? window.innerWidth : (isMobile ? 375 : 1200)
-  )
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const handleResize = () => setWindowWidth(window.innerWidth)
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
-
-  // ── Card strip geometry ──
-  const CARD_W = isMobile ? 280 : 540
-  const GAP    = isMobile ? 16  : 40
-  const inset  = isMobile ? 12  : 32 // Matches inset-x-3 (12px) and inset-x-8 (32px)
-  const wrapperW = windowWidth - 2 * inset
-
-  const totalW = cards.length * CARD_W + (cards.length - 1) * GAP
-  const startX = (wrapperW - CARD_W) / 2
-  const endX   = startX - (totalW - CARD_W)
-
-  const x = useTransform(displayProgress, [0, 1], [`${startX}px`, `${endX}px`])
-
-  return (
-    <div ref={sectionRef} className="relative bg-[#0B0B0C]">
-      {/* ── HEADING ── */}
-      <div className="relative bg-[#0B0B0C] border-t border-[#4C1D95]/15 w-full py-20 md:py-24 px-4 flex flex-col items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-radial from-[#4C1D95]/10 to-transparent pointer-events-none" />
-
-        <motion.p
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="text-[10px] md:text-xs font-bold text-[#7C3AED] tracking-widest uppercase mb-6"
-        >
-          ENGINEERED FOR MODERN WORKSHOPS
-        </motion.p>
-
-        <motion.h2
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.08 }}
-          className="text-5xl md:text-8xl font-black tracking-tighter text-white uppercase leading-none text-center"
-        >
-          SIMPLE
-        </motion.h2>
-
-        <motion.div
-          initial={{ opacity: 0, scaleX: 0.6 }}
-          whileInView={{ opacity: 1, scaleX: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.18 }}
-          className="h-14 md:h-20 w-[80%] max-w-[480px] mt-3 mb-3 bg-gradient-to-r from-[#4C1D95] via-[#7C3AED] to-[#4C1D95] flex items-center justify-center rounded-full shadow-[0_0_60px_rgba(124,58,237,0.5)] border border-[#7C3AED]/30"
-        >
-          <span className="text-base md:text-2xl font-black uppercase text-white tracking-widest">
-            BY DESIGN
-          </span>
-        </motion.div>
-
-        <motion.h2
-          initial={{ opacity: 0, y: -24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.12 }}
-          className="text-5xl md:text-8xl font-black tracking-tighter text-white uppercase leading-none text-center"
-        >
-          POWERFUL
-        </motion.h2>
-
-        <motion.p
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.28 }}
-          className="text-sm md:text-base font-bold text-[#94A3B8] tracking-[0.25em] uppercase mt-4"
-        >
-          BY IMPACT
-        </motion.p>
-      </div>
-
-      {/* ── STICKY SCROLL TRACK: Compact 160vh (mobile) / 200vh (desktop) ── */}
-      <section className="relative bg-[#0B0B0C]">
-        <div className={`relative w-full ${isMobile ? 'h-[160vh]' : 'h-[200vh]'}`}>
-          {/* Sticky viewport frame */}
-          <div className="sticky top-0 h-screen w-full flex items-center justify-center overflow-hidden">
-
-            {/* Background Shutter */}
-            <motion.div
-              style={{ scale: bgScale, opacity: bgOpacity }}
-              className="absolute inset-x-3 md:inset-x-8 inset-y-4 md:inset-y-6 rounded-[24px] md:rounded-[32px] border border-white/[0.07] bg-[#08090B]/95 backdrop-blur-2xl shadow-[0_40px_100px_rgba(0,0,0,0.95)] overflow-hidden"
-            >
-              {!isMobile && (
-                <StretchingGridCanvas
-                  progress={progressVal}
-                  activeIndex={activeIndex}
-                  activeColor={activeColor}
-                />
-              )}
-              {isMobile && <div className="absolute inset-0 bg-gradient-to-br from-[#0C0D10] to-[#0A0B0E]" />}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/70 pointer-events-none" />
-
-              {/* Live Telemetry HUD Console (Desktop Only) */}
-              {!isMobile && (
-                <div className="absolute bottom-12 inset-x-12 h-20 border-t border-white/[0.05] bg-black/40 backdrop-blur-md rounded-xl p-3 flex flex-row items-center justify-between gap-6 z-20">
-                  <div className="flex-1 min-w-0 font-mono text-[9px] text-gray-500 space-y-1">
-                    <span className="text-[8px] font-bold text-gray-600 tracking-wider uppercase block mb-0.5">Active Node Telemetry Logs</span>
-                    {activeIndex === 0 && (
-                      <>
-                        <p className="text-cyan-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse inline-block" /> [SYS-INTEL] Mandis scanned: PK-FSD, UAE-DXB, TR-IST.</p>
-                        <p className="truncate text-gray-400">[SYS-INTEL] Reconciled average pieces rate: +12% this month.</p>
-                      </>
-                    )}
-                    {activeIndex === 1 && (
-                      <>
-                        <p className="text-lime-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-lime-400 animate-pulse inline-block" /> [SYS-MODEL] Local LSTM stock-out prediction running.</p>
-                        <p className="truncate text-gray-400">[SYS-MODEL] Alert: Stock-out hazard detected for Bales inventory.</p>
-                      </>
-                    )}
-                    {activeIndex === 2 && (
-                      <>
-                        <p className="text-cyan-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse inline-block" /> [SYS-FINTECH] Ledger balances audited. Grading active.</p>
-                        <p className="truncate text-gray-400">[SYS-FINTECH] Result compiled: GRADE A - Highly Eligible. Limit set: PKR 50L.</p>
-                      </>
-                    )}
-                    {activeIndex === 3 && (
-                      <>
-                        <p className="text-purple-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse inline-block" /> [SYS-DEV] HMAC-SHA256 cryptographically signed webhook dispatched.</p>
-                        <p className="truncate text-gray-400">[SYS-DEV] Response latency: 0.04ms · API response status: 200 OK.</p>
-                      </>
-                    )}
-                    {activeIndex === 4 && (
-                      <>
-                        <p className="text-lime-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-lime-400 animate-pulse inline-block" /> [SYS-IDENTITY] Karigar check: Hamid · Weaver · QR valid.</p>
-                        <p className="truncate text-gray-400">[SYS-IDENTITY] Zero-Trust portable workforce history synced successfully.</p>
-                      </>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-4 border-l border-white/[0.05] pl-6 pr-6 h-full flex-none">
-                    <div className="flex items-end gap-1 h-8">
-                      {Array.from({ length: 8 }).map((_, i) => {
-                        const randomHeight1 = [8, 20, 12, 28, 8][i % 5]
-                        const randomHeight2 = [24, 10, 32, 14, 18][i % 5]
-                        return (
-                          <motion.div
-                            key={i}
-                            animate={{ height: [8, randomHeight1, randomHeight2, 8] }}
-                            transition={{ duration: 1.0 + i * 0.15, repeat: Infinity, ease: "easeInOut" }}
-                            className="w-1.5 rounded-t-sm"
-                            style={{ backgroundColor: activeColor }}
-                          />
-                        )
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col justify-center text-right border-l border-white/[0.05] pl-6 h-full font-mono text-[9px] text-gray-500">
-                    <span className="font-bold text-white uppercase tracking-wider">Node Terminal #{activeIndex + 1}</span>
-                    <span className="text-[8px] text-gray-600 mt-0.5">SPEED: 100% OFFLINE</span>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-
-            {/* Cards viewport horizontal strip wrapper */}
-            <motion.div
-              style={{ scale: bgScale, opacity: bgOpacity }}
-              className="absolute inset-x-3 md:inset-x-8 inset-y-4 md:inset-y-6 rounded-[24px] md:rounded-[32px] overflow-hidden flex items-center"
-            >
-              <motion.div className="flex flex-row items-stretch" style={{ gap: `${GAP}px`, x }}>
-                {cards.map((card, idx) => {
-                  const isActive = activeIndex === idx
-                  return (
-                    <div
-                      key={card.id}
-                      className="flex-none flex flex-col justify-between p-5 md:p-8 rounded-[20px] md:rounded-[24px] border bg-[#0F1114]/90 backdrop-blur-xl relative overflow-hidden cursor-default"
-                      style={{
-                        width: `${CARD_W}px`,
-                        borderColor: isActive ? `${card.accent}50` : "rgba(255,255,255,0.05)",
-                        boxShadow: isActive ? `0 0 0 1px ${card.accent}30, 0 24px 64px ${card.accent}18` : "0 8px 32px rgba(0,0,0,0.5)",
-                        transform: isActive ? "scale(1.015) translateY(-4px)" : "scale(1) translateY(0px)",
-                        transition: "border-color 0.4s ease, box-shadow 0.4s ease, transform 0.35s ease",
-                      }}
-                    >
-                      {isActive && (
-                        <div className="absolute inset-0 pointer-events-none overflow-hidden z-10">
-                          <div
-                            className="laser-scanner-sweep"
-                            style={{
-                              background: `linear-gradient(90deg, transparent, ${card.accent}99, transparent)`,
-                              boxShadow: `0 0 12px ${card.accent}`,
-                            }}
-                          />
-                        </div>
-                      )}
-
-                      <div className="absolute inset-0 holographic-grid opacity-30 pointer-events-none" />
-
-                      <div className="relative z-10 space-y-3 md:space-y-4">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 md:p-2.5 bg-white/5 rounded-xl border border-white/10">
-                            {card.icon}
-                          </div>
-                          <span className="text-[9px] md:text-[10px] font-black tracking-widest uppercase font-mono" style={{ color: card.accent }}>
-                            {card.subtitle}
-                          </span>
-                        </div>
-
-                        <h3 className="text-lg md:text-3xl font-bold text-white tracking-tight leading-none uppercase">
-                          {card.title}
-                        </h3>
-                        <p className="text-[11px] md:text-sm text-[#94A3B8] leading-relaxed">
-                          {card.desc}
-                        </p>
-                        <p className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest font-mono" style={{ color: `${card.accent}80` }}>
-                          {card.metric}
-                        </p>
-                      </div>
-
-                      <div className="relative z-10 mt-4 md:mt-6 p-3 md:p-4 bg-black/60 border border-white/[0.06] rounded-2xl">
-                        <p className="text-[8px] font-bold text-gray-600 uppercase tracking-widest mb-2 font-mono">
-                          Live Floor Benchmarking
-                        </p>
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-[11px] md:text-xs font-mono font-bold flex items-center gap-1.5 flex-1 min-w-0" style={{ color: card.accent }}>
-                            <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 animate-pulse" style={{ backgroundColor: card.accent }} />
-                            <span className="truncate">
-                              <DecryptingTicker text={card.stat} active={isActive} />
-                            </span>
-                          </p>
-                          <span className="text-[8px] text-gray-600 font-mono flex-shrink-0">ACTIVE</span>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </motion.div>
-            </motion.div>
-
-            {/* Pagination dots indicator */}
-            <div className="absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-20">
-              {cards.map((_, i) => (
-                <motion.div
-                  key={i}
-                  animate={{
-                    width: activeIndex === i ? 24 : 6,
-                    opacity: activeIndex === i ? 1 : 0.3,
-                  }}
-                  transition={{ duration: 0.3 }}
-                  className="h-1.5 rounded-full"
-                  style={{ backgroundColor: activeIndex === i ? cards[i].accent : "rgba(255,255,255,0.3)" }}
-                />
-              ))}
-            </div>
-
-          </div>
-        </div>
-      </section>
-    </div>
-  )
-}
-
-/* ─── MAIN LANDING CLIENT EXPORT NODE ─── */
 export default function LandingClient() {
   const router = useRouter()
   const supabase = createClient()
+  
   const [checking, setChecking] = useState(() =>
     typeof window !== 'undefined' && window.navigator.userAgent.toLowerCase().includes('electron')
   )
   const [isMobile, setIsMobile] = useState(false)
-  const [heroRotateX, setHeroRotateX] = useState(12)
-  const [heroRotateY, setHeroRotateY] = useState(-18)
-  const [heroIsHovered, setHeroIsHovered] = useState(false)
-  const heroRef = useRef<HTMLDivElement>(null)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState<'karigar' | 'sqlite' | 'khata' | 'cctv'>('karigar')
   
-  const [testimonials, setTestimonials] = useState<any[]>([])
-
+  // Dynamic screen width detection
   useEffect(() => {
-    async function fetchTestimonials() {
-      const { data, error } = await supabase
-        .from('testimonials')
-        .select('*')
-        .eq('status', 'approved')
-        .order('created_at', { ascending: false })
-      if (!error && data) setTestimonials(data)
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024)
     }
-    fetchTestimonials()
-  }, [supabase])
-
-  const { scrollY } = useScroll()
-  const heroY = useTransform(scrollY, [0, 600], [0, -80])
-  const heroOpacity = useTransform(scrollY, [0, 500], [1, 0])
-
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768)
     checkMobile()
     window.addEventListener('resize', checkMobile)
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  const handleHeroMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (isMobile) return
-    const el = e.currentTarget
-    const rect = el.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    const xc = rect.width / 2
-    const yc = rect.height / 2
-
-    const rX = 12 + ((yc - y) / yc) * 6
-    const rY = -18 + ((x - xc) / xc) * 6
-    setHeroRotateX(rX)
-    setHeroRotateY(rY)
-  }
-
-  const handleHeroMouseEnter = () => { if (!isMobile) setHeroIsHovered(true) }
-  const handleHeroMouseLeave = () => {
-    setHeroIsHovered(false)
-    setHeroRotateX(12)
-    setHeroRotateY(-18)
-  }
-
+  // Auto-redirect checks for native Electron builds
   useEffect(() => {
     async function handleAuthRedirect() {
       try {
@@ -580,181 +53,519 @@ export default function LandingClient() {
   }, [supabase, router])
 
   if (checking) return (
-    <div className="min-h-screen bg-[#070809] flex items-center justify-center">
+    <div className="min-h-screen bg-[#050507] flex items-center justify-center">
       <motion.div
         animate={{ rotate: 360 }}
         transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-        className="w-10 h-10 border-2 border-blue-500/20 border-t-blue-500 rounded-full"
+        className="w-10 h-10 border-2 border-[#D97706]/20 border-t-[#D97706] rounded-full"
       />
     </div>
   )
 
   const features = [
-    { icon: <Database size={22} className="text-blue-400" />, title: 'Offline-First SQLite', desc: 'Double-ciphered local database that reconciles with cloud on reconnect. Zero reliance on continuous internet.', color: 'blue', href: '/docs#sqlite' },
-    { icon: <Layers size={22} className="text-amber-400" />, title: 'Barcode & SKU Engine', desc: 'Scan, store, and manage raw bales, fabric yards, chemical batches. Auto-triggers reorder level alerts.', color: 'amber', href: '/docs#inventory' },
-    { icon: <Smartphone size={22} className="text-emerald-400" />, title: 'Mobile Floor Handhelds', desc: 'Workers log piece-rate counts and attendance from Android terminals paired via local WiFi instantly.', color: 'emerald', href: '/docs#mobile' },
-    { icon: <ShieldCheck size={22} className="text-red-400" />, title: 'AI Sentinel CCTV', desc: 'Draw virtual zone boundaries. Triggers instant local alerts for unauthorized entries — no cloud storage fees.', color: 'red', href: '/docs#data-safety' },
-    { icon: <BarChart4 size={22} className="text-indigo-400" />, title: 'Double-Entry Accounting', desc: 'Log receipts, bank entries, and ledger credits. Generate P&L and aging accounts with one click.', color: 'indigo', href: '/docs#invoices' },
-    { icon: <Globe2 size={22} className="text-teal-400" />, title: 'Multilingual Scripts', desc: 'Switch Urdu Nastaliq and English instantly to accommodate local workers and international administrators.', color: 'teal', href: '/docs#troubleshoot' },
+    { 
+      icon: <Database size={20} className="text-[#F59E0B]" />, 
+      title: 'Offline-First SQLite', 
+      desc: 'Double-ciphered local floor database that reconciles automatically with cloud on reconnect. Zero reliance on continuous internet.',
+      color: 'gold', 
+      href: '/docs#sqlite' 
+    },
+    { 
+      icon: <Layers size={20} className="text-[#F59E0B]" />, 
+      title: 'Barcode & SKU Engine', 
+      desc: 'Scan, store, and manage raw bales, fabric yards, chemical batches. Auto-triggers reorder level alerts.', 
+      color: 'gold', 
+      href: '/docs#inventory' 
+    },
+    { 
+      icon: <Smartphone size={20} className="text-[#F59E0B]" />, 
+      title: 'Mobile Floor Handhelds', 
+      desc: 'Workers log piece-rate counts and attendance from Android terminals paired via local WiFi instantly.', 
+      color: 'gold', 
+      href: '/docs#mobile' 
+    },
+    { 
+      icon: <ShieldCheck size={20} className="text-[#F59E0B]" />, 
+      title: 'AI Sentinel CCTV', 
+      desc: 'Draw virtual zone boundaries. Triggers instant local alerts for unauthorized entries — no cloud storage fees.', 
+      color: 'gold', 
+      href: '/docs#data-safety' 
+    },
+    { 
+      icon: <BarChart4 size={20} className="text-[#F59E0B]" />, 
+      title: 'Double-Entry Accounting', 
+      desc: 'Log receipts, bank entries, and ledger credits. Generate P&L and aging accounts with one click.', 
+      color: 'gold', 
+      href: '/docs#invoices' 
+    },
+    { 
+      icon: <Globe2 size={20} className="text-[#F59E0B]" />, 
+      title: 'Multilingual Scripts', 
+      desc: 'Switch Urdu Nastaliq and English instantly to accommodate local workers and international administrators.', 
+      color: 'gold', 
+      href: '/docs#troubleshoot' 
+    },
   ]
 
-  const glowColors: Record<string, string> = {
-    blue: 'rgba(96,165,250,0.12)',
-    amber: 'rgba(251,191,36,0.1)',
-    emerald: 'rgba(16,185,129,0.1)',
-    red: 'rgba(239,68,68,0.1)',
-    indigo: 'rgba(99,102,241,0.1)',
-    teal: 'rgba(20,184,166,0.1)',
-  }
-
-  const tableRows = [
-    ['100% Offline Local Network', '✅ Full', '✅ Manual', '❌ Fails'],
-    ['Karigar Piece-Rate Payroll', '✅ Automated', '❌ Formula Errors', '❌ Custom Dev'],
-    ['Peshgi Advance Tracking', '✅ Automated', '❌ Complex', '❌ Generic'],
-    ['Real-time AI CCTV', '✅ Built-in', '❌ Not Possible', '❌ Cloud Fees'],
-    ['Urdu Nastaliq Interface', '✅ Native', '❌ Text only', '❌ None'],
-    ['Implementation', '10 Minutes', 'DIY Build', '3–6 Months'],
-  ]
-
-  const marqueeItems = [
-    'Textile Mills 🏭', 'Rice Mills 🌾', 'Karigar Payroll 💰',
-    'CCTV Security 📹', 'Offline ERP 🔌', 'Urdu Support 🇵🇰',
-    'Barcode Inventory 📦', 'Double-Entry Khata 📒', 'WhatsApp Payslips 📱',
-    'Peshgi Tracking 💳', 'Multi-Branch 🏢', 'Android Pairing 📲',
+  const comparisonRows = [
+    { 
+      metric: 'Internet Dependency', 
+      noxis: '100% Offline (Local Mesh Grid)', 
+      cloud: 'Fails entirely on signal drop', 
+      manual: 'Not applicable (paper registers)' 
+    },
+    { 
+      metric: 'Karigar Payroll Processing', 
+      noxis: 'Instant (1-click automated calculation)', 
+      cloud: 'Excel formulas (manual inputs required)', 
+      manual: 'Takes 3-5 days of manual calculation' 
+    },
+    { 
+      metric: 'Peshgi Advance Safeguards', 
+      noxis: 'Hard-coded alerts & automatic wage deduct', 
+      cloud: 'No built-in advance ledger hooks', 
+      manual: 'High rate of manual ledger disputes' 
+    },
+    { 
+      metric: 'Floor Security & Intrusion', 
+      noxis: 'Real-time AI CCTV (Local on-device execution)', 
+      cloud: 'Requires expensive Cloud cameras', 
+      manual: 'Zero tracking (vulnerable to theft)' 
+    },
+    { 
+      metric: 'B2B Client Portal & Webhooks', 
+      noxis: 'HMAC-SHA256 cryptographically signed logs', 
+      cloud: 'Limited integrations or high API fees', 
+      manual: 'No electronic logs available' 
+    },
+    { 
+      metric: 'Setup & Operation Cost', 
+      noxis: 'One-time setup (Zero recurring software fees)', 
+      cloud: 'High monthly per-user cloud license fees', 
+      manual: 'High loss due to bookkeeping mistakes' 
+    },
   ]
 
   return (
-    <div className="bg-[#070809] text-white font-sans min-h-screen selection:bg-blue-500 selection:text-black overflow-x-hidden">
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <ParticleCanvas />
-        <FloatingOrb color="rgba(96,165,250,0.08)" size={700} x="20%" y="10%" delay={0} blur={130} />
-        <FloatingOrb color="rgba(197,160,89,0.06)" size={600} x="80%" y="30%" delay={2} blur={140} />
-        <FloatingOrb color="rgba(99,102,241,0.07)" size={500} x="50%" y="70%" delay={4} blur={120} />
-      </div>
+    <div className="bg-[#050507] text-[#E2E8F0] font-sans min-h-screen selection:bg-[#D97706] selection:text-black overflow-x-hidden">
+      {/* Luxury Background Shading */}
+      <div className="absolute top-0 inset-x-0 h-[800px] bg-gradient-to-b from-[#1E1B4B]/15 via-transparent to-transparent pointer-events-none" />
 
       {/* Nav Section */}
-      <motion.nav
-        className="fixed top-0 left-0 right-0 z-50 border-b transition-all border-white/[0.02] bg-[#070809]/50 backdrop-blur-md"
-      >
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, ease }}>
-            <Link href="/" className="flex items-center gap-3 cursor-pointer group">
-              <span className="font-extrabold text-lg tracking-wider text-white group-hover:text-blue-400 transition-colors">NOXIS</span>
-            </Link>
-          </motion.div>
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.03] bg-[#050507]/70 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2 cursor-pointer group">
+            <span className="font-bold text-base tracking-[0.25em] text-white group-hover:text-[#F59E0B] transition-colors">NOXIS</span>
+            <span className="h-4 w-px bg-white/10" />
+            <span className="text-[10px] tracking-widest text-[#94A3B8] font-semibold uppercase">Enterprise</span>
+          </Link>
 
-          <div className="hidden md:flex items-center gap-8">
+          {/* Desktop Nav Links */}
+          <div className="hidden lg:flex items-center gap-10">
             {[{ label: 'Pricing', href: '/pricing' }, { label: 'Reviews', href: '/reviews' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }].map((link) => (
-              <motion.div key={link.href} whileHover={{ y: -1 }}>
-                <Link href={link.href} className="inline-block text-sm text-gray-400 hover:text-white font-medium transition-colors relative group py-1.5 px-0.5">
-                  {link.label}
-                  <span className="absolute -bottom-0.5 left-0 right-0 h-px bg-blue-400 scale-x-0 group-hover:scale-x-100 transition-transform duration-200 origin-left" />
-                </Link>
-              </motion.div>
+              <Link 
+                key={link.href} 
+                href={link.href} 
+                className="text-xs text-[#94A3B8] hover:text-white font-bold tracking-widest uppercase transition-colors"
+              >
+                {link.label}
+              </Link>
             ))}
-            <motion.div whileHover={{ y: -3, scale: 1.02 }} whileTap={{ y: 1, scale: 0.98 }} className="flex items-center">
-              <Link href="/download" className="btn-shine inline-flex items-center justify-center text-xs font-bold tracking-widest uppercase text-black bg-[#60A5FA] hover:bg-blue-400 px-6 py-2.5 rounded-sm transition-all shadow-[0_0_20px_rgba(96,165,250,0.2)]">
-                Download
+          </div>
+
+          <div className="hidden lg:flex items-center">
+            <Link 
+              href="/download" 
+              className="inline-flex items-center justify-center text-[10px] font-bold tracking-widest uppercase text-black bg-[#F59E0B] hover:bg-[#D97706] px-6 py-3 rounded-md transition-all shadow-[0_0_30px_rgba(245,158,11,0.15)]"
+            >
+              Download Studio
+            </Link>
+          </div>
+
+          {/* Mobile menu trigger */}
+          <button 
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="lg:hidden p-2 text-white/70 hover:text-white transition-colors"
+          >
+            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
+
+        {/* Mobile menu overlay */}
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="absolute top-20 left-0 right-0 bg-[#07070A] border-b border-white/[0.05] py-6 px-6 lg:hidden flex flex-col gap-6"
+            >
+              {[{ label: 'Pricing', href: '/pricing' }, { label: 'Reviews', href: '/reviews' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }].map((link) => (
+                <Link 
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-xs text-[#94A3B8] hover:text-white font-bold tracking-widest uppercase transition-colors py-1"
+                >
+                  {link.label}
+                </Link>
+              ))}
+              <Link 
+                href="/download"
+                onClick={() => setMobileMenuOpen(false)}
+                className="inline-flex items-center justify-center text-[10px] font-bold tracking-widest uppercase text-black bg-[#F59E0B] py-3 rounded-md text-center"
+              >
+                Download Studio
               </Link>
             </motion.div>
-          </div>
-        </div>
-      </motion.nav>
+          )}
+        </AnimatePresence>
+      </nav>
 
       {/* Hero Section */}
-      <section ref={heroRef} className="relative pt-32 pb-24 md:pt-48 md:pb-36 px-6 max-w-7xl mx-auto min-h-screen flex items-center">
-        <motion.div style={isMobile ? undefined : { y: heroY, opacity: heroOpacity }} className="w-full">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
-            <motion.div initial="hidden" animate="show" variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.12, delayChildren: 0.2 } } }} className="lg:col-span-7 space-y-8">
-              <div className="inline-flex items-center gap-2.5 bg-blue-500/10 border border-blue-500/25 rounded-full px-4 py-1.5">
-                <span className="text-[10px] font-bold text-blue-400 tracking-widest uppercase">Industrial ERP · v13.1 Premium</span>
-              </div>
-              <div>
-                <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tighter leading-[1.05] text-white">
-                  Factory software<br />that runs <span className="animate-gradient-text">offline.</span>
-                </h1>
-                <div className="mt-4 text-2xl sm:text-3xl font-bold text-gray-500 h-10">
-                  <TypedText phrases={['Karigar Payroll.', 'CCTV Sentinel.', 'Khata Ledger.', 'Offline Inventory.', 'Peshgi Tracking.']} className="text-blue-400/80" />
-                </div>
-              </div>
-              <p className="text-gray-400 text-base sm:text-lg leading-relaxed max-w-xl">
-                Manage floor inventory, piece-rate karigar payroll, double-entry financial accounts, and smart AI CCTV monitoring. Works reliably without internet or cloud fees.
-              </p>
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2">
-                <Link href="/download" className="btn-shine flex items-center justify-center gap-2 bg-[#60A5FA] hover:bg-blue-400 text-black font-extrabold text-sm tracking-wider px-8 py-4 rounded-sm transition-all shadow-[0_0_30px_rgba(96,165,250,0.25)]">
-                  <Download size={16} /> Download Free Trial
-                </Link>
-              </div>
-            </motion.div>
+      <section className="relative pt-36 pb-20 lg:pt-48 lg:pb-28 px-6 max-w-7xl mx-auto flex flex-col items-center justify-center text-center">
+        <div className="space-y-6 max-w-4xl">
+          <div className="inline-flex items-center gap-2 bg-[#F59E0B]/10 border border-[#F59E0B]/20 rounded-full px-4 py-1.5">
+            <Sparkles size={12} className="text-[#F59E0B]" />
+            <span className="text-[9px] font-bold text-[#F59E0B] tracking-[0.25em] uppercase">Enterprise Manufacturing ERP</span>
+          </div>
 
-            {/* Mockup Display */}
-            <div className="lg:col-span-5 relative" onMouseMove={handleHeroMouseMove} onMouseEnter={handleHeroMouseEnter} onMouseLeave={handleHeroMouseLeave}>
-              <div
-                className="relative bg-[#0F1114] border border-white/10 rounded-xl overflow-hidden transition-all duration-700 ease-out"
-                style={{
-                  transform: isMobile ? 'none' : `perspective(1200px) rotateX(${heroRotateX}deg) rotateY(${heroRotateY}deg) rotateZ(1deg)`,
-                  boxShadow: '0 40px 100px rgba(0,0,0,0.95)',
-                }}
-              >
-                <div className="bg-[#0A0C0F] border-b border-white/5 px-4 py-3 flex items-center justify-between">
-                  <span className="text-[10px] text-gray-600 font-mono tracking-widest uppercase">Noxis Node Terminal</span>
-                  <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded font-mono font-bold">LOCAL ACTIVE</span>
-                </div>
-                <div className="p-5 space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    {[{ label: 'Mandi Output', value: '45,820 kg', color: 'text-amber-400' }, { label: 'Active Karigars', value: '142 Live', color: 'text-blue-400' }].map((s) => (
-                      <div key={s.label} className="bg-[#161A1F] border border-white/5 p-3.5 rounded-lg">
-                        <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mb-1.5">{s.label}</p>
-                        <p className={`font-mono text-sm font-black ${s.color}`}>{s.value}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tighter leading-[1.05] text-white">
+            Heavy-Duty Software.<br />Built for the <span className="text-[#F59E0B]">Physical Floor.</span>
+          </h1>
+
+          <p className="text-[#94A3B8] text-sm sm:text-base lg:text-lg leading-relaxed max-w-2xl mx-auto font-medium">
+            Manage floor inventory, automated piece-rate karigar payroll, double-entry ledgers, and secure on-device CCTV Sentinelcam feeds. Runs reliably with **zero internet reliance** and zero recurring cloud costs.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+            <Link 
+              href="/download" 
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#F59E0B] hover:bg-[#D97706] text-black font-extrabold text-xs tracking-widest uppercase px-8 py-4 rounded-md transition-all shadow-[0_0_40px_rgba(245,158,11,0.2)]"
+            >
+              <Download size={14} /> Download Free Trial
+            </Link>
+            <a 
+              href="https://wa.me/923334355475"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 border border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.04] text-white font-extrabold text-xs tracking-widest uppercase px-8 py-4 rounded-md transition-all"
+            >
+              Schedule Factory Demo
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* Noxis Dashboard interactive Simulator */}
+      <section className="px-4 md:px-6 pb-28 max-w-7xl mx-auto">
+        <div className="bg-[#0B0C0E] border border-white/[0.04] rounded-2xl overflow-hidden shadow-[0_32px_96px_rgba(0,0,0,0.8)]">
+          {/* Workstation Top Bar */}
+          <div className="bg-[#08080A] border-b border-white/[0.04] px-5 py-4 flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#EF4444]" />
+              <span className="h-2.5 w-2.5 rounded-full bg-[#F59E0B]" />
+              <span className="h-2.5 w-2.5 rounded-full bg-[#10B981]" />
+              <span className="text-[10px] text-gray-500 font-mono tracking-widest uppercase ml-4">Noxis Floor Cockpit v13.1</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-[9px] text-[#10B981] bg-[#10B981]/10 px-3 py-1 rounded font-mono font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#10B981] animate-pulse" />
+                Offline Grid Sync Active
+              </span>
             </div>
           </div>
-        </motion.div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12">
+            {/* Interactive Tab Selector - Left Sidebar */}
+            <div className="lg:col-span-3 bg-[#08080A] border-r border-white/[0.03] p-4 flex flex-row lg:flex-col gap-1 overflow-x-auto lg:overflow-x-visible no-scrollbar">
+              {[
+                { id: 'karigar', label: 'Karigar Ledger', icon: <CircleDollarSign size={16} /> },
+                { id: 'sqlite', label: 'Offline SQLite', icon: <Terminal size={16} /> },
+                { id: 'khata', label: 'Finance Khata', icon: <BarChart4 size={16} /> },
+                { id: 'cctv', label: 'AI CCTV Sentinel', icon: <ShieldAlert size={16} /> },
+              ].map((tab) => {
+                const isActive = activeTab === tab.id
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={`flex-none lg:flex-initial flex items-center gap-3 px-4 py-3.5 rounded-lg text-left text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
+                      isActive 
+                        ? 'text-black bg-[#F59E0B] shadow-[0_4px_16px_rgba(245,158,11,0.15)]' 
+                        : 'text-[#94A3B8] hover:text-white hover:bg-white/[0.02]'
+                    }`}
+                  >
+                    {tab.icon}
+                    <span>{tab.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Dashboard simulator panel - Right Window */}
+            <div className="lg:col-span-9 p-6 bg-[#0B0C0E] min-h-[420px] flex flex-col justify-between">
+              <AnimatePresence mode="wait">
+                {activeTab === 'karigar' && (
+                  <motion.div 
+                    key="karigar"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 8 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-6 flex-1 flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-bold uppercase tracking-widest text-[#F59E0B]">Karigar Piece-Rate Wage Dashboard</h3>
+                        <span className="text-[10px] font-mono text-gray-500">PAYROLL CYCLE: MAY 2026</span>
+                      </div>
+                      <div className="overflow-x-auto border border-white/[0.03] rounded-lg bg-black/40">
+                        <table className="w-full text-left border-collapse font-mono text-xs">
+                          <thead>
+                            <tr className="border-b border-white/[0.05] bg-white/[0.01]">
+                              <th className="p-3 text-[10px] font-bold text-gray-500 uppercase">Karigar (Worker)</th>
+                              <th className="p-3 text-[10px] font-bold text-gray-500 uppercase">Shift</th>
+                              <th className="p-3 text-[10px] font-bold text-gray-500 uppercase text-right">Output (Yds)</th>
+                              <th className="p-3 text-[10px] font-bold text-gray-500 uppercase text-right">Peshgi (Adv)</th>
+                              <th className="p-3 text-[10px] font-bold text-[#F59E0B] uppercase text-right">Net Wages</th>
+                              <th className="p-3 text-[10px] font-bold text-gray-500 uppercase text-center">Receipt</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {[
+                              { name: 'Hamid Saeed', shift: 'Morning', yds: '1,420', adv: '₨ 12,500', net: '₨ 42,600', status: 'WhatsApp' },
+                              { name: 'Muhammad Asif', shift: 'Morning', yds: '1,150', adv: '₨ 5,000', net: '₨ 39,200', status: 'WhatsApp' },
+                              { name: 'Bilal Khan', shift: 'Night', yds: '1,560', adv: '₨ 18,000', net: '₨ 44,400', status: 'WhatsApp' },
+                              { name: 'Tariq Mahmood', shift: 'Night', yds: '980', adv: '₨ 0', net: '₨ 34,300', status: 'Printed' },
+                            ].map((w, idx) => (
+                              <tr key={idx} className="border-b border-white/[0.02] hover:bg-white/[0.01] transition-colors">
+                                <td className="p-3 font-semibold text-white">{w.name}</td>
+                                <td className="p-3 text-gray-400">{w.shift}</td>
+                                <td className="p-3 text-right text-gray-300">{w.yds}</td>
+                                <td className="p-3 text-right text-[#EF4444]">{w.adv}</td>
+                                <td className="p-3 text-right font-bold text-[#F59E0B]">{w.net}</td>
+                                <td className="p-3 text-center">
+                                  <span className="inline-block text-[9px] bg-[#10B981]/15 text-[#10B981] font-bold px-2 py-0.5 rounded uppercase">
+                                    {w.status}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-white/[0.03] flex items-center justify-between text-[10px] text-gray-500 font-mono">
+                      <span>✓ 4 Pay Slips Compiled</span>
+                      <span>TOTAL DISBURSED: ₨ 160,500</span>
+                    </div>
+                  </motion.div>
+                )}
+
+                {activeTab === 'sqlite' && (
+                  <motion.div 
+                    key="sqlite"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 8 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-6 flex-1 flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-bold uppercase tracking-widest text-[#F59E0B]">Offline SQLite Database Reconciler</h3>
+                        <span className="text-[10px] font-mono text-gray-500">AES-256 DOUBLE ENCRYPTED</span>
+                      </div>
+                      <div className="p-4 bg-black/60 border border-white/[0.03] rounded-lg font-mono text-xs text-[#10B981] space-y-2 h-[220px] overflow-y-auto">
+                        <p className="text-gray-500">[21:32:04] Initializing local SQLite3-MC engine...</p>
+                        <p className="text-gray-500">[21:32:04] Mounting local storage at Noxis-Local.db...</p>
+                        <p>[21:32:04] SUCCESS: Encrypted SQLite connection established.</p>
+                        <p className="text-[#F59E0B]">[21:32:08] CENTRAL CLOUD CONNECT: OFFLINE. Entering standalone floor mode.</p>
+                        <p>[21:32:15] LOG: Karigar Hamid Saeed yardage logged (+1,420 yds). Buffer queued.</p>
+                        <p>[21:32:44] LOG: Inventory bale scan SKU #2908-WEAVE logged. Buffer queued.</p>
+                        <p>[21:35:12] LOCAL NET: Android floor terminals matched (local WiFi mesh grid).</p>
+                        <p className="text-cyan-400 font-bold">[21:36:00] STANDALONE STABILITY: 100% operative. Offline Buffer queue: 142 records.</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-white/[0.03] flex items-center justify-between text-[10px] text-gray-500 font-mono">
+                      <span>OFFLINE STORAGE SIZE: 4.09 MB</span>
+                      <span>ZERO DATA LOSS RECONCILIATION: ENABLED</span>
+                    </div>
+                  </motion.div>
+                )}
+
+                {activeTab === 'khata' && (
+                  <motion.div 
+                    key="khata"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 8 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-6 flex-1 flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-bold uppercase tracking-widest text-[#F59E0B]">Double-Entry Accounting Ledger</h3>
+                        <span className="text-[10px] font-mono text-gray-500">MANDI COMMODITY COMPLIANT</span>
+                      </div>
+                      <div className="overflow-x-auto border border-white/[0.03] rounded-lg bg-black/40">
+                        <table className="w-full text-left border-collapse font-mono text-xs">
+                          <thead>
+                            <tr className="border-b border-white/[0.05] bg-white/[0.01]">
+                              <th className="p-3 text-[10px] font-bold text-gray-500 uppercase">Transaction ID</th>
+                              <th className="p-3 text-[10px] font-bold text-gray-500 uppercase">Description</th>
+                              <th className="p-3 text-[10px] font-bold text-gray-500 uppercase text-right">Debit (-)</th>
+                              <th className="p-3 text-[10px] font-bold text-gray-500 uppercase text-right">Credit (+)</th>
+                              <th className="p-3 text-[10px] font-bold text-[#F59E0B] uppercase text-right">Balance</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {[
+                              { id: 'TXN-9028', desc: 'Bale Yarn Raw Stock Procurement', dr: '₨ 450,000', cr: '--', bal: '₨ 1,240,500' },
+                              { id: 'TXN-9029', desc: 'Faisalabad Mandi Sale - Batch 12', dr: '--', cr: '₨ 850,000', bal: '₨ 2,090,500' },
+                              { id: 'TXN-9030', desc: 'Weekly Karigar Wages Cashout', dr: '₨ 160,500', cr: '--', bal: '₨ 1,930,000' },
+                              { id: 'TXN-9031', desc: 'Raw Silk Inward Mandi Reconcile', dr: '--', cr: '₨ 120,000', bal: '₨ 2,050,000' },
+                            ].map((w, idx) => (
+                              <tr key={idx} className="border-b border-white/[0.02] hover:bg-white/[0.01] transition-colors">
+                                <td className="p-3 text-gray-500 font-bold">{w.id}</td>
+                                <td className="p-3 font-semibold text-white">{w.desc}</td>
+                                <td className="p-3 text-right text-[#EF4444]">{w.dr}</td>
+                                <td className="p-3 text-right text-[#10B981]">{w.cr}</td>
+                                <td className="p-3 text-right font-bold text-[#F59E0B]">{w.bal}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-white/[0.03] flex items-center justify-between text-[10px] text-gray-500 font-mono">
+                      <span>✓ Ledger accounts audited</span>
+                      <span className="text-[#10B981]">OPERATIONAL PROFIT: Grade A-Highly Eligible</span>
+                    </div>
+                  </motion.div>
+                )}
+
+                {activeTab === 'cctv' && (
+                  <motion.div 
+                    key="cctv"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 8 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-6 flex-1 flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-bold uppercase tracking-widest text-[#F59E0B]">AI Sentinel CCTV security</h3>
+                        <span className="text-[10px] font-mono text-gray-500">ON-DEVICE AI INTRUSION SCANNER</span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Mock Cam Feed */}
+                        <div className="relative aspect-video rounded-lg border border-white/[0.05] bg-black overflow-hidden flex items-center justify-center">
+                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:16px_16px] opacity-40" />
+                          <div className="absolute top-3 left-3 text-[9px] font-mono bg-black/75 text-[#EF4444] px-2 py-0.5 rounded font-bold uppercase tracking-wider flex items-center gap-1.5">
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#EF4444] animate-pulse" />
+                            WEAVING CAM 01
+                          </div>
+                          <span className="text-xs font-mono text-gray-500">[FLOOR VIDEO FEED PREVIEW]</span>
+                          {/* Mock AI Bounding Box */}
+                          <div className="absolute top-1/4 left-1/3 w-28 h-28 border border-[#10B981] rounded-sm flex items-start p-1.5 bg-[#10B981]/5">
+                            <span className="text-[7px] font-mono text-[#10B981] font-bold uppercase tracking-wider bg-black/80 px-1 rounded">WEAVER ID #04</span>
+                          </div>
+                        </div>
+
+                        {/* Security Detection Feed Logs */}
+                        <div className="p-3 bg-black/40 border border-white/[0.03] rounded-lg font-mono text-[10px] space-y-2 h-[155px] overflow-y-auto">
+                          <p className="text-gray-500">[21:30:15] AI CCTV Sentinel mounted: 4 active cams scanner.</p>
+                          <p className="text-[#10B981]">[21:31:00] MATCH: Weaver Hamid Saeed checked in Loom Cam 01.</p>
+                          <p className="text-[#10B981]">[21:32:12] MATCH: Weaver Bilal Khan checked in Packing Cam 02.</p>
+                          <p className="text-[#EF4444] font-bold">[21:35:44] WARNING: Zone breach Cam 03 (Weaving Loom 14 perimeter).</p>
+                          <p className="text-gray-400">[21:35:44] Sentinel alert: SMS & local floor notification dispatched.</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-white/[0.03] flex items-center justify-between text-[10px] text-gray-500 font-mono">
+                      <span>✓ 4 cameras active</span>
+                      <span>LOCAL INFERENCE LATENCY: 0.12ms</span>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* Marquee Ticker */}
-      <div className="py-5 border-y border-white/5 bg-white/[0.01] overflow-hidden">
-        <MarqueeTicker items={marqueeItems} className="text-[11px] font-bold uppercase tracking-widest text-gray-600" speed={30} />
+      <div className="py-6 border-y border-white/[0.03] bg-white/[0.01] overflow-hidden">
+        <div className="flex justify-around items-center gap-8 px-4 flex-wrap text-[#94A3B8] font-bold text-xs tracking-[0.2em] uppercase">
+          <span>Textile Mills 🏭</span>
+          <span>Rice Mills 🌾</span>
+          <span>Karigar Payroll 💰</span>
+          <span>Offline ERP 🔌</span>
+          <span>Urdu Support 🇵🇰</span>
+          <span>Barcode Inventory 📦</span>
+          <span>Double-Entry Khata 📒</span>
+        </div>
       </div>
 
-      {/* Scroll Features Section */}
-      <ScrollMorphSection isMobile={isMobile} />
+      {/* Features Bento Grid Redesign */}
+      <section className="py-32 px-6 max-w-7xl mx-auto space-y-16">
+        <div className="text-center space-y-4">
+          <h2 className="text-[10px] font-bold text-[#F59E0B] tracking-[0.3em] uppercase">PREMIUM INTEGRATION MATRIX</h2>
+          <p className="text-3xl sm:text-5xl font-bold tracking-tight text-white uppercase">ELITE CORE ERP CAPABILITIES</p>
+        </div>
 
-      {/* Features Grid */}
-      <section className="py-28 px-6 max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {features.map((f, i) => (
-            <GlowCard key={f.title} delay={i * 0.09} glowColor={glowColors[f.color]} className="bg-[#0F1114] border border-white/5 p-8 rounded-xl">
-              <div className="space-y-4">
-                <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center border border-white/10">{f.icon}</div>
-                <h3 className="text-base font-bold text-white uppercase tracking-tight">{f.title}</h3>
-                <p className="text-xs text-gray-400 leading-relaxed">{f.desc}</p>
+            <div 
+              key={f.title} 
+              className="bg-[#0B0C0E] border border-white/[0.04] p-8 rounded-xl hover:border-white/[0.08] hover:bg-white/[0.01] transition-all duration-300 group"
+            >
+              <div className="space-y-6">
+                <div className="w-12 h-12 rounded-lg bg-[#F59E0B]/5 flex items-center justify-center border border-[#F59E0B]/10 group-hover:border-[#F59E0B]/20 group-hover:bg-[#F59E0B]/10 transition-colors">
+                  {f.icon}
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">{f.title}</h3>
+                  <p className="text-xs text-[#94A3B8] leading-relaxed font-medium">{f.desc}</p>
+                </div>
               </div>
-            </GlowCard>
+            </div>
           ))}
         </div>
       </section>
 
-      {/* Comparison Table */}
-      <section className="py-24 px-6 bg-[#0A0C0F]/40 border-y border-white/[0.04]">
-        <div className="max-w-4xl mx-auto">
-          <div className="overflow-x-auto border border-white/5 rounded-xl bg-[#0F1114]">
-            <table className="w-full text-left border-collapse">
+      {/* McKinsey-style Comparative Board */}
+      <section className="py-28 px-6 bg-[#07070A]/40 border-y border-white/[0.03]">
+        <div className="max-w-7xl mx-auto space-y-16">
+          <div className="text-center space-y-4">
+            <h2 className="text-[10px] font-bold text-[#F59E0B] tracking-[0.3em] uppercase">ENTERPRISE PERFORMANCE COMPARISON</h2>
+            <p className="text-3xl sm:text-5xl font-bold tracking-tight text-white uppercase">WHY LEADING FACTORIES SPECIFY NOXIS</p>
+          </div>
+
+          <div className="overflow-x-auto border border-white/[0.04] rounded-xl bg-[#0B0C0E]">
+            <table className="w-full text-left border-collapse text-xs md:text-sm">
               <thead>
-                <tr className="border-b border-white/10 bg-[#0A0C0F]">
-                  <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-gray-500">Operational Needs</th>
-                  <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-blue-400 text-center">Noxis ERP</th>
+                <tr className="border-b border-white/[0.05] bg-[#07070A]">
+                  <th className="p-5 text-[10px] font-bold uppercase tracking-widest text-gray-500 w-1/4">Operational Parameter</th>
+                  <th className="p-5 text-[10px] font-bold uppercase tracking-widest text-[#F59E0B] bg-[#F59E0B]/5 text-center w-1/3">Noxis Industrial ERP</th>
+                  <th className="p-5 text-[10px] font-bold uppercase tracking-widest text-gray-500 text-center w-1/4">Legacy Cloud ERP</th>
+                  <th className="p-5 text-[10px] font-bold uppercase tracking-widest text-gray-500 text-center w-1/4">Manual Paper Registers</th>
                 </tr>
               </thead>
               <tbody>
-                {tableRows.map((row, i) => (
-                  <tr key={i} className="border-b border-white/5">
-                    <td className="p-4 text-xs font-bold text-gray-300">{row[0]}</td>
-                    <td className="p-4 text-xs font-bold text-blue-400 text-center">{row[1]}</td>
+                {comparisonRows.map((row, i) => (
+                  <tr key={i} className="border-b border-white/[0.02] hover:bg-white/[0.01] transition-colors">
+                    <td className="p-5 font-bold text-white uppercase tracking-wider text-[11px]">{row.metric}</td>
+                    <td className="p-5 text-center font-bold text-white bg-[#F59E0B]/5 border-x border-white/[0.02]">
+                      <span className="inline-flex items-center gap-1.5 text-xs text-[#F59E0B] font-mono">
+                        <Check size={14} className="text-[#10B981]" />
+                        {row.noxis}
+                      </span>
+                    </td>
+                    <td className="p-5 text-center text-gray-400 font-medium">{row.cloud}</td>
+                    <td className="p-5 text-center text-gray-400 font-medium">{row.manual}</td>
                   </tr>
                 ))}
               </tbody>
@@ -763,20 +574,48 @@ export default function LandingClient() {
         </div>
       </section>
 
-      {/* Beta Early Access */}
-      <section className="py-16 px-6 max-w-xl mx-auto text-center">
-        <div className="bg-[#0F1114] border border-[#C5A059]/25 rounded-xl p-8">
-          <h3 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight mb-3">Be a founding user</h3>
-          <a href="https://wa.me/923334355475" className="btn-shine inline-flex items-center bg-[#25D366] text-black font-extrabold text-xs uppercase tracking-wider py-3.5 px-7 rounded-lg">
-            Apply for Early Access
-          </a>
+      {/* Luxury Foundries early cohort sign-up */}
+      <section className="py-32 px-6 max-w-4xl mx-auto text-center space-y-10">
+        <div className="bg-[#0B0C0E] border border-[#F59E0B]/25 rounded-2xl p-10 md:p-14 relative overflow-hidden shadow-[0_24px_72px_rgba(0,0,0,0.6)]">
+          <div className="absolute top-0 right-0 h-40 w-40 bg-[#F59E0B]/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="space-y-6 relative z-10">
+            <h3 className="text-[10px] font-bold text-[#F59E0B] tracking-[0.3em] uppercase">JOIN THE ENTERPRISE CONSOLE</h3>
+            <p className="text-2xl sm:text-4xl font-bold tracking-tight text-white uppercase max-w-xl mx-auto">
+              APPLY FOR NOXIS FOUNDING COHORT
+            </p>
+            <p className="text-xs sm:text-sm text-[#94A3B8] leading-relaxed max-w-md mx-auto font-medium">
+              We provide fully custom local system onboarding, offline local network wiring guidance, and tailored translation setups for verified industrial plants.
+            </p>
+            <div className="pt-4">
+              <a 
+                href="https://wa.me/923334355475" 
+                className="inline-flex items-center gap-2 bg-[#25D366] hover:bg-[#1EBE57] text-black font-extrabold text-xs tracking-widest uppercase py-4 px-8 rounded-lg transition-all shadow-[0_12px_32px_rgba(37,211,102,0.15)]"
+              >
+                <MessageSquare size={14} /> WhatsApp Founding Board
+              </a>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/[0.06] bg-[#050607] py-12 px-6">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
-          <p className="text-xs text-gray-600">© 2026 Omnora Labs · Engineered for Manufacturing 🇵🇰</p>
+      <footer className="border-t border-white/[0.04] bg-[#030304] py-16 px-6">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 text-xs font-semibold text-gray-500">
+          <div className="flex items-center gap-4">
+            <span className="font-bold text-white tracking-[0.25em] text-xs">NOXIS</span>
+            <span>·</span>
+            <span className="text-gray-600">by Omnora Labs</span>
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-8 text-[10px] font-bold uppercase tracking-widest text-gray-500">
+            {[{ label: 'Download', href: '/download' }, { label: 'Pricing', href: '/pricing' }, { label: 'Reviews', href: '/reviews' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }, { label: 'Privacy', href: '/privacy' }].map(l => (
+              <Link key={l.href} href={l.href} className="hover:text-white transition-colors">{l.label}</Link>
+            ))}
+          </div>
+
+          <p className="text-gray-600 text-center md:text-right font-medium">
+            © 2026 Noxis Hub By Omnora Labs · Engineered for Developed in Pakistan...
+          </p>
         </div>
       </footer>
     </div>

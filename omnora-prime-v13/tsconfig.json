@@ -37,7 +37,8 @@
     "out",
     "dist",
     "supabase",
-    "src/tests"
+    "src/tests",
+    "app-temp"
   ]
 }
 

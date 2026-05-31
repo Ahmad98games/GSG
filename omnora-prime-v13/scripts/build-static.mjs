@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 
 const appPath = path.join(process.cwd(), 'src/app');
-const tempPath = path.join(process.cwd(), 'src/app-temp');
+const tempPath = path.join(process.cwd(), 'app-temp');
 
 const PUBLIC_DIRECTORIES = ['download', 'pricing', 'privacy', 'docs', 'blog', 'reviews'];
 let hiddenDirs = [];
@@ -33,7 +33,7 @@ try {
   }
 
   console.log('[Build] Starting Next.js compilation...');
-  execSync('next build', {
+  execSync('npx next build', {
     stdio: 'inherit',
     env: {
       ...process.env,
