@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { motion, useScroll, useTransform, useSpring, useInView, AnimatePresence, animate } from 'framer-motion'
+import { motion, useScroll, useTransform, useSpring, useInView, AnimatePresence, animate, useMotionValue } from 'framer-motion'
 import { 
   Menu, X, ChevronRight, Sparkles, Layers, Smartphone, ShieldCheck,
   Check, BarChart4, Download, ArrowRight, Database, Globe2, Zap,
@@ -239,48 +239,114 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
     },
   ]
 
-  // ─── SCROLL TRACK: only the sticky zone ───
+  // ─── SCROLL TRACK: Ref on the parent wrapping both heading and scroll section ───
   const scrollRef = useRef<HTMLDivElement>(null)
+  const isInView = useInView(scrollRef, { amount: 0.15 })
 
+  // Tracking start end to end end of the parent. The scroll target starts at the top of the heading!
   const { scrollYProgress } = useScroll({
     target: scrollRef,
-    offset: ["start start", "end end"],
+    offset: ["start end", "end end"],
   })
 
-  const springProgress = useSpring(scrollYProgress, {
-    stiffness: 80,
-    damping: 28,
+  // Target value driven by scroll or autoplay
+  const targetVal = useMotionValue(0)
+
+  // Single highly responsive spring that drives the card transitions on both desktop and mobile
+  const displayProgress = useSpring(targetVal, {
+    stiffness: 70,
+    damping: 24,
     restDelta: 0.001,
   })
 
-  const smoothProgress = isMobile ? scrollYProgress : springProgress
-
   const [activeIndex, setActiveIndex] = useState(0)
   const [progressVal, setProgressVal] = useState(0)
+  const lastScrollTime = useRef(Date.now())
 
+  // Synchronize scroll changes with targetVal when actively scrolling
   useEffect(() => {
-    return smoothProgress.on("change", (v) => {
-      setProgressVal(v)
-      const START = 0.1
-      const END = 0.92
-      if (v <= START) { setActiveIndex(0); return }
-      if (v >= END) { setActiveIndex(4); return }
-      const normalized = (v - START) / (END - START)
-      setActiveIndex(Math.min(4, Math.floor(normalized * 5)))
+    return scrollYProgress.on("change", (v) => {
+      lastScrollTime.current = Date.now()
+      targetVal.set(v)
     })
-  }, [smoothProgress])
+  }, [scrollYProgress, targetVal])
+
+  // Synchronize progressVal and activeIndex with displayProgress
+  useEffect(() => {
+    return displayProgress.on("change", (v) => {
+      setProgressVal(v)
+
+      // Map progress range [0.2, 0.88] to active cards [0, 4]
+      const START = 0.2
+      const END = 0.88
+      if (v <= START) {
+        setActiveIndex(0)
+      } else if (v >= END) {
+        setActiveIndex(4)
+      } else {
+        const normalized = (v - START) / (END - START)
+        setActiveIndex(Math.min(4, Math.floor(normalized * 5)))
+      }
+    })
+  }, [displayProgress])
+
+  // Autoplay carousel transition loop when user stays inactive on the section
+  useEffect(() => {
+    let timer: NodeJS.Timeout
+    let autoplayInterval: NodeJS.Timeout
+
+    const startAutoplay = () => {
+      autoplayInterval = setInterval(() => {
+        const currentProgress = scrollYProgress.get()
+        // Skip autoplay if user has scrolled recently, or if section is out of viewport, or if not in sticky cards zone
+        if (
+          Date.now() - lastScrollTime.current < 2500 ||
+          !isInView ||
+          currentProgress < 0.18 ||
+          currentProgress > 0.9
+        ) {
+          return
+        }
+
+        const nextIdx = (activeIndex + 1) % 5
+        const START = 0.2
+        const END = 0.88
+        const targetProgress = START + (nextIdx / 4) * (END - START)
+
+        targetVal.set(targetProgress)
+      }, 4000) // Auto-play cards every 4 seconds
+    }
+
+    const checkAutoplayState = () => {
+      clearInterval(autoplayInterval)
+      if (Date.now() - lastScrollTime.current >= 2500 && isInView) {
+        const currentProgress = scrollYProgress.get()
+        if (currentProgress >= 0.18 && currentProgress <= 0.9) {
+          startAutoplay()
+        }
+      }
+      timer = setTimeout(checkAutoplayState, 1000)
+    }
+
+    checkAutoplayState()
+
+    return () => {
+      clearTimeout(timer)
+      clearInterval(autoplayInterval)
+    }
+  }, [activeIndex, isInView, targetVal, scrollYProgress])
 
   const activeColor = cards[activeIndex]?.accent ?? "#7C3AED"
 
-  // Background shutter
+  // Background shutter scales and fades in immediately as user scrolls the heading down!
   const bgScale = useTransform(
-    smoothProgress,
-    [0, 0.08, 0.92, 1],
-    [0.6, 1, 1, 0.6]
+    displayProgress,
+    [0.08, 0.22, 0.9, 0.98],
+    [0.85, 1, 1, 0.85]
   )
   const bgOpacity = useTransform(
-    smoothProgress,
-    [0, 0.06, 0.94, 1],
+    displayProgress,
+    [0.06, 0.18, 0.92, 0.99],
     [0, 1, 1, 0]
   )
 
@@ -293,15 +359,19 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
   const startX =  (VW - CARD_W) / 2          // first card centred
   const endX   = startX - (totalW - VW)       // last card centred
 
+  // Horizontal scrolling translation bounds mapped precisely to displayProgress
   const x = useTransform(
-    smoothProgress,
-    [0.1, 0.92],
+    displayProgress,
+    [0.2, 0.88],
     [`${startX}px`, `${endX}px`]
   )
 
   return (
-    <>
-      {/* ─── HEADING — outside scroll tracking, scrolls normally ─── */}
+    <div
+      ref={scrollRef}
+      className="relative bg-[#0B0B0C]"
+    >
+      {/* ─── HEADING ─── */}
       <div className="relative bg-[#0B0B0C] border-t border-[#4C1D95]/15 w-full py-24 px-4 flex flex-col items-center justify-center overflow-hidden">
         {/* subtle purple glow behind heading */}
         <div className="absolute inset-0 bg-gradient-radial from-[#4C1D95]/10 to-transparent pointer-events-none" />
@@ -359,13 +429,12 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
         </motion.p>
       </div>
 
-      {/* ─── SCROLL TRACK — independent ref, no heading inside ─── */}
+      {/* ─── SCROLL TRACK — shortened to h-[480vh] to be tight, fast, and eliminate empty dead space ─── */}
       <section
-        ref={scrollRef}
         className="relative bg-[#0B0B0C] border-b border-[#4C1D95]/15"
       >
         {/* Scroll height — 100vh per card + entry/exit room */}
-        <div className="relative h-[600vh]">
+        <div className="relative h-[480vh]">
 
           {/* Sticky viewport */}
           <div className="sticky top-0 h-screen w-full flex items-center justify-center overflow-hidden">
@@ -524,7 +593,7 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
           </div>
         </div>
       </section>
-    </>
+    </div>
   )
 }
 
