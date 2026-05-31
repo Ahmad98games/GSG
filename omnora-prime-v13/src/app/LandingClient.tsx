@@ -290,7 +290,9 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
     })
   }, [displayProgress])
 
-  // Autoplay carousel transition loop when user stays inactive on the section
+  const autoplayDirection = useRef(1) // 1 = forward, -1 = backward
+
+  // Autoplay carousel transition loop when user stays inactive on the section (ping-pong yoyo)
   useEffect(() => {
     let timer: NodeJS.Timeout
     let autoplayInterval: NodeJS.Timeout
@@ -308,7 +310,17 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
           return
         }
 
-        const nextIdx = (activeIndex + 1) % 5
+        let nextIdx = activeIndex + autoplayDirection.current
+
+        // If we hit bounds, reverse the direction
+        if (nextIdx > 4) {
+          autoplayDirection.current = -1
+          nextIdx = 3
+        } else if (nextIdx < 0) {
+          autoplayDirection.current = 1
+          nextIdx = 1
+        }
+
         const START = 0.2
         const END = 0.88
         const targetProgress = START + (nextIdx / 4) * (END - START)
@@ -457,6 +469,77 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
                 <div className="absolute inset-0 bg-gradient-to-br from-[#0C0D10] to-[#0A0B0E]" />
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/70 pointer-events-none" />
+
+              {/* ── NEW: Live Telemetry HUD Console (Desktop Only) ── */}
+              {!isMobile && (
+                <div className="absolute bottom-12 inset-x-12 h-20 border-t border-white/[0.05] bg-black/40 backdrop-blur-md rounded-xl p-3 flex flex-row items-center justify-between gap-6 z-20">
+                  {/* Left Column: Live Terminal Diagnostic Logs */}
+                  <div className="flex-1 min-w-0 font-mono text-[9px] text-gray-500 space-y-1">
+                    <span className="text-[8px] font-bold text-gray-600 tracking-wider uppercase block mb-0.5">Active Node Telemetry Logs</span>
+                    {activeIndex === 0 && (
+                      <>
+                        <p className="text-cyan-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse inline-block" /> [SYS-INTEL] Mandis scanned: PK-FSD, UAE-DXB, TR-IST.</p>
+                        <p className="truncate text-gray-400">[SYS-INTEL] Reconciled average pieces rate: +12% this month.</p>
+                      </>
+                    )}
+                    {activeIndex === 1 && (
+                      <>
+                        <p className="text-lime-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-lime-400 animate-pulse inline-block" /> [SYS-MODEL] Local LSTM stock-out prediction running.</p>
+                        <p className="truncate text-gray-400">[SYS-MODEL] Alert: Stock-out hazard detected for Bales inventory.</p>
+                      </>
+                    )}
+                    {activeIndex === 2 && (
+                      <>
+                        <p className="text-cyan-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse inline-block" /> [SYS-FINTECH] Ledger balances audited. Grading active.</p>
+                        <p className="truncate text-gray-400">[SYS-FINTECH] Result compiled: GRADE A - Highly Eligible. Limit set: PKR 50L.</p>
+                      </>
+                    )}
+                    {activeIndex === 3 && (
+                      <>
+                        <p className="text-purple-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse inline-block" /> [SYS-DEV] HMAC-SHA256 cryptographically signed webhook dispatched.</p>
+                        <p className="truncate text-gray-400">[SYS-DEV] Response latency: 0.04ms · API response status: 200 OK.</p>
+                      </>
+                    )}
+                    {activeIndex === 4 && (
+                      <>
+                        <p className="text-lime-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-lime-400 animate-pulse inline-block" /> [SYS-IDENTITY] Karigar check: Hamid · Weaver · QR valid.</p>
+                        <p className="truncate text-gray-400">[SYS-IDENTITY] Zero-Trust portable workforce history synced successfully.</p>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Middle Column: Visual Pulse/Signal Waves */}
+                  <div className="flex items-center gap-4 border-l border-white/[0.05] pl-6 pr-6 h-full flex-none">
+                    <div className="flex items-end gap-1 h-8">
+                      {Array.from({ length: 8 }).map((_, i) => {
+                        const randomHeight1 = [8, 20, 12, 28, 8][i % 5]
+                        const randomHeight2 = [24, 10, 32, 14, 18][i % 5]
+                        return (
+                          <motion.div
+                            key={i}
+                            animate={{
+                              height: [8, randomHeight1, randomHeight2, 8],
+                            }}
+                            transition={{
+                              duration: 1.0 + i * 0.15,
+                              repeat: Infinity,
+                              ease: "easeInOut",
+                            }}
+                            className="w-1.5 rounded-t-sm"
+                            style={{ backgroundColor: activeColor }}
+                          />
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Right Column: Node Info & Diagnostics */}
+                  <div className="flex flex-col justify-center text-right border-l border-white/[0.05] pl-6 h-full font-mono text-[9px] text-gray-500">
+                    <span className="font-bold text-white uppercase tracking-wider">Node Terminal #{activeIndex + 1}</span>
+                    <span className="text-[8px] text-gray-600 mt-0.5">SPEED: 100% OFFLINE</span>
+                  </div>
+                </div>
+              )}
             </motion.div>
 
             {/* ── cards strip (clips inside shutter) ── */}
