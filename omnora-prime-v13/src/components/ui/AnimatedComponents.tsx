@@ -950,3 +950,245 @@ export function MorphingCanvas({
   )
 }
 
+// ─── STRETCHING 3D CYBERNET GRID CANVAS ────────────────────────────────────────
+
+interface StretchingGridCanvasProps {
+  progress: number
+  activeIndex: number
+  activeColor: string
+  className?: string
+}
+
+export function StretchingGridCanvas({
+  progress,
+  activeIndex,
+  activeColor,
+  className = '',
+}: StretchingGridCanvasProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const mouseRef = useRef({ x: -1000, y: -1000, tx: -1000, ty: -1000 })
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    let animationFrame: number
+    const count = isMobile ? 64 : 144
+
+    const resizeCanvas = () => {
+      const rect = canvas.getBoundingClientRect()
+      canvas.width = rect.width * (window.devicePixelRatio || 1)
+      canvas.height = rect.height * (window.devicePixelRatio || 1)
+      ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1)
+    }
+    resizeCanvas()
+    window.addEventListener('resize', resizeCanvas)
+
+    // Generate 3D grid net coordinates
+    const particles = Array.from({ length: count }, (_, i) => {
+      // Sphere spiral coordinates (Compact state)
+      const phi = Math.acos(-1 + (2 * i) / count)
+      const theta = Math.sqrt(count * Math.PI) * phi
+      const sphereX = Math.sin(phi) * Math.cos(theta) * 0.45
+      const sphereY = Math.sin(phi) * Math.sin(theta) * 0.45
+      const sphereZ = Math.cos(phi) * 0.45
+
+      // Grid coordinates (Stretched state)
+      const cols = Math.floor(Math.sqrt(count))
+      const row = Math.floor(i / cols)
+      const col = i % cols
+      const gridX = (col / (cols - 1) - 0.5) * 1.5
+      const gridY = (row / (cols - 1) - 0.5) * 1.5
+      const gridZ = (Math.sin(col * 0.5) * Math.cos(row * 0.5)) * 0.25
+
+      return {
+        x: sphereX,
+        y: sphereY,
+        z: sphereZ,
+        sphereX,
+        sphereY,
+        sphereZ,
+        gridX,
+        gridY,
+        gridZ,
+      }
+    })
+
+    let rotationAngle = 0
+    let currentRgb = { r: 124, g: 58, b: 237 } // Purple starting color
+
+    const hexToRgb = (hex: string) => {
+      const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i
+      const fullHex = hex.replace(shorthandRegex, (_, r, g, b) => r + r + g + g + b + b)
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(fullHex)
+      return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+      } : { r: 124, g: 58, b: 237 }
+    }
+
+    const draw = () => {
+      const rect = canvas.getBoundingClientRect()
+      const w = rect.width
+      const h = rect.height
+      ctx.clearRect(0, 0, w, h)
+
+      const cx = w / 2
+      const cy = h / 2
+      const radius = Math.min(w, h) * 0.5
+
+      // Dynamic stretch interpolation bound to progress
+      // Expands sphere into full screen net as progress goes from 0 to 0.4
+      const stretchVal = Math.min(1, progress * 2.5)
+      const morphFactor = Math.sin(stretchVal * Math.PI / 2) // smooth easeOut
+
+      // Rotate grid continuously in 3D
+      rotationAngle += 0.003 + (1 - morphFactor) * 0.005
+
+      // Dynamic active index color mapping
+      const targetRgb = hexToRgb(activeColor || '#7C3AED')
+      currentRgb.r += (targetRgb.r - currentRgb.r) * 0.08
+      currentRgb.g += (targetRgb.g - currentRgb.g) * 0.08
+      currentRgb.b += (targetRgb.b - currentRgb.b) * 0.08
+      const strokeColor = `rgba(${Math.round(currentRgb.r)}, ${Math.round(currentRgb.g)}, ${Math.round(currentRgb.b)}, ${0.08 + morphFactor * 0.08})`
+      const pointColor = `rgba(${Math.round(currentRgb.r)}, ${Math.round(currentRgb.g)}, ${Math.round(currentRgb.b)}, ${0.4 + morphFactor * 0.4})`
+
+      const mouse = mouseRef.current
+      mouse.x += (mouse.tx - mouse.x) * 0.1
+      mouse.y += (mouse.ty - mouse.y) * 0.1
+
+      const projected: Array<{ x: number; y: number; z: number; size: number }> = []
+
+      particles.forEach((p) => {
+        // Linearly interpolate between sphere and grid layouts
+        const targetX = p.sphereX + (p.gridX - p.sphereX) * morphFactor
+        const targetY = p.sphereY + (p.gridY - p.sphereY) * morphFactor
+        const targetZ = p.sphereZ + (p.gridZ - p.sphereZ) * morphFactor
+
+        // Rotate in 3D space
+        const cosY = Math.cos(rotationAngle)
+        const sinY = Math.sin(rotationAngle)
+        const cosX = Math.cos(rotationAngle * 0.4)
+        const sinX = Math.sin(rotationAngle * 0.4)
+
+        const rx = targetX * cosY - targetZ * sinY
+        const rz = targetX * sinY + targetZ * cosY
+        const ry = targetY * cosX - rz * sinX
+        const finalZ = targetY * sinX + rz * cosX
+
+        // 3D projection sizing
+        let screenX = cx + rx * radius
+        let screenY = cy + ry * radius
+
+        // Interactive mouse deflection
+        const dx = screenX - mouse.x
+        const dy = screenY - mouse.y
+        const dist = Math.hypot(dx, dy)
+        if (dist < 120) {
+          const force = (120 - dist) / 120 * 25
+          screenX += (dx / dist) * force
+          screenY += (dy / dist) * force
+        }
+
+        projected.push({
+          x: screenX,
+          y: screenY,
+          z: finalZ,
+          size: (finalZ + 1.2) * (isMobile ? 1.5 : 2.5),
+        })
+      })
+
+      // Draw cybernet grid connection lines
+      ctx.lineWidth = 0.5
+      ctx.strokeStyle = strokeColor
+      
+      const cols = Math.floor(Math.sqrt(count))
+      for (let i = 0; i < count; i++) {
+        const row = Math.floor(i / cols)
+        const col = i % cols
+
+        // Connect to right neighbor
+        if (col < cols - 1 && i + 1 < count) {
+          ctx.beginPath()
+          ctx.moveTo(projected[i].x, projected[i].y)
+          ctx.lineTo(projected[i + 1].x, projected[i + 1].y)
+          ctx.stroke()
+        }
+        // Connect to bottom neighbor
+        if (row < cols - 1 && i + cols < count) {
+          ctx.beginPath()
+          ctx.moveTo(projected[i].x, projected[i].y)
+          ctx.lineTo(projected[i + cols].x, projected[i + cols].y)
+          ctx.stroke()
+        }
+      }
+
+      // Draw grid joints as glowing particles
+      projected.forEach((p) => {
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, Math.max(0.6, p.size), 0, Math.PI * 2)
+        ctx.fillStyle = pointColor
+        ctx.shadowBlur = isMobile ? 2 : 6
+        ctx.shadowColor = strokeColor
+        ctx.fill()
+        ctx.shadowBlur = 0
+      })
+
+      animationFrame = requestAnimationFrame(draw)
+    }
+
+    draw()
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect()
+      mouseRef.current.tx = e.clientX - rect.left
+      mouseRef.current.ty = e.clientY - rect.top
+    }
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        const rect = canvas.getBoundingClientRect()
+        mouseRef.current.tx = e.touches[0].clientX - rect.left
+        mouseRef.current.ty = e.touches[0].clientY - rect.top
+      }
+    }
+    const handleMouseLeave = () => {
+      mouseRef.current.tx = -1000
+      mouseRef.current.ty = -1000
+    }
+
+    canvas.addEventListener('mousemove', handleMouseMove)
+    canvas.addEventListener('mouseleave', handleMouseLeave)
+    canvas.addEventListener('touchmove', handleTouchMove)
+    canvas.addEventListener('touchend', handleMouseLeave)
+
+    return () => {
+      cancelAnimationFrame(animationFrame)
+      window.removeEventListener('resize', resizeCanvas)
+      canvas.removeEventListener('mousemove', handleMouseMove)
+      canvas.removeEventListener('mouseleave', handleMouseLeave)
+      canvas.removeEventListener('touchmove', handleTouchMove)
+      canvas.removeEventListener('touchend', handleMouseLeave)
+    }
+  }, [progress, activeIndex, activeColor, isMobile])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className={`w-full h-full block bg-transparent pointer-events-auto ${className}`}
+      style={{ willChange: 'transform' }}
+    />
+  )
+}
+
+

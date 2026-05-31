@@ -13,7 +13,7 @@ import {
 import {
   FloatingOrb, ScrollProgressBar,
   SectionReveal, MarqueeTicker, GlowCard, TypedText,
-  ScrollReveal3D, MorphingCanvas
+  ScrollReveal3D, MorphingCanvas, StretchingGridCanvas
 } from '@/components/ui/AnimatedComponents'
 
 /* ─── shared easing ─── */
@@ -184,9 +184,8 @@ function ScrollCard3D({ card, index, isMobile, innerRef, isActive }: { card: any
   )
 }
 
-// Cinematic 3D Consecutive Scroll Showcase (Scrolls naturally and applies 3D transforms)
+// Cinematic 3D Consecutive Scroll Showcase (Stretching Canvas & Overlays)
 function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
-  // Cards content data
   const cards = [
     {
       id: 1,
@@ -194,7 +193,6 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
       subtitle: "REAL-TIME REGIONAL INDEXES",
       icon: <Sparkles className="text-[#00E5FF] w-6 h-6" />,
       desc: "Calculates average pieces-rates and commodity price benchmarks dynamically across major global hubs (Pakistan, UAE, Turkey, Bangladesh). Keeps workshop operations aligned with real-time regional trends.",
-      color: "from-[#00E5FF]/10 via-[#7C3AED]/5 to-transparent",
       accent: "#00E5FF",
       stat: "₨ Piece Rate benchmark: +12% this month",
       metric: "Active in 10 Global Regions"
@@ -205,7 +203,6 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
       subtitle: "ON-DEVICE MACHINE LEARNING",
       icon: <Zap className="text-[#A3E635] w-6 h-6" />,
       desc: "Autonomously forecasts raw material stock-outs, identifies customer churn risks, and flags profit margin drops using localized on-device metrics. No server latencies or cloud subscription costs.",
-      color: "from-[#A3E635]/10 via-[#7C3AED]/5 to-transparent",
       accent: "#A3E635",
       stat: "Inventory Alert: Bales stock-out risk in 4 days",
       metric: "94% Forecasting Precision"
@@ -216,7 +213,6 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
       subtitle: "EMBEDDED FACTORY FINTECH",
       icon: <Layers className="text-[#00E5FF] w-6 h-6" />,
       desc: "Evaluates standard credit scoring indexes (Grades A-D) directly from ledger accounts and work logs. Connects eligible factories to financial and loan institutions for frictionless liquidity flow.",
-      color: "from-[#00E5FF]/10 via-[#7C3AED]/5 to-transparent",
       accent: "#00E5FF",
       stat: "Liquidity rating: Grade A (Highly Eligible)",
       metric: "₨ 50L Max Credit Limit"
@@ -227,7 +223,6 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
       subtitle: "ELITE B2B INTEGRATIONS",
       icon: <Database className="text-[#7C3AED] w-6 h-6" />,
       desc: "Provides secure cryptographically signed API keys and real-time webhook subscriptions for multi-branch ledger sync, inventory tracking, and custom third-party accounting integrations.",
-      color: "from-[#7C3AED]/10 via-[#00E5FF]/5 to-transparent",
       accent: "#7C3AED",
       stat: "Webhook Dispatch: 0.04ms average response time",
       metric: "HMAC-SHA256 Signed Feeds"
@@ -238,211 +233,202 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
       subtitle: "DIGITAL TALENT LEDGER",
       icon: <ShieldCheck className="text-[#A3E635] w-6 h-6" />,
       desc: "Empowers field staff and karigars with QR-verifiable digital identity profiles containing cumulative verified attendance metrics, skill classifications, and peshgi advances logs.",
-      color: "from-[#A3E635]/10 via-[#7C3AED]/5 to-transparent",
       accent: "#A3E635",
       stat: "Verified: Hamid (Senior Weaver, 98% attendance)",
       metric: "Zero-Trust Verified Cards"
     }
   ]
 
-  const [activeIndex, setActiveIndex] = useState(0)
-  const cardsRef = useRef<Array<HTMLDivElement | null>>([])
+  const sectionRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end end"]
+  })
+
+  const smoothProgress = useSpring(scrollYProgress, {
+    stiffness: 70,
+    damping: 24,
+    restDelta: 0.001
+  })
+
+  const [progressVal, setProgressVal] = useState(0)
+  const [activeIndex, setActiveIndex] = useState(-1)
 
   useEffect(() => {
-    // Highly performant observer syncing scroll-linked active index
-    const observers = cardsRef.current.map((el, idx) => {
-      if (!el) return null
-      const observer = new IntersectionObserver(
-        ([entry]) => {
-          if (entry.isIntersecting) {
-            setActiveIndex(idx)
-          }
-        },
-        {
-          rootMargin: "-28% 0px -28% 0px",
-          threshold: 0.3,
-        }
-      )
-      observer.observe(el)
-      return observer
+    return smoothProgress.on("change", (latest) => {
+      setProgressVal(latest)
+      if (latest < 0.25) {
+        setActiveIndex(-1)
+      } else if (latest >= 0.88) {
+        setActiveIndex(4)
+      } else {
+        const idx = Math.floor((latest - 0.25) / (0.63 / 5))
+        setActiveIndex(Math.min(4, Math.max(0, idx)))
+      }
     })
+  }, [smoothProgress])
 
-    return () => {
-      observers.forEach(obs => obs?.disconnect())
+  const activeColor = cards[activeIndex]?.accent || "#7C3AED"
+
+  const [currentRgb, setCurrentRgb] = useState({ r: 124, g: 58, b: 237 })
+  useEffect(() => {
+    const hexToRgb = (hex: string) => {
+      const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i
+      const fullHex = hex.replace(shorthandRegex, (_, r, g, b) => r + r + g + g + b + b)
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(fullHex)
+      return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+      } : { r: 124, g: 58, b: 237 }
     }
-  }, [])
+    
+    const target = hexToRgb(activeColor)
+    let animation: number
+    const tick = () => {
+      setCurrentRgb(curr => {
+        const nr = curr.r + (target.r - curr.r) * 0.1
+        const ng = curr.g + (target.g - curr.g) * 0.1
+        const nb = curr.b + (target.b - curr.b) * 0.1
+        if (Math.abs(nr - target.r) < 0.5 && Math.abs(ng - target.g) < 0.5 && Math.abs(nb - target.b) < 0.5) {
+          return target
+        }
+        animation = requestAnimationFrame(tick)
+        return { r: nr, g: ng, b: nb }
+      })
+    }
+    tick()
+    return () => cancelAnimationFrame(animation)
+  }, [activeColor])
 
-  const activeColor = cards[activeIndex]?.accent || "#00E5FF"
+  // Canvas size and shape stretch
+  const canvasWidth = useTransform(smoothProgress, [0, 0.32], ["160px", "100%"])
+  const canvasHeight = useTransform(smoothProgress, [0, 0.32], ["160px", "100%"])
+  const canvasBorderRadius = useTransform(smoothProgress, [0, 0.32], ["32px", "0px"])
+  const canvasOpacity = useTransform(smoothProgress, [0, 0.05, 0.95, 1], [0, 1, 1, 0])
 
   return (
-    <section className="relative py-20 px-4 md:px-6 bg-[#0B0B0C] border-y border-[#4C1D95]/15 overflow-visible space-y-12">
-      {/* Cinematic neon purple lens blooms */}
-      <div className="hidden md:block absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 lens-bloom opacity-40 pointer-events-none" />
-      <div className="hidden md:block absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 lens-bloom opacity-35 pointer-events-none" />
-
-      {/* Typography Headline - scrolls naturally down the page */}
-      <div className="text-center max-w-4xl mx-auto flex flex-col items-center justify-center mb-10 md:mb-16">
-        <span className="text-[10px] md:text-xs font-bold text-[#7C3AED] tracking-widest uppercase mb-3 md:mb-5">ENGINEERED FOR MODERN WORKSHOPS</span>
-        <h2 className="text-4xl md:text-7xl font-black tracking-tightest text-white uppercase leading-none font-sans">
-          SIMPLE
-        </h2>
+    <section ref={sectionRef} className="relative bg-[#0B0B0C] border-y border-[#4C1D95]/15 overflow-visible">
+      {/* Scroll-tracked features showcase */}
+      <div className="relative w-full h-[400vh] flex flex-col justify-start">
         
-        {/* Centered premium glowing lens bar */}
-        <div className="h-12 md:h-16 w-[85%] md:w-[70%] max-w-[500px] bg-gradient-to-r from-[#4C1D95] via-[#7C3AED] to-[#4C1D95] my-2 md:my-3 flex items-center justify-center rounded-full shadow-[0_0_40px_rgba(124,58,237,0.6)] border border-[#7C3AED]/35 z-10">
-          <span className="text-sm md:text-xl font-black uppercase text-white tracking-widest leading-none font-sans">
-            BY DESIGN
-          </span>
-        </div>
-        
-        <h2 className="text-4xl md:text-7xl font-black tracking-tightest text-white uppercase leading-none font-sans mt-1 md:mt-2">
-          POWERFUL
-        </h2>
-        <div className="text-[10px] md:text-sm font-bold text-[#94A3B8] tracking-[0.2em] uppercase mt-2 md:mt-4">
-          BY IMPACT
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto">
-        {/* Mobile View Sticky Canvas HUD */}
-        <div className="block md:hidden sticky top-16 z-20 w-full bg-[#070809]/92 backdrop-blur-xl border border-white/5 rounded-2xl p-4 mb-8 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex items-center justify-between gap-4 h-[120px]">
-          <div className="flex-1 space-y-1 min-w-0">
-            <span className="text-[7px] font-bold text-[#00E5FF] tracking-widest uppercase font-mono block">VECTOR INTEGRATION ACTIVE</span>
-            <h4 className="text-xs font-bold text-white uppercase tracking-tight truncate">{cards[activeIndex]?.title}</h4>
-            <p className="text-[9px] text-[#94A3B8] leading-tight line-clamp-2">{cards[activeIndex]?.desc}</p>
+        {/* Headline Header (Scrolls naturally) */}
+        <div className="w-full py-20 px-4 md:px-6 flex flex-col items-center justify-center relative z-10 bg-gradient-to-b from-transparent to-[#070809]">
+          <span className="text-[10px] md:text-xs font-bold text-[#7C3AED] tracking-widest uppercase mb-3 md:mb-5">ENGINEERED FOR MODERN WORKSHOPS</span>
+          <h2 className="text-4xl md:text-7xl font-black tracking-tightest text-white uppercase leading-none font-sans">
+            SIMPLE
+          </h2>
+          <div className="h-12 md:h-16 w-[85%] md:w-[70%] max-w-[500px] bg-gradient-to-r from-[#4C1D95] via-[#7C3AED] to-[#4C1D95] my-2 md:my-3 flex items-center justify-center rounded-full shadow-[0_0_40px_rgba(124,58,237,0.6)] border border-[#7C3AED]/35 z-10">
+            <span className="text-sm md:text-xl font-black uppercase text-white tracking-widest leading-none font-sans">
+              BY DESIGN
+            </span>
           </div>
-          <div className="w-[85px] h-[85px] flex-none relative">
-            <MorphingCanvas activeIndex={activeIndex} activeColor={activeColor} />
+          <h2 className="text-4xl md:text-7xl font-black tracking-tightest text-white uppercase leading-none font-sans mt-1 md:mt-2">
+            POWERFUL
+          </h2>
+          <div className="text-[10px] md:text-sm font-bold text-[#94A3B8] tracking-[0.2em] uppercase mt-2 md:mt-4">
+            BY IMPACT
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 items-start relative">
+        {/* Sticky Immersive Canvas viewport */}
+        <div className="sticky top-0 h-screen w-full flex items-center justify-center overflow-hidden z-20">
           
-          {/* Left Sticky High-Fidelity Mobile UI Mockup Showcase (Desktop) */}
-          <div className="hidden md:flex md:col-span-5 sticky top-24 h-[78vh] flex-col justify-between items-center border border-white/[0.04] bg-[#090A0C]/80 backdrop-blur-xl rounded-[32px] p-8 shadow-[0_25px_60px_rgba(0,0,0,0.85)] overflow-hidden relative group">
-            {/* Ambient Dark Horror & Cyberpunk Violet Lens Bloom */}
-            <div className="absolute -top-24 -left-24 w-72 h-72 bg-purple-900/10 rounded-full blur-[100px] pointer-events-none group-hover:bg-purple-900/20 transition-all duration-1000" />
-            <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-indigo-900/15 rounded-full blur-[100px] pointer-events-none group-hover:bg-indigo-900/25 transition-all duration-1000" />
+          {/* Stretching 3D Cybernet Canvas backdrop */}
+          <motion.div
+            style={{
+              width: canvasWidth,
+              height: canvasHeight,
+              borderRadius: canvasBorderRadius,
+              opacity: canvasOpacity,
+            }}
+            className="absolute border border-white/[0.08] overflow-hidden bg-black/60 shadow-[0_0_50px_rgba(124,58,237,0.15)] flex items-center justify-center pointer-events-auto"
+          >
+            <StretchingGridCanvas progress={progressVal} activeIndex={activeIndex} activeColor={activeColor} />
+          </motion.div>
 
-            {/* Cyan/Teal Tech HUD Header */}
-            <div className="w-full flex justify-between items-center text-gray-500 font-mono text-[9px] select-none z-10 border-b border-white/5 pb-4 mb-4">
-              <div>
-                <p className="text-[#00E5FF] font-black uppercase tracking-widest">// MOBILE SHOWCASE STREAM</p>
-                <p className="text-[8px] text-gray-400 mt-0.5">TELEMETRY FRAME RATE: <span className="text-emerald-400 font-bold">60 FPS SOLID</span></p>
-              </div>
-              <div className="text-right">
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#00E5FF] animate-pulse mr-1" />
-                <span className="text-white font-bold uppercase tracking-wider">LIVE HUD LAYER</span>
-              </div>
-            </div>
+          {/* Interactive Card/Intro overlays layer */}
+          <div className="absolute inset-0 w-full h-full flex items-center justify-center z-10 pointer-events-none px-4">
+            <AnimatePresence mode="wait">
+              {activeIndex === -1 ? (
+                <motion.div
+                  key="intro"
+                  initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -30, scale: 0.95 }}
+                  transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                  className="max-w-2xl text-center space-y-6 z-10 px-6 cursor-default pointer-events-auto"
+                >
+                  <div className="inline-flex items-center space-x-2 px-3 py-1 bg-white/5 border border-white/10 rounded-full">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#00E5FF] animate-pulse" />
+                    <span className="text-[9px] font-black uppercase tracking-widest text-[#00E5FF] font-mono">
+                      Noxis Node Online Initialized
+                    </span>
+                  </div>
+                  <h3 className="text-3xl md:text-6xl font-black uppercase text-white tracking-tight leading-none">
+                    UNFOLDING<br/>
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00E5FF] via-[#7C3AED] to-[#A3E635]">INTELLIGENCE khata</span>
+                  </h3>
+                  <p className="text-xs md:text-sm text-gray-500 font-mono tracking-widest uppercase">
+                    Scroll down to stretch & deploy the mesh grid
+                  </p>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key={activeIndex}
+                  initial={{ opacity: 0, y: 40, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -40, scale: 0.97 }}
+                  transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                  className="w-full max-w-4xl p-6 md:p-10 rounded-[32px] border bg-[#090A0C]/85 backdrop-blur-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-8 md:gap-12 overflow-hidden shadow-[0_30px_70px_rgba(0,0,0,0.85)] z-10 pointer-events-auto"
+                  style={{
+                    boxShadow: `0 30px 70px rgba(${Math.round(currentRgb.r)}, ${Math.round(currentRgb.g)}, ${Math.round(currentRgb.b)}, 0.15)`,
+                    borderColor: `rgba(${Math.round(currentRgb.r)}, ${Math.round(currentRgb.g)}, ${Math.round(currentRgb.b)}, 0.25)`,
+                  }}
+                >
+                  {/* Laser scan lines sweeping vertically and horizontally */}
+                  <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
+                    <div className="laser-scanner-sweep" style={{ background: `linear-gradient(90deg, transparent, ${activeColor}, transparent)`, boxShadow: `0 0 15px ${activeColor}` }} />
+                    <div className="laser-scanner-sweep-x" style={{ background: `linear-gradient(180deg, transparent, ${activeColor}, transparent)`, boxShadow: `0 0 15px ${activeColor}` }} />
+                  </div>
 
-            {/* Sleek Smartphone Banking UI Mockup Frame */}
-            <div className="w-full flex-1 relative flex items-center justify-center pointer-events-none z-10 px-4">
-              <div className="relative w-full max-w-[270px] aspect-[9/19.5] rounded-[48px] border-4 border-white/[0.08] bg-[#050608] shadow-[0_30px_70px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col p-1.5 group-hover:border-white/15 transition-all duration-700">
-                
-                {/* Dynamic Camera Notch & Sensor Bar */}
-                <div className="absolute top-3.5 left-1/2 -translate-x-1/2 w-28 h-5 bg-[#000000] rounded-full z-40 border border-white/5 flex items-center justify-between px-4">
-                  <div className="w-2.5 h-2.5 rounded-full bg-indigo-950/80 border border-white/5 flex items-center justify-center"><div className="w-1 h-1 rounded-full bg-blue-500/60 animate-pulse" /></div>
-                  <div className="w-12 h-1 bg-white/5 rounded-full" />
-                </div>
-
-                {/* Ethereal Indigo-Tinted Ambient Morphing Background Canvas inside Mobile */}
-                <div className="absolute inset-0 z-0 bg-[#040405] transition-all duration-1000" style={{
-                  background: activeIndex === 0 ? 'radial-gradient(circle at 50% 80%, #1e1b4b 0%, #030303 80%)' :
-                              activeIndex === 1 ? 'radial-gradient(circle at 20% 40%, #0c4a6e 0%, #030303 85%)' :
-                              activeIndex === 2 ? 'radial-gradient(circle at 80% 20%, #311042 0%, #030303 80%)' :
-                              activeIndex === 3 ? 'radial-gradient(circle at 30% 60%, #115e59 0%, #020202 90%)' :
-                                                  'radial-gradient(circle at 50% 50%, #1e1b4b 0%, #030303 75%)'
-                }}>
-                  {/* Subtle Grid overlay inside Phone */}
-                  <div className="absolute inset-0 opacity-[0.03] bg-[linear-gradient(rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[size:16px_16px]" />
-                </div>
-
-                {/* Smartphone Core Content Screen View */}
-                <div className="relative flex-1 rounded-[40px] overflow-hidden flex flex-col z-10 p-3 pt-9 justify-between">
-                  {/* Status Bar */}
-                  <div className="flex justify-between items-center text-[8px] font-bold text-gray-500 font-mono px-2">
-                    <span>9:41 AM</span>
-                    <div className="flex items-center gap-1.5">
-                      <span>5G</span>
-                      <div className="w-3.5 h-2 border border-gray-600 rounded-[2px] p-0.5 flex items-center"><div className="w-2 h-full bg-[#00E5FF]" /></div>
+                  <div className="space-y-5 flex-1 relative z-10">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 bg-white/5 rounded-xl border border-white/10 flex items-center justify-center text-white">
+                        {cards[activeIndex]?.icon}
+                      </div>
+                      <span className="text-[10px] font-black tracking-widest uppercase font-mono" style={{ color: activeColor }}>
+                        {cards[activeIndex]?.subtitle}
+                      </span>
+                    </div>
+                    <h3 className="text-2xl md:text-4xl font-bold text-white tracking-tight leading-none uppercase">
+                      {cards[activeIndex]?.title}
+                    </h3>
+                    <p className="text-xs md:text-sm text-[#94A3B8] leading-relaxed font-medium">
+                      {cards[activeIndex]?.desc}
+                    </p>
+                    <div className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-wider font-mono">
+                      {cards[activeIndex]?.metric}
                     </div>
                   </div>
 
-                  {/* App Header & Balance */}
-                  <div className="mt-2 space-y-1 px-2">
-                    <span className="text-[7px] font-black text-gray-500 uppercase tracking-widest block">Noxis Ledger Balances</span>
-                    <h3 className="text-lg font-black text-white font-mono leading-none tracking-tight">₨ 5,420,890</h3>
-                    <p className="text-[8px] text-[#00E5FF] font-bold tracking-wide flex items-center gap-1">
-                      <span className="w-1 h-1 rounded-full bg-[#00E5FF] animate-ping" />
-                      SYSTEM LEDGER SYNCHRONIZED
+                  <div className="p-5 bg-black/60 border border-white/5 rounded-2xl flex-none w-full md:w-auto md:min-w-[280px] relative z-10">
+                    <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest block mb-2 font-mono">Live Floor Benchmarking</span>
+                    <p className="text-sm font-mono font-bold flex items-center gap-2" style={{ color: activeColor }}>
+                      <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: activeColor }} />
+                      <DecryptingTicker text={cards[activeIndex]?.stat} active={true} />
                     </p>
+                    <div className="mt-4 pt-3 border-t border-white/5 flex justify-between text-[9px] text-gray-500 font-mono">
+                      <span>STATUS ACTIVE</span>
+                      <span className="text-white">ON-DEMAND TELEMETRY</span>
+                    </div>
                   </div>
-
-                  {/* Sliding Cards Layer inside Mockup View */}
-                  <div className="flex-1 my-4 flex flex-col justify-end gap-2.5 overflow-hidden no-scrollbar pr-0.5">
-                    {cards.slice(0, 3).map((c, i) => {
-                      const offsetIdx = (activeIndex + i) % 5;
-                      const displayCard = cards[offsetIdx] || c;
-                      
-                      return (
-                        <div 
-                          key={c.id} 
-                          className={`w-full p-3 rounded-2xl border transition-all duration-700 flex flex-col gap-1.5 backdrop-blur-md ${
-                            i === 0 
-                              ? "bg-[#090A0C]/90 border-[#7C3AED]/35 shadow-[0_12px_24px_rgba(124,58,237,0.18)] translate-y-0 scale-100 opacity-100" 
-                              : i === 1
-                                ? "bg-[#090A0C]/70 border-white/[0.04] translate-y-1 scale-95 opacity-60"
-                                : "bg-[#090A0C]/40 border-white/[0.02] translate-y-2 scale-90 opacity-25"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-[7px] font-bold text-gray-500 tracking-wider uppercase font-mono">{displayCard.subtitle}</span>
-                            <span className="text-[7px] font-black text-[#00E5FF] font-mono">ACTIVE</span>
-                          </div>
-                          <h4 className="text-[9px] font-bold text-white uppercase tracking-tight line-clamp-1">{displayCard.title}</h4>
-                          <div className="flex items-center justify-between mt-1 pt-1.5 border-t border-white/5">
-                            <span className="text-[7px] font-mono text-emerald-400 font-bold leading-none line-clamp-1">● {displayCard.stat.split(":")[0] || "Live Data"}</span>
-                            <span className="text-[6px] font-mono text-gray-500">{displayCard.metric}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Navigation Home Indicator Bar */}
-                  <div className="w-20 h-1 bg-white/20 rounded-full mx-auto mb-1" />
-                </div>
-
-              </div>
-            </div>
-
-            {/* Cyber HUD Telemetry Footer */}
-            <div className="w-full space-y-2.5 font-mono select-none z-10 border-t border-white/5 pt-4 mt-2">
-              <div className="flex justify-between items-center text-[10px] text-gray-400 border-b border-white/5 pb-2">
-                <span className="text-[8px] uppercase tracking-widest text-[#7C3AED] font-black">Feature Morphing HUD</span>
-                <span className="text-white font-extrabold uppercase text-[9px] tracking-wider">{cards[activeIndex]?.subtitle}</span>
-              </div>
-              <p className="text-[10px] text-gray-500 leading-relaxed font-sans font-medium line-clamp-2">{cards[activeIndex]?.desc}</p>
-            </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
-
-          {/* Right Scrolling Feature Cards List */}
-          <div className="col-span-1 md:col-span-7 space-y-12 md:space-y-16 flex flex-col items-center">
-            {cards.map((card, idx) => (
-              <ScrollCard3D
-                key={card.id}
-                card={card}
-                index={idx}
-                isMobile={isMobile}
-                innerRef={(el: HTMLDivElement | null) => {
-                  cardsRef.current[idx] = el
-                }}
-                isActive={activeIndex === idx}
-              />
-            ))}
-          </div>
-
         </div>
+
       </div>
     </section>
   )
