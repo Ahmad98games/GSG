@@ -235,14 +235,27 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
   const bgScale = useTransform(displayProgress, [0, 0.08, 0.92, 1], [0.97, 1, 1, 0.97])
   const bgOpacity = useTransform(displayProgress, [0, 0.04, 0.96, 1], [0.75, 1, 1, 0.75])
 
+  // ── Dynamic Responsive Screen Width Tracking ──
+  const [windowWidth, setWindowWidth] = useState(() => 
+    typeof window !== 'undefined' ? window.innerWidth : (isMobile ? 375 : 1200)
+  )
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const handleResize = () => setWindowWidth(window.innerWidth)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
   // ── Card strip geometry ──
   const CARD_W = isMobile ? 280 : 540
   const GAP    = isMobile ? 16  : 40
-  const VW     = typeof window !== 'undefined' ? window.innerWidth : (isMobile ? 375 : 1200)
+  const inset  = isMobile ? 12  : 32 // Matches inset-x-3 (12px) and inset-x-8 (32px)
+  const wrapperW = windowWidth - 2 * inset
 
   const totalW = cards.length * CARD_W + (cards.length - 1) * GAP
-  const startX = (VW - CARD_W) / 2
-  const endX   = startX - (totalW - VW)
+  const startX = (wrapperW - CARD_W) / 2
+  const endX   = startX - (totalW - CARD_W)
 
   const x = useTransform(displayProgress, [0, 1], [`${startX}px`, `${endX}px`])
 
