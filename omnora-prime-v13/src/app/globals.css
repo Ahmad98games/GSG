@@ -2,10 +2,10 @@
 
 :root {
   /* Premium Ethereal Dark Cyberpunk Theme Config */
-  --color-bg: #0B0B0C;
+  --color-bg: #2d2d41;
   --color-surface: rgba(30, 41, 59, 0.4);
   --color-primary: #3a79ed;
-  --color-financial: #00E5FF;
+  --color-financial: #285a5f;
   --color-success: #A3E635;
   --color-danger: #EF4444;
   --color-text: #FFFFFF;
@@ -16,7 +16,7 @@
 }
 
 :root.light {
-  --color-bg: #F8F9FA;
+  --color-bg: #bbc5cf;
   --color-surface: #FFFFFF;
   --color-primary: #7C3AED;
   --color-financial: #008B9B;
@@ -754,8 +754,13 @@ td {
 
 /* Hardware-accelerated Holographic Laser Scanline keyframes */
 @keyframes laser-sweep {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(100%); }
+  0% {
+    transform: translateY(-100%);
+  }
+
+  100% {
+    transform: translateY(100%);
+  }
 }
 
 .laser-scanner-sweep {
@@ -763,12 +768,10 @@ td {
   inset: 0;
   height: 2px;
   width: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(0, 229, 255, 0.6),
-    transparent
-  );
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(0, 229, 255, 0.6),
+      transparent);
   box-shadow: 0 0 12px rgba(0, 229, 255, 0.4);
   animation: laser-sweep 2s linear infinite;
   will-change: transform;
@@ -815,13 +818,23 @@ td {
 
 /* Laser scanner animations */
 @keyframes laser-sweep {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(200%); }
+  0% {
+    transform: translateY(-100%);
+  }
+
+  100% {
+    transform: translateY(200%);
+  }
 }
 
 @keyframes laser-sweep-x {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(200%); }
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(200%);
+  }
 }
 
 .laser-scanner-sweep {
@@ -830,12 +843,10 @@ td {
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(0, 229, 255, 0.8) 50%,
-    transparent 100%
-  );
+  background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(0, 229, 255, 0.8) 50%,
+      transparent 100%);
   box-shadow: 0 0 16px rgba(0, 229, 255, 0.5);
   animation: laser-sweep 2.5s linear infinite;
   will-change: transform;
@@ -848,12 +859,10 @@ td {
   bottom: 0;
   left: 0;
   width: 2px;
-  background: linear-gradient(
-    180deg,
-    transparent 0%,
-    rgba(0, 229, 255, 0.4) 50%,
-    transparent 100%
-  );
+  background: linear-gradient(180deg,
+      transparent 0%,
+      rgba(0, 229, 255, 0.4) 50%,
+      transparent 100%);
   animation: laser-sweep-x 3.5s linear infinite;
   will-change: transform;
   pointer-events: none;
@@ -862,32 +871,34 @@ td {
 /* Holographic grid */
 .holographic-grid {
   background-image:
-    linear-gradient(
+    linear-gradient(rgba(96, 165, 250, 0.04) 1px,
+      transparent 1px),
+    linear-gradient(90deg,
       rgba(96, 165, 250, 0.04) 1px,
-      transparent 1px
-    ),
-    linear-gradient(
-      90deg,
-      rgba(96, 165, 250, 0.04) 1px,
-      transparent 1px
-    );
+      transparent 1px);
   background-size: 40px 40px;
 }
 
 /* Gradient text animation */
 @keyframes gradient-text {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 .animate-gradient-text {
-  background: linear-gradient(
-    135deg,
-    #60A5FA,
-    #A78BFA,
-    #60A5FA
-  );
+  background: linear-gradient(135deg,
+      #60A5FA,
+      #A78BFA,
+      #60A5FA);
   background-size: 200% 200%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -897,8 +908,13 @@ td {
 
 /* Button shine effect */
 @keyframes btn-shine {
-  0% { background-position: -200px; }
-  100% { background-position: 200px; }
+  0% {
+    background-position: -200px;
+  }
+
+  100% {
+    background-position: 200px;
+  }
 }
 
 .btn-shine {
@@ -913,18 +929,17 @@ td {
   left: -100%;
   width: 60%;
   height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.15),
-    transparent
-  );
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.15),
+      transparent);
   animation: btn-shine 3s ease infinite;
   pointer-events: none;
 }
 
 /* Reduce motion */
 @media (prefers-reduced-motion: reduce) {
+
   .laser-scanner-sweep,
   .laser-scanner-sweep-x,
   .animate-gradient-text,
@@ -940,4 +955,33 @@ td {
 
 .preserve-3d {
   transform-style: preserve-3d;
+}
+
+/* Radial gradient utility (used in heading section) */
+.bg-gradient-radial {
+  background-image: radial-gradient(ellipse at center,
+      var(--tw-gradient-from),
+      var(--tw-gradient-to));
+}
+
+/* Laser scanner — single axis only for cleaner look */
+@keyframes laser-sweep {
+  0% {
+    transform: translateY(-100%);
+  }
+
+  100% {
+    transform: translateY(300%);
+  }
+}
+
+.laser-scanner-sweep {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  animation: laser-sweep 2s linear infinite;
+  will-change: transform;
+  pointer-events: none;
 }

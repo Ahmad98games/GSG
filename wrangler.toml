@@ -7,5 +7,3 @@ not_found_handling = "single-page-application"
 
 [build]
 command = "cd omnora-prime-v13 && npm install --legacy-peer-deps && npm run build"
-
-
