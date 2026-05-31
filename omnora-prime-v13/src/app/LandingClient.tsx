@@ -333,85 +333,97 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
         {/* Sticky viewport frame (exactly 100vh) */}
         <div className="sticky top-0 h-screen w-full flex flex-col justify-center overflow-hidden z-20">
           
-          {/* Vertical Shutter Background: Opens/Stretches from top and bottom */}
-          <motion.div
-            style={{
-              scaleY: bgScaleY,
-              opacity: bgOpacity,
-              transformOrigin: "center center",
-            }}
-            className="absolute inset-x-0 mx-auto w-[94%] max-w-7xl h-[80vh] border border-white/[0.08] bg-[#090A0C]/90 backdrop-blur-2xl rounded-[36px] shadow-[0_30px_80px_rgba(0,0,0,0.9)] flex items-center justify-center overflow-hidden"
-          >
-            {/* StretchingGridCanvas inside background scales/morphs with scroll - Disabled on mobile */}
-            {isMobile ? (
-              <div className="absolute inset-0 bg-gradient-to-br from-[#090A0C] to-[#0D0F14]" />
-            ) : (
-              <StretchingGridCanvas progress={progressVal} activeIndex={activeIndex} activeColor={activeColor} />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/80 pointer-events-none" />
-          </motion.div>
-
-          {/* Foreground Horizontal Cards layer: Slides from right to left */}
-          <div className="relative w-full z-10 py-6">
+          {/* Vertical Shutter Box & Clipping Viewport */}
+          <div className="relative mx-auto w-[94%] max-w-7xl h-[80vh] flex items-center justify-center pointer-events-none">
+            
+            {/* Background Layer: Opens/Stretches from top and bottom */}
             <motion.div
-              style={{ x }}
-              className="flex flex-row items-center gap-8 md:gap-12 px-12 md:px-24"
+              style={{
+                scaleY: bgScaleY,
+                opacity: bgOpacity,
+                transformOrigin: "center center",
+              }}
+              className="absolute inset-0 border border-white/[0.08] bg-[#090A0C]/90 backdrop-blur-2xl rounded-[36px] shadow-[0_30px_80px_rgba(0,0,0,0.9)] overflow-hidden pointer-events-auto"
             >
-              {cards.map((card, idx) => {
-                const isVisible = Math.abs(activeIndex - idx) <= 1
-                return (
-                  <div
-                    key={card.id}
-                    className="w-[82vw] sm:w-[480px] md:w-[560px] flex-none p-6 md:p-8 rounded-[28px] border bg-[#111317]/88 backdrop-blur-2xl flex flex-col justify-between overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.65)] relative group cursor-default"
-                    style={{
-                      borderColor: activeIndex === idx ? `${card.accent}45` : "rgba(255,255,255,0.04)",
-                      boxShadow: activeIndex === idx ? `0 25px 60px ${card.accent}15` : "0 10px 30px rgba(0,0,0,0.45)",
-                      transform: activeIndex === idx ? "scale(1.02) translateY(-4px)" : "scale(1) translateY(0px)",
-                      transition: "border-color 0.5s ease, box-shadow 0.5s ease, transform 0.4s ease",
-                    }}
-                  >
-                    {/* Holographic scanner laser scan sweep */}
-                    {activeIndex === idx && (
-                      <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
-                        <div className="laser-scanner-sweep" />
-                        <div className="laser-scanner-sweep-x" />
-                      </div>
-                    )}
-
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-white/5 rounded-xl border border-white/10 flex items-center justify-center text-white">
-                          {card.icon}
-                        </div>
-                        <span className="text-[9px] md:text-[10px] font-black tracking-widest uppercase font-mono" style={{ color: card.accent }}>
-                          {card.subtitle}
-                        </span>
-                      </div>
-                      <h3 className="text-xl md:text-3xl font-bold text-white tracking-tight leading-none uppercase">
-                        {card.title}
-                      </h3>
-                      <p className="text-xs md:text-sm text-[#94A3B8] leading-relaxed font-medium">
-                        {card.desc}
-                      </p>
-                      <div className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-wider font-mono">
-                        {card.metric}
-                      </div>
-                    </div>
-
-                    <div className="mt-6 p-4 bg-black/60 border border-white/5 rounded-2xl w-full">
-                      <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest block mb-1 font-mono">Live Floor Benchmarking</span>
-                      <div className="flex justify-between items-center">
-                        <p className="text-xs font-mono font-bold flex items-center gap-1.5" style={{ color: card.accent }}>
-                          <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: card.accent }} />
-                          <DecryptingTicker text={card.stat} active={isVisible && activeIndex === idx} />
-                        </p>
-                        <span className="text-[8px] text-gray-500 font-mono">STATUS ACTIVE</span>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
+              {/* StretchingGridCanvas inside background scales/morphs - Disabled on mobile */}
+              {isMobile ? (
+                <div className="absolute inset-0 bg-gradient-to-br from-[#090A0C] to-[#0D0F14]" />
+              ) : (
+                <StretchingGridCanvas progress={progressVal} activeIndex={activeIndex} activeColor={activeColor} />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/80 pointer-events-none" />
             </motion.div>
+
+            {/* Foreground Horizontal Cards layer: Contained and clipped inside Shutter boundaries */}
+            <motion.div
+              style={{
+                scaleY: bgScaleY,
+                opacity: bgOpacity,
+                transformOrigin: "center center",
+              }}
+              className="absolute inset-0 rounded-[36px] overflow-hidden flex items-center pointer-events-auto z-10"
+            >
+              <motion.div
+                style={{ x }}
+                className="flex flex-row items-center gap-8 md:gap-12"
+              >
+                {cards.map((card, idx) => {
+                  const isVisible = Math.abs(activeIndex - idx) <= 1
+                  return (
+                    <div
+                      key={card.id}
+                      className="w-[82vw] sm:w-[480px] md:w-[560px] flex-none p-6 md:p-8 rounded-[28px] border bg-[#111317]/88 backdrop-blur-2xl flex flex-col justify-between overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.65)] relative group cursor-default"
+                      style={{
+                        borderColor: activeIndex === idx ? `${card.accent}45` : "rgba(255,255,255,0.04)",
+                        boxShadow: activeIndex === idx ? `0 25px 60px ${card.accent}15` : "0 10px 30px rgba(0,0,0,0.45)",
+                        transform: activeIndex === idx ? "scale(1.02) translateY(-4px)" : "scale(1) translateY(0px)",
+                        transition: "border-color 0.5s ease, box-shadow 0.5s ease, transform 0.4s ease",
+                      }}
+                    >
+                      {/* Holographic scanner laser scan sweep */}
+                      {activeIndex === idx && (
+                        <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
+                          <div className="laser-scanner-sweep" />
+                          <div className="laser-scanner-sweep-x" />
+                        </div>
+                      )}
+
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2.5 bg-white/5 rounded-xl border border-white/10 flex items-center justify-center text-white">
+                            {card.icon}
+                          </div>
+                          <span className="text-[9px] md:text-[10px] font-black tracking-widest uppercase font-mono" style={{ color: card.accent }}>
+                            {card.subtitle}
+                          </span>
+                        </div>
+                        <h3 className="text-xl md:text-3xl font-bold text-white tracking-tight leading-none uppercase">
+                          {card.title}
+                        </h3>
+                        <p className="text-xs md:text-sm text-[#94A3B8] leading-relaxed font-medium">
+                          {card.desc}
+                        </p>
+                        <div className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-wider font-mono">
+                          {card.metric}
+                        </div>
+                      </div>
+
+                      <div className="mt-6 p-4 bg-black/60 border border-white/5 rounded-2xl w-full">
+                        <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest block mb-1 font-mono">Live Floor Benchmarking</span>
+                        <div className="flex justify-between items-center">
+                          <p className="text-xs font-mono font-bold flex items-center gap-1.5" style={{ color: card.accent }}>
+                            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: card.accent }} />
+                            <DecryptingTicker text={card.stat} active={isVisible && activeIndex === idx} />
+                          </p>
+                          <span className="text-[8px] text-gray-500 font-mono">STATUS ACTIVE</span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </motion.div>
+            </motion.div>
+
           </div>
 
         </div>
