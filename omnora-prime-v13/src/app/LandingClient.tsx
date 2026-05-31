@@ -12,7 +12,8 @@ import {
 } from 'lucide-react'
 import {
   FloatingOrb, ScrollProgressBar,
-  SectionReveal, MarqueeTicker, GlowCard, TypedText
+  SectionReveal, MarqueeTicker, GlowCard, TypedText,
+  ScrollReveal3D, MorphingCanvas
 } from '@/components/ui/AnimatedComponents'
 
 /* ─── shared easing ─── */
@@ -127,118 +128,59 @@ function DecryptingTicker({ text, active }: { text: string; active: boolean }) {
 }
 
 // ═══ CINEMATIC ENTRANCE-ONLY 3D SCROLL CARD ═══
-// Cards peel in from below with perspective rotation as they enter the viewport,
-// then stay fully visible forever. NO exit animation = NO black voids.
-function ScrollCard3D({ card, index, isMobile }: { card: any; index: number; isMobile: boolean }) {
-  const cardRef = useRef<HTMLDivElement>(null)
-  
-  // Track this card's journey through the viewport
-  const { scrollYProgress } = useScroll({
-    target: cardRef,
-    offset: ["start end", "end start"]
-  })
-
-  // Silky spring smoothing for buttery transforms
-  const smoothProgress = useSpring(scrollYProgress, { stiffness: 80, damping: 25, restDelta: 0.001 })
-
-  // ═══ ENTRANCE-ONLY 3D Parallax Transforms ═══
-  // scrollYProgress (offset: "start end" → "end start"):
-  //   0.00 = card's top edge just touched viewport bottom (entering)
-  //   ~0.35 = card is well into viewport, fully revealed & flat
-  //   0.50 = card centered
-  //   1.00 = card exited top — STILL fully visible, no fade-out!
-  //
-  // KEY INSIGHT: All transforms settle to their "resting" value (0, 1, etc.)
-  // by progress 0.35 and STAY there forever. No exit animation.
-  
-  const rotateX = useTransform(smoothProgress, [0, 0.18, 0.38, 1], [24, 8, 0, 0])
-  const cardScale = useTransform(smoothProgress, [0, 0.18, 0.38, 1], [0.82, 0.93, 1, 1])
-  const cardY = useTransform(smoothProgress, [0, 0.18, 0.38, 1], [120, 35, 0, 0])
-  const translateZ = useTransform(smoothProgress, [0, 0.18, 0.38, 1], [-100, -30, 0, 0])
-  const cardOpacity = useTransform(smoothProgress, [0, 0.1, 0.3, 1], [0.05, 0.55, 1, 1])
-  const filterBlur = useTransform(smoothProgress, [0, 0.1, 0.3, 1], ["blur(8px)", "blur(3px)", "blur(0px)", "blur(0px)"])
-
-  // Active state: card is in the sweet spot for scanline & decryption fx
-  const [isActive, setIsActive] = useState(false)
-  
-  useEffect(() => {
-    return scrollYProgress.on("change", (v) => {
-      setIsActive(v > 0.3 && v < 0.72)
-    })
-  }, [scrollYProgress])
-
+function ScrollCard3D({ card, index, isMobile, innerRef, isActive }: { card: any; index: number; isMobile: boolean; innerRef: any; isActive: boolean }) {
   return (
-    <motion.div
-      ref={cardRef}
-      initial={isMobile ? { opacity: 0, y: 40 } : undefined}
-      whileInView={isMobile ? { opacity: 1, y: 0 } : undefined}
-      viewport={isMobile ? { once: true, margin: "-40px" } : undefined}
-      transition={isMobile ? { duration: 0.5, ease: [0.16, 1, 0.3, 1] } : undefined}
-      style={isMobile ? {
-        filter: "none",
-        opacity: 1,
-        y: 0,
-        scale: 1,
-        rotateX: 0,
-        z: 0,
-      } : {
-        y: cardY,
-        scale: cardScale,
-        rotateX,
-        z: translateZ,
-        opacity: cardOpacity,
-        filter: filterBlur,
-        transformPerspective: 1200,
-        transformStyle: "preserve-3d" as const,
-        willChange: "transform, opacity, filter"
-      }}
-      className={`relative w-full max-w-4xl p-6 md:p-10 rounded-3xl border bg-gradient-to-br ${card.color} bg-[#121417] md:bg-transparent backdrop-blur-none md:backdrop-blur-xl flex flex-col md:flex-row justify-between items-start gap-6 md:gap-10 overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.65)] transition-[border-color,box-shadow] duration-700 ${
-        isActive ? "border-[#7C3AED]/45 shadow-[0_30px_70px_rgba(124,58,237,0.22)]" : "border-white/5 shadow-[0_10px_30px_rgba(0,0,0,0.4)]"
-      }`}
-    >
-      {/* Dual-Axis Holographic Intersecting Scanlines Sweep */}
-      {isActive && (
-        <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
-          <div className="laser-scanner-sweep" />
-          <div className="laser-scanner-sweep-x" />
-        </div>
-      )}
-
-      {/* Satisfying Vector Coordinate Blueprint Grid backdrop */}
-      <div className="absolute inset-0 holographic-grid pointer-events-none z-0 opacity-40" />
-
-      <div className="space-y-4 max-w-xl relative z-10 preserve-3d">
-        <div className="flex items-center gap-2 md:gap-3">
-          <div className="p-2 bg-white/5 rounded-lg border border-white/10">
-            {card.icon}
+    <div ref={innerRef} className="w-full relative z-10">
+      <ScrollReveal3D
+        intensity={14}
+        className={`relative w-full max-w-4xl p-6 md:p-8 rounded-3xl border bg-gradient-to-br ${card.color} bg-[#121417] backdrop-blur-xl flex flex-col sm:flex-row justify-between items-start gap-6 md:gap-10 overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.65)] transition-[border-color,box-shadow] duration-700 ${
+          isActive ? "border-[#7C3AED]/45 shadow-[0_30px_70px_rgba(124,58,237,0.22)]" : "border-white/5 shadow-[0_10px_30px_rgba(0,0,0,0.4)]"
+        }`}
+      >
+        {/* Dual-Axis Holographic Intersecting Scanlines Sweep */}
+        {isActive && (
+          <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
+            <div className="laser-scanner-sweep" />
+            <div className="laser-scanner-sweep-x" />
           </div>
-          <span className="text-[9px] md:text-[10px] font-black tracking-widest text-[#00E5FF] uppercase font-mono">
-            {card.subtitle}
-          </span>
+        )}
+
+        {/* Satisfying Vector Coordinate Blueprint Grid backdrop */}
+        <div className="absolute inset-0 holographic-grid pointer-events-none z-0 opacity-40" />
+
+        <div className="space-y-4 max-w-xl relative z-10 preserve-3d">
+          <div className="flex items-center gap-2 md:gap-3">
+            <div className="p-2 bg-white/5 rounded-lg border border-white/10">
+              {card.icon}
+            </div>
+            <span className="text-[9px] md:text-[10px] font-black tracking-widest text-[#00E5FF] uppercase font-mono">
+              {card.subtitle}
+            </span>
+          </div>
+          <h3 className="text-xl md:text-2xl font-bold text-white tracking-tight leading-none">
+            {card.title}
+          </h3>
+          <p className="text-xs md:text-sm text-[#94A3B8] leading-relaxed font-medium">
+            {card.desc}
+          </p>
+          <div className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+            {card.metric}
+          </div>
         </div>
-        <h3 className="text-xl md:text-3xl font-bold text-white tracking-tight leading-none">
-          {card.title}
-        </h3>
-        <p className="text-xs md:text-sm text-[#94A3B8] leading-relaxed">
-          {card.desc}
-        </p>
-        <div className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-wider">
-          {card.metric}
+        
+        <div className="p-4 bg-black/60 border border-[#4C1D95]/25 rounded-xl flex-none w-full sm:w-auto sm:flex-1 sm:max-w-[280px] relative z-10 preserve-3d">
+          <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest block mb-2">Live Floor Benchmarking</span>
+          <p className="text-xs font-mono font-bold text-emerald-400 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <DecryptingTicker text={card.stat} active={isActive} />
+          </p>
+          <div className="mt-4 pt-3 border-t border-white/5 flex justify-between text-[9px] text-gray-500 font-mono">
+            <span>STATUS ACTIVE</span>
+            <span className="text-white">ON-DEMAND TELEMETRY</span>
+          </div>
         </div>
-      </div>
-      
-      <div className="p-4 bg-black/60 border border-[#4C1D95]/25 rounded-xl flex-none w-full md:w-auto md:flex-1 md:max-w-[280px] relative z-10 preserve-3d">
-        <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest block mb-2">Live Floor Benchmarking</span>
-        <p className="text-xs font-mono font-bold text-emerald-400 flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          <DecryptingTicker text={card.stat} active={isActive} />
-        </p>
-        <div className="mt-4 pt-3 border-t border-white/5 flex justify-between text-[9px] text-gray-500 font-mono">
-          <span>STATUS ACTIVE</span>
-          <span className="text-white">ON-DEMAND TELEMETRY</span>
-        </div>
-      </div>
-    </motion.div>
+      </ScrollReveal3D>
+    </div>
   )
 }
 
@@ -303,14 +245,43 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
     }
   ]
 
+  const [activeIndex, setActiveIndex] = useState(0)
+  const cardsRef = useRef<Array<HTMLDivElement | null>>([])
+
+  useEffect(() => {
+    // Highly performant observer syncing scroll-linked active index
+    const observers = cardsRef.current.map((el, idx) => {
+      if (!el) return null
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            setActiveIndex(idx)
+          }
+        },
+        {
+          rootMargin: "-28% 0px -28% 0px",
+          threshold: 0.3,
+        }
+      )
+      observer.observe(el)
+      return observer
+    })
+
+    return () => {
+      observers.forEach(obs => obs?.disconnect())
+    }
+  }, [])
+
+  const activeColor = cards[activeIndex]?.accent || "#00E5FF"
+
   return (
-    <section className="relative py-28 px-6 bg-[#0B0B0C] border-y border-[#4C1D95]/15 overflow-visible space-y-16 md:space-y-24">
+    <section className="relative py-20 px-4 md:px-6 bg-[#0B0B0C] border-y border-[#4C1D95]/15 overflow-visible space-y-12">
       {/* Cinematic neon purple lens blooms */}
       <div className="hidden md:block absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 lens-bloom opacity-40 pointer-events-none" />
       <div className="hidden md:block absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 lens-bloom opacity-35 pointer-events-none" />
 
       {/* Typography Headline - scrolls naturally down the page */}
-      <div className="text-center max-w-4xl mx-auto flex flex-col items-center justify-center mb-16">
+      <div className="text-center max-w-4xl mx-auto flex flex-col items-center justify-center mb-10 md:mb-16">
         <span className="text-[10px] md:text-xs font-bold text-[#7C3AED] tracking-widest uppercase mb-3 md:mb-5">ENGINEERED FOR MODERN WORKSHOPS</span>
         <h2 className="text-4xl md:text-7xl font-black tracking-tightest text-white uppercase leading-none font-sans">
           SIMPLE
@@ -331,15 +302,72 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
         </div>
       </div>
 
-      {/* Sequential 3D Scrolling Cards */}
-      <div className="space-y-16 md:space-y-24 relative z-10 flex flex-col items-center">
-        {cards.map((card, idx) => (
-          <ScrollCard3D key={card.id} card={card} index={idx} isMobile={isMobile} />
-        ))}
+      <div className="max-w-7xl mx-auto">
+        {/* Mobile View Sticky Canvas HUD */}
+        <div className="block md:hidden sticky top-16 z-20 w-full bg-[#070809]/92 backdrop-blur-xl border border-white/5 rounded-2xl p-4 mb-8 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex items-center justify-between gap-4 h-[120px]">
+          <div className="flex-1 space-y-1 min-w-0">
+            <span className="text-[7px] font-bold text-[#00E5FF] tracking-widest uppercase font-mono block">VECTOR INTEGRATION ACTIVE</span>
+            <h4 className="text-xs font-bold text-white uppercase tracking-tight truncate">{cards[activeIndex]?.title}</h4>
+            <p className="text-[9px] text-[#94A3B8] leading-tight line-clamp-2">{cards[activeIndex]?.desc}</p>
+          </div>
+          <div className="w-[85px] h-[85px] flex-none relative">
+            <MorphingCanvas activeIndex={activeIndex} activeColor={activeColor} />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 items-start relative">
+          
+          {/* Left Sticky Interactive Morphing Canvas (Desktop) */}
+          <div className="hidden md:flex md:col-span-5 sticky top-24 h-[72vh] flex-col justify-between items-center py-6 border border-white/[0.04] bg-[#0F1114]/40 backdrop-blur-md rounded-3xl p-6 shadow-2xl">
+            {/* Cyber HUD Telemetry Header */}
+            <div className="w-full flex justify-between items-start text-gray-500 font-mono text-[9px] select-none">
+              <div>
+                <p className="text-[#00E5FF] font-bold">// VECTOR ENGINE MORPH ACTIVE</p>
+                <p>SHAPE SEQUENCE: {activeIndex + 1} OF 5</p>
+              </div>
+              <div className="text-right">
+                <p className="text-emerald-400 font-bold">● 60 FPS SOLID</p>
+                <p>GPU HARDWARE BUFFER</p>
+              </div>
+            </div>
+
+            {/* Core Morphing Canvas Container */}
+            <div className="w-full flex-1 max-h-[300px] relative flex items-center justify-center pointer-events-auto">
+              <MorphingCanvas activeIndex={activeIndex} activeColor={activeColor} />
+            </div>
+
+            {/* Cyber HUD Telemetry Footer */}
+            <div className="w-full space-y-2 font-mono select-none">
+              <div className="flex justify-between items-center text-[10px] text-gray-400 border-b border-white/5 pb-2">
+                <span className="text-[9px] uppercase tracking-wider text-gray-500">Live Telemetry</span>
+                <span className="text-white font-bold uppercase">{cards[activeIndex]?.subtitle}</span>
+              </div>
+              <p className="text-[10px] text-gray-500 leading-relaxed font-sans">{cards[activeIndex]?.desc}</p>
+            </div>
+          </div>
+
+          {/* Right Scrolling Feature Cards List */}
+          <div className="col-span-1 md:col-span-7 space-y-12 md:space-y-16 flex flex-col items-center">
+            {cards.map((card, idx) => (
+              <ScrollCard3D
+                key={card.id}
+                card={card}
+                index={idx}
+                isMobile={isMobile}
+                innerRef={(el: HTMLDivElement | null) => {
+                  cardsRef.current[idx] = el
+                }}
+                isActive={activeIndex === idx}
+              />
+            ))}
+          </div>
+
+        </div>
       </div>
     </section>
   )
 }
+
 
 // (Animated stat counter removed to ensure 100% reliable, professional static numbers)
 

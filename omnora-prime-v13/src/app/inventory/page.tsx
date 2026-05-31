@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/useToast";
 import { emitSkuPriceSignal } from "@/lib/network/signalCollector";
 
 import { motion, AnimatePresence } from "framer-motion";
+import { ScrollReveal3D } from "@/components/ui/AnimatedComponents";
 import EmptyState from "@/components/ui/EmptyState"; // Keep if needed for subcomponents, but we'll import from StateViews
 import { ErrorState, EmptyState as NewEmptyState, FieldError } from "@/components/ui/StateViews";
 import DataFreshness from "@/components/ui/DataFreshness";
@@ -402,169 +403,173 @@ export default function InventoryPage() {
              </div>
         </div>
           {/* Filters & Actions Bar */}
-          <div className="flex flex-col md:flex-row gap-4 items-center bg-surface border border-white/5 p-4">
-             <div className="relative flex-1">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-                <input 
-                  type="text" 
-                  placeholder="Search SKU or Product Name..." 
-                  className="w-full bg-onyx border border-white/5 pl-10 pr-4 py-2 text-xs text-white focus:border-electric-blue/50 outline-none transition-all"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-             </div>
-             
-            <div className="flex items-center gap-3">
-               <Link 
-                 href="/inventory/import"
-                 className="flex items-center space-x-2 px-4 py-2 border border-electric-blue/30 text-electric-blue text-[10px] uppercase tracking-widest font-bold hover:bg-electric-blue/5 transition-all"
-               >
-                   <Upload size={14} />
-                   <span className="hidden sm:inline">Import</span>
-               </Link>
-             </div>
+          <ScrollReveal3D>
+            <div className="flex flex-col md:flex-row gap-4 items-center bg-surface border border-white/5 p-4">
+               <div className="relative flex-1">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                  <input 
+                    type="text" 
+                    placeholder="Search SKU or Product Name..." 
+                    className="w-full bg-onyx border border-white/5 pl-10 pr-4 py-2 text-xs text-white focus:border-electric-blue/50 outline-none transition-all"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+               </div>
+               
+              <div className="flex items-center gap-3">
+                 <Link 
+                   href="/inventory/import"
+                   className="flex items-center space-x-2 px-4 py-2 border border-electric-blue/30 text-electric-blue text-[10px] uppercase tracking-widest font-bold hover:bg-electric-blue/5 transition-all"
+                 >
+                     <Upload size={14} />
+                     <span className="hidden sm:inline">Import</span>
+                 </Link>
+               </div>
 
-             <div className="flex items-center space-x-3 w-full md:w-auto">
-                <button 
-                  onClick={() => setIsAddModalOpen(true)}
-                  className="flex items-center space-x-2 px-4 py-2 bg-electric-blue text-onyx text-[10px] uppercase tracking-widest font-bold hover:brightness-110 transition-all shadow-lg"
-                >
-                    <Plus size={14} />
-                    <span>Add SKU</span>
-                </button>
+               <div className="flex items-center space-x-3 w-full md:w-auto">
+                  <button 
+                    onClick={() => setIsAddModalOpen(true)}
+                    className="flex items-center space-x-2 px-4 py-2 bg-electric-blue text-onyx text-[10px] uppercase tracking-widest font-bold hover:brightness-110 transition-all shadow-lg"
+                  >
+                      <Plus size={14} />
+                      <span>Add SKU</span>
+                  </button>
 
-                <button 
-                  onClick={() => setAdjustingSKU(skus[0])} // Just a shortcut for quick adjustment
-                  className="flex items-center space-x-2 px-4 py-2 border border-white/10 text-white text-[10px] uppercase tracking-widest font-bold hover:bg-white/5 transition-all"
-                >
-                    <Zap size={14} />
-                    <span>Quick Adjust</span>
-                </button>
+                  <button 
+                    onClick={() => setAdjustingSKU(skus[0])} // Just a shortcut for quick adjustment
+                    className="flex items-center space-x-2 px-4 py-2 border border-white/10 text-white text-[10px] uppercase tracking-widest font-bold hover:bg-white/5 transition-all"
+                  >
+                      <Zap size={14} />
+                      <span>Quick Adjust</span>
+                  </button>
 
-                <select 
-                  value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
-                  className="bg-onyx border border-white/5 px-4 py-2 text-[10px] uppercase font-bold text-gray-400 outline-none focus:border-electric-blue/50"
-                >
-                   {categories.map(cat => <option key={cat} value={cat}>{cat === "All" ? "All Categories" : cat}</option>)}
-                </select>
+                  <select 
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    className="bg-onyx border border-white/5 px-4 py-2 text-[10px] uppercase font-bold text-gray-400 outline-none focus:border-electric-blue/50"
+                  >
+                     {categories.map(cat => <option key={cat} value={cat}>{cat === "All" ? "All Categories" : cat}</option>)}
+                  </select>
 
-                <select 
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="bg-onyx border border-white/5 px-4 py-2 text-[10px] uppercase font-bold text-gray-400 outline-none focus:border-electric-blue/50"
-                >
-                   <option value="All">All Status</option>
-                   <option value="In Stock">In Stock</option>
-                   <option value="Low Stock">Low Stock</option>
-                   <option value="Out of Stock">Out of Stock</option>
-                </select>
+                  <select 
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="bg-onyx border border-white/5 px-4 py-2 text-[10px] uppercase font-bold text-gray-400 outline-none focus:border-electric-blue/50"
+                  >
+                     <option value="All">All Status</option>
+                     <option value="In Stock">In Stock</option>
+                     <option value="Low Stock">Low Stock</option>
+                     <option value="Out of Stock">Out of Stock</option>
+                  </select>
 
-                <button 
-                  onClick={handleExportCSV}
-                  className="p-2 border border-white/5 text-gray-500 hover:text-white hover:bg-white/5 transition-all"
-                  title="Export CSV"
-                >
-                   <Download size={16} />
-                </button>
+                  <button 
+                    onClick={handleExportCSV}
+                    className="p-2 border border-white/5 text-gray-500 hover:text-white hover:bg-white/5 transition-all"
+                    title="Export CSV"
+                  >
+                     <Download size={16} />
+                  </button>
 
-                <button onClick={exportToExcel}
-                  className="flex items-center gap-1.5
-                    px-3 py-1.5 text-xs font-medium
-                    border border-white/10 text-gray-400
-                    hover:border-white/20 hover:text-white
-                    transition-colors">
-                  ↓ Export Excel
-                </button>
-             </div>
-          </div>
+                  <button onClick={exportToExcel}
+                    className="flex items-center gap-1.5
+                      px-3 py-1.5 text-xs font-medium
+                      border border-white/10 text-gray-400
+                      hover:border-white/20 hover:text-white
+                      transition-colors">
+                    ↓ Export Excel
+                  </button>
+               </div>
+            </div>
+          </ScrollReveal3D>
 
           {/* Table Container */}
-          <div className="bg-surface border border-white/5">
-             {skusLoading ? (
-               <div className="h-64 flex items-center justify-center space-x-3">
-                  <div className="w-2 h-2 bg-electric-blue animate-bounce" />
-                  <div className="w-2 h-2 bg-electric-blue animate-bounce delay-100" />
-                  <div className="w-2 h-2 bg-electric-blue animate-bounce delay-200" />
-               </div>
-             ) : skus.length === 0 ? (
-                <EmptyState 
-                  icon={Package}
-                  page="inventory"
-                  action={{
-                    label: "Register First Product",
-                    onClick: () => setIsAddModalOpen(true)
-                  }}
-                />
-             ) : (
-               <div className="overflow-x-auto max-h-[700px] relative scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/5" ref={parentRef}>
-                  <table className="w-full text-left border-collapse">
-                      <thead className="bg-[#0F1114]">
-                        {table.getHeaderGroups().map(headerGroup => (
-                          <tr key={headerGroup.id}>
-                            {headerGroup.headers.map(header => (
-                              <th 
-                                key={header.id} 
-                                className="px-4 py-3 text-left text-xxs font-semibold tracking-wide-md uppercase text-gray-500 border-b border-white/8 cursor-pointer hover:text-white transition-colors"
-                                onClick={header.column.getToggleSortingHandler()}
-                              >
-                                <div className="flex items-center space-x-2">
-                                  {flexRender(header.column.columnDef.header, header.getContext())}
-                                  {header.column.getCanSort() && <ArrowUpDown size={10} />}
-                                </div>
-                              </th>
-                            ))}
-                          </tr>
-                        ))}
-                      </thead>
-                     <tbody 
-                       style={{ 
-                         height: `${rowVirtualizer.getTotalSize()}px`,
-                         position: 'relative'
-                       }}
-                     >
-                        {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                          const row = rows[virtualRow.index];
-                          return (
-                            <SKURow 
-                              key={row.id} 
-                              row={row} 
-                              i={virtualRow.index} 
-                              style={{
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                width: '100%',
-                                height: `${virtualRow.size}px`,
-                                transform: `translateY(${virtualRow.start}px)`
-                              }}
-                            />
-                          );
-                        })}
-                     </tbody>
-                  </table>
-                  
-                  {/* Pagination */}
-                  <div className="p-4 border-t border-white/5 flex items-center justify-between text-[10px] uppercase font-bold text-gray-600">
-                     <div className="flex items-center space-x-2">
-                        <span>Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}</span>
-                     </div>
-                     <div className="flex items-center space-x-1">
-                        <button 
-                          disabled={!table.getCanPreviousPage()}
-                          onClick={() => table.previousPage()}
-                          className="px-3 py-1 bg-onyx border border-white/5 hover:bg-white/5 disabled:opacity-30"
-                        >Prev</button>
-                        <button 
-                          disabled={!table.getCanNextPage()}
-                          onClick={() => table.nextPage()}
-                          className="px-3 py-1 bg-onyx border border-white/5 hover:bg-white/5 disabled:opacity-30"
-                        >Next</button>
-                     </div>
-                  </div>
-               </div>
-             )}
-          </div>
+          <ScrollReveal3D>
+            <div className="bg-surface border border-white/5">
+               {skusLoading ? (
+                 <div className="h-64 flex items-center justify-center space-x-3">
+                    <div className="w-2 h-2 bg-electric-blue animate-bounce" />
+                    <div className="w-2 h-2 bg-electric-blue animate-bounce delay-100" />
+                    <div className="w-2 h-2 bg-electric-blue animate-bounce delay-200" />
+                 </div>
+               ) : skus.length === 0 ? (
+                  <EmptyState 
+                    icon={Package}
+                    page="inventory"
+                    action={{
+                      label: "Register First Product",
+                      onClick: () => setIsAddModalOpen(true)
+                    }}
+                  />
+               ) : (
+                 <div className="overflow-x-auto max-h-[700px] relative scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/5" ref={parentRef}>
+                    <table className="w-full text-left border-collapse">
+                        <thead className="bg-[#0F1114]">
+                          {table.getHeaderGroups().map(headerGroup => (
+                            <tr key={headerGroup.id}>
+                              {headerGroup.headers.map(header => (
+                                <th 
+                                  key={header.id} 
+                                  className="px-4 py-3 text-left text-xxs font-semibold tracking-wide-md uppercase text-gray-500 border-b border-white/8 cursor-pointer hover:text-white transition-colors"
+                                  onClick={header.column.getToggleSortingHandler()}
+                                >
+                                  <div className="flex items-center space-x-2">
+                                    {flexRender(header.column.columnDef.header, header.getContext())}
+                                    {header.column.getCanSort() && <ArrowUpDown size={10} />}
+                                  </div>
+                                </th>
+                              ))}
+                            </tr>
+                          ))}
+                        </thead>
+                       <tbody 
+                         style={{ 
+                           height: `${rowVirtualizer.getTotalSize()}px`,
+                           position: 'relative'
+                         }}
+                       >
+                          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                            const row = rows[virtualRow.index];
+                            return (
+                              <SKURow 
+                                key={row.id} 
+                                row={row} 
+                                i={virtualRow.index} 
+                                style={{
+                                  position: 'absolute',
+                                  top: 0,
+                                  left: 0,
+                                  width: '100%',
+                                  height: `${virtualRow.size}px`,
+                                  transform: `translateY(${virtualRow.start}px)`
+                                }}
+                              />
+                            );
+                          })}
+                       </tbody>
+                    </table>
+                    
+                    {/* Pagination */}
+                    <div className="p-4 border-t border-white/5 flex items-center justify-between text-[10px] uppercase font-bold text-gray-600">
+                       <div className="flex items-center space-x-2">
+                          <span>Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}</span>
+                       </div>
+                       <div className="flex items-center space-x-1">
+                          <button 
+                            disabled={!table.getCanPreviousPage()}
+                            onClick={() => table.previousPage()}
+                            className="px-3 py-1 bg-onyx border border-white/5 hover:bg-white/5 disabled:opacity-30"
+                          >Prev</button>
+                          <button 
+                            disabled={!table.getCanNextPage()}
+                            onClick={() => table.nextPage()}
+                            className="px-3 py-1 bg-onyx border border-white/5 hover:bg-white/5 disabled:opacity-30"
+                          >Next</button>
+                       </div>
+                    </div>
+                 </div>
+               )}
+            </div>
+          </ScrollReveal3D>
       </main>
       
       {/* Modals */}

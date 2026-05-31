@@ -2,8 +2,8 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useTierStore } from '@/stores/tierStore'
-import { useBusinessProfile }
-  from '@/hooks/useBusinessProfile'
+import { useBusinessProfile } from '@/hooks/useBusinessProfile'
+import { ScrollReveal3D } from '@/components/ui/AnimatedComponents'
 
 type BetaView =
   'intro' | 'tour' | 'demo' | 'feedback' | 'thanks'
@@ -166,8 +166,7 @@ export default function CctvBetaPage() {
 
       {/* ═══ INTRO VIEW ═══ */}
       {view === 'intro' && (
-        <div className="max-w-2xl mx-auto
-          px-6 py-16 text-center">
+        <ScrollReveal3D className="max-w-2xl mx-auto px-6 py-16 text-center">
 
           {/* Beta badge */}
           <div className="inline-flex items-center
@@ -296,13 +295,12 @@ export default function CctvBetaPage() {
             Your feedback directly shapes
             what we build next.
           </p>
-        </div>
+        </ScrollReveal3D>
       )}
 
       {/* ═══ TOUR VIEW ═══ */}
       {view === 'tour' && (
-        <div className="max-w-2xl mx-auto
-          px-6 py-12">
+        <ScrollReveal3D className="max-w-2xl mx-auto px-6 py-12">
 
           {/* Progress */}
           <div className="flex items-center
@@ -642,13 +640,12 @@ export default function CctvBetaPage() {
               </button>
             )}
           </div>
-        </div>
+        </ScrollReveal3D>
       )}
 
       {/* ═══ DEMO VIEW ═══ */}
       {view === 'demo' && (
-        <div className="max-w-4xl mx-auto
-          px-6 py-12">
+        <ScrollReveal3D className="max-w-4xl mx-auto px-6 py-12">
 
           <div className="flex items-center
             justify-between mb-8">
@@ -901,13 +898,12 @@ export default function CctvBetaPage() {
               your factory needs →
             </button>
           </div>
-        </div>
+        </ScrollReveal3D>
       )}
 
       {/* ═══ FEEDBACK VIEW ═══ */}
       {view === 'feedback' && (
-        <div className="max-w-xl mx-auto
-          px-6 py-12">
+        <ScrollReveal3D className="max-w-xl mx-auto px-6 py-12">
 
           <div className="mb-8">
             <button
@@ -1196,13 +1192,12 @@ export default function CctvBetaPage() {
                 : 'Submit Feedback'}
             </button>
           </div>
-        </div>
+        </ScrollReveal3D>
       )}
 
       {/* ═══ THANKS VIEW ═══ */}
       {view === 'thanks' && (
-        <div className="max-w-md mx-auto
-          px-6 py-24 text-center">
+        <ScrollReveal3D className="max-w-md mx-auto px-6 py-24 text-center">
 
           <div className="w-16 h-16 rounded-full
             bg-emerald-500/10
@@ -1247,7 +1242,7 @@ export default function CctvBetaPage() {
               Return to Dashboard
             </Link>
           </div>
-        </div>
+        </ScrollReveal3D>
       )}
     </div>
   )

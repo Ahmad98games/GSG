@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -306,12 +307,12 @@ export default function NetworkPage() {
               <p className="text-xs text-gray-400 max-w-md mx-auto font-medium">
                 Your factory node is visible. Other verified factories can discover your location and industry to request collaborations.
               </p>
-              <button
-                onClick={() => {}}
-                className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition-colors bg-white/5 border border-white/10 px-4 py-2 hover:bg-white/10"
+              <Link
+                href="/settings"
+                className="inline-block text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition-colors bg-white/5 border border-white/10 px-4 py-2 hover:bg-white/10"
               >
                 Manage your listing →
-              </button>
+              </Link>
             </div>
           ) : (
             <div className="space-y-4">

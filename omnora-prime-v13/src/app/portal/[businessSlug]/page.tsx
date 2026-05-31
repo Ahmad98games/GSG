@@ -9,7 +9,9 @@ import {
   Package, Truck, HelpCircle
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
 
 export default function ClientPortalLandingPage() {
@@ -17,6 +19,7 @@ export default function ClientPortalLandingPage() {
   const router = useRouter();
   const supabase = createClient();
   const businessSlug = params.businessSlug as string;
+  const toast = useToast();
 
   const { data: business, isLoading } = useQuery({
     queryKey: ['portal_business', businessSlug],
@@ -49,11 +52,21 @@ export default function ClientPortalLandingPage() {
          </div>
          <div className="flex items-center space-x-8">
             <nav className="hidden md:flex items-center space-x-6 text-[10px] font-black uppercase tracking-widest text-gray-500">
-               <a href="#" className="text-white">Dashboard</a>
-               <a href="#" className="hover:text-white transition-colors">Documents</a>
-               <a href="#" className="hover:text-white transition-colors">Support</a>
+               <Link href={`/portal/${businessSlug}`} className="text-white">Dashboard</Link>
+               <Link href={`/portal/${businessSlug}/invoices`} className="hover:text-white transition-colors">Documents</Link>
+               <button 
+                 onClick={() => toast.info("Support Hub", "Logistics Support node is currently offline. Please contact via WhatsApp.")} 
+                 className="hover:text-white transition-colors bg-transparent border-none text-[10px] font-black uppercase tracking-widest cursor-pointer"
+               >
+                 Support
+               </button>
             </nav>
-            <button className="px-6 py-2 bg-white text-black text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all">Sign Out</button>
+            <button 
+              onClick={() => { router.push("/"); }}
+              className="px-6 py-2 bg-white text-black text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all cursor-pointer"
+            >
+              Sign Out
+            </button>
          </div>
       </header>
 
@@ -82,34 +95,39 @@ export default function ClientPortalLandingPage() {
                title="Order Tracking" 
                desc="Monitor the real-time production and dispatch status of your active shipments." 
                icon={Package} 
-               onClick={() => {}}
+               onClick={() => toast.info("Order Tracking", "Order Tracking telemetry stream is currently synchronizing.")}
             />
             <PortalCard 
                title="Payment Methods" 
                desc="Configure secure industrial payment gateways for automated reconciliation." 
                icon={Landmark} 
-               onClick={() => {}}
+               onClick={() => toast.info("Payment Gateways", "Secure Industrial Ledger Gateways are coming soon.")}
             />
          </div>
 
-         <section className="bg-[#111111] border border-white/5 p-12 flex flex-col md:flex-row items-center justify-between">
-            <div className="space-y-2 mb-8 md:mb-0">
-               <h3 className="text-2xl font-black uppercase tracking-tighter">Need Technical Assistance?</h3>
-               <p className="text-gray-500 text-sm font-medium uppercase tracking-wide">Our logistics support team is active 24/7 on the mesh.</p>
-            </div>
-            <button className="px-10 py-4 bg-[#C5A059] text-black text-[11px] font-black uppercase tracking-[0.2em] hover:brightness-110 shadow-2xl transition-all">Open Support Node</button>
-         </section>
-      </main>
+          <section className="bg-[#111111] border border-white/5 p-12 flex flex-col md:flex-row items-center justify-between">
+             <div className="space-y-2 mb-8 md:mb-0">
+                <h3 className="text-2xl font-black uppercase tracking-tighter">Need Technical Assistance?</h3>
+                <p className="text-gray-500 text-sm font-medium uppercase tracking-wide">Our logistics support team is active 24/7 on the mesh.</p>
+             </div>
+             <button 
+               onClick={() => toast.info("Support Node", "Live chat interface is offline. Contact local operator directly via WhatsApp.")}
+               className="px-10 py-4 bg-[#C5A059] text-black text-[11px] font-black uppercase tracking-[0.2em] hover:brightness-110 shadow-2xl transition-all cursor-pointer"
+             >
+               Open Support Node
+             </button>
+          </section>
+       </main>
 
-      <footer className="p-12 border-t border-white/5 opacity-30">
-         <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-            <p className="text-[10px] font-bold uppercase tracking-widest">© 2026 Omnora Labs • Noxis Industrial Ecosystem</p>
-            <div className="flex items-center space-x-6 text-[10px] font-bold uppercase tracking-widest">
-               <a href="#">Privacy Protocol</a>
-               <a href="#">Service Terms</a>
-               <a href="#">Security Audit</a>
-            </div>
-         </div>
+       <footer className="p-12 border-t border-white/5 opacity-30">
+          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+             <p className="text-[10px] font-bold uppercase tracking-widest">© 2026 Omnora Labs • Noxis Industrial Ecosystem</p>
+             <div className="flex items-center space-x-6 text-[10px] font-bold uppercase tracking-widest">
+                <Link href="/privacy">Privacy Protocol</Link>
+                <Link href="/privacy">Service Terms</Link>
+                <Link href="/docs#data-safety">Security Audit</Link>
+             </div>
+          </div>
       </footer>
     </div>
   );

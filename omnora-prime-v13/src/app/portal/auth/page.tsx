@@ -47,7 +47,7 @@ export default async function PortalAuthPage({
       </p>
 
       <a
-        href="#"
+        href="/"
         className="w-full py-4 bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-[0.3em] text-white hover:bg-white hover:text-onyx transition-all flex items-center justify-center space-x-3"
       >
         <RefreshCcw size={14} />

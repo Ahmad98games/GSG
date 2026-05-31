@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { ScrollReveal3D } from "@/components/ui/AnimatedComponents";
 import { 
   FileText, Download, Printer, Plus, Trash2, 
   ChevronLeft, Search, User, 
@@ -180,7 +181,8 @@ export default function InvoiceGenerator() {
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
             {/* Form Panel */}
-            <div className="glass-panel p-8 space-y-8 no-print">
+            <ScrollReveal3D className="no-print">
+              <div className="glass-panel p-8 space-y-8 no-print">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Bill To */}
                 <div className="space-y-4">
@@ -428,9 +430,11 @@ export default function InvoiceGenerator() {
                 </button>
               </div>
             </div>
+            </ScrollReveal3D>
 
             {/* Preview Panel */}
-            <div className="sticky top-24 overflow-hidden rounded-sm border border-white/10 bg-white shadow-2xl flex flex-col h-[842px] w-full max-w-[595px] mx-auto text-black font-sans print:fixed print:inset-0 print:m-0 print:border-none print:shadow-none print:w-full print:max-w-none print:h-auto invoice-preview relative">
+            <ScrollReveal3D className="sticky top-24 w-full max-w-[595px] mx-auto print:static">
+              <div className="overflow-hidden rounded-sm border border-white/10 bg-white shadow-2xl flex flex-col h-[842px] w-full text-black font-sans print:fixed print:inset-0 print:m-0 print:border-none print:shadow-none print:w-full print:max-w-none print:h-auto invoice-preview relative">
               <div className="flex-1 p-12 pb-24 space-y-12 overflow-y-auto print:overflow-visible custom-scrollbar print:p-8">
                 {/* Header */}
                 <div className="flex justify-between items-start">
@@ -614,6 +618,7 @@ export default function InvoiceGenerator() {
                 </span>
               </div>
             </div>
+            </ScrollReveal3D>
           </div>
         </div>
       </main>

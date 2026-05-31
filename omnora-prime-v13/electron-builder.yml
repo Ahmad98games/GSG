@@ -8,7 +8,7 @@ files:
   - "!.claude"
   - "!.github"
   - "!src/tests"
-icon: public/logos/noxis.png
+icon: build/icon.ico
 # Quote path: unquoted `dist` is parsed on Windows as drive `D:` + `ist`.
 directories:
   output: "./dist"
@@ -29,7 +29,7 @@ win:
   target: nsis
   # Avoid winCodeSign / asar integrity tooling that extracts symlinks (fails without Dev Mode/admin on Windows).
   signAndEditExecutable: false
-  icon: public/logos/noxis.png
+  icon: build/icon.ico
 asarUnpack:
   - "**/*.node"
   - "**/better-sqlite3/**"
