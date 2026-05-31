@@ -184,7 +184,7 @@ function ScrollCard3D({ card, index, isMobile, innerRef, isActive }: { card: any
   )
 }
 
-// Cinematic 3D Consecutive Scroll Showcase (Stretching Canvas & Overlays)
+// Cinematic 3D Consecutive Scroll Showcase (Vertical Shutter Background & Horizontal Cards)
 function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
   const cards = [
     {
@@ -246,23 +246,25 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
   })
 
   const smoothProgress = useSpring(scrollYProgress, {
-    stiffness: 70,
-    damping: 24,
+    stiffness: 75,
+    damping: 26,
     restDelta: 0.001
   })
 
   const [progressVal, setProgressVal] = useState(0)
-  const [activeIndex, setActiveIndex] = useState(-1)
+  const [activeIndex, setActiveIndex] = useState(0)
 
   useEffect(() => {
     return smoothProgress.on("change", (latest) => {
       setProgressVal(latest)
+      
+      // Calculate active index dynamically based on horizontal scroll progress range (0.25 to 0.85)
       if (latest < 0.25) {
-        setActiveIndex(-1)
-      } else if (latest >= 0.88) {
+        setActiveIndex(0)
+      } else if (latest >= 0.85) {
         setActiveIndex(4)
       } else {
-        const idx = Math.floor((latest - 0.25) / (0.63 / 5))
+        const idx = Math.floor((latest - 0.25) / (0.60 / 5))
         setActiveIndex(Math.min(4, Math.max(0, idx)))
       }
     })
@@ -270,42 +272,13 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
 
   const activeColor = cards[activeIndex]?.accent || "#7C3AED"
 
-  const [currentRgb, setCurrentRgb] = useState({ r: 124, g: 58, b: 237 })
-  useEffect(() => {
-    const hexToRgb = (hex: string) => {
-      const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i
-      const fullHex = hex.replace(shorthandRegex, (_, r, g, b) => r + r + g + g + b + b)
-      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(fullHex)
-      return result ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16)
-      } : { r: 124, g: 58, b: 237 }
-    }
-    
-    const target = hexToRgb(activeColor)
-    let animation: number
-    const tick = () => {
-      setCurrentRgb(curr => {
-        const nr = curr.r + (target.r - curr.r) * 0.1
-        const ng = curr.g + (target.g - curr.g) * 0.1
-        const nb = curr.b + (target.b - curr.b) * 0.1
-        if (Math.abs(nr - target.r) < 0.5 && Math.abs(ng - target.g) < 0.5 && Math.abs(nb - target.b) < 0.5) {
-          return target
-        }
-        animation = requestAnimationFrame(tick)
-        return { r: nr, g: ng, b: nb }
-      })
-    }
-    tick()
-    return () => cancelAnimationFrame(animation)
-  }, [activeColor])
+  // Background vertical shutter / curtain stretch animation (Shutter opens from top and bottom)
+  const bgScaleY = useTransform(smoothProgress, [0, 0.22, 0.85, 0.98], [0, 1, 1, 0])
+  const bgOpacity = useTransform(smoothProgress, [0, 0.1, 0.9, 0.98], [0, 1, 1, 0])
 
-  // Canvas size and shape stretch
-  const canvasWidth = useTransform(smoothProgress, [0, 0.32], ["160px", "100%"])
-  const canvasHeight = useTransform(smoothProgress, [0, 0.32], ["160px", "100%"])
-  const canvasBorderRadius = useTransform(smoothProgress, [0, 0.32], ["32px", "0px"])
-  const canvasOpacity = useTransform(smoothProgress, [0, 0.05, 0.95, 1], [0, 1, 1, 0])
+  // Horizontal translate X slides the cards across the screen
+  const xRange = isMobile ? ["20%", "-330%"] : ["35%", "-65%"]
+  const x = useTransform(smoothProgress, [0.25, 0.85], xRange)
 
   return (
     <section ref={sectionRef} className="relative bg-[#0B0B0C] border-y border-[#4C1D95]/15 overflow-visible">
@@ -331,102 +304,81 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
           </div>
         </div>
 
-        {/* Sticky Immersive Canvas viewport */}
-        <div className="sticky top-0 h-screen w-full flex items-center justify-center overflow-hidden z-20">
+        {/* Sticky viewport frame containing Vertically Stretching Shutter Backdrop & Horizontal Cards */}
+        <div className="sticky top-0 h-screen w-full flex flex-col justify-center overflow-hidden z-20">
           
-          {/* Stretching 3D Cybernet Canvas backdrop */}
+          {/* Vertical Shutter Background: Opens/Stretches from top and bottom */}
           <motion.div
             style={{
-              width: canvasWidth,
-              height: canvasHeight,
-              borderRadius: canvasBorderRadius,
-              opacity: canvasOpacity,
+              scaleY: bgScaleY,
+              opacity: bgOpacity,
+              transformOrigin: "center center",
             }}
-            className="absolute border border-white/[0.08] overflow-hidden bg-black/60 shadow-[0_0_50px_rgba(124,58,237,0.15)] flex items-center justify-center pointer-events-auto"
+            className="absolute inset-x-0 mx-auto w-[94%] max-w-7xl h-[80vh] border border-white/[0.08] bg-[#090A0C]/90 backdrop-blur-2xl rounded-[36px] shadow-[0_30px_80px_rgba(0,0,0,0.9)] flex items-center justify-center overflow-hidden"
           >
+            {/* StretchingGridCanvas inside background scales/morphs with scroll */}
             <StretchingGridCanvas progress={progressVal} activeIndex={activeIndex} activeColor={activeColor} />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/80 pointer-events-none" />
           </motion.div>
 
-          {/* Interactive Card/Intro overlays layer */}
-          <div className="absolute inset-0 w-full h-full flex items-center justify-center z-10 pointer-events-none px-4">
-            <AnimatePresence mode="wait">
-              {activeIndex === -1 ? (
-                <motion.div
-                  key="intro"
-                  initial={{ opacity: 0, y: 30, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -30, scale: 0.95 }}
-                  transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                  className="max-w-2xl text-center space-y-6 z-10 px-6 cursor-default pointer-events-auto"
-                >
-                  <div className="inline-flex items-center space-x-2 px-3 py-1 bg-white/5 border border-white/10 rounded-full">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#00E5FF] animate-pulse" />
-                    <span className="text-[9px] font-black uppercase tracking-widest text-[#00E5FF] font-mono">
-                      Noxis Node Online Initialized
-                    </span>
-                  </div>
-                  <h3 className="text-3xl md:text-6xl font-black uppercase text-white tracking-tight leading-none">
-                    UNFOLDING<br/>
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00E5FF] via-[#7C3AED] to-[#A3E635]">INTELLIGENCE khata</span>
-                  </h3>
-                  <p className="text-xs md:text-sm text-gray-500 font-mono tracking-widest uppercase">
-                    Scroll down to stretch & deploy the mesh grid
-                  </p>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key={activeIndex}
-                  initial={{ opacity: 0, y: 40, scale: 0.97 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -40, scale: 0.97 }}
-                  transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-                  className="w-full max-w-4xl p-6 md:p-10 rounded-[32px] border bg-[#090A0C]/85 backdrop-blur-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-8 md:gap-12 overflow-hidden shadow-[0_30px_70px_rgba(0,0,0,0.85)] z-10 pointer-events-auto"
+          {/* Foreground Horizontal Cards layer: Slides from right to left */}
+          <div className="relative w-full z-10 py-6">
+            <motion.div
+              style={{ x }}
+              className="flex flex-row items-center gap-8 md:gap-12 px-12 md:px-24"
+            >
+              {cards.map((card, idx) => (
+                <div
+                  key={card.id}
+                  className="w-[82vw] sm:w-[480px] md:w-[560px] flex-none p-6 md:p-8 rounded-[28px] border bg-[#111317]/88 backdrop-blur-2xl flex flex-col justify-between overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.65)] relative group cursor-default"
                   style={{
-                    boxShadow: `0 30px 70px rgba(${Math.round(currentRgb.r)}, ${Math.round(currentRgb.g)}, ${Math.round(currentRgb.b)}, 0.15)`,
-                    borderColor: `rgba(${Math.round(currentRgb.r)}, ${Math.round(currentRgb.g)}, ${Math.round(currentRgb.b)}, 0.25)`,
+                    borderColor: activeIndex === idx ? `${card.accent}45` : "rgba(255,255,255,0.04)",
+                    boxShadow: activeIndex === idx ? `0 25px 60px ${card.accent}15` : "0 10px 30px rgba(0,0,0,0.45)",
+                    transition: "border-color 0.5s ease, box-shadow 0.5s ease",
                   }}
                 >
-                  {/* Laser scan lines sweeping vertically and horizontally */}
-                  <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
-                    <div className="laser-scanner-sweep" style={{ background: `linear-gradient(90deg, transparent, ${activeColor}, transparent)`, boxShadow: `0 0 15px ${activeColor}` }} />
-                    <div className="laser-scanner-sweep-x" style={{ background: `linear-gradient(180deg, transparent, ${activeColor}, transparent)`, boxShadow: `0 0 15px ${activeColor}` }} />
-                  </div>
+                  {/* Holographic scanner laser scan sweep */}
+                  {activeIndex === idx && (
+                    <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
+                      <div className="laser-scanner-sweep" style={{ background: `linear-gradient(90deg, transparent, ${card.accent}, transparent)`, boxShadow: `0 0 15px ${card.accent}` }} />
+                    </div>
+                  )}
 
-                  <div className="space-y-5 flex-1 relative z-10">
+                  <div className="space-y-4">
                     <div className="flex items-center gap-3">
                       <div className="p-2.5 bg-white/5 rounded-xl border border-white/10 flex items-center justify-center text-white">
-                        {cards[activeIndex]?.icon}
+                        {card.icon}
                       </div>
-                      <span className="text-[10px] font-black tracking-widest uppercase font-mono" style={{ color: activeColor }}>
-                        {cards[activeIndex]?.subtitle}
+                      <span className="text-[9px] md:text-[10px] font-black tracking-widest uppercase font-mono" style={{ color: card.accent }}>
+                        {card.subtitle}
                       </span>
                     </div>
-                    <h3 className="text-2xl md:text-4xl font-bold text-white tracking-tight leading-none uppercase">
-                      {cards[activeIndex]?.title}
+                    <h3 className="text-xl md:text-3xl font-bold text-white tracking-tight leading-none uppercase">
+                      {card.title}
                     </h3>
                     <p className="text-xs md:text-sm text-[#94A3B8] leading-relaxed font-medium">
-                      {cards[activeIndex]?.desc}
+                      {card.desc}
                     </p>
                     <div className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-wider font-mono">
-                      {cards[activeIndex]?.metric}
+                      {card.metric}
                     </div>
                   </div>
 
-                  <div className="p-5 bg-black/60 border border-white/5 rounded-2xl flex-none w-full md:w-auto md:min-w-[280px] relative z-10">
-                    <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest block mb-2 font-mono">Live Floor Benchmarking</span>
-                    <p className="text-sm font-mono font-bold flex items-center gap-2" style={{ color: activeColor }}>
-                      <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: activeColor }} />
-                      <DecryptingTicker text={cards[activeIndex]?.stat} active={true} />
-                    </p>
-                    <div className="mt-4 pt-3 border-t border-white/5 flex justify-between text-[9px] text-gray-500 font-mono">
-                      <span>STATUS ACTIVE</span>
-                      <span className="text-white">ON-DEMAND TELEMETRY</span>
+                  <div className="mt-6 p-4 bg-black/60 border border-white/5 rounded-2xl w-full">
+                    <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest block mb-1 font-mono">Live Floor Benchmarking</span>
+                    <div className="flex justify-between items-center">
+                      <p className="text-xs font-mono font-bold flex items-center gap-1.5" style={{ color: card.accent }}>
+                        <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: card.accent }} />
+                        <DecryptingTicker text={card.stat} active={activeIndex === idx} />
+                      </p>
+                      <span className="text-[8px] text-gray-500 font-mono">STATUS ACTIVE</span>
                     </div>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                </div>
+              ))}
+            </motion.div>
           </div>
+
         </div>
 
       </div>
