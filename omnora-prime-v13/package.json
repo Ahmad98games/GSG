@@ -26,7 +26,7 @@
     "electron:rebuild": "electron-builder install-app-deps",
     "electron:publish": "npm run compile:electron && node scripts/build-electron.mjs && electron-builder --publish always",
     "electron:release": "npm run compile:electron && node scripts/build-electron.mjs && electron-builder --publish onTag",
-    "postinstall": "electron-builder install-app-deps",
+    "postinstall": "node -e \"if (!process.env.CI && !process.env.CF_PAGES && !process.env.CLOUDFLARE_DEPLOY) { require('child_process').execSync('electron-builder install-app-deps', { stdio: 'inherit' }); } else { console.log('Skipping Electron native dependency rebuilds on Cloudflare/CI environment'); }\"",
     "license:generate": "npx ts-node scripts/generate-license.ts",
     "license:trial": "npx ts-node --compiler-options \"{\\\"module\\\": \\\"commonjs\\\"}\" scripts/generate-license.ts --trial",
     "mobile:init": "npm install @capacitor/core @capacitor/cli && npx cap init \"Noxis Hub\" \"com.omnora.noxishub\" --web-dir=out",
