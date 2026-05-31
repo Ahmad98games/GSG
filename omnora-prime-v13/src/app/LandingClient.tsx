@@ -317,32 +317,112 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 items-start relative">
           
-          {/* Left Sticky Interactive Morphing Canvas (Desktop) */}
-          <div className="hidden md:flex md:col-span-5 sticky top-24 h-[72vh] flex-col justify-between items-center py-6 border border-white/[0.04] bg-[#0F1114]/40 backdrop-blur-md rounded-3xl p-6 shadow-2xl">
-            {/* Cyber HUD Telemetry Header */}
-            <div className="w-full flex justify-between items-start text-gray-500 font-mono text-[9px] select-none">
+          {/* Left Sticky High-Fidelity Mobile UI Mockup Showcase (Desktop) */}
+          <div className="hidden md:flex md:col-span-5 sticky top-24 h-[78vh] flex-col justify-between items-center border border-white/[0.04] bg-[#090A0C]/80 backdrop-blur-xl rounded-[32px] p-8 shadow-[0_25px_60px_rgba(0,0,0,0.85)] overflow-hidden relative group">
+            {/* Ambient Dark Horror & Cyberpunk Violet Lens Bloom */}
+            <div className="absolute -top-24 -left-24 w-72 h-72 bg-purple-900/10 rounded-full blur-[100px] pointer-events-none group-hover:bg-purple-900/20 transition-all duration-1000" />
+            <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-indigo-900/15 rounded-full blur-[100px] pointer-events-none group-hover:bg-indigo-900/25 transition-all duration-1000" />
+
+            {/* Cyan/Teal Tech HUD Header */}
+            <div className="w-full flex justify-between items-center text-gray-500 font-mono text-[9px] select-none z-10 border-b border-white/5 pb-4 mb-4">
               <div>
-                <p className="text-[#00E5FF] font-bold">// VECTOR ENGINE MORPH ACTIVE</p>
-                <p>SHAPE SEQUENCE: {activeIndex + 1} OF 5</p>
+                <p className="text-[#00E5FF] font-black uppercase tracking-widest">// MOBILE SHOWCASE STREAM</p>
+                <p className="text-[8px] text-gray-400 mt-0.5">TELEMETRY FRAME RATE: <span className="text-emerald-400 font-bold">60 FPS SOLID</span></p>
               </div>
               <div className="text-right">
-                <p className="text-emerald-400 font-bold">● 60 FPS SOLID</p>
-                <p>GPU HARDWARE BUFFER</p>
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#00E5FF] animate-pulse mr-1" />
+                <span className="text-white font-bold uppercase tracking-wider">LIVE HUD LAYER</span>
               </div>
             </div>
 
-            {/* Core Morphing Canvas Container */}
-            <div className="w-full flex-1 max-h-[300px] relative flex items-center justify-center pointer-events-auto">
-              <MorphingCanvas activeIndex={activeIndex} activeColor={activeColor} />
+            {/* Sleek Smartphone Banking UI Mockup Frame */}
+            <div className="w-full flex-1 relative flex items-center justify-center pointer-events-none z-10 px-4">
+              <div className="relative w-full max-w-[270px] aspect-[9/19.5] rounded-[48px] border-4 border-white/[0.08] bg-[#050608] shadow-[0_30px_70px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col p-1.5 group-hover:border-white/15 transition-all duration-700">
+                
+                {/* Dynamic Camera Notch & Sensor Bar */}
+                <div className="absolute top-3.5 left-1/2 -translate-x-1/2 w-28 h-5 bg-[#000000] rounded-full z-40 border border-white/5 flex items-center justify-between px-4">
+                  <div className="w-2.5 h-2.5 rounded-full bg-indigo-950/80 border border-white/5 flex items-center justify-center"><div className="w-1 h-1 rounded-full bg-blue-500/60 animate-pulse" /></div>
+                  <div className="w-12 h-1 bg-white/5 rounded-full" />
+                </div>
+
+                {/* Ethereal Indigo-Tinted Ambient Morphing Background Canvas inside Mobile */}
+                <div className="absolute inset-0 z-0 bg-[#040405] transition-all duration-1000" style={{
+                  background: activeIndex === 0 ? 'radial-gradient(circle at 50% 80%, #1e1b4b 0%, #030303 80%)' :
+                              activeIndex === 1 ? 'radial-gradient(circle at 20% 40%, #0c4a6e 0%, #030303 85%)' :
+                              activeIndex === 2 ? 'radial-gradient(circle at 80% 20%, #311042 0%, #030303 80%)' :
+                              activeIndex === 3 ? 'radial-gradient(circle at 30% 60%, #115e59 0%, #020202 90%)' :
+                                                  'radial-gradient(circle at 50% 50%, #1e1b4b 0%, #030303 75%)'
+                }}>
+                  {/* Subtle Grid overlay inside Phone */}
+                  <div className="absolute inset-0 opacity-[0.03] bg-[linear-gradient(rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[size:16px_16px]" />
+                </div>
+
+                {/* Smartphone Core Content Screen View */}
+                <div className="relative flex-1 rounded-[40px] overflow-hidden flex flex-col z-10 p-3 pt-9 justify-between">
+                  {/* Status Bar */}
+                  <div className="flex justify-between items-center text-[8px] font-bold text-gray-500 font-mono px-2">
+                    <span>9:41 AM</span>
+                    <div className="flex items-center gap-1.5">
+                      <span>5G</span>
+                      <div className="w-3.5 h-2 border border-gray-600 rounded-[2px] p-0.5 flex items-center"><div className="w-2 h-full bg-[#00E5FF]" /></div>
+                    </div>
+                  </div>
+
+                  {/* App Header & Balance */}
+                  <div className="mt-2 space-y-1 px-2">
+                    <span className="text-[7px] font-black text-gray-500 uppercase tracking-widest block">Noxis Ledger Balances</span>
+                    <h3 className="text-lg font-black text-white font-mono leading-none tracking-tight">₨ 5,420,890</h3>
+                    <p className="text-[8px] text-[#00E5FF] font-bold tracking-wide flex items-center gap-1">
+                      <span className="w-1 h-1 rounded-full bg-[#00E5FF] animate-ping" />
+                      SYSTEM LEDGER SYNCHRONIZED
+                    </p>
+                  </div>
+
+                  {/* Sliding Cards Layer inside Mockup View */}
+                  <div className="flex-1 my-4 flex flex-col justify-end gap-2.5 overflow-hidden no-scrollbar pr-0.5">
+                    {cards.slice(0, 3).map((c, i) => {
+                      const offsetIdx = (activeIndex + i) % 5;
+                      const displayCard = cards[offsetIdx] || c;
+                      
+                      return (
+                        <div 
+                          key={c.id} 
+                          className={`w-full p-3 rounded-2xl border transition-all duration-700 flex flex-col gap-1.5 backdrop-blur-md ${
+                            i === 0 
+                              ? "bg-[#090A0C]/90 border-[#7C3AED]/35 shadow-[0_12px_24px_rgba(124,58,237,0.18)] translate-y-0 scale-100 opacity-100" 
+                              : i === 1
+                                ? "bg-[#090A0C]/70 border-white/[0.04] translate-y-1 scale-95 opacity-60"
+                                : "bg-[#090A0C]/40 border-white/[0.02] translate-y-2 scale-90 opacity-25"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-[7px] font-bold text-gray-500 tracking-wider uppercase font-mono">{displayCard.subtitle}</span>
+                            <span className="text-[7px] font-black text-[#00E5FF] font-mono">ACTIVE</span>
+                          </div>
+                          <h4 className="text-[9px] font-bold text-white uppercase tracking-tight line-clamp-1">{displayCard.title}</h4>
+                          <div className="flex items-center justify-between mt-1 pt-1.5 border-t border-white/5">
+                            <span className="text-[7px] font-mono text-emerald-400 font-bold leading-none line-clamp-1">● {displayCard.stat.split(":")[0] || "Live Data"}</span>
+                            <span className="text-[6px] font-mono text-gray-500">{displayCard.metric}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Navigation Home Indicator Bar */}
+                  <div className="w-20 h-1 bg-white/20 rounded-full mx-auto mb-1" />
+                </div>
+
+              </div>
             </div>
 
             {/* Cyber HUD Telemetry Footer */}
-            <div className="w-full space-y-2 font-mono select-none">
+            <div className="w-full space-y-2.5 font-mono select-none z-10 border-t border-white/5 pt-4 mt-2">
               <div className="flex justify-between items-center text-[10px] text-gray-400 border-b border-white/5 pb-2">
-                <span className="text-[9px] uppercase tracking-wider text-gray-500">Live Telemetry</span>
-                <span className="text-white font-bold uppercase">{cards[activeIndex]?.subtitle}</span>
+                <span className="text-[8px] uppercase tracking-widest text-[#7C3AED] font-black">Feature Morphing HUD</span>
+                <span className="text-white font-extrabold uppercase text-[9px] tracking-wider">{cards[activeIndex]?.subtitle}</span>
               </div>
-              <p className="text-[10px] text-gray-500 leading-relaxed font-sans">{cards[activeIndex]?.desc}</p>
+              <p className="text-[10px] text-gray-500 leading-relaxed font-sans font-medium line-clamp-2">{cards[activeIndex]?.desc}</p>
             </div>
           </div>
 
