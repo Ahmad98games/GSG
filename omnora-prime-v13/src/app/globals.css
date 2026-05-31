@@ -754,35 +754,25 @@ td {
 
 /* Hardware-accelerated Holographic Laser Scanline keyframes */
 @keyframes laser-sweep {
-  0% {
-    top: 0%;
-    opacity: 0;
-  }
-
-  10% {
-    opacity: 1;
-  }
-
-  90% {
-    opacity: 1;
-  }
-
-  100% {
-    top: 100%;
-    opacity: 0;
-  }
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
 }
 
 .laser-scanner-sweep {
   position: absolute;
-  left: 0;
+  inset: 0;
+  height: 2px;
   width: 100%;
-  height: 3px;
-  background: linear-gradient(90deg, transparent, #00E5FF, transparent);
-  box-shadow: 0 0 15px rgba(0, 229, 255, 0.8), 0 0 30px rgba(0, 229, 255, 0.4);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(0, 229, 255, 0.6),
+    transparent
+  );
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.4);
+  animation: laser-sweep 2s linear infinite;
+  will-change: transform;
   pointer-events: none;
-  will-change: top, opacity;
-  animation: laser-sweep 3.5s cubic-bezier(0.25, 1, 0.5, 1) infinite;
 }
 
 .holographic-grid {
@@ -824,36 +814,45 @@ td {
 }
 
 /* Dual-Axis Intersecting Laser Scan Utilities */
+@keyframes laser-sweep {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
 @keyframes laser-sweep-x {
-  0% {
-    left: 0%;
-    opacity: 0;
-  }
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
 
-  10% {
-    opacity: 1;
-  }
-
-  90% {
-    opacity: 1;
-  }
-
-  100% {
-    left: 100%;
-    opacity: 0;
-  }
+.laser-scanner-sweep {
+  position: absolute;
+  inset: 0;
+  height: 2px;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(0, 229, 255, 0.6),
+    transparent
+  );
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.4);
+  animation: laser-sweep 2s linear infinite;
+  will-change: transform;
 }
 
 .laser-scanner-sweep-x {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: linear-gradient(180deg, transparent, #00E5FF, transparent);
-  box-shadow: 0 0 15px rgba(0, 229, 255, 0.8), 0 0 30px rgba(0, 229, 255, 0.4);
-  pointer-events: none;
-  will-change: left, opacity;
-  animation: laser-sweep-x 4.5s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+  inset: 0;
+  width: 2px;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(0, 229, 255, 0.3),
+    transparent
+  );
+  animation: laser-sweep-x 3s linear infinite;
+  will-change: transform;
 }
 
 .perspective-1200 {

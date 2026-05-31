@@ -117,7 +117,7 @@ function DecryptingTicker({ text, active }: { text: string; active: boolean }) {
         if (intervalRef.current) clearInterval(intervalRef.current)
       }
       iterations += 1.5
-    }, 24)
+    }, 40)
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
@@ -245,11 +245,14 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
     offset: ["start start", "end end"]
   })
 
-  const smoothProgress = useSpring(scrollYProgress, {
+  // Rule of Hooks compliant: call unconditionally, select path using variable.
+  const springProgress = useSpring(scrollYProgress, {
     stiffness: 75,
     damping: 26,
     restDelta: 0.001
   })
+
+  const smoothProgress = isMobile ? scrollYProgress : springProgress
 
   const [progressVal, setProgressVal] = useState(0)
   const [activeIndex, setActiveIndex] = useState(0)
@@ -258,14 +261,19 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
     return smoothProgress.on("change", (latest) => {
       setProgressVal(latest)
       
-      // Calculate active index dynamically based on horizontal scroll progress range (0.25 to 0.85)
-      if (latest < 0.25) {
+      // Map scroll range [0.15, 0.90] to cards [0, 4]
+      const START = 0.15
+      const END = 0.90
+      const RANGE = END - START
+      
+      if (latest <= START) {
         setActiveIndex(0)
-      } else if (latest >= 0.85) {
+      } else if (latest >= END) {
         setActiveIndex(4)
       } else {
-        const idx = Math.floor((latest - 0.25) / (0.60 / 5))
-        setActiveIndex(Math.min(4, Math.max(0, idx)))
+        const normalized = (latest - START) / RANGE
+        const idx = Math.min(4, Math.floor(normalized * 5))
+        setActiveIndex(idx)
       }
     })
   }, [smoothProgress])
@@ -273,38 +281,56 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
   const activeColor = cards[activeIndex]?.accent || "#7C3AED"
 
   // Background vertical shutter / curtain stretch animation (Shutter opens from top and bottom)
-  const bgScaleY = useTransform(smoothProgress, [0, 0.22, 0.85, 0.98], [0, 1, 1, 0])
-  const bgOpacity = useTransform(smoothProgress, [0, 0.1, 0.9, 0.98], [0, 1, 1, 0])
+  const bgScaleY = useTransform(smoothProgress, [0, 0.15, 0.90, 0.98], [0, 1, 1, 0])
+  const bgOpacity = useTransform(smoothProgress, [0, 0.08, 0.92, 0.98], [0, 1, 1, 0])
 
-  // Horizontal translate X slides the cards across the screen
-  const xRange = isMobile ? ["20%", "-330%"] : ["35%", "-65%"]
-  const x = useTransform(smoothProgress, [0.25, 0.85], xRange)
+  // Horizontal translate X slides the cards across the screen using precise x range calculations
+  const CARD_W_DESKTOP = 560
+  const CARD_W_MOBILE = 328
+  const GAP = 48
+  const CARDS = 5
+
+  const getXRange = (mobile: boolean) => {
+    const cardW = mobile ? CARD_W_MOBILE : CARD_W_DESKTOP
+    const vw = mobile ? 400 : 1200
+    const totalW = CARDS * cardW + (CARDS - 1) * GAP
+    const startX = (vw - cardW) / 2
+    const endX = startX - (totalW - vw)
+    return [`${startX}px`, `${endX}px`]
+  }
+
+  const x = useTransform(
+    smoothProgress,
+    [0.15, 0.90],
+    getXRange(isMobile)
+  )
 
   return (
     <section ref={sectionRef} className="relative bg-[#0B0B0C] border-y border-[#4C1D95]/15 overflow-visible">
-      {/* Scroll-tracked features showcase */}
-      <div className="relative w-full h-[400vh] flex flex-col justify-start">
-        
-        {/* Headline Header (Scrolls naturally) */}
-        <div className="w-full py-20 px-4 md:px-6 flex flex-col items-center justify-center relative z-10 bg-gradient-to-b from-transparent to-[#070809]">
-          <span className="text-[10px] md:text-xs font-bold text-[#7C3AED] tracking-widest uppercase mb-3 md:mb-5">ENGINEERED FOR MODERN WORKSHOPS</span>
-          <h2 className="text-4xl md:text-7xl font-black tracking-tightest text-white uppercase leading-none font-sans">
-            SIMPLE
-          </h2>
-          <div className="h-12 md:h-16 w-[85%] md:w-[70%] max-w-[500px] bg-gradient-to-r from-[#4C1D95] via-[#7C3AED] to-[#4C1D95] my-2 md:my-3 flex items-center justify-center rounded-full shadow-[0_0_40px_rgba(124,58,237,0.6)] border border-[#7C3AED]/35 z-10">
-            <span className="text-sm md:text-xl font-black uppercase text-white tracking-widest leading-none font-sans">
-              BY DESIGN
-            </span>
-          </div>
-          <h2 className="text-4xl md:text-7xl font-black tracking-tightest text-white uppercase leading-none font-sans mt-1 md:mt-2">
-            POWERFUL
-          </h2>
-          <div className="text-[10px] md:text-sm font-bold text-[#94A3B8] tracking-[0.2em] uppercase mt-2 md:mt-4">
-            BY IMPACT
-          </div>
+      
+      {/* Headline Header (Scrolls naturally) */}
+      <div className="w-full py-20 px-4 md:px-6 flex flex-col items-center justify-center relative z-10 bg-gradient-to-b from-transparent to-[#070809]">
+        <span className="text-[10px] md:text-xs font-bold text-[#7C3AED] tracking-widest uppercase mb-3 md:mb-5">ENGINEERED FOR MODERN WORKSHOPS</span>
+        <h2 className="text-4xl md:text-7xl font-black tracking-tightest text-white uppercase leading-none font-sans">
+          SIMPLE
+        </h2>
+        <div className="h-12 md:h-16 w-[85%] md:w-[70%] max-w-[500px] bg-gradient-to-r from-[#4C1D95] via-[#7C3AED] to-[#4C1D95] my-2 md:my-3 flex items-center justify-center rounded-full shadow-[0_0_40px_rgba(124,58,237,0.6)] border border-[#7C3AED]/35 z-10">
+          <span className="text-sm md:text-xl font-black uppercase text-white tracking-widest leading-none font-sans">
+            BY DESIGN
+          </span>
         </div>
+        <h2 className="text-4xl md:text-7xl font-black tracking-tightest text-white uppercase leading-none font-sans mt-1 md:mt-2">
+          POWERFUL
+        </h2>
+        <div className="text-[10px] md:text-sm font-bold text-[#94A3B8] tracking-[0.2em] uppercase mt-2 md:mt-4">
+          BY IMPACT
+        </div>
+      </div>
 
-        {/* Sticky viewport frame containing Vertically Stretching Shutter Backdrop & Horizontal Cards */}
+      {/* Scroll track (exactly 500vh) */}
+      <div className="relative w-full h-[500vh]">
+        
+        {/* Sticky viewport frame (exactly 100vh) */}
         <div className="sticky top-0 h-screen w-full flex flex-col justify-center overflow-hidden z-20">
           
           {/* Vertical Shutter Background: Opens/Stretches from top and bottom */}
@@ -316,8 +342,12 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
             }}
             className="absolute inset-x-0 mx-auto w-[94%] max-w-7xl h-[80vh] border border-white/[0.08] bg-[#090A0C]/90 backdrop-blur-2xl rounded-[36px] shadow-[0_30px_80px_rgba(0,0,0,0.9)] flex items-center justify-center overflow-hidden"
           >
-            {/* StretchingGridCanvas inside background scales/morphs with scroll */}
-            <StretchingGridCanvas progress={progressVal} activeIndex={activeIndex} activeColor={activeColor} />
+            {/* StretchingGridCanvas inside background scales/morphs with scroll - Disabled on mobile */}
+            {isMobile ? (
+              <div className="absolute inset-0 bg-gradient-to-br from-[#090A0C] to-[#0D0F14]" />
+            ) : (
+              <StretchingGridCanvas progress={progressVal} activeIndex={activeIndex} activeColor={activeColor} />
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/80 pointer-events-none" />
           </motion.div>
 
@@ -327,55 +357,60 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
               style={{ x }}
               className="flex flex-row items-center gap-8 md:gap-12 px-12 md:px-24"
             >
-              {cards.map((card, idx) => (
-                <div
-                  key={card.id}
-                  className="w-[82vw] sm:w-[480px] md:w-[560px] flex-none p-6 md:p-8 rounded-[28px] border bg-[#111317]/88 backdrop-blur-2xl flex flex-col justify-between overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.65)] relative group cursor-default"
-                  style={{
-                    borderColor: activeIndex === idx ? `${card.accent}45` : "rgba(255,255,255,0.04)",
-                    boxShadow: activeIndex === idx ? `0 25px 60px ${card.accent}15` : "0 10px 30px rgba(0,0,0,0.45)",
-                    transition: "border-color 0.5s ease, box-shadow 0.5s ease",
-                  }}
-                >
-                  {/* Holographic scanner laser scan sweep */}
-                  {activeIndex === idx && (
-                    <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
-                      <div className="laser-scanner-sweep" style={{ background: `linear-gradient(90deg, transparent, ${card.accent}, transparent)`, boxShadow: `0 0 15px ${card.accent}` }} />
-                    </div>
-                  )}
-
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2.5 bg-white/5 rounded-xl border border-white/10 flex items-center justify-center text-white">
-                        {card.icon}
+              {cards.map((card, idx) => {
+                const isVisible = Math.abs(activeIndex - idx) <= 1
+                return (
+                  <div
+                    key={card.id}
+                    className="w-[82vw] sm:w-[480px] md:w-[560px] flex-none p-6 md:p-8 rounded-[28px] border bg-[#111317]/88 backdrop-blur-2xl flex flex-col justify-between overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.65)] relative group cursor-default"
+                    style={{
+                      borderColor: activeIndex === idx ? `${card.accent}45` : "rgba(255,255,255,0.04)",
+                      boxShadow: activeIndex === idx ? `0 25px 60px ${card.accent}15` : "0 10px 30px rgba(0,0,0,0.45)",
+                      transform: activeIndex === idx ? "scale(1.02) translateY(-4px)" : "scale(1) translateY(0px)",
+                      transition: "border-color 0.5s ease, box-shadow 0.5s ease, transform 0.4s ease",
+                    }}
+                  >
+                    {/* Holographic scanner laser scan sweep */}
+                    {activeIndex === idx && (
+                      <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
+                        <div className="laser-scanner-sweep" />
+                        <div className="laser-scanner-sweep-x" />
                       </div>
-                      <span className="text-[9px] md:text-[10px] font-black tracking-widest uppercase font-mono" style={{ color: card.accent }}>
-                        {card.subtitle}
-                      </span>
-                    </div>
-                    <h3 className="text-xl md:text-3xl font-bold text-white tracking-tight leading-none uppercase">
-                      {card.title}
-                    </h3>
-                    <p className="text-xs md:text-sm text-[#94A3B8] leading-relaxed font-medium">
-                      {card.desc}
-                    </p>
-                    <div className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-wider font-mono">
-                      {card.metric}
-                    </div>
-                  </div>
+                    )}
 
-                  <div className="mt-6 p-4 bg-black/60 border border-white/5 rounded-2xl w-full">
-                    <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest block mb-1 font-mono">Live Floor Benchmarking</span>
-                    <div className="flex justify-between items-center">
-                      <p className="text-xs font-mono font-bold flex items-center gap-1.5" style={{ color: card.accent }}>
-                        <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: card.accent }} />
-                        <DecryptingTicker text={card.stat} active={activeIndex === idx} />
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-white/5 rounded-xl border border-white/10 flex items-center justify-center text-white">
+                          {card.icon}
+                        </div>
+                        <span className="text-[9px] md:text-[10px] font-black tracking-widest uppercase font-mono" style={{ color: card.accent }}>
+                          {card.subtitle}
+                        </span>
+                      </div>
+                      <h3 className="text-xl md:text-3xl font-bold text-white tracking-tight leading-none uppercase">
+                        {card.title}
+                      </h3>
+                      <p className="text-xs md:text-sm text-[#94A3B8] leading-relaxed font-medium">
+                        {card.desc}
                       </p>
-                      <span className="text-[8px] text-gray-500 font-mono">STATUS ACTIVE</span>
+                      <div className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-wider font-mono">
+                        {card.metric}
+                      </div>
+                    </div>
+
+                    <div className="mt-6 p-4 bg-black/60 border border-white/5 rounded-2xl w-full">
+                      <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest block mb-1 font-mono">Live Floor Benchmarking</span>
+                      <div className="flex justify-between items-center">
+                        <p className="text-xs font-mono font-bold flex items-center gap-1.5" style={{ color: card.accent }}>
+                          <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: card.accent }} />
+                          <DecryptingTicker text={card.stat} active={isVisible && activeIndex === idx} />
+                        </p>
+                        <span className="text-[8px] text-gray-500 font-mono">STATUS ACTIVE</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </motion.div>
           </div>
 
