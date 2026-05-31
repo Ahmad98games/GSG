@@ -132,86 +132,113 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
     { id: 5, title: "Verified Worker Identities", subtitle: "DIGITAL TALENT LEDGER", icon: <ShieldCheck className="text-[#A3E635] w-6 h-6" />, desc: "Empowers karigars with QR-verifiable digital profiles containing verified attendance metrics, skill classifications, and peshgi advance logs — portable across factories.", accent: "#A3E635", stat: "Verified: Hamid · Senior Weaver · 98% attendance", metric: "Zero-Trust Verified Cards" },
   ]
 
-  // CRITICAL FIXED NODE: Explicit isolated track for sticky slider viewport bounds
-  const sliderSectionRef = useRef<HTMLDivElement>(null)
-  const isInView = useInView(sliderSectionRef, { amount: 0.15 })
+  // ── Entire section ref wraps heading + scroll track for earlier detection ──
+  const sectionRef = useRef<HTMLDivElement>(null)
+  const isInView = useInView(sectionRef, { amount: 0.08 })
 
-  // 100% Fixed parameters for precise scroll tracking map
-  const { scrollYProgress: sliderProgress } = useScroll({
-    target: sliderSectionRef,
-    offset: ["start start", "end end"], // Animation fires right when heading leaves viewport bounds
+  // Progress mapped across the entire section (heading + sticky track)
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start end", "end start"],
   })
 
+  // Map the raw scroll into a 0→1 card progress range
+  // Cards start animating when the heading is ~30% scrolled into view
+  // and finish before the section exits. This makes the full card animation
+  // happen with much less total scrolling.
+  const cardProgress = useTransform(scrollYProgress, [0.15, 0.65], [0, 1], { clamp: true })
+
   const targetVal = useMotionValue(0)
-  const displayProgress = useSpring(targetVal, { stiffness: 90, damping: 28, restDelta: 0.001 })
+  const displayProgress = useSpring(targetVal, { stiffness: 100, damping: 30, restDelta: 0.0005 })
 
   const [activeIndex, setActiveIndex] = useState(0)
   const [progressVal, setProgressVal] = useState(0)
-  const lastScrollTime = useRef(Date.now())
+  const lastScrollTime = useRef(0)
+  const isAutoplayActive = useRef(false)
 
+  // Sync scroll → spring target (scroll overrides autoplay)
   useEffect(() => {
-    return sliderProgress.on("change", (v) => {
+    return cardProgress.on("change", (v) => {
       lastScrollTime.current = Date.now()
+      isAutoplayActive.current = false
       targetVal.set(v)
     })
-  }, [sliderProgress, targetVal])
+  }, [cardProgress, targetVal])
 
+  // Track spring output for active card index
   useEffect(() => {
     return displayProgress.on("change", (v) => {
       setProgressVal(v)
-      // Linear distributed mapping structure for 5 active framework items
-      const calculatedIndex = Math.min(cards.length - 1, Math.floor(v * cards.length))
-      setActiveIndex(Math.max(0, calculatedIndex))
+      const clampedV = Math.max(0, Math.min(1, v))
+      const idx = Math.min(cards.length - 1, Math.floor(clampedV * cards.length))
+      setActiveIndex(Math.max(0, idx))
     })
   }, [displayProgress, cards.length])
 
-  // Autoplay ping-pong carousel sequence
-  const autoplayDirection = useRef(1)
+  // ── Autoplay ping-pong: starts after 1.2s idle, pauses on any scroll ──
+  const autoDir = useRef(1)
+  const autoIdx = useRef(0)
+
   useEffect(() => {
-    let timer: NodeJS.Timeout
-    let autoplayInterval: NodeJS.Timeout
+    let intervalId: NodeJS.Timeout | null = null
+    let checkId: NodeJS.Timeout | null = null
 
-    const startAutoplay = () => {
-      autoplayInterval = setInterval(() => {
-        const currentProgress = sliderProgress.get()
-        if (Date.now() - lastScrollTime.current < 2000 || !isInView || currentProgress < 0.05 || currentProgress > 0.95) return
-
-        let nextIdx = activeIndex + autoplayDirection.current
-        if (nextIdx >= cards.length) {
-          autoplayDirection.current = -1
-          nextIdx = cards.length - 2
-        } else if (nextIdx < 0) {
-          autoplayDirection.current = 1
-          nextIdx = 1
-        }
-
-        const targetProgress = nextIdx / (cards.length - 1)
-        targetVal.set(targetProgress)
-      }, 3500)
-    }
-
-    const checkAutoplayState = () => {
-      clearInterval(autoplayInterval)
-      if (Date.now() - lastScrollTime.current >= 2000 && isInView) {
-        const currentProgress = sliderProgress.get()
-        if (currentProgress >= 0.05 && currentProgress <= 0.95) startAutoplay()
+    const tick = () => {
+      // If user scrolled recently, stop autoplay
+      if (Date.now() - lastScrollTime.current < 1200) {
+        isAutoplayActive.current = false
+        if (intervalId) { clearInterval(intervalId); intervalId = null }
+        return
       }
-      timer = setTimeout(checkAutoplayState, 1000)
+
+      if (!isInView) return
+
+      // Advance index
+      let next = autoIdx.current + autoDir.current
+      if (next >= cards.length) {
+        autoDir.current = -1
+        next = cards.length - 2
+      } else if (next < 0) {
+        autoDir.current = 1
+        next = 1
+      }
+      autoIdx.current = next
+      const prog = next / (cards.length - 1)
+      isAutoplayActive.current = true
+      targetVal.set(prog)
     }
 
-    checkAutoplayState()
-    return () => { clearTimeout(timer); clearInterval(autoplayInterval) }
-  }, [activeIndex, isInView, targetVal, sliderProgress, cards.length])
+    const monitor = () => {
+      const idleMs = Date.now() - lastScrollTime.current
+      const scrollP = cardProgress.get()
+
+      if (idleMs >= 1200 && isInView && scrollP > 0.05 && scrollP < 0.95 && !intervalId) {
+        // Sync autoIdx with current displayed index before starting
+        autoIdx.current = activeIndex
+        intervalId = setInterval(tick, 2800)
+      } else if ((idleMs < 1200 || !isInView) && intervalId) {
+        clearInterval(intervalId)
+        intervalId = null
+      }
+      checkId = setTimeout(monitor, 600)
+    }
+
+    monitor()
+    return () => {
+      if (intervalId) clearInterval(intervalId)
+      if (checkId) clearTimeout(checkId)
+    }
+  }, [isInView, activeIndex, targetVal, cardProgress, cards.length])
 
   const activeColor = cards[activeIndex]?.accent ?? "#7C3AED"
 
-  const bgScale = useTransform(displayProgress, [0, 0.1, 0.9, 1], [0.96, 1, 1, 0.96])
-  const bgOpacity = useTransform(displayProgress, [0, 0.05, 0.95, 1], [0.7, 1, 1, 0.7])
+  const bgScale = useTransform(displayProgress, [0, 0.08, 0.92, 1], [0.97, 1, 1, 0.97])
+  const bgOpacity = useTransform(displayProgress, [0, 0.04, 0.96, 1], [0.75, 1, 1, 0.75])
 
-  // Precise tracking dimensions layout architecture
-  const CARD_W = isMobile ? 310 : 540
-  const GAP    = isMobile ? 20  : 40
-  const VW     = isMobile ? 375 : 1200
+  // ── Card strip geometry ──
+  const CARD_W = isMobile ? 280 : 540
+  const GAP    = isMobile ? 16  : 40
+  const VW     = typeof window !== 'undefined' ? window.innerWidth : (isMobile ? 375 : 1200)
 
   const totalW = cards.length * CARD_W + (cards.length - 1) * GAP
   const startX = (VW - CARD_W) / 2
@@ -220,9 +247,9 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
   const x = useTransform(displayProgress, [0, 1], [`${startX}px`, `${endX}px`])
 
   return (
-    <div className="relative bg-[#0B0B0C]">
+    <div ref={sectionRef} className="relative bg-[#0B0B0C]">
       {/* ── HEADING ── */}
-      <div className="relative bg-[#0B0B0C] border-t border-[#4C1D95]/15 w-full py-24 px-4 flex flex-col items-center justify-center overflow-hidden">
+      <div className="relative bg-[#0B0B0C] border-t border-[#4C1D95]/15 w-full py-20 md:py-24 px-4 flex flex-col items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-gradient-radial from-[#4C1D95]/10 to-transparent pointer-events-none" />
 
         <motion.p
@@ -278,16 +305,16 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
         </motion.p>
       </div>
 
-      {/* ── FIXED TRACK BOX: Shortened to 280vh to remove dead blank spacing ── */}
-      <section ref={sliderSectionRef} className="relative bg-[#0B0B0C]">
-        <div className="relative h-[280vh] w-full">
+      {/* ── STICKY SCROLL TRACK: Compact 160vh (mobile) / 200vh (desktop) ── */}
+      <section className="relative bg-[#0B0B0C]">
+        <div className={`relative w-full ${isMobile ? 'h-[160vh]' : 'h-[200vh]'}`}>
           {/* Sticky viewport frame */}
           <div className="sticky top-0 h-screen w-full flex items-center justify-center overflow-hidden">
-            
+
             {/* Background Shutter */}
             <motion.div
               style={{ scale: bgScale, opacity: bgOpacity }}
-              className="absolute inset-x-4 md:inset-x-8 inset-y-6 rounded-[32px] border border-white/[0.07] bg-[#08090B]/95 backdrop-blur-2xl shadow-[0_40px_100px_rgba(0,0,0,0.95)] overflow-hidden"
+              className="absolute inset-x-3 md:inset-x-8 inset-y-4 md:inset-y-6 rounded-[24px] md:rounded-[32px] border border-white/[0.07] bg-[#08090B]/95 backdrop-blur-2xl shadow-[0_40px_100px_rgba(0,0,0,0.95)] overflow-hidden"
             >
               {!isMobile && (
                 <StretchingGridCanvas
@@ -365,7 +392,7 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
             {/* Cards viewport horizontal strip wrapper */}
             <motion.div
               style={{ scale: bgScale, opacity: bgOpacity }}
-              className="absolute inset-x-4 md:inset-x-8 inset-y-6 rounded-[32px] overflow-hidden flex items-center"
+              className="absolute inset-x-3 md:inset-x-8 inset-y-4 md:inset-y-6 rounded-[24px] md:rounded-[32px] overflow-hidden flex items-center"
             >
               <motion.div className="flex flex-row items-stretch" style={{ gap: `${GAP}px`, x }}>
                 {cards.map((card, idx) => {
@@ -373,7 +400,7 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
                   return (
                     <div
                       key={card.id}
-                      className="flex-none flex flex-col justify-between p-6 md:p-8 rounded-[24px] border bg-[#0F1114]/90 backdrop-blur-xl relative overflow-hidden cursor-default"
+                      className="flex-none flex flex-col justify-between p-5 md:p-8 rounded-[20px] md:rounded-[24px] border bg-[#0F1114]/90 backdrop-blur-xl relative overflow-hidden cursor-default"
                       style={{
                         width: `${CARD_W}px`,
                         borderColor: isActive ? `${card.accent}50` : "rgba(255,255,255,0.05)",
@@ -396,9 +423,9 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
 
                       <div className="absolute inset-0 holographic-grid opacity-30 pointer-events-none" />
 
-                      <div className="relative z-10 space-y-4">
+                      <div className="relative z-10 space-y-3 md:space-y-4">
                         <div className="flex items-center gap-3">
-                          <div className="p-2.5 bg-white/5 rounded-xl border border-white/10">
+                          <div className="p-2 md:p-2.5 bg-white/5 rounded-xl border border-white/10">
                             {card.icon}
                           </div>
                           <span className="text-[9px] md:text-[10px] font-black tracking-widest uppercase font-mono" style={{ color: card.accent }}>
@@ -406,10 +433,10 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
                           </span>
                         </div>
 
-                        <h3 className="text-xl md:text-3xl font-bold text-white tracking-tight leading-none uppercase">
+                        <h3 className="text-lg md:text-3xl font-bold text-white tracking-tight leading-none uppercase">
                           {card.title}
                         </h3>
-                        <p className="text-xs md:text-sm text-[#94A3B8] leading-relaxed">
+                        <p className="text-[11px] md:text-sm text-[#94A3B8] leading-relaxed">
                           {card.desc}
                         </p>
                         <p className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest font-mono" style={{ color: `${card.accent}80` }}>
@@ -417,12 +444,12 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
                         </p>
                       </div>
 
-                      <div className="relative z-10 mt-6 p-4 bg-black/60 border border-white/[0.06] rounded-2xl">
+                      <div className="relative z-10 mt-4 md:mt-6 p-3 md:p-4 bg-black/60 border border-white/[0.06] rounded-2xl">
                         <p className="text-[8px] font-bold text-gray-600 uppercase tracking-widest mb-2 font-mono">
                           Live Floor Benchmarking
                         </p>
                         <div className="flex items-center justify-between gap-2">
-                          <p className="text-xs font-mono font-bold flex items-center gap-1.5 flex-1 min-w-0" style={{ color: card.accent }}>
+                          <p className="text-[11px] md:text-xs font-mono font-bold flex items-center gap-1.5 flex-1 min-w-0" style={{ color: card.accent }}>
                             <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 animate-pulse" style={{ backgroundColor: card.accent }} />
                             <span className="truncate">
                               <DecryptingTicker text={card.stat} active={isActive} />
@@ -438,7 +465,7 @@ function ScrollMorphSection({ isMobile }: { isMobile: boolean }) {
             </motion.div>
 
             {/* Pagination dots indicator */}
-            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-20">
+            <div className="absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-20">
               {cards.map((_, i) => (
                 <motion.div
                   key={i}
