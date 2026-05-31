@@ -813,46 +813,124 @@ td {
   box-shadow: 0 0 35px rgba(124, 58, 237, 0.08);
 }
 
-/* Dual-Axis Intersecting Laser Scan Utilities */
+/* Laser scanner animations */
 @keyframes laser-sweep {
   0% { transform: translateY(-100%); }
-  100% { transform: translateY(100%); }
+  100% { transform: translateY(200%); }
 }
 
 @keyframes laser-sweep-x {
   0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  100% { transform: translateX(200%); }
 }
 
 .laser-scanner-sweep {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
   height: 2px;
-  width: 100%;
   background: linear-gradient(
     90deg,
-    transparent,
-    rgba(0, 229, 255, 0.6),
-    transparent
+    transparent 0%,
+    rgba(0, 229, 255, 0.8) 50%,
+    transparent 100%
   );
-  box-shadow: 0 0 12px rgba(0, 229, 255, 0.4);
-  animation: laser-sweep 2s linear infinite;
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.5);
+  animation: laser-sweep 2.5s linear infinite;
   will-change: transform;
+  pointer-events: none;
 }
 
 .laser-scanner-sweep-x {
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
   width: 2px;
-  height: 100%;
   background: linear-gradient(
     180deg,
+    transparent 0%,
+    rgba(0, 229, 255, 0.4) 50%,
+    transparent 100%
+  );
+  animation: laser-sweep-x 3.5s linear infinite;
+  will-change: transform;
+  pointer-events: none;
+}
+
+/* Holographic grid */
+.holographic-grid {
+  background-image:
+    linear-gradient(
+      rgba(96, 165, 250, 0.04) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(96, 165, 250, 0.04) 1px,
+      transparent 1px
+    );
+  background-size: 40px 40px;
+}
+
+/* Gradient text animation */
+@keyframes gradient-text {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-gradient-text {
+  background: linear-gradient(
+    135deg,
+    #60A5FA,
+    #A78BFA,
+    #60A5FA
+  );
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-text 4s ease infinite;
+}
+
+/* Button shine effect */
+@keyframes btn-shine {
+  0% { background-position: -200px; }
+  100% { background-position: 200px; }
+}
+
+.btn-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-shine::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
     transparent,
-    rgba(0, 229, 255, 0.3),
+    rgba(255, 255, 255, 0.15),
     transparent
   );
-  animation: laser-sweep-x 3s linear infinite;
-  will-change: transform;
+  animation: btn-shine 3s ease infinite;
+  pointer-events: none;
+}
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  .laser-scanner-sweep,
+  .laser-scanner-sweep-x,
+  .animate-gradient-text,
+  .btn-shine::after {
+    animation: none;
+  }
 }
 
 .perspective-1200 {
