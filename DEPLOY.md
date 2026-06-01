@@ -32,6 +32,8 @@ That only works if `wrangler.toml` has a `[build]` block (restored) so `omnora-p
 
 Use **npm** (root now has `package-lock.json` + `wrangler` devDependency) — not an empty bun install.
 
+**Node.js 22+** is required (`.nvmrc` = `22`) because Wrangler 4.95+ does not run on Node 20.
+
 ### C) Cloudflare Pages dashboard (Git auto-build alternative)
 
 | Setting | Value |
@@ -39,7 +41,7 @@ Use **npm** (root now has `package-lock.json` + `wrangler` devDependency) — no
 | Production branch | `main` |
 | Build command | `npm run build` |
 | Build output directory | `omnora-prime-v13/out` |
-| Node version | `20` |
+| Node version | `22` |
 
 Environment variables (Pages → Settings → Environment variables):
 
