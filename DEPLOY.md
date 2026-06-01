@@ -1,36 +1,59 @@
 # Cloudflare deployment (Noxis Hub)
 
-## Why pushes did not start a Cloudflare build
+## If nothing builds when you push
 
-1. **No workflow at repo root** — GitHub only runs `/.github/workflows/*.yml`. Workflows under `omnora-prime-v13/.github/` are **ignored**. Use **`/.github/workflows/deploy-cloudflare.yml`** (added) so every `main` push deploys via Wrangler.
-2. **GitHub secrets required** — In [github.com/Ahmad98games/GSG/settings/secrets/actions](https://github.com/Ahmad98games/GSG/settings/secrets/actions) add:
-   - `CLOUDFLARE_API_TOKEN` — [Cloudflare dashboard → My Profile → API Tokens](https://dash.cloudflare.com/profile/api-tokens) → Create token → **Edit Cloudflare Workers** template (or custom: Account + Workers Scripts + Workers Assets write).
-   - `CLOUDFLARE_ACCOUNT_ID` — [Cloudflare dashboard](https://dash.cloudflare.com/) → right sidebar on any zone/account page.
-3. **Pages Git integration (optional)** — If you also connected **Cloudflare Pages** to GitHub in the dashboard, either use Pages **or** this GitHub Action + Workers — not two conflicting setups on the same hostname. For Pages-only: Production branch **`main`**, root directory **`.`** (repo root), build command:
-   ```bash
-   cd omnora-prime-v13 && npm install --legacy-peer-deps && CLOUDFLARE_DEPLOY=true npm run build
-   ```
-   Output directory: **`omnora-prime-v13/out`**
+### A) GitHub Actions (recommended)
 
-## Why the site looked unchanged after an old “successful” build
+1. Open **[GSG Actions](https://github.com/Ahmad98games/GSG/actions)** → workflow **Deploy to Cloudflare**.
+2. If you see **no runs**, pushes may not be on `main` — merge to `main` and push.
+3. If runs **fail immediately**, add these secrets:  
+   **[Settings → Secrets and variables → Actions](https://github.com/Ahmad98games/GSG/settings/secrets/actions)**
 
-1. **Production branch** — Deploy from **`main`** only.
-2. **Static output** — `wrangler.toml` serves `./omnora-prime-v13/out` (requires `CLOUDFLARE_DEPLOY=true` during build).
-3. **HTML cache** — `omnora-prime-v13/public/_headers` forces revalidation on `/` and HTML.
+   | Secret | How to get it |
+   |--------|----------------|
+   | `CLOUDFLARE_API_TOKEN` | [Create API token](https://dash.cloudflare.com/profile/api-tokens) → **Edit Cloudflare Workers** template, or custom with **Account → Cloudflare Pages → Edit** + **Workers Scripts → Edit** |
+   | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare dashboard → right sidebar |
 
-## Deploy checklist
+4. Optional repository **variable** (not secret): `CLOUDFLARE_PAGES_PROJECT` = your Pages project name (default: `noxishub`).
+
+5. Trigger manually: Actions → **Deploy to Cloudflare** → **Run workflow**.
+
+### B) Cloudflare Pages dashboard (Git auto-build)
+
+In **Workers & Pages → your project → Settings → Builds**:
+
+| Setting | Value |
+|---------|--------|
+| Production branch | `main` |
+| Root directory | `/` (repository root) |
+| Build command | `npm run build` |
+| Build output directory | `omnora-prime-v13/out` |
+| Node version | `20` |
+
+Root `package.json` runs the app build for you. Alternatively use build command:
 
 ```bash
-cd omnora-prime-v13 && npm run build   # local verify → produces out/
-git push origin main                   # triggers Deploy to Cloudflare workflow
+bash build.sh
 ```
 
-Check runs: [github.com/Ahmad98games/GSG/actions](https://github.com/Ahmad98games/GSG/actions) → **Deploy to Cloudflare**.
+Environment variables (Pages → Settings → Environment variables):
 
-Manual deploy from your machine (if secrets are set locally):
+- `CLOUDFLARE_DEPLOY` = `true`
+- `NEXT_PUBLIC_CLOUDFLARE_DEPLOY` = `true`
+- `NODE_VERSION` = `20`
+
+### C) Deploy from your PC
 
 ```bash
+# From repo root (new_system)
+npm run build
+npx wrangler pages deploy omnora-prime-v13/out --project-name=noxishub
+# Or Workers:
 npx wrangler deploy
 ```
 
-After deploy, hard-refresh (Ctrl+Shift+R) or purge cache once if you still see the old page.
+Requires `npx wrangler login` or `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` env vars.
+
+## After deploy
+
+Hard-refresh the site (Ctrl+Shift+R) or **Caching → Purge everything** once.

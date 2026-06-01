@@ -1,0 +1,12 @@
+{
+  "name": "noxis-hub-deploy-root",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "cd omnora-prime-v13 && npm ci --legacy-peer-deps && npm run build",
+    "deploy:workers": "npm run build && npx wrangler deploy",
+    "deploy:pages": "npm run build && npx wrangler pages deploy omnora-prime-v13/out --project-name=noxishub"
+  }
+}

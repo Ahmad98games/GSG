@@ -985,3 +985,40 @@ td {
   will-change: transform;
   pointer-events: none;
 }
+
+/* ─── Noxis landing: signature motion (mobile-safe) ─── */
+@keyframes noxis-grid-drift {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(0, 64px, 0);
+  }
+}
+
+@keyframes noxis-marquee-scroll {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.noxis-marquee-track {
+  animation: noxis-marquee-scroll 32s linear infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .noxis-marquee-track,
+  .noxis-grid-drift {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 1023px) {
+  .noxis-marquee-track {
+    animation-duration: 42s;
+  }
+}

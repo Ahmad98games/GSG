@@ -5,6 +5,5 @@ compatibility_date = "2024-04-01"
 directory = "./omnora-prime-v13/out"
 not_found_handling = "single-page-application"
 
-[build]
-# CLOUDFLARE_DEPLOY enables static export (out/) — required for Workers assets below.
-command = "cd omnora-prime-v13 && npm install --legacy-peer-deps && CLOUDFLARE_DEPLOY=true npm run build"
+# Build runs in GitHub Actions (or: npm run build from repo root).
+# Do not use [build] here — it hides failures and duplicates CI.

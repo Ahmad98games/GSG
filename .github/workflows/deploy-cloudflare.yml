@@ -1,5 +1,6 @@
-# Deploys Noxis Hub static site to Cloudflare Workers (wrangler.toml at repo root).
-# GitHub only runs workflows from /.github/workflows — NOT omnora-prime-v13/.github/
+# Builds static site in GitHub Actions, then deploys to Cloudflare.
+# Requires repo secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
+# Optional variable: CLOUDFLARE_PAGES_PROJECT (default: noxishub)
 
 name: Deploy to Cloudflare
 
@@ -8,20 +9,79 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  deployments: write
+
 concurrency:
   group: cloudflare-deploy-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  NODE_VERSION: '20'
+  OUT_DIR: omnora-prime-v13/out
+
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Deploy with Wrangler
+      - name: Check Cloudflare secrets
+        run: |
+          missing=0
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
+            echo "::error::Missing secret CLOUDFLARE_API_TOKEN — add it at Settings → Secrets and variables → Actions"
+            missing=1
+          fi
+          if [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then
+            echo "::error::Missing secret CLOUDFLARE_ACCOUNT_ID — copy from Cloudflare dashboard sidebar"
+            missing=1
+          fi
+          exit $missing
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: omnora-prime-v13/package-lock.json
+
+      - name: Install and build
+        working-directory: omnora-prime-v13
+        run: npm ci --legacy-peer-deps && npm run build
+        env:
+          CLOUDFLARE_DEPLOY: 'true'
+          NEXT_PUBLIC_CLOUDFLARE_DEPLOY: 'true'
+          CI: 'true'
+          CF_PAGES: '1'
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+          SUPABASE_SERVICE_ROLE_KEY: placeholder
+
+      - name: Verify static output
+        run: |
+          if [ ! -f "${{ env.OUT_DIR }}/index.html" ]; then
+            echo "::error::No ${{ env.OUT_DIR }}/index.html — build failed to export"
+            exit 1
+          fi
+          echo "Static export OK ($(du -sh ${{ env.OUT_DIR }} | cut -f1))"
+
+      # Pages: shows builds in Cloudflare dashboard. Project must exist (or token can create it).
+      - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          # Uses ./wrangler.toml [build] then uploads ./omnora-prime-v13/out
+          command: pages deploy ${{ env.OUT_DIR }} --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT || 'noxishub' }} --branch=main
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      # Workers (wrangler.toml): enable by setting repository variable CLOUDFLARE_DEPLOY_WORKERS=true
+      - name: Deploy to Cloudflare Workers
+        if: vars.CLOUDFLARE_DEPLOY_WORKERS == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
