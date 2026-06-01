@@ -18,23 +18,28 @@
 
 5. Trigger manually: Actions → **Deploy to Cloudflare** → **Run workflow**.
 
-### B) Cloudflare Pages dashboard (Git auto-build)
+### B) Cloudflare Workers Builds (your current setup)
 
-In **Workers & Pages → your project → Settings → Builds**:
+Your logs show: **Deploy command** = `npx wrangler deploy`.
+
+That only works if `wrangler.toml` has a `[build]` block (restored) so `omnora-prime-v13/out` is created before upload.
+
+| Setting | Value |
+|---------|--------|
+| Root directory | `/` (repo root) |
+| Deploy command | `npx wrangler deploy` |
+| (optional) Build command | leave empty — wrangler `[build]` runs `cd omnora-prime-v13 && npm install && npm run build` |
+
+Use **npm** (root now has `package-lock.json` + `wrangler` devDependency) — not an empty bun install.
+
+### C) Cloudflare Pages dashboard (Git auto-build alternative)
 
 | Setting | Value |
 |---------|--------|
 | Production branch | `main` |
-| Root directory | `/` (repository root) |
 | Build command | `npm run build` |
 | Build output directory | `omnora-prime-v13/out` |
 | Node version | `20` |
-
-Root `package.json` runs the app build for you. Alternatively use build command:
-
-```bash
-bash build.sh
-```
 
 Environment variables (Pages → Settings → Environment variables):
 
@@ -42,7 +47,7 @@ Environment variables (Pages → Settings → Environment variables):
 - `NEXT_PUBLIC_CLOUDFLARE_DEPLOY` = `true`
 - `NODE_VERSION` = `20`
 
-### C) Deploy from your PC
+### D) Deploy from your PC
 
 ```bash
 # From repo root (new_system)

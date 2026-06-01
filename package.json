@@ -1,12 +1,16 @@
 {
   "name": "noxis-hub-deploy-root",
   "private": true,
+  "packageManager": "npm@10.9.2",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "build": "cd omnora-prime-v13 && npm ci --legacy-peer-deps && npm run build",
-    "deploy:workers": "npm run build && npx wrangler deploy",
-    "deploy:pages": "npm run build && npx wrangler pages deploy omnora-prime-v13/out --project-name=noxishub"
+    "build": "npm run build --prefix omnora-prime-v13",
+    "cf:deploy": "npm run build && wrangler deploy",
+    "cf:pages": "npm run build && wrangler pages deploy omnora-prime-v13/out --project-name=noxishub"
+  },
+  "devDependencies": {
+    "wrangler": "^4.95.0"
   }
 }
