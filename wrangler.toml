@@ -6,4 +6,5 @@ directory = "./omnora-prime-v13/out"
 not_found_handling = "single-page-application"
 
 [build]
-command = "cd omnora-prime-v13 && npm install --legacy-peer-deps && npm run build"
+# CLOUDFLARE_DEPLOY enables static export (out/) — required for Workers assets below.
+command = "cd omnora-prime-v13 && npm install --legacy-peer-deps && CLOUDFLARE_DEPLOY=true npm run build"
