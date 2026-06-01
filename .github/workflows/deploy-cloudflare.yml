@@ -1,0 +1,27 @@
+# Deploys Noxis Hub static site to Cloudflare Workers (wrangler.toml at repo root).
+# GitHub only runs workflows from /.github/workflows — NOT omnora-prime-v13/.github/
+
+name: Deploy to Cloudflare
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: cloudflare-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy with Wrangler
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Uses ./wrangler.toml [build] then uploads ./omnora-prime-v13/out
