@@ -204,6 +204,18 @@ export default async function BlogPostPage({ params }: Props) {
           </Link>
         </div>
       </main>
+
+      {/* Footer legal bar */}
+      <footer className="max-w-4xl mx-auto px-6 mt-16 pb-8 relative z-10">
+        <div className="border-t border-white/5 pt-8 flex flex-wrap items-center justify-between gap-4 text-[10px] text-slate-600 font-bold uppercase tracking-widest">
+          <span>© {new Date().getFullYear()} Omnora Labs · All rights reserved</span>
+          <div className="flex items-center gap-6">
+            <Link href="/terms" className="hover:text-slate-400 transition-colors">Terms of Service</Link>
+            <Link href="/privacy" className="hover:text-slate-400 transition-colors">Privacy Policy</Link>
+            <Link href="/blog" className="hover:text-slate-400 transition-colors">Blog</Link>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

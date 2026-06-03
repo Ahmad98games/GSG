@@ -30,6 +30,98 @@ import {
 
 type ImportStep = 'upload' | 'map' | 'preview' | 'complete'
 
+const TEMPLATE_HEADERS: Record<string, string[]> = {
+  skus: [
+    'sku_code', 'name', 'category', 'unit',
+    'qty_on_hand', 'cost_price', 'sale_price',
+    'reorder_level',
+  ],
+  parties: [
+    'name', 'party_type', 'phone', 'email',
+    'address', 'current_balance',
+  ],
+  karigars: [
+    'name', 'phone', 'wage_type',
+    'piece_rate', 'daily_rate', 'monthly_salary',
+  ],
+}
+
+function downloadTemplate(entityType: string) {
+  const cols = TEMPLATE_HEADERS[entityType] || TEMPLATE_HEADERS.skus
+
+  const sampleRow1 =
+    entityType === 'parties'
+      ? ['Al-Hamid Textiles', 'customer', '0300-1234567', '', 'Lahore', '0']
+      : entityType === 'karigars'
+        ? ['Ahmed Khan', '03001234567', 'piece_rate', '25', '', '']
+        : ['FAB-001', 'Khaddar Blue', 'Fabric', 'meter', '450', '85', '120', '100']
+
+  const sampleRow2 = cols.map((_, i) =>
+    i === 0 ? '(add your data in rows below)' : ''
+  )
+
+  const wb = XLSX.utils.book_new()
+  const ws = XLSX.utils.aoa_to_sheet([cols, sampleRow1, sampleRow2])
+
+  wb.Props = {
+    Title: `Noxis ${entityType} Import Template`,
+    Author: 'Noxis Hub - Omnora Labs',
+    CreatedDate: new Date(),
+  }
+
+  XLSX.utils.book_append_sheet(wb, ws, entityType.toUpperCase())
+  XLSX.writeFile(wb, `noxis_${entityType}_template.xlsx`, { bookType: 'xlsx' })
+}
+
+async function parseFile(
+  file: File,
+  onProgress?: (pct: number) => void
+): Promise<Record<string, unknown>[]> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+
+    if (onProgress && file.size > 10 * 1024 * 1024) {
+      reader.onprogress = (e) => {
+        if (e.lengthComputable) {
+          onProgress(Math.round((e.loaded / e.total) * 100))
+        }
+      }
+    }
+
+    reader.onload = (e) => {
+      try {
+        onProgress?.(100)
+        const data = new Uint8Array(e.target!.result as ArrayBuffer)
+        const wb = XLSX.read(data, {
+          type: 'array',
+          sheetRows: 50000,
+          cellText: false,
+          cellDates: true,
+        })
+
+        const ws = wb.Sheets[wb.SheetNames[0]]
+        if (!ws) {
+          reject(new Error('Could not read file. Save as .xlsx and try again.'))
+          return
+        }
+
+        const rows = XLSX.utils.sheet_to_json(ws, {
+          defval: '',
+          raw: false,
+          blankrows: false,
+        }) as Record<string, unknown>[]
+
+        resolve(rows)
+      } catch {
+        reject(new Error('Could not read file. Save as .xlsx and try again.'))
+      }
+    }
+
+    reader.onerror = () => reject(new Error('File read failed'))
+    reader.readAsArrayBuffer(file)
+  })
+}
+
 const ENTITY_CONFIG = {
   skus: {
     label: 'Products & Fabric SKUs',
@@ -95,14 +187,11 @@ export default function ImportPage() {
             })
           })
         } else {
-          // Excel parsing
-          const buffer = await file.arrayBuffer()
-          const wb = XLSX.read(buffer, { type: 'array' })
-          const ws = wb.Sheets[wb.SheetNames[0]]
-          data = XLSX.utils.sheet_to_json(ws, {
-            defval: '',
-            raw: false,
-          }) as Record<string, unknown>[]
+          const onProgress =
+            file.size > 10 * 1024 * 1024
+              ? (pct: number) => console.debug(`[import] parse ${pct}%`)
+              : undefined
+          data = await parseFile(file, onProgress)
         }
         
         if (!data.length) {
@@ -124,7 +213,7 @@ export default function ImportPage() {
         
       } catch (err) {
         console.error('Parse error:', err)
-        alert('Could not read this file. Try saving as CSV first.')
+        alert(err instanceof Error ? err.message : 'Could not read this file. Try saving as CSV first.')
       }
     },
     [entityType]
@@ -406,15 +495,8 @@ export default function ImportPage() {
                 </div>
               </div>
               <button
-                onClick={() => {
-                  const cfg = ENTITY_CONFIG[entityType as keyof typeof ENTITY_CONFIG]
-                  const fields = Object.keys(FIELD_ALIASES[entityType as keyof typeof FIELD_ALIASES] || {})
-                  const ws = XLSX.utils.aoa_to_sheet([fields])
-                  XLSX.utils.sheet_add_aoa(ws, [fields.map(() => '')], { origin: 1 })
-                  const wb = XLSX.utils.book_new()
-                  XLSX.utils.book_append_sheet(wb, ws, cfg.label)
-                  XLSX.writeFile(wb, `noxis_${entityType}_template.xlsx`)
-                }}
+                type="button"
+                onClick={() => downloadTemplate(entityType)}
                 className="w-full md:w-auto px-4 py-2 text-xs font-bold bg-noxis-overlay border border-noxis-border hover:border-noxis-text-muted text-noxis-text transition-colors rounded-sm"
               >
                 Download Template Layout

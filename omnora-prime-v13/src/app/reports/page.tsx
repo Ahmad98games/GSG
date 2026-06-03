@@ -15,7 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { Decimal } from "decimal.js";
 import { cn } from "@/lib/utils";
-import { WhatsAppSender, WhatsAppTemplates } from "@/lib/whatsapp/WhatsAppSender";
+import { openWhatsApp, WA_TEMPLATES } from "@/lib/utils/whatsapp";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { MessageCircle } from "lucide-react";
 import { format } from "date-fns";
@@ -28,16 +28,18 @@ export default function ReportsHubPage() {
   const supabase = createClient();
 
   const handleSendSummaryToOwner = () => {
-    if (!profile?.owner_phone) return alert("Owner phone not configured");
-    
-    // We'll use the data we have or fetch specifically for summary
-    const message = WhatsAppTemplates.dailySummary(
-      format(new Date(), 'dd MMM yyyy'),
-      plData ? fmt(plData.amount) : '...', // using month profit for now as a placeholder for sales
-      receivablesData ? fmt(receivablesData) : '...'
-    );
-    
-    WhatsAppSender.send({ phone: profile.owner_phone, message }, profile?.tier || 'starter');
+    const phone = profile?.owner_phone || (profile as any)?.phone;
+    if (!phone) return alert('Add your WhatsApp number in Settings → Business Profile first.');
+
+    const msg = WA_TEMPLATES.dailySummary({
+      businessName: profile?.business_name || 'Your Business',
+      currency: profile?.currency || 'PKR',
+      revenue: plData ? fmt(plData.amount) : '...',
+      activeOrders: 0,
+      date: format(new Date(), 'EEEE, d MMMM yyyy'),
+    });
+
+    openWhatsApp(phone, msg, profile?.country_code || 'PK');
   };
   
 

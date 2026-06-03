@@ -73,7 +73,7 @@ When a breach is detected, Noxis executes a multi-layer notification loop in sub
 
 ## Tamper-Proof Cryptographic Security
 
-A common issue on factory floors is internal collusion, where footage is deleted or modified. To prevent this, Noxis introduces **forensic-grade footage signing**.......
+A common issue on factory floors is internal collusion, where footage is deleted or modified. To prevent this, Noxis introduces **forensic-grade footage signing**...
 *   Every video slice recorded is instantly signed with an **HMAC-SHA256** hash, utilizing a private security key unique to your license.
 *   If anyone attempts to delete, edit, or modify the video file on the hard drive, the signature mismatch is detected immediately upon opening the playback suite, indicating the exact second of tampering.
 

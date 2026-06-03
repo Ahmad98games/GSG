@@ -83,6 +83,8 @@ export function FloatingOrb({
   opacity = 1,
 }: FloatingOrbProps) {
   const [isMobile, setIsMobile] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const inView = useInView(ref, { once: false, margin: '100px' })
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768)
@@ -111,6 +113,7 @@ export function FloatingOrb({
 
   return (
     <motion.div
+      ref={ref}
       className="absolute pointer-events-none select-none"
       style={{
         left: x,
@@ -122,15 +125,15 @@ export function FloatingOrb({
         filter: `blur(${blur}px)`,
         opacity,
       }}
-      animate={{
-        scale: [1, 1.15, 0.95, 1],
-        x: [0, 20, -10, 0],
-        y: [0, -15, 8, 0],
-      }}
+      animate={
+        inView
+          ? { scale: [1, 1.15, 0.95, 1], x: [0, 20, -10, 0], y: [0, -15, 8, 0] }
+          : { scale: 1, x: 0, y: 0 }
+      }
       transition={{
         duration: 8 + delay,
         delay,
-        repeat: Infinity,
+        repeat: inView ? Infinity : 0,
         ease: 'easeInOut',
       }}
     />
@@ -146,6 +149,8 @@ interface ParticleFieldProps {
 }
 
 export function ParticleField({ count = 20, color = '#60A5FA', className = '' }: ParticleFieldProps) {
+  const ref = useRef<HTMLDivElement>(null)
+  const inView = useInView(ref, { once: false, margin: '80px' })
   const particles = Array.from({ length: count }, (_, i) => ({
     id: i,
     x: `${Math.random() * 100}%`,
@@ -156,32 +161,110 @@ export function ParticleField({ count = 20, color = '#60A5FA', className = '' }:
   }))
 
   return (
-    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
-      {particles.map((p) => (
-        <motion.div
-          key={p.id}
-          className="absolute rounded-full"
-          style={{
-            left: p.x,
-            top: p.y,
-            width: p.size,
-            height: p.size,
-            background: color,
-          }}
-          animate={{
-            y: [0, -80, 0],
-            opacity: [0, 0.7, 0],
-            scale: [0, 1, 0],
-          }}
-          transition={{
-            duration: p.duration,
-            delay: p.delay,
-            repeat: Infinity,
-            ease: 'easeInOut',
-          }}
-        />
-      ))}
+    <div ref={ref} className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
+      {inView &&
+        particles.map((p) => (
+          <motion.div
+            key={p.id}
+            className="absolute rounded-full"
+            style={{
+              left: p.x,
+              top: p.y,
+              width: p.size,
+              height: p.size,
+              background: color,
+            }}
+            animate={{
+              y: [0, -80, 0],
+              opacity: [0, 0.7, 0],
+              scale: [0, 1, 0],
+            }}
+            transition={{
+              duration: p.duration,
+              delay: p.delay,
+              repeat: Infinity,
+              ease: 'easeInOut',
+            }}
+          />
+        ))}
     </div>
+  )
+}
+
+// ─── PARTICLE CANVAS (RAF — must cancel on unmount) ───────────────────────────
+
+interface ParticleCanvasProps {
+  count?: number
+  color?: string
+  className?: string
+}
+
+export function ParticleCanvas({ count = 48, color = '#60A5FA', className = '' }: ParticleCanvasProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const inView = useInView(canvasRef, { once: false, margin: '80px' })
+
+  useEffect(() => {
+    if (!inView) return
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    let frame = 0
+    let alive = true
+    const particles = Array.from({ length: count }, () => ({
+      x: Math.random(),
+      y: Math.random(),
+      vx: (Math.random() - 0.5) * 0.0008,
+      vy: (Math.random() - 0.5) * 0.0008,
+      r: Math.random() * 1.5 + 0.5,
+    }))
+
+    const onResize = () => {
+      const rect = canvas.getBoundingClientRect()
+      const dpr = window.devicePixelRatio || 1
+      canvas.width = rect.width * dpr
+      canvas.height = rect.height * dpr
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    }
+
+    const draw = () => {
+      if (!alive) return
+      const w = canvas.clientWidth
+      const h = canvas.clientHeight
+      ctx.clearRect(0, 0, w, h)
+      for (const p of particles) {
+        p.x += p.vx
+        p.y += p.vy
+        if (p.x < 0 || p.x > 1) p.vx *= -1
+        if (p.y < 0 || p.y > 1) p.vy *= -1
+        ctx.beginPath()
+        ctx.arc(p.x * w, p.y * h, p.r, 0, Math.PI * 2)
+        ctx.fillStyle = color
+        ctx.globalAlpha = 0.35
+        ctx.fill()
+      }
+      ctx.globalAlpha = 1
+      frame = requestAnimationFrame(draw)
+    }
+
+    onResize()
+    window.addEventListener('resize', onResize)
+    frame = requestAnimationFrame(draw)
+
+    return () => {
+      alive = false
+      cancelAnimationFrame(frame)
+      window.removeEventListener('resize', onResize)
+    }
+  }, [inView, count, color])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className={`absolute inset-0 w-full h-full pointer-events-none ${className}`}
+      aria-hidden
+    />
   )
 }
 
@@ -649,18 +732,20 @@ export function MorphingCanvas({
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    let animationFrame: number
+    let frame = 0
+    let alive = true
     const count = 120 // Perfectly uniform count across shapes
     
     // Setup canvas size
-    const resizeCanvas = () => {
+    const onResize = () => {
       const rect = canvas.getBoundingClientRect()
-      canvas.width = rect.width * (window.devicePixelRatio || 1)
-      canvas.height = rect.height * (window.devicePixelRatio || 1)
-      ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1)
+      const dpr = window.devicePixelRatio || 1
+      canvas.width = rect.width * dpr
+      canvas.height = rect.height * dpr
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     }
-    resizeCanvas()
-    window.addEventListener('resize', resizeCanvas)
+    onResize()
+    window.addEventListener('resize', onResize)
 
     // Helper: generate coordinate templates for shapes
     const generateShapes = () => {
@@ -787,6 +872,7 @@ export function MorphingCanvas({
     }
 
     const draw = () => {
+      if (!alive) return
       const rect = canvas.getBoundingClientRect()
       const width = rect.width
       const height = rect.height
@@ -901,10 +987,10 @@ export function MorphingCanvas({
         ctx.shadowBlur = 0
       })
 
-      animationFrame = requestAnimationFrame(draw)
+      frame = requestAnimationFrame(draw)
     }
 
-    draw()
+    frame = requestAnimationFrame(draw)
 
     // Handle mouse/touch movement for thrilled effects
     const handleMouseMove = (e: MouseEvent) => {
@@ -932,8 +1018,9 @@ export function MorphingCanvas({
     canvas.addEventListener('touchend', handleMouseLeave)
 
     return () => {
-      cancelAnimationFrame(animationFrame)
-      window.removeEventListener('resize', resizeCanvas)
+      alive = false
+      cancelAnimationFrame(frame)
+      window.removeEventListener('resize', onResize)
       canvas.removeEventListener('mousemove', handleMouseMove)
       canvas.removeEventListener('mouseleave', handleMouseLeave)
       canvas.removeEventListener('touchmove', handleTouchMove)
@@ -982,17 +1069,19 @@ export function StretchingGridCanvas({
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    let animationFrame: number
+    let frame = 0
+    let alive = true
     const count = isMobile ? 64 : 144
 
-    const resizeCanvas = () => {
+    const onResize = () => {
       const rect = canvas.getBoundingClientRect()
-      canvas.width = rect.width * (window.devicePixelRatio || 1)
-      canvas.height = rect.height * (window.devicePixelRatio || 1)
-      ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1)
+      const dpr = window.devicePixelRatio || 1
+      canvas.width = rect.width * dpr
+      canvas.height = rect.height * dpr
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     }
-    resizeCanvas()
-    window.addEventListener('resize', resizeCanvas)
+    onResize()
+    window.addEventListener('resize', onResize)
 
     // Generate 3D grid net coordinates
     const particles = Array.from({ length: count }, (_, i) => {
@@ -1039,6 +1128,7 @@ export function StretchingGridCanvas({
     }
 
     const draw = () => {
+      if (!alive) return
       const rect = canvas.getBoundingClientRect()
       const w = rect.width
       const h = rect.height
@@ -1145,10 +1235,10 @@ export function StretchingGridCanvas({
         ctx.shadowBlur = 0
       })
 
-      animationFrame = requestAnimationFrame(draw)
+      frame = requestAnimationFrame(draw)
     }
 
-    draw()
+    frame = requestAnimationFrame(draw)
 
     const handleMouseMove = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect()
@@ -1173,8 +1263,9 @@ export function StretchingGridCanvas({
     canvas.addEventListener('touchend', handleMouseLeave)
 
     return () => {
-      cancelAnimationFrame(animationFrame)
-      window.removeEventListener('resize', resizeCanvas)
+      alive = false
+      cancelAnimationFrame(frame)
+      window.removeEventListener('resize', onResize)
       canvas.removeEventListener('mousemove', handleMouseMove)
       canvas.removeEventListener('mouseleave', handleMouseLeave)
       canvas.removeEventListener('touchmove', handleTouchMove)

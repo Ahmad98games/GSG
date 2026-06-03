@@ -1,5 +1,5 @@
 ---
-title: "Why Offline-First ERP is the Only Option for Pakistani Factories — A Technical Deep Dive"
+title: "Why Offline-First ERP is the Only Option for Pakistani Factories , A Technical Deep Dive"
 date: "2025-05-18"
 slug: "offline-erp-pakistan"
 description: "Internet outages, load shedding, and fiber cuts shouldn't stop your factory operations. A comprehensive technical analysis of why offline-first software architecture is essential for Pakistani industrial facilities and how it works in practice."

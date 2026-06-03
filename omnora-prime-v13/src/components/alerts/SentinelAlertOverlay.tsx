@@ -35,7 +35,7 @@ export default function SentinelAlertOverlay() {
       return data || [];
     },
     enabled: !!profile?.id,
-    refetchInterval: 10000, // Poll every 10s as backup to Realtime
+    refetchInterval: 60_000,
   });
 
   // 2. Realtime subscription for alerts
@@ -98,7 +98,7 @@ export default function SentinelAlertOverlay() {
       queue.push({ id: activeAlert.id, ...updatePayload });
       localStorage.setItem('pending_acks', JSON.stringify(queue));
       // Optimistic remove
-      queryClient.setQueryData(['critical-alerts', profile?.id], (old: any) => old.slice(1));
+      queryClient.setQueryData(['critical-alerts', profile?.id], (old: any[]) => old.slice(1));
     } finally {
       setIsSyncing(false);
     }

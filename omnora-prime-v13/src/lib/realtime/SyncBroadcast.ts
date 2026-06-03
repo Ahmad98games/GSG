@@ -31,16 +31,16 @@ export async function broadcastSaleEvent(event: SaleEvent) {
 
 // On Factory Dashboard (PC) — subscribe:
 export function subscribeSalesFeed(onSale: (event: SaleEvent) => void) {
-  const sub = salesChannel
+  salesChannel
     .on('broadcast', { event: 'SALE_POSTED' }, ({ payload }: { payload: SaleEvent }) => {
       onSale(payload);
     })
     .subscribe((status: string) => {
       console.log(`[Broadcast] Feed Status: ${status}`);
-    })
+    });
 
   return () => {
-    supabase.removeChannel(sub);
+    supabase.removeChannel(salesChannel);
   };
 }
 

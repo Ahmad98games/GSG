@@ -18,6 +18,7 @@ let nextServer: ChildProcess | null = null;
 let visionProcess: ChildProcess | null = null;
 let sessionTimeoutTimer: NodeJS.Timeout | null = null;
 let warningTimer: NodeJS.Timeout | null = null;
+let memoryMonitorInterval: NodeJS.Timeout | null = null;
 let PORT = Number(process.env.PORT || 3000);
 let isReadOnly = false;
 
@@ -282,6 +283,18 @@ if (!gotTheLock) {
   }
 
   ipcMain.on('user-activity', () => resetInactivityTimer());
+
+  function startMemoryMonitor(): void {
+    if (memoryMonitorInterval) clearInterval(memoryMonitorInterval);
+    memoryMonitorInterval = setInterval(() => {
+      const mem = process.memoryUsage();
+      const heapMB = Math.round(mem.heapUsed / 1024 / 1024);
+      if (heapMB > 800) {
+        if (typeof global.gc === 'function') global.gc();
+        startupLog(`[Memory] GC triggered: ${heapMB} MB`);
+      }
+    }, 30000);
+  }
 
   // ─────────────────────────────────────────────
   // 6. TITLE BAR IPC
@@ -617,6 +630,8 @@ if (!gotTheLock) {
       setupAutoUpdater(mainWindow);
     }
 
+    startMemoryMonitor();
+
     // ── Start vision engine ──
     spawnVisionEngine();
   });
@@ -630,6 +645,7 @@ if (!gotTheLock) {
 
     if (sessionTimeoutTimer) clearTimeout(sessionTimeoutTimer);
     if (warningTimer)        clearTimeout(warningTimer);
+    if (memoryMonitorInterval) clearInterval(memoryMonitorInterval);
 
     if (visionProcess) {
       startupLog('[Vision] Killing vision process...');

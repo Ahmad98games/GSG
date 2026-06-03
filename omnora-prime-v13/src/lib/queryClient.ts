@@ -15,11 +15,8 @@ export const queryClientOptions = {
       // Wait 1s between retries
       retryDelay: 1000,
       
-      // Don't refetch when window regains focus
-      // (data is unlikely to change in seconds)
+      refetchInterval: false as const,
       refetchOnWindowFocus: false,
-      
-      // Do refetch when reconnecting to internet
       refetchOnReconnect: true,
     },
     mutations: {

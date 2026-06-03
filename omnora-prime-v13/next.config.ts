@@ -1,8 +1,10 @@
 import type { NextConfig } from "next";
+import path from "path";
 const createNextIntlPlugin = require('next-intl/plugin');
 const withNextIntl = createNextIntlPlugin('./src/i18n.ts');
 
 const isProd = process.env.NODE_ENV === 'production';
+const projectRoot = path.resolve(process.cwd());
 
 const getCSP = () => {
   const isProd = process.env.NODE_ENV === 'production';
@@ -49,7 +51,9 @@ const nextConfig: NextConfig = {
   },
   serverExternalPackages: serverOnlyPackages,
 
-  turbopack: {},
+  turbopack: {
+    root: projectRoot,
+  },
   webpack: (config, { isServer }) => {
     if (!isServer) {
       // Prevent these from ever reaching the client bundle

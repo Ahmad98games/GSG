@@ -73,7 +73,7 @@ export default React.memo(function GlobalTopBar() {
       return count || 0
     },
     enabled: !!businessId,
-    refetchInterval: 30000
+    refetchInterval: 60_000
   })
 
   // 2. Sync Status Query
@@ -84,7 +84,7 @@ export default React.memo(function GlobalTopBar() {
       if (!res.ok) throw new Error('Sync Status API Error')
       return res.json()
     },
-    refetchInterval: 10000,
+    refetchInterval: 60_000,
     retry: 1
   })
 
@@ -102,7 +102,7 @@ export default React.memo(function GlobalTopBar() {
       return data
     },
     enabled: !!businessId,
-    refetchInterval: 15000
+    refetchInterval: 60_000
   })
 
   const syncState = !isOnline ? 'offline' : (isSyncError ? 'error' : (syncData?.pending_count > 0 ? 'syncing' : 'synced'))

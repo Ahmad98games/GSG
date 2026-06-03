@@ -1,302 +1,254 @@
+"use client"
 
-"use client";
+import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
+import { searchKnowledge } from '@/lib/knowledge/knowledgeSearch'
+import { KnowledgeEntry } from '@/lib/knowledge/noxis-docs'
+import { X, Mic, Send, ChevronRight, Navigation, HelpCircle } from 'lucide-react'
 
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Search, X, HelpCircle, ArrowRight, 
-  Command, Cpu, Zap, ExternalLink,
-  MessageSquare, Send, User, Sparkles,
-  RotateCcw
-} from 'lucide-react';
-import { usePathname, useRouter } from 'next/navigation';
-import { KnowledgeEntry } from '@/lib/knowledge/noxis-docs';
-import { searchKnowledge, getContextualHelp } from '@/lib/knowledge/knowledgeSearch';
-import { processChatQuery, ChatMessage } from '@/lib/knowledge/noxis-chat';
-import { cn } from '@/lib/utils';
+type Message = {
+  id: string
+  role: 'user' | 'assistant'
+  text: string
+  results?: KnowledgeEntry[]
+}
+
+const QUICK_CHIPS = [
+  'How to add karigar',
+  'Create invoice',
+  'Run payroll',
+  'Where is calculator',
+  'Backup data',
+  'Give peshgi advance',
+  'Mark attendance',
+  'Log production',
+]
 
 export default function AskNoxis() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'assistant', content: string, results?: KnowledgeEntry[], isContext?: boolean }[]>([]);
-  const [isTyping, setIsTyping] = useState(false);
-  
-  const pathname = usePathname();
-  const router = useRouter();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  const [isOpen, setIsOpen] = useState(false)
+  const [messages, setMessages] = useState<Message[]>([{
+    id: 'welcome',
+    role: 'assistant',
+    text: 'Assalam o Alaikum! I am the Noxis assistant. Ask me how to use any feature, or tell me where to go.',
+  }])
+  const [input, setInput] = useState('')
+  const [listening, setListening] = useState(false)
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const router = useRouter()
 
-  // Auto-scroll chat
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatHistory, isTyping]);
+    if (isOpen) setTimeout(() => inputRef.current?.focus(), 100)
+  }, [isOpen])
 
-  // Listen for Ctrl+/
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  // Ctrl+/ to toggle
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === '/') {
-        e.preventDefault();
-        setIsOpen(prev => !prev);
+        e.preventDefault()
+        setIsOpen(prev => !prev)
       }
       if (e.key === 'Escape' && isOpen) {
-        setIsOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [isOpen]);
-
-  // Handle Initial Contextual Help
-  useEffect(() => {
-    if (isOpen && chatHistory.length === 0) {
-      const contextualHelp = getContextualHelp(pathname);
-      if (contextualHelp.length > 0) {
-        setChatHistory([{
-          role: 'assistant',
-          content: "On this page you can:",
-          results: contextualHelp,
-          isContext: true
-        }]);
-      } else {
-        setChatHistory([{
-          role: 'assistant',
-          content: "Hello! I am Noxis AI. I can help you manage your factory. What would you like to do today?",
-        }]);
+        setIsOpen(false)
       }
     }
-  }, [isOpen, pathname]);
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [isOpen])
 
-  const handleSearch = (text: string = query) => {
-    if (!text.trim()) return;
+  const handleQuery = (queryText: string) => {
+    const text = queryText.trim()
+    if (!text) return
 
-    const userMsg = { role: 'user' as const, content: text };
-    setChatHistory(prev => [...prev, userMsg]);
-    setQuery("");
-    setIsTyping(true);
+    const userMsg: Message = { id: Date.now().toString(), role: 'user', text }
+    setInput('')
 
-    setTimeout(() => {
-      const results = searchKnowledge(text);
-      
-      let assistantMsg;
-      if (results.length > 0) {
-        assistantMsg = {
-          role: 'assistant' as const,
-          content: `I found ${results.length} relevant topics for "${text}":`,
-          results
-        };
-      } else {
-        assistantMsg = {
-          role: 'assistant' as const,
-          content: `I couldn't find a direct answer for "${text}". I can help you with these core topics:`,
-          results: [] // Empty results will trigger chips in UI
-        };
+    const results = searchKnowledge(text, 2)
+    let responseText = ''
+
+    if (results.length === 0) {
+      responseText = `I couldn't find specific information about "${text}". You can ask me about inventory, karigars, payroll, invoices, reports, calculators, or settings. Try "how to add karigar" or "where is the calculator".`
+    } else {
+      const top = results[0]
+      responseText = top.content
+      if (top.steps && top.steps.length > 0) {
+        responseText += '\n\nSteps:\n' + top.steps.map((s, i) => `${i + 1}. ${s}`).join('\n')
       }
+      if (top.shortcut) {
+        responseText += `\n\nShortcut: ${top.shortcut}`
+      }
+    }
 
-      setChatHistory(prev => [...prev, assistantMsg]);
-      setIsTyping(false);
-    }, 600);
-  };
+    const assistantMsg: Message = {
+      id: (Date.now() + 1).toString(),
+      role: 'assistant',
+      text: responseText,
+      results: results.length > 0 ? results : undefined,
+    }
 
-  const navigateTo = (route: string) => {
-    router.push(route);
-    setIsOpen(false);
-  };
+    setMessages(prev => [...prev, userMsg, assistantMsg])
+  }
 
-  const CATEGORY_CHIPS = [
-    'Payroll', 'Inventory', 'Invoices', 'Karigars',
-    'Reports', 'Cashflow', 'CCTV', 'Lens',
-    'Purchase', 'Settings', 'WhatsApp', 'Generators'
-  ];
+  const navigateTo = (entry: KnowledgeEntry) => {
+    if (entry.route) {
+      router.push(entry.route)
+      setIsOpen(false)
+    }
+  }
+
+  const startListening = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      handleQuery('Voice not supported in this browser')
+      return
+    }
+
+    const recognition = new SpeechRecognition()
+    recognition.lang = 'en-US'
+    recognition.continuous = false
+    recognition.interimResults = false
+    setListening(true)
+    recognition.start()
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript
+      setInput(transcript)
+      handleQuery(transcript)
+    }
+
+    recognition.onerror = () => setListening(false)
+    recognition.onend = () => setListening(false)
+  }
+
+  if (!isOpen) return null
+
+  // Show chips only in the welcome state (just 1 message)
+  const showChips = messages.length === 1
 
   return (
-    <>
-      <AnimatePresence>
-        {isOpen && (
-          <>
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsOpen(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
-            />
+    <div className="fixed bottom-20 right-4 w-[360px] max-h-[540px] bg-[#111418] border border-white/10 rounded-sm shadow-2xl z-50 flex flex-col overflow-hidden">
 
-            <motion.div 
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 h-full w-[420px] bg-[#0F1115] border-l border-noxis-border z-[101] shadow-2xl flex flex-col"
-            >
-              {/* Header */}
-              <div className="p-6 border-b border-noxis-border flex items-center justify-between bg-noxis-bg/20">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-noxis-accent/10 border border-noxis-accent/20 rounded-lg flex items-center justify-center">
-                    <Cpu className="text-noxis-accent animate-pulse" size={20} />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-black text-noxis-text uppercase tracking-tighter flex items-center gap-2">
-                      Ask Noxis
-                      <span className="px-1.5 py-0.5 bg-noxis-success/10 text-noxis-success text-[8px] font-black rounded-full border border-noxis-success/20">
-                        ONLINE
-                      </span>
-                    </h2>
-                    <p className="text-[10px] text-noxis-text-muted font-bold uppercase tracking-widest">Industrial Assistant</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setIsOpen(false)}
-                  className="p-2 text-noxis-text-muted hover:text-noxis-text hover:bg-noxis-overlay rounded-sm transition-all"
-                >
-                  <X size={20} />
-                </button>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/8 flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-[#60A5FA] animate-pulse" />
+          <span className="text-sm font-semibold text-white">Ask Noxis</span>
+          <span className="text-[9px] text-gray-600 font-mono uppercase">AI</span>
+        </div>
+        <button onClick={() => setIsOpen(false)} className="text-gray-600 hover:text-gray-300 transition-colors">
+          <X size={16} />
+        </button>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+        {messages.map(msg => (
+          <div key={msg.id}>
+            <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div
+                style={{ maxWidth: '90%' }}
+                className={`rounded px-3 py-2 text-xs leading-relaxed whitespace-pre-line ${
+                  msg.role === 'user'
+                    ? 'bg-[#60A5FA] text-black'
+                    : 'bg-[#1A1D21] text-gray-300'
+                }`}
+              >
+                {msg.text}
               </div>
+            </div>
 
-              {/* Chat Area */}
-              <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-noxis-overlay relative">
-                {chatHistory.map((msg, i) => (
-                  <div key={i} className={cn(
-                    "flex flex-col gap-2 max-w-[90%]",
-                    msg.role === 'user' ? "ml-auto items-end" : "mr-auto items-start"
-                  )}>
-                    <div className={cn(
-                      "flex items-center gap-2 text-[8px] font-black uppercase tracking-widest",
-                      msg.role === 'user' ? "text-noxis-text-muted" : "text-noxis-accent"
-                    )}>
-                      {msg.role === 'user' ? 'You' : 'Noxis AI'}
-                    </div>
-                    
-                    <div className={cn(
-                      "p-4 text-xs leading-relaxed rounded-2xl border",
-                      msg.role === 'user' 
-                        ? "bg-noxis-overlay text-noxis-text border-noxis-border rounded-tr-none" 
-                        : "bg-noxis-accent/5 text-noxis-text border-noxis-accent/10 rounded-tl-none"
-                    )}>
-                      <p>{msg.content}</p>
-                      
-                      {msg.results && msg.results.length > 0 && (
-                        <div className="mt-4 space-y-3">
-                          {msg.results.map(entry => (
-                            <div key={entry.id} className="p-3 bg-noxis-bg border border-noxis-border rounded-lg space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[8px] font-black uppercase text-noxis-accent px-1.5 py-0.5 bg-noxis-accent/10 rounded">
-                                  {entry.category}
-                                </span>
-                                {entry.shortcuts && (
-                                  <span className="text-[9px] font-mono text-noxis-text-muted flex items-center gap-1">
-                                    <Command size={10} />
-                                    {entry.shortcuts[0]}
-                                  </span>
-                                )}
-                              </div>
-                              <h4 className="font-bold text-noxis-text">{entry.title}</h4>
-                              <p className="text-[10px] text-noxis-text-muted italic">{entry.content}</p>
-                              {entry.route && (
-                                <button 
-                                  onClick={() => navigateTo(entry.route!)}
-                                  className="w-full py-2 mt-2 bg-noxis-accent text-black text-[9px] font-black uppercase tracking-widest rounded hover:brightness-110 flex items-center justify-center gap-2"
-                                >
-                                  Go There →
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {msg.role === 'assistant' && msg.results && msg.results.length === 0 && !msg.isContext && (
-                        <div className="mt-4 grid grid-cols-2 gap-2">
-                          {CATEGORY_CHIPS.map(chip => (
-                            <button 
-                              key={chip}
-                              onClick={() => handleSearch(chip)}
-                              className="py-2 px-3 bg-noxis-overlay border border-noxis-border rounded text-[9px] font-bold text-noxis-text-muted hover:text-noxis-accent hover:border-noxis-accent/50 transition-all text-left"
-                            >
-                              {chip}
-                            </button>
-                          ))}
-                        </div>
+            {/* Navigation / action buttons from search results */}
+            {msg.results && msg.results.length > 0 && (
+              <div className="mt-2 space-y-1.5">
+                {msg.results.map(result => (
+                  <div key={result.id} className="p-2.5 bg-[#0F1115] border border-white/8 rounded">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[8px] font-black uppercase text-[#60A5FA] px-1.5 py-0.5 bg-[#60A5FA]/10 rounded">
+                        {result.category}
+                      </span>
+                      {result.shortcut && (
+                        <span className="text-[9px] font-mono text-gray-500 flex items-center gap-1">
+                          <HelpCircle size={9} />
+                          {result.shortcut}
+                        </span>
                       )}
                     </div>
+                    <h4 className="mt-1.5 font-bold text-white text-[11px]">{result.title}</h4>
+                    {result.route && (
+                      <button
+                        onClick={() => navigateTo(result)}
+                        className="mt-2 w-full py-1.5 bg-[#60A5FA] text-black text-[9px] font-black uppercase tracking-widest rounded hover:bg-[#60A5FA]/90 flex items-center justify-center gap-1.5"
+                      >
+                        <Navigation size={10} />
+                        {result.action_label || 'Open'}
+                        <ChevronRight size={10} />
+                      </button>
+                    )}
                   </div>
                 ))}
-                {isTyping && (
-                  <div className="flex items-center gap-2 text-[9px] text-noxis-accent animate-pulse">
-                    <Cpu size={12} className="animate-spin" />
-                    Searching knowledge...
-                  </div>
-                )}
-                <div ref={chatEndRef} />
               </div>
+            )}
+          </div>
+        ))}
 
-              {/* Input Footer */}
-              <div className="p-6 border-t border-noxis-border bg-noxis-bg">
-                <div className="relative group">
-                  <input 
-                    ref={inputRef}
-                    type="text"
-                    placeholder="Ask anything about Noxis..."
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleSearch();
-                    }}
-                    className="w-full bg-noxis-overlay border border-noxis-border p-4 pr-12 text-sm text-noxis-text placeholder:text-noxis-text-muted outline-none focus:border-noxis-accent transition-all rounded-xl"
-                  />
-                  <button 
-                    onClick={() => handleSearch()}
-                    disabled={!query.trim() || isTyping}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-noxis-text-muted hover:text-noxis-accent disabled:opacity-20 transition-all"
-                  >
-                    <Send size={18} />
-                  </button>
-                </div>
-                <div className="mt-3 flex items-center justify-between text-[9px] text-noxis-text-muted font-bold uppercase tracking-widest">
-                  <div className="flex items-center gap-1.5">
-                    <Command size={10} />
-                    <span>Ctrl + / to Toggle</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Zap size={10} />
-                    <span>Instant Response</span>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </>
+        {/* Quick suggestion chips — visible on first open only */}
+        {showChips && (
+          <div className="pt-2">
+            <p className="text-[9px] text-gray-600 font-bold uppercase tracking-widest mb-2">Try asking:</p>
+            <div className="flex flex-wrap gap-1.5">
+              {QUICK_CHIPS.map(chip => (
+                <button
+                  key={chip}
+                  onClick={() => handleQuery(chip)}
+                  className="px-2.5 py-1 text-[10px] bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white rounded-sm transition-colors"
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
-      </AnimatePresence>
-    </>
-  );
-}
 
-function ResultCard({ entry, onClick }: { entry: KnowledgeEntry, onClick: () => void }) {
-  return (
-    <button 
-      onClick={onClick}
-      className="w-full text-left p-4 bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 hover:border-white/10 rounded-lg transition-all group relative overflow-hidden"
-    >
-      <div className="absolute top-0 left-0 w-1 h-full bg-electric-blue opacity-0 group-hover:opacity-100 transition-opacity" />
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="px-1.5 py-0.5 bg-electric-blue/10 text-electric-blue text-[8px] font-black uppercase rounded-sm">
-            {entry.category}
-          </span>
-          {entry.shortcuts && (
-             <Command size={12} className="text-gray-700 group-hover:text-gray-500" />
-          )}
-        </div>
-        <h4 className="text-sm font-bold text-white group-hover:text-electric-blue transition-colors">
-          {entry.title}
-        </h4>
-        <p className="text-[10px] text-gray-500 line-clamp-2 leading-relaxed italic">
-          {entry.content}
-        </p>
-        <div className="flex items-center gap-1 text-[9px] text-electric-blue font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0">
-          Learn More
-          <ArrowRight size={10} />
-        </div>
+        <div ref={bottomRef} />
       </div>
-    </button>
-  );
+
+      {/* Input bar */}
+      <div className="px-3 py-3 border-t border-white/8 flex items-center gap-2 flex-shrink-0">
+        <button
+          onClick={startListening}
+          className={`w-8 h-8 rounded transition-colors flex items-center justify-center flex-shrink-0 ${
+            listening
+              ? 'bg-red-500/20 text-red-400 animate-pulse'
+              : 'bg-white/5 text-gray-500 hover:text-gray-300'
+          }`}
+        >
+          <Mic size={14} />
+        </button>
+        <input
+          ref={inputRef}
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') handleQuery(input) }}
+          placeholder="Ask anything about Noxis..."
+          className="flex-1 bg-transparent text-xs text-white outline-none placeholder:text-gray-700 min-w-0"
+        />
+        <button
+          onClick={() => handleQuery(input)}
+          disabled={!input.trim()}
+          className="w-8 h-8 flex items-center justify-center rounded bg-[#60A5FA]/10 text-[#60A5FA] hover:bg-[#60A5FA]/20 disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
+        >
+          <Send size={13} />
+        </button>
+      </div>
+
+      {/* Footer hint */}
+      <div className="px-3 py-1.5 border-t border-white/5 text-[9px] text-gray-700 text-center">
+        Ctrl+/ to toggle · Powered by Noxis AI
+      </div>
+    </div>
+  )
 }

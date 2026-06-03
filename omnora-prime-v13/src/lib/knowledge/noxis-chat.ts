@@ -87,8 +87,8 @@ export async function processChatQuery(query: string, history: ChatMessage[]): P
       content = `I found the relevant information for you. ${bestMatch.content}`;
     }
 
-    if (bestMatch.shortcuts && bestMatch.shortcuts.length > 0) {
-      content += `\n\n**Quick Shortcut:** \`${bestMatch.shortcuts[0]}\``;
+    if (bestMatch.shortcut) {
+      content += `\n\n**Quick Shortcut:** \`${bestMatch.shortcut}\``;
     }
 
     if (bestMatch.route) {

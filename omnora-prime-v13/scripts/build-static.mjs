@@ -26,7 +26,9 @@ try {
     if (stat.isDirectory()) {
       if (!PUBLIC_DIRECTORIES.includes(file)) {
         console.log(`[Build] Temporarily hiding directory: ${file}`);
-        fs.renameSync(fullPath, path.join(tempPath, file));
+        const dest = path.join(tempPath, file);
+        fs.cpSync(fullPath, dest, { recursive: true });
+        fs.rmSync(fullPath, { recursive: true, force: true });
         hiddenDirs.push(file);
       }
     }
@@ -55,7 +57,11 @@ try {
       const source = path.join(tempPath, dir);
       const dest = path.join(appPath, dir);
       if (fs.existsSync(source)) {
-        fs.renameSync(source, dest);
+        if (fs.existsSync(dest)) {
+          fs.rmSync(dest, { recursive: true, force: true });
+        }
+        fs.cpSync(source, dest, { recursive: true });
+        fs.rmSync(source, { recursive: true, force: true });
       }
     }
   }

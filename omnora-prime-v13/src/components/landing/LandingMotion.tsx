@@ -77,18 +77,22 @@ export function BrandLogo({
   className?: string
 }) {
   const reduce = useReducedMotion()
+  const logoRef = useRef<HTMLDivElement>(null)
+  const logoInView = useInView(logoRef, { once: false, margin: '40px' })
   const px = logoPixels[size]
   const ringInset = size === 'hero' ? -18 : -10
+  const animateLogo = !reduce && logoInView && (size === 'hero' || size === 'splash')
 
   return (
     <div className={`flex items-center gap-3 ${className}`}>
       <motion.div
+        ref={logoRef}
         className="relative shrink-0"
         style={{ width: px, height: px }}
         whileHover={reduce ? {} : { scale: 1.04 }}
         transition={springs.snappy}
       >
-        {!reduce && (
+        {animateLogo && (
           <motion.div
             className="absolute rounded-2xl"
             style={{
@@ -111,7 +115,7 @@ export function BrandLogo({
             className="w-full h-full object-contain p-[8%]"
           />
         </div>
-        {!reduce && (
+        {animateLogo && (
           <svg
             className="absolute inset-0 w-full h-full pointer-events-none overflow-visible"
             viewBox="0 0 100 100"

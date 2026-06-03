@@ -15,6 +15,7 @@ import {
   ArrowUpRight, ArrowDownRight, MessageCircle
 } from "lucide-react";
 import { sendWhatsAppAlert, ALERT_TEMPLATES } from "@/lib/whatsapp/alertEngine";
+import { openWhatsApp, WA_TEMPLATES } from "@/lib/utils/whatsapp";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
@@ -61,7 +62,7 @@ export default function DashboardPage() {
     const feedbackShown = localStorage.getItem('feedback_7day_shown');
     if (days >= 7 && !feedbackShown) {
       localStorage.setItem('feedback_7day_shown', 'true');
-      setShow7DayPrompt(true);
+      queueMicrotask(() => setShow7DayPrompt(true));
     }
   }, []);
   
@@ -377,14 +378,19 @@ export default function DashboardPage() {
             <div className="flex items-center gap-3">
                <button 
                  onClick={() => {
-                   const summary = ALERT_TEMPLATES.daily_summary({
-                     date: format(new Date(), 'dd MMM yyyy'),
+                   const phone = profile?.owner_phone || profile?.phone
+                   if (!phone) {
+                     alert('Add your WhatsApp number in Settings → Business Profile first, then save.')
+                     return
+                   }
+                   const msg = WA_TEMPLATES.dailySummary({
+                     businessName: profile?.business_name || 'Your Business',
+                     currency: profile?.currency || 'PKR',
                      revenue: fmt(new Decimal(kpis?.totalSales || 0)),
-                     units: String(kpis?.activeOrders || 0) + " Active Orders",
-                     topKarigar: "N/A",
-                     lowStockCount: 0
-                   });
-                   sendWhatsAppAlert(profile?.phone || '', summary);
+                     activeOrders: kpis?.activeOrders || 0,
+                     date: format(new Date(), 'EEEE, d MMMM yyyy'),
+                   })
+                   openWhatsApp(phone, msg, profile?.country_code || 'PK');
                  }}
                  className="flex items-center space-x-2 px-4 py-2 bg-[#25D366]/10 border border-[#25D366]/20 text-[#25D366] text-[10px] font-black uppercase tracking-widest hover:bg-[#25D366]/20 transition-all"
                >

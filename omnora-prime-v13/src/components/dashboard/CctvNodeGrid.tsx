@@ -30,7 +30,7 @@ export default function CctvNodeGrid() {
       return data || [];
     },
     enabled: !!profile?.id,
-    refetchInterval: 5000, // Sync every 5s
+    refetchInterval: 60_000,
   });
 
   if (isLoading) return <div className="col-span-4 h-32 bg-surface/50 border border-white/5 animate-pulse" />;

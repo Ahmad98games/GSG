@@ -159,6 +159,7 @@ const setupSchema = z.object({
   business_name: z.string().min(2, "Business name is too short"),
   owner_name: z.string().min(2, "Owner name is required"),
   phone: z.string().min(8, "Invalid phone number"),
+  owner_phone: z.string().optional(),
   city: z.string().min(2, "City is required"),
   tax_name: z.string().min(1),
   tax_rate: z.coerce.number(),
@@ -277,6 +278,7 @@ export default function OnboardingPage() {
         currency: values.currency,
         role: 'manufacturer',
         theme_id: activeTheme.id,
+        owner_phone: values.owner_phone || values.whatsapp_numbers?.[0]?.phone || null,
         whatsapp_numbers: values.whatsapp_numbers || [],
         summary_frequency: values.summary_frequency,
         summary_time: values.summary_time,
@@ -502,6 +504,8 @@ export default function OnboardingPage() {
                              const nums = (watch('whatsapp_numbers' as any) || []);
                              nums[0] = { name: 'Owner', phone: e.target.value };
                              setValue('whatsapp_numbers' as any, nums);
+                             // Also persist to the dedicated owner_phone field
+                             setValue('owner_phone' as any, e.target.value);
                            }}
                          />
                          <p className="text-[9px] text-gray-700 font-bold uppercase tracking-widest">Format: Country prefix + number</p>

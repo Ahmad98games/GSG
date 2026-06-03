@@ -270,6 +270,7 @@ export default function SettingsPage() {
         .update({
           business_name: profile.business_name,
           owner_name: (profile as any).owner_name,
+          owner_phone: (profile as any).owner_phone || null,
           tax_number: profile.tax_number,
           address: profile.address,
           currency: profile.currency,
@@ -605,6 +606,20 @@ export default function SettingsPage() {
                           onChange={(e) => profile && setProfile({ ...profile, owner_name: e.target.value } as any)}
                           className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-electric-blue/50"
                         />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest flex items-center gap-1.5">
+                          Owner WhatsApp
+                          <span className="text-[9px] text-[#25D366] font-black normal-case">(daily summaries)</span>
+                        </label>
+                        <input
+                          type="tel"
+                          value={(profile as any)?.owner_phone || ''}
+                          onChange={(e) => profile && setProfile({ ...profile, owner_phone: e.target.value } as any)}
+                          placeholder="e.g. 03001234567 or +923001234567"
+                          className="w-full bg-white/5 border border-[#25D366]/20 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-[#25D366]/50"
+                        />
+                        <p className="text-[10px] text-gray-600">Used when you press &quot;Send Daily Summary&quot; on Dashboard &amp; Reports.</p>
                       </div>
                       <div className="space-y-2">
                         <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Industry Key</label>

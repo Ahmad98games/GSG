@@ -12,7 +12,7 @@ export function useColdChainLatest() {
       if (error) throw error;
       return data;
     },
-    refetchInterval: 10000, // Refresh every 10s
+    refetchInterval: 60_000,
   });
 }
 

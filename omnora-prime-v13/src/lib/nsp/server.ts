@@ -12,6 +12,14 @@ import { NspBroadcaster } from '@/server/NspBroadcaster';
 import { Decimal } from 'decimal.js';
 import { useTierStore } from '@/stores/tierStore';
 
+const DEVICE_LIMITS = {
+  lite: 5,
+  pro: 15,
+  elite: 50,
+} as const;
+
+const connectedDevices = new Map<string, net.Socket>();
+
 const SHARED_KEY = Buffer.alloc(32, process.env.NSP_SHARED_KEY || 'test-key-001');
 const WORKER_PATH = path.resolve(__dirname, './nsp-worker.ts');
 
@@ -21,6 +29,33 @@ for (let i = 0; i < 4; i++) {
   workers.push(new Worker(WORKER_PATH, { execArgv: ['-r', 'ts-node/register'] }));
 }
 let currentWorker = 0;
+
+setInterval(() => {
+  const heartbeatPayload = {
+    heartbeat: {
+      timestamp: Date.now(),
+    }
+  };
+  const encoded = NSPProtobuf.encode('NspEnvelope', heartbeatPayload);
+  const lenBuf = Buffer.alloc(4);
+  lenBuf.writeUInt32LE(encoded.length);
+  const packet = Buffer.concat([lenBuf, encoded]);
+
+  connectedDevices.forEach((socket, deviceId) => {
+    if (socket.destroyed) {
+      connectedDevices.delete(deviceId);
+      logger.info({ deviceId }, '[NSP] Removed destroyed device during heartbeat');
+      return;
+    }
+
+    try {
+      socket.write(packet);
+    } catch (err) {
+      connectedDevices.delete(deviceId);
+      logger.warn({ err, deviceId }, '[NSP] Removed dead device during heartbeat');
+    }
+  });
+}, 30000);
 
 interface NspEnvelope {
   __type: string;
@@ -61,8 +96,37 @@ export function createNSPServer(onActivity?: () => void) {
           return;
         }
 
-        // Register socket for broadcasting
+        // --- Tier-based connection enforcement ---
+        const tierStore = useTierStore.getState();
         if (payload.node_id) {
+          const currentTier = tierStore.tier as keyof typeof DEVICE_LIMITS;
+          const limit = DEVICE_LIMITS[currentTier] ?? Number.MAX_SAFE_INTEGER;
+          const isNewConnection = !connectedDevices.has(payload.node_id);
+
+          if (isNewConnection && connectedDevices.size >= limit) {
+            logger.warn({ nodeId: payload.node_id, deviceCount: connectedDevices.size, tier: currentTier, limit }, '[NSP] Pairing Rejected: Limit Reached');
+            const rejectPayload = {
+              pairing_rejected: {
+                reason: `Device limit (${limit}) reached for ${currentTier} plan`,
+                tier: currentTier,
+                limit,
+              }
+            };
+            const encodedReject = NSPProtobuf.encode('NspEnvelope', rejectPayload);
+            const encryptedReject = NSPEncryption.encrypt(encodedReject, SHARED_KEY);
+            const lBuf = Buffer.alloc(4);
+            lBuf.writeUInt32LE(encryptedReject.length);
+            socket.write(Buffer.concat([lBuf, encryptedReject]));
+            socket.destroy();
+            return;
+          }
+
+          const existingSocket = connectedDevices.get(payload.node_id);
+          if (existingSocket && existingSocket !== socket && !existingSocket.destroyed) {
+            existingSocket.destroy();
+          }
+
+          connectedDevices.set(payload.node_id, socket);
           NspBroadcaster.registerSocket(payload.node_id, socket);
         }
 
@@ -268,39 +332,6 @@ export function createNSPServer(onActivity?: () => void) {
           return;
         }
 
-        // --- TIER ENFORCEMENT & DEVICE LIMITS ---
-        const tierStore = useTierStore.getState();
-        if (payload.node_id) {
-          const [existing] = await db.select()
-            .from(schema.tcpSessions)
-            .where(eq(schema.tcpSessions.nodeId, payload.node_id))
-            .limit(1);
-
-          if (!existing) {
-            const [countRes] = await db.select({ count: sql`count(*)` })
-              .from(schema.tcpSessions);
-            const deviceCount = Number(countRes.count);
-
-            if (!tierStore.canAddDevice(deviceCount)) {
-              logger.warn({ nodeId: payload.node_id, deviceCount }, '[NSP] Pairing Rejected: Limit Reached');
-              const rejectPayload = {
-                pairing_rejected: {
-                  reason: 'Device limit reached for your plan',
-                  tier: tierStore.tier,
-                  limit: tierStore.limits.maxMobileDevices,
-                }
-              };
-              const encodedReject = NSPProtobuf.encode('NspEnvelope', rejectPayload);
-              const encryptedReject = NSPEncryption.encrypt(encodedReject, SHARED_KEY);
-              const lBuf = Buffer.alloc(4);
-              lBuf.writeUInt32LE(encryptedReject.length);
-              socket.write(Buffer.concat([lBuf, encryptedReject]));
-              socket.destroy();
-              return;
-            }
-          }
-        }
-
         // Standard Acknowledgment with Tier Info
         const ack = NSPProtobuf.encode('HubAck', { 
           status: 'ok', 
@@ -321,6 +352,21 @@ export function createNSPServer(onActivity?: () => void) {
 
     socket.on('close', () => {
       NspBroadcaster.unregisterSocket(socket);
+      for (const [deviceId, s] of connectedDevices.entries()) {
+        if (s === socket) {
+          connectedDevices.delete(deviceId);
+          break;
+        }
+      }
+    });
+
+    socket.on('error', () => {
+      for (const [deviceId, s] of connectedDevices.entries()) {
+        if (s === socket) {
+          connectedDevices.delete(deviceId);
+          break;
+        }
+      }
     });
   });
 }

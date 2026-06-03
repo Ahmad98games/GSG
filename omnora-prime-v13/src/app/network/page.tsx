@@ -1,12 +1,34 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Globe, Shield, Users, Inbox, ArrowUpRight, ArrowLeftRight, CheckCircle2 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Globe, Users, Inbox, CheckCircle2, Search, MapPin, Factory } from 'lucide-react';
 import { GLOBAL_INDUSTRIES, getIndustryLabel } from '@/lib/network/industries';
+
+type NetworkProfileRow = {
+  id: string;
+  business_id: string;
+  display_name: string;
+  industry: string | null;
+  city: string | null;
+  country_code: string | null;
+};
+
+const NETWORK_COUNTRIES = [
+  { code: 'PK', name: '🇵🇰 Pakistan' },
+  { code: 'AE', name: '🇦🇪 UAE' },
+  { code: 'BD', name: '🇧🇩 Bangladesh' },
+  { code: 'TR', name: '🇹🇷 Turkey' },
+  { code: 'GB', name: '🇬🇧 UK' },
+];
+
+const INDUSTRY_FILTERS = Object.entries(GLOBAL_INDUSTRIES).map(([key, names]) => ({
+  value: key,
+  label: names.en,
+}));
 
 const COUNTRY_NAMES: Record<string, string> = {
   PK: 'Pakistan',
@@ -33,6 +55,176 @@ const getPrivacyNotice = (countryCode: string) => {
   }
   // Default (Pakistan, UAE, etc.)
   return `Only your industry and city are shown publicly. No financial data. No customer lists. You can leave the network anytime.`
+}
+
+function NetworkDirectory() {
+  const supabase = createClient();
+  const { profile } = useBusinessProfile();
+  const [search, setSearch] = useState('');
+  const [industry, setIndustry] = useState('');
+  const [country, setCountry] = useState('');
+  const [factories, setFactories] = useState<NetworkProfileRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const searchRef = useRef(search);
+  searchRef.current = search;
+
+  const searchFactories = useCallback(async () => {
+    setLoading(true);
+    const term = searchRef.current.trim();
+
+    let query = supabase
+      .from('network_profiles')
+      .select('id, business_id, display_name, industry, city, country_code')
+      .eq('is_visible', true);
+
+    if (profile?.id) {
+      query = query.neq('business_id', profile.id);
+    }
+    if (term) {
+      query = query.ilike('display_name', `%${term}%`);
+    }
+    if (industry) {
+      query = query.eq('industry', industry);
+    }
+    if (country) {
+      query = query.eq('country_code', country);
+    }
+
+    const { data } = await query
+      .order('joined_network_at', { ascending: false })
+      .limit(20);
+
+    setFactories((data as NetworkProfileRow[]) || []);
+    setLoading(false);
+  }, [supabase, profile?.id, industry, country]);
+
+  useEffect(() => {
+    searchFactories();
+  }, [industry, country, profile?.id, searchFactories]);
+
+  const handleConnect = (factory: NetworkProfileRow) => {
+    const msg = encodeURIComponent(
+      `Assalam o Alaikum,\n\nI found your factory on the Noxis Network.\n\nI am interested in connecting for potential business.\n\nRegards,\n${profile?.business_name || 'A Noxis user'}\n\n🔒 Noxis Hub | Omnora Labs`
+    );
+    window.open(`https://wa.me/?text=${msg}`, '_blank');
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: 0.35 }}
+      className="relative z-10 mt-8"
+    >
+      <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-4">
+        Browse factories on the network
+      </p>
+
+      <div className="flex flex-wrap gap-3 mb-6">
+        <div className="flex-1 min-w-48 flex items-center gap-2 bg-[#16191C] border border-white/8 px-3 py-2 rounded-sm">
+          <Search size={14} className="text-gray-600 shrink-0" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') searchFactories();
+            }}
+            placeholder="Search by name..."
+            className="bg-transparent text-sm text-white outline-none flex-1 placeholder:text-gray-600"
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={searchFactories}
+          className="px-4 py-2 text-[10px] font-black uppercase tracking-widest bg-electric-blue/10 border border-electric-blue/30 text-electric-blue hover:bg-electric-blue/20 transition-colors rounded-sm"
+        >
+          Search
+        </button>
+
+        <select
+          value={industry}
+          onChange={(e) => setIndustry(e.target.value)}
+          className="bg-[#16191C] border border-white/8 text-sm text-gray-400 px-3 py-2 rounded-sm outline-none min-w-[160px]"
+        >
+          <option value="">All industries</option>
+          {INDUSTRY_FILTERS.map((i) => (
+            <option key={i.value} value={i.value}>
+              {i.label}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={country}
+          onChange={(e) => setCountry(e.target.value)}
+          className="bg-[#16191C] border border-white/8 text-sm text-gray-400 px-3 py-2 rounded-sm outline-none min-w-[140px]"
+        >
+          <option value="">All countries</option>
+          {NETWORK_COUNTRIES.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {loading ? (
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-16 bg-white/[0.02] rounded-sm animate-pulse" />
+          ))}
+        </div>
+      ) : factories.length === 0 ? (
+        <div className="py-12 text-center border border-white/5 rounded-sm bg-[#16191C]/50">
+          <p className="text-sm text-gray-500">No factories found.</p>
+          <p className="text-xs text-gray-600 mt-1">
+            Be among the first to join the network.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {factories.map((f) => (
+            <div
+              key={f.id}
+              className="flex items-center justify-between gap-4 p-4 bg-[#16191C] border border-white/6 rounded-sm"
+            >
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="w-10 h-10 rounded-sm bg-white/5 border border-white/8 flex items-center justify-center shrink-0">
+                  <Factory size={16} className="text-gray-500" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-white truncate">{f.display_name}</p>
+                  <div className="flex items-center flex-wrap gap-2 mt-0.5">
+                    {f.city && (
+                      <span className="text-[10px] text-gray-600 flex items-center gap-1">
+                        <MapPin size={9} />
+                        {f.city}
+                        {f.country_code && `, ${COUNTRY_NAMES[f.country_code] || f.country_code}`}
+                      </span>
+                    )}
+                    {f.industry && (
+                      <span className="text-[10px] text-gray-600">
+                        · {getIndustryLabel(f.industry, profile?.preferred_locale || 'en')}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleConnect(f)}
+                className="shrink-0 text-xs font-medium text-[#25D366] border border-[#25D366]/30 px-3 py-1.5 hover:bg-[#25D366]/10 transition-colors rounded-sm"
+              >
+                Connect
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </motion.div>
+  );
 }
 
 export default function NetworkPage() {
@@ -329,6 +521,8 @@ export default function NetworkPage() {
             </div>
           )}
         </motion.div>
+
+        <NetworkDirectory />
         
         {/* Coming soon */}
         <motion.div 
