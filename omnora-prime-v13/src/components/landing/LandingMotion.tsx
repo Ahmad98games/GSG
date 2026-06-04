@@ -49,8 +49,35 @@ export function LandingBackdrop() {
         className="absolute top-[8%] left-1/2 -translate-x-1/2 w-[min(900px,120vw)] h-[420px] rounded-full blur-[130px] opacity-[0.09]"
       />
       <motion.div
+        animate={{
+          scale: [1, 1.15, 1],
+          x: [0, 50, 0],
+          y: [0, -40, 0],
+        }}
+        transition={{
+          duration: 15,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+        className="absolute top-[12%] left-[10%] w-[350px] h-[350px] rounded-full bg-[#C9A962]/5 blur-[120px] pointer-events-none"
+      />
+      <motion.div
+        animate={{
+          scale: [1, 1.2, 1],
+          x: [0, -60, 0],
+          y: [0, 50, 0],
+        }}
+        transition={{
+          duration: 18,
+          repeat: Infinity,
+          ease: "easeInOut",
+          delay: 2,
+        }}
+        className="absolute bottom-[20%] right-[15%] w-[450px] h-[450px] rounded-full bg-[#E8D5B5]/4 blur-[140px] pointer-events-none"
+      />
+      <motion.div
         style={{ y: y2, background: CYAN_ACCENT }}
-        className="absolute top-[45%] right-[-10%] w-[400px] h-[400px] rounded-full blur-[100px] opacity-[0.06]"
+        className="absolute top-[45%] right-[-10%] w-[400px] h-[400px] rounded-full blur-[100px] opacity-[0.04]"
       />
       <div className="absolute inset-0 bg-gradient-to-b from-[#12101a]/50 via-transparent to-[#050507]" />
     </div>
@@ -318,10 +345,36 @@ export function SplitHeadline({ lines }: { lines: { text: string; accent?: boole
         <span key={i} className="block overflow-hidden">
           <motion.span
             className="block"
-            style={line.accent ? { color: CHAMPAGNE } : undefined}
+            style={
+              line.accent
+                ? {
+                    backgroundImage: `linear-gradient(135deg, ${CHAMPAGNE_LIGHT} 0%, ${CHAMPAGNE} 30%, #FFFFFF 50%, ${CHAMPAGNE} 70%, ${CHAMPAGNE_LIGHT} 100%)`,
+                    backgroundSize: '200% auto',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                  }
+                : {}
+            }
             initial={reduce ? false : { y: '110%', opacity: 0 }}
-            animate={inView || reduce ? { y: 0, opacity: 1 } : { y: '110%', opacity: 0 }}
-            transition={{ duration: 0.85, delay: i * 0.12, ease: easeLuxury }}
+            animate={
+              inView || reduce
+                ? {
+                    y: 0,
+                    opacity: 1,
+                    backgroundPosition: reduce ? '0% center' : ['0% center', '200% center'],
+                  }
+                : { y: '110%', opacity: 0 }
+            }
+            transition={
+              line.accent
+                ? {
+                    y: { duration: 0.85, delay: i * 0.12, ease: easeLuxury },
+                    opacity: { duration: 0.85, delay: i * 0.12, ease: easeLuxury },
+                    backgroundPosition: { duration: 8, repeat: Infinity, ease: 'linear' },
+                  }
+                : { duration: 0.85, delay: i * 0.12, ease: easeLuxury }
+            }
           >
             {line.text}
           </motion.span>
@@ -395,9 +448,8 @@ export function FeatureCard({
           reduce || isMobile
             ? {}
             : {
-                y: -8,
-                rotateX: 4,
-                rotateY: -4,
+                y: -10,
+                scale: 1.02,
                 transition: springs.snappy,
               }
         }
@@ -405,24 +457,27 @@ export function FeatureCard({
       >
         <Link
           href={href}
-          className="group block p-8 rounded-xl border border-white/[0.05] bg-gradient-to-br from-white/[0.04] to-transparent hover:border-[#C9A962]/25 transition-colors duration-500 relative overflow-hidden"
+          className="group block p-8 rounded-xl border border-white/[0.05] bg-[#0A0B0D]/80 backdrop-blur-md hover:border-[#C9A962]/40 transition-all duration-300 relative overflow-hidden"
+          style={{ boxShadow: '0 4px 30px rgba(0,0,0,0.4)' }}
         >
+          {/* Animated luxury glow hover border */}
+          <div className="absolute inset-0 border border-transparent group-hover:border-[#C9A962]/20 rounded-xl transition-colors duration-300" />
           <motion.div
-            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
+            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
             style={{
-              background: `radial-gradient(600px circle at var(--mx,50%) var(--my,50%), ${CHAMPAGNE}12, transparent 45%)`,
+              background: `radial-gradient(400px circle at var(--mx,50%) var(--my,50%), ${CHAMPAGNE}18, transparent 50%)`,
             }}
           />
           <div className="relative">
             <motion.div
-              className="w-11 h-11 rounded-lg flex items-center justify-center border border-[#C9A962]/20 bg-[#C9A962]/8 mb-6"
+              className="w-11 h-11 rounded-lg flex items-center justify-center border border-[#C9A962]/30 bg-[#C9A962]/10 mb-6 group-hover:bg-[#C9A962]/20 transition-all duration-300"
               whileHover={reduce ? {} : { rotate: [0, -6, 6, 0] }}
               transition={{ duration: 0.5 }}
             >
               <Icon size={20} style={{ color: CHAMPAGNE }} />
             </motion.div>
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-2">{title}</h3>
-            <p className="text-xs text-[#94A3B8] leading-relaxed">{desc}</p>
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-2 group-hover:text-[#E8D5B5] transition-colors">{title}</h3>
+            <p className="text-xs text-[#94A3B8] leading-relaxed font-medium">{desc}</p>
           </div>
         </Link>
       </motion.div>

@@ -53,32 +53,32 @@ const mandiRates = [
 ]
 
 const sqliteLogs = [
-  '[21:32:04] Initializing local SQLite3-MC engine…',
-  '[21:32:04] Mounting encrypted store at Noxis-Local.db',
-  '[21:32:04] SUCCESS: AES-256 connection established.',
-  '[21:32:08] CENTRAL CLOUD: OFFLINE — standalone floor mode active.',
-  '[21:32:15] LOG: Karigar Hamid Saeed — +1,420 yds queued for mesh sync.',
-  '[21:32:44] LOG: Inventory bale SKU #2908-WEAVE scanned — buffer queued.',
-  '[21:35:12] MESH: 4 Android floor terminals paired (local WiFi).',
-  '[21:36:00] STABILITY: 100% operative — offline buffer: 142 records.',
+  '[21:32:04] Initializing safe local database…',
+  '[21:32:04] Loading locked files at Noxis-Local.db',
+  '[21:32:04] SUCCESS: Secure local connection active.',
+  '[21:32:08] CLOUD SYNC: OFFLINE — local computer mode active.',
+  '[21:32:15] LOG: Worker Hamid Saeed — 1,420 yards logged.',
+  '[21:32:44] LOG: Stock item scanned — saved to memory.',
+  '[21:35:12] NET: 4 Android phones connected (local Wi-Fi).',
+  '[21:36:00] STABILITY: 100% working — local queue: 142 records.',
 ]
 
 const cctvLogs = [
-  '[21:30:15] AI Sentinel mounted — 4 active floor cameras.',
-  '[21:31:00] MATCH: Weaver Hamid Saeed — Loom Cam 01 check-in.',
-  '[21:32:12] MATCH: Weaver Bilal Khan — Packing Cam 02 check-in.',
-  '[21:35:44] ALERT: Zone breach — Weaving Loom 14 perimeter (Cam 03).',
-  '[21:35:44] Dispatch: SMS + local floor notification sent.',
+  '[21:30:15] Smart camera active — 4 floor cameras.',
+  '[21:31:00] CHECK-IN: Weaver Hamid Saeed — Loom Cam 01.',
+  '[21:32:12] CHECK-IN: Weaver Bilal Khan — Packing Cam 02.',
+  '[21:35:44] ALERT: Zone breach — Loom area entered (Cam 03).',
+  '[21:35:44] Alert sent: phone & computer alarm triggered.',
 ]
 
 const marqueeItems = [
   'Textile mills',
   'Rice mills',
-  'Karigar payroll',
-  'Offline ERP',
-  'Urdu floor UI',
-  'Barcode inventory',
-  'Double-entry khata',
+  'Worker payroll',
+  'Offline software',
+  'Urdu screen UI',
+  'Barcode scanner',
+  'Simple accounting',
 ]
 
 export default function LandingClient() {
@@ -140,28 +140,28 @@ export default function LandingClient() {
   }
 
   const features = [
-    { icon: Database, title: 'Offline-First SQLite', desc: 'Double-ciphered local floor database reconciles with cloud on reconnect. Zero reliance on continuous internet.', href: '/docs#sqlite' },
-    { icon: Layers, title: 'Barcode & SKU Engine', desc: 'Scan bales, fabric yards, and chemical batches. Auto-triggers reorder alerts at configurable thresholds.', href: '/docs#inventory' },
-    { icon: Smartphone, title: 'Mobile Floor Handhelds', desc: 'Workers log piece-rate counts and attendance from Android terminals over local WiFi mesh — no cloud hop.', href: '/docs#mobile' },
-    { icon: ShieldCheck, title: 'AI Sentinel CCTV', desc: 'Virtual zone boundaries with on-device inference. Instant local alerts — no recurring cloud storage fees.', href: '/docs#data-safety' },
-    { icon: BarChart4, title: 'Double-Entry Khata', desc: 'Receipts, bank entries, and ledger credits with one-click P&L, aging, and mandi-index reconciliation.', href: '/docs#invoices' },
-    { icon: Globe2, title: 'Multilingual Floor UI', desc: 'Urdu Nastaliq and English for local karigars and international administrators on the same deployment.', href: '/docs#troubleshoot' },
+    { icon: Database, title: 'Offline Safe Storage', desc: 'Saves everything securely on your office computer. Backs up to the cloud automatically when internet returns.', href: '/docs#sqlite' },
+    { icon: Layers, title: 'Barcode & Product Scanner', desc: 'Scan barcodes for fabric rolls, weights, and items. Get automatic warning alerts when stock runs low.', href: '/docs#inventory' },
+    { icon: Smartphone, title: 'Mobile Phone Helpers', desc: 'Supervisors log production counts and attendance from Android phones over local Wi-Fi without needing internet.', href: '/docs#mobile' },
+    { icon: ShieldCheck, title: 'Smart Camera Alerts', desc: 'Draw virtual boundaries over your cameras. Get instant alerts and alarms on your PC without monthly cloud fees.', href: '/docs#data-safety' },
+    { icon: BarChart4, title: 'Simple Cash Bookkeeping', desc: 'Simple cash bookkeeping, bank deposits, and customer accounts with automated reports and daily market rates.', href: '/docs#invoices' },
+    { icon: Globe2, title: 'Urdu and English Screen', desc: 'Switch between Urdu Nastaliq and English on any screen, making it easy for both supervisors and owners.', href: '/docs#troubleshoot' },
   ]
 
   const comparisonRows = [
-    { metric: 'Internet Dependency', noxis: '100% offline (local mesh grid)', cloud: 'Fails on signal drop', manual: 'Paper only' },
-    { metric: 'Karigar Payroll', noxis: '1-click automated piece-rate', cloud: 'Manual Excel formulas', manual: '3–5 days manual calc' },
-    { metric: 'Peshgi Advance Safeguards', noxis: 'Hard-coded alerts & wage deduct', cloud: 'No advance ledger hooks', manual: 'High dispute rate' },
-    { metric: 'Floor Security', noxis: 'On-device AI CCTV Sentinel', cloud: 'Expensive cloud cameras', manual: 'No intrusion tracking' },
-    { metric: 'B2B Portal & Webhooks', noxis: 'HMAC-SHA256 signed event logs', cloud: 'Limited / costly APIs', manual: 'No electronic trail' },
-    { metric: 'Total Cost of Ownership', noxis: 'One-time setup, zero SaaS rent', cloud: 'Per-seat monthly licenses', manual: 'Hidden loss from errors' },
+    { metric: 'Internet Dependency', noxis: '100% offline (runs on local office Wi-Fi)', cloud: 'Fails on signal drop', manual: 'Paper registers' },
+    { metric: 'Worker Wages', noxis: '1-click automated wages', cloud: 'Complex Excel formulas', manual: '3–5 days manual calculations' },
+    { metric: 'Advance Pay (Peshgi)', noxis: 'Automatic alerts & wage deductions', cloud: 'No advance ledger logs', manual: 'High dispute rate' },
+    { metric: 'Security Cameras', noxis: 'Smart security camera alerts', cloud: 'Expensive cloud cameras', manual: 'No intrusion tracking' },
+    { metric: 'Data Backup Security', noxis: 'Secure, password-protected records', cloud: 'Limited / costly connections', manual: 'No electronic records' },
+    { metric: 'Software Costs', noxis: 'Low cost, zero monthly cloud rent', cloud: 'Per-seat monthly licenses', manual: 'Hidden loss from errors' },
   ]
 
   const cockpitTabs = [
-    { id: 'karigar', label: 'Karigar Ledger', icon: <CircleDollarSign size={16} /> },
-    { id: 'sqlite', label: 'Offline SQLite', icon: <Terminal size={16} /> },
-    { id: 'khata', label: 'Cashflow Khata', icon: <BarChart4 size={16} /> },
-    { id: 'cctv', label: 'AI CCTV Sentinel', icon: <ShieldAlert size={16} /> },
+    { id: 'karigar', label: 'Worker Ledger', icon: <CircleDollarSign size={16} /> },
+    { id: 'sqlite', label: 'Offline Database', icon: <Terminal size={16} /> },
+    { id: 'khata', label: 'Cash Accounts', icon: <BarChart4 size={16} /> },
+    { id: 'cctv', label: 'Camera Alerts', icon: <ShieldAlert size={16} /> },
   ]
 
   return (
@@ -259,25 +259,41 @@ export default function LandingClient() {
 
               <Reveal delay={0.2} className="mt-8">
                 <p className="text-[#94A3B8] text-sm sm:text-base lg:text-lg leading-relaxed max-w-2xl mx-auto font-medium">
-                  Piece-rate karigar payroll, double-entry khata, offline SQLite mesh sync, and on-device AI CCTV — engineered for textile and rice mills with zero cloud rent.
+                  Automated worker wages, digital accounting registers, 100% offline security, and smart camera alerts — built for textile and rice mills with zero monthly fees.
                 </p>
               </Reveal>
 
               <Reveal delay={0.28} className="w-full mt-10">
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-4">
-                  <motion.div whileTap={{ scale: 0.97 }} className="w-full sm:w-auto">
+                  <motion.div 
+                    whileHover={{ scale: 1.03, y: -2 }}
+                    whileTap={{ scale: 0.97 }} 
+                    className="w-full sm:w-auto"
+                  >
                     <Link
                       href="/download"
-                      className="w-full inline-flex items-center justify-center gap-2 font-extrabold text-[10px] tracking-[0.2em] uppercase px-8 py-4 rounded-sm"
-                      style={{ background: CHAMPAGNE, color: OBSIDIAN, boxShadow: `0 8px 48px ${CHAMPAGNE}28` }}
+                      className="w-full inline-flex items-center justify-center gap-2 font-extrabold text-[10px] tracking-[0.2em] uppercase px-8 py-4 rounded-sm transition-all duration-300"
+                      style={{ 
+                        background: `linear-gradient(135deg, ${CHAMPAGNE_LIGHT}, ${CHAMPAGNE})`, 
+                        color: OBSIDIAN, 
+                        boxShadow: `0 12px 40px ${CHAMPAGNE}33`,
+                        border: '1px solid rgba(255,255,255,0.2)'
+                      }}
                     >
                       <Download size={14} /> Download Free Trial
                     </Link>
                   </motion.div>
-                  <motion.div whileTap={{ scale: 0.97 }} className="w-full sm:w-auto">
+                  <motion.div 
+                    whileHover={{ scale: 1.03, y: -2 }}
+                    whileTap={{ scale: 0.97 }} 
+                    className="w-full sm:w-auto"
+                  >
                     <a
                       href="https://wa.me/923334355475"
-                      className="w-full inline-flex items-center justify-center gap-2 border border-white/[0.08] bg-white/[0.02] text-white font-extrabold text-[10px] tracking-[0.2em] uppercase px-8 py-4 rounded-sm backdrop-blur-sm"
+                      className="w-full inline-flex items-center justify-center gap-2 border border-white/[0.08] bg-white/[0.02] text-white font-extrabold text-[10px] tracking-[0.2em] uppercase px-8 py-4 rounded-sm backdrop-blur-sm transition-all duration-300 hover:border-[#C9A962]/60 hover:text-[#E8D5B5]"
+                      style={{
+                        boxShadow: `0 4px 20px rgba(0,0,0,0.3)`
+                      }}
                     >
                       Schedule Factory Demo
                     </a>
@@ -585,7 +601,7 @@ export default function LandingClient() {
                 </div>
               </div>
               <div className="flex flex-wrap justify-center gap-6 sm:gap-8 text-[10px] font-bold uppercase tracking-widest text-gray-500">
-                {[{ label: 'Download', href: '/download' }, { label: 'Pricing', href: '/pricing' }, { label: 'Reviews', href: '/reviews' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }, { label: 'Privacy', href: '/privacy' }].map((l) => (
+                {[{ label: 'Download', href: '/download' }, { label: 'Pricing', href: '/pricing' }, { label: 'Reviews', href: '/reviews' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }, { label: 'Privacy', href: '/privacy' }, { label: 'Terms', href: '/terms' }].map((l) => (
                   <Link key={l.href} href={l.href} className="hover:text-white transition-colors">{l.label}</Link>
                 ))}
               </div>
