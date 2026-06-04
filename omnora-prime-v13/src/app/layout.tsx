@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { NextIntlClientProvider } from 'next-intl';
+import { ClientI18nProvider } from '@/components/providers/ClientI18nProvider';
 import enMessages from '@/messages/en.json';
 import "./globals.css";
 
@@ -140,7 +140,7 @@ export default async function RootLayout({
           crossOrigin="anonymous"
           strategy="afterInteractive"
         />
-        <NextIntlClientProvider locale={locale} messages={messages}>
+        <ClientI18nProvider initialLocale={locale} initialMessages={messages}>
           <AuditProvider>
             <QueryProvider>
               <IndustryProvider>
@@ -155,7 +155,7 @@ export default async function RootLayout({
               </IndustryProvider>
             </QueryProvider>
           </AuditProvider>
-        </NextIntlClientProvider>
+        </ClientI18nProvider>
       </body>
     </html>
   );

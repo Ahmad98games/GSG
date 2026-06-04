@@ -108,6 +108,7 @@ export default function SettingsPage() {
   const [licenseVerifyError, setLicenseVerifyError] = useState<string | null>(null);
   const [pendingLicenseData, setPendingLicenseData] = useState<any>(null);
   const [showDowngradeCaution, setShowDowngradeCaution] = useState(false);
+  const [cloudSyncEnabled, setCloudSyncEnabled] = useState(true);
 
   
 
@@ -130,7 +131,21 @@ export default function SettingsPage() {
       }
     }
     fetchData();
+    // Read cloud sync preference from localStorage
+    const storedSync = localStorage.getItem('noxis_cloud_sync');
+    setCloudSyncEnabled(storedSync !== 'false');
   }, []);
+
+  const toggleCloudSync = (enabled: boolean) => {
+    localStorage.setItem('noxis_cloud_sync', enabled ? 'true' : 'false');
+    setCloudSyncEnabled(enabled);
+    toastSuccess(
+      enabled ? 'Cloud sync enabled' : 'Cloud sync disabled',
+      enabled
+        ? 'Your data will sync to the cloud for backup and multi-device access.'
+        : 'Data stays on this PC only — no cloud sync until re-enabled.'
+    );
+  };
 
   const handleLicenseInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -1010,11 +1025,75 @@ export default function SettingsPage() {
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
-                    className="space-y-12"
+                    className="space-y-8"
                   >
                     <div>
-                      <h2 className="text-2xl font-bold text-white tracking-tight">Data Integrity</h2>
+                      <h2 className="text-2xl font-bold text-white tracking-tight">Data & Privacy</h2>
                       <p className="text-slate-500 text-sm mt-1">Export snapshots, import balances, or purge local cache queues.</p>
+                    </div>
+
+                    {/* ── Data Sovereignty Notice ── */}
+                    <div className="p-4 bg-[#0F1114] border border-white/6 rounded-sm">
+                      <p className="text-xs font-semibold text-white mb-3 flex items-center gap-2">
+                        <span className="text-emerald-400">🔒</span>
+                        Your data stays on your device
+                      </p>
+                      <div className="space-y-2.5">
+                        {([
+                          {
+                            icon: '💾',
+                            title: 'Primary storage: your PC',
+                            desc: 'All invoices, stock, karigars, and accounts are stored in an encrypted database on this computer at C:\\Users\\[you]\\AppData\\Roaming\\NoxisHub\\',
+                          },
+                          {
+                            icon: '☁️',
+                            title: 'Cloud sync: optional',
+                            desc: 'When internet is available, Noxis syncs to Supabase for backup and multi-device access. You can disable cloud sync below.',
+                          },
+                          {
+                            icon: '🚫',
+                            title: 'Omnora Labs never sees your data',
+                            desc: 'We cannot read your invoices, worker wages, customer balances, or any business records. The database is encrypted and only your license key can open it.',
+                          },
+                          {
+                            icon: '📤',
+                            title: 'Export anytime',
+                            desc: 'Download a full backup of your data anytime from Settings → Backup. Your data in standard JSON format — readable without Noxis.',
+                          },
+                        ] as const).map(item => (
+                          <div key={item.title} className="flex items-start gap-3">
+                            <span className="text-base flex-shrink-0">{item.icon}</span>
+                            <div>
+                              <p className="text-xs font-medium text-white">{item.title}</p>
+                              <p className="text-[11px] text-gray-500 leading-relaxed mt-0.5">{item.desc}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* ── Cloud Sync Toggle ── */}
+                    <div className="flex items-center justify-between p-4 bg-[#0F1114] border border-white/6 rounded-sm">
+                      <div>
+                        <p className="text-sm font-medium text-white">Cloud sync</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {cloudSyncEnabled
+                            ? 'Your data syncs to cloud for backup and multi-device access'
+                            : 'Data stays on this PC only — no cloud sync'}
+                        </p>
+                      </div>
+                      <button
+                        id="cloud-sync-toggle"
+                        onClick={() => toggleCloudSync(!cloudSyncEnabled)}
+                        className={`w-11 h-6 rounded-full transition-colors flex-shrink-0 relative ${
+                          cloudSyncEnabled ? 'bg-[#60A5FA]' : 'bg-white/15'
+                        }`}
+                        aria-label={cloudSyncEnabled ? 'Disable cloud sync' : 'Enable cloud sync'}
+                      >
+                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${
+                          cloudSyncEnabled ? 'left-6' : 'left-1'
+                        }`} />
+                      </button>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

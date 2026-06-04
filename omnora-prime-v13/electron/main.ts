@@ -403,6 +403,13 @@ if (!gotTheLock) {
   })
 
   // ─────────────────────────────────────────────
+  // DATA SOVEREIGNTY IPC — returns where user data lives on disk
+  // ─────────────────────────────────────────────
+  ipcMain.handle('get-app-data-path', () => {
+    return app.getPath('userData');
+  });
+
+  // ─────────────────────────────────────────────
   // 7. WINDOW CREATION
   // ─────────────────────────────────────────────
   async function createWindow(): Promise<void> {

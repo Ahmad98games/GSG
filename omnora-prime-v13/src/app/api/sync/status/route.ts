@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { syncQueue } from '@/lib/db/schema';
-import { count, eq } from 'drizzle-orm';
+import { sql, eq } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,7 +8,7 @@ export async function GET() {
   try {
     // Dynamic import to prevent route failure if client.ts fails at top-level
     const { db } = await import('@/lib/db/client')
-    const result = await db.select({ value: count() })
+    const result = await db.select({ value: sql<number>`count(*)` })
       .from(syncQueue)
       .where(eq(syncQueue.status, 'pending'));
     

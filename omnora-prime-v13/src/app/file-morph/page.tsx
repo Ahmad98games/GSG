@@ -12,7 +12,6 @@ import { useDropzone } from "react-dropzone";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 
-import { usePersona } from "@/hooks/usePersona";
 import { cn } from "@/lib/utils";
 import { compressImages } from "@/lib/filemorph/imageCompressor";
 import { mergePdfs, protectPdf, watermarkPdf, imagesToPdf } from "@/lib/filemorph/pdfTools";
@@ -44,9 +43,15 @@ const CardHeader = ({ icon: Icon, title, sub }: { icon: React.ElementType, title
   </div>
 );
 
-// --- Utilities ---
+// --- Page ---
 
 export default function FileMorphPage() {
+  const [activeSection, setActiveSection] = useState<'utilities' | 'documents'>('utilities');
+
+  const SECTIONS = [
+    { id: 'utilities' as const, label: 'File Utilities', emoji: '🛠️' },
+    { id: 'documents' as const, label: 'Document Converter', emoji: '📄' },
+  ];
 
   return (
     <div className="min-h-screen bg-[#0F1113] text-slate-200 p-6">
@@ -64,18 +69,78 @@ export default function FileMorphPage() {
           </div>
         </div>
 
-        {/* 3x2 Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <ImageCompressorCard />
-          <PdfToolsCard />
-          <HeicConverterCard />
-          <ImageToPdfCard />
-          <FormatConverterCard />
-          <BulkOrganizerCard />
+        {/* Section tabs */}
+        <div className="flex gap-2 border-b border-white/5 pb-0">
+          {SECTIONS.map(s => (
+            <button
+              key={s.id}
+              onClick={() => setActiveSection(s.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-all -mb-px ${
+                activeSection === s.id
+                  ? 'border-[#60A5FA] text-white'
+                  : 'border-transparent text-gray-500 hover:text-gray-300'
+              }`}
+            >
+              <span>{s.emoji}</span>
+              <span>{s.label}</span>
+            </button>
+          ))}
         </div>
+
+        <AnimatePresence mode="wait">
+          {activeSection === 'utilities' ? (
+            <motion.div
+              key="utilities"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.15 }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            >
+              <ImageCompressorCard />
+              <PdfToolsCard />
+              <HeicConverterCard />
+              <ImageToPdfCard />
+              <FormatConverterCard />
+              <BulkOrganizerCard />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="documents"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.15 }}
+            >
+              <DocumentConverterSection />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );
+}
+
+/** Lazy-loaded wrapper — avoids SSR issues with browser-only converter libraries */
+function DocumentConverterSection() {
+  const [Comp, setComp] = React.useState<React.ComponentType | null>(null);
+
+  React.useEffect(() => {
+    import('./DocumentConverter').then(m => {
+      setComp(() => m.DocumentConverter);
+    });
+  }, []);
+
+  if (!Comp) {
+    return (
+      <div className="flex items-center justify-center py-24 text-gray-600">
+        <Loader2 size={20} className="animate-spin mr-2" />
+        <span className="text-sm">Loading converter...</span>
+      </div>
+    );
+  }
+
+  return <Comp />;
 }
 
 // --- Card 1: Image Compressor ---

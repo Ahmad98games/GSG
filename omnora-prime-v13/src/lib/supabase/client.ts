@@ -112,3 +112,13 @@ export const createClient = () => {
   return supabaseClient;
 };
 
+/**
+ * shouldSync() — Gate function for all cloud sync operations.
+ * Returns false when the user has disabled cloud sync in Settings → Advanced.
+ * Call this at the top of any function that writes to Supabase:
+ *   if (!shouldSync()) return;
+ */
+export function shouldSync(): boolean {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem('noxis_cloud_sync') !== 'false';
+}

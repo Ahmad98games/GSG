@@ -111,28 +111,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  // Sync store with current locale and apply DOM side-effects
-  React.useEffect(() => {
-    if (locale && locale !== language) {
-      setLanguage(locale as any);
-    }
-    
-    // Apply RTL and Language classes to root elements
-    if (typeof document !== 'undefined') {
-      const isRTL = ['ur', 'ar', 'pa', 'fa'].includes(locale);
-      document.documentElement.lang = locale;
-      document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
-      document.body.dir = isRTL ? 'rtl' : 'ltr';
-      
-      // Industrial Jargon/Language support
-      document.documentElement.classList.remove(
-        'lang-en', 'lang-ur', 'lang-ar', 'lang-hi', 
-        'lang-bn', 'lang-pa', 'lang-zh', 'lang-tr', 
-        'lang-es', 'lang-ru', 'lang-ta', 'lang-fr'
-      );
-      document.documentElement.classList.add(`lang-${locale}`);
-    }
-  }, [locale, language, setLanguage]);
 
   React.useEffect(() => {
     if (profile?.visual_theme && profile.visual_theme !== activeThemeId) {

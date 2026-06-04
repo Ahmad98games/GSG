@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import {
@@ -120,6 +120,19 @@ export default function BackupPage() {
   const [restoreError, setRestoreError] = useState("");
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch the local database path from Electron IPC (graceful fallback for browser)
+  const [dbPath, setDbPath] = useState('');
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).electronAPI?.getAppDataPath) {
+      (window as any).electronAPI
+        .getAppDataPath()
+        .then((p: string) => setDbPath(p ? `${p}\\NoxisHub.db` : '~/.noxishub/'))
+        .catch(() => setDbPath('~/.noxishub/'));
+    } else {
+      setDbPath('%APPDATA%\\NoxisHub\\NoxisHub.db');
+    }
+  }, []);
 
   // ── Download Backup ──
   const handleDownloadBackup = async () => {
@@ -410,6 +423,33 @@ export default function BackupPage() {
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-8 pb-12 custom-scrollbar">
           <div className="max-w-4xl mx-auto space-y-8 pt-4">
+
+            {/* ═══════════ LOCAL DATA LOCATION ═══════════ */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-6 bg-[#0F1114] border border-emerald-500/20 rounded-2xl space-y-3"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-500/10 rounded-lg">
+                  <HardDrive size={18} className="text-emerald-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-white">Your data location</p>
+                  <p className="text-[10px] text-gray-500">This is where your encrypted database lives on this PC</p>
+                </div>
+                <div className="ml-auto flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded text-[9px] font-bold text-emerald-400 uppercase tracking-widest">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  Local First
+                </div>
+              </div>
+              <p className="text-xs font-mono text-gray-300 bg-[#161A1F] px-4 py-3 rounded-lg border border-white/5 break-all">
+                {dbPath || 'Loading...'}
+              </p>
+              <p className="text-[10px] text-gray-600 leading-relaxed">
+                Omnora Labs cannot access this file. Back up this path to an external drive or USB for maximum safety.
+              </p>
+            </motion.div>
 
             {/* ═══════════ DOWNLOAD BACKUP ═══════════ */}
             <motion.div

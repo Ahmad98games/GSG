@@ -2,7 +2,7 @@ import { INDUSTRIES, IndustryProfile, IndustryId } from './industries'
 import { useBusinessProfileStore, BusinessProfile } from '@/store/BusinessProfileStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { useLanguageStore } from '@/stores/languageStore'
-import { getDictionary } from '@/lib/i18n'
+import { phase11Strings } from '@/lib/persona/strings'
 import { Decimal } from 'decimal.js'
 import { formatAmount, formatDate, formatQuantity } from '@/lib/persona/formatters'
 import { formatCurrency, CurrencyCode } from '@/lib/currency/currencyEngine'
@@ -110,22 +110,27 @@ class PersonaEngineClass {
   }
 
   // Translate using current language
+  // Uses the flat-key phase11Strings table (same keys used by sidebar/components).
+  // RTL languages (ur, ar, pa) map to 'south_asian' strings; all others use 'default'.
   t(key: string, paramsOrFallback?: Record<string, string | number> | string): string {
     try {
       const lang = useLanguageStore.getState().language
-      const dict = getDictionary(lang)
-      
-      const parts = key.split('.')
-      let result: any = dict
-      for (const part of parts) {
-        if (result && result[part]) {
-          result = result[part]
-        } else {
-          if (typeof paramsOrFallback === 'string') return paramsOrFallback
-          return key 
-        }
+      // Map language code to the strings region
+      const region: keyof typeof phase11Strings =
+        (lang === 'ur' || lang === 'ar' || lang === 'pa')
+          ? 'south_asian'
+          : 'default'
+      const strings = phase11Strings[region] as Record<string, string>
+      if (strings && strings[key] !== undefined) {
+        return strings[key]
       }
-      return typeof result === 'string' ? result : key
+      // Fallback to 'default' if not found in region
+      const defaultStrings = phase11Strings['default'] as Record<string, string>
+      if (defaultStrings && defaultStrings[key] !== undefined) {
+        return defaultStrings[key]
+      }
+      if (typeof paramsOrFallback === 'string') return paramsOrFallback
+      return key
     } catch (e) {
       return typeof paramsOrFallback === 'string' ? paramsOrFallback : key
     }

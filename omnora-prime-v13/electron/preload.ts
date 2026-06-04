@@ -28,6 +28,12 @@ contextBridge.exposeInMainWorld('electron', {
   }
 });
 
+// Data Sovereignty API — lets the renderer ask where data lives on disk
+contextBridge.exposeInMainWorld('electronAPI', {
+  getAppDataPath: () => ipcRenderer.invoke('get-app-data-path'),
+  setConfig: (key: string, value: string) => ipcRenderer.invoke('set-config', key, value),
+});
+
 contextBridge.exposeInMainWorld('electronWindow', {
   minimize: () => ipcRenderer.send('window-minimize'),
   maximize: () => ipcRenderer.send('window-maximize'),

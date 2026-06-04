@@ -37,14 +37,10 @@ export function useNoxisLocale() {
     document.cookie = `NOXIS_LOCALE=${newLocale}; path=/; max-age=${60 * 60 * 24 * 365}`;
     // 2. Save to localStorage
     localStorage.setItem('noxis-locale', newLocale);
-    // 3. Update the global language store so the UI reacts immediately or correctly upon next load
-    try {
-      const { setLanguage } = useLanguageStore.getState();
-      setLanguage(newLocale as any);
-    } catch (e) {
-      console.error('Failed to update language store:', e);
-    }
-    // 4. Refresh page to apply changes (middleware will handle the rest)
+    // 3. Update the global language store — this also applies dir/lang/font to the DOM immediately
+    const { setLanguage } = useLanguageStore.getState();
+    setLanguage(newLocale as any);
+    // 4. Refresh page to apply server-side locale changes (middleware will handle the rest)
     window.location.reload();
   };
 

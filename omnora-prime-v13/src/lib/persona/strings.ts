@@ -179,7 +179,17 @@ export const phase11Strings = {
     "nav_converters": "Unit Converters",
     "nav_file_morph": "PDF & File Tools",
     "nav_import": "Smart Import",
-    "nav_network": "Factory Network"
+    "nav_network": "Factory Network",
+    "nav_khata": "Khata",
+    "nav_finance": "Finance",
+    "nav_intelligence": "Noxis Intelligence",
+    "nav_worker_network": "Worker Network",
+    "nav_cashflow": "Cashflow",
+    "nav_audit": "Audit",
+    "nav_orders": "Orders",
+    "nav_promises": "Promises",
+    "nav_analytics": "Analytics",
+    "nav_quick_entry": "Quick Entry"
   },
 
   // --- SOUTH ASIAN (Urdu/Roman Urdu Context) ---
@@ -351,7 +361,17 @@ export const phase11Strings = {
     "nav_converters": "یونٹ کنورٹرز",
     "nav_file_morph": "پی ڈی ایف اور فائل ٹولز",
     "nav_import": "اسمارٹ امپورٹ",
-    "nav_network": "فیکٹری نیٹ ورک"
+    "nav_network": "فیکٹری نیٹ ورک",
+    "nav_khata": "کھاتہ",
+    "nav_finance": "مالیات",
+    "nav_intelligence": "نوکس انٹیلیجنس",
+    "nav_worker_network": "کارکن نیٹ ورک",
+    "nav_cashflow": "نقدی",
+    "nav_audit": "آڈٹ",
+    "nav_orders": "آرڈرز",
+    "nav_promises": "وعدہ جات",
+    "nav_analytics": "تجزیات",
+    "nav_quick_entry": "فوری اندراج"
   },
 
   // --- REGIONAL (Specialized Textile/Industrial) ---
