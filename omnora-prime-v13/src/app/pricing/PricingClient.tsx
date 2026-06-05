@@ -34,6 +34,17 @@ export default function PricingClient() {
     }
   }, [region]);
 
+  const handlePurchase = (plan: string, price: string) => {
+    const msg = encodeURIComponent(
+      `Assalam o Alaikum,\n\nI want to purchase Noxis ${plan} plan (${price}/month).\n\nPlease share payment details.\n\nMy business: \nCity: `
+    )
+    window.open(
+      `https://wa.me/923334355475?text=${msg}`,
+      '_blank'
+    )
+  }
+
+
   const staggerContainer = {
     hidden: { opacity: 0 },
     visible: {
@@ -132,7 +143,7 @@ export default function PricingClient() {
           whileInView="visible"
           viewport={{ once: true, margin: "-50px" }}
           variants={staggerContainer}
-          className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-24"
+          className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8"
         >
           <PricingCard 
             tier="Lite"
@@ -153,7 +164,7 @@ export default function PricingClient() {
               { label: "WhatsApp Sharing (Manual)", included: true },
             ]}
             cta="Deploy Lite"
-            href="/purchase?plan=lite"
+            onPurchase={handlePurchase}
             variant={fadeInUp}
           />
 
@@ -176,7 +187,7 @@ export default function PricingClient() {
               { label: "10GB Document Storage", included: true },
             ]}
             cta="Deploy Pro"
-            href="/purchase?plan=pro"
+            onPurchase={handlePurchase}
             variant={fadeInUp}
           />
 
@@ -198,11 +209,61 @@ export default function PricingClient() {
               { label: "Priority Engineering Support", included: true },
             ]}
             cta="Request Elite"
-            href="/purchase?plan=elite"
+            onPurchase={handlePurchase}
             primary
             variant={fadeInUp}
           />
         </motion.div>
+
+        {/* Payment Methods Section */}
+        <div className="mt-8 p-6 bg-[#0F1114]
+          border border-white/6 rounded-sm
+          max-w-md mx-auto mb-24">
+          <p className="text-[10px] font-semibold
+            uppercase tracking-widest text-gray-500
+            mb-3">
+            How to pay
+          </p>
+          <div className="space-y-2">
+            {[
+              {
+                method: 'JazzCash',
+                number: '0333-4355475',
+                note: 'Send to mobile account'
+              },
+              {
+                method: 'EasyPaisa',
+                number: '0333-4355475',
+                note: 'Send to mobile account'
+              },
+              {
+                method: 'Bank Transfer',
+                number: 'Share on WhatsApp',
+                note: 'Account details on request'
+              },
+            ].map(p => (
+              <div key={p.method}
+                className="flex items-center
+                justify-between py-2 border-b
+                border-white/4 last:border-0">
+                <div>
+                  <p className="text-xs font-medium
+                    text-white">{p.method}</p>
+                  <p className="text-[10px] text-gray-600">
+                    {p.note}
+                  </p>
+                </div>
+                <p className="text-xs font-mono
+                  text-gray-400">{p.number}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-gray-700 mt-3
+            leading-relaxed">
+            After payment: send screenshot on WhatsApp.
+            License key delivered within 30 minutes.
+          </p>
+        </div>
 
         {/* Global Infrastructure Banner */}
         <motion.div 
@@ -254,104 +315,104 @@ export default function PricingClient() {
             </div>
           </div>
         </motion.div>
-
-        {/* FAQs */}
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tighter uppercase italic text-center mb-12">
-            Frequently Asked Questions
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {FAQS.map((faq, i) => (
-              <motion.div 
-                key={i} 
-                initial={{ opacity: 0, y: 15 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: (i % 2) * 0.1 }}
-                className="bg-[#121417]/50 border border-white/5 p-6 rounded-sm hover:border-white/10 transition-colors"
-              >
-                <h4 className="text-xs sm:text-sm font-bold text-white mb-2 uppercase tracking-wide">{faq.q}</h4>
-                <p className="text-[11px] sm:text-xs text-gray-500 leading-relaxed font-medium">{faq.a}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function PricingCard({ 
-  tier, pricePKR, priceUSD, sub, features, cta, href, 
-  popular, primary, region, displayCurrency, localCurrency, variant 
-}: any) {
-  
-  const isSA = region === 'south_asian';
-  const useUSD = displayCurrency === 'USD';
-  
-  const displayPrice = isSA 
-    ? formatCurrency(pricePKR, 'PKR')
-    : useUSD 
-      ? formatCurrency(priceUSD, 'USD')
-      : formatCurrency(pricePKR, localCurrency); // approximated
-
-  return (
-    <motion.div 
-      variants={variant}
-      className={cn(
-        "relative flex flex-col p-8 sm:p-10 border transition-all duration-300 rounded-sm",
-        popular 
-          ? "bg-[#121417] border-blue-500 shadow-[0_20px_50px_rgba(96,165,250,0.1)] lg:scale-105 z-10" 
-          : "bg-[#0F1113] border-white/5 hover:border-white/10"
-      )}
-    >
-      {popular && (
-        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-blue-500 text-black text-[9px] font-black uppercase tracking-[0.3em] px-6 py-2.5 whitespace-nowrap rounded-sm">
-           Industrial Standard
-        </div>
-      )}
-
-      <div className="mb-8">
-        <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-2">{tier}</h3>
-        <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest leading-relaxed h-8">{sub}</p>
-      </div>
-
-      <div className="mb-8">
-         <div className="flex items-baseline gap-1">
-            <span className="text-3xl sm:text-4xl font-mono font-black text-white tracking-tighter">{displayPrice.split(' ')[1]}</span>
-            <span className="text-[9px] font-bold text-gray-500 uppercase">{displayPrice.split(' ')[0]} / Mo</span>
+ 
+         {/* FAQs */}
+         <div className="max-w-4xl mx-auto">
+           <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tighter uppercase italic text-center mb-12">
+             Frequently Asked Questions
+           </h2>
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             {FAQS.map((faq, i) => (
+               <motion.div 
+                 key={i} 
+                 initial={{ opacity: 0, y: 15 }}
+                 whileInView={{ opacity: 1, y: 0 }}
+                 viewport={{ once: true }}
+                 transition={{ delay: (i % 2) * 0.1 }}
+                 className="bg-[#121417]/50 border border-white/5 p-6 rounded-sm hover:border-white/10 transition-colors"
+               >
+                 <h4 className="text-xs sm:text-sm font-bold text-white mb-2 uppercase tracking-wide">{faq.q}</h4>
+                 <p className="text-[11px] sm:text-xs text-gray-500 leading-relaxed font-medium">{faq.a}</p>
+               </motion.div>
+             ))}
+           </div>
          </div>
-         {(isSA || !useUSD) && (
-           <p className="text-[8px] text-gray-600 font-bold uppercase mt-1.5 italic">≈ {formatCurrency(priceUSD, 'USD')}</p>
-         )}
-      </div>
-
-      <div className="flex-1 space-y-3.5 mb-10">
-        {features.map((f: any, i: number) => (
-          <div key={i} className={cn("flex items-start space-x-3 text-[11px]", f.included ? "text-gray-400" : "text-gray-700")}>
-            {f.included ? (
-              <Check size={14} className={f.highlight ? "text-blue-400 shrink-0" : "text-emerald-500 shrink-0"} />
-            ) : (
-              <X size={14} className="text-gray-800 shrink-0" />
-            )}
-            <span className={cn(f.highlight && "text-white font-black uppercase tracking-tighter")}>{f.label}</span>
+       </div>
+     </div>
+   );
+ }
+ 
+ function PricingCard({ 
+   tier, pricePKR, priceUSD, sub, features, cta, onPurchase, 
+   popular, primary, region, displayCurrency, localCurrency, variant 
+ }: any) {
+   
+   const isSA = region === 'south_asian';
+   const useUSD = displayCurrency === 'USD';
+   
+   const displayPrice = isSA 
+     ? formatCurrency(pricePKR, 'PKR')
+     : useUSD 
+       ? formatCurrency(priceUSD, 'USD')
+       : formatCurrency(pricePKR, localCurrency); // approximated
+ 
+   return (
+     <motion.div 
+       variants={variant}
+       className={cn(
+         "relative flex flex-col p-8 sm:p-10 border transition-all duration-300 rounded-sm",
+         popular 
+           ? "bg-[#121417] border-blue-500 shadow-[0_20px_50px_rgba(96,165,250,0.1)] lg:scale-105 z-10" 
+           : "bg-[#0F1113] border-white/5 hover:border-white/10"
+       )}
+     >
+       {popular && (
+         <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-blue-500 text-black text-[9px] font-black uppercase tracking-[0.3em] px-6 py-2.5 whitespace-nowrap rounded-sm">
+            Industrial Standard
+         </div>
+       )}
+ 
+       <div className="mb-8">
+         <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-2">{tier}</h3>
+         <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest leading-relaxed h-8">{sub}</p>
+       </div>
+ 
+       <div className="mb-8">
+          <div className="flex items-baseline gap-1">
+             <span className="text-3xl sm:text-4xl font-mono font-black text-white tracking-tighter">{displayPrice.split(' ')[1]}</span>
+             <span className="text-[9px] font-bold text-gray-500 uppercase">{displayPrice.split(' ')[0]} / Mo</span>
           </div>
-        ))}
-      </div>
-
-      <Link 
-        href={href}
-        className={cn(
-          "block w-full py-4 text-center text-[10px] font-black uppercase tracking-[0.2em] transition-all rounded-sm",
-          primary 
-            ? "bg-[#C5A059] text-black hover:brightness-110 active:scale-95" 
-            : popular 
-              ? "bg-blue-500 text-black hover:brightness-110 active:scale-95 shadow-lg shadow-blue-500/20" 
-              : "bg-white/5 text-white hover:bg-white/10 active:scale-95"
-        )}
-      >
-        {cta}
-      </Link>
-    </motion.div>
-  );
-}
+          {(isSA || !useUSD) && (
+            <p className="text-[8px] text-gray-600 font-bold uppercase mt-1.5 italic">≈ {formatCurrency(priceUSD, 'USD')}</p>
+          )}
+       </div>
+ 
+       <div className="flex-1 space-y-3.5 mb-10">
+         {features.map((f: any, i: number) => (
+           <div key={i} className={cn("flex items-start space-x-3 text-[11px]", f.included ? "text-gray-400" : "text-gray-700")}>
+             {f.included ? (
+               <Check size={14} className={f.highlight ? "text-blue-400 shrink-0" : "text-emerald-500 shrink-0"} />
+             ) : (
+               <X size={14} className="text-gray-800 shrink-0" />
+             )}
+             <span className={cn(f.highlight && "text-white font-black uppercase tracking-tighter")}>{f.label}</span>
+           </div>
+         ))}
+       </div>
+ 
+       <button 
+         onClick={() => onPurchase(tier, displayPrice)}
+         className={cn(
+           "block w-full py-4 text-center text-[10px] font-black uppercase tracking-[0.2em] transition-all rounded-sm cursor-pointer",
+           primary 
+             ? "bg-[#C5A059] text-black hover:brightness-110 active:scale-95" 
+             : popular 
+               ? "bg-blue-500 text-black hover:brightness-110 active:scale-95 shadow-lg shadow-blue-500/20" 
+               : "bg-white/5 text-white hover:bg-white/10 active:scale-95"
+         )}
+       >
+         {cta}
+       </button>
+     </motion.div>
+   );
+ }
