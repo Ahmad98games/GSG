@@ -118,8 +118,11 @@ export default function WelcomeGuide({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] bg-[#0A0A0B]/98 flex flex-col items-center justify-center p-6 overflow-y-auto"
+      className="fixed inset-0 z-[100] bg-[#0A0A0B]/98 flex flex-col items-center justify-center p-6 overflow-y-auto holographic-grid"
     >
+      {/* Hardware-accelerated Holographic Laser Scanline */}
+      <div className="laser-scanner-sweep" />
+
       {/* Background Glows */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-500/5 rounded-full blur-[120px]" />
