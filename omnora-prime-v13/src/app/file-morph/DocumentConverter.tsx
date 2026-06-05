@@ -106,7 +106,7 @@ function ProgressBar({ progress, status }: { progress: number; status: string })
       </div>
       <div className="h-1.5 bg-white/8 rounded-full overflow-hidden">
         <motion.div
-          className="h-full bg-gradient-to-r from-[#60A5FA] to-[#818CF8] rounded-full"
+          className="h-full bg-gradient-to-r from-[#C5A059] to-[#00E5FF] rounded-full"
           animate={{ width: `${progress}%` }}
           transition={{ duration: 0.3, ease: 'easeOut' }}
         />
@@ -167,7 +167,7 @@ export function DocumentConverter() {
       inputAccept: '.pdf',
       inputLabel: 'PDF file',
       outputLabel: '.docx document',
-      color: '#60A5FA',
+      color: '#C5A059',
       icon: <FileText size={15} />,
       action: async (files, _opts, onProgress) => {
         const { pdfToDocx } = await import('@/lib/converters/pdfToWord');
@@ -182,7 +182,7 @@ export function DocumentConverter() {
       inputAccept: '.docx,.doc,.txt',
       inputLabel: 'Word or text file',
       outputLabel: 'PDF file',
-      color: '#60A5FA',
+      color: '#C5A059',
       icon: <FileText size={15} />,
       action: async (files, _opts, onProgress) => {
         const { wordToPdf } = await import('@/lib/converters/pdfToWord');
@@ -385,7 +385,7 @@ export function DocumentConverter() {
                 : 'bg-[#0F1114] border-white/6 text-gray-500 hover:border-white/15 hover:text-gray-300'
             }`}
           >
-            <span className={`flex-shrink-0 ${activeToolId === tool.id ? 'text-[#60A5FA]' : 'text-gray-600'}`}>
+            <span className={`flex-shrink-0 ${activeToolId === tool.id ? 'text-[#C5A059]' : 'text-gray-600'}`}>
               {tool.icon}
             </span>
             <span className="truncate leading-tight">{tool.label}</span>
@@ -428,7 +428,7 @@ export function DocumentConverter() {
                     value={val}
                     checked={(options.format || 'png') === val}
                     onChange={() => setOptions(p => ({ ...p, format: val }))}
-                    className="accent-[#60A5FA]"
+                    className="accent-[#C5A059]"
                   />
                   {label}
                 </label>
@@ -444,7 +444,7 @@ export function DocumentConverter() {
               <select
                 value={options.language || 'eng'}
                 onChange={e => setOptions(p => ({ ...p, language: e.target.value }))}
-                className="bg-[#161A1F] border border-white/10 text-white text-xs px-3 py-2 rounded-lg outline-none focus:border-[#60A5FA]/40 min-w-[180px]"
+                className="bg-[#161A1F] border border-white/10 text-white text-xs px-3 py-2 rounded-lg outline-none focus:border-[#C5A059]/40 min-w-[180px]"
               >
                 <option value="eng">English</option>
                 <option value="urd">Urdu</option>
@@ -461,7 +461,7 @@ export function DocumentConverter() {
               <select
                 value={options.rotation || '90'}
                 onChange={e => setOptions(p => ({ ...p, rotation: e.target.value }))}
-                className="bg-[#161A1F] border border-white/10 text-white text-xs px-3 py-2 rounded-lg outline-none focus:border-[#60A5FA]/40 min-w-[180px]"
+                className="bg-[#161A1F] border border-white/10 text-white text-xs px-3 py-2 rounded-lg outline-none focus:border-[#C5A059]/40 min-w-[180px]"
               >
                 <option value="90">90° clockwise</option>
                 <option value="180">180°</option>
@@ -480,7 +480,7 @@ export function DocumentConverter() {
                 value={options.password || ''}
                 onChange={e => setOptions(p => ({ ...p, password: e.target.value }))}
                 placeholder="Enter a strong password..."
-                className="w-full max-w-xs bg-[#161A1F] border border-white/10 text-white text-xs px-3 py-2 rounded-lg outline-none focus:border-[#60A5FA]/40 placeholder:text-gray-700"
+                className="w-full max-w-xs bg-[#161A1F] border border-white/10 text-white text-xs px-3 py-2 rounded-lg outline-none focus:border-[#C5A059]/40 placeholder:text-gray-700"
               />
             </div>
           )}
@@ -492,7 +492,7 @@ export function DocumentConverter() {
               multiple={!!activeTool.multiFile}
               onFiles={setFiles}
               label={activeTool.inputLabel}
-              color="#60A5FA"
+              color="#C5A059"
             />
           ) : (
             <div className="space-y-3">
@@ -504,7 +504,7 @@ export function DocumentConverter() {
                     className="flex items-center justify-between p-3 bg-white/4 border border-white/6 rounded-lg"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-lg bg-[#60A5FA]/10 flex items-center justify-center flex-shrink-0 text-[#60A5FA]">
+                      <div className="w-9 h-9 rounded-lg bg-[#C5A059]/10 flex items-center justify-center flex-shrink-0 text-[#C5A059]">
                         {activeTool.icon}
                       </div>
                       <div className="min-w-0">
@@ -537,7 +537,7 @@ export function DocumentConverter() {
                   </button>
                   <button
                     onClick={handleConvert}
-                    className="flex-1 py-2.5 text-sm font-semibold bg-[#60A5FA] text-black hover:bg-blue-300 transition-colors rounded-lg flex items-center justify-center gap-2"
+                    className="flex-1 py-2.5 text-sm font-semibold bg-[#C5A059] text-black hover:bg-[#D4B77A] transition-colors rounded-lg flex items-center justify-center gap-2"
                   >
                     <ArrowRight size={15} />
                     Convert to {activeTool.outputLabel}

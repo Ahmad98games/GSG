@@ -43,13 +43,13 @@ export default function DocsPage() {
   ]
 
   return (
-    <div className="bg-[#070809] text-slate-300 font-sans min-h-screen selection:bg-blue-500 selection:text-black">
+    <div className="bg-[#070809] text-slate-300 font-sans min-h-screen selection:bg-sandstone-gold/30 selection:text-white">
       
       {/* ═══ HEADER NAVIGATION ═══ */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#070809]/80 backdrop-blur-xl border-b border-white/[0.06] py-4">
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-3 group cursor-pointer">
-            <div className="w-8 h-8 flex items-center justify-center bg-white/5 group-hover:bg-blue-500/10 border border-white/10 group-hover:border-blue-500/30 rounded-sm transition-all shadow-2xl">
+            <div className="w-8 h-8 flex items-center justify-center bg-white/5 group-hover:bg-sandstone-gold/10 border border-white/10 group-hover:border-sandstone-gold/30 rounded-sm transition-all shadow-2xl">
               <img
                 src="/logos/noxis.png"
                 alt="Noxis Logo"
@@ -79,7 +79,7 @@ export default function DocsPage() {
           <div className="lg:col-span-4 lg:sticky lg:top-24 h-fit space-y-6">
             <div className="bg-[#0F1114] border border-white/5 p-6 rounded-sm space-y-4">
               <div className="flex items-center gap-2">
-                <BookOpen size={18} className="text-[#60A5FA]" />
+                <BookOpen size={18} className="text-sandstone-gold" />
                 <h3 className="text-xs font-bold uppercase tracking-widest text-white">System Guidebook</h3>
               </div>
               <p className="text-[11px] text-gray-500 leading-relaxed font-medium">
@@ -95,7 +95,7 @@ export default function DocsPage() {
                     onClick={() => setActiveSection(section.id)}
                     className={`w-full flex items-center justify-between px-3 py-2.5 text-xs font-bold uppercase tracking-wider rounded-sm transition-all border ${
                       activeSection === section.id
-                        ? 'bg-blue-500/10 border-blue-500/30 text-white shadow-[0_0_15px_rgba(96,165,250,0.05)]'
+                        ? 'bg-sandstone-gold/10 border-sandstone-gold/30 text-white shadow-[0_0_15px_rgba(197,160,89,0.05)]'
                         : 'bg-transparent border-transparent text-gray-500 hover:text-gray-300 hover:bg-white/[0.02]'
                     }`}
                   >
@@ -103,7 +103,7 @@ export default function DocsPage() {
                       {section.icon}
                       <span>{section.title}</span>
                     </div>
-                    <ChevronRight size={12} className={`transform transition-transform ${activeSection === section.id ? 'translate-x-0.5 text-blue-400' : 'opacity-20'}`} />
+                    <ChevronRight size={12} className={`transform transition-transform ${activeSection === section.id ? 'translate-x-0.5 text-sandstone-gold' : 'opacity-20'}`} />
                   </a>
                 ))}
               </div>
@@ -119,7 +119,7 @@ export default function DocsPage() {
                 </div>
                 <div className="flex justify-between border-b border-white/5 pb-1.5">
                   <span className="text-gray-600">LOCAL DATAGRID</span>
-                  <span className="text-blue-400 font-bold">SQLite-Cipher</span>
+                  <span className="text-[#00E5FF] font-bold">SQLite-Cipher</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">RTSP SIGNING</span>
@@ -138,8 +138,8 @@ export default function DocsPage() {
               animate={{ opacity: 1, y: 0 }}
               className="space-y-4"
             >
-              <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full">
-                <span className="text-[9px] font-bold text-blue-400 uppercase tracking-widest">Platform Manuals</span>
+              <div className="inline-flex items-center gap-2 bg-sandstone-gold/10 border border-sandstone-gold/20 px-3 py-1 rounded-full">
+                <span className="text-[9px] font-bold text-sandstone-gold uppercase tracking-widest">Platform Manuals</span>
               </div>
               <h1 className="text-4xl sm:text-6xl font-extrabold text-white tracking-tighter leading-none">
                 Zero-Configuration Onboarding Guide
@@ -159,7 +159,7 @@ export default function DocsPage() {
             >
               <ScrollReveal3D className="space-y-6">
                 <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
-                  <span className="text-blue-400">01.</span> Platform Installation
+                  <span className="text-sandstone-gold">01.</span> Platform Installation
                 </h2>
                 <p className="text-sm text-gray-400 leading-relaxed font-medium">
                   The Noxis Hub is engineered as a highly optimized desktop application. Download and execute the binary directly to initialize the local node.
@@ -174,7 +174,7 @@ export default function DocsPage() {
                     <li>Complete the installation wizard. Noxis Hub boots automatically on completion.</li>
                   </ol>
 
-                  <div className="bg-blue-500/5 border border-blue-500/20 p-4 text-xs text-blue-400 leading-relaxed rounded-sm space-y-2">
+                  <div className="bg-[#00E5FF]/5 border border-[#00E5FF]/20 p-4 text-xs text-[#00E5FF] leading-relaxed rounded-sm space-y-2">
                     <div className="font-bold flex items-center gap-2">
                       <ShieldCheck size={14} />
                       <span>CODE SIGNING NOTE</span>
@@ -197,7 +197,7 @@ export default function DocsPage() {
             >
               <ScrollReveal3D className="space-y-6">
                 <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
-                  <span className="text-blue-400">02.</span> Cryptographic License Activation
+                  <span className="text-sandstone-gold">02.</span> Cryptographic License Activation
                 </h2>
                 <p className="text-sm text-gray-400 leading-relaxed font-medium">
                   To guarantee zero external tracking while retaining offline licensing control, activation takes place upon the initial application startup.
@@ -227,7 +227,7 @@ export default function DocsPage() {
             >
               <ScrollReveal3D className="space-y-6">
                 <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
-                  <span className="text-blue-400">03.</span> Local SQLite Database & Sync
+                  <span className="text-sandstone-gold">03.</span> Local SQLite Database & Sync
                 </h2>
                 <p className="text-sm text-gray-400 leading-relaxed font-medium">
                   Noxis Hub operates an offline-first data fabric. All active data logs are replicated between a highly optimized local database block and the cloud.
@@ -236,7 +236,7 @@ export default function DocsPage() {
                 <div className="bg-[#0F1114] border border-white/5 p-6 rounded-sm space-y-4 font-mono text-xs">
                   <h4 className="font-sans font-bold uppercase tracking-widest text-white text-[10px] mb-2">Technical Specifications</h4>
                   <div className="p-4 bg-[#08090C] border border-white/5 text-slate-400 space-y-2 rounded-sm">
-                    <p className="text-blue-400">// SQLite Local Transaction Logging</p>
+                    <p className="text-[#00E5FF]">// SQLite Local Transaction Logging</p>
                     <p>Database: <span className="text-white">SQLite Multiple-Ciphers v12.9</span></p>
                     <p>Encryption: <span className="text-white">AES-256 Bit block ciphering</span></p>
                     <p>Replicator Engine: <span className="text-white">Dynamic WAL-sync and transactional backlogs</span></p>
@@ -259,7 +259,7 @@ export default function DocsPage() {
             >
               <ScrollReveal3D className="space-y-6">
                 <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
-                  <span className="text-blue-400">04.</span> Local WiFi Pairing (Android Application)
+                  <span className="text-sandstone-gold">04.</span> Local WiFi Pairing (Android Application)
                 </h2>
                 <p className="text-sm text-gray-400 leading-relaxed font-medium">
                   The handheld Android companion app hooks directly into the PC server using localized networks, completely bypassing the cloud.
@@ -288,7 +288,7 @@ export default function DocsPage() {
             >
               <ScrollReveal3D className="space-y-6">
                 <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
-                  <span className="text-blue-400">05.</span> Barcode Setup & Inventory Configurations
+                  <span className="text-sandstone-gold">05.</span> Barcode Setup & Inventory Configurations
                 </h2>
                 <p className="text-sm text-gray-400 leading-relaxed font-medium">
                   Input and catalog raw fabric grades, chemical batches, or manufactured assets in high-speed scanning systems.
@@ -317,7 +317,7 @@ export default function DocsPage() {
             >
               <ScrollReveal3D className="space-y-6">
                 <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
-                  <span className="text-blue-400">06.</span> Automatic Double-Entry Ledger & Invoices
+                  <span className="text-sandstone-gold">06.</span> Automatic Double-Entry Ledger & Invoices
                 </h2>
                 <p className="text-sm text-gray-400 leading-relaxed font-medium">
                   Create professional print invoices while double-entry khata ledgers keep balances reconciled in real-time.
@@ -328,7 +328,7 @@ export default function DocsPage() {
                     Every bill issued automatically triggers debit/credit entries mapped to the designated customer accounts. In the event of offline states, these balances update locally and reflect inside printable PDFs instantly.
                   </p>
                   <div className="p-4 bg-[#08090C] border border-white/5 text-[11px] leading-relaxed text-gray-400 rounded-sm">
-                    <span className="text-blue-400">Automatic Khata Journal Sync Example:</span>
+                    <span className="text-[#00E5FF]">Automatic Khata Journal Sync Example:</span>
                     <div className="grid grid-cols-2 gap-4 mt-2">
                       <div>
                         <p className="font-bold text-white">DEBIT:</p>
@@ -354,7 +354,7 @@ export default function DocsPage() {
             >
               <ScrollReveal3D className="space-y-6">
                 <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
-                  <span className="text-blue-400">07.</span> Your Data is Always Safe
+                  <span className="text-sandstone-gold">07.</span> Your Data is Always Safe
                 </h2>
                 
                 <p className="text-sm text-gray-400 leading-relaxed font-medium">
@@ -410,7 +410,7 @@ export default function DocsPage() {
             >
               <ScrollReveal3D className="space-y-6">
                 <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
-                  <span className="text-blue-400">08.</span> High-Speed Floor Quick Entry Console
+                  <span className="text-sandstone-gold">08.</span> High-Speed Floor Quick Entry Console
                 </h2>
                 <p className="text-sm text-gray-400 leading-relaxed font-medium">
                   Designed for high-speed touch screen monitors deployed right next to the workshop floor.
@@ -446,7 +446,7 @@ export default function DocsPage() {
             >
               <ScrollReveal3D className="space-y-6">
                 <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
-                  <span className="text-blue-400">09.</span> Troubleshooting & Diagnostics
+                  <span className="text-sandstone-gold">09.</span> Troubleshooting & Diagnostics
                 </h2>
                 <p className="text-sm text-gray-400 leading-relaxed font-medium">
                   Solutions to the most common local networking and system validation challenges.
@@ -487,8 +487,8 @@ export default function DocsPage() {
                         </a>
                       </div>
                       <div>
-                        <span className="text-[9px] text-blue-400 font-bold uppercase tracking-widest block mb-1">Enterprise Email Support</span>
-                        <a href="mailto:omnorainfo28@gmail.com" className="text-xs font-mono font-bold text-blue-400 hover:underline">
+                        <span className="text-[9px] text-[#00E5FF] font-bold uppercase tracking-widest block mb-1">Enterprise Email Support</span>
+                        <a href="mailto:omnorainfo28@gmail.com" className="text-xs font-mono font-bold text-[#00E5FF] hover:underline">
                           omnorainfo28@gmail.com
                         </a>
                       </div>
@@ -508,7 +508,7 @@ export default function DocsPage() {
             >
               <ScrollReveal3D className="space-y-6">
                  <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
-                   <span className="text-blue-400">10.</span> Predictive Intelligence Telemetry
+                   <span className="text-sandstone-gold">10.</span> Predictive Intelligence Telemetry
                  </h2>
                  <p className="text-sm text-gray-400 leading-relaxed font-medium">
                    The Predictive Intelligence telemetry engine processes dynamic regional signals to empower workshop owners with raw pricing power and profit-margin security.
@@ -535,7 +535,7 @@ export default function DocsPage() {
             >
               <ScrollReveal3D className="space-y-6">
                  <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
-                   <span className="text-blue-400">11.</span> Embedded Credit Scoring & Peshgi
+                   <span className="text-sandstone-gold">11.</span> Embedded Credit Scoring & Peshgi
                  </h2>
                  <p className="text-sm text-gray-400 leading-relaxed font-medium">
                    Modernize your workshop capital with integrated credit scoring formulas and secure payout structures paired directly with financial institutions.
@@ -544,7 +544,7 @@ export default function DocsPage() {
                  <div className="bg-[#0F1114] border border-white/5 p-6 rounded-sm space-y-4">
                    <h4 className="text-xs font-bold uppercase tracking-widest text-white">Fintech Score Metric Calculations</h4>
                    <div className="p-4 bg-[#08090C] border border-white/5 rounded-sm space-y-2 text-xs text-slate-400 font-mono">
-                     <p className="text-blue-400">// Embedded Credit Grading Rubric</p>
+                     <p className="text-[#00E5FF]">// Embedded Credit Grading Rubric</p>
                      <p>1. Noxis Ledger History (0-20 pts): Length of active ledger records.</p>
                      <p>2. Transaction Volume (0-35 pts): Cumulative monthly revenue flows.</p>
                      <p>3. Margin Stability (0-25 pts): Standard deviation of profit margins.</p>
@@ -568,7 +568,7 @@ export default function DocsPage() {
             >
               <ScrollReveal3D className="space-y-6">
                  <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
-                   <span className="text-blue-400">12.</span> Digital Worker Identities & Developer APIs
+                   <span className="text-sandstone-gold">12.</span> Digital Worker Identities & Developer APIs
                  </h2>
                  <p className="text-sm text-gray-400 leading-relaxed font-medium">
                    Seamlessly bridge physical staff records with cryptographic digital certificates and coordinate inventory sync using open webhook protocols.

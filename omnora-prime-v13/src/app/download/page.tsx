@@ -80,7 +80,7 @@ export default function DownloadPage() {
 
   const TIER_COLORS: Record<string, string> = {
     elite: 'text-[#C5A059] border-[#C5A059]/30 bg-[#C5A059]/5',
-    pro: 'text-blue-400 border-blue-500/30 bg-blue-500/5',
+    pro: 'text-[#00E5FF] border-[#00E5FF]/30 bg-[#00E5FF]/5',
     lite: 'text-gray-400 border-white/15 bg-white/3',
   }
 
@@ -122,8 +122,8 @@ export default function DownloadPage() {
               href="https://wa.me/923334355475"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[#60A5FA]
-                hover:text-blue-300">
+              className="text-sandstone-gold
+                hover:text-[#E8D5B5]">
               Get a free trial on WhatsApp
             </a>
           </p>
@@ -159,7 +159,7 @@ export default function DownloadPage() {
                   border border-white/10 text-white
                   text-sm font-mono px-4 py-3.5
                   outline-none tracking-widest
-                  focus:border-[#60A5FA]/40
+                  focus:border-sandstone-gold/40
                   placeholder:text-gray-700
                   placeholder:tracking-normal"
                 autoFocus
@@ -183,8 +183,8 @@ export default function DownloadPage() {
               onClick={verify}
               disabled={loading || !key.trim()}
               className="w-full py-3.5 text-sm
-                font-bold bg-[#60A5FA] text-black
-                hover:bg-blue-400 transition-colors
+                font-bold bg-sandstone-gold text-black
+                hover:bg-[#D4B77A] transition-colors
                 disabled:opacity-50
                 disabled:cursor-not-allowed
                 flex items-center justify-center gap-2"
@@ -261,8 +261,8 @@ export default function DownloadPage() {
                 className="flex items-center
                   justify-center gap-2 w-full
                   py-3 text-sm font-bold
-                  bg-[#60A5FA] text-black
-                  hover:bg-blue-400
+                  bg-sandstone-gold text-black
+                  hover:bg-[#D4B77A]
                   transition-colors"
               >
                 <Download size={15} />

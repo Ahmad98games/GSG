@@ -218,7 +218,7 @@ export function LicenseInitializer() {
                 <div className={cn(
                   "w-5 h-5 rounded-sm border flex items-center justify-center transition-all duration-300 relative",
                   isChecked 
-                    ? "bg-white border-white text-black shadow-[0_0_15px_rgba(255,255,255,0.3)]" 
+                    ? "bg-[#C5A059] border-[#C5A059] text-black shadow-[0_0_15px_rgba(197,160,89,0.3)]" 
                     : "bg-white/5 border-white/10 group-hover:border-white/25"
                 )}>
                   {isChecked && <Check size={13} strokeWidth={3.5} />}
@@ -241,7 +241,7 @@ export function LicenseInitializer() {
               className={cn(
                 "w-full py-4 text-xs font-black uppercase tracking-[0.2em] transition-all duration-300 flex items-center justify-center border font-mono rounded-sm",
                 isChecked
-                  ? "bg-white text-black border-white hover:bg-gray-150 cursor-pointer shadow-[0_0_25px_rgba(255,255,255,0.15)] active:scale-[0.99]"
+                  ? "bg-[#C5A059] text-black border-[#C5A059] hover:bg-[#D4B06A] cursor-pointer shadow-[0_0_25px_rgba(197,160,89,0.2)] active:scale-[0.99]"
                   : "bg-white/[0.02] text-gray-700 border-white/[0.03] cursor-not-allowed"
               )}
             >

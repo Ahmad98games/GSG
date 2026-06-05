@@ -43,28 +43,28 @@ export default function ReviewsPage() {
   }, [supabase])
 
   return (
-    <div className="bg-[#070809] text-white font-sans min-h-screen selection:bg-blue-500 selection:text-black overflow-x-hidden relative flex flex-col justify-between">
+    <div className="bg-[#070809] text-white font-sans min-h-screen selection:bg-sandstone-gold/30 selection:text-white overflow-x-hidden relative flex flex-col justify-between">
       {/* Scroll progress */}
       <motion.div
-        className="fixed top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-blue-500 via-indigo-500 to-amber-400 z-[100] origin-left"
+        className="fixed top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-sandstone-gold via-[#00E5FF] to-sandstone-gold z-[100] origin-left"
         style={{ scaleX }}
       />
 
       {/* Background Orbs */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <FloatingOrb color="rgba(96,165,250,0.06)" size={600} x="10%" y="20%" delay={0} blur={130} />
-        <FloatingOrb color="rgba(99,102,241,0.05)" size={500} x="80%" y="70%" delay={3} blur={125} />
+        <FloatingOrb color="rgba(197,160,89,0.06)" size={600} x="10%" y="20%" delay={0} blur={130} />
+        <FloatingOrb color="rgba(0,229,255,0.04)" size={500} x="80%" y="70%" delay={3} blur={125} />
       </div>
 
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-[#070809]/80 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 cursor-pointer group">
-            <div className="w-8 h-8 rounded-sm bg-white/5 border border-white/10 flex items-center justify-center group-hover:border-blue-500/50 group-hover:bg-blue-500/10 transition-colors">
+            <div className="w-8 h-8 rounded-sm bg-white/5 border border-white/10 flex items-center justify-center group-hover:border-sandstone-gold/50 group-hover:bg-sandstone-gold/10 transition-colors">
               <img src="/logos/noxis.png" alt="Noxis" className="w-5 h-5 object-contain"
                 onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
             </div>
-            <span className="font-extrabold text-lg tracking-wider text-white group-hover:text-blue-400 transition-colors">NOXIS</span>
+            <span className="font-extrabold text-lg tracking-wider text-white group-hover:text-[#E8D5B5] transition-colors">NOXIS</span>
           </Link>
 
           <div className="hidden md:flex items-center gap-8">
@@ -75,7 +75,7 @@ export default function ReviewsPage() {
             ))}
             <Link
               href="/download"
-              className="text-xs font-bold tracking-widest uppercase text-black bg-[#60A5FA] hover:bg-blue-400 px-6 py-2.5 rounded-sm transition-all shadow-[0_0_20px_rgba(96,165,250,0.2)]"
+              className="text-xs font-bold tracking-widest uppercase text-black bg-sandstone-gold hover:bg-[#D4B77A] px-6 py-2.5 rounded-sm transition-all shadow-[0_0_20px_rgba(197,160,89,0.15)]"
             >
               Download
             </Link>
@@ -94,7 +94,7 @@ export default function ReviewsPage() {
                   {link.label}
                 </Link>
               ))}
-              <Link href="/download" onClick={() => setMobileMenuOpen(false)} className="block text-center font-bold text-sm tracking-widest uppercase text-black bg-[#60A5FA] hover:bg-blue-400 py-3.5 rounded-sm">
+              <Link href="/download" onClick={() => setMobileMenuOpen(false)} className="block text-center font-bold text-sm tracking-widest uppercase text-black bg-sandstone-gold hover:bg-[#D4B77A] py-3.5 rounded-sm">
                 Free Trial Download
               </Link>
             </div>
@@ -105,7 +105,7 @@ export default function ReviewsPage() {
       {/* Main Content */}
       <main className="relative z-10 flex-1 pt-32 pb-24 px-6 max-w-6xl mx-auto w-full flex flex-col">
         <SectionReveal className="text-center mb-16 space-y-4">
-          <p className="text-xs font-bold text-blue-400 uppercase tracking-widest">Testimonials</p>
+          <p className="text-xs font-bold text-sandstone-gold uppercase tracking-widest">Testimonials</p>
           <h1 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight leading-none">
             User Reviews
           </h1>
@@ -115,7 +115,7 @@ export default function ReviewsPage() {
           <div className="pt-2">
             <button
               onClick={() => setFeedbackOpen(true)}
-              className="inline-flex items-center gap-2 bg-[#60A5FA] hover:bg-blue-400 text-black text-xs font-bold uppercase tracking-widest px-6 py-3 rounded-sm transition-all shadow-[0_0_20px_rgba(96,165,250,0.2)] animate-pulse"
+              className="inline-flex items-center gap-2 bg-sandstone-gold hover:bg-[#D4B77A] text-black text-xs font-bold uppercase tracking-widest px-6 py-3 rounded-sm transition-all shadow-[0_0_20px_rgba(197,160,89,0.15)] animate-pulse"
             >
               ★ Share Feedback
             </button>
@@ -127,14 +127,14 @@ export default function ReviewsPage() {
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-              className="w-10 h-10 border-2 border-blue-500/20 border-t-blue-500 rounded-full"
+              className="w-10 h-10 border-2 border-sandstone-gold/20 border-t-sandstone-gold rounded-full"
             />
           </div>
         ) : testimonials.length > 0 ? (
           <SectionReveal delay={0.1}>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {testimonials.map((t, i) => (
-                <GlowCard key={t.id} delay={i * 0.08} glowColor="rgba(96,165,250,0.08)"
+                <GlowCard key={t.id} delay={i * 0.08} glowColor="rgba(197,160,89,0.08)"
                   className="bg-[#0F1114] border border-white/[0.06] p-7 rounded-xl flex flex-col justify-between"
                 >
                   <div>

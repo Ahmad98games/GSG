@@ -37,16 +37,16 @@ export default function BlogListingClient({ posts }: { posts: BlogPost[] }) {
   }
 
   return (
-    <div className="bg-[#121417] min-h-screen text-slate-300 font-inter pb-32 relative overflow-hidden">
+    <div className="bg-[#08090A] min-h-screen text-slate-300 font-inter pb-32 relative overflow-hidden">
       
       {/* Scroll indicator */}
       <motion.div 
-        className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-[#C5A059] to-[#10B981] z-[100] origin-left"
+        className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#C5A059] via-[#00E5FF] to-[#C5A059] z-[100] origin-left"
         style={{ scaleX: 1 }} // Fallback or standard style
       />
 
       {/* Floating Glows */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-[radial-gradient(circle_at_center,rgba(96,165,250,0.04)_0%,transparent_70%)] pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-[radial-gradient(circle_at_center,rgba(197,160,89,0.04)_0%,transparent_70%)] pointer-events-none" />
 
       {/* Hero Header */}
       <header className="relative pt-28 pb-12 px-6 text-center z-10 max-w-4xl mx-auto space-y-6">
@@ -54,10 +54,10 @@ export default function BlogListingClient({ posts }: { posts: BlogPost[] }) {
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.4 }}
-          className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/30 mb-2"
+          className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-sandstone-gold/10 border border-sandstone-gold/30 mb-2"
         >
-          <BookOpen className="w-3 h-3 text-blue-400" />
-          <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Knowledge Base & Guides</span>
+          <BookOpen className="w-3 h-3 text-sandstone-gold" />
+          <span className="text-[10px] font-bold text-sandstone-gold uppercase tracking-widest">Knowledge Base & Guides</span>
         </motion.div>
         
         <motion.h1 
@@ -91,7 +91,7 @@ export default function BlogListingClient({ posts }: { posts: BlogPost[] }) {
               placeholder="Search guides, technical documents..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#121417] border border-white/5 rounded-sm pl-10 pr-4 py-2.5 text-xs text-white placeholder-gray-600 outline-none focus:border-blue-500/50 transition-colors font-medium"
+              className="w-full bg-[#121417] border border-white/5 rounded-sm pl-10 pr-4 py-2.5 text-xs text-white placeholder-gray-600 outline-none focus:border-sandstone-gold/50 transition-colors font-medium"
             />
           </div>
 
@@ -103,7 +103,7 @@ export default function BlogListingClient({ posts }: { posts: BlogPost[] }) {
                 onClick={() => setActiveTag(tag)}
                 className={`px-3 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-sm transition-all border ${
                   activeTag === tag
-                    ? 'bg-blue-500 border-blue-500 text-black shadow-lg shadow-blue-500/10'
+                    ? 'bg-sandstone-gold border-sandstone-gold text-black shadow-lg shadow-sandstone-gold/10'
                     : 'bg-white/5 border-white/5 text-gray-500 hover:text-gray-300 hover:border-white/10'
                 }`}
               >
@@ -142,14 +142,14 @@ export default function BlogListingClient({ posts }: { posts: BlogPost[] }) {
                     key={post.slug} 
                     variants={itemVariants}
                     layout
-                    whileHover={{ y: -8, borderColor: 'rgba(96,165,250,0.3)', boxShadow: '0 20px 45px rgba(0,0,0,0.4)' }}
+                    whileHover={{ y: -8, borderColor: 'rgba(197,160,89,0.3)', boxShadow: '0 20px 45px rgba(0,0,0,0.4)' }}
                     className="bg-[#1A1D21] border border-white/5 p-8 rounded-sm transition-all duration-300 flex flex-col justify-between group relative"
                   >
                     <div>
                       {/* Meta elements */}
                       <div className="flex items-center justify-between text-[9px] font-mono text-gray-500 font-bold uppercase tracking-wider mb-4 border-b border-white/5 pb-3">
                         <div className="flex items-center space-x-1.5">
-                          <Calendar className="w-3.5 h-3.5 text-blue-400" />
+                          <Calendar className="w-3.5 h-3.5 text-sandstone-gold" />
                           <span>{post.date}</span>
                         </div>
                         <div className="flex items-center space-x-1.5">
@@ -159,7 +159,7 @@ export default function BlogListingClient({ posts }: { posts: BlogPost[] }) {
                       </div>
 
                       {/* Header */}
-                      <h2 className="text-xl font-bold text-white tracking-tight leading-snug mb-4 group-hover:text-blue-400 transition-colors uppercase italic">
+                      <h2 className="text-xl font-bold text-white tracking-tight leading-snug mb-4 group-hover:text-sandstone-gold transition-colors uppercase italic">
                         <Link href={`/blog/${post.slug}`} className="cursor-pointer">
                           {post.title}
                         </Link>
@@ -175,7 +175,7 @@ export default function BlogListingClient({ posts }: { posts: BlogPost[] }) {
                     <div className="pt-4 border-t border-white/5 flex items-center justify-between mt-auto">
                       <Link 
                         href={`/blog/${post.slug}`} 
-                        className="text-[10px] font-black uppercase tracking-widest text-white group-hover:text-blue-400 transition-colors flex items-center space-x-1.5 cursor-pointer"
+                        className="text-[10px] font-black uppercase tracking-widest text-white group-hover:text-sandstone-gold transition-colors flex items-center space-x-1.5 cursor-pointer"
                       >
                         <span>Read Article</span>
                         <ArrowRight className="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform" />

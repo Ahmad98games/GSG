@@ -132,15 +132,15 @@ export default async function BlogPostPage({ params }: Props) {
   const readingTime = Math.max(1, Math.round(wordCount / 200));
 
   return (
-    <div className="bg-[#121417] min-h-screen text-slate-300 font-inter selection:bg-electric-blue selection:text-[#121417] pb-32">
+    <div className="bg-[#08090A] min-h-screen text-slate-300 font-inter selection:bg-sandstone-gold/30 selection:text-white pb-32">
       {/* Background glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-[radial-gradient(circle_at_center,rgba(96,165,250,0.06)_0%,transparent_70%)] pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-[radial-gradient(circle_at_center,rgba(197,160,89,0.06)_0%,transparent_70%)] pointer-events-none" />
 
       {/* Navigation */}
-      <nav className="relative top-0 w-full z-50 bg-[#121417]/85 backdrop-blur-xl border-b border-white/5 py-4">
+      <nav className="relative top-0 w-full z-50 bg-[#08090A]/85 backdrop-blur-xl border-b border-white/5 py-4">
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-3 group cursor-pointer">
-            <div className="w-10 h-10 flex items-center justify-center bg-white/5 group-hover:bg-electric-blue/10 rounded-sm transition-all shadow-2xl">
+            <div className="w-10 h-10 flex items-center justify-center bg-white/5 group-hover:bg-sandstone-gold/10 rounded-sm transition-all shadow-2xl">
               <img
                 src="/logos/noxis.png"
                 alt="Noxis Logo"
@@ -155,7 +155,7 @@ export default async function BlogPostPage({ params }: Props) {
           </Link>
 
           <div className="flex items-center space-x-12 text-[11px] font-bold uppercase tracking-[0.15em] text-white/50">
-            <Link href="/blog" className="hover:text-electric-blue transition-colors flex items-center space-x-2">
+            <Link href="/blog" className="hover:text-sandstone-gold transition-colors flex items-center space-x-2">
               <BookOpen className="w-3.5 h-3.5" />
               <span>All Articles</span>
             </Link>
@@ -165,7 +165,7 @@ export default async function BlogPostPage({ params }: Props) {
 
       {/* Main Post Shell */}
       <main className="max-w-4xl mx-auto px-6 mt-16 relative z-10">
-        <Link href="/blog" className="inline-flex items-center space-x-2 text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-electric-blue transition-colors mb-8">
+        <Link href="/blog" className="inline-flex items-center space-x-2 text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-sandstone-gold transition-colors mb-8">
           <ChevronLeft className="w-4 h-4" />
           <span>Back to Blog</span>
         </Link>
@@ -178,11 +178,11 @@ export default async function BlogPostPage({ params }: Props) {
 
           <div className="flex flex-wrap gap-6 text-xs font-mono text-slate-500 font-bold uppercase tracking-wider">
             <div className="flex items-center space-x-2">
-              <Calendar className="w-4 h-4 text-electric-blue" />
+              <Calendar className="w-4 h-4 text-sandstone-gold" />
               <span>Published: {post.date}</span>
             </div>
             <div className="flex items-center space-x-2">
-              <Clock className="w-4 h-4 text-electric-blue" />
+              <Clock className="w-4 h-4 text-[#00E5FF]" />
               <span>{readingTime} Min Read</span>
             </div>
           </div>
@@ -199,7 +199,7 @@ export default async function BlogPostPage({ params }: Props) {
             <h3 className="text-lg font-black text-white uppercase tracking-widest">Ready to modernize your operations?</h3>
             <p className="text-sm text-slate-400 font-medium max-w-lg">Get 3 days of fully unlocked Elite tier access to testing tools for staff, ledgers, inventory, and AI CCTV monitoring.</p>
           </div>
-          <Link href="/download" className="bg-electric-blue text-[#121417] px-8 py-4 font-black uppercase tracking-widest text-xs hover:brightness-110 shadow-[0_0_20px_rgba(96,165,250,0.2)] transition-all shrink-0">
+          <Link href="/download" className="bg-sandstone-gold text-black px-8 py-4 font-black uppercase tracking-widest text-xs hover:bg-[#D4B77A] shadow-[0_0_20px_rgba(197,160,89,0.15)] transition-all shrink-0">
             Download 3-Day Trial
           </Link>
         </div>

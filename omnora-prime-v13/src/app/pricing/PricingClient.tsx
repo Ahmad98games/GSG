@@ -60,7 +60,7 @@ export default function PricingClient() {
       'EasyPaisa Mobile Account';
     
     const methodDetails =
-      paymentMethod === 'nayapay' ? 'PK74NAYA1234503218338768' : '0333-4355475';
+      paymentMethod === 'nayapay' ? 'PK74NAYA1234503218338768' : '0321-8338768';
 
     const msg = encodeURIComponent(
       `Assalam o Alaikum,\n\nI have sent the payment of ${selectedPlan.price} for the Noxis ${selectedPlan.tier} plan.\n\n` +
@@ -296,7 +296,7 @@ export default function PricingClient() {
                         className={cn(
                           "flex-1 py-2 text-[9px] font-black uppercase tracking-widest transition-all rounded-sm",
                           paymentMethod === tab.id
-                            ? 'bg-blue-500 text-black font-black'
+                            ? 'bg-[#C5A059] text-black font-black shadow-[0_0_12px_rgba(197,160,89,0.2)]'
                             : 'text-gray-500 hover:text-gray-300'
                         )}
                       >
@@ -323,7 +323,7 @@ export default function PricingClient() {
                             <code className="text-xs font-mono text-gray-300 break-all">PK74NAYA1234503218338768</code>
                             <button
                               onClick={() => handleCopy('PK74NAYA1234503218338768')}
-                              className="text-blue-400 hover:text-blue-300 ml-2 shrink-0 transition-colors"
+                              className="text-[#C5A059] hover:text-[#D4B06A] ml-2 shrink-0 transition-colors"
                               title="Copy Account Number"
                             >
                               {copied ? 'Copied' : <Copy size={14} />}
@@ -341,15 +341,15 @@ export default function PricingClient() {
                         </div>
                         <div className="flex justify-between items-center text-xs">
                           <span className="text-gray-500 uppercase tracking-wider text-[10px]">Account Title</span>
-                          <span className="text-white font-bold">Ahmad Mahboob</span>
+                          <span className="text-white font-bold">Razia Sultana</span>
                         </div>
                         <div className="space-y-1">
                           <span className="text-gray-500 uppercase tracking-wider text-[10px] block">Mobile Account Number</span>
                           <div className="flex items-center justify-between bg-black/40 border border-white/5 p-2 rounded-sm">
-                            <code className="text-xs font-mono text-gray-300">03334355475</code>
+                            <code className="text-xs font-mono text-gray-300">03218338768</code>
                             <button
-                              onClick={() => handleCopy('03334355475')}
-                              className="text-blue-400 hover:text-blue-300 ml-2 shrink-0 transition-colors"
+                              onClick={() => handleCopy('03218338768')}
+                              className="text-[#C5A059] hover:text-[#D4B06A] ml-2 shrink-0 transition-colors"
                             >
                               {copied ? 'Copied' : <Copy size={14} />}
                             </button>
@@ -366,15 +366,15 @@ export default function PricingClient() {
                         </div>
                         <div className="flex justify-between items-center text-xs">
                           <span className="text-gray-500 uppercase tracking-wider text-[10px]">Account Title</span>
-                          <span className="text-white font-bold">Ahmad Mahboob</span>
+                          <span className="text-white font-bold">Razia Sultana</span>
                         </div>
                         <div className="space-y-1">
                           <span className="text-gray-500 uppercase tracking-wider text-[10px] block">Mobile Account Number</span>
                           <div className="flex items-center justify-between bg-black/40 border border-white/5 p-2 rounded-sm">
-                            <code className="text-xs font-mono text-gray-300">03334355475</code>
+                            <code className="text-xs font-mono text-gray-300">03218338768</code>
                             <button
-                              onClick={() => handleCopy('03334355475')}
-                              className="text-blue-400 hover:text-blue-300 ml-2 shrink-0 transition-colors"
+                              onClick={() => handleCopy('03218338768')}
+                              className="text-[#C5A059] hover:text-[#D4B06A] ml-2 shrink-0 transition-colors"
                             >
                               {copied ? 'Copied' : <Copy size={14} />}
                             </button>
@@ -394,7 +394,7 @@ export default function PricingClient() {
                       value={txId}
                       onChange={(e) => setTxId(e.target.value)}
                       placeholder="Enter TID from confirmation message"
-                      className="w-full bg-[#121417] border border-white/5 p-3 text-xs text-white placeholder-gray-600 rounded-sm focus:border-blue-500/50 outline-none transition-colors"
+                      className="w-full bg-[#121417] border border-white/5 p-3 text-xs text-white placeholder-gray-600 rounded-sm focus:border-[#C5A059]/50 outline-none transition-colors"
                     />
                     <p className="text-[10px] text-gray-600 leading-relaxed">
                       Transfer the exact billing amount to the selected account, enter your Transaction ID above, and submit to verify on WhatsApp.
@@ -406,7 +406,7 @@ export default function PricingClient() {
                 <div className="p-6 border-t border-white/5 bg-black/20">
                   <button
                     onClick={handleVerify}
-                    className="w-full py-4 bg-white text-black hover:bg-gray-200 transition-all text-xs font-black uppercase tracking-widest flex items-center justify-center shadow-[0_0_15px_rgba(255,255,255,0.15)]"
+                    className="w-full py-4 bg-[#C5A059] text-black hover:bg-[#D4B06A] transition-all text-xs font-black uppercase tracking-widest flex items-center justify-center shadow-[0_0_15px_rgba(197,160,89,0.2)] active:scale-[0.99]"
                   >
                     Verify Payment on WhatsApp <ExternalLink size={14} className="ml-2" />
                   </button>

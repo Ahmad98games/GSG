@@ -77,7 +77,7 @@ export default function FileMorphPage() {
               onClick={() => setActiveSection(s.id)}
               className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-all -mb-px ${
                 activeSection === s.id
-                  ? 'border-[#60A5FA] text-white'
+                  ? 'border-[#C5A059] text-white'
                   : 'border-transparent text-gray-500 hover:text-gray-300'
               }`}
             >

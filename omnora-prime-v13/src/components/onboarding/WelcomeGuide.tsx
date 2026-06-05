@@ -144,7 +144,7 @@ export default function WelcomeGuide({
               </div>
               <div className="space-y-2">
                 <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter">
-                  Welcome to Noxis, <span className="text-blue-500">{firstName}.</span>
+                  Welcome to Noxis, <span className="text-[#C5A059]">{firstName}.</span>
                 </h1>
                 <p className="text-xl text-gray-400 font-medium">
                   Workspace for {businessName} is fully ready.
@@ -157,7 +157,7 @@ export default function WelcomeGuide({
 
             <button 
               onClick={() => setStep(2)}
-              className="px-10 py-4 bg-blue-600 text-white text-xs font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)] group flex items-center mx-auto"
+              className="px-10 py-4 bg-[#C5A059] text-black text-xs font-black uppercase tracking-widest hover:bg-[#D4B06A] transition-all shadow-[0_0_20px_rgba(197,160,89,0.25)] group flex items-center mx-auto"
             >
               Start Quick Tutorial <ChevronRight className="ml-3 group-hover:translate-x-1 transition-transform" />
             </button>
@@ -174,7 +174,7 @@ export default function WelcomeGuide({
           >
             <div className="text-center space-y-2">
               <h2 className="text-2xl font-black text-white uppercase tracking-tighter italic">
-                How to Use <span className="text-blue-500">Noxis Hub</span>
+                How to Use <span className="text-[#C5A059]">Noxis Hub</span>
               </h2>
               <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">
                 Your daily workflow in 4 simple steps
@@ -211,7 +211,7 @@ export default function WelcomeGuide({
               </span>
               <button 
                 onClick={() => setStep(3)}
-                className="px-8 py-4 bg-white text-black text-xs font-black uppercase tracking-widest hover:bg-gray-200 transition-all flex items-center shadow-[0_0_15px_rgba(255,255,255,0.1)]"
+                className="px-8 py-4 bg-[#C5A059] text-black text-xs font-black uppercase tracking-widest hover:bg-[#D4B06A] transition-all flex items-center shadow-[0_0_15px_rgba(197,160,89,0.25)]"
               >
                 Proceed to Actions <ChevronRight className="ml-2" size={14} />
               </button>
@@ -258,7 +258,7 @@ export default function WelcomeGuide({
                       {card.desc}
                     </p>
                   </div>
-                  <button className="flex items-center text-[10px] font-black uppercase tracking-[0.2em] text-blue-500 group-hover:translate-x-2 transition-transform">
+                  <button className="flex items-center text-[10px] font-black uppercase tracking-[0.2em] text-[#C5A059] group-hover:translate-x-2 transition-transform">
                     {card.button} <ArrowRight size={14} className="ml-2" />
                   </button>
                 </motion.div>
@@ -268,7 +268,7 @@ export default function WelcomeGuide({
             <div className="pt-6 border-t border-white/5 flex flex-col space-y-4">
               <button 
                 onClick={handleComplete}
-                className="w-full py-4 bg-white text-black text-xs font-black uppercase tracking-widest hover:bg-gray-200 transition-all flex items-center justify-center"
+                className="w-full py-4 bg-[#C5A059] text-black text-xs font-black uppercase tracking-widest hover:bg-[#D4B06A] transition-all flex items-center justify-center shadow-[0_0_15px_rgba(197,160,89,0.25)]"
               >
                 Go to Dashboard <ChevronRight className="ml-3" size={14} />
               </button>
