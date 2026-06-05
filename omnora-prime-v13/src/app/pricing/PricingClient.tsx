@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Check, X, ShieldCheck, Zap, Globe } from "lucide-react";
+import { Check, X, ShieldCheck, Zap, Globe, Copy, ExternalLink } from "lucide-react";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { formatCurrency } from "@/lib/currency/currencyEngine";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { FloatingOrb } from "@/components/ui/AnimatedComponents";
 
 const FAQS = [
@@ -25,6 +25,13 @@ export default function PricingClient() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
   const [displayCurrency, setDisplayCurrency] = useState<'LOCAL' | 'USD'>('LOCAL');
 
+  // Checkout Modal State
+  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<{ tier: string; price: string } | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'nayapay' | 'jazzcash' | 'easypaisa'>('nayapay');
+  const [copied, setCopied] = useState(false);
+  const [txId, setTxId] = useState('');
+
   const region = profile?.region || 'south_asian';
   const localCurrency = (profile?.currency || 'PKR') as any;
 
@@ -35,15 +42,39 @@ export default function PricingClient() {
   }, [region]);
 
   const handlePurchase = (plan: string, price: string) => {
+    setSelectedPlan({ tier: plan, price });
+    setCheckoutModalOpen(true);
+  };
+
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleVerify = () => {
+    if (!selectedPlan) return;
+    const formattedMethodName = 
+      paymentMethod === 'nayapay' ? 'NayaPay IBAN (Raast)' :
+      paymentMethod === 'jazzcash' ? 'JazzCash Mobile Account' :
+      'EasyPaisa Mobile Account';
+    
+    const methodDetails =
+      paymentMethod === 'nayapay' ? 'PK74NAYA1234503218338768' : '0333-4355475';
+
     const msg = encodeURIComponent(
-      `Assalam o Alaikum,\n\nI want to purchase Noxis ${plan} plan (${price}/month).\n\nPlease share payment details.\n\nMy business: \nCity: `
-    )
+      `Assalam o Alaikum,\n\nI have sent the payment of ${selectedPlan.price} for the Noxis ${selectedPlan.tier} plan.\n\n` +
+      `Payment Method: ${formattedMethodName} (${methodDetails})\n` +
+      `Transaction ID / TID: ${txId || 'N/A'}\n\n` +
+      `Please activate my license key.\nMy business: ${profile?.business_name || ''}\nCity: ${profile?.city || ''}`
+    );
     window.open(
       `https://wa.me/923334355475?text=${msg}`,
       '_blank'
-    )
-  }
-
+    );
+    setCheckoutModalOpen(false);
+    setTxId('');
+  };
 
   const staggerContainer = {
     hidden: { opacity: 0 },
@@ -215,6 +246,176 @@ export default function PricingClient() {
           />
         </motion.div>
 
+        {/* Checkout Modal */}
+        <AnimatePresence>
+          {checkoutModalOpen && selectedPlan && (
+            <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-[9999] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="bg-[#0C0E12] border border-white/10 rounded-sm shadow-[0_20px_50px_rgba(0,0,0,0.8)] relative max-w-lg w-full flex flex-col max-h-[90vh] overflow-hidden"
+              >
+                {/* Holographic glowing line */}
+                <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-blue-500 via-[#C5A059] to-purple-600 animate-pulse" />
+
+                {/* Modal Close Button */}
+                <button
+                  onClick={() => {
+                    setCheckoutModalOpen(false);
+                    setTxId('');
+                  }}
+                  className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors"
+                >
+                  <X size={18} />
+                </button>
+
+                {/* Modal Header */}
+                <div className="p-6 pb-4 border-b border-white/5">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-[#C5A059]">Checkout Workspace</span>
+                  <h3 className="text-xl font-black text-white uppercase italic tracking-tighter mt-1">
+                    Activate Noxis {selectedPlan.tier}
+                  </h3>
+                  <p className="text-xs text-gray-400 mt-2 font-medium">
+                    Plan pricing: <span className="text-white font-bold">{selectedPlan.price} / Month</span>
+                  </p>
+                </div>
+
+                {/* Modal Body */}
+                <div className="p-6 overflow-y-auto space-y-6 flex-1 scrollbar-thin">
+                  {/* Method Tabs */}
+                  <div className="bg-[#121417] p-1 rounded-sm border border-white/5 flex">
+                    {[
+                      { id: 'nayapay', label: 'NayaPay IBAN' },
+                      { id: 'jazzcash', label: 'JazzCash' },
+                      { id: 'easypaisa', label: 'EasyPaisa' }
+                    ].map(tab => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setPaymentMethod(tab.id as any)}
+                        className={cn(
+                          "flex-1 py-2 text-[9px] font-black uppercase tracking-widest transition-all rounded-sm",
+                          paymentMethod === tab.id
+                            ? 'bg-blue-500 text-black font-black'
+                            : 'text-gray-500 hover:text-gray-300'
+                        )}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Billing details */}
+                  <div className="bg-white/5 border border-white/5 p-4 rounded-sm space-y-4">
+                    {paymentMethod === 'nayapay' && (
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-gray-500 uppercase tracking-wider text-[10px]">Bank Partner</span>
+                          <span className="text-white font-bold">NayaPay</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-gray-500 uppercase tracking-wider text-[10px]">Account Name</span>
+                          <span className="text-white font-bold">Omnora Labs LLC</span>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-gray-500 uppercase tracking-wider text-[10px] block">IBAN / Raast Account</span>
+                          <div className="flex items-center justify-between bg-black/40 border border-white/5 p-2 rounded-sm">
+                            <code className="text-xs font-mono text-gray-300 break-all">PK74NAYA1234503218338768</code>
+                            <button
+                              onClick={() => handleCopy('PK74NAYA1234503218338768')}
+                              className="text-blue-400 hover:text-blue-300 ml-2 shrink-0 transition-colors"
+                              title="Copy Account Number"
+                            >
+                              {copied ? 'Copied' : <Copy size={14} />}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {paymentMethod === 'jazzcash' && (
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-gray-500 uppercase tracking-wider text-[10px]">Provider</span>
+                          <span className="text-[#E51C24] font-bold">JazzCash Mobile</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-gray-500 uppercase tracking-wider text-[10px]">Account Title</span>
+                          <span className="text-white font-bold">Ahmad Mahboob</span>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-gray-500 uppercase tracking-wider text-[10px] block">Mobile Account Number</span>
+                          <div className="flex items-center justify-between bg-black/40 border border-white/5 p-2 rounded-sm">
+                            <code className="text-xs font-mono text-gray-300">03334355475</code>
+                            <button
+                              onClick={() => handleCopy('03334355475')}
+                              className="text-blue-400 hover:text-blue-300 ml-2 shrink-0 transition-colors"
+                            >
+                              {copied ? 'Copied' : <Copy size={14} />}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {paymentMethod === 'easypaisa' && (
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-gray-500 uppercase tracking-wider text-[10px]">Provider</span>
+                          <span className="text-[#39B54A] font-bold">EasyPaisa Mobile</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-gray-500 uppercase tracking-wider text-[10px]">Account Title</span>
+                          <span className="text-white font-bold">Ahmad Mahboob</span>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-gray-500 uppercase tracking-wider text-[10px] block">Mobile Account Number</span>
+                          <div className="flex items-center justify-between bg-black/40 border border-white/5 p-2 rounded-sm">
+                            <code className="text-xs font-mono text-gray-300">03334355475</code>
+                            <button
+                              onClick={() => handleCopy('03334355475')}
+                              className="text-blue-400 hover:text-blue-300 ml-2 shrink-0 transition-colors"
+                            >
+                              {copied ? 'Copied' : <Copy size={14} />}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Verification TID Input */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-gray-500 block">
+                      Transaction ID (TID) / Ref Number
+                    </label>
+                    <input
+                      type="text"
+                      value={txId}
+                      onChange={(e) => setTxId(e.target.value)}
+                      placeholder="Enter TID from confirmation message"
+                      className="w-full bg-[#121417] border border-white/5 p-3 text-xs text-white placeholder-gray-600 rounded-sm focus:border-blue-500/50 outline-none transition-colors"
+                    />
+                    <p className="text-[10px] text-gray-600 leading-relaxed">
+                      Transfer the exact billing amount to the selected account, enter your Transaction ID above, and submit to verify on WhatsApp.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="p-6 border-t border-white/5 bg-black/20">
+                  <button
+                    onClick={handleVerify}
+                    className="w-full py-4 bg-white text-black hover:bg-gray-200 transition-all text-xs font-black uppercase tracking-widest flex items-center justify-center shadow-[0_0_15px_rgba(255,255,255,0.15)]"
+                  >
+                    Verify Payment on WhatsApp <ExternalLink size={14} className="ml-2" />
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
         {/* Payment Methods Section */}
         <div className="mt-8 p-6 bg-[#0F1114]
           border border-white/6 rounded-sm
@@ -227,19 +428,19 @@ export default function PricingClient() {
           <div className="space-y-2">
             {[
               {
-                method: 'JazzCash',
+                method: 'NayaPay IBAN (Raast)',
+                number: 'PK74NAYA1234503218338768',
+                note: 'Recommended for Bank/E-Wallet transfer'
+              },
+              {
+                method: 'JazzCash Mobile',
                 number: '0333-4355475',
                 note: 'Send to mobile account'
               },
               {
-                method: 'EasyPaisa',
+                method: 'EasyPaisa Mobile',
                 number: '0333-4355475',
                 note: 'Send to mobile account'
-              },
-              {
-                method: 'Bank Transfer',
-                number: 'Share on WhatsApp',
-                note: 'Account details on request'
               },
             ].map(p => (
               <div key={p.method}
@@ -254,7 +455,7 @@ export default function PricingClient() {
                   </p>
                 </div>
                 <p className="text-xs font-mono
-                  text-gray-400">{p.number}</p>
+                  text-gray-400 break-all select-all">{p.number}</p>
               </div>
             ))}
           </div>
