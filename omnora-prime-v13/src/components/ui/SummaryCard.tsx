@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from "react";
@@ -12,6 +11,7 @@ interface SummaryCardProps {
   icon?: React.ElementType;
   color?: string;
   className?: string;
+  isCurrency?: boolean;
 }
 
 export function SummaryCard({ 
@@ -20,7 +20,8 @@ export function SummaryCard({
   sub, 
   icon: Icon, 
   color = "text-[#C5A059]",
-  className 
+  className,
+  isCurrency = true
 }: SummaryCardProps) {
   return (
     <div className={cn(
@@ -39,7 +40,7 @@ export function SummaryCard({
           
           {/* Value */}
           <div className={cn("mt-2 font-mono text-2xl font-semibold tabular-nums", color)}>
-            <AnimatedNumber value={value.toString()} />
+            <AnimatedNumber value={value.toString()} isCurrency={isCurrency} />
           </div>
           
           {/* Sub label */}

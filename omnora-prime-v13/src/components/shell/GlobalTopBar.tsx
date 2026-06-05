@@ -22,16 +22,16 @@ import { TierBadge } from '../ui/TierBadge'
 import { FeedbackModal } from '@/components/ui/FeedbackModal'
 
 const PRESET_AVATARS = [
-  { id: 1, bg: '#1e3a5f', border: '#60A5FA' },
-  { id: 2, bg: '#1a2e1a', border: '#10B981' },
-  { id: 3, bg: '#3d1a00', border: '#C5A059' },
-  { id: 4, bg: '#2d1515', border: '#EF4444' },
-  { id: 5, bg: '#1a1a2e', border: '#8B5CF6' },
-  { id: 6, bg: '#0d2626', border: '#06B6D4' },
-  { id: 7, bg: '#2e2a1a', border: '#F59E0B' },
-  { id: 8, bg: '#1e1a2e', border: '#EC4899' },
-  { id: 9, bg: '#141414', border: '#6B7280' },
-  { id: 10, bg: '#1a1a1a', border: '#FFFFFF' },
+  { id: 1, src: '/images/presets/preset-1.png', border: '#22d3ee' },
+  { id: 2, src: '/images/presets/preset-2.png', border: '#22d3ee' },
+  { id: 3, src: '/images/presets/preset-3.png', border: '#22d3ee' },
+  { id: 4, src: '/images/presets/preset-4.png', border: '#22d3ee' },
+  { id: 5, src: '/images/presets/preset-5.png', border: '#22d3ee' },
+  { id: 6, src: '/images/presets/preset-6.png', border: '#22d3ee' },
+  { id: 7, src: '/images/presets/preset-7.png', border: '#22d3ee' },
+  { id: 8, src: '/images/presets/preset-8.png', border: '#22d3ee' },
+  { id: 9, src: '/images/presets/preset-9.png', border: '#22d3ee' },
+  { id: 10, src: '/images/presets/preset-10.png', border: '#22d3ee' },
 ];
 
 export default React.memo(function GlobalTopBar() {
@@ -151,13 +151,13 @@ export default React.memo(function GlobalTopBar() {
         <div className="flex items-center space-x-8">
           {/* Hub Connection */}
           <div className="flex items-center space-x-2">
-            <div className="relative flex items-center justify-center">
-              <div className={cn("w-2 h-2 rounded-full z-10", isOnline ? "bg-emerald-500" : "bg-red-500")} />
+            <div className="relative flex items-center justify-center w-1.5 h-1.5 flex-shrink-0">
+              <div className={cn("w-1.5 h-1.5 rounded-full z-10 transition-all duration-300", isOnline ? "bg-[#39FF14] shadow-[0_0_8px_#39FF14]" : "bg-red-500 shadow-[0_0_8px_#EF4444]")} />
               {isOnline && (
                 <motion.div 
-                  animate={{ scale: [1, 1.4, 1], opacity: [0.6, 0.2, 0.6] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                  className="absolute inset-0 bg-emerald-500 rounded-full"
+                  animate={{ scale: [1, 1.8, 1], opacity: [0.8, 0.2, 0.8] }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                  className="absolute inset-0 bg-[#39FF14] rounded-full"
                 />
               )}
             </div>
@@ -176,13 +176,30 @@ export default React.memo(function GlobalTopBar() {
 
           {/* Sync Status */}
           <div className="flex items-center space-x-2">
-            <Cloud size={14} className={cn(
-              syncState === 'synced' ? 'text-emerald-500' : 
-              syncState === 'syncing' ? 'text-amber-500 animate-pulse' : 'text-red-500'
-            )} />
+            <div className="relative flex items-center justify-center w-1.5 h-1.5 flex-shrink-0">
+              <div className={cn(
+                "w-1.5 h-1.5 rounded-full z-10 transition-all duration-300", 
+                syncState === 'synced' ? 'bg-[#00E5FF] shadow-[0_0_8px_#00E5FF]' : 
+                syncState === 'syncing' ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]' : 'bg-red-500 shadow-[0_0_8px_#EF4444]'
+              )} />
+              {syncState === 'synced' && (
+                <motion.div 
+                  animate={{ scale: [1, 1.8, 1], opacity: [0.8, 0.2, 0.8] }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                  className="absolute inset-0 bg-[#00E5FF] rounded-full"
+                />
+              )}
+              {syncState === 'syncing' && (
+                <motion.div 
+                  animate={{ scale: [1, 1.8, 1], opacity: [0.8, 0.2, 0.8] }}
+                  transition={{ duration: 1.0, repeat: Infinity, ease: "easeInOut" }}
+                  className="absolute inset-0 bg-amber-400 rounded-full"
+                />
+              )}
+            </div>
             <span className={cn(
               "text-[10px] font-black uppercase tracking-widest",
-              syncState === 'synced' ? 'text-emerald-500' : 
+              syncState === 'synced' ? 'text-[#00E5FF]' : 
               syncState === 'syncing' ? 'text-amber-500' : 'text-red-500'
             )}>
               {syncState === 'synced' ? 'Synced' : syncState === 'syncing' ? 'Syncing...' : syncState === 'error' ? 'Sync Error' : 'Offline'}
@@ -246,10 +263,10 @@ export default React.memo(function GlobalTopBar() {
 
               return (
                 <div 
-                  style={{ backgroundColor: preset.bg, borderColor: preset.border }}
-                  className="w-8 h-8 rounded-full border-2 flex items-center justify-center text-[10px] font-black text-white font-mono overflow-hidden"
+                  style={{ borderColor: preset.border }}
+                  className="w-8 h-8 rounded-full border flex items-center justify-center overflow-hidden bg-black/40 shadow-[0_0_8px_rgba(34,211,238,0.2)]"
                 >
-                  {initials}
+                  <img src={preset.src} alt="Preset Avatar" className="w-full h-full object-cover" />
                 </div>
               );
             })()}

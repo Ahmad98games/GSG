@@ -55,16 +55,16 @@ interface LocalConfig {
 }
 
 const PRESET_AVATARS = [
-  { id: 1, bg: '#1e3a5f', border: '#60A5FA' },
-  { id: 2, bg: '#1a2e1a', border: '#10B981' },
-  { id: 3, bg: '#3d1a00', border: '#C5A059' },
-  { id: 4, bg: '#2d1515', border: '#EF4444' },
-  { id: 5, bg: '#1a1a2e', border: '#8B5CF6' },
-  { id: 6, bg: '#0d2626', border: '#06B6D4' },
-  { id: 7, bg: '#2e2a1a', border: '#F59E0B' },
-  { id: 8, bg: '#1e1a2e', border: '#EC4899' },
-  { id: 9, bg: '#141414', border: '#6B7280' },
-  { id: 10, bg: '#1a1a1a', border: '#FFFFFF' },
+  { id: 1, src: '/images/presets/preset-1.png', label: 'Textile Loom', border: '#22d3ee' },
+  { id: 2, src: '/images/presets/preset-2.png', label: 'Factory Floor', border: '#22d3ee' },
+  { id: 3, src: '/images/presets/preset-3.png', label: 'Robotic Assembly', border: '#22d3ee' },
+  { id: 4, src: '/images/presets/preset-4.png', label: 'Apparel Warehouse', border: '#22d3ee' },
+  { id: 5, src: '/images/presets/preset-5.png', label: 'CNC Milling', border: '#22d3ee' },
+  { id: 6, src: '/images/presets/preset-6.png', label: 'SMT Circuit Line', border: '#22d3ee' },
+  { id: 7, src: '/images/presets/preset-7.png', label: 'Logistics Drones', border: '#22d3ee' },
+  { id: 8, src: '/images/presets/preset-8.png', label: 'Spinning Cotton', border: '#22d3ee' },
+  { id: 9, src: '/images/presets/preset-9.png', label: 'Laser Cutting', border: '#22d3ee' },
+  { id: 10, src: '/images/presets/preset-10.png', label: 'Sorting Conveyor', border: '#22d3ee' },
 ];
 
 const TABS = [
@@ -499,8 +499,8 @@ export default function SettingsPage() {
                             )}
                           </div>
 
-                          <div className="grid grid-cols-6 sm:grid-cols-11 gap-3 p-6 bg-white/5 border border-white/10 rounded-2xl relative overflow-hidden">
-                            {/* 10 Preset SVG Avatars */}
+                          <div className="grid grid-cols-6 sm:grid-cols-11 gap-3 p-6 bg-zinc-950/40 border border-zinc-800 rounded-sm relative overflow-hidden">
+                            {/* 10 Preset Corporate Industry Images */}
                             {PRESET_AVATARS.map((preset) => {
                               const isSelected = profile?.avatar_type === 'preset' && Number(profile?.avatar_preset_id) === preset.id;
                               return (
@@ -519,16 +519,18 @@ export default function SettingsPage() {
                                       });
                                     }
                                   }}
-                                  style={{ backgroundColor: preset.bg, borderColor: preset.border }}
                                   className={cn(
-                                    "aspect-square rounded-xl flex items-center justify-center font-black text-xs border-2 text-white relative transition-all group cursor-pointer hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40",
-                                    isSelected ? "ring-2 ring-white shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "opacity-80 hover:opacity-100"
+                                    "aspect-square rounded-sm overflow-hidden border flex items-center justify-center relative transition-all duration-200 group cursor-pointer hover:scale-105 disabled:cursor-not-allowed disabled:opacity-40",
+                                    isSelected 
+                                      ? "border-[#00e5ff] ring-1 ring-[#00e5ff] shadow-[0_0_15px_rgba(0,229,255,0.6)]" 
+                                      : "border-zinc-800 opacity-60 hover:opacity-100 hover:border-zinc-500"
                                   )}
+                                  title={preset.label}
                                 >
-                                  {initials}
+                                  <img src={preset.src} alt={preset.label} className="w-full h-full object-cover" />
                                   {isSelected && (
-                                    <div className="absolute -bottom-1 -right-1 bg-white text-black rounded-full p-0.5 border border-black shadow">
-                                      <CheckCircle2 size={10} className="fill-white stroke-black" />
+                                    <div className="absolute top-1 right-1 bg-cyan-500 text-black rounded-full p-0.5 shadow">
+                                      <CheckCircle2 size={10} className="fill-cyan-500 stroke-black" />
                                     </div>
                                   )}
                                 </button>
@@ -538,15 +540,15 @@ export default function SettingsPage() {
                             {/* 11th Custom Photo Camera Upload */}
                             <div className="relative aspect-square">
                               <label className={cn(
-                                "w-full h-full rounded-xl border-2 border-dashed border-white/20 flex flex-col items-center justify-center cursor-pointer transition-all hover:bg-white/5 hover:border-white/40",
-                                profile?.avatar_type === 'custom' ? "bg-white/10 border-electric-blue border-solid" : "",
+                                "w-full h-full rounded-sm border border-dashed border-zinc-800 flex flex-col items-center justify-center cursor-pointer transition-all hover:bg-white/5 hover:border-zinc-650",
+                                profile?.avatar_type === 'custom' ? "bg-white/10 border-[#00e5ff] border-solid" : "",
                                 isAvatarLocked && "pointer-events-none opacity-30"
                               )}>
                                 {profile?.avatar_type === 'custom' && (profile?.avatar_url || logoPreview) ? (
                                   <img 
                                     src={profile.avatar_url || logoPreview || ''} 
                                     alt="Custom" 
-                                    className="w-full h-full object-cover rounded-lg p-0.5" 
+                                    className="w-full h-full object-cover rounded-sm p-0.5" 
                                   />
                                 ) : (
                                   <Upload size={14} className="text-gray-500 group-hover:text-white" />
@@ -611,7 +613,7 @@ export default function SettingsPage() {
                         <input 
                           value={profile?.business_name || ''}
                           onChange={(e) => profile && setProfile({ ...profile, business_name: e.target.value })}
-                          className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-electric-blue/50"
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-sm px-4 py-3 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400 transition-all duration-200 text-white"
                         />
                       </div>
                       <div className="space-y-2">
@@ -619,7 +621,7 @@ export default function SettingsPage() {
                         <input 
                           value={(profile as any)?.owner_name || ''}
                           onChange={(e) => profile && setProfile({ ...profile, owner_name: e.target.value } as any)}
-                          className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-electric-blue/50"
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-sm px-4 py-3 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400 transition-all duration-200 text-white"
                         />
                       </div>
                       <div className="space-y-2">
@@ -632,23 +634,25 @@ export default function SettingsPage() {
                           value={(profile as any)?.owner_phone || ''}
                           onChange={(e) => profile && setProfile({ ...profile, owner_phone: e.target.value } as any)}
                           placeholder="e.g. 03001234567 or +923001234567"
-                          className="w-full bg-white/5 border border-[#25D366]/20 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-[#25D366]/50"
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-sm px-4 py-3 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400 transition-all duration-200 text-white"
                         />
-                        <p className="text-[10px] text-gray-600">Used when you press &quot;Send Daily Summary&quot; on Dashboard &amp; Reports.</p>
+                        <p className="text-[10px] text-gray-650 font-medium">Used when you press &quot;Send Daily Summary&quot; on Dashboard &amp; Reports.</p>
                       </div>
                       <div className="space-y-2">
                         <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Industry Key</label>
-                        <select 
-                          value={profile?.industry_key || ''}
-                          onChange={(e) => profile && setProfile({ ...profile, industry_key: e.target.value })}
-                          className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-electric-blue/50 appearance-none text-white [&>option]:bg-[#1A1D21]"
-                        >
-                          <option value="textiles">Textiles & Apparel</option>
-                          <option value="pharma">Pharmaceuticals</option>
-                          <option value="auto">Automotive Parts</option>
-                          <option value="food">Food & Beverage</option>
-                          <option value="logistics">Logistics & Supply Chain</option>
-                        </select>
+                        <div className="relative">
+                          <select 
+                            value={profile?.industry_key || ''}
+                            onChange={(e) => profile && setProfile({ ...profile, industry_key: e.target.value })}
+                            className="w-full bg-zinc-900 border border-zinc-800 rounded-sm px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400 transition-all duration-200 text-white appearance-none [&>option]:bg-[#1A1D21]"
+                          >
+                            <option value="textiles">Textiles & Apparel</option>
+                            <option value="pharma">Pharmaceuticals</option>
+                            <option value="auto">Automotive Parts</option>
+                            <option value="food">Food & Beverage</option>
+                            <option value="logistics">Logistics & Supply Chain</option>
+                          </select>
+                        </div>
                       </div>
                       <div className="space-y-2">
                         <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Tax Number (NTN/VAT)</label>
@@ -656,21 +660,23 @@ export default function SettingsPage() {
                           value={profile?.tax_number || ''}
                           onChange={(e) => profile && setProfile({ ...profile, tax_number: e.target.value })}
                           placeholder="e.g. 1234567-8"
-                          className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-electric-blue/50"
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-sm px-4 py-3 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400 transition-all duration-200 text-white"
                         />
                       </div>
                       <div className="space-y-2">
                         <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Default Currency</label>
-                        <select 
-                          value={profile?.currency || 'PKR'}
-                          onChange={(e) => profile && setProfile({ ...profile, currency: e.target.value })}
-                          className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-electric-blue/50 appearance-none text-white [&>option]:bg-[#1A1D21]"
-                        >
-                          <option value="PKR">PKR — Pakistani Rupee</option>
-                          <option value="USD">USD — US Dollar</option>
-                          <option value="AED">AED — Dirham</option>
-                          <option value="GBP">GBP — British Pound</option>
-                        </select>
+                        <div className="relative">
+                          <select 
+                            value={profile?.currency || 'PKR'}
+                            onChange={(e) => profile && setProfile({ ...profile, currency: e.target.value })}
+                            className="w-full bg-zinc-900 border border-zinc-800 rounded-sm px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400 transition-all duration-200 text-white appearance-none [&>option]:bg-[#1A1D21]"
+                          >
+                            <option value="PKR">PKR — Pakistani Rupee</option>
+                            <option value="USD">USD — US Dollar</option>
+                            <option value="AED">AED — Dirham</option>
+                            <option value="GBP">GBP — British Pound</option>
+                          </select>
+                        </div>
                       </div>
                     </div>
 
@@ -680,7 +686,7 @@ export default function SettingsPage() {
                         value={profile?.address || ''}
                         onChange={(e) => profile && setProfile({ ...profile, address: e.target.value })}
                         rows={3}
-                        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-electric-blue/50 resize-none"
+                        className="w-full bg-zinc-900 border border-zinc-800 rounded-sm px-4 py-3 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400 transition-all duration-200 text-white resize-none"
                       />
                     </div>
 

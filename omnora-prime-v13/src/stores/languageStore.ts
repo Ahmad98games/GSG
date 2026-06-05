@@ -12,7 +12,7 @@ interface LanguageStore {
   setLanguage: (lang: LanguageCode) => void;
 }
 
-const RTL_LANGS: LanguageCode[] = ['ur', 'ar', 'pa', 'fa'];
+const RTL_LANGS: LanguageCode[] = ['ur'];
 
 /** Apply locale-specific DOM attributes to the html element. */
 function applyDOMLocale(lang: LanguageCode): void {

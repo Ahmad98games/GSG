@@ -752,18 +752,22 @@ export default function OnboardingPage() {
       <style jsx global>{`
         .industrial-input {
           width: 100%;
-          background: #0F1113;
-          border: 1px solid #1A1D21;
+          background: #09090b;
+          border: 1px solid #27272a;
           padding: 0.75rem 1rem;
           color: white;
           font-size: 0.875rem;
           outline: none;
-          transition: all 0.2s;
-          border-radius: 0px;
+          transition: all 200ms ease-in-out;
+          border-radius: 2px;
         }
         .industrial-input:focus {
-          border-color: #0070F3;
-          background: #121417;
+          border-color: #22d3ee;
+          box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.5);
+          background: #09090b;
+        }
+        .industrial-input::placeholder {
+          color: #94a3b8;
         }
         .custom-scrollbar::-webkit-scrollbar {
           width: 4px;

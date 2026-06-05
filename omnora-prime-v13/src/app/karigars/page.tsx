@@ -229,31 +229,44 @@ export default function KarigarsPage() {
   }
 
   const columns = useMemo(() => [
-    columnHelper.accessor("photo_url", {
-      header: "",
+    columnHelper.accessor("name", {
+      header: "Name",
       cell: (info) => {
-        const url = info.getValue();
-        const initials = info.row.original.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        const k = info.row.original;
+        const initials = k.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '';
         return (
-          <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center bg-onyx border border-white/5 relative">
-            {url ? <Image src={url} alt={info.row.original.name} fill className="object-cover" /> : <span className="text-[10px] font-bold text-gray-600">{initials}</span>}
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-[#60A5FA]/20 flex items-center justify-center text-[10px] font-bold text-[#60A5FA] flex-shrink-0 overflow-hidden relative">
+              {k.photo_url ? (
+                <Image src={k.photo_url} alt={k.name} fill className="object-cover" />
+              ) : (
+                initials
+              )}
+            </div>
+            <span className="text-sm text-white font-medium">{k.name}</span>
           </div>
         );
       }
     }),
     columnHelper.accessor("karigar_code", {
       header: "Code",
-      cell: (info) => <span className="font-mono text-sandstone-gold text-[11px] font-bold">{info.getValue()}</span>,
-    }),
-    columnHelper.accessor("name", {
-      header: "Name",
-      cell: (info) => <span className="text-white text-sm font-medium">{info.getValue()}</span>,
+      cell: (info) => {
+        const k = info.row.original;
+        return (
+          <Link
+            href={`/karigars/${k.id}`}
+            className="text-[#60A5FA] hover:text-blue-300 transition-colors text-sm font-mono font-bold"
+          >
+            {k.karigar_code}
+          </Link>
+        );
+      }
     }),
     columnHelper.accessor("karigar_grades.grade_name", {
       header: "Grade",
       cell: (info) => (
-        <span className="px-2 py-0.5 bg-white/5 text-[9px] uppercase font-black text-gray-400 rounded-sm">
-          {info.getValue() || "N/A"}
+        <span className="text-xs text-gray-500">
+          {info.getValue() || "—"}
         </span>
       ),
     }),
@@ -408,10 +421,10 @@ export default function KarigarsPage() {
         </div>
            {/* Summary Bar */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <SummaryCard label={`Total ${workerTermPlural}`} value={stats.activeCount} sub="Active duty" />
-              <SummaryCard label="Present Today" value={stats.presentCount} sub="Attendance logged" />
-              <SummaryCard label="Advances (Peshgi)" value={fmt(stats.advancesOutstanding)} sub="Total outstanding" />
-              <SummaryCard label="Est. Payroll" value={fmt(stats.monthlyPayrollEst)} sub="Projected this month" />
+              <SummaryCard label={`Total ${workerTermPlural}`} value={stats.activeCount} isCurrency={false} sub="Active duty" />
+              <SummaryCard label="Present Today" value={stats.presentCount} isCurrency={false} sub="Attendance logged" />
+              <SummaryCard label="Advances (Peshgi)" value={stats.advancesOutstanding.toNumber()} sub="Total outstanding" />
+              <SummaryCard label="Est. Payroll" value={stats.monthlyPayrollEst.toNumber()} sub="Projected this month" />
             </div>
 
             <div className="flex justify-end">

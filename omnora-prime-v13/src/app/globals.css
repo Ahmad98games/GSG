@@ -1,4 +1,19 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap');
 @import "tailwindcss";
+
+/* Prevent layout shift during font load */
+[lang="ur"] {
+  font-family: "Noto Nastaliq Urdu", serif;
+  line-height: 2;  /* Nastaliq needs more line height */
+}
+
+/* Sidebar Urdu text specific fix */
+[lang="ur"] .sidebar-label {
+  font-size: 14px;
+  letter-spacing: 0;
+  direction: rtl;
+  text-align: right;
+}
 
 :root {
   /* Premium Ethereal Dark Cyberpunk Theme Config */

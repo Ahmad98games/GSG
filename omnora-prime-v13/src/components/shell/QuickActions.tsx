@@ -95,9 +95,11 @@ export default function QuickActions() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={toggleOpen}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-[#60A5FA] rounded-full flex items-center justify-center text-white shadow-[0_4px_24px_rgba(96,165,250,0.4)] z-[150]"
+        className={cn(
+          "fixed bottom-6 right-6 w-14 h-14 bg-[#09090b] border border-cyan-500/40 text-cyan-400 flex items-center justify-center transition-all duration-200 z-[150] rounded-[4px] shadow-[0_0_15px_rgba(34,211,238,0.15),_inset_0_0_8px_rgba(34,211,238,0.1)] hover:border-cyan-400 hover:text-white hover:shadow-[0_0_20px_rgba(34,211,238,0.3)]"
+        )}
       >
-        <Plus size={24} className={cn("transition-transform duration-300", isOpen ? "rotate-45" : "rotate-0")} />
+        <Plus size={24} className={cn("transition-transform duration-300", isOpen ? "rotate-45 text-red-400" : "rotate-0")} />
       </motion.button>
 
       {/* Palette */}

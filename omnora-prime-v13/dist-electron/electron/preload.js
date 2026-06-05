@@ -28,6 +28,11 @@ electron_1.contextBridge.exposeInMainWorld('electron', {
         return () => electron_1.ipcRenderer.removeListener('license-expired', listener);
     }
 });
+// Data Sovereignty API — lets the renderer ask where data lives on disk
+electron_1.contextBridge.exposeInMainWorld('electronAPI', {
+    getAppDataPath: () => electron_1.ipcRenderer.invoke('get-app-data-path'),
+    setConfig: (key, value) => electron_1.ipcRenderer.invoke('set-config', key, value),
+});
 electron_1.contextBridge.exposeInMainWorld('electronWindow', {
     minimize: () => electron_1.ipcRenderer.send('window-minimize'),
     maximize: () => electron_1.ipcRenderer.send('window-maximize'),

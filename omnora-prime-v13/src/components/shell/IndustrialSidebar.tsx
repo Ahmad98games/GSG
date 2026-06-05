@@ -50,16 +50,16 @@ import QuickProductionModal from "@/components/production/QuickProductionModal";
 import { TierBadge } from "../ui/TierBadge";
 
 const PRESET_AVATARS = [
-  { id: 1, bg: '#1e3a5f', border: '#60A5FA' },
-  { id: 2, bg: '#1a2e1a', border: '#10B981' },
-  { id: 3, bg: '#3d1a00', border: '#C5A059' },
-  { id: 4, bg: '#2d1515', border: '#EF4444' },
-  { id: 5, bg: '#1a1a2e', border: '#8B5CF6' },
-  { id: 6, bg: '#0d2626', border: '#06B6D4' },
-  { id: 7, bg: '#2e2a1a', border: '#F59E0B' },
-  { id: 8, bg: '#1e1a2e', border: '#EC4899' },
-  { id: 9, bg: '#141414', border: '#6B7280' },
-  { id: 10, bg: '#1a1a1a', border: '#FFFFFF' },
+  { id: 1, src: '/images/presets/preset-1.png', border: '#22d3ee' },
+  { id: 2, src: '/images/presets/preset-2.png', border: '#22d3ee' },
+  { id: 3, src: '/images/presets/preset-3.png', border: '#22d3ee' },
+  { id: 4, src: '/images/presets/preset-4.png', border: '#22d3ee' },
+  { id: 5, src: '/images/presets/preset-5.png', border: '#22d3ee' },
+  { id: 6, src: '/images/presets/preset-6.png', border: '#22d3ee' },
+  { id: 7, src: '/images/presets/preset-7.png', border: '#22d3ee' },
+  { id: 8, src: '/images/presets/preset-8.png', border: '#22d3ee' },
+  { id: 9, src: '/images/presets/preset-9.png', border: '#22d3ee' },
+  { id: 10, src: '/images/presets/preset-10.png', border: '#22d3ee' },
 ];
 
 interface NavItem {
@@ -204,10 +204,10 @@ export default React.memo(function IndustrialSidebar() {
     
     return (
       <div 
-        style={{ backgroundColor: preset.bg, borderColor: preset.border }}
-        className="w-8 h-8 rounded-full border-2 flex items-center justify-center text-[10px] font-black text-white font-mono overflow-hidden flex-shrink-0"
+        style={{ borderColor: preset.border }}
+        className="w-8 h-8 rounded-full border flex items-center justify-center overflow-hidden flex-shrink-0 bg-black/40 shadow-[0_0_8px_rgba(34,211,238,0.2)]"
       >
-        {initials}
+        <img src={preset.src} alt="Preset Avatar" className="w-full h-full object-cover" />
       </div>
     );
   };
@@ -360,26 +360,26 @@ const SidebarItem = React.memo(function SidebarItem({ href, icon: Icon, label: r
     <Link
       href={href}
       className={cn(
-        "flex items-center h-10 rounded-sm px-3 transition-all duration-150 group relative",
+        "flex items-center py-2.5 my-1.5 rounded-sm px-3 transition-all duration-200 group relative border-l-[3px]",
         isActive 
-          ? "text-electric-blue bg-electric-blue/10 border-l-2 border-electric-blue" 
-          : "text-noxis-text-muted hover:bg-noxis-overlay hover:text-noxis-text border-l-2 border-transparent"
+          ? "text-cyan-400 bg-cyan-950/20 border-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.15),_inset_4px_0_10px_-4px_rgba(34,211,238,0.2)]" 
+          : "text-slate-400 hover:bg-white/5 hover:text-slate-100 border-transparent"
       )}
     >
       <Icon className={cn(
-        "w-5 h-5 flex-shrink-0 transition-colors duration-150", 
-        isActive ? "text-electric-blue" : "text-noxis-text-muted group-hover:text-electric-blue"
+        "w-5 h-5 flex-shrink-0 transition-colors duration-200", 
+        isActive ? "text-cyan-400" : "text-slate-400 group-hover:text-cyan-400"
       )} />
       {!isCollapsed && (
         <>
           <span className={cn(
-            "ml-3 text-xs font-semibold whitespace-nowrap",
-            isActive ? "text-noxis-text font-black" : "text-noxis-text-muted"
+            "sidebar-label ml-3 text-xs font-semibold whitespace-nowrap tracking-wide-sm",
+            isActive ? "text-white font-black" : "text-slate-350 group-hover:text-white"
           )}>
             {label}
           </span>
           {badge && (
-            <span className="ml-auto text-[8px] font-black bg-electric-blue/20 text-electric-blue px-1.5 py-0.5 rounded-sm">
+            <span className="ml-auto text-[8px] font-black bg-cyan-500/20 text-cyan-400 px-1.5 py-0.5 rounded-sm">
               {badge}
             </span>
           )}

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useBusinessProfile } from '@/hooks/useBusinessProfile'
+import { PersonaEngine } from '@/lib/persona/PersonaEngine'
 import Fuse from 'fuse.js'
 import {
   Search, Package, Users, FileText,
@@ -207,7 +208,7 @@ export default function GlobalSearch() {
         invoices.value.data.forEach((inv: any) => dynamicResults.push({
           id: `invoice-${inv.id}`,
           label: `Invoice #${inv.invoice_number}`,
-          desc: `Rs. ${inv.total_amount || '0'}`,
+          desc: PersonaEngine.fmt(inv.total_amount || 0),
           route: `/invoices/${inv.id}`,
           icon: 'file',
           group: 'Invoices',

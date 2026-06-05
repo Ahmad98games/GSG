@@ -516,7 +516,7 @@ export default function PartyDetailPage() {
                       </div>
                     )}
 
-                    <button className="flex items-center justify-center space-x-2 bg-white/5 hover:bg-white/10 p-3 text-[10px] uppercase font-black tracking-widest border border-white/5 transition-all col-span-2">
+                    <button onClick={() => router.push(`/parties/${party.id}/edit`)} className="flex items-center justify-center space-x-2 bg-white/5 hover:bg-white/10 p-3 text-[10px] uppercase font-black tracking-widest border border-white/5 transition-all col-span-2">
                        <Edit3 size={12} />
                        <span>Edit Party Identity</span>
                     </button>

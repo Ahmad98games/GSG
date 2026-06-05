@@ -55,6 +55,7 @@ let nextServer = null;
 let visionProcess = null;
 let sessionTimeoutTimer = null;
 let warningTimer = null;
+let memoryMonitorInterval = null;
 let PORT = Number(process.env.PORT || 3000);
 let isReadOnly = false;
 const isDev = !electron_1.app.isPackaged;
@@ -282,6 +283,19 @@ else {
         }, SESSION_TIMEOUT_MS);
     }
     electron_1.ipcMain.on('user-activity', () => resetInactivityTimer());
+    function startMemoryMonitor() {
+        if (memoryMonitorInterval)
+            clearInterval(memoryMonitorInterval);
+        memoryMonitorInterval = setInterval(() => {
+            const mem = process.memoryUsage();
+            const heapMB = Math.round(mem.heapUsed / 1024 / 1024);
+            if (heapMB > 800) {
+                if (typeof global.gc === 'function')
+                    global.gc();
+                startupLog(`[Memory] GC triggered: ${heapMB} MB`);
+            }
+        }, 30000);
+    }
     // ─────────────────────────────────────────────
     // 6. TITLE BAR IPC
     // ─────────────────────────────────────────────
@@ -377,6 +391,12 @@ else {
             startupLog(`[FileMorph] HEIC conversion error: ${error.message}`);
             throw error;
         }
+    });
+    // ─────────────────────────────────────────────
+    // DATA SOVEREIGNTY IPC — returns where user data lives on disk
+    // ─────────────────────────────────────────────
+    electron_1.ipcMain.handle('get-app-data-path', () => {
+        return electron_1.app.getPath('userData');
     });
     // ─────────────────────────────────────────────
     // 7. WINDOW CREATION
@@ -561,6 +581,7 @@ else {
         if (mainWindow) {
             setupAutoUpdater(mainWindow);
         }
+        startMemoryMonitor();
         // ── Start vision engine ──
         spawnVisionEngine();
     });
@@ -573,6 +594,8 @@ else {
             clearTimeout(sessionTimeoutTimer);
         if (warningTimer)
             clearTimeout(warningTimer);
+        if (memoryMonitorInterval)
+            clearInterval(memoryMonitorInterval);
         if (visionProcess) {
             startupLog('[Vision] Killing vision process...');
             killProcess(visionProcess, 'Vision Engine');

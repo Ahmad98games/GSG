@@ -57,7 +57,7 @@ export default function WorkerNetworkPage() {
   }
   
   return (
-    <div className="min-h-screen bg-[#07090B] text-gray-200 p-6 md:p-8 font-sans select-none relative">
+    <div className="min-h-screen bg-[#0A0C0F] p-6 text-gray-200 md:p-8 font-sans select-none relative">
       <div className="absolute top-0 right-0 w-[500px] h-[250px] bg-electric-blue/5 rounded-full blur-[140px] pointer-events-none" />
       
       <main className="max-w-4xl mx-auto space-y-8">

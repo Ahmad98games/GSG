@@ -9,14 +9,28 @@ interface AnimatedNumberProps {
   value: Decimal | number | string;
   duration?: number;
   className?: string;
+  isCurrency?: boolean;
 }
 
-export default function AnimatedNumber({ value, duration = 0.6, className }: AnimatedNumberProps) {
-  const numValue = typeof value === 'string' ? parseFloat(value) : (value instanceof Decimal ? value.toNumber() : value);
-  const count = useMotionValue(numValue);
-  const rounded = useTransform(count, (latest) => PersonaEngine.fmt(latest));
+export default function AnimatedNumber({ value, duration = 0.6, className, isCurrency = true }: AnimatedNumberProps) {
+  const parseVal = (v: any): number => {
+    if (v === null || v === undefined) return 0;
+    if (typeof v === 'string') {
+      const cleaned = v.replace(/[^0-9.-]/g, '');
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    if (v instanceof Decimal) return v.toNumber();
+    if (typeof v === 'number') return isNaN(v) ? 0 : v;
+    return 0;
+  };
 
-  const prevValue = useRef(numValue);
+  const numValue = parseVal(value);
+  const count = useMotionValue(numValue);
+  const rounded = useTransform(count, (latest) => {
+    if (isNaN(latest)) return "0";
+    return isCurrency ? PersonaEngine.fmt(latest) : Math.round(latest).toLocaleString();
+  });
 
   useEffect(() => {
     const controls = animate(count, numValue, {

@@ -315,7 +315,7 @@ export default function PricingClient() {
                         </div>
                         <div className="flex justify-between items-center text-xs">
                           <span className="text-gray-500 uppercase tracking-wider text-[10px]">Account Name</span>
-                          <span className="text-white font-bold">Omnora Labs LLC</span>
+                          <span className="text-white font-bold">Ahmad Mahboob</span>
                         </div>
                         <div className="space-y-1">
                           <span className="text-gray-500 uppercase tracking-wider text-[10px] block">IBAN / Raast Account</span>

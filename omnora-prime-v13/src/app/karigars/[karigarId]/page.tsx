@@ -16,7 +16,7 @@ import Link from 'next/link';
 export default function KarigarDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { profile } = useBusinessProfile();
+  const { profile, isLoaded } = useBusinessProfile();
   const { term, workerTerm } = usePersona();
   const supabase = createClient();
   
@@ -34,19 +34,32 @@ export default function KarigarDetailPage() {
   const [copiedShareLink, setCopiedShareLink] = useState(false);
   
   useEffect(() => {
+    if (isLoaded && !profile?.id) {
+      router.push('/karigars');
+      return;
+    }
     if (!profile?.id || !karigarId) return;
-    loadKarigarDetails();
-  }, [profile?.id, karigarId]);
+
+    const controller = new AbortController();
+    loadKarigarDetails(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
+  }, [isLoaded, profile?.id, karigarId]);
   
-  const loadKarigarDetails = async () => {
+  const loadKarigarDetails = async (signal?: AbortSignal) => {
     try {
+      setLoading(true);
       // 1. Fetch Karigar record
       const { data: karRec, error: karErr } = await supabase
         .from('karigars')
         .select('*, karigar_grades(grade_name)')
         .eq('id', karigarId)
         .single();
-        
+         
+      if (signal?.aborted) return;
+
       if (karErr || !karRec) {
         router.push('/karigars');
         return;
@@ -60,6 +73,8 @@ export default function KarigarDetailPage() {
         .eq('karigar_id', karigarId)
         .eq('business_id', profile?.id)
         .maybeSingle();
+        
+      if (signal?.aborted) return;
         
       if (!ident && !identErr) {
         const { data: newIdent, error: createErr } = await supabase
@@ -75,6 +90,8 @@ export default function KarigarDetailPage() {
           })
           .select()
           .single();
+          
+        if (signal?.aborted) return;
           
         if (!createErr && newIdent) {
           ident = { ...newIdent, worker_skills: [] };
@@ -94,6 +111,8 @@ export default function KarigarDetailPage() {
         })
       ]);
       
+      if (signal?.aborted) return;
+      
       if (attStats.data !== null) {
         setAttendanceRate(Number(attStats.data));
       }
@@ -109,7 +128,9 @@ export default function KarigarDetailPage() {
     } catch (e) {
       console.error(e);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   };
   
@@ -215,7 +236,7 @@ export default function KarigarDetailPage() {
     );
   }
   
-  const initials = karigar?.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+  const initials = karigar?.name ? karigar.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) : '';
   
   return (
     <div className="min-h-screen bg-[#07090B] text-gray-200 p-6 md:p-8 font-sans select-none relative">

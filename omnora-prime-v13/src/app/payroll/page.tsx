@@ -114,12 +114,11 @@ export default function PayrollPage() {
              </button>
           </div>
         </div>
-           {/* Summary Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <SummaryCard label={`This Month ${term('payroll')}`} value={fmt(thisMonthTotal)} sub="Total This Month" />
-              <SummaryCard label={`${workerTermPlural} on ${term('payroll')}`} value={karigarStats?.count || 0} sub={`Active ${workerTermPlural}`} />
-              <SummaryCard label="Outstanding Advances" value={fmt(karigarStats?.advances || 0)} sub="Outstanding Advances" />
-           </div>
+              <SummaryCard label={`This Month ${term('payroll')}`} value={thisMonthTotal.toNumber()} sub="Total This Month" />
+              <SummaryCard label={`${workerTermPlural} on ${term('payroll')}`} value={karigarStats?.count || 0} isCurrency={false} sub={`Active ${workerTermPlural}`} />
+              <SummaryCard label="Outstanding Advances" value={karigarStats?.advances?.toNumber() || 0} sub="Outstanding Advances" />
+            </div>
 
            {/* Periods Registry */}
            <div className="bg-noxis-surface border border-noxis-border">

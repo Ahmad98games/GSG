@@ -208,3 +208,13 @@ function mergeDeep(target: any, source: any) {
 
   return target;
 }
+
+import { useLanguageStore } from "@/stores/languageStore";
+import { english } from "./en";
+import { urdu } from "./ur";
+
+export function t(key: string): string {
+  const language = useLanguageStore.getState().language;
+  const strings = language === 'ur' ? urdu : english;
+  return strings[key] || english[key] || key;
+}

@@ -85,7 +85,10 @@ export default function PartiesPage() {
     try {
       const { error } = await supabase
         .from('parties')
-        .update({ is_blocked: !party.is_blocked })
+        .update({ 
+          is_blocked: !party.is_blocked,
+          blocked_at: !party.is_blocked ? new Date().toISOString() : null
+        })
         .eq('id', party.id);
       
       if (error) throw error;
@@ -252,12 +255,11 @@ export default function PartiesPage() {
         </div>
 
         <div className="p-8 max-w-[1600px] mx-auto space-y-8">
-           {/* Summary Cards */}
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <SummaryCard label="Total Receivables" value={fmt(stats.receivable)} sub="Owed to us" icon={ArrowUpRight} color="text-emerald-500" />
-              <SummaryCard label="Total Payables" value={fmt(stats.payable)} sub="Owed to others" icon={ArrowDownLeft} color="text-red-500" />
-              <SummaryCard label="Blocked Accounts" value={stats.blocked} sub="Credit limit breaches" icon={ShieldAlert} color="text-amber-500" />
-           </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+               <SummaryCard label="Total Receivables" value={stats.receivable} sub="Owed to us" icon={ArrowUpRight} color="text-emerald-500" />
+               <SummaryCard label="Total Payables" value={stats.payable} sub="Owed to others" icon={ArrowDownLeft} color="text-red-500" />
+               <SummaryCard label="Blocked Accounts" value={stats.blocked} isCurrency={false} sub="Credit limit breaches" icon={ShieldAlert} color="text-amber-500" />
+            </div>
 
            {/* Table Controls */}
            <div className="bg-[#1A1D21] border border-white/5 p-4 flex items-center justify-between">
@@ -369,7 +371,14 @@ const PartyCard = React.memo(function PartyCard({
        <div className="space-y-6">
           <div className="flex items-start justify-between">
              <div className="space-y-1">
-                <h3 className="text-sm font-black uppercase text-white group-hover:text-[#0070F3] transition-colors">{party.name}</h3>
+                 <div className="flex items-center gap-2">
+                   <h3 className="text-sm font-black uppercase text-white group-hover:text-[#0070F3] transition-colors">{party.name}</h3>
+                   {party.is_blocked && (
+                     <span className="text-[9px] font-bold uppercase tracking-widest text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full">
+                       Blocked
+                     </span>
+                   )}
+                 </div>
                 <div className="flex items-center space-x-2 text-[9px] font-bold text-gray-600 uppercase tracking-widest">
                    <span className={cn("px-1.5 py-0.5 rounded-sm", party.party_type === 'customer' ? "bg-emerald-500/10 text-emerald-500" : "bg-blue-500/10 text-blue-400")}>
                       {party.party_type}

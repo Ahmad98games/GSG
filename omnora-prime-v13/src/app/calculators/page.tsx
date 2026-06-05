@@ -327,7 +327,7 @@ export default function IndustrialCalculatorsPage() {
                   title="Fabric Consumption"
                   sub="Find out how much fabric and cost for your order"
                   icon={Shirt}
-                  mainKpi={`Rs. ${parseFloat(fabricResults.totalCost).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                  mainKpi={fmt(parseFloat(fabricResults.totalCost))}
                   secondaryMetric={`Total Needed: ${fabricResults.totalMeters} m`}
                   onClick={() => setActiveCalcId(id)}
                   themeColor="blue"
