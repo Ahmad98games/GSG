@@ -430,17 +430,17 @@ export default function PricingClient() {
               {
                 method: 'NayaPay IBAN (Raast)',
                 number: 'PK74NAYA1234503218338768',
-                note: 'Recommended for Bank/E-Wallet transfer'
+                note: 'Ahmad Mahboob • Bank transfer'
               },
               {
                 method: 'JazzCash Mobile',
-                number: '0333-4355475',
-                note: 'Send to mobile account'
+                number: '0321-8338768',
+                note: 'Razia Sultana • Mobile account'
               },
               {
                 method: 'EasyPaisa Mobile',
-                number: '0333-4355475',
-                note: 'Send to mobile account'
+                number: '0321-8338768',
+                note: 'Razia Sultana • Mobile account'
               },
             ].map(p => (
               <div key={p.method}
