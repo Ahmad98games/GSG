@@ -179,7 +179,7 @@ export default function LandingClient() {
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed top-0 inset-x-0 z-50 border-b border-white/[0.04] bg-[#050507]/85 backdrop-blur-2xl"
+            className="fixed top-0 inset-x-0 z-50 border-b border-white/[0.04] bg-[#08090A]/85 backdrop-blur-2xl"
           >
             <div className="max-w-7xl mx-auto px-4 sm:px-6 h-[76px] flex items-center justify-between gap-4">
               <NavBrand />
@@ -290,7 +290,7 @@ export default function LandingClient() {
                   >
                     <a
                       href="https://wa.me/923334355475"
-                      className="w-full inline-flex items-center justify-center gap-2 border border-white/[0.08] bg-white/[0.02] text-white font-extrabold text-[10px] tracking-[0.2em] uppercase px-8 py-4 rounded-sm backdrop-blur-sm transition-all duration-300 hover:border-[#C9A962]/60 hover:text-[#E8D5B5]"
+                      className="w-full inline-flex items-center justify-center gap-2 border border-white/[0.08] bg-white/[0.02] text-white font-extrabold text-[10px] tracking-[0.2em] uppercase px-8 py-4 rounded-sm backdrop-blur-sm transition-all duration-300 hover:border-[#C5A059]/60 hover:text-[#E8D5B5]"
                       style={{
                         boxShadow: `0 4px 20px rgba(0,0,0,0.3)`
                       }}
@@ -320,13 +320,13 @@ export default function LandingClient() {
                   <div className="flex items-center gap-2">
                     <Image src="/logos/noxis.png" alt="" width={20} height={20} className="rounded object-contain" />
                     <span className="h-2 w-2 rounded-full bg-[#EF4444]/90" />
-                    <span className="h-2 w-2 rounded-full bg-[#C9A962]/90" />
+                    <span className="h-2 w-2 rounded-full bg-[#C5A059]/90" />
                     <span className="h-2 w-2 rounded-full bg-[#10B981]/90" />
                     <span className="text-[10px] text-gray-500 font-mono tracking-widest uppercase ml-1 hidden sm:inline">Cockpit v13.1</span>
                   </div>
                   <div className="flex items-center gap-3 sm:gap-4 text-[9px] font-mono uppercase tracking-wider">
                     <span className="flex items-center gap-1.5 text-[#10B981]"><Wifi size={11} /> Mesh</span>
-                    <span className="flex items-center gap-1.5 text-[#C9A962]"><Lock size={11} /> AES-256</span>
+                    <span className="flex items-center gap-1.5 text-[#C5A059]"><Lock size={11} /> AES-256</span>
                   </div>
                 </div>
 
@@ -452,12 +452,12 @@ export default function LandingClient() {
                             <div className="relative aspect-video rounded-lg border border-white/[0.06] bg-[#030304] overflow-hidden">
                               <motion.div
                                 className="absolute inset-0 opacity-40"
-                                style={{ background: 'linear-gradient(180deg, transparent 0%, rgba(34,211,238,0.08) 50%, transparent 100%)' }}
+                                style={{ background: 'linear-gradient(180deg, transparent 0%, rgba(0,229,255,0.08) 50%, transparent 100%)' }}
                                 animate={{ y: ['-100%', '200%'] }}
                                 transition={{ duration: 3.5, repeat: Infinity, ease: 'linear' }}
                               />
                               <svg className="absolute inset-0 w-full h-full opacity-40" aria-hidden>
-                                <line x1="10%" y1="70%" x2="90%" y2="70%" stroke="#C9A962" strokeWidth="1" strokeDasharray="4 4" />
+                                <line x1="10%" y1="70%" x2="90%" y2="70%" stroke="#C5A059" strokeWidth="1" strokeDasharray="4 4" />
                                 <line x1="30%" y1="20%" x2="30%" y2="80%" stroke="#10B981" strokeWidth="1" strokeDasharray="4 4" />
                                 <rect x="33%" y="28%" width="22%" height="28%" fill="none" stroke="#10B981" strokeWidth="1.5" />
                               </svg>
@@ -554,7 +554,7 @@ export default function LandingClient() {
             <Reveal variant="scale">
               <motion.div
                 className="rounded-2xl p-10 md:p-14 text-center border relative overflow-hidden"
-                style={{ borderColor: `${CHAMPAGNE}40`, background: 'linear-gradient(165deg, rgba(201,169,98,0.06) 0%, rgba(10,11,13,0.95) 45%)' }}
+                style={{ borderColor: `${CHAMPAGNE}40`, background: 'linear-gradient(165deg, rgba(197,160,89,0.06) 0%, rgba(10,11,13,0.95) 45%)' }}
                 whileHover={{ scale: 1.01 }}
                 transition={{ type: 'spring', stiffness: 200, damping: 24 }}
               >

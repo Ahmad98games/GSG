@@ -16,10 +16,10 @@ import { springs, stagger, fadeUp } from '@/lib/animations'
 
 const inViewOpts = { once: true, margin: '-80px' as const }
 
-export const CHAMPAGNE = '#C9A962'
+export const CHAMPAGNE = '#C5A059'
 export const CHAMPAGNE_LIGHT = '#E8D5B5'
-export const CYAN_ACCENT = '#22d3ee'
-export const OBSIDIAN = '#050507'
+export const CYAN_ACCENT = '#00E5FF'
+export const OBSIDIAN = '#08090A'
 
 const easeLuxury = [0.16, 1, 0.3, 1] as const
 
@@ -32,13 +32,13 @@ export function LandingBackdrop() {
 
   return (
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden>
-      <div className="absolute inset-0 bg-[#050507]" />
+      <div className="absolute inset-0 bg-[#08090A]" />
       <div
         className="absolute inset-0 opacity-[0.35] noxis-grid-drift"
         style={{
           backgroundImage: `
-            linear-gradient(rgba(201,169,98,0.04) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(201,169,98,0.04) 1px, transparent 1px)
+            linear-gradient(rgba(197,160,89,0.04) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(197,160,89,0.04) 1px, transparent 1px)
           `,
           backgroundSize: '64px 64px',
           animation: reduce ? 'none' : 'noxis-grid-drift 24s linear infinite',
@@ -59,7 +59,7 @@ export function LandingBackdrop() {
           repeat: Infinity,
           ease: "easeInOut",
         }}
-        className="absolute top-[12%] left-[10%] w-[350px] h-[350px] rounded-full bg-[#C9A962]/5 blur-[120px] pointer-events-none"
+        className="absolute top-[12%] left-[10%] w-[350px] h-[350px] rounded-full bg-[#C5A059]/5 blur-[120px] pointer-events-none"
       />
       <motion.div
         animate={{
@@ -79,7 +79,7 @@ export function LandingBackdrop() {
         style={{ y: y2, background: CYAN_ACCENT }}
         className="absolute top-[45%] right-[-10%] w-[400px] h-[400px] rounded-full blur-[100px] opacity-[0.04]"
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-[#12101a]/50 via-transparent to-[#050507]" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#12101a]/50 via-transparent to-[#08090A]" />
     </div>
   )
 }
@@ -131,7 +131,7 @@ export function BrandLogo({
           />
         )}
         <div
-          className="absolute inset-0 rounded-xl overflow-hidden border border-white/[0.12] bg-[#0a0c10] shadow-[0_0_40px_rgba(34,211,238,0.12),0_0_60px_rgba(201,169,98,0.08)]"
+          className="absolute inset-0 rounded-xl overflow-hidden border border-white/[0.12] bg-[#0a0c10] shadow-[0_0_40px_rgba(0,229,255,0.12),0_0_60px_rgba(197,160,89,0.08)]"
         >
           <Image
             src="/logos/noxis.png"
@@ -457,11 +457,11 @@ export function FeatureCard({
       >
         <Link
           href={href}
-          className="group block p-8 rounded-xl border border-white/[0.05] bg-[#0A0B0D]/80 backdrop-blur-md hover:border-[#C9A962]/40 transition-all duration-300 relative overflow-hidden"
+          className="group block p-8 rounded-xl border border-white/[0.05] bg-[#0A0B0D]/80 backdrop-blur-md hover:border-[#C5A059]/40 transition-all duration-300 relative overflow-hidden"
           style={{ boxShadow: '0 4px 30px rgba(0,0,0,0.4)' }}
         >
           {/* Animated luxury glow hover border */}
-          <div className="absolute inset-0 border border-transparent group-hover:border-[#C9A962]/20 rounded-xl transition-colors duration-300" />
+          <div className="absolute inset-0 border border-transparent group-hover:border-[#C5A059]/20 rounded-xl transition-colors duration-300" />
           <motion.div
             className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
             style={{
@@ -470,7 +470,7 @@ export function FeatureCard({
           />
           <div className="relative">
             <motion.div
-              className="w-11 h-11 rounded-lg flex items-center justify-center border border-[#C9A962]/30 bg-[#C9A962]/10 mb-6 group-hover:bg-[#C9A962]/20 transition-all duration-300"
+              className="w-11 h-11 rounded-lg flex items-center justify-center border border-[#C5A059]/30 bg-[#C5A059]/10 mb-6 group-hover:bg-[#C5A059]/20 transition-all duration-300"
               whileHover={reduce ? {} : { rotate: [0, -6, 6, 0] }}
               transition={{ duration: 0.5 }}
             >
@@ -506,7 +506,7 @@ export function CockpitTabs({
               type="button"
               onClick={() => onSelect(tab.id)}
               className={`relative flex-none lg:w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-[10px] font-bold uppercase tracking-[0.12em] transition-colors snap-start ${
-                isActive ? 'text-[#050507]' : 'text-[#94A3B8] hover:text-white'
+                isActive ? 'text-[#08090A]' : 'text-[#94A3B8] hover:text-white'
               }`}
             >
               {isActive && (
@@ -565,7 +565,7 @@ export function TypewriterConsole({ lines }: { lines: string[] }) {
             line.includes('SUCCESS') || line.includes('STABILITY')
               ? 'text-[#10B981]'
               : line.includes('OFFLINE')
-                ? 'text-[#C9A962]'
+                ? 'text-[#C5A059]'
                 : 'text-gray-500'
           }
         >
