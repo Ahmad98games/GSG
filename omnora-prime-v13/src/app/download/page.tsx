@@ -1,61 +1,47 @@
 'use client'
-
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Download, 
-  Key, 
-  AlertTriangle, 
-  CheckCircle2, 
-  MessageSquare, 
-  ArrowRight, 
-  Copy, 
-  ExternalLink,
-  Laptop,
-  Smartphone,
-  ShieldCheck,
-  RefreshCw
-} from 'lucide-react'
-import { FloatingOrb } from '@/components/ui/AnimatedComponents'
+import { Download, Check, AlertCircle, Loader } from 'lucide-react'
 
-const SUPABASE_URL = 'https://zgxmvwxzjmpmesqliwxl.supabase.co'
+const SUPABASE_URL =
+  process.env.NEXT_PUBLIC_SUPABASE_URL!
+const SUPABASE_ANON_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-// For now all tiers use the same installer
-const SINGLE_EXE = 'https://pub-[hash].r2.dev/NoxisSetup.exe'
-const SINGLE_APK = 'https://pub-[hash].r2.dev/noxis.apk'
+// REAL R2 URLs — update these after upload
+const EXE_URL =
+  process.env.NEXT_PUBLIC_EXE_URL ||
+  'https://pub-REPLACE.r2.dev/NoxisSetup.exe'
+const APK_URL =
+  process.env.NEXT_PUBLIC_APK_URL ||
+  'https://pub-REPLACE.r2.dev/noxis.apk'
 
-type VerifyResult = {
+type LicenseResult = {
   valid: boolean
-  tier?: string
-  customer_name?: string
-  expires_at?: string
-  is_trial?: boolean
+  tier: string
+  is_trial: boolean
+  days_remaining: number | null
+  max_devices: number
+  expires_at: string | null
   error?: string
 }
 
 export default function DownloadPage() {
   const [key, setKey] = useState('')
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<VerifyResult | null>(null)
-  const [step, setStep] = useState<'enter' | 'verified' | 'downloading'>('enter')
-  const [copied, setCopied] = useState(false)
+  const [result, setResult] =
+    useState<LicenseResult | null>(null)
+  const [error, setError] = useState('')
 
-  const handleVerify = async () => {
-    const cleaned = key.trim().toUpperCase()
-    if (!cleaned || cleaned.length < 10) {
-      setResult({ 
-        valid: false,
-        error: 'Please enter a valid license key format' 
-      })
+  const verify = async () => {
+    const trimmed = key.trim().toUpperCase()
+    if (!trimmed) {
+      setError('Enter your license key')
       return
     }
 
     setLoading(true)
+    setError('')
     setResult(null)
-
-    // Abort controller for a strict 10s request timeout to prevent indefinite page freezes
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 10000)
 
     try {
       const res = await fetch(
@@ -64,399 +50,358 @@ export default function DownloadPage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer sb_publishable_cGJQMAam_R4JU3X4IEIrkQ_EPeSsQIt`,
+            'apikey': SUPABASE_ANON_KEY,
           },
           body: JSON.stringify({
-            license_key: cleaned
+            license_key: trimmed,
+            device_id: 'website-download-check',
           }),
-          signal: controller.signal
         }
       )
-      clearTimeout(timeoutId)
 
-      const data: VerifyResult = await res.json()
-      setResult(data)
+      const data = await res.json()
 
-      if (data.valid) {
-        setStep('verified')
-        // Auto-start download after 2 seconds
-        setTimeout(() => {
-          triggerDownload(SINGLE_EXE, 'NoxisSetup.exe')
-          setStep('downloading')
-        }, 2000)
+      if (!data.valid) {
+        setError(
+          data.error ||
+          'Invalid license key. Check the key and try again.'
+        )
+      } else {
+        setResult(data)
       }
-    } catch (err: any) {
-      clearTimeout(timeoutId)
-      const isAbort = err.name === 'AbortError'
-      setResult({
-        valid: false,
-        error: isAbort 
-          ? 'The verification request timed out. Please check your network and try again.'
-          : 'Connection failed. Verify your internet connection and try again.'
-      })
+    } catch {
+      setError(
+        'Cannot connect to verify. Check your internet connection.'
+      )
     } finally {
       setLoading(false)
     }
   }
 
-  const triggerDownload = (url: string, name: string) => {
-    const a = document.createElement('a')
-    a.href = url
-    a.download = name
-    a.target = '_blank'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
+  const TIER_COLORS: Record<string, string> = {
+    elite: 'text-[#C5A059] border-[#C5A059]/30 bg-[#C5A059]/5',
+    pro: 'text-blue-400 border-blue-500/30 bg-blue-500/5',
+    lite: 'text-gray-400 border-white/15 bg-white/3',
   }
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(key)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  const tierColors: Record<string, string> = {
-    lite: '#9CA3AF',
-    pro: '#3B82F6',
-    elite: '#C5A059',
-  }
-
-  const tierGlows: Record<string, string> = {
-    lite: 'rgba(156,163,175,0.15)',
-    pro: 'rgba(59,130,246,0.15)',
-    elite: 'rgba(197,160,89,0.15)',
-  }
-
-  const tierColor = tierColors[result?.tier || 'lite'] || '#3B82F6'
-  const tierGlow = tierGlows[result?.tier || 'lite'] || 'rgba(59,130,246,0.15)'
 
   return (
-    <main className="min-h-screen bg-[#070809] text-white font-sans flex flex-col items-center justify-between py-16 px-6 relative overflow-hidden select-none">
-      {/* Background Orbs */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <FloatingOrb color="rgba(96,165,250,0.05)" size={500} x="20%" y="20%" delay={0} blur={120} />
-        <FloatingOrb color="rgba(197,160,89,0.04)" size={400} x="80%" y="70%" delay={4} blur={115} />
-      </div>
-      
-      {/* Header / Logo */}
-      <div className="flex items-center gap-3 z-10 select-none mb-12">
-        <div className="w-10 h-10 flex items-center justify-center bg-white/5 border border-white/10 rounded-xl p-2">
-          <img
-            src="/logos/noxis.png"
-            alt="Noxis"
-            className="w-full h-full object-contain"
-            onError={e => {
-              (e.target as HTMLImageElement).style.display = 'none'
-            }}
-          />
-        </div>
-        <span className="text-xl font-black tracking-[0.2em] text-white font-mono uppercase">
+    <div className="min-h-screen bg-[#070809]
+      text-white">
+
+      {/* Nav */}
+      <nav className="border-b border-white/[0.06]
+        px-6 h-14 flex items-center justify-between
+        bg-[#070809]">
+        <a href="/"
+          className="font-black text-sm
+            tracking-widest uppercase">
           NOXIS
-        </span>
-      </div>
+        </a>
+        <a href="/pricing"
+          className="text-xs text-gray-500
+            hover:text-white transition-colors">
+          Pricing →
+        </a>
+      </nav>
 
-      {/* Main Glassmorphism Card Wrapper */}
-      <div className="w-full max-w-[500px] bg-white/[0.02] border border-white/10 backdrop-blur-md rounded-2xl shadow-[0_30px_60px_rgba(0,0,0,0.8)] p-8 md:p-10 z-10 relative overflow-hidden">
-        {/* Glow border line at the top */}
-        <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+      <div className="max-w-lg mx-auto px-6
+        py-16">
 
-        <AnimatePresence mode="wait">
-          {step === 'enter' && (
-            <motion.div
-              key="enter"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.3 }}
-              className="space-y-6"
-            >
-              <div className="space-y-2">
-                <h1 className="text-2xl font-black tracking-tight text-white uppercase">
-                  Download Noxis
-                </h1>
-                <p className="text-gray-400 text-xs leading-relaxed font-medium">
-                  Verify your license key to download your offline-first industrial client installer. Your license was sent to your registered email and WhatsApp after purchase.
+        <div className="text-center mb-10">
+          <h1 className="text-2xl font-bold
+            tracking-tight mb-3">
+            Download Noxis
+          </h1>
+          <p className="text-sm text-gray-500">
+            Enter your license key to access
+            the download links.
+          </p>
+          <p className="text-xs text-gray-600 mt-1">
+            No key?{' '}
+            <a
+              href="https://wa.me/923334355475"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#60A5FA]
+                hover:text-blue-300">
+              Get a free trial on WhatsApp
+            </a>
+          </p>
+        </div>
+
+        {/* Key input */}
+        {!result && (
+          <div className="space-y-4">
+            <div>
+              <label className="text-[10px]
+                font-semibold uppercase
+                tracking-widest text-gray-500
+                block mb-2">
+                License key
+              </label>
+              <input
+                type="text"
+                value={key}
+                onChange={e => {
+                  setError('')
+                  setKey(
+                    e.target.value
+                      .toUpperCase()
+                      .replace(/[^A-Z0-9-]/g, '')
+                      .slice(0, 19)
+                  )
+                }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') verify()
+                }}
+                placeholder="TRIA-XXXX-XXXX-XXXX"
+                className="w-full bg-[#161A1F]
+                  border border-white/10 text-white
+                  text-sm font-mono px-4 py-3.5
+                  outline-none tracking-widest
+                  focus:border-[#60A5FA]/40
+                  placeholder:text-gray-700
+                  placeholder:tracking-normal"
+                autoFocus
+              />
+            </div>
+
+            {error && (
+              <div className="flex items-start
+                gap-2 p-3 bg-red-500/5
+                border border-red-500/20">
+                <AlertCircle size={14}
+                  className="text-red-400
+                    flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-red-400">
+                  {error}
                 </p>
               </div>
+            )}
 
-              {/* Key Input */}
-              <div className="space-y-2">
-                <label className="text-[9px] uppercase font-bold text-gray-500 tracking-[0.25em] block">
-                  License Key
-                </label>
-                <div className="relative">
-                  <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                  <input
-                    type="text"
-                    value={key}
-                    onChange={e => {
-                      const v = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')
-                      const parts = v.match(/.{1,4}/g) || []
-                      setKey(parts.join('-').slice(0, 19))
-                      setResult(null)
-                    }}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') handleVerify()
-                    }}
-                    placeholder="XXXX-XXXX-XXXX-XXXX"
-                    className="w-full bg-[#0B0C0F] border border-white/10 rounded-xl pl-12 pr-4 py-4 text-base font-mono text-white focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all placeholder:text-gray-700 tracking-[0.1em]"
-                  />
-                  {key && (
-                    <button 
-                      onClick={() => setKey('')}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-bold text-gray-500 hover:text-white uppercase tracking-widest"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
+            <button
+              onClick={verify}
+              disabled={loading || !key.trim()}
+              className="w-full py-3.5 text-sm
+                font-bold bg-[#60A5FA] text-black
+                hover:bg-blue-400 transition-colors
+                disabled:opacity-50
+                disabled:cursor-not-allowed
+                flex items-center justify-center gap-2"
+            >
+              {loading
+                ? <><Loader size={14}
+                    className="animate-spin" />
+                    Verifying...</>
+                : 'Verify Key & Download'}
+            </button>
+          </div>
+        )}
+
+        {/* Success — show downloads */}
+        {result && (
+          <div className="space-y-4">
+
+            {/* License info */}
+            <div className={`p-4 border rounded-sm
+              ${TIER_COLORS[result.tier] ||
+                TIER_COLORS.lite}`}>
+              <div className="flex items-center
+                gap-2 mb-2">
+                <Check size={14} />
+                <span className="text-xs
+                  font-bold uppercase tracking-widest">
+                  {result.tier} license verified
+                </span>
               </div>
-
-              {/* Error Panel */}
-              {result?.error && (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="bg-red-500/5 border border-red-500/10 rounded-xl p-4 flex items-start gap-3 text-red-400 text-xs leading-relaxed font-medium"
-                >
-                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{result.error}</span>
-                </motion.div>
-              )}
-
-              {/* Action Button */}
-              <button
-                onClick={handleVerify}
-                disabled={loading || !key}
-                className="w-full flex items-center justify-center gap-2 py-4 bg-blue-500 hover:bg-blue-400 disabled:bg-gray-800 disabled:text-gray-500 text-black rounded-xl text-xs font-black uppercase tracking-[0.2em] transition-all duration-150 cursor-pointer disabled:cursor-not-allowed transform hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-blue-500/10"
-              >
-                {loading ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Verifying...</span>
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4" />
-                    <span>Verify & Download</span>
-                  </>
+              <div className="text-xs space-y-1
+                opacity-80">
+                {result.is_trial && (
+                  <p>Trial — {result.days_remaining
+                    ?? 3} days remaining</p>
                 )}
-              </button>
+                <p>{result.max_devices} devices
+                  included</p>
+                {result.expires_at && (
+                  <p>Expires:{' '}
+                    {new Date(result.expires_at)
+                      .toLocaleDateString('en-PK')}
+                  </p>
+                )}
+              </div>
+            </div>
 
-              {/* Deep Link Launch shortcut */}
-              <button
-                onClick={() => {
-                  window.location.href = 'noxishub://open'
-                  setTimeout(() => {
-                    if (document.hasFocus()) {
-                      alert("If the Noxis Hub app is not opening, please download and install the APK first.")
-                    }
-                  }, 2000)
-                }}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-white/5 border border-white/10 hover:bg-white/10 text-gray-300 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition-all"
-              >
-                <Smartphone className="w-3.5 h-3.5" />
-                <span>Open Noxis Hub App</span>
-              </button>
-
-              {/* Trial Support Segment */}
-              <div className="pt-6 border-t border-white/5 space-y-4">
-                <div className="flex flex-col items-center justify-center text-center space-y-2">
-                  <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
-                    Don&apos;t have a verified license key?
-                  </span>
-                  <p className="text-[11px] text-gray-400 max-w-xs leading-normal">
-                    You can request a free 3-day trial key to test the system offline immediately.
+            {/* Hub download */}
+            <div className="p-5 bg-[#0F1114]
+              border border-white/8 rounded-sm">
+              <div className="flex items-start
+                justify-between mb-4">
+                <div>
+                  <p className="text-sm font-bold
+                    text-white">
+                    Noxis Hub
+                  </p>
+                  <p className="text-xs text-gray-500
+                    mt-0.5">
+                    Windows PC — Electron desktop app
+                  </p>
+                  <p className="text-[10px]
+                    text-gray-700 mt-1">
+                    Windows 10 / 11 · 64-bit
                   </p>
                 </div>
+                <span className="text-[10px]
+                  text-gray-600 font-mono">
+                  .exe
+                </span>
+              </div>
+              <a
+                href={EXE_URL}
+                download="NoxisSetup.exe"
+                className="flex items-center
+                  justify-center gap-2 w-full
+                  py-3 text-sm font-bold
+                  bg-[#60A5FA] text-black
+                  hover:bg-blue-400
+                  transition-colors"
+              >
+                <Download size={15} />
+                Download NoxisSetup.exe
+              </a>
+            </div>
 
-                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            {/* Mobile APK */}
+            <div className="p-5 bg-[#0F1114]
+              border border-white/8 rounded-sm">
+              <div className="flex items-start
+                justify-between mb-4">
+                <div>
+                  <p className="text-sm font-bold
+                    text-white">
+                    Noxis Mobile
+                  </p>
+                  <p className="text-xs text-gray-500
+                    mt-0.5">
+                    Android phone or tablet
+                  </p>
+                  <p className="text-[10px]
+                    text-gray-700 mt-1">
+                    Android 10+ · No root required
+                  </p>
+                </div>
+                <span className="text-[10px]
+                  text-gray-600 font-mono">
+                  .apk
+                </span>
+              </div>
+
+              {/* APK install warning */}
+              <div className="p-3 bg-amber-500/5
+                border border-amber-500/20
+                text-[10px] text-amber-400
+                mb-3 leading-relaxed">
+                Allow "Install from unknown sources"
+                in Android Settings → Security
+                before installing.
+              </div>
+              <a
+                href={APK_URL}
+                download="noxis.apk"
+                className="flex items-center
+                  justify-center gap-2 w-full
+                  py-3 text-sm font-bold
+                  bg-[#25D366] text-black
+                  hover:bg-emerald-400
+                  transition-colors"
+              >
+                <Download size={15} />
+                Download noxis.apk
+              </a>
+            </div>
+
+            {/* Installation steps */}
+            <div className="p-4 bg-[#0F1114]
+              border border-white/6 rounded-sm">
+              <p className="text-[10px] font-semibold
+                uppercase tracking-widest
+                text-gray-500 mb-3">
+                Quick start
+              </p>
+              <div className="space-y-2">
+                {[
+                  '1. Install NoxisSetup.exe on your Windows PC',
+                  '2. Open Noxis Hub and enter this license key',
+                  '3. Complete the 2-minute business setup',
+                  '4. Install noxis.apk on Android phones',
+                  '5. Open mobile app → Scan QR on Hub to pair',
+                ].map((step, i) => (
+                  <p key={i}
+                    className="text-xs text-gray-500
+                      leading-relaxed">
+                    {step}
+                  </p>
+                ))}
+              </div>
+              <div className="mt-4 pt-3
+                border-t border-white/6">
+                <p className="text-[10px]
+                  text-gray-600">
+                  Need help installing?{' '}
                   <a
-                    href="https://wa.me/923334355475?text=Hi, I want to try Noxis. Please send me a trial key."
+                    href="https://wa.me/923334355475?text=Help installing Noxis"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#25D366] hover:brightness-110 text-black text-[10px] font-black uppercase tracking-widest rounded-xl text-center transition-all"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5" />
-                    <span>WhatsApp Trial</span>
+                    className="text-[#25D366]
+                      hover:text-emerald-400">
+                    WhatsApp us →
                   </a>
-                  
-                  <a
-                    href="/pricing"
-                    className="flex-1 flex items-center justify-center py-3 bg-white/5 border border-white/10 hover:bg-white/10 text-gray-300 text-[10px] font-black uppercase tracking-widest rounded-xl text-center transition-all"
-                  >
-                    <span>View Pricing Plans</span>
-                  </a>
-                </div>
+                </p>
               </div>
-            </motion.div>
-          )}
+            </div>
 
-          {(step === 'verified' || step === 'downloading') && result?.valid && (
-            <motion.div
-              key="verified"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.3 }}
-              className="space-y-6 text-center"
+            {/* Try another key */}
+            <button
+              onClick={() => {
+                setResult(null)
+                setKey('')
+                setError('')
+              }}
+              className="w-full text-xs
+                text-gray-600 hover:text-gray-400
+                transition-colors py-2"
             >
-              {/* Success Ring Indicator */}
-              <div className="flex flex-col items-center justify-center">
-                <div className="w-16 h-16 bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-500 rounded-full animate-pulse shadow-[0_0_20px_rgba(16,185,129,0.1)] mb-4">
-                  <CheckCircle2 className="w-8 h-8" />
-                </div>
+              Use a different key
+            </button>
+          </div>
+        )}
 
-                {/* Dynamic Tier Badge */}
-                <div 
-                  style={{ 
-                    backgroundColor: `${tierColor}15`, 
-                    borderColor: `${tierColor}40`,
-                    color: tierColor,
-                    boxShadow: `0 0 15px ${tierGlow}`
-                  }}
-                  className="inline-block border rounded-full px-4 py-1 text-[10px] font-black uppercase tracking-[0.2em] mb-4"
-                >
-                  {result.tier} Plan Verified
-                </div>
-
-                <h2 className="text-xl font-bold tracking-tight text-white uppercase">
-                  Welcome, {result.customer_name}
-                </h2>
-                <p className="text-gray-400 text-xs mt-1">
-                  {step === 'downloading'
-                    ? 'Your download has started. Check your browser downloads folder.'
-                    : 'Securing package. Download starting in 2 seconds...'}
-                </p>
-
-                {result.is_trial && (
-                  <span className="text-[10px] bg-amber-500/10 border border-amber-500/20 text-amber-500 px-3 py-0.5 rounded-full uppercase font-black tracking-widest mt-3">
-                    3-Day Trial — Starts Today
-                  </span>
-                )}
-              </div>
-
-              {/* Verified License Key Box */}
-              <div className="bg-[#0B0C0F] border border-white/5 rounded-xl p-5 space-y-3 relative overflow-hidden select-text text-center">
-                <span className="text-[9px] uppercase font-bold text-gray-600 tracking-[0.2em] block">
-                  Your Master License Key
-                </span>
-                <p 
-                  style={{ color: tierColor }}
-                  className="font-mono text-base font-black tracking-[0.08em]"
-                >
-                  {key}
-                </p>
-                <p className="text-[10px] text-red-500 font-bold leading-normal">
-                  This key also serves as your admin credentials password. Keep it secure and do not share it.
-                </p>
-                
-                <button
-                  onClick={handleCopy}
-                  className="mt-2 inline-flex items-center gap-2 py-2 px-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-[10px] text-gray-300 transition-all font-bold uppercase tracking-wider cursor-pointer"
-                >
-                  <Copy className="w-3 h-3" />
-                  <span>{copied ? 'Copied!' : 'Copy Key'}</span>
-                </button>
-              </div>
-
-              {/* Native Download Platform Options */}
-              <div className="flex flex-col gap-3">
-                <a
-                  href={SINGLE_EXE}
-                  onClick={() => triggerDownload(SINGLE_EXE, 'NoxisSetup.exe')}
-                  className="flex items-center justify-center gap-3 py-4 bg-blue-500 hover:bg-blue-400 text-black text-xs font-black uppercase tracking-[0.2em] rounded-xl transition-all shadow-lg shadow-blue-500/15"
-                >
-                  <Laptop className="w-4 h-4" />
-                  <span>Download for Windows (.exe)</span>
-                </a>
-                
-                <a
-                  href={SINGLE_APK}
-                  onClick={() => triggerDownload(SINGLE_APK, 'noxis.apk')}
-                  className="flex items-center justify-center gap-3 py-4 bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-black uppercase tracking-[0.2em] rounded-xl transition-all shadow-lg shadow-emerald-500/15"
-                >
-                  <Smartphone className="w-4 h-4" />
-                  <span>Download for Android (.apk)</span>
-                </a>
-
-                {/* Deep Link Launch Shortcut */}
-                <button
-                  onClick={() => {
-                    window.location.href = 'noxishub://open'
-                    setTimeout(() => {
-                      if (document.hasFocus()) {
-                        alert("If the Noxis Hub app is not opening, please verify that it is installed on your Android device.")
-                      }
-                    }, 2000)
-                  }}
-                  className="w-full flex items-center justify-center gap-3 py-4 bg-white/5 border border-white/10 hover:bg-white/10 text-gray-300 text-xs font-black uppercase tracking-[0.2em] rounded-xl transition-all"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  <span>Launch Android App</span>
-                </button>
-              </div>
-
-              {/* Walkthrough Guide */}
-              <div className="border-t border-white/5 pt-5 text-left space-y-4">
-                <span className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em]">
-                  Installation Protocol
-                </span>
-                
-                <div className="space-y-3">
-                  {[
-                    'Execute NoxisSetup.exe on your Windows workstation',
-                    'Paste your verified master key to unlock features offline',
-                    'Noxis will launch and setup local system databases',
-                    'Pair your mobile device using the companion APK'
-                  ].map((text, idx) => (
-                    <div key={idx} className="flex gap-3 items-start text-xs leading-normal">
-                      <span className="w-5 h-5 flex items-center justify-center bg-blue-500/10 text-blue-400 rounded font-mono font-bold text-[10px]">
-                        {idx + 1}
-                      </span>
-                      <span className="text-gray-400 font-medium">
-                        {text}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Reset to different key */}
-              <div className="pt-4 flex flex-col items-center gap-2">
-                <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <span>Questions?</span>
-                  <a
-                    href="https://wa.me/923334355475"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[#25D366] hover:underline flex items-center gap-1 font-bold"
-                  >
-                    <span>WhatsApp Support</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-
-                <button
-                  onClick={() => {
-                    setStep('enter')
-                    setKey('')
-                    setResult(null)
-                  }}
-                  className="text-[10px] text-gray-600 hover:text-white font-bold uppercase tracking-widest mt-4 transition-colors cursor-pointer"
-                >
-                  Use a different key
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Bottom info */}
+        <div className="mt-12 text-center
+          space-y-2">
+          <p className="text-[10px] text-gray-700">
+            v13.1 · Omnora Labs · Lahore, Pakistan
+          </p>
+          <p className="text-[10px] text-gray-700">
+            <a href="/docs"
+              className="hover:text-gray-500">
+              Docs
+            </a>
+            {' · '}
+            <a href="/privacy"
+              className="hover:text-gray-500">
+              Privacy
+            </a>
+            {' · '}
+            <a
+              href="https://wa.me/923334355475"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-gray-500">
+              Support
+            </a>
+          </p>
+        </div>
       </div>
-
-      {/* Footer copyright */}
-      <div className="mt-12 text-[10px] text-gray-600 font-bold uppercase tracking-[0.2em] text-center z-10 select-none">
-        © 2025 Omnora Labs · noxishub.app
-      </div>
-    </main>
+    </div>
   )
 }

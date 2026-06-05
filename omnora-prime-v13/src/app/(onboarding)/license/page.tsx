@@ -1,279 +1,362 @@
-'use client';
+'use client'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { saveLicenseToLocal } from './actions'
 
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter } from 'next/navigation';
-import { Shield, Key, Loader2, AlertCircle, CheckCircle2, HelpCircle, ChevronDown } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
-import { cn } from '@/lib/utils';
-import { saveLicenseToLocal, storeBusinessId } from './actions';
-import { useBusinessProfileStore } from '@/store/BusinessProfileStore';
-import { useTierStore } from '@/stores/tierStore';
-import Image from 'next/image';
+const EDGE_FUNCTION_URL =
+  process.env.NEXT_PUBLIC_SUPABASE_URL +
+  '/functions/v1/verify-license'
+
+// Generate a device fingerprint
+function getDeviceId(): string {
+  let id = localStorage.getItem(
+    'noxis_device_id'
+  )
+  if (!id) {
+    id = 'hub-' +
+      Math.random().toString(36).slice(2) +
+      '-' +
+      Date.now().toString(36)
+    localStorage.setItem('noxis_device_id', id)
+  }
+  return id
+}
 
 export default function LicensePage() {
-  const [licenseKey, setLicenseKey] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [showHelp, setShowHelp] = useState(false);
-  const router = useRouter();
-  const supabase = createClient();
+  const router = useRouter()
+  const [key, setKey] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [checking, setChecking] = useState(true)
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    
-    // Auto-format: LITE-XXXX-XXXX-XXXX
-    let formatted = '';
-    for (let i = 0; i < val.length; i++) {
-      if (i > 0 && i % 4 === 0) formatted += '-';
-      formatted += val[i];
+  useEffect(() => {
+    // Check if already licensed
+    const stored = localStorage.getItem(
+      'noxis_license'
+    )
+    if (stored) {
+      try {
+        const license = JSON.parse(stored)
+        if (license.valid) {
+          // Re-validate to check expiry
+          validateStored(license, stored)
+          return
+        }
+      } catch {}
     }
-    
-    setLicenseKey(formatted.substring(0, 19)); // Max length LITE-XXXX-XXXX-XXXX
-    setError(null);
-  };
+    setChecking(false)
+  }, [])
+
+  const validateStored = async (
+    license: any,
+    raw: string
+  ) => {
+    // If trial, check if expired
+    if (license.is_trial && license.expires_at) {
+      const expired = new Date(license.expires_at)
+        < new Date()
+      if (expired) {
+        localStorage.removeItem('noxis_license')
+        setError(
+          'Your 3-day trial has expired. Contact +92 333 435 5475 to purchase.'
+        )
+        setChecking(false)
+        return
+      }
+    }
+    // Set cookie for quick middleware check
+    document.cookie = `noxis_license_active=true; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Strict`;
+    // Still valid
+    router.push('/dashboard')
+  }
 
   const handleActivate = async () => {
-    if (!licenseKey || licenseKey.length < 14) {
-      setError('Please enter a valid license key');
-      return;
+    const trimmed = key.trim().toUpperCase()
+    if (!trimmed) {
+      setError('Enter your license key')
+      return
     }
 
-    setIsLoading(true);
-    setError(null);
+    // Basic format check: XXXX-XXXX-XXXX-XXXX
+    const format = /^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/
+    if (!format.test(trimmed)) {
+      setError(
+        'Invalid format. Key should be like: TRIA-XXXX-XXXX-XXXX'
+      )
+      return
+    }
+
+    setLoading(true)
+    setError('')
 
     try {
-      // Step 1: Verify license with Edge Function
-      const { data: licenseData, error: verifyError } = await supabase.functions.invoke('verify-license', {
-        body: { license_key: licenseKey.trim().toUpperCase() }
-      });
+      const deviceId = getDeviceId()
 
-      if (verifyError || !licenseData?.valid) {
-        setError(licenseData?.error || 'Invalid or expired license key');
-        setIsLoading(false);
-        return;
-      }
-
-      // Step 2: Sign in or create account (License = Password)
-      const email = licenseData.customer_email;
-      const password = licenseKey.trim().toUpperCase();
-
-      // Try sign in first
-      const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (signInError) {
-        // Account doesn't exist or wrong password? 
-        // If it's a new license, we should try to sign up
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              license_key: licenseKey,
-              tier: licenseData.tier,
-            }
-          }
-        });
-
-        if (signUpError) {
-          setError('Account initialization failed: ' + signUpError.message);
-          setIsLoading(false);
-          return;
+      const response = await fetch(
+        EDGE_FUNCTION_URL,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': process.env
+              .NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+          },
+          body: JSON.stringify({
+            license_key: trimmed,
+            device_id: deviceId,
+          }),
         }
+      )
+
+      const data = await response.json()
+
+      if (!data.valid) {
+        setError(
+          data.error ||
+          'Invalid license key. Check the key and try again.'
+        )
+        setLoading(false)
+        return
       }
 
-      // Step 3: Store license in local config (Server Action)
-      const saveRes = await saveLicenseToLocal(
-        licenseKey,
-        licenseData.tier,
-        licenseData.is_trial,
-        licenseData.expires_at
-      );
-      if (!saveRes.success) throw new Error('Local storage failed');
+      // Store license locally
+      localStorage.setItem(
+        'noxis_license',
+        JSON.stringify({
+          ...data,
+          license_key: trimmed,
+          activated_locally_at:
+            new Date().toISOString(),
+        })
+      )
 
-      // Step 4: Restore/Initialize User Data
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase
-          .from('business_profiles')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-
-        // Set Tier in Store
-        useTierStore.getState().setTier(
-          licenseData.tier,
-          licenseData.expires_at,
-          licenseData.is_trial
-        );
-
-        if (profile) {
-          await storeBusinessId(profile.id);
-          useBusinessProfileStore.getState().setProfile(profile);
-          router.push('/dashboard');
-        } else {
-          router.push('/setup');
-        }
-      } else {
-        router.push('/setup');
-      }
+      // Store tier for tierStore
+      localStorage.setItem(
+        'noxis_tier', data.tier
+      )
+      localStorage.setItem(
+        'noxis_max_devices',
+        String(data.max_devices)
+      )
 
       // Set cookie for quick middleware check
       document.cookie = `noxis_license_active=true; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Strict`;
 
-    } catch (err: any) {
-      setError(err.message || 'Activation failed');
+      // Save to local config SQLite DB via Server Action
+      try {
+        await saveLicenseToLocal(
+          trimmed,
+          data.tier,
+          data.is_trial,
+          data.expires_at
+        )
+      } catch (dbErr) {
+        console.error('Failed to save license to local DB:', dbErr)
+      }
+
+      // Show success then redirect
+      router.push('/setup')
+
+    } catch (err) {
+      // Network offline — try offline grace period
+      const stored = localStorage.getItem(
+        'noxis_license'
+      )
+      if (stored) {
+        const license = JSON.parse(stored)
+        const lastValidated = new Date(
+          license.activated_locally_at || 0
+        )
+        const hoursAgo = (Date.now() -
+          lastValidated.getTime())
+          / (1000 * 60 * 60)
+
+        if (hoursAgo < 72) {
+          // Set cookie for quick middleware check
+          document.cookie = `noxis_license_active=true; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Strict`;
+          // 72 hour offline grace period
+          router.push('/dashboard')
+          return
+        }
+      }
+
+      setError(
+        'Cannot connect to verify license. Check internet connection. Offline grace period: 72 hours.'
+      )
     } finally {
-      setIsLoading(false);
+      setLoading(false)
     }
-  };
+  }
+
+  if (checking) return (
+    <div className="min-h-screen bg-[#070809]
+      flex items-center justify-center">
+      <div className="w-8 h-8 border-2
+        border-blue-500/20 border-t-blue-500
+        rounded-full animate-spin" />
+    </div>
+  )
 
   return (
-    <div className="min-h-screen bg-[#0F1113] flex flex-col items-center justify-center p-6 font-sans text-white relative overflow-hidden">
-      {/* Background Decor */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,#3b82f60a,transparent_70%)] pointer-events-none" />
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500/20 to-transparent" />
-      
-      <motion.div 
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-xl w-full relative z-10 space-y-12"
-      >
-        {/* Logo Section */}
-        <div className="flex flex-col items-center space-y-6">
-          <div className="w-20 h-20 relative">
-            <Image src="/logos/noxis.png" alt="Noxis" fill className="object-contain brightness-200" />
-          </div>
-          <div className="text-center space-y-1">
-            <h1 className="text-3xl font-black tracking-tighter uppercase italic">Activate Noxis</h1>
-            <p className="text-gray-500 text-sm font-medium uppercase tracking-[0.2em]">Enter your license key to get started</p>
-          </div>
+    <div className="min-h-screen bg-[#070809]
+      flex items-center justify-center p-6">
+      <div className="w-full max-w-md">
+
+        {/* Logo */}
+        <div className="text-center mb-10">
+          <img src="/logos/noxis.png"
+            alt="Noxis"
+            className="w-12 h-12 mx-auto mb-4
+              object-contain"
+            onError={e => {
+              (e.target as HTMLImageElement)
+                .style.display = 'none'
+            }}
+          />
+          <h1 className="text-2xl font-bold
+            text-white tracking-tight">
+            Activate Noxis Hub
+          </h1>
+          <p className="text-sm text-gray-500 mt-2">
+            Enter your license key to continue
+          </p>
         </div>
 
-        {/* Form Section */}
-        <div className="space-y-8">
-          <div className="space-y-4">
-            <div className="relative group">
-              <input
-                type="text"
-                value={licenseKey}
-                onChange={handleInputChange}
-                placeholder="LITE-XXXX-XXXX-XXXX"
-                spellCheck={false}
-                autoFocus
-                className={cn(
-                  "w-full bg-white/[0.02] border border-white/10 focus:border-blue-500/50 outline-none rounded-2xl py-8 text-center font-mono text-3xl tracking-widest transition-all placeholder:text-white/5 placeholder:tracking-normal",
-                  error && "border-red-500/50 bg-red-500/5"
-                )}
-                disabled={isLoading}
-              />
-            </div>
-
-            <div className="flex items-center gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-500/90 text-xs">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <p className="font-medium">
-                ⚠ Your license key is also your account password. Keep it private. Do not share it with anyone — not even Omnora Labs support.
-              </p>
-            </div>
-
-            <AnimatePresence>
-              {error && (
-                <motion.div 
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs"
-                >
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span className="font-bold uppercase tracking-tight">{error}</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          <div className="space-y-6">
-            <button
-              onClick={handleActivate}
-              disabled={isLoading || !licenseKey}
-              className="w-full bg-[#3B82F6] hover:bg-blue-600 disabled:opacity-30 text-white font-black py-6 rounded-2xl transition-all shadow-[0_0_40px_rgba(59,130,246,0.2)] uppercase tracking-widest flex items-center justify-center gap-4 h-[76px]"
-            >
-              {isLoading ? (
-                <Loader2 className="w-6 h-6 animate-spin" />
-              ) : (
-                <>
-                  <Key className="w-5 h-5" />
-                  <span>Activate System</span>
-                </>
-              )}
-            </button>
-
-            <div className="flex flex-col items-center space-y-4">
-              <button 
-                onClick={() => setLicenseKey('')}
-                className="text-gray-500 hover:text-white transition-colors text-xs font-bold uppercase tracking-widest"
-              >
-                Already have an account? Sign in with license key
-              </button>
-              <a 
-                href="https://wa.me/923334355475" 
-                target="_blank"
-                className="text-blue-500/60 hover:text-blue-500 transition-colors text-xs font-bold uppercase tracking-widest"
-              >
-                Need a license? Contact Sales
-              </a>
-            </div>
-          </div>
+        {/* Input */}
+        <div className="mb-4">
+          <label className="text-[10px]
+            font-semibold uppercase tracking-widest
+            text-gray-500 block mb-2">
+            License key
+          </label>
+          <input
+            type="text"
+            value={key}
+            onChange={e => {
+              setError('')
+              // Auto-format as user types:
+              // XXXX-XXXX-XXXX-XXXX
+              const val = e.target.value
+                .toUpperCase()
+                .replace(/[^A-Z0-9-]/g, '')
+                .slice(0, 19)
+              setKey(val)
+            }}
+            onKeyDown={e => {
+              if (e.key === 'Enter')
+                handleActivate()
+            }}
+            placeholder="TRIA-XXXX-XXXX-XXXX"
+            className="w-full bg-[#161A1F]
+              border border-white/10 text-white
+              text-sm font-mono px-4 py-3.5
+              outline-none tracking-widest
+              focus:border-[#60A5FA]/40
+              placeholder:text-gray-700
+              placeholder:tracking-normal"
+            autoFocus
+          />
         </div>
-      </motion.div>
 
-      {/* Help Bar */}
-      <div className="fixed bottom-0 left-0 w-full p-8 bg-gradient-to-t from-black/50 to-transparent">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
-            <div className="flex items-center gap-3 text-gray-500">
-              <HelpCircle className="w-4 h-4" />
-              <p className="text-[10px] font-bold uppercase tracking-widest">
-                Make sure you are connected to the internet. Activation requires a one-time connection.
-              </p>
-            </div>
-            
-            <button 
-              onClick={() => setShowHelp(!showHelp)}
-              className="flex items-center gap-2 text-white/40 hover:text-white transition-colors text-[10px] font-black uppercase tracking-widest"
-            >
-              Getting 'Failed to Fetch' error?
-              <ChevronDown className={cn("w-3 h-3 transition-transform", showHelp && "rotate-180")} />
-            </button>
+        {/* Error */}
+        {error && (
+          <div className="mb-4 p-3
+            bg-red-500/5 border border-red-500/20
+            text-xs text-red-400 leading-relaxed">
+            {error}
           </div>
+        )}
 
-          <AnimatePresence>
-            {showHelp && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl grid grid-cols-1 md:grid-cols-3 gap-6"
-              >
-                <div className="space-y-2">
-                  <span className="text-[9px] font-black text-blue-500 uppercase">Step 1</span>
-                  <p className="text-xs text-gray-400">Check your WiFi or LAN connection for internet access.</p>
-                </div>
-                <div className="space-y-2">
-                  <span className="text-[9px] font-black text-blue-500 uppercase">Step 2</span>
-                  <p className="text-xs text-gray-400">Disable any active VPN or proxy that might block the node.</p>
-                </div>
-                <div className="space-y-2">
-                  <span className="text-[9px] font-black text-blue-500 uppercase">Step 3</span>
-                  <p className="text-xs text-gray-400">Wait 30 seconds and try again. If issues persist, contact support.</p>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+        {/* Activate button */}
+        <button
+          onClick={handleActivate}
+          disabled={loading || !key.trim()}
+          className="w-full py-3.5 text-sm
+            font-bold bg-[#60A5FA] text-black
+            hover:bg-blue-400
+            disabled:opacity-50
+            disabled:cursor-not-allowed
+            transition-colors"
+        >
+          {loading
+            ? 'Activating...'
+            : 'Activate Noxis'}
+        </button>
+
+        {/* Help */}
+        <div className="mt-6 space-y-3">
+          <p className="text-xs text-gray-600
+            text-center">
+            No key?{' '}
+            <a
+              href="https://wa.me/923334355475?text=I want to buy Noxis Hub"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#60A5FA]
+                hover:text-blue-300
+                transition-colors"
+            >
+              Purchase on WhatsApp →
+            </a>
+          </p>
+          <p className="text-xs text-gray-700
+            text-center">
+            Trial keys available at noxishub.app
+          </p>
+        </div>
+
+        {/* Tier info */}
+        <div className="mt-8 p-4 bg-[#0F1114]
+          border border-white/6 rounded-sm">
+          <p className="text-[9px] font-semibold
+            uppercase tracking-widest text-gray-600
+            mb-3">
+            License tiers
+          </p>
+          {[
+            {
+              prefix: 'TRIA',
+              name: 'Free Trial',
+              desc: '3 days, all Elite features'
+            },
+            {
+              prefix: 'LITE',
+              name: 'Lite — PKR 2,500/mo',
+              desc: '5 devices, 2 cameras'
+            },
+            {
+              prefix: 'PROP',
+              name: 'Pro — PKR 6,500/mo',
+              desc: '15 devices, AI detection'
+            },
+            {
+              prefix: 'ELIT',
+              name: 'Elite — PKR 14,000/mo',
+              desc: '50 devices, full features'
+            },
+          ].map(t => (
+            <div key={t.prefix}
+              className="flex items-center
+              justify-between py-1.5 border-b
+              border-white/4 last:border-0">
+              <div>
+                <p className="text-[10px]
+                  font-medium text-white">
+                  {t.name}
+                </p>
+                <p className="text-[9px]
+                  text-gray-600">
+                  {t.desc}
+                </p>
+              </div>
+              <span className="text-[9px]
+                font-mono text-gray-600">
+                {t.prefix}-...
+              </span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
-  );
+  )
 }

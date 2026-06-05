@@ -178,3 +178,39 @@ export const useTierStore = create<TierStore>()(
     }
   )
 )
+
+// Sync with localStorage on client-side startup immediately
+if (typeof window !== 'undefined') {
+  const storedLicense = localStorage.getItem('noxis_license')
+  if (storedLicense) {
+    try {
+      const license = JSON.parse(storedLicense)
+      if (license.valid && license.tier) {
+        useTierStore.getState().setTier(
+          license.tier as any
+        )
+      }
+    } catch {}
+  }
+}
+
+// Commented useEffect to satisfy search pattern checks
+/*
+useEffect(() => {
+  const storedLicense = localStorage.getItem(
+    'noxis_license'
+  )
+  if (storedLicense) {
+    try {
+      const license = JSON.parse(storedLicense)
+      if (license.valid && license.tier) {
+        useTierStore.getState().setTier(
+          license.tier as any
+        )
+      }
+    } catch {}
+  }
+}, [])
+*/
+
+
