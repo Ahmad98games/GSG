@@ -32,6 +32,7 @@ export default function WelcomeGuide({
   const firstName = ownerName.split(' ')[0];
 
   const handleAction = (path: string) => {
+    onClose(false); // Mark onboarding as complete
     router.push(path);
   };
 

@@ -1,20 +1,18 @@
-import { db } from './client'
-
-export function applyProductionPragmas() {
+export function applyProductionPragmas(sqlite: any) {
   // WAL mode: concurrent reads during writes
-  db.$client.pragma('journal_mode = WAL')
+  sqlite.pragma('journal_mode = WAL')
   // Synchronous NORMAL: safe + fast (not FULL)
-  db.$client.pragma('synchronous = NORMAL')
+  sqlite.pragma('synchronous = NORMAL')
   // 64MB cache (low-end PC has 4GB+ RAM)
-  db.$client.pragma('cache_size = -65536')
+  sqlite.pragma('cache_size = -65536')
   // Memory-mapped I/O: 256MB
-  db.$client.pragma('mmap_size = 268435456')
+  sqlite.pragma('mmap_size = 268435456')
   // Temp tables in memory
-  db.$client.pragma('temp_store = MEMORY')
+  sqlite.pragma('temp_store = MEMORY')
   // Foreign keys enforced
-  db.$client.pragma('foreign_keys = ON')
+  sqlite.pragma('foreign_keys = ON')
   // Page size optimized for SSD
-  db.$client.pragma('page_size = 4096')
+  sqlite.pragma('page_size = 4096')
   // Auto-checkpoint WAL at 1000 pages
-  db.$client.pragma('wal_autocheckpoint = 1000')
+  sqlite.pragma('wal_autocheckpoint = 1000')
 }

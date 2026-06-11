@@ -50,6 +50,13 @@ const nextConfig: NextConfig = {
     unoptimized: true,
   },
   serverExternalPackages: serverOnlyPackages,
+  experimental: {
+    optimizePackageImports: [
+      'framer-motion',
+      'lucide-react',
+      '@supabase/supabase-js',
+    ],
+  },
 
   turbopack: {
     root: projectRoot,

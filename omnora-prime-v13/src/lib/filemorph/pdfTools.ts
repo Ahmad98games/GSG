@@ -62,27 +62,20 @@ export async function imagesToPdf(
 }
 
 /**
- * Adds a confidential watermark/stamp to a PDF.
- * Note: Real password protection requires native encryption libraries.
+ * PDF password protection is NOT available in the browser.
+ * Real encryption requires native libraries (not available in pdf-lib browser build).
+ * The Desktop app uses a native binding for this.
  */
-export async function protectPdf(pdfBytes: ArrayBuffer): Promise<Uint8Array> {
-  const pdf = await PDFDocument.load(pdfBytes);
-  const pages = pdf.getPages();
-  const font = await pdf.embedFont(StandardFonts.HelveticaBold);
-
-  for (const page of pages) {
-    const { height } = page.getSize();
-    page.drawText('CONFIDENTIAL / SYSTEM PROTECTED', {
-      x: 50,
-      y: height - 50,
-      size: 10,
-      font,
-      color: rgb(0.8, 0, 0),
-      opacity: 0.5,
-    });
-  }
-
-  return await pdf.save();
+export async function protectPdf(
+  _pdfBytes: ArrayBuffer | File,
+  _password?: string,
+  _onProgress?: (p: number) => void
+): Promise<Uint8Array> {
+  throw new Error(
+    'PDF password protection requires the Noxis Desktop app. ' +
+    'In browser, use your system PDF printer to "Print to PDF" ' +
+    'and set a password there, or use Adobe Acrobat.'
+  );
 }
 
 /**

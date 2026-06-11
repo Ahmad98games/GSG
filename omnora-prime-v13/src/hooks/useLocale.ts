@@ -50,6 +50,6 @@ export function useNoxisLocale() {
     fmt: (amount: number | string) => formatCurrency(amount, locale),
     fmtNum: (val: number | string) => formatNumber(val, locale),
     fmtDate: (date: Date | string) => formatDate(date, locale),
-    isRTL: locale === 'ur'
+    isRTL: ['ur', 'ar', 'fa', 'he', 'ps'].includes(locale as any)
   };
 }

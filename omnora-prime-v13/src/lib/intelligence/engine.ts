@@ -121,3 +121,119 @@ function getWeekBucket(daysOffset: number): string {
   const monday = new Date(d.setDate(diff))
   return monday.toISOString().split('T')[0]
 }
+
+export async function generateSelfInsights(
+  businessId: string,
+  profile: any
+): Promise<any[]> {
+  const supabase = createClient()
+  const insights: any[] = []
+
+  try {
+    // Low stock items
+    const { data: lowStock } = await supabase
+      .from('skus')
+      .select('id, name, qty_on_hand, reorder_level')
+      .eq('business_id', businessId)
+      .eq('is_active', true)
+      .gt('reorder_level', 0)
+      .limit(5)
+
+    const actualLowStock = (lowStock || [])
+      .filter((s: any) =>
+        s.qty_on_hand <= s.reorder_level * 1.5
+      )
+
+    if (actualLowStock.length > 0) {
+      insights.push({
+        type: 'low_stock',
+        title: `${actualLowStock.length} item${actualLowStock.length > 1 ? 's' : ''} running low`,
+        summary: `${actualLowStock.map((s: any) => s.name).join(', ')} ${actualLowStock.length > 1 ? 'are' : 'is'} below reorder level.`,
+        urgency: 'warning',
+        action: 'Create purchase order',
+        action_route: '/purchase/new',
+        action_label: 'Order Now',
+      })
+    }
+
+    // Overdue invoices
+    const today = new Date().toISOString()
+      .split('T')[0]
+    const { count: overdueCount } =
+      await supabase
+        .from('invoices')
+        .select('id', {
+          count: 'exact', head: true
+        })
+        .eq('business_id', businessId)
+        .eq('status', 'posted')
+        .lt('due_date', today)
+
+    if (overdueCount && overdueCount > 0) {
+      insights.push({
+        type: 'overdue_invoices',
+        title: `${overdueCount} overdue invoice${overdueCount > 1 ? 's' : ''}`,
+        summary: `${overdueCount} customer${overdueCount > 1 ? 's have' : ' has'} unpaid invoices past the due date.`,
+        urgency: overdueCount > 3
+          ? 'critical' : 'warning',
+        action: 'Follow up with customers',
+        action_route: '/invoices',
+        action_label: 'View Invoices',
+      })
+    }
+
+    // Promises due today
+    const { count: promisesDue } =
+      await supabase
+        .from('payment_promises')
+        .select('id', {
+          count: 'exact', head: true
+        })
+        .eq('business_id', businessId)
+        .in('status', ['pending', 'due_today'])
+        .lte('promise_date', today)
+
+    if (promisesDue && promisesDue > 0) {
+      insights.push({
+        type: 'promises_due',
+        title: `${promisesDue} payment promise${promisesDue > 1 ? 's' : ''} due`,
+        summary: `${promisesDue} customer${promisesDue > 1 ? 's' : ''} committed to paying today or earlier.`,
+        urgency: 'high',
+        action: 'Send reminders',
+        action_route: '/promises',
+        action_label: 'View Promises',
+      })
+    }
+
+    // No invoices this week
+    const weekAgo = new Date(
+      Date.now() - 7 * 24 * 60 * 60 * 1000
+    ).toISOString()
+
+    const { count: weekInvoices } =
+      await supabase
+        .from('invoices')
+        .select('id', {
+          count: 'exact', head: true
+        })
+        .eq('business_id', businessId)
+        .gte('created_at', weekAgo)
+
+    if (weekInvoices === 0) {
+      insights.push({
+        type: 'no_invoices',
+        title: 'No invoices this week',
+        summary: 'No invoices posted in 7 days. Are sales going unrecorded?',
+        urgency: 'info',
+        action: 'Create an invoice',
+        action_route: '/invoices/new',
+        action_label: 'New Invoice',
+      })
+    }
+
+  } catch (err) {
+    console.error('[Intelligence] Self-insights error:', err)
+  }
+
+  return insights
+}

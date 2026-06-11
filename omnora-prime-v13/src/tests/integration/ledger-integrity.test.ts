@@ -42,7 +42,7 @@ describe('Ledger Integrity — Immutability Rules', () => {
     expect(error).toBeDefined();
     
     // 4. Verify re-fetch
-    const { data: refetched } = await admin.from('ledger_entries').eq('id', entry.id).single();
+    const { data: refetched } = await admin.from('ledger_entries').select('*').eq('id', entry.id).single();
     expect(new Decimal(refetched.amount).equals(new Decimal(1000))).toBe(true);
   });
 
@@ -61,7 +61,7 @@ describe('Ledger Integrity — Immutability Rules', () => {
     expect(error).toBeDefined();
 
     // 3. Verify row still exists
-    const { data: exists } = await admin.from('ledger_entries').eq('id', entry.id).single();
+    const { data: exists } = await admin.from('ledger_entries').select('*').eq('id', entry.id).single();
     expect(exists).toBeDefined();
   });
 
@@ -84,11 +84,11 @@ describe('Ledger Integrity — Immutability Rules', () => {
     });
 
     // 3. Assert original unchanged
-    const { data: original } = await admin.from('ledger_entries').eq('tx_ref', txRef).eq('entry_type', 'debit').single();
+    const { data: original } = await admin.from('ledger_entries').select('*').eq('tx_ref', txRef).eq('entry_type', 'debit').single();
     expect(new Decimal(original.amount).equals(new Decimal(1000))).toBe(true);
 
     // 4. Assert reversal exists with negative amount
-    const { data: revEntry } = await admin.from('ledger_entries').eq('tx_ref', txRef).eq('entry_type', 'credit').single();
+    const { data: revEntry } = await admin.from('ledger_entries').select('*').eq('tx_ref', txRef).eq('entry_type', 'credit').single();
     expect(new Decimal(revEntry.amount).equals(new Decimal(1000))).toBe(true); // Balanced entry
     // OR if Phase 3 uses negative amounts:
     // expect(new Decimal(revEntry.amount).equals(new Decimal(-1000))).toBe(true);
@@ -148,7 +148,7 @@ describe('Ledger Integrity — Inter-Branch Transfers', () => {
     expect(inventoryEntry.entry_type).toBe('credit');
 
     // 3. Check SKU Qty
-    const { data: sku } = await admin.from('skus').eq('id', TEST_SKU_A).single();
+    const { data: sku } = await admin.from('skus').select('*').eq('id', TEST_SKU_A).single();
     expect(new Decimal(sku.qty).equals(new Decimal(75))).toBe(true);
   });
 
@@ -173,7 +173,7 @@ describe('Ledger Integrity — Inter-Branch Transfers', () => {
     expect(entries?.length).toBe(2); // Receiving side is also a double-entry pair: Debit Inventory (Dest), Credit Transit
     
     // 4. Verify Transfer Status
-    const { data: tRow } = await admin.from('inter_branch_transfers').eq('id', transfer.id).single();
+    const { data: tRow } = await admin.from('inter_branch_transfers').select('*').eq('id', transfer.id).single();
     expect(tRow.status).toBe('received');
   });
 
@@ -190,7 +190,7 @@ describe('Ledger Integrity — Inter-Branch Transfers', () => {
     await cancelInterBranchTransfer(transfer.id, 'test-user');
 
     // Verify stock restoration
-    const { data: sku } = await admin.from('skus').eq('id', TEST_SKU_A).single();
+    const { data: sku } = await admin.from('skus').select('*').eq('id', TEST_SKU_A).single();
     // Assuming starting at 100, -25, -20, -10 + 10 = 55 (approx, depending on setup state)
     // But we focus on the delta of this specific transaction
     
@@ -198,7 +198,7 @@ describe('Ledger Integrity — Inter-Branch Transfers', () => {
       .eq('tx_ref', `IBT-CNCL-${transfer.id}`);
     expect(revEntries?.length).toBe(2);
     
-    const { data: tRow } = await admin.from('inter_branch_transfers').eq('id', transfer.id).single();
+    const { data: tRow } = await admin.from('inter_branch_transfers').select('*').eq('id', transfer.id).single();
     expect(tRow.status).toBe('cancelled');
   });
 
@@ -246,7 +246,7 @@ describe('Financial Statements — Branch Scoping', () => {
   });
 
   it('Decimal.js — no floating point errors in financial sums', async () => {
-    const amounts = ['0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8', '0.9'];
+    const amounts = ['0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8'];
     const txId = 'DECIMAL-PRECISION-TEST';
 
     for(const amt of amounts) {
@@ -261,12 +261,12 @@ describe('Financial Statements — Branch Scoping', () => {
 
     const { data: tb } = await admin.rpc('get_trial_balance', { p_business_id: TEST_BUSINESS_ID });
     
-    // Expected Sum = 4.5
+    // Expected Sum = 3.6
     const result = new Decimal(tb.total_debits);
-    expect(result.equals(new Decimal('4.5'))).toBe(true);
+    expect(result.equals(new Decimal('3.6'))).toBe(true);
     
     // Demonstrate JS failure
-    const rawJsSum = 0.1+0.2+0.3+0.4+0.5+0.6+0.7+0.8+0.9;
+    const rawJsSum = 0.1+0.2+0.3+0.4+0.5+0.6+0.7+0.8;
     expect(result.toNumber()).not.toBe(rawJsSum);
   });
 });

@@ -33,17 +33,74 @@ export default function SupplierPaymentModal({ isOpen, onClose, poId, partyId, p
     mutationFn: async () => {
       const amt = Number(amount);
       if (!amt || amt <= 0) throw new Error("Enter a valid amount");
-      const { error } = await supabase.from('supplier_payments').insert({
-        business_id: businessId,
-        party_id: partyId,
-        po_id: poId,
-        amount: amt,
-        payment_method: method,
-        payment_date: paymentDate,
-        reference: reference || null,
-        notes: notes || null,
-      });
-      if (error) throw error;
+
+      // 1. Fetch system accounts Cash (1001) and Accounts Payable (2001)
+      const { data: accounts, error: accountsError } = await supabase
+        .from('accounts')
+        .select('id, account_code')
+        .eq('business_id', businessId)
+        .in('account_code', ['1001', '2001']);
+
+      if (accountsError) throw accountsError;
+      
+      const cashAccount = accounts?.find((a: any) => a.account_code === '1001');
+      const apAccount = accounts?.find((a: any) => a.account_code === '2001');
+
+      if (!cashAccount || !apAccount) {
+        throw new Error("Core system accounts Cash (1001) and Accounts Payable (2001) are missing in Chart of Accounts.");
+      }
+
+      // 2. Insert Supplier Payment
+      const { data: payment, error: pError } = await supabase
+        .from('supplier_payments')
+        .insert({
+          business_id: businessId,
+          party_id: partyId,
+          po_id: poId,
+          amount: amt,
+          payment_method: method,
+          payment_date: paymentDate,
+          reference: reference || null,
+          notes: notes || null,
+        })
+        .select()
+        .single();
+
+      if (pError) throw pError;
+
+      // 3. Insert balanced double-entry
+      const tx_ref = `SUPPAY-${payment.id}`;
+      const description = `Record Supplier Payment (${method})`;
+      const ledgerRows = [
+        {
+          business_id: businessId,
+          tx_ref,
+          account_id: apAccount.id,
+          party_id: partyId,
+          amount: amt,
+          entry_type: 'debit',
+          description,
+          posted_at: new Date(paymentDate).toISOString(),
+          status: 'posted'
+        },
+        {
+          business_id: businessId,
+          tx_ref,
+          account_id: cashAccount.id,
+          party_id: null,
+          amount: amt,
+          entry_type: 'credit',
+          description,
+          posted_at: new Date(paymentDate).toISOString(),
+          status: 'posted'
+        }
+      ];
+
+      const { error: ledgerError } = await supabase
+        .from('ledger_entries')
+        .insert(ledgerRows);
+
+      if (ledgerError) throw ledgerError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['supplier_payments'] });

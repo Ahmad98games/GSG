@@ -1,11 +1,11 @@
 import { format as dateFnsFormat } from 'date-fns';
 import { formatCurrency as globalFormatCurrency, CurrencyCode } from '@/lib/currency/currencyEngine';
 
-export type Locale = 'en' | 'ur' | 'fr' | 'ar' | 'zh' | 'tr' | 'hi' | 'fa' | 'es' | 'de';
+export type Locale = 'en' | 'ur' | 'fr' | 'ar' | 'zh' | 'tr' | 'hi' | 'fa' | 'es' | 'de' | 'he' | 'ps';
 
-export const locales: Locale[] = ['en', 'ur', 'fr', 'ar', 'zh', 'tr', 'hi', 'fa', 'es', 'de'];
+export const locales: Locale[] = ['en', 'ur', 'fr', 'ar', 'zh', 'tr', 'hi', 'fa', 'es', 'de', 'he', 'ps'];
 
-export const RTL_LOCALES: Locale[] = ['ur', 'ar', 'fa'];
+export const RTL_LOCALES: Locale[] = ['ur', 'ar', 'fa', 'he', 'ps'];
 
 export function isRTL(locale: string): boolean {
   return RTL_LOCALES.includes(locale as Locale);

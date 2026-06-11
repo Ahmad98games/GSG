@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { usePersona } from "@/hooks/usePersona";
+import { useRouter } from "next/navigation";
 import { 
   Plus, Search, Download, Upload, 
   MoreVertical, Edit, Trash2, ArrowUpDown,
@@ -116,6 +117,7 @@ export default function InventoryPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [prefilledBarcode, setPrefilledBarcode] = useState<string>("");
   const [adjustingSKU, setAdjustingSKU] = useState<SKU | null>(null);
+  const [selectedSku, setSelectedSku] = useState<SKU | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
   const [isScannerFlashing, setIsScannerFlashing] = useState(false);
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
@@ -534,6 +536,7 @@ export default function InventoryPage() {
                                 key={row.id} 
                                 row={row} 
                                 i={virtualRow.index} 
+                                onSelect={setSelectedSku}
                                 style={{
                                   position: 'absolute',
                                   top: 0,
@@ -590,6 +593,16 @@ export default function InventoryPage() {
         )}
       </AnimatePresence>
 
+      {/* SKU Detail Side Panel */}
+      {selectedSku && (
+        <SkuDetailPanel
+          sku={selectedSku}
+          onClose={() => setSelectedSku(null)}
+          onEdit={() => { setAdjustingSKU(selectedSku); setSelectedSku(null); }}
+          fmt={fmt}
+        />
+      )}
+
       {/* Toast Notification */}
       <AnimatePresence>
         {successToast && (
@@ -609,7 +622,7 @@ export default function InventoryPage() {
   );
 }
 
-const SKURow = React.memo(function SKURow({ row, i, style }: { row: Row<SKU>, i: number, style?: React.CSSProperties }) {
+const SKURow = React.memo(function SKURow({ row, i, style, onSelect }: { row: Row<SKU>, i: number, style?: React.CSSProperties, onSelect: (sku: SKU) => void }) {
   const controls = useRowHighlight(row.original.qty_on_hand);
   
   return (
@@ -620,6 +633,7 @@ const SKURow = React.memo(function SKURow({ row, i, style }: { row: Row<SKU>, i:
       whileInView={{ opacity: 1, y: 0 }}
       transition={{ delay: i * 0.01 }}
       style={style}
+      onClick={() => onSelect(row.original)}
       className="border-b border-white/4 hover:bg-white/[0.02] transition-colors cursor-pointer"
     >
       {row.getVisibleCells().map((cell: Cell<SKU, any>) => (
@@ -630,6 +644,113 @@ const SKURow = React.memo(function SKURow({ row, i, style }: { row: Row<SKU>, i:
     </motion.tr>
   );
 });
+
+// --- SKU Detail Side Panel ---
+
+function SkuDetailPanel({ sku, onClose, onEdit, fmt }: { sku: SKU; onClose: () => void; onEdit: () => void; fmt: (v: number | null | undefined) => string }) {
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
+      <div
+        className="w-full max-w-md h-full bg-[#0F1114] border-l border-white/8 overflow-y-auto shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-white/8">
+          <div>
+            <p className="text-[10px] font-mono font-bold text-[#60A5FA] tracking-widest">{sku.sku_code}</p>
+            <h2 className="text-base font-bold text-white mt-0.5">{sku.name}</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-600 hover:text-white transition-colors text-lg leading-none"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Stock status */}
+        <div className="px-6 py-5 border-b border-white/8">
+          <div className="flex items-end justify-between mb-2">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">Qty on Hand</p>
+            <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full ${
+              sku.qty_on_hand > (sku.reorder_level || 0)
+                ? 'bg-emerald-500/10 text-emerald-400'
+                : sku.qty_on_hand === 0
+                ? 'bg-red-500/10 text-red-400'
+                : 'bg-amber-500/10 text-amber-400'
+            }`}>
+              {sku.qty_on_hand === 0 ? 'OUT' : sku.qty_on_hand <= (sku.reorder_level || 0) ? 'LOW' : 'OK'}
+            </span>
+          </div>
+          <p className="text-3xl font-mono font-bold text-white">
+            {sku.qty_on_hand} <span className="text-sm text-gray-500">{sku.unit}</span>
+          </p>
+          {sku.reorder_level > 0 && (
+            <p className="text-[10px] text-gray-600 mt-1">Reorder at: {sku.reorder_level} {sku.unit}</p>
+          )}
+        </div>
+
+        {/* Details */}
+        <div className="px-6 py-5 space-y-3">
+          {[
+            { label: 'Category', value: sku.category || '—' },
+            { label: 'Location', value: sku.current_location?.replace(/_/g, ' ') || '—' },
+            { label: 'Barcode', value: sku.barcode || '—' },
+            { label: 'Reserved', value: `${sku.qty_reserved || 0} ${sku.unit}` },
+          ].map(({ label, value }) => (
+            <div key={label} className="flex justify-between items-center py-2 border-b border-white/5">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">{label}</span>
+              <span className="text-xs text-white font-medium capitalize">{value}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Pricing */}
+        <div className="px-6 py-5 bg-white/[0.02] border-t border-white/5 border-b border-white/5">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 mb-3">Pricing</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-[10px] text-gray-600 uppercase">Cost</p>
+              <p className="text-sm font-mono font-bold text-[#C5A059] mt-1">{fmt(sku.cost_price)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-gray-600 uppercase">Sale</p>
+              <p className="text-sm font-mono font-bold text-white mt-1">{fmt(sku.sale_price)}</p>
+            </div>
+          </div>
+          {sku.cost_price && sku.sale_price && sku.cost_price > 0 && (
+            <p className="text-[10px] text-emerald-400 mt-2">
+              Margin: {(((sku.sale_price - sku.cost_price) / sku.cost_price) * 100).toFixed(1)}%
+            </p>
+          )}
+        </div>
+
+        {sku.description && (
+          <div className="px-6 py-4 border-b border-white/5">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 mb-1">Description</p>
+            <p className="text-xs text-gray-400 leading-relaxed">{sku.description}</p>
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="px-6 py-5 flex gap-3">
+          <button
+            onClick={onEdit}
+            className="flex-1 py-2.5 text-sm font-bold bg-[#60A5FA] text-black hover:bg-blue-400 transition-colors"
+          >
+            Adjust Stock
+          </button>
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 text-sm border border-white/10 text-gray-400 hover:border-white/20 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 
 // --- Sub-Components ---
@@ -682,7 +803,9 @@ function TableActions({ sku, onAdjust }: { sku: SKU, onAdjust: () => void }) {
                <History size={14} />
                <span>Adjust Stock</span>
             </button>
-            <button className="w-full px-4 py-2.5 text-left text-[10px] uppercase font-bold text-gray-400 hover:text-white hover:bg-white/5 flex items-center space-x-3">
+            <button
+               onClick={(e) => { e.stopPropagation(); onAdjust(); setOpen(false); }}
+               className="w-full px-4 py-2.5 text-left text-[10px] uppercase font-bold text-gray-400 hover:text-white hover:bg-white/5 flex items-center space-x-3">
                <Edit size={14} />
                <span>Edit Details</span>
             </button>

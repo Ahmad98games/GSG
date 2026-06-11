@@ -322,7 +322,7 @@ export function DocumentConverter() {
     {
       id: 'pdf-protect',
       label: 'Protect PDF',
-      description: 'Wrap a PDF in a password-protected ZIP archive',
+      description: 'Password protection requires the Noxis Desktop app. In browser, use your system PDF printer or Adobe Acrobat.',
       inputAccept: '.pdf',
       inputLabel: 'PDF to protect',
       outputLabel: 'Password-protected ZIP',
@@ -383,12 +383,15 @@ export function DocumentConverter() {
               activeToolId === tool.id
                 ? 'bg-white/8 border-white/20 text-white shadow-inner'
                 : 'bg-[#0F1114] border-white/6 text-gray-500 hover:border-white/15 hover:text-gray-300'
-            }`}
+            } ${tool.id === 'pdf-protect' ? 'opacity-70' : ''}`}
           >
             <span className={`flex-shrink-0 ${activeToolId === tool.id ? 'text-[#C5A059]' : 'text-gray-600'}`}>
               {tool.icon}
             </span>
             <span className="truncate leading-tight">{tool.label}</span>
+            {tool.id === 'pdf-protect' && (
+              <span className="text-[8px] text-gray-600 ml-auto flex-shrink-0 border border-white/10 px-1 py-0.5 rounded">Desktop</span>
+            )}
           </button>
         ))}
       </div>
@@ -553,7 +556,11 @@ export function DocumentConverter() {
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="p-3 bg-red-500/5 border border-red-500/20 rounded-lg text-xs text-red-400 leading-relaxed"
+                  className={`p-3 rounded-lg text-xs leading-relaxed ${
+                    error.includes('Desktop app')
+                      ? 'bg-blue-500/5 border border-blue-500/20 text-blue-300'
+                      : 'bg-red-500/5 border border-red-500/20 text-red-400'
+                  }`}
                 >
                   {error}
                 </motion.div>

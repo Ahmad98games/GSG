@@ -81,14 +81,61 @@ export default function PayrollPage() {
     const pin = prompt("Enter PIN to lock this period (Industrial Security Protocol):");
     if (pin !== "1234") return alert("Unauthorized PIN Access Denied.");
 
-    const { error } = await supabase
-      .from('payroll_periods')
-      .update({ status: 'locked', locked_at: new Date().toISOString() })
-      .eq('id', periodId);
+    try {
+      // 1. Update period status
+      const { error: periodError } = await supabase
+        .from('payroll_periods')
+        .update({ status: 'locked', locked_at: new Date().toISOString() })
+        .eq('id', periodId);
 
-    if (!error) {
+      if (periodError) throw periodError;
+
+      // 2. Fetch all slips in the locked period to know advance deductions
+      const { data: currentSlips, error: fetchError } = await supabase
+        .from('payroll_slips')
+        .select('karigar_id, advance_deduction')
+        .eq('period_id', periodId);
+
+      if (fetchError) throw fetchError;
+
+      // 3. Finalize all slips
+      const { error: slipsError } = await supabase
+        .from('payroll_slips')
+        .update({ is_finalized: true })
+        .eq('period_id', periodId);
+
+      if (slipsError) throw slipsError;
+
+      // 4. Deduct advance from Karigar outstanding balance
+      if (currentSlips && currentSlips.length > 0) {
+        for (const slip of currentSlips) {
+          if (slip.advance_deduction && Number(slip.advance_deduction) > 0) {
+            // Fetch the karigar's current advance
+            const { data: karigar, error: karigarFetchErr } = await supabase
+              .from('karigars')
+              .select('current_advance')
+              .eq('id', slip.karigar_id)
+              .single();
+            
+            if (karigarFetchErr) throw karigarFetchErr;
+
+            const newAdvance = Math.max(0, Number(karigar.current_advance || 0) - Number(slip.advance_deduction));
+            
+            const { error: karigarUpdateErr } = await supabase
+              .from('karigars')
+              .update({ current_advance: newAdvance })
+              .eq('id', slip.karigar_id);
+
+            if (karigarUpdateErr) throw karigarUpdateErr;
+          }
+        }
+      }
+
       setSuccessToast("Payroll Period Locked and Finalized.");
       queryClient.invalidateQueries({ queryKey: ['payroll_periods'] });
+      queryClient.invalidateQueries({ queryKey: ['karigar_payroll_stats'] });
+    } catch (err: any) {
+      alert("Failed to lock period: " + err.message);
     }
   };
 

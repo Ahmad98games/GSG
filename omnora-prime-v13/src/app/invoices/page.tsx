@@ -296,6 +296,7 @@ function InvoiceRow({ inv }: { inv: any }) {
       animate={controls}
       custom={controls}
       key={inv.id} 
+      onClick={() => router.push(`/invoices/${inv.id}`)}
       className="border-b border-white/4 hover:bg-white/[0.02] transition-colors cursor-pointer"
     >
       <td className="px-4 py-2.5 text-sm text-gray-200">

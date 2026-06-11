@@ -46,18 +46,25 @@ export default function PartiesImportPage() {
   } | null>(null);
 
   const downloadTemplate = () => {
-    const headers = PARTY_FIELDS.map(f => f.key).join(',');
-    const sample1 = "Global Fabrics,vendor,03009988776,sales@global.com,Industrial Area Karachi,50000";
-    const sample2 = "Style Mart,customer,03215544332,contact@style.com,Main Bazar Lahore,-12500";
-    const csvContent = `${headers}\n${sample1}\n${sample2}`;
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'noxis_parties_template.csv';
-    a.click();
-    window.URL.revokeObjectURL(url);
+    const partyHeaders = [
+      'name', 'party_type', 'phone', 'email', 'address', 'current_balance'
+    ];
+    const partySample1 = [
+      'Global Fabrics', 'vendor', '03009988776', 'sales@global.com', 'Industrial Area Karachi', 50000
+    ];
+    const partySample2 = [
+      'Style Mart', 'customer', '03215544332', 'contact@style.com', 'Main Bazar Lahore', -12500
+    ];
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([
+      partyHeaders,
+      partySample1,
+      partySample2,
+    ]);
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Parties');
+    XLSX.writeFile(wb, 'noxis_parties_template.xlsx');
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -118,13 +125,15 @@ export default function PartiesImportPage() {
       const mappedRow: any = { business_id: businessId };
       
       Object.entries(mapping).forEach(([csvHeader, noxisField]) => {
-        if (noxisField) mappedRow[noxisField] = row[csvHeader];
+        if (noxisField) {
+          mappedRow[noxisField] = row[csvHeader];
+        }
       });
 
       const missingRequired = PARTY_FIELDS.filter(f => f.required && !mappedRow[f.key]);
       if (missingRequired.length > 0) {
         failed++;
-        errors.push({ row: i + 1, msg: `Missing: ${missingRequired.map(f => f.label).join(', ')}` });
+        errors.push({ row: i + 1, msg: `Missing required: ${missingRequired.map(f => f.label).join(', ')}` });
         continue;
       }
 
@@ -152,7 +161,16 @@ export default function PartiesImportPage() {
 
     setImportResults({ success, updated, failed, errors });
     setIsImporting(false);
-    toast.success("Parties import complete");
+    toast.success("Import processing complete");
+  };
+
+  const getRowStatus = (row: any) => {
+    const mapped: any = {};
+    Object.entries(mapping).forEach(([h, f]) => { if(f) mapped[f] = row[h]; });
+    
+    const missingRequired = PARTY_FIELDS.filter(f => f.required && !mapped[f.key]);
+    if (missingRequired.length > 0) return 'red';
+    return 'green';
   };
 
   return (
@@ -169,7 +187,7 @@ export default function PartiesImportPage() {
             <h1 className="text-2xl font-black uppercase tracking-tighter text-white italic">Import Business Network</h1>
           </div>
           <button onClick={downloadTemplate} className="px-4 py-2 bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-white hover:bg-white/10 transition-all">
-            <Download size={14} className="inline mr-2" /> Template
+            <Download size={14} className="inline mr-2" /> Template (.xlsx)
           </button>
         </div>
 

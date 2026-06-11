@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
 
 import SentinelAlertOverlay from "@/components/alerts/SentinelAlertOverlay";
@@ -49,6 +49,7 @@ export default function DashboardPage() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [show7DayPrompt, setShow7DayPrompt] = useState(false);
+  const welcomeDismissedRef = useRef(false);
   const supabase = createClient();
   const queryClient = useQueryClient();
 
@@ -142,7 +143,7 @@ export default function DashboardPage() {
       };
     },
     enabled: !!businessId,
-    refetchInterval: 60000,
+    refetchInterval: false,
     staleTime: 60 * 1000
   });
 
@@ -241,6 +242,7 @@ export default function DashboardPage() {
   }, [supabase]);
 
   useEffect(() => {
+    if (welcomeDismissedRef.current) return;
     if (profile && onboardingData) {
       const businessCreated = new Date(profile.created_at || Date.now());
       const isNew = (Date.now() - businessCreated.getTime()) < 7 * 24 * 60 * 60 * 1000;
@@ -262,17 +264,32 @@ export default function DashboardPage() {
   }, [profile, onboardingData]);
 
   const handleWelcomeClose = async (skipped = false) => {
+    welcomeDismissedRef.current = true;
     setShowWelcome(false);
     const key = skipped ? 'onboarding_skipped' : 'onboarding_complete';
-    
-    await fetch('/api/settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'local_config',
-        data: { [key]: 'true' }
-      })
+
+    // Optimistically update query data
+    queryClient.setQueryData(['onboarding-data', businessId], (oldData: any) => {
+      if (!oldData) return oldData;
+      return {
+        ...oldData,
+        complete: !skipped,
+        skipped: skipped
+      };
     });
+    
+    try {
+      await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'local_config',
+          data: { [key]: 'true' }
+        })
+      });
+    } catch (err) {
+      console.error('Failed to update settings:', err);
+    }
     
     queryClient.invalidateQueries({ queryKey: ['onboarding-data'] });
   };

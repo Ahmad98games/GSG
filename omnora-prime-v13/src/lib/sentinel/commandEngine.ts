@@ -2,8 +2,10 @@ import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.share
 
 export type SentinelCommand = {
   intent: string;
-  entities: Record<string, string>;
-  action: (router: AppRouterInstance, entities: Record<string, string>) => void;
+  entities?: Record<string, string>;
+  action: ((router: AppRouterInstance, entities: Record<string, string>) => void) | 'navigate';
+  route?: string;
+  label?: string;
 };
 
 const commands: SentinelCommand[] = [
@@ -106,6 +108,108 @@ const commands: SentinelCommand[] = [
         new CustomEvent('sentinel:action', { detail: { type: 'open_add_karigar' } })
       );
     }
+  },
+  {
+    intent: 'go_dashboard',
+    action: 'navigate',
+    route: '/dashboard',
+    label: 'Open Dashboard',
+  },
+  {
+    intent: 'go_settings',
+    action: 'navigate',
+    route: '/settings',
+    label: 'Open Settings',
+  },
+  {
+    intent: 'go_cashflow',
+    action: 'navigate',
+    route: '/cashflow',
+    label: 'Open Cash Flow',
+  },
+  {
+    intent: 'cash_flow',
+    action: 'navigate',
+    route: '/cashflow',
+    label: 'Open Cash Flow',
+  },
+  {
+    intent: 'go_dispatch',
+    action: 'navigate',
+    route: '/dispatch',
+    label: 'Open Dispatch',
+  },
+  {
+    intent: 'go_purchase',
+    action: 'navigate',
+    route: '/purchase',
+    label: 'Open Purchase',
+  },
+  {
+    intent: 'mark_attendance',
+    action: 'navigate',
+    route: '/quick-entry',
+    label: 'Mark Attendance',
+  },
+  {
+    intent: 'go_help',
+    action: 'navigate',
+    route: '/docs',
+    label: 'Open Help',
+  },
+  {
+    intent: 'go_reports',
+    action: 'navigate',
+    route: '/reports',
+    label: 'Open Reports',
+  },
+  {
+    intent: 'go_promises',
+    action: 'navigate',
+    route: '/promises',
+    label: 'Open Promises',
+  },
+  {
+    intent: 'go_network',
+    action: 'navigate',
+    route: '/network',
+    label: 'Factory Network',
+  },
+  {
+    intent: 'go_finance',
+    action: 'navigate',
+    route: '/finance',
+    label: 'Open Finance',
+  },
+  {
+    intent: 'go_intelligence',
+    action: 'navigate',
+    route: '/intelligence',
+    label: 'Open Intelligence',
+  },
+  {
+    intent: 'go_cctv',
+    action: 'navigate',
+    route: '/cctv',
+    label: 'Open CCTV',
+  },
+  {
+    intent: 'go_calculators',
+    action: 'navigate',
+    route: '/calculators',
+    label: 'Open Calculators',
+  },
+  {
+    intent: 'go_import',
+    action: 'navigate',
+    route: '/import',
+    label: 'Import Data',
+  },
+  {
+    intent: 'go_audit',
+    action: 'navigate',
+    route: '/audit',
+    label: 'Open Audit',
   },
 ];
 

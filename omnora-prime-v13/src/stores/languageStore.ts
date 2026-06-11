@@ -4,7 +4,7 @@ import { persist } from 'zustand/middleware';
 export type LanguageCode = 
   | 'en' | 'ur' | 'ar' | 'hi' | 'bn' 
   | 'pa' | 'zh' | 'tr' | 'es' | 'ru' 
-  | 'ta' | 'fr' | 'fa' | 'de';
+  | 'ta' | 'fr' | 'fa' | 'de' | 'he' | 'ps';
 
 interface LanguageStore {
   language: LanguageCode;
@@ -12,7 +12,7 @@ interface LanguageStore {
   setLanguage: (lang: LanguageCode) => void;
 }
 
-const RTL_LANGS: LanguageCode[] = ['ur'];
+const RTL_LANGS: LanguageCode[] = ['ur', 'ar', 'fa', 'he', 'ps'];
 
 /** Apply locale-specific DOM attributes to the html element. */
 function applyDOMLocale(lang: LanguageCode): void {

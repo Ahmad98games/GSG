@@ -6,7 +6,7 @@
   "private": true,
   "main": "dist-electron/electron/main.js",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbo",
     "build": "node scripts/build-static.mjs",
     "start": "next start",
     "lint": "eslint",
@@ -81,6 +81,7 @@
     "pdf-lib": "^1.17.1",
     "pg": "^8.21.0",
     "pino": "^9.0.0",
+    "png-to-ico": "^3.0.1",
     "pptxgenjs": "^4.0.1",
     "qrcode": "^1.5.4",
     "react": "19.2.4",

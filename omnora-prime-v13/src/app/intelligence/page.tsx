@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
 import { createClient } from '@/lib/supabase/client';
-import { generateInsights, IntelligenceInsight } from '@/lib/intelligence/engine';
+import { generateInsights, generateSelfInsights, IntelligenceInsight } from '@/lib/intelligence/engine';
 import { getIndustryLabel } from '@/lib/network/industries';
 import { generatePredictions } from '@/lib/intelligence/predictions';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -38,89 +38,105 @@ export default function IntelligencePage() {
   const { profile } = useBusinessProfile();
   const supabase = createClient();
   
-  const [insights, setInsights] = useState<IntelligenceInsight[]>([]);
+  const [insights, setInsights] = useState<any[]>([]);
   const [predictions, setPredictions] = useState<any[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   
   useEffect(() => {
     if (!profile?.id) return;
-    loadData();
-  }, [profile?.id]);
-  
-  const loadData = async () => {
-    if (!profile) return;
-    
-    try {
-      // 1. Generate fresh insights
-      const fresh = await generateInsights({
-        id: profile.id,
-        industry: profile.industry_key || 'general',
-        city: profile.city || '',
-        country_code: profile.country_code || 'PK',
-        currency: profile.currency || 'PKR',
-      });
-      setInsights(fresh);
-      
-      // 2. Generate new predictions
-      await generatePredictions(profile.id).catch(() => {});
-      
-      // 3. Load active predictions
-      const { data: preds } = await supabase
-        .from('predictions')
-        .select('*')
-        .eq('business_id', profile.id)
-        .eq('status', 'active');
-      setPredictions(preds || []);
-      
-      // 4. Load & calculate price trends for chart (Last 8 Weeks)
-      const weeks: { weekLabel: string; weekBucket: string; avgPrice: number }[] = [];
-      for (let i = 7; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i * 7);
-        const day = d.getDay();
-        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-        const monday = new Date(d.setDate(diff));
-        weeks.push({
-          weekLabel: format(monday, 'dd MMM'),
-          weekBucket: monday.toISOString().split('T')[0],
-          avgPrice: 0,
-        });
-      }
-      
-      const { data: dbSignals } = await supabase
-        .from('industry_signals')
-        .select('metric_value_usd, week_bucket')
-        .eq('signal_type', 'sku_price')
-        .eq('industry', profile.industry_key || 'general')
-        .eq('country_code', profile.country_code || 'PK');
-      
-      const usdRate = USD_RATES[profile.currency || 'PKR'] || 1;
-      
-      const formattedChart = weeks.map(w => {
-        const matched = (dbSignals || []).filter((s: any) => s.week_bucket === w.weekBucket);
-        if (matched.length) {
-          const avgUsd = matched.reduce((a: number, b: any) => a + Number(b.metric_value_usd || 0), 0) / matched.length;
-          return { ...w, avgPrice: Math.round(avgUsd / usdRate) };
-        }
-        // Simulated beautiful lines for clean default charts
-        const basePrices: Record<string, number> = {
-          PKR: 520, AED: 95, BDT: 240, TRY: 180, USD: 110, EUR: 95, GBP: 85, CAD: 120
-        };
-        const base = basePrices[profile.currency || 'PKR'] || 300;
-        const indexOffset = weeks.indexOf(w);
-        const sineWave = Math.sin(indexOffset * 0.8) * (base * 0.08);
-        return { ...w, avgPrice: Math.round(base + sineWave + (indexOffset * 4)) };
-      });
-      
-      setChartData(formattedChart);
-      
-    } catch (e) {
-      console.error(e);
-    } finally {
+
+    // CRITICAL: Add timeout to prevent infinite loading
+    const timeout = setTimeout(() => {
       setLoading(false);
-    }
-  };
+      // Show empty state, not spinner
+    }, 8000); // 8 second maximum wait
+
+    const load = async () => {
+      try {
+        // Load predictions from database
+        const { data: preds } = await supabase
+          .from('predictions')
+          .select('*')
+          .eq('business_id', profile.id)
+          .eq('status', 'active')
+          .order('urgency', { ascending: false })
+          .limit(10);
+
+        setPredictions(preds || []);
+
+        // Generate self-insights from own data
+        // These NEVER need external signals
+        const selfInsights = await Promise.race([
+          generateSelfInsights(
+            profile.id, profile
+          ),
+          // Timeout after 5 seconds
+          new Promise<any[]>((_, reject) =>
+            setTimeout(() =>
+              reject(new Error('timeout')), 5000
+            )
+          )
+        ]).catch(() => []); // Empty on timeout
+
+        setInsights(selfInsights);
+
+        // 4. Load & calculate price trends for chart (Last 8 Weeks)
+        const weeks: { weekLabel: string; weekBucket: string; avgPrice: number }[] = [];
+        for (let i = 7; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(d.getDate() - i * 7);
+          const day = d.getDay();
+          const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+          const monday = new Date(d.setDate(diff));
+          weeks.push({
+            weekLabel: format(monday, 'dd MMM'),
+            weekBucket: monday.toISOString().split('T')[0],
+            avgPrice: 0,
+          });
+        }
+
+        const { data: dbSignals } = await supabase
+          .from('industry_signals')
+          .select('metric_value_usd, week_bucket')
+          .eq('signal_type', 'sku_price')
+          .eq('industry', profile.industry_key || 'general')
+          .eq('country_code', profile.country_code || 'PK');
+
+        const usdRate = USD_RATES[profile.currency || 'PKR'] || 1;
+
+        const formattedChart = weeks.map(w => {
+          const matched = (dbSignals || []).filter((s: any) => s.week_bucket === w.weekBucket);
+          if (matched.length) {
+            const avgUsd = matched.reduce((a: number, b: any) => a + Number(b.metric_value_usd || 0), 0) / matched.length;
+            return { ...w, avgPrice: Math.round(avgUsd / usdRate) };
+          }
+          // Simulated beautiful lines for clean default charts
+          const basePrices: Record<string, number> = {
+            PKR: 520, AED: 95, BDT: 240, TRY: 180, USD: 110, EUR: 95, GBP: 85, CAD: 120
+          };
+          const base = basePrices[profile.currency || 'PKR'] || 300;
+          const indexOffset = weeks.indexOf(w);
+          const sineWave = Math.sin(indexOffset * 0.8) * (base * 0.08);
+          return { ...w, avgPrice: Math.round(base + sineWave + (indexOffset * 4)) };
+        });
+
+        setChartData(formattedChart);
+
+      } catch (err) {
+        console.error('[Intelligence]', err);
+        setError('Could not load insights');
+      } finally {
+        clearTimeout(timeout);
+        setLoading(false); // ALWAYS runs
+      }
+    };
+
+    load();
+
+    return () => clearTimeout(timeout);
+  }, [profile?.id]);
   
   const dismissPrediction = async (id: string) => {
     await supabase.from('predictions')
@@ -143,6 +159,49 @@ export default function IntelligencePage() {
       <div className="min-h-screen bg-[#07090B] text-gray-400 flex flex-col items-center justify-center gap-4">
         <BrainCircuit className="w-12 h-12 text-electric-blue animate-pulse" />
         <span className="text-xs uppercase font-black tracking-[0.2em] text-gray-500">Calculating Analytical Models...</span>
+      </div>
+    );
+  }
+
+  // Empty state when no insights yet:
+  if (!loading && insights.length === 0 && predictions.length === 0) {
+    return (
+      <div className="p-6 max-w-2xl">
+        <div className="mb-6">
+          <h1 className="text-xl font-semibold text-white mb-1">
+            Noxis Intelligence
+          </h1>
+          <p className="text-xs text-gray-500">
+            Market data and predictions from your factory operations.
+          </p>
+        </div>
+
+        <div className="p-8 bg-[#0F1114] border border-white/6 rounded-sm text-center">
+          <div className="text-3xl mb-4">📊</div>
+          <p className="text-sm font-medium text-white mb-2">
+            Intelligence grows with usage
+          </p>
+          <p className="text-xs text-gray-500 leading-relaxed max-w-xs mx-auto">
+            Start adding inventory, posting invoices, and logging karigar attendance. Insights appear automatically within 24 hours.
+          </p>
+
+          <div className="mt-6 space-y-2 text-left max-w-xs mx-auto">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-600 mb-3">
+              What triggers insights
+            </p>
+            {[
+              ['Add SKUs with cost price', '→ Price benchmarks'],
+              ['Post 5+ invoices', '→ Revenue predictions'],
+              ['Mark attendance daily', '→ Workforce insights'],
+              ['Log production', '→ Output predictions'],
+            ].map(([action, result]) => (
+              <div key={action} className="flex items-center justify-between text-xs">
+                <span className="text-gray-400">{action}</span>
+                <span className="text-[#60A5FA] text-[10px]">{result}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

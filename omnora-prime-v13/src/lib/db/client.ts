@@ -1,7 +1,8 @@
 import path from 'path'
 import { logger } from '../logger'
-
 import fs from 'fs'
+import * as schema from './schema'
+import { applyProductionPragmas } from './pragmas'
 
 function getDbPath(): string {
   // Priority 1: Electron passes userData via env
@@ -28,6 +29,10 @@ function getDbPath(): string {
 
 let _db: Record<string, any> | null = null;
 
+export function setTestDb(instance: any) {
+  _db = instance;
+}
+
 export const db = new Proxy({} as Record<string, any>, {
   get(target, prop) {
     if (!_db) {
@@ -35,8 +40,6 @@ export const db = new Proxy({} as Record<string, any>, {
         /* eslint-disable @typescript-eslint/no-var-requires */
         const Database = require('better-sqlite3-multiple-ciphers');
         const { drizzle } = require('drizzle-orm/better-sqlite3');
-        const schema = require('./schema');
-        const { applyProductionPragmas } = require('./pragmas');
         /* eslint-enable @typescript-eslint/no-var-requires */
         
         const dbPath = getDbPath();
@@ -127,7 +130,7 @@ export const db = new Proxy({} as Record<string, any>, {
         // Apply production-tuned performance pragmas
         if (dbPath !== ':memory:') {
           try {
-            applyProductionPragmas();
+            applyProductionPragmas(sqlite);
           } catch (e) {
             console.error("Failed to apply pragmas:", e);
           }

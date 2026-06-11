@@ -48,18 +48,31 @@ export default function InventoryImportPage() {
   } | null>(null);
 
   const downloadTemplate = () => {
-    const headers = INVENTORY_FIELDS.map(f => f.key).join(',');
-    const sample1 = "FAB-001,Khaddar Blue,Fabric,meter,450,85,120,100";
-    const sample2 = "THR-001,Thread Black,Thread,roll,45,120,180,20";
-    const csvContent = `${headers}\n${sample1}\n${sample2}`;
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'noxis_inventory_template.csv';
-    a.click();
-    window.URL.revokeObjectURL(url);
+    const skuHeaders = [
+      'sku_code', 'name', 'category',
+      'unit', 'qty_on_hand', 'cost_price',
+      'sale_price', 'reorder_level'
+    ];
+
+    const skuSample1 = [
+      'FAB-001', 'Khaddar Blue', 'Fabric',
+      'meter', 500, 85, 120, 100
+    ];
+
+    const skuSample2 = [
+      'FAB-002', 'Plain White Lawn', 'Fabric',
+      'meter', 300, 70, 100, 50
+    ];
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([
+      skuHeaders,
+      skuSample1,
+      skuSample2,
+    ]);
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Products');
+    XLSX.writeFile(wb, 'noxis_inventory_template.xlsx');
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -209,7 +222,7 @@ export default function InventoryImportPage() {
             className="flex items-center space-x-2 px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 text-[10px] font-black uppercase tracking-widest text-white transition-all"
           >
             <Download size={14} />
-            <span>Download Template CSV</span>
+            <span>Download Template (.xlsx)</span>
           </button>
         </div>
 

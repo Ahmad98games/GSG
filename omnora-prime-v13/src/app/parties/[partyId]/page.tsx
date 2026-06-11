@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Building2, Phone, Mail, MapPin, 
@@ -150,6 +150,7 @@ export default function PartyDetailPage() {
   const { fmt, businessId } = usePersona();
   const supabase = createClient();
   const { profile } = useBusinessProfile();
+  const queryClient = useQueryClient();
 
   const handleWhatsAppReminder = (party: Party) => {
     const phone = formatPhoneForWhatsApp(party.phone || "")
@@ -187,6 +188,12 @@ export default function PartyDetailPage() {
   const [portalLink, setPortalLink] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+
+  // Payment modal state
+  const [paymentModal, setPaymentModal] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentNote, setPaymentNote] = useState('');
+  const [savingPayment, setSavingPayment] = useState(false);
 
   // Queries
   const { data: party, isLoading: partyLoading } = useQuery<Party>({
@@ -469,18 +476,24 @@ export default function PartyDetailPage() {
 
                  <div className="w-full mt-10 grid grid-cols-2 gap-3">
                     {(party.party_type === 'customer' || party.party_type === 'both') && (
-                      <button className="flex items-center justify-center space-x-2 bg-[#0070F3] hover:brightness-110 p-3 text-[10px] uppercase font-black tracking-widest text-white transition-all shadow-lg shadow-blue-500/10">
+                      <button
+                        onClick={() => router.push(`/invoices/new?customerId=${party.id}&customerName=${encodeURIComponent(party.name)}`)}
+                        className="flex items-center justify-center space-x-2 bg-[#0070F3] hover:brightness-110 p-3 text-[10px] uppercase font-black tracking-widest text-white transition-all shadow-lg shadow-blue-500/10">
                          <Plus size={12} />
                          <span>New Invoice</span>
                       </button>
                     )}
                     {(party.party_type === 'supplier' || party.party_type === 'both') && (
-                      <button className="flex items-center justify-center space-x-2 bg-purple-600 hover:brightness-110 p-3 text-[10px] uppercase font-black tracking-widest text-white transition-all shadow-lg shadow-purple-500/10">
+                      <button
+                        onClick={() => router.push(`/purchase/new?supplier=${party.id}&supplierName=${encodeURIComponent(party.name)}`)}
+                        className="flex items-center justify-center space-x-2 bg-purple-600 hover:brightness-110 p-3 text-[10px] uppercase font-black tracking-widest text-white transition-all shadow-lg shadow-purple-500/10">
                          <ShoppingCart size={12} />
                          <span>New PO</span>
                       </button>
                     )}
-                    <button className="flex items-center justify-center space-x-2 bg-emerald-500 hover:brightness-110 p-3 text-[10px] uppercase font-black tracking-widest text-black transition-all shadow-lg shadow-emerald-500/10 col-span-2">
+                    <button
+                      onClick={() => setPaymentModal(true)}
+                      className="flex items-center justify-center space-x-2 bg-emerald-500 hover:brightness-110 p-3 text-[10px] uppercase font-black tracking-widest text-black transition-all shadow-lg shadow-emerald-500/10 col-span-2">
                        <DollarSign size={12} />
                        <span>Record Payment</span>
                     </button>
@@ -758,6 +771,110 @@ export default function PartyDetailPage() {
            </div>
         </div>
       </main>
+
+      {/* Record Payment Modal */}
+      {paymentModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-[#0F1114] border border-white/10 rounded-sm shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/8">
+              <div>
+                <p className="text-sm font-semibold text-white">Record Payment</p>
+                <p className="text-xs text-gray-500 mt-0.5">{party.name}</p>
+              </div>
+              <button
+                onClick={() => setPaymentModal(false)}
+                className="text-gray-600 hover:text-gray-300 transition-colors text-lg leading-none">
+                ✕
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 block mb-1.5">
+                  Amount ({profile?.currency || 'PKR'}) *
+                </label>
+                <input
+                  type="number"
+                  value={paymentAmount}
+                  onChange={e => setPaymentAmount(e.target.value)}
+                  placeholder="50000"
+                  autoFocus
+                  className="w-full bg-[#161A1F] border border-white/8 text-white text-sm font-mono px-3 py-2.5 outline-none focus:border-[#60A5FA]/40"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 block mb-1.5">
+                  Note (optional)
+                </label>
+                <input
+                  type="text"
+                  value={paymentNote}
+                  onChange={e => setPaymentNote(e.target.value)}
+                  placeholder="Bank transfer, cash, etc."
+                  className="w-full bg-[#161A1F] border border-white/8 text-white text-sm px-3 py-2.5 outline-none focus:border-[#60A5FA]/40 placeholder:text-gray-700"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setPaymentModal(false)}
+                  className="flex-1 py-2.5 text-sm border border-white/10 text-gray-400 hover:border-white/20 transition-colors">
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!paymentAmount || parseFloat(paymentAmount) <= 0) return;
+                    setSavingPayment(true);
+                    try {
+                      const amount = parseFloat(paymentAmount);
+
+                      // Record in ledger
+                      const { error: ledgerErr } = await supabase
+                        .from('ledger_entries')
+                        .insert({
+                          business_id: profile?.id,
+                          entry_type: 'payment_received',
+                          party_id: party.id,
+                          amount,
+                          description: paymentNote || `Payment from ${party.name}`,
+                          debit_account: 'cash',
+                          credit_account: 'accounts_receivable',
+                          voucher_type: 'receipt',
+                          entry_date: new Date().toISOString(),
+                        });
+
+                      if (ledgerErr) throw ledgerErr;
+
+                      // Update party balance
+                      const { error: partyErr } = await supabase
+                        .from('parties')
+                        .update({ current_balance: (party.current_balance || 0) - amount })
+                        .eq('id', party.id);
+
+                      if (partyErr) throw partyErr;
+
+                      // Refresh party data
+                      queryClient.invalidateQueries({ queryKey: ['party', partyId] });
+
+                      setPaymentModal(false);
+                      setPaymentAmount('');
+                      setPaymentNote('');
+                    } catch (err: any) {
+                      alert('Failed to record payment: ' + (err.message || 'Unknown error'));
+                    } finally {
+                      setSavingPayment(false);
+                    }
+                  }}
+                  disabled={savingPayment || !paymentAmount || parseFloat(paymentAmount) <= 0}
+                  className="flex-1 py-2.5 text-sm font-bold bg-[#10B981] text-black hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                  {savingPayment ? 'Saving...' : 'Record Payment'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

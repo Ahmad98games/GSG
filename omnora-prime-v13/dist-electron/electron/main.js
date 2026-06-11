@@ -156,41 +156,6 @@ else {
             server.on('error', () => resolve(findAvailablePort(startPort + 1)));
         });
     }
-    /**
-     * Poll http://127.0.0.1:PORT until Next.js responds.
-     * Always uses 127.0.0.1 — on Windows, 'localhost' can resolve to
-     * IPv6 ::1 which the server is NOT bound to, causing silent failures.
-     */
-    function waitForNextJS(port, maxAttempts = 60) {
-        return new Promise((resolve, reject) => {
-            let attempts = 0;
-            const check = () => {
-                attempts++;
-                startupLog(`[Health] Attempt ${attempts}/${maxAttempts} → http://127.0.0.1:${port}`);
-                const req = http.get(`http://127.0.0.1:${port}`, (res) => {
-                    if ([200, 302, 307].includes(res.statusCode ?? 0)) {
-                        startupLog(`[Health] Next.js ready ✓ (${res.statusCode})`);
-                        resolve();
-                    }
-                    else {
-                        retry();
-                    }
-                    res.resume(); // drain socket to free connection
-                });
-                req.setTimeout(1500, () => { req.destroy(); retry(); });
-                req.on('error', retry);
-            };
-            const retry = () => {
-                if (attempts >= maxAttempts) {
-                    reject(new Error(`Next.js did not start after ${maxAttempts}s on port ${port}`));
-                }
-                else {
-                    setTimeout(check, 1000);
-                }
-            };
-            check();
-        });
-    }
     // ─────────────────────────────────────────────
     // 4. VISION ENGINE  (production-only)
     // ─────────────────────────────────────────────
@@ -401,7 +366,37 @@ else {
     // ─────────────────────────────────────────────
     // 7. WINDOW CREATION
     // ─────────────────────────────────────────────
+    function writeStartupLog(message) {
+        startupLog(message);
+    }
+    function waitForServer(url, timeout = 60000, interval = 250) {
+        return new Promise((resolve, reject) => {
+            const start = Date.now();
+            const check = () => {
+                if (Date.now() - start > timeout) {
+                    reject(new Error(`Server did not start within ${timeout / 1000} seconds`));
+                    return;
+                }
+                const req = http.get(url, (res) => {
+                    if (res.statusCode) {
+                        resolve();
+                    }
+                });
+                req.on('error', () => {
+                    setTimeout(check, interval);
+                });
+                req.setTimeout(interval, () => {
+                    req.destroy();
+                    setTimeout(check, interval);
+                });
+            };
+            check();
+        });
+    }
     async function createWindow() {
+        const iconPath = electron_1.app.isPackaged
+            ? path.join(process.resourcesPath, 'build', 'icon.ico')
+            : path.join(__dirname, '../../build/icon.ico');
         mainWindow = new electron_1.BrowserWindow({
             width: 1400,
             height: 900,
@@ -422,8 +417,11 @@ else {
                 preload: path.join(__dirname, 'preload.js'),
                 partition: 'persist:noxis',
             },
-            icon: path.join(__dirname, '../public/logos/noxis.png'),
+            icon: iconPath,
         });
+        if (process.platform === 'win32') {
+            electron_1.app.setAppUserModelId('com.omnoralabs.noxis');
+        }
         // Show only when the first frame is painted — no blank flash
         mainWindow.once('ready-to-show', () => {
             startupLog('[Electron] ready-to-show — displaying window');
@@ -454,16 +452,97 @@ else {
         mainWindow.on('maximize', () => mainWindow?.webContents.send('maximize-changed', true));
         mainWindow.on('unmaximize', () => mainWindow?.webContents.send('maximize-changed', false));
         mainWindow.on('closed', () => { mainWindow = null; });
+        // Show a loading state while waiting
+        const loadingHtml = `data:text/html,
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: #070809;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    font-family: Arial, sans-serif;
+  }
+  .logo {
+    color: #60A5FA;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    text-align: center;
+  }
+  .sub {
+    color: #4B5563;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  .bar-track {
+    width: 120px;
+    height: 2px;
+    background: #1F2937;
+    margin: 0 auto;
+    overflow: hidden;
+  }
+  .bar {
+    height: 100%;
+    background: #60A5FA;
+    animation: load 1.2s ease-in-out infinite;
+    transform-origin: left;
+  }
+  @keyframes load {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(200%); }
+  }
+</style>
+</head>
+<body>
+  <div>
+    <div class="logo">NOXIS</div>
+    <div class="sub">by Omnora Labs</div>
+    <div class="bar-track">
+      <div class="bar"></div>
+    </div>
+  </div>
+</body>
+</html>
+`;
+        await mainWindow.loadURL(loadingHtml);
+        mainWindow.show(); // Show loading screen
         const url = `http://127.0.0.1:${PORT}`;
-        if (isDev) {
-            startupLog(`[Electron] Dev mode — loading ${url}`);
-            await mainWindow.loadURL(url).catch((e) => startupLog(`[Electron] Dev loadURL error: ${e.message}`));
-            mainWindow.webContents.openDevTools();
-        }
-        else {
-            // Server is already confirmed ready before createWindow() is called
+        try {
+            writeStartupLog('Waiting for Next.js server...');
+            await waitForServer(url, 90000, 300);
+            writeStartupLog('Server ready — loading app');
             startupLog(`[Electron] Loading ${url}`);
             await mainWindow.loadURL(url).catch((e) => startupLog(`[Electron] loadURL error: ${e.message}`));
+            if (isDev) {
+                mainWindow.webContents.openDevTools();
+            }
+        }
+        catch (err) {
+            writeStartupLog(`Server failed: ${err}`);
+            const logDir = electron_1.app.getPath('userData');
+            const logPathFile = path.join(logDir, 'startup.log');
+            electron_1.dialog.showMessageBoxSync({
+                type: 'error',
+                title: 'Noxis Failed to Start',
+                message: 'The app server could not start.',
+                detail: `Please check the log file:\n` +
+                    `${logPathFile}\n\n` +
+                    `Try restarting Noxis. If this ` +
+                    `persists, contact support on WhatsApp: ` +
+                    `+92 333 435 5475`,
+                buttons: ['OK'],
+            });
+            electron_1.app.quit();
         }
     }
     // ─────────────────────────────────────────────
@@ -562,18 +641,6 @@ else {
                 }
                 nextServer = null;
             });
-            // ── Wait for server BEFORE creating window ──
-            try {
-                startupLog('[Electron] Waiting for Next.js to be ready...');
-                await waitForNextJS(PORT, 120);
-                startupLog('[Electron] Server ready ✓');
-            }
-            catch (err) {
-                startupLog(`[Electron] Server never became ready: ${err.message}`);
-                electron_1.dialog.showErrorBox('Startup Timeout', `The app server did not start on port ${PORT}.\n\nCheck logs at:\n${logPath}`);
-                electron_1.app.quit();
-                return;
-            }
         }
         // ── Create window (server is guaranteed ready at this point) ──
         startupLog('[Electron] Creating window...');

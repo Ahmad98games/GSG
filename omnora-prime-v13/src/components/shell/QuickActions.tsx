@@ -459,7 +459,23 @@ function RecordPaymentForm({ onSuccess }: { onSuccess: () => void }) {
 
     setIsSubmitting(true);
     try {
-      // 1. Insert Payment
+      // 1. Fetch system accounts
+      const { data: accounts, error: accountsError } = await supabase
+        .from('accounts')
+        .select('id, account_code')
+        .eq('business_id', businessId)
+        .in('account_code', ['1001', '1100']);
+
+      if (accountsError) throw accountsError;
+      
+      const cashAccount = accounts?.find((a: any) => a.account_code === '1001');
+      const arAccount = accounts?.find((a: any) => a.account_code === '1100');
+
+      if (!cashAccount || !arAccount) {
+        throw new Error("Core system accounts Cash (1001) and Accounts Receivable (1100) are missing in Chart of Accounts.");
+      }
+
+      // 2. Insert Payment
       const { data: payment, error: pError } = await supabase.from('payments').insert({
         business_id: businessId,
         party_id: selectedParty.id,
@@ -471,17 +487,39 @@ function RecordPaymentForm({ onSuccess }: { onSuccess: () => void }) {
 
       if (pError) throw pError;
 
-      // 2. Insert Ledger Entry (simplified)
-      const { error: lError } = await supabase.from('ledger_entries').insert({
-        business_id: businessId,
-        party_id: selectedParty.id,
-        amount: new Decimal(amount).toNumber(),
-        entry_type: 'credit',
-        tx_ref: `PAY-${payment.id}`,
-        posted_at: new Date().toISOString()
-      });
+      // 3. Insert balanced double-entry
+      const tx_ref = `PAY-${payment.id}`;
+      const description = `Record Payment via Quick Action (${method})`;
+      const ledgerRows = [
+        {
+          business_id: businessId,
+          tx_ref,
+          account_id: cashAccount.id,
+          party_id: null,
+          amount: new Decimal(amount).toNumber(),
+          entry_type: 'debit',
+          description,
+          posted_at: new Date().toISOString(),
+          status: 'posted'
+        },
+        {
+          business_id: businessId,
+          tx_ref,
+          account_id: arAccount.id,
+          party_id: selectedParty.id,
+          amount: new Decimal(amount).toNumber(),
+          entry_type: 'credit',
+          description,
+          posted_at: new Date().toISOString(),
+          status: 'posted'
+        }
+      ];
 
-      if (lError) throw lError;
+      const { error: ledgerError } = await supabase
+        .from('ledger_entries')
+        .insert(ledgerRows);
+
+      if (ledgerError) throw ledgerError;
 
       showSuccess(`PKR ${amount} from ${selectedParty.name} recorded ✓`);
       queryClient.invalidateQueries({ queryKey: ['ledger_entries'] });

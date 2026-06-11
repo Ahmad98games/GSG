@@ -53,6 +53,14 @@ export default function EditPartyPage() {
   }
 
   const handleSave = async () => {
+    if (!profile?.id) {
+      setError('Business profile not loaded. Refresh and try again.')
+      return
+    }
+    if (!partyId) {
+      setError('Party ID missing.')
+      return
+    }
     if (!form.name.trim()) {
       setError('Name is required')
       return
@@ -64,21 +72,21 @@ export default function EditPartyPage() {
       .update({
         name: form.name.trim(),
         party_type: form.party_type,
-        phone: form.phone.trim(),
-        email: form.email.trim(),
-        address: form.address.trim(),
+        phone: form.phone.trim() || null,
+        email: form.email.trim() || null,
+        address: form.address.trim() || null,
         credit_limit: form.credit_limit
           ? parseFloat(form.credit_limit) : null,
         credit_days: parseInt(
           form.credit_days
         ) || 0,
-        updated_at: new Date().toISOString(),
       })
-      .eq('id', partyId)
-      .eq('business_id', profile?.id)
+      .eq('id', partyId as string)
+      .eq('business_id', profile.id)
 
     if (err) {
-      setError('Failed to save. Try again.')
+      console.error('PARTY UPDATE ERROR:', err)
+      setError(`Failed to save: ${err.message || JSON.stringify(err)}`)
     } else {
       router.push(`/parties/${partyId}`)
     }

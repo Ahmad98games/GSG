@@ -16,19 +16,19 @@ import {
 
 const STATIC_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', desc: 'Overview and KPIs', route: '/dashboard', icon: 'zap', group: 'Navigation', tags: ['home','main','overview','kpi','summary'] },
-  { id: 'inventory', label: 'Inventory / Stock', desc: 'Manage products and SKUs', route: '/inventory', icon: 'package', group: 'Navigation', tags: ['stock','sku','product','maal','items','barcode','reorder'] },
-  { id: 'karigars', label: 'Karigars', desc: 'Workers, attendance and wages', route: '/karigars', icon: 'users', group: 'Navigation', tags: ['worker','karigar','employee','staff','labour','labor','attendance','wages'] },
+  { id: 'inventory', label: 'Inventory / Stock', desc: 'Manage products and SKUs', route: '/inventory', icon: 'package', group: 'Navigation', tags: ['stock','sku','product','maal','items','barcode','reorder','saman','goods','item'] },
+  { id: 'karigars', label: 'Karigars', desc: 'Workers, attendance and wages', route: '/karigars', icon: 'users', group: 'Navigation', tags: ['worker','karigar','employee','staff','labour','labor','attendance','wages','peshgi','advance','mazdoor','haazri','tankhwa','salary','piece rate','tukra'] },
   { id: 'production', label: 'Production', desc: 'Log production and batches', route: '/production', icon: 'trending', group: 'Navigation', tags: ['production','output','pieces','factory','floor','batch','manufacturing'] },
-  { id: 'payroll', label: 'Payroll', desc: 'Run monthly salaries', route: '/payroll', icon: 'banknote', group: 'Navigation', tags: ['payroll','salary','tankhwa','wages','monthly','pay','payment'] },
-  { id: 'invoices', label: 'Invoices', desc: 'Create and manage invoices', route: '/invoices', icon: 'file', group: 'Navigation', tags: ['invoice','bill','billing','sale','receipt','document'] },
+  { id: 'payroll', label: 'Payroll', desc: 'Run monthly salaries', route: '/payroll', icon: 'banknote', group: 'Navigation', tags: ['payroll','salary','tankhwa','wages','monthly','pay','payment','maheena','payslip'] },
+  { id: 'invoices', label: 'Invoices', desc: 'Create and manage invoices', route: '/invoices', icon: 'file', group: 'Navigation', tags: ['invoice','bill','billing','sale','receipt','document','raseed','farookht'] },
   { id: 'new-invoice', label: 'New Invoice', desc: 'Create a new invoice', route: '/invoices/new', icon: 'file', group: 'Action', tags: ['new invoice','create invoice','add invoice','make bill'] },
-  { id: 'parties', label: 'Parties', desc: 'Customers and suppliers', route: '/parties', icon: 'users', group: 'Navigation', tags: ['customer','supplier','vendor','party','client','buyer','seller'] },
+  { id: 'parties', label: 'Parties', desc: 'Customers and suppliers', route: '/parties', icon: 'users', group: 'Navigation', tags: ['customer','supplier','vendor','party','client','buyer','seller','graahak'] },
   { id: 'purchase', label: 'Purchase Orders', desc: 'Buy from suppliers', route: '/purchase', icon: 'shopping', group: 'Navigation', tags: ['purchase','order','buy','kharid','po','supplier order'] },
-  { id: 'khata', label: 'Khata / Ledger', desc: 'Double-entry accounting', route: '/khata', icon: 'book', group: 'Navigation', tags: ['khata','ledger','accounts','accounting','double entry','journal','hisab'] },
+  { id: 'khata', label: 'Khata / Ledger', desc: 'Double-entry accounting', route: '/khata', icon: 'book', group: 'Navigation', tags: ['khata','ledger','accounts','accounting','double entry','journal','hisab','udhaar','payment','receipt'] },
   { id: 'cashflow', label: 'Cash Flow', desc: '90-day cash forecast', route: '/cashflow', icon: 'trending', group: 'Navigation', tags: ['cash','cashflow','forecast','liquidity','money','nakdi'] },
   { id: 'reports', label: 'Reports', desc: 'P&L, trial balance, aging', route: '/reports', icon: 'chart', group: 'Navigation', tags: ['report','profit','loss','balance','trial','aging','tax','p&l'] },
   { id: 'dispatch', label: 'Dispatch', desc: 'Outgoing shipments', route: '/dispatch', icon: 'package', group: 'Navigation', tags: ['dispatch','delivery','shipment','outgoing','logistics'] },
-  { id: 'promises', label: 'Payment Promises', desc: 'Track verbal commitments', route: '/promises', icon: 'clock', group: 'Navigation', tags: ['promise','commitment','due','overdue','payment promise'] },
+  { id: 'promises', label: 'Payment Promises', desc: 'Track verbal commitments', route: '/promises', icon: 'clock', group: 'Navigation', tags: ['promise','commitment','due','overdue','payment promise','wada','payment due','reminder'] },
   { id: 'quick-entry', label: 'Quick Entry', desc: 'Fast production, payment, attendance', route: '/quick-entry', icon: 'zap', group: 'Tools', tags: ['quick','fast','entry','rapid','piece','attendance','payment'] },
   { id: 'import', label: 'Import Data', desc: 'Import from Excel or CSV', route: '/import', icon: 'upload', group: 'Tools', tags: ['import','excel','csv','upload','migrate','data'] },
   { id: 'calculators', label: 'Calculators', desc: 'Fabric, OEE, EMI, margins', route: '/calculators', icon: 'calculator', group: 'Tools', tags: ['calculator','fabric','gsm','emi','margin','oee','piece rate','compute'] },
@@ -47,6 +47,7 @@ const STATIC_ITEMS = [
   { id: 'whatsapp-settings', label: 'WhatsApp Alerts', desc: 'Configure WhatsApp notifications', route: '/settings/whatsapp', icon: 'smartphone', group: 'Settings', tags: ['whatsapp','alert','notification','message','summary'] },
   { id: 'mobile-pairing', label: 'Mobile Pairing', desc: 'Pair Android devices via QR', route: '/pairing', icon: 'smartphone', group: 'Settings', tags: ['mobile','pair','android','qr','connect','phone','device'] },
 ]
+
 
 type SearchResult = {
   id: string

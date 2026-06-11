@@ -8,6 +8,13 @@
       "when": 1777732915940,
       "tag": "0000_demonic_silvermane",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1780773443000,
+      "tag": "0001_add_missing_tables",
+      "breakpoints": true
     }
   ]
 }

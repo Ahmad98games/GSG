@@ -79,13 +79,46 @@ export default function PayrollPeriodDetailPage() {
       
       if (periodError) throw periodError;
 
-      // 2. Finalize all slips
+      // 2. Fetch all slips in the locked period to know advance deductions
+      const { data: currentSlips, error: fetchError } = await supabase
+        .from('payroll_slips')
+        .select('karigar_id, advance_deduction')
+        .eq('period_id', periodId);
+
+      if (fetchError) throw fetchError;
+
+      // 3. Finalize all slips
       const { error: slipsError } = await supabase
         .from('payroll_slips')
         .update({ is_finalized: true })
         .eq('period_id', periodId);
 
       if (slipsError) throw slipsError;
+
+      // 4. Deduct advance from Karigar outstanding balance
+      if (currentSlips && currentSlips.length > 0) {
+        for (const slip of currentSlips) {
+          if (slip.advance_deduction && Number(slip.advance_deduction) > 0) {
+            // Fetch the karigar's current advance
+            const { data: karigar, error: karigarFetchErr } = await supabase
+              .from('karigars')
+              .select('current_advance')
+              .eq('id', slip.karigar_id)
+              .single();
+            
+            if (karigarFetchErr) throw karigarFetchErr;
+
+            const newAdvance = Math.max(0, Number(karigar.current_advance || 0) - Number(slip.advance_deduction));
+            
+            const { error: karigarUpdateErr } = await supabase
+              .from('karigars')
+              .update({ current_advance: newAdvance })
+              .eq('id', slip.karigar_id);
+
+            if (karigarUpdateErr) throw karigarUpdateErr;
+          }
+        }
+      }
 
       router.refresh();
       alert("Payroll period locked successfully.");

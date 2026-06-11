@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useBusinessProfile } from '@/hooks/useBusinessProfile'
 import { useTierStore } from '@/stores/tierStore'
+import { useRouter } from 'next/navigation'
 import {
   Camera, Plus, Info, Play, ChevronRight,
   Wifi, Copy, Trash2, ExternalLink,
@@ -101,6 +102,7 @@ export default function CCTVPage() {
   const supabase = createClient()
   const { profile } = useBusinessProfile()
   const { tier, limits } = useTierStore()
+  const router = useRouter()
 
   const [cameras, setCameras] = useState<CameraNode[]>([])
   const [loading, setLoading] = useState(true)
@@ -466,7 +468,10 @@ export default function CCTVPage() {
       {!loading && cameras.length >= CAMERA_LIMIT && (
         <div className="text-center py-4 text-xs text-gray-600">
           Camera limit reached for {tier} plan.
-          <button className="text-[#60A5FA] ml-1 hover:text-blue-300 transition-colors">
+          <button
+            onClick={() => router.push('/pricing')}
+            className="text-[#60A5FA] ml-1 hover:text-blue-300 transition-colors underline underline-offset-2"
+          >
             Upgrade to add more →
           </button>
         </div>

@@ -104,6 +104,14 @@ describe('RLS — Branch Scoping', () => {
   });
 
   it('HQ consolidated view sees all branches', async () => {
+    // Add SKU to Branch 02 explicitly (isolation)
+    await admin.from('skus').insert({
+      business_id: TEST_BUSINESS_ID,
+      branch_id: TEST_BRANCH_02,
+      sku_code: 'SKU-B02',
+      name: 'Branch 02 Product'
+    });
+
     const clientConsolidated = createBusinessClient(TEST_BUSINESS_ID, null);
     const { data } = await clientConsolidated.from('skus').select('*');
     
@@ -138,7 +146,7 @@ describe('RLS — Branch Scoping', () => {
     // This should fail due to RLS or CHECK constraint
     expect(error).toBeDefined();
     
-    const { data: branch } = await admin.from('branches').eq('id', TEST_BRANCH_HQ).single();
+    const { data: branch } = await admin.from('branches').select('*').eq('id', TEST_BRANCH_HQ).single();
     expect(branch.status).not.toBe('archived');
   });
 });
@@ -232,7 +240,7 @@ describe('Portal Security', () => {
     await confirmPaymentAndPostLedger(intentId);
 
     // Verify exactly 2 ledger entries (1 debit, 1 credit) for the whole process
-    const { data: entries } = await admin.from('ledger_entries').eq('tx_ref', `PAY-${intentId}`);
+    const { data: entries } = await admin.from('ledger_entries').select('*').eq('tx_ref', `PAY-${intentId}`);
     expect(entries?.length).toBe(2);
   });
 });
@@ -258,6 +266,7 @@ describe('Sync Queue — Zero Data Loss', () => {
     const t2 = Date.now();
 
     const { data: row } = await admin.from('sync_queue')
+      .select('*')
       .eq('record_id', batchId)
       .single();
 

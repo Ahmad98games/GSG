@@ -20,6 +20,11 @@ export async function convertHeicFiles(
     );
   }
 
-  // Web fallback would require a large WASM library like libheif-js
-  throw new Error("HEIC conversion is only supported in the Noxis Desktop App.");
+  // Browser cannot natively decode HEIC/HEIF — show a helpful explanation
+  throw new Error(
+    'HEIC conversion requires the Noxis Desktop app. ' +
+    'In browser: save the photo as JPG from your ' +
+    'iPhone (Settings → Camera → Formats → Most ' +
+    'Compatible) then upload the JPG instead.'
+  );
 }

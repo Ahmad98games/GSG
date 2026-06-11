@@ -4,7 +4,7 @@ import fs from 'fs';
 import { logger } from '../lib/logger';
 
 // Ensures TypeScript emits the worker alongside the Electron/server bundle (.js path at runtime).
-import '../lib/nsp/nsp-worker';
+// import '../lib/nsp/nsp-worker';
 
 /**
  * Noxis v13.0 — Priority Worker Pool
@@ -43,6 +43,13 @@ export class WorkerPool {
     } else {
       this.workerPath = workerTs;
       this.workerExecArgv = ['-r', 'ts-node/register'];
+      process.env.TS_NODE_COMPILER_OPTIONS = JSON.stringify({
+        module: 'commonjs',
+        moduleResolution: 'node',
+        target: 'es2020',
+        esModuleInterop: true,
+        skipLibCheck: true
+      });
     }
     this.init();
     this.startWatchdog();

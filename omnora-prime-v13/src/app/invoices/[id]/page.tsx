@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { usePersona } from "@/hooks/usePersona";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/hooks/useToast";
 
 import { useParams, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -111,6 +112,7 @@ export default function InvoiceDetailPage() {
   const { fmt, businessId } = usePersona();
   const { profile } = useBusinessProfile();
   const supabase = createClient();
+  const toast = useToast();
 
   const handleWhatsAppSend = () => {
     if (!invoice || !invoice.party?.phone) return;
@@ -438,40 +440,120 @@ export default function InvoiceDetailPage() {
                     )}
                  </div>
 
-                 <div className="space-y-3 pt-8 border-t border-white/5">
-                    <button className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 border border-white/5 transition-all group">
-                       <div className="flex items-center space-x-3">
-                          <Download size={14} className="text-gray-500" />
-                          <span className="text-[10px] uppercase font-black tracking-widest">Download PDF Copy</span>
-                       </div>
-                       <ChevronRight size={14} className="text-gray-700 group-hover:translate-x-1 transition-transform" />
-                    </button>
-                    <button 
-                      onClick={handleWhatsAppSend}
-                      disabled={!invoice.party?.phone}
-                      className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 border border-white/5 transition-all group disabled:opacity-30"
-                    >
-                       <div className="flex items-center space-x-3">
-                          <MessageCircle size={14} className="text-[#25D366]" />
-                          <span className="text-[10px] uppercase font-black tracking-widest">Send via WhatsApp</span>
-                       </div>
-                       {!invoice.party?.phone && <span className="text-[8px] font-bold text-red-500 uppercase">No Phone</span>}
-                    </button>
-                    <button className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 border border-white/5 transition-all group">
-                       <div className="flex items-center space-x-3">
-                          <Copy size={14} className="text-gray-500" />
-                          <span className="text-[10px] uppercase font-black tracking-widest">Duplicate Invoice</span>
-                       </div>
-                       <ChevronRight size={14} className="text-gray-700 group-hover:translate-x-1 transition-transform" />
-                    </button>
-                    <button className="w-full flex items-center justify-between p-4 bg-red-500/5 hover:bg-red-500/10 border border-red-500/10 transition-all group">
-                       <div className="flex items-center space-x-3">
-                          <Trash2 size={14} className="text-red-500" />
-                          <span className="text-[10px] uppercase font-black tracking-widest text-red-500">Void Invoice</span>
-                       </div>
-                       <span className="text-[8px] font-black text-red-500/50 uppercase tracking-widest group-hover:text-red-500 transition-colors">Requires PIN</span>
-                    </button>
-                 </div>
+                  <div className="space-y-3 pt-8 border-t border-white/5">
+                     <button
+                       onClick={() => window.print()}
+                       className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 border border-white/5 transition-all group"
+                     >
+                        <div className="flex items-center space-x-3">
+                           <Download size={14} className="text-gray-500" />
+                           <span className="text-[10px] uppercase font-black tracking-widest">Download PDF Copy</span>
+                        </div>
+                        <ChevronRight size={14} className="text-gray-700 group-hover:translate-x-1 transition-transform" />
+                     </button>
+                     <button 
+                       onClick={handleWhatsAppSend}
+                       disabled={!invoice.party?.phone}
+                       className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 border border-white/5 transition-all group disabled:opacity-30"
+                     >
+                        <div className="flex items-center space-x-3">
+                           <MessageCircle size={14} className="text-[#25D366]" />
+                           <span className="text-[10px] uppercase font-black tracking-widest">Send via WhatsApp</span>
+                        </div>
+                        {!invoice.party?.phone && <span className="text-[8px] font-bold text-red-500 uppercase">No Phone</span>}
+                     </button>
+                     <button
+                       onClick={async () => {
+                         const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+                         const newInvoiceNo = `${invoice.invoice_no}-DUP-${randomSuffix}`;
+                         
+                         const { data, error } = await supabase
+                           .from('invoices')
+                           .insert({
+                             business_id: (invoice as any).business_id || businessId,
+                             party_id: invoice.party_id,
+                             invoice_no: newInvoiceNo,
+                             status: 'draft',
+                             issue_date: new Date().toISOString().split('T')[0],
+                             due_date: invoice.due_date,
+                             subtotal: invoice.subtotal,
+                             discount_pct: (invoice as any).discount_pct || 0,
+                             discount_amount: invoice.discount_amount,
+                             tax_pct: invoice.tax_pct,
+                             tax_amount: invoice.tax_amount,
+                             total: invoice.total,
+                             notes: (invoice as any).notes,
+                           })
+                           .select()
+                           .single();
+
+                         if (error) {
+                           toast.error('Failed to duplicate invoice: ' + error.message);
+                           return;
+                         }
+
+                         if (data && items && items.length > 0) {
+                           const itemInserts = items.map(item => ({
+                             invoice_id: data.id,
+                             sku_id: (item as any).sku_id || null,
+                             description: item.description,
+                             qty: item.qty,
+                             unit: item.unit,
+                             unit_price: item.unit_price,
+                           }));
+                           
+                           const { error: itemsError } = await supabase
+                             .from('invoice_items')
+                             .insert(itemInserts);
+
+                           if (itemsError) {
+                             toast.error('Invoice created but items failed to copy: ' + itemsError.message);
+                             return;
+                           }
+                         }
+
+                         if (data) {
+                           toast.success('Invoice duplicated');
+                           router.push(`/invoices/${data.id}`);
+                         }
+                       }}
+                       className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 border border-white/5 transition-all group"
+                     >
+                        <div className="flex items-center space-x-3">
+                           <Copy size={14} className="text-gray-500" />
+                           <span className="text-[10px] uppercase font-black tracking-widest">Duplicate Invoice</span>
+                        </div>
+                        <ChevronRight size={14} className="text-gray-700 group-hover:translate-x-1 transition-transform" />
+                     </button>
+                     <button
+                       onClick={async () => {
+                         if (!confirm('Void this invoice? This cannot be undone.')) return;
+                         
+                         const { error } = await supabase
+                           .from('invoices')
+                           .update({
+                             status: 'voided',
+                             voided_at: new Date().toISOString(),
+                           })
+                           .eq('id', invoice.id)
+                           .eq('business_id', profile?.id);
+
+                         if (!error) {
+                           toast.success('Invoice voided');
+                           window.location.reload();
+                         } else {
+                           toast.error('Failed to void invoice: ' + error.message);
+                         }
+                       }}
+                       className="w-full flex items-center justify-between p-4 bg-red-500/5 hover:bg-red-500/10 border border-red-500/10 transition-all group"
+                     >
+                        <div className="flex items-center space-x-3">
+                           <Trash2 size={14} className="text-red-500" />
+                           <span className="text-[10px] uppercase font-black tracking-widest text-red-500">Void Invoice</span>
+                        </div>
+                        <span className="text-[8px] font-black text-red-500/50 uppercase tracking-widest group-hover:text-red-500 transition-colors">Confirm Void</span>
+                     </button>
+                  </div>
 
                  <div className="space-y-4 pt-8 border-t border-white/5">
                     <h4 className="text-[10px] uppercase font-black text-gray-500 tracking-widest flex items-center space-x-2">

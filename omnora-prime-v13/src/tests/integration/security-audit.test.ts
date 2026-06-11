@@ -3,6 +3,7 @@ import { checkRateLimit } from '@/lib/security/rateLimiter';
 import { verifyPortalToken } from '@/lib/actions/clientPortal';
 import { createAdminClient } from '@/lib/supabase/admin';
 import * as crypto from 'crypto';
+import { testDb } from '../setup';
 
 vi.mock('@/lib/supabase/admin', () => ({
   createAdminClient: vi.fn(),
@@ -69,7 +70,7 @@ describe('Security — Webhook Signature', () => {
     
     // 2. Assert: No ledger entries created for this reference
     const entries = await testDb.query.ledgerEntries.findMany({
-      where: (entries, { eq }) => eq(entries.txRef, 'PAY-TAMPERED-123')
+      where: (entries, { eq }) => eq(entries.description, 'PAY-TAMPERED-123')
     });
     expect(entries.length).toBe(0); // Line 72: Financial integrity check
   });

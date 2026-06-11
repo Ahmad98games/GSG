@@ -1,6 +1,6 @@
-import { parentPort, workerData } from 'worker_threads';
-import { NSPEncryption } from './encryption';
-import { NSPProtobuf } from './protobuf';
+const { parentPort, workerData } = require('worker_threads');
+const { NSPEncryption } = require('./encryption');
+const { NSPProtobuf } = require('./protobuf');
 
 if (parentPort) {
   parentPort.on('message', (packet: Buffer) => {
@@ -14,4 +14,3 @@ if (parentPort) {
     }
   });
 }
-

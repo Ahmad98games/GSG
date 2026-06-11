@@ -14,6 +14,7 @@ export default function SentinelAssistant() {
   const [commandText, setCommandText] = useState("");
   const [response, setResponse] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
+  const [result, setResult] = useState<any | null>(null);
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -23,20 +24,27 @@ export default function SentinelAssistant() {
     // 1. Try Command Engine first (Navigation/Actions)
     const cmd = parseCommand(text);
     if (cmd) {
+      setResult(cmd);
       setResponse(`Executing: ${cmd.intent.replace(/_/g, ' ')}...`);
       setIsError(false);
       
-      setTimeout(() => {
-        cmd.action(router as any, cmd.entities);
-        setIsOpen(false);
-        setResponse(null);
-        setCommandText("");
-      }, 800);
+      if (typeof cmd.action === 'function') {
+        setTimeout(() => {
+          (cmd.action as any)(router as any, cmd.entities || {});
+          setIsOpen(false);
+          setResponse(null);
+          setCommandText("");
+          setResult(null);
+        }, 800);
+      } else {
+        setResponse(`Matched command: ${cmd.label || cmd.intent.replace(/_/g, ' ')}`);
+      }
       return;
     } 
 
     // 2. Try Knowledge Base (Answering Questions)
     setResponse("Analyzing internal data...");
+    setResult(null);
     setIsError(false);
     
     try {
@@ -168,6 +176,18 @@ export default function SentinelAssistant() {
                         )}
                       >
                         {response}
+
+                        {result?.route && (
+                          <button
+                            onClick={() => {
+                              router.push(result.route);
+                              setIsOpen(false);
+                            }}
+                            className="mt-3 flex items-center gap-2 px-4 py-2 text-xs font-semibold bg-[#60A5FA]/10 text-[#60A5FA] border border-[#60A5FA]/25 hover:bg-[#60A5FA]/20 transition-colors rounded-sm"
+                          >
+                            {result.label || 'Open'} →
+                          </button>
+                        )}
 
                         {suggestedChips.length > 0 && (
                           <div className="mt-4 flex flex-wrap gap-2">

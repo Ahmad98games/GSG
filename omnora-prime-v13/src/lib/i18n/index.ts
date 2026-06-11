@@ -177,6 +177,8 @@ const dictionaries: Record<LanguageCode, any> = {
   fr: { nav: { dashboard: "Tableau de bord", inventory: "Inventaire" } },
   fa: { nav: { dashboard: "داشبورد", inventory: "موجودی" } },
   de: { nav: { dashboard: "Dashboard", inventory: "Inventar" } },
+  he: { nav: { dashboard: "לוח בקרה", inventory: "מלאי" } },
+  ps: { nav: { dashboard: "داشبورډ", inventory: "سټاک" } },
 };
 
 export function getDictionary(lang: LanguageCode): Dictionary {
