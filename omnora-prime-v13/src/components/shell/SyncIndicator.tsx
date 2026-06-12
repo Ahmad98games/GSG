@@ -48,7 +48,7 @@ export default function SyncIndicator({ isCollapsed }: { isCollapsed?: boolean }
   useEffect(() => {
     if (mounted) {
       fetchStatus();
-      const interval = setInterval(fetchStatus, 10000);
+      const interval = setInterval(fetchStatus, 300000);
       return () => clearInterval(interval);
     }
   }, [mounted]);

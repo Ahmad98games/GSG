@@ -277,11 +277,18 @@ export default function ImportPage() {
           if (!isValid) failed++
           return isValid
         })
-        .map(row => ({
-          ...row,
-          business_id: profile.id,
-          is_active: true,
-        }))
+        .map(row => {
+          const item: any = {
+            ...row,
+            business_id: profile.id,
+          };
+          if (entityType === 'karigars') {
+            item.status = 'active';
+          } else {
+            item.is_active = true;
+          }
+          return item;
+        })
       
       if (!transformed.length) continue
       

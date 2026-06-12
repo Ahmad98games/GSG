@@ -41,32 +41,38 @@ export default function LensPage() {
   const { getLensScansRemaining, tier } = useTierStore()
   const toast = useToast()
 
-  // Poll for mobile scans
+  // Subscribe to realtime mobile scans
   useEffect(() => {
     if (!profile?.id) return
 
-    const pollInterval = setInterval(async () => {
-      const { data } = await supabase
-        .from('lens_scans_incoming')
-        .select('*')
-        .eq('business_id', profile.id)
-        .eq('processed', false)
-        .order('received_at', { ascending: false })
-        .limit(1)
+    const channel = supabase
+      .channel('lens_scans_incoming_channel')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'lens_scans_incoming',
+          filter: `business_id=eq.${profile.id}`,
+        },
+        async (payload) => {
+          const scan = payload.new as any;
+          if (scan && !scan.processed) {
+            setIsMobileConnected(true);
+            // Mark as processed in background
+            await supabase
+              .from('lens_scans_incoming')
+              .update({ processed: true })
+              .eq('id', scan.id);
+          }
+        }
+      )
+      .subscribe();
 
-      if (data && data.length > 0) {
-        setIsMobileConnected(true)
-        const scan = data[0]
-        // Mark as processed in background
-        await supabase.from('lens_scans_incoming').update({ processed: true }).eq('id', scan.id)
-      } else {
-        // If no active session found in pulse or similar, we might want to toggle this
-        // But for now, we just let it be false if no scans come in
-      }
-    }, 5000)
-
-    return () => clearInterval(pollInterval)
-  }, [profile?.id, supabase])
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile?.id, supabase]);
 
   async function validateDocumentImage(dataUrl: string): Promise<{ isValid: boolean; reason?: string }> {
     setAnalysisStage('Noxis Intelligence: Validating...')

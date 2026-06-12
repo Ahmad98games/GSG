@@ -132,6 +132,19 @@ export default function KarigarsPage() {
   const [successToast, setSuccessToast] = useState<string | null>(null);
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
 
+  // Memoized handlers
+  const handleLogOutput = React.useCallback((k: Karigar) => {
+    setLoggingKarigar(k);
+  }, []);
+
+  const handleAttend = React.useCallback((k: Karigar) => {
+    setAttendingKarigar(k);
+  }, []);
+
+  const handleAdvance = React.useCallback((k: Karigar) => {
+    setAdvancingKarigar(k);
+  }, []);
+
   // Queries
   const { data: karigars = [], isLoading, error: karigarsError, refetch: refetchKarigars } = useQuery({
     queryKey: ['karigars', profile?.id],
@@ -163,6 +176,7 @@ export default function KarigarsPage() {
       return data || [];
     },
     enabled: !!profile?.id,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: grades = [] } = useQuery({
@@ -173,6 +187,24 @@ export default function KarigarsPage() {
       return data as Grade[];
     },
     enabled: !!profile?.id,
+    staleTime: 30 * 60 * 1000,
+  });
+
+  // Query active batches for production logging modal in the parent to avoid on-mount fetch
+  const { data: activeBatches = [] } = useQuery({
+    queryKey: ['active_batches_karigars', profile?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('production_batches')
+        .select('id, batch_no, sku_id, skus(name, unit)')
+        .eq('business_id', profile?.id)
+        .neq('status', 'completed')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!profile?.id,
+    staleTime: 10 * 60 * 1000,
   });
 
   // Summary Stats
@@ -323,18 +355,19 @@ export default function KarigarsPage() {
       id: "actions",
       cell: (info) => {
         const k = info.row.original;
+        const meta = info.table.options.meta as any;
         return (
           <div className="flex justify-end space-x-4">
              {k.wage_type === 'piece_rate' && (
                <button 
-                 onClick={() => setLoggingKarigar(k)}
+                 onClick={() => meta?.onLogOutput(k)}
                  className="text-[10px] uppercase font-black text-sandstone-gold hover:text-white transition-colors flex items-center bg-transparent border-none cursor-pointer"
                >
                  <Zap size={10} className="mr-1" /> Log Output
                </button>
              )}
-             <button onClick={() => setAttendingKarigar(k)} className="text-[10px] uppercase font-black text-gray-600 hover:text-white transition-colors">Attend</button>
-             <button onClick={() => setAdvancingKarigar(k)} className="text-[10px] uppercase font-black text-gray-600 hover:text-white transition-colors">Advance</button>
+             <button onClick={() => meta?.onAttend(k)} className="text-[10px] uppercase font-black text-gray-600 hover:text-white transition-colors">Attend</button>
+             <button onClick={() => meta?.onAdvance(k)} className="text-[10px] uppercase font-black text-gray-600 hover:text-white transition-colors">Advance</button>
              <Link href={`/karigars/${k.id}`} className="text-gray-500 hover:text-white"><ChevronRight size={16} /></Link>
           </div>
         );
@@ -349,7 +382,12 @@ export default function KarigarsPage() {
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: 20 } }
+    initialState: { pagination: { pageSize: 20 } },
+    meta: {
+      onLogOutput: handleLogOutput,
+      onAttend: handleAttend,
+      onAdvance: handleAdvance,
+    }
   });
 
   if (isLoading) return (
@@ -526,6 +564,7 @@ export default function KarigarsPage() {
          {loggingKarigar && (
             <LogProductionModal
              karigar={loggingKarigar}
+             batches={activeBatches}
              onClose={() => setLoggingKarigar(null)}
              onSuccess={(msg) => { setSuccessToast(msg); setLoggingKarigar(null); queryClient.invalidateQueries({ queryKey: ['karigars'] }); }}
             />
@@ -554,24 +593,32 @@ export default function KarigarsPage() {
 // --- Sub-Components ---
 
 
-const KarigarRow = React.memo(function KarigarRow({ row, i }: { row: any, i: number }) {
-  const controls = useRowHighlight(row.original.current_advance);
-  
-  return (
-     <motion.tr 
-       animate={controls}
-       custom={controls}
-       key={row.id} 
-       className="border-b border-white/4 hover:bg-white/[0.02] transition-colors cursor-pointer"
-     >
-       {row.getVisibleCells().map((cell: any) => (
-         <td key={cell.id} className="px-4 py-2.5 text-sm text-gray-200 border-b border-white/[0.04]">
-           {flexRender(cell.column.columnDef.cell, cell.getContext())}
-         </td>
-       ))}
-     </motion.tr>
-  );
-});
+const KarigarRow = React.memo(
+  function KarigarRow({ row, i }: { row: any; i: number }) {
+    const controls = useRowHighlight(row.original.current_advance);
+    
+    return (
+       <motion.tr 
+         animate={controls}
+         custom={controls}
+         key={row.id} 
+         className="border-b border-white/4 hover:bg-white/[0.02] transition-colors cursor-pointer"
+       >
+         {row.getVisibleCells().map((cell: any) => (
+           <td key={cell.id} className="px-4 py-2.5 text-sm text-gray-200 border-b border-white/[0.04]">
+             {flexRender(cell.column.columnDef.cell, cell.getContext())}
+           </td>
+         ))}
+       </motion.tr>
+    );
+  },
+  (prevProps, nextProps) => {
+    return (
+      prevProps.row.original === nextProps.row.original &&
+      prevProps.i === nextProps.i
+    );
+  }
+);
 
 function RegisterKarigarModal({ grades, onClose, onSuccess }: { grades: Grade[], onClose: () => void, onSuccess: (msg: string) => void }) {
   const { profile } = useBusinessProfile();
@@ -884,31 +931,16 @@ function AdvanceModal({ karigar, onClose, onSuccess }: { karigar: Karigar, onClo
 
 interface LogProductionModalProps {
   karigar: Karigar;
+  batches: any[];
   onClose: () => void;
   onSuccess: (msg: string) => void;
 }
 
-function LogProductionModal({ karigar, onClose, onSuccess }: LogProductionModalProps) {
+function LogProductionModal({ karigar, batches = [], onClose, onSuccess }: LogProductionModalProps) {
   const { profile } = useBusinessProfile();
   const supabase = createClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { fmt } = usePersona();
-
-  // Fetch active batches for selection
-  const { data: batches = [] } = useQuery({
-    queryKey: ['active_batches_modal_karigars', profile?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('production_batches')
-        .select('id, batch_no, sku_id, skus(name, unit)')
-        .eq('business_id', profile?.id)
-        .neq('status', 'completed')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!profile?.id
-  });
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
     defaultValues: {

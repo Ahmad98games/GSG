@@ -93,7 +93,7 @@ export default React.memo(function IndustrialSidebar() {
   // Global Keyboard Shortcut: [N]
   useEffect(() => {
     const handleGlobalKey = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === 'n' && (e.target as HTMLElement).tagName !== 'INPUT' && (e.target as HTMLElement).tagName !== 'TEXTAREA') {
+      if (e.key && e.key.toLowerCase() === 'n' && (e.target as HTMLElement).tagName !== 'INPUT' && (e.target as HTMLElement).tagName !== 'TEXTAREA') {
         e.preventDefault();
         setIsProductionModalOpen(true);
       }

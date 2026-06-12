@@ -67,7 +67,7 @@ export default function PairingPage() {
     }
 
     fetchDevices();
-    const interval = setInterval(fetchDevices, 5000);
+    const interval = setInterval(fetchDevices, 300000);
     return () => clearInterval(interval);
   }, []);
 

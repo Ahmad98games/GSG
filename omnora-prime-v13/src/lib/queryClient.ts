@@ -3,21 +3,13 @@ import { QueryClient } from '@tanstack/react-query';
 export const queryClientOptions = {
   defaultOptions: {
     queries: {
-      // DISABLE automatic polling
-      refetchInterval: false as const,
+      staleTime: 5 * 60 * 1000,    // 5 minutes
+      gcTime: 15 * 60 * 1000,      // 15 minutes
+      refetchOnWindowFocus: false,  // CRITICAL
+      refetchOnMount: false,        // use cache
+      refetchInterval: false as const,       // no polling
       refetchIntervalInBackground: false,
-      refetchOnWindowFocus: false,
-      
-      // Keep data for 10 minutes
-      staleTime: 10 * 60 * 1000,
-      
-      // Cache for 30 minutes
-      gcTime: 30 * 60 * 1000,
-      
-      // Retry failed requests 1 time
       retry: 1,
-      
-      // Wait 1s between retries
       retryDelay: 1000,
       refetchOnReconnect: true,
     },

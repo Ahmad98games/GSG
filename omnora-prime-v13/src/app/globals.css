@@ -1037,3 +1037,18 @@ td {
     animation-duration: 42s;
   }
 }
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Reduce paint during scrolling */
+.sidebar-nav {
+  will-change: transform;
+}
+
+/* Hardware-accelerate table rows */
+tbody tr {
+  transform: translateZ(0);
+}

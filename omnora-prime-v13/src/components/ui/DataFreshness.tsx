@@ -15,7 +15,7 @@ export default function DataFreshness({ lastFetchedAt, onRefresh, className }: D
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
-    const interval = setInterval(() => setNow(new Date()), 30000); // Update every 30s
+    const interval = setInterval(() => setNow(new Date()), 300000); // Update every 5m
     return () => clearInterval(interval);
   }, []);
 

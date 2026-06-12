@@ -13,20 +13,26 @@ export function useNoxisLocale() {
   // Sync to Supabase if profile locale differs
   useEffect(() => {
     const syncLocale = async () => {
-      if (profile?.id && profile.preferred_locale !== locale) {
-        const { error } = await supabase
-          .from('business_profiles')
-          .update({ preferred_locale: locale })
-          .eq('id', profile.id);
+      // Guard: do not sync if profile not loaded
+      if (!profile?.id) return;
 
-        if (error) {
-          console.error('Failed to sync locale to Supabase:', error);
+      if (profile.preferred_locale === locale) return;
+
+      const { error } = await supabase
+        .from('business_profiles')
+        .update({ preferred_locale: locale })
+        .eq('id', profile.id);
+
+      if (error) {
+        // Only log if it is a real error, not null profile
+        if (error.code !== 'PGRST116') {
+          console.error('Failed to sync locale:', error.message);
         }
-        
-        if (profile) {
-          // Update local state to prevent loop
-          setProfile({ ...profile, preferred_locale: locale });
-        }
+      }
+      
+      if (profile) {
+        // Update local state to prevent loop
+        setProfile({ ...profile, preferred_locale: locale });
       }
     };
     syncLocale();
