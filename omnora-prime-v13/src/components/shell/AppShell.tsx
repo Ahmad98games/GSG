@@ -171,7 +171,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname?.startsWith("/privacy") ||
     pathname?.startsWith("/reviews") ||
     pathname?.startsWith("/docs") ||
-    pathname?.startsWith("/blog");
+    pathname?.startsWith("/blog") ||
+    pathname?.startsWith("/admin"); // Admin dashboard is web-only, bypass Electron guard
   
   // Detect Electron for TitleBar and secure access checking
   const isElectron = typeof window !== 'undefined' && (
