@@ -185,7 +185,7 @@ export default function LandingClient() {
               <NavBrand />
 
               <div className="hidden lg:flex items-center gap-10">
-                {[{ label: 'Pricing', href: '/pricing' }, { label: 'Reviews', href: '/reviews' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }].map((link) => (
+                {[{ label: 'Pricing', href: '/pricing' }, { label: 'Reviews', href: '/reviews' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }, { label: 'About', href: '/about' }].map((link) => (
                   <Link key={link.href} href={link.href} className="text-[10px] text-[#94A3B8] hover:text-[#E8D5B5] font-bold tracking-[0.18em] uppercase transition-colors">
                     {link.label}
                   </Link>
@@ -215,7 +215,7 @@ export default function LandingClient() {
                 >
                   <div className="px-6 py-6 flex flex-col gap-5">
                     <BrandLogo size="nav" />
-                    {[{ label: 'Pricing', href: '/pricing' }, { label: 'Reviews', href: '/reviews' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }].map((link) => (
+                    {[{ label: 'Pricing', href: '/pricing' }, { label: 'Reviews', href: '/reviews' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }, { label: 'About', href: '/about' }].map((link) => (
                       <Link key={link.href} href={link.href} onClick={() => setMobileMenuOpen(false)} className="text-xs font-bold tracking-widest uppercase text-[#94A3B8] hover:text-white">
                         {link.label}
                       </Link>
@@ -601,7 +601,7 @@ export default function LandingClient() {
                 </div>
               </div>
               <div className="flex flex-wrap justify-center gap-6 sm:gap-8 text-[10px] font-bold uppercase tracking-widest text-gray-500">
-                {[{ label: 'Download', href: '/download' }, { label: 'Pricing', href: '/pricing' }, { label: 'Reviews', href: '/reviews' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }, { label: 'Privacy', href: '/privacy' }, { label: 'Terms', href: '/terms' }].map((l) => (
+                {[{ label: 'Download', href: '/download' }, { label: 'Pricing', href: '/pricing' }, { label: 'Reviews', href: '/reviews' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }, { label: 'Privacy', href: '/privacy' }, { label: 'Terms', href: '/terms' }, { label: 'About', href: '/about' }].map((l) => (
                   <Link key={l.href} href={l.href} className="hover:text-white transition-colors">{l.label}</Link>
                 ))}
               </div>

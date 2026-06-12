@@ -68,7 +68,7 @@ export default function ReviewsPage() {
           </Link>
 
           <div className="hidden md:flex items-center gap-8">
-            {[{ label: 'Pricing', href: '/pricing' }, { label: 'Reviews', href: '/reviews' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }].map((link) => (
+            {[{ label: 'Pricing', href: '/pricing' }, { label: 'Reviews', href: '/reviews' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }, { label: 'About', href: '/about' }].map((link) => (
               <Link key={link.href} href={link.href} className="text-sm text-gray-400 hover:text-white font-medium transition-colors relative group">
                 {link.label}
               </Link>
@@ -89,7 +89,7 @@ export default function ReviewsPage() {
         {mobileMenuOpen && (
           <div className="md:hidden border-b border-white/[0.06] bg-[#070809]">
             <div className="px-6 py-8 flex flex-col gap-6">
-              {[{ label: 'Pricing', href: '/pricing' }, { label: 'Reviews', href: '/reviews' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }].map((link) => (
+              {[{ label: 'Pricing', href: '/pricing' }, { label: 'Reviews', href: '/reviews' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }, { label: 'About', href: '/about' }].map((link) => (
                 <Link key={link.href} href={link.href} onClick={() => setMobileMenuOpen(false)} className="text-lg text-gray-300 hover:text-white font-semibold transition-colors">
                   {link.label}
                 </Link>
@@ -202,7 +202,7 @@ export default function ReviewsPage() {
           </div>
 
           <div className="flex flex-wrap justify-center gap-8 text-xs font-semibold uppercase tracking-widest text-gray-500">
-            {[{ label: 'Download', href: '/download' }, { label: 'Pricing', href: '/pricing' }, { label: 'Reviews', href: '/reviews' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }, { label: 'Privacy', href: '/privacy' }].map((l) => (
+            {[{ label: 'Download', href: '/download' }, { label: 'Pricing', href: '/pricing' }, { label: 'Reviews', href: '/reviews' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }, { label: 'Privacy', href: '/privacy' }, { label: 'About', href: '/about' }].map((l) => (
               <Link key={l.href} href={l.href} className="hover:text-white transition-colors">
                 {l.label}
               </Link>
