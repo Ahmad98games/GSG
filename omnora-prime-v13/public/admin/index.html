@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Noxis Admin · Control Panel</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #060708;
+      --bg2: #0A0C0F;
+      --bg3: #0F1114;
+      --border: rgba(255,255,255,0.07);
+      --red: #ef4444;
+      --red-dim: rgba(239,68,68,0.12);
+      --green: #10b981;
+      --green-dim: rgba(16,185,129,0.12);
+      --amber: #f59e0b;
+      --amber-dim: rgba(245,158,11,0.12);
+      --blue: #3b82f6;
+      --blue-dim: rgba(59,130,246,0.12);
+      --gold: #C5A059;
+      --gold-dim: rgba(197,160,89,0.12);
+      --text: #fff;
+      --text-dim: #6b7280;
+      --text-muted: #374151;
+    }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; font-size: 14px; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    /* ── SPINNER ── */
+    .spinner { width: 24px; height: 24px; border: 2px solid rgba(255,255,255,0.1); border-top-color: var(--red); border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── CENTERED ── */
+    .center { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+
+    /* ── LOGIN ── */
+    #login-screen { display: none; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
+    .login-box { width: 100%; max-width: 340px; padding: 0 24px; }
+    .login-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 36px; justify-content: center; }
+    .login-logo-icon { width: 40px; height: 40px; border-radius: 12px; background: var(--red-dim); border: 1px solid rgba(239,68,68,0.2); display: flex; align-items: center; justify-content: center; color: var(--red); }
+    .login-logo-icon svg { width: 18px; height: 18px; }
+    .login-logo-text { font-size: 13px; font-weight: 800; }
+    .login-logo-sub { font-size: 9px; color: var(--text-dim); letter-spacing: 0.2em; text-transform: uppercase; margin-top: 1px; }
+    input[type="password"] { width: 100%; background: #161A1F; border: 1px solid var(--border); color: var(--text); font-size: 13px; padding: 12px 16px; outline: none; transition: border-color 0.2s; font-family: inherit; }
+    input[type="password"]:focus { border-color: rgba(239,68,68,0.3); }
+    input[type="password"]:disabled { opacity: 0.5; }
+    .login-error { font-size: 11px; color: var(--red); display: flex; align-items: center; gap: 6px; margin-top: 8px; min-height: 18px; }
+    .btn-auth { width: 100%; padding: 12px; font-size: 13px; font-weight: 700; background: rgba(239,68,68,0.8); color: white; border: none; cursor: pointer; transition: background 0.2s; margin-top: 10px; font-family: inherit; letter-spacing: 0.02em; }
+    .btn-auth:hover:not(:disabled) { background: var(--red); }
+    .btn-auth:disabled { opacity: 0.4; cursor: not-allowed; }
+    .login-note { font-size: 9px; color: var(--text-muted); text-align: center; margin-top: 28px; letter-spacing: 0.1em; text-transform: uppercase; }
+
+    /* ── DASHBOARD ── */
+    #dashboard { display: none; flex-direction: column; min-height: 100vh; }
+
+    /* header */
+    .header { border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; background: rgba(6,7,8,0.95); backdrop-filter: blur(8px); }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .header-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--red-dim); border: 1px solid rgba(239,68,68,0.2); display: flex; align-items: center; justify-content: center; color: var(--red); flex-shrink: 0; }
+    .header-icon svg { width: 15px; height: 15px; }
+    .header-title { font-size: 13px; font-weight: 700; }
+    .header-sub { font-size: 9px; color: var(--text-dim); margin-top: 1px; }
+    .header-actions { display: flex; align-items: center; gap: 16px; }
+    .btn-text { background: none; border: none; cursor: pointer; font-size: 11px; color: var(--text-dim); font-family: inherit; display: flex; align-items: center; gap: 5px; transition: color 0.2s; padding: 0; }
+    .btn-text:hover { color: var(--text); }
+    .btn-signout:hover { color: var(--red) !important; }
+
+    /* main */
+    .main { max-width: 1280px; margin: 0 auto; padding: 24px; width: 100%; }
+
+    /* stats */
+    .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 32px; }
+    @media (max-width: 900px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+    .stat-card { padding: 20px; background: var(--bg3); border: 1px solid var(--border); border-radius: 2px; }
+    .stat-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
+    .stat-icon svg { width: 16px; height: 16px; }
+    .stat-value { font-size: 26px; font-weight: 700; font-family: 'JetBrains Mono', monospace; margin-bottom: 2px; }
+    .stat-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: var(--text-dim); }
+    .stat-sub { font-size: 9px; color: var(--text-muted); margin-top: 3px; }
+
+    /* tabs */
+    .tabs { display: flex; gap: 4px; margin-bottom: 24px; }
+    .tab-btn { display: flex; align-items: center; gap: 8px; padding: 10px 20px; font-size: 11px; font-weight: 600; border: 1px solid var(--border); background: var(--bg3); color: var(--text-dim); cursor: pointer; font-family: inherit; transition: all 0.15s; }
+    .tab-btn.active { background: var(--red-dim); border-color: rgba(239,68,68,0.3); color: var(--red); }
+    .tab-btn:not(.active):hover { border-color: rgba(255,255,255,0.15); }
+    .tab-btn svg { width: 13px; height: 13px; }
+
+    /* licenses panel */
+    #panel-licenses { display: block; }
+    #panel-generate { display: none; }
+
+    .licenses-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 2px; }
+    .licenses-toolbar { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+    .search-input { background: #161A1F; border: 1px solid var(--border); color: var(--text); font-size: 11px; padding: 8px 12px; outline: none; width: 220px; font-family: inherit; transition: border-color 0.2s; }
+    .search-input:focus { border-color: rgba(255,255,255,0.2); }
+    .filter-btn { font-size: 9px; font-weight: 600; padding: 6px 12px; border: 1px solid var(--border); background: none; color: var(--text-dim); cursor: pointer; font-family: inherit; transition: all 0.15s; white-space: nowrap; }
+    .filter-btn.active { border-color: rgba(239,68,68,0.3); color: var(--red); background: var(--red-dim); }
+    .filter-btn:not(.active):hover { border-color: rgba(255,255,255,0.18); }
+
+    /* license rows */
+    .lic-row { display: flex; align-items: center; gap: 16px; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.03); transition: background 0.1s; }
+    .lic-row:hover { background: rgba(255,255,255,0.015); }
+    .lic-row:last-child { border-bottom: none; }
+    .lic-row.deactivated { opacity: 0.45; }
+    .lic-main { flex: 1; min-width: 0; }
+    .lic-key-row { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; flex-wrap: wrap; }
+    .lic-key { font-size: 11px; font-weight: 700; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.05em; }
+    .badge { font-size: 8px; font-weight: 700; text-transform: uppercase; padding: 2px 6px; border-radius: 20px; }
+    .badge-elite { background: var(--gold-dim); color: var(--gold); }
+    .badge-pro { background: var(--blue-dim); color: var(--blue); }
+    .badge-lite { background: rgba(255,255,255,0.08); color: var(--text-dim); }
+    .badge-trial { background: var(--amber-dim); color: var(--amber); }
+    .badge-deactivated { background: var(--red-dim); color: var(--red); }
+    .badge-expired { background: var(--red-dim); color: var(--red); }
+    .badge-warning { background: var(--amber-dim); color: var(--amber); animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+    .lic-info { font-size: 10px; color: var(--text-dim); }
+    .lic-expiry { flex-shrink: 0; width: 110px; text-align: right; }
+    .lic-expiry-date { font-size: 10px; font-family: 'JetBrains Mono', monospace; }
+    .lic-expiry-days { font-size: 9px; color: var(--text-muted); margin-top: 2px; }
+    .lic-devices { flex-shrink: 0; width: 60px; text-align: center; }
+    .lic-devices-num { font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+    .lic-devices-lbl { font-size: 9px; color: var(--text-muted); }
+    .lic-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .act-btn { font-size: 9px; font-weight: 600; padding: 6px 10px; border: 1px solid; background: none; cursor: pointer; font-family: inherit; transition: all 0.15s; white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center; }
+    .act-btn-wa { color: #25D366; border-color: rgba(37,211,102,0.25); }
+    .act-btn-wa:hover { background: rgba(37,211,102,0.1); }
+    .act-btn-extend { color: var(--blue); border-color: rgba(59,130,246,0.25); }
+    .act-btn-extend:hover { background: var(--blue-dim); }
+    .act-btn-deactivate { color: var(--red); border-color: rgba(239,68,68,0.25); }
+    .act-btn-deactivate:hover { background: var(--red-dim); }
+    .act-btn-activate { color: var(--green); border-color: rgba(16,185,129,0.25); }
+    .act-btn-activate:hover { background: var(--green-dim); }
+
+    .empty-state { padding: 64px 24px; text-align: center; color: var(--text-dim); font-size: 13px; }
+
+    /* generate form */
+    .gen-box { max-width: 480px; padding: 24px; background: var(--bg2); border: 1px solid var(--border); border-radius: 2px; }
+    .gen-title { font-size: 13px; font-weight: 700; margin-bottom: 20px; }
+    .field-group { margin-bottom: 16px; }
+    .field-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: var(--text-dim); display: block; margin-bottom: 6px; }
+    .field-input { width: 100%; background: var(--bg3); border: 1px solid var(--border); color: var(--text); font-size: 12px; padding: 10px 12px; outline: none; font-family: inherit; transition: border-color 0.2s; }
+    .field-input:focus { border-color: rgba(239,68,68,0.3); }
+    select.field-input { cursor: pointer; }
+    .plan-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .plan-btn { padding: 12px 8px; text-align: center; border: 1px solid var(--border); background: none; color: var(--text-dim); cursor: pointer; font-family: inherit; transition: all 0.15s; border-radius: 2px; }
+    .plan-btn.active { border-color: rgba(239,68,68,0.4); background: var(--red-dim); color: var(--red); }
+    .plan-btn:not(.active):hover { border-color: rgba(255,255,255,0.18); }
+    .plan-name { font-size: 11px; font-weight: 700; display: block; }
+    .plan-price { font-size: 9px; color: var(--text-muted); display: block; margin-top: 2px; }
+    .plan-devices { font-size: 9px; color: var(--text-muted); display: block; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .btn-generate { width: 100%; padding: 12px; font-size: 13px; font-weight: 700; background: rgba(239,68,68,0.8); color: white; border: none; cursor: pointer; font-family: inherit; transition: background 0.2s; margin-top: 4px; }
+    .btn-generate:hover:not(:disabled) { background: var(--red); }
+    .btn-generate:disabled { opacity: 0.4; cursor: not-allowed; }
+    .generated-key-box { margin-top: 16px; padding: 16px; background: rgba(16,185,129,0.05); border: 1px solid rgba(16,185,129,0.2); border-radius: 2px; }
+    .gen-key-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: var(--green); margin-bottom: 8px; }
+    .gen-key-value { font-size: 17px; font-weight: 700; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.1em; word-break: break-all; }
+    .gen-key-copy { font-size: 9px; color: var(--text-muted); cursor: pointer; margin-top: 8px; display: inline-block; transition: color 0.2s; background: none; border: none; font-family: inherit; }
+    .gen-key-copy:hover { color: var(--text-dim); }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="center" id="loading-screen">
+  <div class="spinner"></div>
+</div>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-icon">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
+      </div>
+      <div>
+        <div class="login-logo-text">Admin Access</div>
+        <div class="login-logo-sub">Noxis Control Panel</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <input type="password" id="pass-input" placeholder="Admin password" autocomplete="current-password" />
+      <div class="login-error" id="login-error"></div>
+      <button class="btn-auth" id="login-btn" disabled>Authenticate</button>
+    </div>
+    <div class="login-note">Unauthorized access is logged</div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <div class="header">
+    <div class="header-left">
+      <div class="header-icon">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
+      </div>
+      <div>
+        <div class="header-title">Noxis Admin</div>
+        <div class="header-sub">Control Panel · Omnora Labs</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-text" onclick="loadLicenses()">
+        <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        Refresh
+      </button>
+      <button class="btn-text btn-signout" onclick="signOut()">Sign Out</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- STATS -->
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(16,185,129,0.1)">
+          <svg fill="none" viewBox="0 0 24 24" stroke="#10b981" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+        </div>
+        <div class="stat-value" id="stat-active">—</div>
+        <div class="stat-label">Active Licenses</div>
+        <div class="stat-sub">Paying customers</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(245,158,11,0.1)">
+          <svg fill="none" viewBox="0 0 24 24" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14" style="stroke:#f59e0b;stroke-width:2;fill:none;"/></svg>
+        </div>
+        <div class="stat-value" id="stat-trial">—</div>
+        <div class="stat-label">Trial Active</div>
+        <div class="stat-sub">In evaluation</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(239,68,68,0.1)">
+          <svg fill="none" viewBox="0 0 24 24" stroke="#ef4444" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        </div>
+        <div class="stat-value" id="stat-expired">—</div>
+        <div class="stat-label">Expired</div>
+        <div class="stat-sub">Renewal needed</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(249,115,22,0.1)">
+          <svg fill="none" viewBox="0 0 24 24" stroke="#f97316" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        </div>
+        <div class="stat-value" id="stat-warning">—</div>
+        <div class="stat-label">Expiring Soon</div>
+        <div class="stat-sub">Within 2 days</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(59,130,246,0.1)">
+          <svg fill="none" viewBox="0 0 24 24" stroke="#3b82f6" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <div class="stat-value" id="stat-revenue">—</div>
+        <div class="stat-label">Total Revenue</div>
+        <div class="stat-sub" id="stat-revenue-sub">0 paid licenses</div>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-licenses-btn" onclick="switchTab('licenses')">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+        All Licenses
+      </button>
+      <button class="tab-btn" id="tab-generate-btn" onclick="switchTab('generate')">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        Generate Key
+      </button>
+    </div>
+
+    <!-- LICENSES PANEL -->
+    <div id="panel-licenses">
+      <div class="licenses-box">
+        <div class="licenses-toolbar">
+          <input class="search-input" type="text" placeholder="Search key, name, phone..." oninput="renderLicenses()" id="search-input" />
+          <button class="filter-btn active" id="filter-all" onclick="setFilter('all')">All (<span id="fc-all">0</span>)</button>
+          <button class="filter-btn" id="filter-active" onclick="setFilter('active')">Active (<span id="fc-active">0</span>)</button>
+          <button class="filter-btn" id="filter-trial" onclick="setFilter('trial')">Trial (<span id="fc-trial">0</span>)</button>
+          <button class="filter-btn" id="filter-warning" onclick="setFilter('warning')">⚠ Expiring (<span id="fc-warning">0</span>)</button>
+          <button class="filter-btn" id="filter-expired" onclick="setFilter('expired')">Expired (<span id="fc-expired">0</span>)</button>
+        </div>
+        <div id="licenses-list"></div>
+      </div>
+    </div>
+
+    <!-- GENERATE PANEL -->
+    <div id="panel-generate" style="display:none;">
+      <div class="gen-box">
+        <div class="gen-title">Generate License Key</div>
+
+        <div class="field-group">
+          <label class="field-label">Plan</label>
+          <div class="plan-grid">
+            <button class="plan-btn active" id="plan-lite" onclick="setPlan('lite')">
+              <span class="plan-name">Lite</span>
+              <span class="plan-price">PKR 2,500</span>
+              <span class="plan-devices">5 devices</span>
+            </button>
+            <button class="plan-btn" id="plan-pro" onclick="setPlan('pro')">
+              <span class="plan-name">Pro</span>
+              <span class="plan-price">PKR 6,500</span>
+              <span class="plan-devices">15 devices</span>
+            </button>
+            <button class="plan-btn" id="plan-elite" onclick="setPlan('elite')">
+              <span class="plan-name">Elite</span>
+              <span class="plan-price">PKR 14,000</span>
+              <span class="plan-devices">50 devices</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Duration</label>
+          <select class="field-input" id="gen-months">
+            <option value="1">1 month</option>
+            <option value="2">2 months</option>
+            <option value="3">3 months</option>
+            <option value="6">6 months</option>
+            <option value="12">12 months</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Customer Name *</label>
+          <input class="field-input" type="text" id="gen-name" placeholder="Ahmad Mahboob" oninput="updateGenBtn()" />
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">WhatsApp Number</label>
+          <input class="field-input" type="tel" id="gen-wa" placeholder="03001234567" />
+        </div>
+
+        <div class="grid-2">
+          <div class="field-group" style="margin-bottom:0">
+            <label class="field-label">Payment Method</label>
+            <select class="field-input" id="gen-payment">
+              <option value="jazzcash">JazzCash</option>
+              <option value="easypaisa">EasyPaisa</option>
+              <option value="bank">Bank Transfer</option>
+              <option value="cash">Cash</option>
+            </select>
+          </div>
+          <div class="field-group" style="margin-bottom:0">
+            <label class="field-label">Amount (PKR)</label>
+            <input class="field-input" type="number" id="gen-amount" placeholder="2500" />
+          </div>
+        </div>
+
+        <button class="btn-generate" id="gen-btn" onclick="generateLicense()" disabled style="margin-top:20px;">Generate &amp; Send WhatsApp</button>
+
+        <div id="gen-result" style="display:none;" class="generated-key-box">
+          <div class="gen-key-label">✓ Key Generated</div>
+          <div class="gen-key-value" id="gen-key-value"></div>
+          <button class="gen-key-copy" onclick="copyKey()">Click to copy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ──
+const SUPABASE_URL  = 'https://zgxmvwxzjmpmesqliwxl.supabase.co';
+const SUPABASE_ANON = 'sb_publishable_cGJQMAam_R4JU3X4IEIrkQ_EPeSsQIt';
+const ADMIN_PASS    = 'noxis-control-secure-access-2026';
+const SESSION_KEY   = 'noxis_admin_session';
+const SESSION_DUR   = 8 * 60 * 60 * 1000;
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// ── STATE ──
+let licenses = [];
+let activeFilter = 'all';
+let activePlan = 'lite';
+let generatedKey = '';
+
+// ── SESSION ──
+function verifySession() {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return false;
+    const { token, expires } = JSON.parse(raw);
+    if (Date.now() > expires) { sessionStorage.removeItem(SESSION_KEY); return false; }
+    return token === ADMIN_PASS;
+  } catch { return false; }
+}
+function createSession() {
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify({ token: ADMIN_PASS, expires: Date.now() + SESSION_DUR }));
+}
+function signOut() {
+  sessionStorage.removeItem(SESSION_KEY);
+  show('login-screen');
+  hide('dashboard');
+  document.getElementById('pass-input').value = '';
+  document.getElementById('login-btn').disabled = true;
+  document.getElementById('login-error').textContent = '';
+}
+
+// ── INIT ──
+window.addEventListener('DOMContentLoaded', () => {
+  hide('loading-screen');
+  if (verifySession()) {
+    showDashboard();
+  } else {
+    show('login-screen');
+    setupLogin();
+  }
+});
+
+function setupLogin() {
+  const inp = document.getElementById('pass-input');
+  const btn = document.getElementById('login-btn');
+  let attempts = 0, locked = false;
+
+  inp.addEventListener('input', () => {
+    btn.disabled = !inp.value.trim() || locked;
+    document.getElementById('login-error').textContent = '';
+  });
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter' && !btn.disabled) doLogin(); });
+  btn.addEventListener('click', doLogin);
+
+  function doLogin() {
+    if (locked) return;
+    if (inp.value === ADMIN_PASS) {
+      createSession();
+      hide('login-screen');
+      showDashboard();
+    } else {
+      attempts++;
+      const rem = 3 - attempts;
+      if (rem <= 0) {
+        locked = true;
+        btn.disabled = true;
+        inp.disabled = true;
+        document.getElementById('login-error').textContent = 'Too many attempts. Redirecting...';
+        setTimeout(() => window.location.href = '/', 2000);
+      } else {
+        document.getElementById('login-error').textContent = `Wrong password. ${rem} attempt${rem !== 1 ? 's' : ''} remaining.`;
+        inp.value = '';
+        btn.disabled = true;
+      }
+    }
+  }
+}
+
+// ── DASHBOARD ──
+function showDashboard() {
+  show('dashboard');
+  loadLicenses();
+}
+
+async function loadLicenses() {
+  document.getElementById('licenses-list').innerHTML = '<div class="center" style="padding:64px"><div class="spinner"></div></div>';
+  const { data, error } = await sb.from('licenses').select('*').order('created_at', { ascending: false });
+  if (error) { console.error(error); return; }
+  licenses = data || [];
+  updateStats();
+  renderLicenses();
+}
+
+// ── STATS ──
+function updateStats() {
+  const now = new Date();
+  const active  = licenses.filter(l => !l.is_deactivated && !l.is_trial && (!l.expires_at || new Date(l.expires_at) > now));
+  const trials  = licenses.filter(l => l.is_trial && !l.is_deactivated);
+  const expired = licenses.filter(l => l.expires_at && new Date(l.expires_at) < now && !l.is_deactivated);
+  const warning = licenses.filter(l => {
+    if (!l.expires_at || l.is_deactivated) return false;
+    const d = Math.ceil((new Date(l.expires_at) - now) / 86400000);
+    return d <= 2 && d > 0;
+  });
+  const paid = licenses.filter(l => !l.is_trial);
+  const revenue = paid.reduce((s, l) => s + (l.amount_paid || 0), 0);
+
+  document.getElementById('stat-active').textContent  = active.length;
+  document.getElementById('stat-trial').textContent   = trials.length;
+  document.getElementById('stat-expired').textContent = expired.length;
+  document.getElementById('stat-warning').textContent = warning.length;
+  document.getElementById('stat-revenue').textContent = 'PKR ' + Math.round(revenue / 1000) + 'k';
+  document.getElementById('stat-revenue-sub').textContent = paid.length + ' paid licenses';
+
+  document.getElementById('fc-all').textContent     = licenses.length;
+  document.getElementById('fc-active').textContent  = active.length;
+  document.getElementById('fc-trial').textContent   = trials.length;
+  document.getElementById('fc-warning').textContent = warning.length;
+  document.getElementById('fc-expired').textContent = expired.length;
+}
+
+// ── FILTER ──
+function setFilter(f) {
+  activeFilter = f;
+  ['all','active','trial','warning','expired'].forEach(k => {
+    document.getElementById('filter-' + k).classList.toggle('active', k === f);
+  });
+  renderLicenses();
+}
+
+// ── RENDER LICENSES ──
+function renderLicenses() {
+  const now = new Date();
+  const q = (document.getElementById('search-input').value || '').toLowerCase().trim();
+
+  const filtered = licenses.filter(l => {
+    if (activeFilter === 'active')  return !l.is_deactivated && !l.is_trial && (!l.expires_at || new Date(l.expires_at) > now);
+    if (activeFilter === 'expired') return l.expires_at && new Date(l.expires_at) < now && !l.is_deactivated;
+    if (activeFilter === 'trial')   return l.is_trial;
+    if (activeFilter === 'warning') {
+      if (!l.expires_at) return false;
+      const d = Math.ceil((new Date(l.expires_at) - now) / 86400000);
+      return d <= 2 && d > 0;
+    }
+    return true;
+  }).filter(l => {
+    if (!q) return true;
+    return (l.license_key||'').toLowerCase().includes(q) ||
+           (l.customer_name||'').toLowerCase().includes(q) ||
+           (l.customer_whatsapp||'').includes(q);
+  });
+
+  const el = document.getElementById('licenses-list');
+  if (filtered.length === 0) { el.innerHTML = '<div class="empty-state">No licenses found</div>'; return; }
+
+  el.innerHTML = filtered.map(l => licenseRowHTML(l, now)).join('');
+}
+
+function licenseRowHTML(l, now) {
+  const expired = l.expires_at && new Date(l.expires_at) < now;
+  const expDate = l.expires_at ? new Date(l.expires_at) : null;
+  const daysLeft = expDate ? Math.ceil((expDate - now) / 86400000) : null;
+  const isWarn = daysLeft !== null && daysLeft <= 2 && daysLeft > 0;
+
+  const tierBadge = l.tier === 'elite' ? '<span class="badge badge-elite">Elite</span>'
+    : l.tier === 'pro' ? '<span class="badge badge-pro">Pro</span>'
+    : '<span class="badge badge-lite">Lite</span>';
+
+  const statusBadges = [
+    l.is_trial ? '<span class="badge badge-trial">Trial</span>' : '',
+    l.is_deactivated ? '<span class="badge badge-deactivated">Deactivated</span>' : '',
+    expired && !l.is_deactivated ? '<span class="badge badge-expired">Expired</span>' : '',
+    isWarn ? `<span class="badge badge-warning">${daysLeft}d left</span>` : '',
+  ].join('');
+
+  const expiryColor = expired ? 'color:var(--red)' : isWarn ? 'color:var(--amber)' : 'color:var(--text-dim)';
+  const expiryStr = expDate ? expDate.toLocaleDateString('en-PK') : 'No expiry';
+  const daysStr = daysLeft !== null ? (daysLeft > 0 ? `${daysLeft}d remaining` : `${Math.abs(daysLeft)}d ago`) : 'Lifetime';
+
+  const devices = (l.device_fingerprints || []).length;
+  const maxDev = l.max_devices || 5;
+
+  const info = [l.customer_name || 'No name', l.customer_whatsapp ? `· ${l.customer_whatsapp}` : '', l.amount_paid ? `· PKR ${l.amount_paid.toLocaleString()}` : '', l.payment_method ? `via ${l.payment_method}` : ''].filter(Boolean).join(' ');
+
+  const waBtn = (l.customer_whatsapp && !l.is_deactivated) ? (() => {
+    const phone = l.customer_whatsapp.replace(/\D/g,'').replace(/^0/,'92');
+    const msg = encodeURIComponent(`Assalam o Alaikum ${l.customer_name||'Customer'},\n\nYour Noxis license key:\n\n*${l.license_key}*\n\nDownload: noxishub.app/download\n\n_Omnora Labs_`);
+    return `<a class="act-btn act-btn-wa" href="https://wa.me/${phone}?text=${msg}" target="_blank" rel="noopener">WA</a>`;
+  })() : '';
+
+  const extBtn = !l.is_deactivated ? `<button class="act-btn act-btn-extend" onclick="extendLicense('${l.id}')">+30d</button>` : '';
+  const togBtn = l.is_deactivated
+    ? `<button class="act-btn act-btn-activate" onclick="toggleDeactivate('${l.id}')">Activate</button>`
+    : `<button class="act-btn act-btn-deactivate" onclick="toggleDeactivate('${l.id}')">Deactivate</button>`;
+
+  return `
+    <div class="lic-row${l.is_deactivated ? ' deactivated' : ''}">
+      <div class="lic-main">
+        <div class="lic-key-row">
+          <span class="lic-key">${l.license_key}</span>
+          ${tierBadge}${statusBadges}
+        </div>
+        <div class="lic-info">${info}</div>
+      </div>
+      <div class="lic-expiry">
+        <div class="lic-expiry-date" style="${expiryColor}">${expiryStr}</div>
+        <div class="lic-expiry-days">${daysStr}</div>
+      </div>
+      <div class="lic-devices">
+        <div class="lic-devices-num">${devices}/${maxDev}</div>
+        <div class="lic-devices-lbl">devices</div>
+      </div>
+      <div class="lic-actions">${waBtn}${extBtn}${togBtn}</div>
+    </div>`;
+}
+
+// ── ACTIONS ──
+async function toggleDeactivate(id) {
+  const l = licenses.find(x => x.id === id);
+  if (!l) return;
+  await sb.from('licenses').update({ is_deactivated: !l.is_deactivated }).eq('id', id);
+  loadLicenses();
+}
+
+async function extendLicense(id) {
+  const l = licenses.find(x => x.id === id);
+  if (!l) return;
+  const base = l.expires_at && new Date(l.expires_at) > new Date() ? new Date(l.expires_at) : new Date();
+  base.setDate(base.getDate() + 30);
+  await sb.from('licenses').update({ expires_at: base.toISOString() }).eq('id', id);
+  loadLicenses();
+}
+
+// ── GENERATE ──
+function setPlan(plan) {
+  activePlan = plan;
+  ['lite','pro','elite'].forEach(p => document.getElementById('plan-'+p).classList.toggle('active', p === plan));
+}
+
+function updateGenBtn() {
+  const name = (document.getElementById('gen-name').value || '').trim();
+  document.getElementById('gen-btn').disabled = !name;
+}
+
+async function generateLicense() {
+  const name = (document.getElementById('gen-name').value || '').trim();
+  if (!name) return;
+
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true;
+  btn.textContent = 'Generating...';
+  document.getElementById('gen-result').style.display = 'none';
+
+  const prefix = activePlan === 'elite' ? 'ELIT' : activePlan === 'pro' ? 'PROP' : 'LITE';
+  const rand = () => Math.random().toString(36).slice(2,6).toUpperCase();
+  const key = `${prefix}-${rand()}-${rand()}-${rand()}`;
+
+  const months = parseInt(document.getElementById('gen-months').value) || 1;
+  const expiry = new Date();
+  expiry.setMonth(expiry.getMonth() + months);
+
+  const maxDevices = activePlan === 'elite' ? 50 : activePlan === 'pro' ? 15 : 5;
+  const waNum = (document.getElementById('gen-wa').value || '').trim();
+  const payment = document.getElementById('gen-payment').value;
+  const amount = parseFloat(document.getElementById('gen-amount').value) || null;
+
+  const { error } = await sb.from('licenses').insert({
+    license_key: key, tier: activePlan, is_trial: false, is_deactivated: false,
+    max_devices: maxDevices, expires_at: expiry.toISOString(),
+    customer_name: name,
+    customer_whatsapp: waNum || null,
+    payment_method: payment,
+    amount_paid: amount, currency: 'PKR', months
+  });
+
+  btn.textContent = 'Generate & Send WhatsApp';
+  btn.disabled = false;
+
+  if (error) { alert('Error: ' + error.message); return; }
+
+  generatedKey = key;
+  document.getElementById('gen-key-value').textContent = key;
+  document.getElementById('gen-result').style.display = 'block';
+  loadLicenses();
+
+  if (waNum) {
+    const phone = waNum.replace(/\D/g,'').replace(/^0/,'92');
+    const msg = encodeURIComponent(
+      `Assalam o Alaikum ${name},\n\nShukriya for choosing Noxis!\n\nYour license key:\n*${key}*\n\nPlan: ${activePlan.toUpperCase()}\nDuration: ${months} month${months>1?'s':''}\nDevices: ${maxDevices}\n\nTo activate:\n1. noxishub.app/download\n2. Enter this key\n3. Install and open Noxis Hub\n\nFor help: reply to this message.\n\n_Omnora Labs | Noxis Hub_`
+    );
+    window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
+  }
+}
+
+function copyKey() {
+  if (!generatedKey) return;
+  navigator.clipboard.writeText(generatedKey).then(() => {
+    const btn = document.querySelector('.gen-key-copy');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Click to copy', 1500);
+  });
+}
+
+// ── TABS ──
+function switchTab(tab) {
+  document.getElementById('panel-licenses').style.display = tab === 'licenses' ? 'block' : 'none';
+  document.getElementById('panel-generate').style.display = tab === 'generate' ? 'block' : 'none';
+  document.getElementById('tab-licenses-btn').classList.toggle('active', tab === 'licenses');
+  document.getElementById('tab-generate-btn').classList.toggle('active', tab === 'generate');
+}
+
+// ── UTILS ──
+function show(id) { document.getElementById(id).style.display = 'flex'; }
+function hide(id) { document.getElementById(id).style.display = 'none'; }
+</script>
+</body>
+</html>
