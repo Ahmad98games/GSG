@@ -128,6 +128,7 @@ export default function KarigarsPage() {
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [attendingKarigar, setAttendingKarigar] = useState<Karigar | null>(null);
   const [advancingKarigar, setAdvancingKarigar] = useState<Karigar | null>(null);
+  const [loggingKarigar, setLoggingKarigar] = useState<Karigar | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
 
@@ -325,12 +326,12 @@ export default function KarigarsPage() {
         return (
           <div className="flex justify-end space-x-4">
              {k.wage_type === 'piece_rate' && (
-               <Link 
-                 href="/production/daily-log" 
-                 className="text-[10px] uppercase font-black text-sandstone-gold hover:text-white transition-colors flex items-center"
+               <button 
+                 onClick={() => setLoggingKarigar(k)}
+                 className="text-[10px] uppercase font-black text-sandstone-gold hover:text-white transition-colors flex items-center bg-transparent border-none cursor-pointer"
                >
                  <Zap size={10} className="mr-1" /> Log Output
-               </Link>
+               </button>
              )}
              <button onClick={() => setAttendingKarigar(k)} className="text-[10px] uppercase font-black text-gray-600 hover:text-white transition-colors">Attend</button>
              <button onClick={() => setAdvancingKarigar(k)} className="text-[10px] uppercase font-black text-gray-600 hover:text-white transition-colors">Advance</button>
@@ -460,7 +461,7 @@ export default function KarigarsPage() {
            </div>
 
            {/* Main Registry Table */}
-           <div className="bg-surface border border-white/5">
+           <div className="bg-surface border border-white/5 flex-1 overflow-auto">
               {isLoading ? (
                 <div className="p-20 space-y-4">
                    {[1,2,3,4,5].map(i => <div key={i} className="h-12 bg-white/[0.02] animate-pulse" />)}
@@ -522,6 +523,13 @@ export default function KarigarsPage() {
             onSuccess={(msg) => { setSuccessToast(msg); setAdvancingKarigar(null); queryClient.invalidateQueries({ queryKey: ['karigars'] }); }}
            />
          )}
+         {loggingKarigar && (
+            <LogProductionModal
+             karigar={loggingKarigar}
+             onClose={() => setLoggingKarigar(null)}
+             onSuccess={(msg) => { setSuccessToast(msg); setLoggingKarigar(null); queryClient.invalidateQueries({ queryKey: ['karigars'] }); }}
+            />
+          )}
       </AnimatePresence>
 
       {/* Toast Notification */}
@@ -868,6 +876,193 @@ function AdvanceModal({ karigar, onClose, onSuccess }: { karigar: Karigar, onClo
                   <span>Send WhatsApp Alert</span>
                </button>
              </div>
+          </form>
+       </motion.div>
+    </div>
+  );
+}
+
+interface LogProductionModalProps {
+  karigar: Karigar;
+  onClose: () => void;
+  onSuccess: (msg: string) => void;
+}
+
+function LogProductionModal({ karigar, onClose, onSuccess }: LogProductionModalProps) {
+  const { profile } = useBusinessProfile();
+  const supabase = createClient();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { fmt } = usePersona();
+
+  // Fetch active batches for selection
+  const { data: batches = [] } = useQuery({
+    queryKey: ['active_batches_modal_karigars', profile?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('production_batches')
+        .select('id, batch_no, sku_id, skus(name, unit)')
+        .eq('business_id', profile?.id)
+        .neq('status', 'completed')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!profile?.id
+  });
+
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
+    defaultValues: {
+      log_date: new Date().toISOString().split('T')[0],
+      batch_id: '',
+      department: 'stitching',
+      qty_produced: '',
+      piece_rate_used: karigar.piece_rate || 0,
+      quality_grade: 'A',
+      time_taken_minutes: ''
+    }
+  });
+
+  const selectedGrade = watch('quality_grade');
+
+  const onSubmit = async (values: any) => {
+    setIsSubmitting(true);
+    try {
+      const selectedBatch = batches.find((b: any) => b.id === values.batch_id);
+      const skuId = selectedBatch?.sku_id || null;
+      const unit = selectedBatch?.skus?.unit || 'pcs';
+
+      const { error } = await supabase.from('karigar_production_logs').insert({
+        business_id: profile?.id,
+        karigar_id: karigar.id,
+        batch_id: values.batch_id,
+        sku_id: skuId,
+        department: values.department,
+        qty_produced: Number(values.qty_produced),
+        quality_grade: values.quality_grade,
+        time_taken_minutes: values.time_taken_minutes ? Number(values.time_taken_minutes) : null,
+        piece_rate_used: Number(values.piece_rate_used),
+        unit: unit,
+        log_date: values.log_date
+      });
+
+      if (error) throw error;
+
+      onSuccess(`Logged production of ${values.qty_produced} ${unit} for ${karigar.name}`);
+    } catch (err: any) {
+      alert(`Logging failed: ${err.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+       <motion.div 
+         initial={{ scale: 0.95, opacity: 0 }} 
+         animate={{ scale: 1, opacity: 1 }} 
+         className="max-w-md w-full bg-surface border border-white/10 shadow-2xl overflow-hidden"
+       >
+          <div className="p-6 bg-onyx border-b border-white/5 flex items-center justify-between">
+             <div className="flex items-center space-x-3">
+                <Zap className="text-electric-blue" size={18} />
+                <h3 className="text-sm font-bold text-white uppercase tracking-widest">Log Production Output</h3>
+             </div>
+             <button onClick={onClose} className="text-gray-500 hover:text-white"><X size={20} /></button>
+          </div>
+          
+          <div className="p-6 bg-blue-500/5 border-b border-white/5 flex flex-col space-y-1">
+             <span className="text-[10px] uppercase font-bold text-gray-500 tracking-widest">Worker</span>
+             <span className="text-sm text-white font-bold">{karigar.name} ({karigar.karigar_code})</span>
+          </div>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="p-8 space-y-6">
+             <div className="space-y-2">
+                <Label>Log Date</Label>
+                <Input type="date" {...register("log_date", { required: true })} />
+             </div>
+
+             <div className="space-y-2">
+                <Label>Active Batch</Label>
+                <select 
+                  {...register("batch_id", { required: true })} 
+                  className={cn(
+                    "w-full bg-onyx border p-3 text-xs text-white outline-none focus:border-electric-blue transition-all",
+                    errors.batch_id ? "border-red-500/50" : "border-white/10"
+                  )}
+                >
+                   <option value="">Select Batch...</option>
+                   {batches.map((b: any) => (
+                      <option key={b.id} value={b.id}>{b.batch_no} — {b.skus?.name}</option>
+                   ))}
+                </select>
+             </div>
+
+             <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                   <Label>Department</Label>
+                   <select {...register("department")} className="w-full bg-onyx border border-white/10 p-3 text-xs text-white outline-none focus:border-electric-blue">
+                      <option value="cutting">Cutting</option>
+                      <option value="stitching">Stitching</option>
+                      <option value="finishing">Finishing</option>
+                      <option value="packing">Packing</option>
+                      <option value="other">Other</option>
+                   </select>
+                </div>
+                <div className="space-y-2">
+                   <Label>Time Taken (Min)</Label>
+                   <Input type="number" placeholder="Optional" {...register("time_taken_minutes")} />
+                </div>
+             </div>
+
+             <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                   <Label>Quantity Produced</Label>
+                   <Input 
+                     type="number" 
+                     placeholder="0" 
+                     {...register("qty_produced", { required: true, min: 1 })} 
+                     className={cn(
+                       "w-full bg-onyx border p-3 text-xs text-white outline-none focus:border-electric-blue transition-all",
+                       errors.qty_produced ? "border-red-500/50" : "border-white/10"
+                     )}
+                   />
+                </div>
+                <div className="space-y-2">
+                   <Label>Piece Rate (PKR)</Label>
+                   <Input 
+                     type="number" 
+                     step="0.0001" 
+                     {...register("piece_rate_used", { required: true })} 
+                     className={cn(
+                       "w-full bg-onyx border p-3 text-xs text-white outline-none focus:border-electric-blue transition-all",
+                       errors.piece_rate_used ? "border-red-500/50" : "border-white/10"
+                     )}
+                   />
+                </div>
+             </div>
+
+             <div className="space-y-2">
+                <Label>Quality Grading</Label>
+                <div className="grid grid-cols-4 gap-2">
+                   {['A', 'B', 'C', 'rejected'].map(g => (
+                      <button 
+                        key={g} 
+                        type="button"
+                        onClick={() => setValue('quality_grade', g)}
+                        className={cn(
+                          "py-3 text-[10px] font-black uppercase border transition-all",
+                          selectedGrade === g ? "bg-white text-black border-white" : "bg-black/40 text-gray-500 border-white/10 hover:border-white/30"
+                        )}
+                      >
+                         {g === 'rejected' ? 'REJ' : g}
+                      </button>
+                   ))}
+                </div>
+             </div>
+
+             <button type="submit" disabled={isSubmitting} className="w-full py-4 bg-[#C5A059] disabled:opacity-50 text-black text-[10px] font-black uppercase tracking-widest shadow-lg">
+                {isSubmitting ? "Logging..." : "Commit Production"}
+             </button>
           </form>
        </motion.div>
     </div>

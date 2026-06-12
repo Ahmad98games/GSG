@@ -31,7 +31,7 @@ const getCSP = () => {
     .join('; ');
 };
 
-const serverOnlyPackages = ['puppeteer', 'better-sqlite3', 'pino', 'node-cron'];
+const serverOnlyPackages = ['puppeteer', 'better-sqlite3', 'better-sqlite3-multiple-ciphers', 'pino', 'node-cron'];
 
 const isStaticBuild = 
   process.env.NEXT_PUBLIC_PLATFORM === 'electron' || 

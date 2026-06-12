@@ -270,18 +270,23 @@ export default function FinancePage() {
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-6">
                   <div className="space-y-1">
                     <p className="text-xxs font-black uppercase tracking-widest text-gray-500">Live Credit Standing</p>
-                    <div className="flex items-center gap-4">
-                      <div className={`w-16 h-16 rounded-sm border flex items-center justify-center text-3xl font-black font-mono shadow-inner ${gradeColor(financeScore.grade)}`}>
+                    <div className="flex flex-col">
+                      <div className="flex items-end gap-2 mb-1">
+                        <span className="text-4xl font-mono font-black text-white">
+                          {financeScore.score}
+                        </span>
+                        <span className="text-base text-gray-600 mb-1">
+                          /100
+                        </span>
+                      </div>
+                      <div className={`text-xl font-bold ${gradeColor(financeScore.grade)}`}>
                         {financeScore.grade}
                       </div>
-                      <div>
-                        <div className="text-3xl font-black font-mono text-white tracking-tight">
-                          {financeScore.score}<span className="text-sm text-gray-600 font-sans font-medium">/100</span>
-                        </div>
-                        <p className={`text-[10px] font-black uppercase tracking-wider ${gradeColor(financeScore.grade)}`}>
-                          {gradeLabel(financeScore.grade)}
-                        </p>
-                      </div>
+                      <p className="text-[10px] text-gray-600 uppercase tracking-widest mt-1">
+                        {financeScore.grade === 'Unrated'
+                          ? 'Awaiting data'
+                          : 'Credit grade'}
+                      </p>
                     </div>
                   </div>
                   

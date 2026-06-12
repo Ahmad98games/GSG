@@ -50,9 +50,9 @@ export function FeedbackModal({
       setError('Please write something')
       return
     }
-    if (text.trim().length < 200) {
+    if (text.trim().length < 20) {
       setError(
-        'Please write at least 200 characters to share a proper review'
+        'Please write at least 20 characters to share a proper review'
       )
       return
     }
@@ -86,9 +86,10 @@ export function FeedbackModal({
       if (dbError) throw dbError
       
       setStep('done')
-    } catch (err) {
+    } catch (err: any) {
+      console.error('[Feedback] Submission failed:', err)
       setError(
-        'Could not submit. Check internet and try again.'
+        err?.message || 'Could not submit. Check internet and try again.'
       )
     } finally {
       setSubmitting(false)
@@ -292,10 +293,10 @@ export function FeedbackModal({
                     autoFocus
                   />
                   <p className={`text-[10px] mt-1
-                    ${text.length < 200
+                    ${text.length < 20
                       ? 'text-gray-700'
                       : 'text-emerald-500'}`}>
-                    {text.length}/200 minimum
+                    {text.length}/20 minimum
                   </p>
                 </div>
                 

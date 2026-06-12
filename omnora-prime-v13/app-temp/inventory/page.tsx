@@ -23,6 +23,7 @@ import { useFloorVoice } from "@/hooks/useFloorVoice";
 import * as XLSX from 'xlsx';
 import { useToast } from "@/hooks/useToast";
 import { emitSkuPriceSignal } from "@/lib/network/signalCollector";
+import { PersonaEngine } from "@/lib/persona/PersonaEngine";
 
 import { motion, AnimatePresence } from "framer-motion";
 import { ScrollReveal3D } from "@/components/ui/AnimatedComponents";
@@ -523,31 +524,20 @@ export default function InventoryPage() {
                             </tr>
                           ))}
                         </thead>
-                       <tbody 
-                         style={{ 
-                           height: `${rowVirtualizer.getTotalSize()}px`,
-                           position: 'relative'
-                         }}
-                       >
-                          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                            const row = rows[virtualRow.index];
-                            return (
-                              <SKURow 
-                                key={row.id} 
-                                row={row} 
-                                i={virtualRow.index} 
-                                onSelect={setSelectedSku}
-                                style={{
-                                  position: 'absolute',
-                                  top: 0,
-                                  left: 0,
-                                  width: '100%',
-                                  height: `${virtualRow.size}px`,
-                                  transform: `translateY(${virtualRow.start}px)`
-                                }}
-                              />
-                            );
-                          })}
+                       <tbody>
+                          {rows.map((row) => (
+                            <tr 
+                              key={row.id} 
+                              onClick={() => setSelectedSku(row.original)}
+                              className="border-b border-white/4 hover:bg-white/[0.02] transition-colors cursor-pointer"
+                            >
+                              {row.getVisibleCells().map((cell) => (
+                                <td key={cell.id} className="px-4 py-2.5 text-sm text-gray-200 border-b border-white/[0.04]">
+                                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
                        </tbody>
                     </table>
                     
@@ -622,32 +612,9 @@ export default function InventoryPage() {
   );
 }
 
-const SKURow = React.memo(function SKURow({ row, i, style, onSelect }: { row: Row<SKU>, i: number, style?: React.CSSProperties, onSelect: (sku: SKU) => void }) {
-  const controls = useRowHighlight(row.original.qty_on_hand);
-  
-  return (
-    <motion.tr 
-      initial={{ opacity: 0, y: 5 }}
-      animate={controls}
-      custom={controls}
-      whileInView={{ opacity: 1, y: 0 }}
-      transition={{ delay: i * 0.01 }}
-      style={style}
-      onClick={() => onSelect(row.original)}
-      className="border-b border-white/4 hover:bg-white/[0.02] transition-colors cursor-pointer"
-    >
-      {row.getVisibleCells().map((cell: Cell<SKU, any>) => (
-        <td key={cell.id} className="px-4 py-2.5 text-sm text-gray-200 border-b border-white/[0.04]">
-          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-        </td>
-      ))}
-    </motion.tr>
-  );
-});
-
 // --- SKU Detail Side Panel ---
 
-function SkuDetailPanel({ sku, onClose, onEdit, fmt }: { sku: SKU; onClose: () => void; onEdit: () => void; fmt: (v: number | null | undefined) => string }) {
+function SkuDetailPanel({ sku, onClose, onEdit, fmt }: { sku: SKU; onClose: () => void; onEdit: () => void; fmt: any }) {
   return (
     <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
       <div

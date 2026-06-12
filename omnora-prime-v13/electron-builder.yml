@@ -25,6 +25,8 @@ extraResources:
     to: "electron"
   - from: ".env.local"
     to: ".env"
+  - from: "build"
+    to: "build"
 win:
   icon: build/icon.ico
   target:
