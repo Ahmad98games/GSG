@@ -16,3 +16,6 @@ ALTER TABLE licenses
 
 ALTER TABLE licenses
   ADD COLUMN IF NOT EXISTS months integer DEFAULT 1;
+
+ALTER TABLE licenses
+  ADD COLUMN IF NOT EXISTS is_deactivated boolean DEFAULT false;
