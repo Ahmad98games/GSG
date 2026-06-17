@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, { useEffect, useMemo, useState, useRef, memo } from "react";
 import Link from "next/link";
 
 import SentinelAlertOverlay from "@/components/alerts/SentinelAlertOverlay";
@@ -40,11 +40,14 @@ import { FeedbackModal } from "@/components/ui/FeedbackModal";
 import { IntelligenceWidget } from "@/components/dashboard/IntelligenceWidget";
 
 
+import { useToast } from "@/hooks/useToast";
+
 export default function DashboardPage() {
   const { profile, businessName } = useBusinessProfile();
   const { persona, isLoading: isPersonaLoading, fmt, fmtQty, vocab, t, businessId } = usePersona();
   const { activeIndustry } = useIndustry();
   const { getIndustryLabel } = useIndustryLabels();
+  const toast = useToast();
 
   const [showWelcome, setShowWelcome] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -327,6 +330,19 @@ export default function DashboardPage() {
 
   const ownerName = profile?.owner_name || userEmail.split('@')[0] || 'User';
 
+  const profitChartData = useMemo(
+    () => chartData.map((d) => ({ ...d, velocity: d.velocity * 0.2 })),
+    [chartData]
+  );
+  const receivablesChartData = useMemo(
+    () => chartData.map((d) => ({ ...d, velocity: d.velocity * 0.5 })),
+    [chartData]
+  );
+  const inventoryChartData = useMemo(
+    () => chartData.map((d) => ({ ...d, velocity: d.velocity * 0.3 })),
+    [chartData]
+  );
+
   return (
     <div className="min-h-screen bg-noxis-bg text-noxis-text selection:bg-electric-blue/30">
       
@@ -375,7 +391,10 @@ export default function DashboardPage() {
                   </div>
                 </div>
               </div>
-              <span className="text-[10px] font-black uppercase border border-black/20 px-3 py-1 hover:bg-black hover:text-[#C5A059] transition-all cursor-pointer">
+              <span 
+                onClick={() => toast.info('Coming soon', 'Production boosting capabilities will be enabled in the upcoming release.')}
+                className="text-[10px] font-black uppercase border border-black/20 px-3 py-1 hover:bg-black hover:text-[#C5A059] transition-all cursor-pointer"
+              >
                 Boost Production
               </span>
             </motion.div>
@@ -472,7 +491,7 @@ export default function DashboardPage() {
               value={kpis?.netProfit || 0} 
               icon={TrendingUp} 
               isLoading={isKpiLoading}
-              chartData={chartData.map(d => ({ ...d, velocity: d.velocity * 0.2 }))} 
+              chartData={profitChartData} 
               sub={Number(kpis?.netProfit || 0) > 0 ? "After expenses" : <Link href="/khata" className="text-electric-blue hover:underline">Record transactions →</Link>}
             />
             <KpiCard 
@@ -480,7 +499,7 @@ export default function DashboardPage() {
               value={kpis?.totalReceivables || 0} 
               icon={Clock} 
               isLoading={isKpiLoading}
-              chartData={chartData.map(d => ({ ...d, velocity: d.velocity * 0.5 }))} 
+              chartData={receivablesChartData} 
               sub={Number(kpis?.totalReceivables || 0) > 0 ? "Owed to you by customers" : <Link href="/promises" className="text-electric-blue hover:underline">View payment promises →</Link>}
             />
             <KpiCard 
@@ -488,7 +507,7 @@ export default function DashboardPage() {
               value={kpis?.inventoryValue || 0} 
               icon={Package} 
               isLoading={isKpiLoading}
-              chartData={chartData.map(d => ({ ...d, velocity: d.velocity * 0.3 }))} 
+              chartData={inventoryChartData} 
               sub="Current inventory value"
             />
             
@@ -597,9 +616,12 @@ export default function DashboardPage() {
                     )}
                   </div>
 
-                  <button className="w-full mt-6 py-3 bg-white/5 border border-white/5 text-[9px] uppercase font-black text-gray-500 hover:text-white hover:bg-white/10 transition-all">
+                  <Link 
+                    href="/audit"
+                    className="block w-full text-center mt-6 py-3 bg-white/5 border border-white/5 text-[9px] uppercase font-black text-gray-500 hover:text-white hover:bg-white/10 transition-all"
+                  >
                     View Event History
-                  </button>
+                  </Link>
                </div>
             </div>
           </div>
@@ -643,31 +665,40 @@ export default function DashboardPage() {
   );
 }
 
-function KpiCard({ label, value, sub, isLoading }: any) {
+const KpiCard = memo(function KpiCard({
+  label,
+  value,
+  sub,
+  isLoading,
+}: {
+  label: string
+  value: string | number
+  sub?: React.ReactNode
+  isLoading?: boolean
+  icon?: React.ComponentType<{ size?: number }>
+  chartData?: unknown[]
+  isPositive?: boolean
+  trend?: string
+}) {
   return (
     <div className="rounded-sm bg-noxis-surface border border-noxis-border p-5 hover:border-noxis-border/20 transition-colors relative overflow-hidden">
-      {/* Top accent line */}
       <div className="absolute top-0 left-0 w-1/3 h-[1px] bg-gradient-to-r from-[#60A5FA] to-transparent opacity-60" />
-      
-      {/* Label */}
       <p className="text-xxs font-semibold tracking-wide-md uppercase text-gray-500">
         {label}
       </p>
-      
-      {/* Value */}
       <div className="mt-2 font-mono text-2xl font-semibold text-[#C5A059] tabular-nums">
-        {isLoading ? <div className="h-8 w-24 bg-white/5 animate-pulse rounded" /> : <AnimatedNumber value={value} />}
+        {isLoading ? (
+          <div className="h-8 w-24 bg-white/5 animate-pulse rounded" />
+        ) : (
+          <AnimatedNumber value={value} />
+        )}
       </div>
-      
-      {/* Sub label */}
       {sub && (
-        <p className="text-[11px] text-gray-600 mt-1">
-          {sub}
-        </p>
+        <p className="text-[11px] text-gray-600 mt-1">{sub}</p>
       )}
     </div>
-  );
-}
+  )
+})
 
 function StatusItem({ label, value, status }: any) {
   return (

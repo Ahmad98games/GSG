@@ -8,6 +8,7 @@ import { AlertTriangle, MessageSquare, Check } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/useToast";
+import { humanizeError } from '@/lib/utils/errors';
 
 export default function PromiseAlertWidget() {
   const { businessId, fmt } = usePersona();
@@ -49,7 +50,7 @@ export default function PromiseAlertWidget() {
       queryClient.invalidateQueries({ queryKey: ["due-promises-widget"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-kpis"] });
     } catch (err: any) {
-      toast.error("Action failed", err.message);
+      toast.error('Action failed', humanizeError(err, 'mark promise as paid'));
     }
   };
 

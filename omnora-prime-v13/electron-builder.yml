@@ -1,32 +1,57 @@
 appId: com.omnoralabs.noxis
-productName: Noxis
-npmRebuild: false
-files:
-  - "**/*"
-  - "!.agents"
-  - "!dist"
-  - "!.claude"
-  - "!.github"
-  - "!src/tests"
-icon: build/icon.ico
-# Quote path: unquoted `dist` is parsed on Windows as drive `D:` + `ist`.
-directories:
-  output: "./dist"
-  buildResources: "build"
+productName: Noxis Hub
+copyright: Copyright 2026 Omnora Labs
 
+directories:
+  buildResources: build
+  output: dist
+
+# Files to include in the app
+files:
+  - dist-electron/**/*
+  - package.json
+  - "!node_modules"
+  - "!src"
+  - "!.next"
+
+# Extra resources copied to resources/
+# These are accessible via process.resourcesPath
 extraResources:
+  # The Next.js standalone server
   - from: ".next/standalone"
     to: "standalone"
+    filter:
+      - "**/*"
+
+  # Static files the server needs
   - from: ".next/static"
     to: "standalone/.next/static"
+    filter:
+      - "**/*"
+
+  # Public folder
   - from: "public"
     to: "standalone/public"
-  - from: "electron"
-    to: "electron"
-  - from: ".env.local"
-    to: ".env"
+    filter:
+      - "**/*"
+
+  # Native SQLite binding — CRITICAL
+  # Without this the server crashes instantly
+  - from: "node_modules/better-sqlite3-multiple-ciphers"
+    to: "better-sqlite3-multiple-ciphers"
+    filter:
+      - "**/*"
+
+  # Build assets (icon etc)
   - from: "build"
     to: "build"
+    filter:
+      - "**/*"
+
+  # Environment file
+  - from: ".env.local"
+    to: ".env"
+
 win:
   icon: build/icon.ico
   target:
@@ -34,17 +59,21 @@ win:
       arch: [x64]
   # Avoid winCodeSign / asar integrity tooling that extracts symlinks (fails without Dev Mode/admin on Windows).
   signAndEditExecutable: false
+
 asarUnpack:
   - "**/*.node"
   - "**/better-sqlite3/**"
   - "**/better-sqlite3-multiple-ciphers/**"
   - "**/node_modules/better-sqlite3/**"
   - "**/node_modules/better-sqlite3-multiple-ciphers/**"
+
 nsis:
   oneClick: false
-  allowToChangeInstallationDirectory: true
+  allowToChangeInstallationDirectory: false
   createDesktopShortcut: true
   shortcutName: Noxis Hub
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
   # Multi-language stubs (e.g. Korean LangString fallback) emit NSIS warnings; default treats them as errors.
   warningsAsErrors: false
   # Stock NSIS (~2GiB+) produces a tiny useless Setup.exe; NSISBI embeds huge app payloads.
@@ -65,4 +94,10 @@ publish:
   provider: github
   owner: omnoralabs
   repo: noxis-releases
-  releaseType: release
+  private: false
+
+# Rebuild native modules for the correct
+# Electron Node.js ABI version
+# This is what fixes the .node binding crash
+npmRebuild: false
+electronVersion: "41.4.0"

@@ -27,7 +27,6 @@ export default function LowStockBanner({ onFilter }: { onFilter: () => void }) {
       return count || 0;
     },
     enabled: !!profile?.id,
-    refetchInterval: 60000, // Every minute
   });
 
   if (lowStockCount === 0) return null;

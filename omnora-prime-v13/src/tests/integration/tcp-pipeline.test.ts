@@ -1,8 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import net from 'net';
 import { NSPEncryption } from '@/lib/nsp/encryption';
 import { NSPProtobuf } from '@/lib/nsp/protobuf';
-import { testDb, TEST_SKU_A } from '../setup';
+import { testDb } from '../setup';
 import * as schema from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 

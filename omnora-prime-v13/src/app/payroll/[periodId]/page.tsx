@@ -1,18 +1,10 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
-import { 
-  CreditCard, Download, MessageCircle, 
-  Printer, CheckCircle2, AlertTriangle, 
-  History, Building2, User, Clock, 
-  ArrowLeft, ChevronRight, DollarSign,
-  Users, Briefcase, FileText, Lock,
-  FileSpreadsheet, X, Calculator
-} from "lucide-react";
 import { usePersona } from "@/hooks/usePersona";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/hooks/useToast";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useParams, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -21,6 +13,17 @@ import Decimal from "decimal.js";
 import { WhatsAppSender, WhatsAppTemplates } from "@/lib/whatsapp/WhatsAppSender";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { format } from "date-fns";
+import { motion, AnimatePresence } from "framer-motion";
+import * as XLSX from "xlsx";
+import { jsPDF } from "jspdf";
+import { 
+  CreditCard, Download, MessageCircle, 
+  Printer, CheckCircle2, AlertTriangle, 
+  History, Building2, User, Clock, 
+  ArrowLeft, ChevronRight, DollarSign,
+  Users, Briefcase, FileText, Lock,
+  FileSpreadsheet, X, Calculator
+} from "lucide-react";
 
 // --- Components ---
 
@@ -48,9 +51,58 @@ export default function PayrollPeriodDetailPage() {
   const { fmt, businessId } = usePersona();
   const { profile } = useBusinessProfile();
   const supabase = createClient();
+  const queryClient = useQueryClient();
+  const toast = useToast();
   
   const periodId = params.periodId as string;
   const [selectedSlip, setSelectedSlip] = useState<any>(null);
+  const [sendingWhatsApp, setSendingWhatsApp] = useState(false);
+
+  const handleSendAllWhatsApp = async () => {
+    if (!slips || slips.length === 0) return;
+    if (!confirm(`Are you sure you want to send slips to all ${slips.length} workers via WhatsApp?`)) return;
+    
+    setSendingWhatsApp(true);
+    let sentCount = 0;
+    try {
+      for (const slip of slips) {
+        if (slip.karigar?.phone) {
+          const message = WhatsAppTemplates.payslip(
+            business?.business_name || 'Business',
+            slip.karigar.name,
+            period?.period_label || 'Current Period',
+            fmt(slip.gross_earning),
+            fmt(slip.total_deductions),
+            fmt(slip.net_payable)
+          );
+          
+          await WhatsAppSender.send({ phone: slip.karigar.phone, message }, profile?.tier || 'starter', supabase);
+          sentCount++;
+        }
+      }
+      toast.success('Broadcast Complete', `Successfully dispatched ${sentCount} payslips via WhatsApp.`);
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Broadcast Failed', 'An error occurred while dispatching WhatsApp messages.');
+    } finally {
+      setSendingWhatsApp(false);
+    }
+  };
+
+  const handleFinalizeSlip = async (slipId: string) => {
+    try {
+      const { error } = await supabase
+        .from('payroll_slips')
+        .update({ is_finalized: true })
+        .eq('id', slipId);
+      if (error) throw error;
+      toast.success('Slip Finalized', 'Payslip has been marked as paid/finalized.');
+      queryClient.invalidateQueries({ queryKey: ['payroll_slips', periodId] });
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Update Failed', 'Failed to finalize the payslip.');
+    }
+  };
 
   const handleWhatsAppSlip = (slip: any) => {
     if (!slip.karigar?.phone) return;
@@ -222,13 +274,176 @@ export default function PayrollPeriodDetailPage() {
       }
    };
 
-   const handlePrintAllSlips = () => {
+    const handlePrintAllSlips = () => {
       window.print();
    };
 
+   const handleDownloadA5PDF = async (slip: any) => {
+      try {
+         const doc = new jsPDF({
+            orientation: "portrait",
+            unit: "mm",
+            format: "a5"
+         });
+
+         // A5 dimensions: width = 148 mm, height = 210 mm
+         // Top banner
+         doc.setFillColor(15, 23, 42); // dark slate/onyx banner
+         doc.rect(0, 0, 148, 24, "F");
+
+         // Title
+         doc.setTextColor(255, 255, 255);
+         doc.setFont("helvetica", "bold");
+         doc.setFontSize(12);
+         doc.text((business?.business_name || "Noxis Industrial Hub").toUpperCase(), 8, 9);
+
+         doc.setFont("helvetica", "normal");
+         doc.setFontSize(8);
+         doc.setTextColor(200, 200, 200);
+         doc.text("Human Capital Compensation Slip", 8, 14);
+         doc.text(period?.period_label || "Payroll Period Details", 8, 19);
+
+         // PAYSLIP label on the right
+         doc.setFont("helvetica", "bold");
+         doc.setFontSize(15);
+         doc.setTextColor(255, 255, 255);
+         doc.text("PAYSLIP", 112, 14);
+
+         // Reset text color
+         doc.setTextColor(0, 0, 0);
+
+         // Section: Worker Details
+         doc.setFontSize(9);
+         doc.setFont("helvetica", "bold");
+         doc.text("WORKER PROFILE", 8, 33);
+         doc.line(8, 35, 140, 35);
+
+         doc.setFont("helvetica", "normal");
+         doc.setFontSize(8);
+         doc.text(`Name: ${slip.karigar?.name || "—"}`, 8, 41);
+         doc.text(`ID/Code: ${slip.karigar?.karigar_code || "—"}`, 8, 47);
+         doc.text(`Designation: ${slip.karigar?.skill_type || "—"}`, 8, 53);
+         doc.text(`Wage Type: ${slip.karigar?.wage_type?.replace('_', ' ') || "—"}`, 8, 59);
+
+         doc.text(`Phone: ${slip.karigar?.phone || "—"}`, 75, 41);
+         doc.text(`Bank Account: ${slip.karigar?.bank_account || "—"}`, 75, 47);
+         doc.text(`City: ${slip.karigar?.city || business?.city || "—"}`, 75, 53);
+
+         // Section: Financial Ledger
+         doc.setFont("helvetica", "bold");
+         doc.setFontSize(9);
+         doc.text("FINANCIAL COMPILATION", 8, 70);
+         doc.line(8, 72, 140, 72);
+
+         // Sub-headings
+         doc.text("Description", 8, 78);
+         doc.text("Earnings", 65, 78, { align: "right" });
+         doc.text("Recoveries / Deductions", 140, 78, { align: "right" });
+         doc.line(8, 80, 140, 80);
+
+         doc.setFont("helvetica", "normal");
+         doc.setFontSize(8);
+
+         // Line items
+         let currentY = 86;
+         
+         // Base Salary / Daily
+         doc.text("Base Salary / Daily Wages:", 8, currentY);
+         const basePay = Number(slip.monthly_base || slip.daily_wage_earning || 0);
+         doc.text(`${fmt(basePay)}`, 65, currentY, { align: "right" });
+         currentY += 6;
+
+         // Piece Rate Production
+         doc.text("Piece Rate Production:", 8, currentY);
+         const piecePay = Number(slip.piece_rate_earning || 0);
+         doc.text(`${fmt(piecePay)}`, 65, currentY, { align: "right" });
+         currentY += 6;
+
+         // Overtime/Bonus
+         doc.text("Overtime / Incentives:", 8, currentY);
+         const bonusPay = Number(slip.overtime_earning || slip.bonus || 0);
+         doc.text(`${fmt(bonusPay)}`, 65, currentY, { align: "right" });
+
+         // Deductions on the right
+         doc.text("Advance Deduction (Peshgi):", 80, 86);
+         doc.text(`-${fmt(Number(slip.advance_deduction || 0))}`, 140, 86, { align: "right" });
+
+         doc.text("Other Recoveries:", 80, 92);
+         const otherDeduction = Number((slip.total_deductions || 0) - (slip.advance_deduction || 0));
+         doc.text(`-${fmt(otherDeduction)}`, 140, 92, { align: "right" });
+
+         // Divider
+         doc.line(8, 110, 140, 110);
+
+         // Totals
+         doc.setFont("helvetica", "bold");
+         doc.text("Gross Total:", 8, 116);
+         doc.text(`${fmt(Number(slip.gross_earning || 0))}`, 65, 116, { align: "right" });
+
+         doc.text("Total Deductions:", 80, 116);
+         doc.text(`-${fmt(Number(slip.total_deductions || 0))}`, 140, 116, { align: "right" });
+
+         // Net Box
+         doc.setFillColor(248, 250, 252);
+         doc.rect(8, 124, 132, 14, "F");
+         doc.setFontSize(10);
+         doc.setTextColor(15, 23, 42);
+         doc.text("NET DISBURSED AMOUNT:", 12, 133);
+         doc.setFontSize(12);
+         doc.text(`${fmt(Number(slip.net_payable || 0))}`, 136, 133, { align: "right" });
+
+         // Signatures
+         doc.setTextColor(0, 0, 0);
+         doc.setFontSize(8);
+         doc.setFont("helvetica", "normal");
+         doc.line(15, 165, 60, 165);
+         doc.text("Supervisor / Accountant", 22, 169);
+
+         doc.line(88, 165, 133, 165);
+         doc.text("Receiver Signature", 98, 169);
+
+         // Footer
+         doc.setFontSize(7);
+         doc.setTextColor(148, 163, 184);
+         doc.text("Securely generated by Noxis Hub Studio. Standard ISO A5.", 148 / 2, 192, { align: "center" });
+
+         doc.save(`payslip_${slip.karigar?.name?.replace(/\s+/g, "_") || "worker"}_${period?.period_label?.replace(/\s+/g, "_")}.pdf`);
+         toast.success("PDF Generated", `A5 Payslip for ${slip.karigar?.name} downloaded successfully.`);
+      } catch (err: any) {
+         console.error(err);
+         toast.error("Generation Failed", "Could not generate PDF payslip.");
+      }
+   };
+
    const handleDownloadSlip = (slip: any) => {
-      setSelectedSlip(slip);
-      setTimeout(() => window.print(), 500);
+      handleDownloadA5PDF(slip);
+   };
+
+   const handleExportBankTransferCSV = async () => {
+      try {
+         if (!slips || slips.length === 0) {
+            toast.info("No Data", "There are no payslips in this payroll period.");
+            return;
+         }
+         
+         const rows = slips.map((s: any) => ({
+            'Account Title': s.karigar?.name || '—',
+            'IBAN / Account Number': s.karigar?.bank_account || '',
+            'Amount': s.net_payable || 0,
+            'Currency': 'PKR',
+            'Purpose': `Salary ${new Date().toLocaleString('en-PK', { month: 'long', year: 'numeric' })}`,
+            'Reference': s.karigar?.karigar_code || '',
+         }));
+
+         const ws = XLSX.utils.json_to_sheet(rows);
+         const wb = XLSX.utils.book_new();
+         XLSX.utils.book_append_sheet(wb, ws, "Bank Transfer");
+         XLSX.writeFile(wb, `bulk_bank_transfer_${period.period_label.replace(/\s+/g, '_')}.xlsx`);
+         toast.success("Bank Transfer Export", "Bulk bank transfer file successfully generated.");
+      } catch (err: any) {
+         console.error(err);
+         toast.error("Export Failed", "Could not generate bulk bank transfer sheet.");
+      }
    };
 
    return (
@@ -260,6 +475,14 @@ export default function PayrollPeriodDetailPage() {
             <div className="ml-auto flex items-center space-x-3">
                <div className="flex bg-white/5 border border-noxis-border rounded-sm">
                   <button 
+                     onClick={handleExportBankTransferCSV}
+                     className="flex items-center space-x-2 px-4 py-2 text-[10px] uppercase font-black tracking-widest border-r border-noxis-border hover:bg-white/5 transition-all"
+                     title="Download bulk bank transfer sheet"
+                  >
+                     <CreditCard size={12} />
+                     <span>Bank Transfer</span>
+                  </button>
+                  <button 
                     onClick={handleExportCSV}
                     className="flex items-center space-x-2 px-4 py-2 text-[10px] uppercase font-black tracking-widest border-r border-noxis-border hover:bg-white/5 transition-all"
                   >
@@ -274,9 +497,13 @@ export default function PayrollPeriodDetailPage() {
                      <span>PDF</span>
                   </button>
                </div>
-               <button className="flex items-center space-x-2 bg-white/5 hover:bg-white/10 px-4 py-2 text-[10px] uppercase font-black tracking-widest border border-noxis-border transition-all">
+               <button 
+                 onClick={handleSendAllWhatsApp}
+                 disabled={sendingWhatsApp || !slips || slips.length === 0}
+                 className="flex items-center space-x-2 bg-white/5 hover:bg-white/10 px-4 py-2 text-[10px] uppercase font-black tracking-widest border border-noxis-border transition-all disabled:opacity-30"
+               >
                   <MessageCircle size={12} className="text-noxis-accent" />
-                  <span>Send All via WhatsApp</span>
+                  <span>{sendingWhatsApp ? 'Sending...' : 'Send All via WhatsApp'}</span>
                </button>
                <button 
                  onClick={handleLockPeriod}
@@ -386,7 +613,12 @@ export default function PayrollPeriodDetailPage() {
                                    >
                                       <Download size={14} />
                                    </button>
-                                   <button className="p-2 bg-white/5 hover:bg-emerald-500 hover:text-black rounded-sm transition-all text-gray-400">
+                                   <button 
+                                     onClick={() => handleFinalizeSlip(slip.id)}
+                                     disabled={slip.is_finalized}
+                                     className="p-2 bg-white/5 hover:bg-emerald-500 hover:text-black rounded-sm transition-all text-gray-400 disabled:opacity-30"
+                                     title="Mark Paid/Finalize Slip"
+                                   >
                                       <CheckCircle2 size={14} />
                                    </button>
                                 </div>

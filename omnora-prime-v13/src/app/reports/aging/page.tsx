@@ -14,127 +14,171 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Decimal } from "decimal.js";
 import { cn } from "@/lib/utils";
 import IndustrialEmptyState from "@/components/ui/IndustrialEmptyState";
+import * as XLSX from "xlsx";
+import { useToast } from "@/hooks/useToast";
 
-interface Invoice {
+interface LedgerAgingEntry {
   id: string;
-  invoice_number: string;
+  tx_ref: string;
   party_id: string;
-  total_amount: number;
-  amount_paid: number;
-  due_date: string;
-  created_at: string;
-  status: string;
+  amount: number;
+  posted_at: string;
+  entry_type: 'debit' | 'credit';
   parties?: {
     name: string;
-  };
+  } | null;
 }
 
 export default function AgingReportPage() {
   const { fmt, fmtDate, businessId, currency } = usePersona();
   const { isCollapsed } = useSidebarState();
   const supabase = createClient();
+  const toast = useToast();
 
-  const [filterParty, setFilterParty] = useState("all");
+  const defaultStart = useMemo(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+  }, []);
 
-  const { data: invoices = [], isLoading } = useQuery<Invoice[]>({
-    queryKey: ['unpaid-invoices', businessId],
+  const defaultEnd = useMemo(() => {
+    return new Date().toISOString().split('T')[0];
+  }, []);
+
+  const [dateRange, setDateRange] = useState({
+    start: defaultStart,
+    end: defaultEnd
+  });
+
+  const { data: entries = [], isLoading } = useQuery<LedgerAgingEntry[]>({
+    queryKey: ['aging-ledger-entries', dateRange, businessId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('invoices')
-        .select(`*, parties(name)`)
+        .from('ledger_entries')
+        .select(`id, tx_ref, party_id, amount, posted_at, entry_type, parties(name), accounts!inner(account_code)`)
         .eq('business_id', businessId)
-        .in('status', ['posted', 'partial']);
+        .eq('status', 'posted')
+        .eq('accounts.account_code', '1100')
+        .lte('posted_at', dateRange.end + 'T23:59:59.999Z');
       if (error) throw error;
-      return data || [];
+      return (data || []) as any[];
     },
     enabled: !!businessId
   });
 
   const agingAnalysis = useMemo(() => {
-    const today = new Date();
+    const today = new Date(dateRange.end);
     const buckets = {
-      current: { total: new Decimal(0), invoices: [] as any[] },
-      overdue_30: { total: new Decimal(0), invoices: [] as any[] },
-      overdue_60: { total: new Decimal(0), invoices: [] as any[] },
-      overdue_90: { total: new Decimal(0), invoices: [] as any[] },
-      overdue_critical: { total: new Decimal(0), invoices: [] as any[] },
+      current: { total: new Decimal(0), entries: [] as any[] },
+      overdue_30: { total: new Decimal(0), entries: [] as any[] },
+      overdue_60: { total: new Decimal(0), entries: [] as any[] },
+      overdue_90: { total: new Decimal(0), entries: [] as any[] },
+      overdue_critical: { total: new Decimal(0), entries: [] as any[] },
     };
 
     const partyWise: Record<string, any> = {};
 
-    invoices.forEach(inv => {
-      const dueDate = new Date(inv.due_date);
-      const diffTime = today.getTime() - dueDate.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      const outstanding = new Decimal(inv.total_amount).minus(inv.amount_paid || 0);
-      if (outstanding.lte(0)) return;
-
-      const partyId = inv.party_id;
-      if (!partyWise[partyId]) {
-        partyWise[partyId] = {
-          name: inv.parties?.name || "Unknown Party",
-          total: new Decimal(0),
-          buckets: { current: new Decimal(0), overdue_30: new Decimal(0), overdue_60: new Decimal(0), overdue_90: new Decimal(0), overdue_critical: new Decimal(0) }
-        };
+    const entriesByParty: Record<string, LedgerAgingEntry[]> = {};
+    entries.forEach(entry => {
+      const pId = entry.party_id || 'unknown';
+      if (!entriesByParty[pId]) {
+        entriesByParty[pId] = [];
       }
-
-      partyWise[partyId].total = partyWise[partyId].total.plus(outstanding);
-
-      let bucketKey: keyof typeof buckets = 'current';
-      if (diffDays <= 0) bucketKey = 'current';
-      else if (diffDays <= 30) bucketKey = 'overdue_30';
-      else if (diffDays <= 60) bucketKey = 'overdue_60';
-      else if (diffDays <= 90) bucketKey = 'overdue_90';
-      else bucketKey = 'overdue_critical';
-
-      buckets[bucketKey].total = buckets[bucketKey].total.plus(outstanding);
-      buckets[bucketKey].invoices.push({ ...inv, outstanding: outstanding.toNumber(), diffDays });
-      partyWise[partyId].buckets[bucketKey] = partyWise[partyId].buckets[bucketKey].plus(outstanding);
+      entriesByParty[pId].push(entry);
     });
 
-    return { buckets, partyWise: Object.values(partyWise), totalOutstanding: Object.values(buckets).reduce((acc, b) => acc.plus(b.total), new Decimal(0)) };
-  }, [invoices]);
+    Object.entries(entriesByParty).forEach(([partyId, pEntries]) => {
+      const debits = pEntries.filter(e => e.entry_type === 'debit')
+        .sort((a, b) => new Date(a.posted_at).getTime() - new Date(b.posted_at).getTime());
+      
+      const credits = pEntries.filter(e => e.entry_type === 'credit');
+      let totalCredits = credits.reduce((sum, c) => sum.plus(new Decimal(c.amount)), new Decimal(0));
 
-  const exportCSV = () => {
-    const rows = [
-      ["Party", "Invoice #", "Invoice Date", "Due Date", "Days Overdue", "Total", "Paid", "Outstanding", "Bucket"]
-    ];
+      debits.forEach(debit => {
+        const amt = new Decimal(debit.amount);
+        let outstanding = new Decimal(0);
+        
+        if (totalCredits.greaterThanOrEqualTo(amt)) {
+          totalCredits = totalCredits.minus(amt);
+        } else {
+          outstanding = amt.minus(totalCredits);
+          totalCredits = new Decimal(0);
+        }
 
-    Object.entries(agingAnalysis.buckets).forEach(([key, bucket]) => {
-      bucket.invoices.forEach(inv => {
-        rows.push([
-          inv.parties?.name || "Unknown",
-          inv.invoice_number,
-          inv.created_at.split('T')[0],
-          inv.due_date,
-          inv.diffDays.toString(),
-          inv.total_amount.toString(),
-          inv.amount_paid.toString(),
-          inv.outstanding.toString(),
-          key.toUpperCase()
-        ]);
+        if (outstanding.greaterThan(0)) {
+          const debitDateStr = debit.posted_at.split('T')[0];
+          if (debitDateStr >= dateRange.start && debitDateStr <= dateRange.end) {
+            const diffTime = today.getTime() - new Date(debitDateStr).getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            const partyName = debit.parties?.name || "Unknown Party";
+            if (!partyWise[partyId]) {
+              partyWise[partyId] = {
+                name: partyName,
+                total: new Decimal(0),
+                buckets: { current: new Decimal(0), overdue_30: new Decimal(0), overdue_60: new Decimal(0), overdue_90: new Decimal(0), overdue_critical: new Decimal(0) }
+              };
+            }
+
+            partyWise[partyId].total = partyWise[partyId].total.plus(outstanding);
+
+            let bucketKey: keyof typeof buckets = 'current';
+            if (diffDays <= 0) bucketKey = 'current';
+            else if (diffDays <= 30) bucketKey = 'overdue_30';
+            else if (diffDays <= 60) bucketKey = 'overdue_60';
+            else if (diffDays <= 90) bucketKey = 'overdue_90';
+            else bucketKey = 'overdue_critical';
+
+            buckets[bucketKey].total = buckets[bucketKey].total.plus(outstanding);
+            buckets[bucketKey].entries.push({
+              ...debit,
+              outstanding: outstanding.toNumber(),
+              diffDays,
+              partyName
+            });
+            partyWise[partyId].buckets[bucketKey] = partyWise[partyId].buckets[bucketKey].plus(outstanding);
+          }
+        }
       });
     });
 
-    const csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.join(",")).join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `noxis_aging_report_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+    return { 
+      buckets, 
+      partyWise: Object.values(partyWise), 
+      totalOutstanding: Object.values(buckets).reduce((acc, b) => acc.plus(b.total), new Decimal(0)) 
+    };
+  }, [entries, dateRange]);
 
-  
+  const exportExcel = () => {
+    const rows: any[] = [];
+
+    Object.entries(agingAnalysis.buckets).forEach(([key, bucket]) => {
+      bucket.entries.forEach(entry => {
+        rows.push({
+          'Party Name': entry.partyName || "Unknown",
+          'Transaction Ref': entry.tx_ref,
+          'Date Posted': entry.posted_at.split('T')[0],
+          'Days Outstanding': entry.diffDays,
+          'Total Debit Amount': entry.amount,
+          'Outstanding Balance': entry.outstanding,
+          'Bucket Category': key.toUpperCase()
+        });
+      });
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'A_R Aging Report');
+    XLSX.writeFile(wb, `receivables_aging_${dateRange.start}_to_${dateRange.end}.xlsx`);
+    toast.success('Excel Export', 'Aging report exported to Excel successfully');
+  };
 
   if (isLoading) return <div className="min-h-screen bg-onyx flex items-center justify-center text-[10px] uppercase tracking-[0.5em] text-gray-700 animate-pulse">Analyzing Receivables...</div>;
 
-  if (invoices.length === 0) return (
+  const totalOutstandingCount = Object.values(agingAnalysis.buckets).reduce((sum, b) => sum + b.entries.length, 0);
+
+  if (totalOutstandingCount === 0) return (
     <div className="min-h-screen bg-onyx text-slate-200">
-      
-      <main className={` p-24 flex flex-col items-center justify-center space-y-8`}>
+      <main className="p-24 flex flex-col items-center justify-center space-y-8">
          <div className="w-24 h-24 bg-emerald/10 rounded-full flex items-center justify-center text-emerald">
             <TrendingUp size={48} />
          </div>
@@ -156,22 +200,33 @@ export default function AgingReportPage() {
            </div>
            
            <div className="ml-auto flex items-center space-x-4">
-              <button 
-                onClick={exportCSV}
+             <div className="flex items-center bg-white/5 border border-white/10 rounded-sm overflow-hidden text-[10px] text-gray-400">
+                <Calendar size={14} className="ml-3" />
+                <input 
+                  type="date" 
+                  value={dateRange.start} 
+                  onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                  className="bg-transparent border-none text-white px-3 py-1.5 focus:ring-0 outline-none w-32"
+                />
+                <span className="opacity-30">/</span>
+                <input 
+                  type="date" 
+                  value={dateRange.end} 
+                  onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                  className="bg-transparent border-none text-white px-3 py-1.5 focus:ring-0 outline-none w-32 mr-2"
+                />
+             </div>
+             <button 
+                onClick={exportExcel}
                 className="flex items-center space-x-2 px-4 py-1.5 bg-white/5 border border-white/10 text-[10px] uppercase tracking-widest font-bold hover:bg-white/10 transition-colors"
-              >
+             >
                  <Download size={14} />
-                 <span>Export CSV</span>
-              </button>
-              <button className="flex items-center space-x-2 px-4 py-1.5 bg-electric-blue text-onyx text-[10px] uppercase tracking-widest font-bold hover:brightness-110 transition-colors">
-                 <FileDown size={14} />
-                 <span>Export PDF</span>
-              </button>
+                 <span>Export Excel</span>
+             </button>
            </div>
         </header>
 
         <div className="p-8 max-w-[1600px] mx-auto w-full space-y-8">
-           {/* Summary Grid */}
            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <BucketCard label="Current" value={agingAnalysis.buckets.current.total} color="emerald" />
               <BucketCard label="1-30 Days" value={agingAnalysis.buckets.overdue_30.total} color="amber" />
@@ -180,7 +235,6 @@ export default function AgingReportPage() {
               <BucketCard label="90+ Days" value={agingAnalysis.buckets.overdue_critical.total} color="red-critical" />
            </div>
 
-           {/* Total Bar */}
            <div className="bg-surface border border-white/5 p-6 flex items-center justify-between">
               <div className="space-y-1">
                  <span className="text-[10px] uppercase text-gray-500 font-bold tracking-widest">Total Outstanding Receivables</span>
@@ -195,56 +249,54 @@ export default function AgingReportPage() {
               </div>
            </div>
 
-           {/* Main Table */}
            <div className="bg-surface border border-white/5 overflow-hidden">
               <table className="w-full text-left">
-                 <thead className="bg-onyx/50 border-b border-white/5 font-bold text-[10px] text-gray-500 uppercase tracking-widest">
-                    <tr>
-                       <th className="px-6 py-4">Party / Invoice</th>
-                       <th className="px-6 py-4">Dates</th>
-                       <th className="px-6 py-4 text-center">Days Overdue</th>
-                       <th className="px-6 py-4 text-right">Total Amount</th>
-                       <th className="px-6 py-4 text-right">Outstanding</th>
-                       <th className="px-6 py-4 text-center">Severity Bucket</th>
-                    </tr>
-                 </thead>
-                 <tbody className="divide-y divide-white/[0.02]">
-                    {Object.entries(agingAnalysis.buckets).flatMap(([key, bucket]) => 
-                      bucket.invoices.map(inv => (
-                        <tr key={inv.id} className="hover:bg-white/[0.01] transition-all group">
-                           <td className="px-6 py-4">
-                              <div className="flex flex-col">
-                                 <span className="text-white text-xs font-bold uppercase tracking-tight">{inv.parties?.name}</span>
-                                 <span className="text-[10px] font-mono text-electric-blue">{inv.invoice_number}</span>
-                              </div>
-                           </td>
-                           <td className="px-6 py-4">
-                              <div className="flex flex-col text-[10px] font-medium text-gray-500 uppercase">
-                                 <span>Issued: {inv.created_at.split('T')[0]}</span>
-                                 <span>Due: {inv.due_date}</span>
-                              </div>
-                           </td>
-                           <td className="px-6 py-4 text-center">
-                              <span className={cn(
-                                "text-xs font-mono font-bold",
-                                inv.diffDays > 0 ? "text-red-500" : "text-emerald"
-                              )}>
-                                 {inv.diffDays > 0 ? `+${inv.diffDays}` : "Current"}
-                              </span>
-                           </td>
-                           <td className="px-6 py-4 text-right font-mono text-xs text-gray-400">
-                              {fmt(inv.total_amount)}
-                           </td>
-                           <td className="px-6 py-4 text-right font-mono text-sm text-white font-bold">
-                              {fmt(inv.outstanding)}
-                           </td>
-                           <td className="px-6 py-4 text-center">
-                              <SeverityBadge bucket={key} />
-                           </td>
-                        </tr>
-                      ))
-                    )}
-                 </tbody>
+                  <thead className="bg-onyx/50 border-b border-white/5 font-bold text-[10px] text-gray-500 uppercase tracking-widest">
+                     <tr>
+                        <th className="px-6 py-4">Party / Transaction</th>
+                        <th className="px-6 py-4">Dates</th>
+                        <th className="px-6 py-4 text-center">Days Overdue</th>
+                        <th className="px-6 py-4 text-right">Total Amount</th>
+                        <th className="px-6 py-4 text-right">Outstanding</th>
+                        <th className="px-6 py-4 text-center">Severity Bucket</th>
+                     </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.02]">
+                     {Object.entries(agingAnalysis.buckets).flatMap(([key, bucket]) => 
+                       bucket.entries.map(entry => (
+                         <tr key={entry.id} className="hover:bg-white/[0.01] transition-all group">
+                            <td className="px-6 py-4">
+                               <div className="flex flex-col">
+                                  <span className="text-white text-xs font-bold uppercase tracking-tight">{entry.partyName}</span>
+                                  <span className="text-[10px] font-mono text-electric-blue">{entry.tx_ref}</span>
+                               </div>
+                            </td>
+                            <td className="px-6 py-4">
+                               <div className="flex flex-col text-[10px] font-medium text-gray-500 uppercase">
+                                  <span>Posted: {entry.posted_at.split('T')[0]}</span>
+                               </div>
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                               <span className={cn(
+                                 "text-xs font-mono font-bold",
+                                 entry.diffDays > 0 ? "text-red-500" : "text-emerald"
+                               )}>
+                                  {entry.diffDays > 0 ? `+${entry.diffDays}` : "Current"}
+                               </span>
+                            </td>
+                            <td className="px-6 py-4 text-right font-mono text-xs text-gray-400">
+                               {fmt(entry.amount)}
+                            </td>
+                            <td className="px-6 py-4 text-right font-mono text-sm text-white font-bold">
+                               {fmt(entry.outstanding)}
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                               <SeverityBadge bucket={key} />
+                            </td>
+                         </tr>
+                       ))
+                     )}
+                  </tbody>
               </table>
            </div>
         </div>

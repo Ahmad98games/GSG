@@ -128,6 +128,29 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
+  // Redirect to setup if onboarding is not complete
+  if (session && !isPublic) {
+    try {
+      const { data: profile } = await supabase
+        .from('business_profiles')
+        .select('onboarding_complete')
+        .eq('user_id', session.user.id)
+        .single()
+      
+      const isComplete = profile ? profile.onboarding_complete : false
+      
+      if (!isComplete
+        && pathname !== '/setup'
+        && pathname !== '/license'
+        && !pathname.startsWith('/api')
+        && !pathname.startsWith('/_next')) {
+        return NextResponse.redirect(new URL('/setup', request.url))
+      }
+    } catch (e) {
+      console.error('[Middleware] Failed to check onboarding status:', e)
+    }
+  }
+
   // D. Role-Based Access Control (RBAC) for staff users
   if (session && !isPublic && !pathname.startsWith('/unauthorized') && !pathname.startsWith('/dashboard') && !pathname.startsWith('/settings') && !pathname.startsWith('/api')) {
     try {

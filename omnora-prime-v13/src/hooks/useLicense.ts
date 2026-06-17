@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useBusinessProfile } from './useBusinessProfile';
 import { createClient } from '@/lib/supabase/client';
+import { humanizeError } from '@/lib/utils/errors';
 
 export type LicenseTier = 'lite' | 'pro' | 'elite' | null;
 
@@ -31,7 +32,7 @@ export function useLicense() {
         setTier(data?.tier || 'lite');
       } catch (err: any) {
         console.error("License fetch failure:", err.message || err);
-        setError(err.message || "Failed to fetch license");
+        setError(humanizeError(err, "fetch license"));
         setTier('lite'); // Fallback to safe tier
       } finally {
         setIsLoading(false);

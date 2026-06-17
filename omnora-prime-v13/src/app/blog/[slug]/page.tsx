@@ -1,8 +1,10 @@
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image'; // FIXED: Added missing Next.js Image component
 import { getBlogPosts, getBlogPostBySlug } from '@/lib/blog-utils';
 import { notFound } from 'next/navigation';
-import { Calendar, ChevronLeft, BookOpen, Clock } from 'lucide-react';
+// FIXED: Added missing Lucide Social Icons
+import { Calendar, ChevronLeft, BookOpen, Clock, Share2, Link2, Camera } from 'lucide-react';
 
 type Props = {
   params: Promise<{ slug: string }>
@@ -15,13 +17,11 @@ export async function generateStaticParams() {
   }));
 }
 
-export async function generateMetadata(
-  { params }: { params: Promise<{ slug: string }> | { slug: string } }
-) {
+export async function generateMetadata({ params }: Props) { // FIXED: Structured asynchronous parameters type typing
   const resolvedParams = await params;
   const post = getBlogPostBySlug(resolvedParams.slug);
   if (!post) return { title: 'Post Not Found' };
-  
+
   return {
     title: `${post.title} | Noxis Blog`,
     description: post.description,
@@ -39,7 +39,7 @@ export async function generateMetadata(
 function renderInlineBold(text: string) {
   const parts = text.split('**');
   if (parts.length < 3) return text;
-  
+
   return parts.map((part, i) => {
     if (i % 2 === 1) {
       return <strong key={i} className="text-white font-black">{part}</strong>;
@@ -73,13 +73,11 @@ function renderMarkdown(content: string) {
       return;
     }
 
-    // Skip the main H1 since we render it at the top of the template
     if (trimmed.startsWith('# ')) {
       flushList(`h1-${index}`);
       return;
     }
 
-    // Headers
     if (trimmed.startsWith('## ')) {
       flushList(`h2-${index}`);
       elements.push(
@@ -95,7 +93,6 @@ function renderMarkdown(content: string) {
         </h3>
       );
     }
-    // Lists
     else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
       insideList = true;
       listItems.push(
@@ -104,7 +101,6 @@ function renderMarkdown(content: string) {
         </li>
       );
     }
-    // Paragraphs
     else {
       flushList(`p-${index}`);
       elements.push(
@@ -127,20 +123,19 @@ export default async function BlogPostPage({ params }: Props) {
     notFound();
   }
 
-  // Calculate simulated reading time (approx 200 words/min)
   const wordCount = post.content.split(/\s+/).length;
   const readingTime = Math.max(1, Math.round(wordCount / 200));
 
   return (
-    <div className="bg-[#08090A] min-h-screen text-slate-300 font-inter selection:bg-sandstone-gold/30 selection:text-white pb-32">
+    <div className="bg-[#121417] min-h-screen text-slate-300 font-inter selection:bg-electric-blue selection:text-[#121417] pb-32 relative">
       {/* Background glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-[radial-gradient(circle_at_center,rgba(197,160,89,0.06)_0%,transparent_70%)] pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-[radial-gradient(circle_at_center,rgba(96,165,250,0.06)_0%,transparent_70%)] pointer-events-none" />
 
       {/* Navigation */}
-      <nav className="relative top-0 w-full z-50 bg-[#08090A]/85 backdrop-blur-xl border-b border-white/5 py-4">
+      <nav className="relative top-0 w-full z-50 bg-[#121417]/85 backdrop-blur-xl border-b border-white/5 py-4">
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-3 group cursor-pointer">
-            <div className="w-10 h-10 flex items-center justify-center bg-white/5 group-hover:bg-sandstone-gold/10 rounded-sm transition-all shadow-2xl">
+            <div className="w-10 h-10 flex items-center justify-center bg-white/5 group-hover:bg-electric-blue/10 rounded-sm transition-all shadow-2xl">
               <img
                 src="/logos/noxis.png"
                 alt="Noxis Logo"
@@ -155,7 +150,7 @@ export default async function BlogPostPage({ params }: Props) {
           </Link>
 
           <div className="flex items-center space-x-12 text-[11px] font-bold uppercase tracking-[0.15em] text-white/50">
-            <Link href="/blog" className="hover:text-sandstone-gold transition-colors flex items-center space-x-2">
+            <Link href="/blog" className="hover:text-electric-blue transition-colors flex items-center space-x-2">
               <BookOpen className="w-3.5 h-3.5" />
               <span>All Articles</span>
             </Link>
@@ -165,7 +160,7 @@ export default async function BlogPostPage({ params }: Props) {
 
       {/* Main Post Shell */}
       <main className="max-w-4xl mx-auto px-6 mt-16 relative z-10">
-        <Link href="/blog" className="inline-flex items-center space-x-2 text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-sandstone-gold transition-colors mb-8">
+        <Link href="/blog" className="inline-flex items-center space-x-2 text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-electric-blue transition-colors mb-8">
           <ChevronLeft className="w-4 h-4" />
           <span>Back to Blog</span>
         </Link>
@@ -178,11 +173,11 @@ export default async function BlogPostPage({ params }: Props) {
 
           <div className="flex flex-wrap gap-6 text-xs font-mono text-slate-500 font-bold uppercase tracking-wider">
             <div className="flex items-center space-x-2">
-              <Calendar className="w-4 h-4 text-sandstone-gold" />
+              <Calendar className="w-4 h-4 text-electric-blue" />
               <span>Published: {post.date}</span>
             </div>
             <div className="flex items-center space-x-2">
-              <Clock className="w-4 h-4 text-[#00E5FF]" />
+              <Clock className="w-4 h-4 text-electric-blue" />
               <span>{readingTime} Min Read</span>
             </div>
           </div>
@@ -199,23 +194,40 @@ export default async function BlogPostPage({ params }: Props) {
             <h3 className="text-lg font-black text-white uppercase tracking-widest">Ready to modernize your operations?</h3>
             <p className="text-sm text-slate-400 font-medium max-w-lg">Get 3 days of fully unlocked Elite tier access to testing tools for staff, ledgers, inventory, and AI CCTV monitoring.</p>
           </div>
-          <Link href="/download" className="bg-sandstone-gold text-black px-8 py-4 font-black uppercase tracking-widest text-xs hover:bg-[#D4B77A] shadow-[0_0_20px_rgba(197,160,89,0.15)] transition-all shrink-0">
+          <Link href="/download" className="bg-electric-blue text-[#121417] px-8 py-4 font-black uppercase tracking-widest text-xs hover:brightness-110 shadow-[0_0_20px_rgba(96,165,250,0.2)] transition-all shrink-0">
             Download 3-Day Trial
           </Link>
         </div>
-      </main>
 
-      {/* Footer legal bar */}
-      <footer className="max-w-4xl mx-auto px-6 mt-16 pb-8 relative z-10">
-        <div className="border-t border-white/5 pt-8 flex flex-wrap items-center justify-between gap-4 text-[10px] text-slate-600 font-bold uppercase tracking-widest">
-          <span>© {new Date().getFullYear()} Omnora Labs · All rights reserved</span>
-          <div className="flex items-center gap-6">
-            <Link href="/terms" className="hover:text-slate-400 transition-colors">Terms of Service</Link>
-            <Link href="/privacy" className="hover:text-slate-400 transition-colors">Privacy Policy</Link>
-            <Link href="/blog" className="hover:text-slate-400 transition-colors">Blog</Link>
+        {/* FIXED: Re-structured DOM Nesting safely for the footer */}
+        <footer className="mt-20 border-t border-white/5 pt-12">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8 text-xs font-bold text-white/40">
+            <div className="flex items-center space-x-2 uppercase tracking-widest">
+              <Link href="/" className="flex items-center space-x-2">
+                <Image
+                  src="/logos/noxis.png"
+                  alt="Noxis Logo"
+                  width={24}
+                  height={24}
+                  className="object-contain"
+                />
+                <span>NOXIS</span>
+              </Link>
+              <span className="text-gray-600 font-mono font-medium">© {new Date().getFullYear()} All rights reserved.</span>
+            </div>
+
+            <div className="flex flex-col md:flex-row items-center gap-8">
+              <Link href="/blog/[slug]/term of services" className="hover:text-electric-blue transition-colors">Terms of Service</Link>
+              <Link href="/privacy" className="hover:text-electric-blue transition-colors">Privacy Policy</Link>
+              <div className="flex items-center space-x-6">
+                <Link href="https://www.facebook.com/profile.php?fb_profile_edit_entry_point=%7B%22click_point%22%3A%22edit_profile_button%22%2C%22feature%22%3A%22profile_header%22%7D&id=61575141243708&sk=about" className="hover:text-electric-blue transition-colors target='_blank'"><Share2 size={16} /></Link>
+                <Link href="https://www.linkedin.com/in/ahmad-mahboob-764101407/" className="hover:text-electric-blue transition-colors target='_blank'"><Link2 size={16} /></Link>
+                <Link href="https://www.instagram.com/i.am_ahmad_mahboob/?__pwa=1" className="hover:text-electric-blue transition-colors target='_blank'"><Camera size={16} /></Link>
+              </div>
+            </div>
           </div>
-        </div>
-      </footer>
+        </footer>
+      </main>
     </div>
   );
 }

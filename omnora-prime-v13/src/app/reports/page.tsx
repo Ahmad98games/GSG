@@ -63,16 +63,36 @@ export default function ReportsHubPage() {
   const { data: plData, error: plError, refetch: refetchPl } = useQuery({
     queryKey: ['report-summary-pl', businessId],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_profit_loss', {
-        p_business_id: businessId,
-        p_date_from: startOfMonth,
-        p_date_to: endOfMonth
-      });
+      const { data, error } = await supabase
+        .from('ledger_entries')
+        .select('amount, entry_type, accounts!inner(type)')
+        .eq('business_id', businessId)
+        .eq('status', 'posted')
+        .gte('posted_at', startOfMonth)
+        .lte('posted_at', endOfMonth + 'T23:59:59.999Z');
       if (error) throw error;
-      const netProfit = (data as { account_name: string; amount: number }[]).find(r => r.account_name === 'Net Profit' || r.account_name === 'Net Loss');
+
+      let revenue = new Decimal(0);
+      let expenses = new Decimal(0);
+
+      data.forEach((entry: any) => {
+        const amt = new Decimal(entry.amount);
+        const type = entry.accounts?.type;
+        const isDebit = entry.entry_type === 'debit';
+
+        if (type === 'revenue') {
+          if (isDebit) revenue = revenue.minus(amt);
+          else revenue = revenue.plus(amt);
+        } else if (type === 'expense') {
+          if (isDebit) expenses = expenses.plus(amt);
+          else expenses = expenses.minus(amt);
+        }
+      });
+
+      const netProfit = revenue.minus(expenses);
       return { 
-        amount: new Decimal(netProfit?.amount || 0),
-        isLoss: netProfit?.account_name === 'Net Loss'
+        amount: netProfit.abs(),
+        isLoss: netProfit.isNegative()
       };
     },
     enabled: !!businessId
@@ -81,13 +101,32 @@ export default function ReportsHubPage() {
   const { data: tbData } = useQuery({
     queryKey: ['report-summary-tb', businessId],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('check_trial_balance_integrity', {
-        p_business_id: businessId,
-        p_date_from: '2000-01-01',
-        p_date_to: new Date().toISOString().split('T')[0]
-      });
+      const { data, error } = await supabase
+        .from('ledger_entries')
+        .select('amount, entry_type')
+        .eq('business_id', businessId)
+        .eq('status', 'posted');
       if (error) throw error;
-      return data[0];
+
+      let totalDebits = new Decimal(0);
+      let totalCredits = new Decimal(0);
+
+      data.forEach((entry: any) => {
+        const amt = new Decimal(entry.amount);
+        if (entry.entry_type === 'debit') {
+          totalDebits = totalDebits.plus(amt);
+        } else {
+          totalCredits = totalCredits.plus(amt);
+        }
+      });
+
+      const variance = totalDebits.minus(totalCredits).abs();
+      const isBalanced = variance.lessThanOrEqualTo(0.01);
+
+      return {
+        is_balanced: isBalanced,
+        variance: variance.toNumber()
+      };
     },
     enabled: !!businessId
   });
@@ -95,14 +134,32 @@ export default function ReportsHubPage() {
   const { data: bsData, error: bsError, refetch: refetchBs } = useQuery({
     queryKey: ['report-summary-bs', businessId],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_balance_sheet', {
-        p_business_id: businessId,
-        p_as_at_date: new Date().toISOString().split('T')[0]
-      });
+      const { data, error } = await supabase
+        .from('ledger_entries')
+        .select('amount, entry_type, accounts!inner(type, account_code)')
+        .eq('business_id', businessId)
+        .eq('status', 'posted');
       if (error) throw error;
-      const totalAssets = data.find((r: any) => r.section === 'total_assets')?.amount || 0;
-      const totalLiabilities = data.find((r: any) => r.section === 'current_liability' && r.is_subtotal)?.amount || 0;
-      return { totalAssets: new Decimal(totalAssets), totalLiabilities: new Decimal(totalLiabilities) };
+
+      let totalAssets = new Decimal(0);
+      let totalLiabilities = new Decimal(0);
+
+      data.forEach((entry: any) => {
+        const amt = new Decimal(entry.amount);
+        const type = entry.accounts?.type;
+        const code = entry.accounts?.account_code || "";
+        const isDebit = entry.entry_type === 'debit';
+
+        if (type === 'asset') {
+          if (isDebit) totalAssets = totalAssets.plus(amt);
+          else totalAssets = totalAssets.minus(amt);
+        } else if (type === 'liability') {
+          if (isDebit) totalLiabilities = totalLiabilities.minus(amt);
+          else totalLiabilities = totalLiabilities.plus(amt);
+        }
+      });
+
+      return { totalAssets, totalLiabilities };
     },
     enabled: !!businessId
   });
@@ -111,12 +168,23 @@ export default function ReportsHubPage() {
     queryKey: ['report-summary-receivables', businessId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('invoices')
-        .select('balance_due')
+        .from('ledger_entries')
+        .select('amount, entry_type, accounts!inner(account_code)')
         .eq('business_id', businessId)
-        .not('status', 'in', ['paid', 'cancelled']);
+        .eq('status', 'posted')
+        .eq('accounts.account_code', '1100');
       if (error) throw error;
-      return data.reduce((acc: Decimal, inv: any) => acc.plus(new Decimal(inv.balance_due || 0)), new Decimal(0));
+
+      let balance = new Decimal(0);
+      data.forEach((entry: any) => {
+        const amt = new Decimal(entry.amount);
+        if (entry.entry_type === 'debit') {
+          balance = balance.plus(amt);
+        } else {
+          balance = balance.minus(amt);
+        }
+      });
+      return balance;
     },
     enabled: !!businessId
   });
@@ -226,6 +294,15 @@ export default function ReportsHubPage() {
       color: "text-white",
     },
     {
+      id: "tax-report",
+      label: "FBR Tax Export",
+      value: "Pakistan GST",
+      sub: "Year-End Sales Tax Return",
+      href: "/reports/tax",
+      icon: ShieldCheck,
+      color: "text-amber-400",
+    },
+    {
       id: "ledger",
       label: "Ledger Report",
       value: ledgerData?.toString() || "...",
@@ -298,6 +375,24 @@ export default function ReportsHubPage() {
 
   return (
     <div className="min-h-screen bg-[#0F1113] text-slate-200 p-6">
+      <header className="h-16 border-b border-white/5 flex items-center px-8 bg-[#1A1D21]/50 backdrop-blur-md sticky top-0 z-40 -mx-6 -mt-6 mb-6">
+        <div className="flex items-center text-[10px] uppercase tracking-[0.2em] text-gray-500 font-medium">
+          <span className="text-white">Reports Overview</span>
+        </div>
+
+        <nav className="ml-auto flex h-16 items-center">
+          <Link href="/reports" className="px-6 h-full flex items-center space-x-2 text-[10px] uppercase tracking-widest font-black text-electric-blue border-b-2 border-electric-blue bg-white/5">
+            Overview
+          </Link>
+          <Link href="/reports/tax-return" className="px-6 h-full flex items-center space-x-2 text-[10px] uppercase tracking-widest font-black text-gray-500 border-b-2 border-transparent hover:text-white hover:bg-white/[0.02]">
+            Tax Return Analysis
+          </Link>
+          <Link href="/reports/tax" className="px-6 h-full flex items-center space-x-2 text-[10px] uppercase tracking-widest font-black text-gray-500 border-b-2 border-transparent hover:text-white hover:bg-white/[0.02]">
+            Year-End FBR Report
+          </Link>
+        </nav>
+      </header>
+
       <main className="max-w-[1600px] mx-auto space-y-6">
         <div className="flex items-center justify-between mb-6">
           <div>

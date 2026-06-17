@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useBusinessProfile } from '@/hooks/useBusinessProfile'
+import { humanizeError } from '@/lib/utils/errors'
 
 export default function EditPartyPage() {
   const { partyId } = useParams()
@@ -86,7 +87,7 @@ export default function EditPartyPage() {
 
     if (err) {
       console.error('PARTY UPDATE ERROR:', err)
-      setError(`Failed to save: ${err.message || JSON.stringify(err)}`)
+      setError(humanizeError(err, 'party update'))
     } else {
       router.push(`/parties/${partyId}`)
     }

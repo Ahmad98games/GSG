@@ -236,11 +236,11 @@ export default function DocsPage() {
                 <div className="bg-[#0F1114] border border-white/5 p-6 rounded-sm space-y-4 font-mono text-xs">
                   <h4 className="font-sans font-bold uppercase tracking-widest text-white text-[10px] mb-2">Technical Specifications</h4>
                   <div className="p-4 bg-[#08090C] border border-white/5 text-slate-400 space-y-2 rounded-sm">
-                    <p className="text-[#00E5FF]">// SQLite Local Transaction Logging</p>
+                    <p className="text-[#00E5FF]"> SQLite Local Transaction Logging</p>
                     <p>Database: <span className="text-white">SQLite Multiple-Ciphers v12.9</span></p>
                     <p>Encryption: <span className="text-white">AES-256 Bit block ciphering</span></p>
                     <p>Replicator Engine: <span className="text-white">Dynamic WAL-sync and transactional backlogs</span></p>
-                    <p className="text-gray-600">// Reconciles automatically in the background when network changes are triggered.</p>
+                    <p className="text-gray-600">Reconciles automatically in the background when network changes are triggered.</p>
                   </div>
                   <p className="font-sans text-[11px] text-gray-500 leading-relaxed font-medium">
                     When internet connections are down, transactions are securely accumulated inside an offline log stack. On re-establishing external telemetry, the queue replicates blocks to the cloud via Supabase, resolving potential duplicate items dynamically.

@@ -193,8 +193,8 @@ export default React.memo(function IndustrialSidebar() {
   const renderSidebarAvatar = () => {
     if (profile?.avatar_type === 'custom' && profile?.avatar_url) {
       return (
-        <div className="w-8 h-8 rounded-full border border-white/10 bg-black overflow-hidden flex items-center justify-center flex-shrink-0">
-          <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+        <div className="w-8 h-8 rounded-full border border-white/10 bg-black overflow-hidden flex items-center justify-center flex-shrink-0 relative">
+          <Image src={profile.avatar_url} alt="Profile" width={32} height={32} className="w-full h-full object-cover" />
         </div>
       );
     }
@@ -205,9 +205,9 @@ export default React.memo(function IndustrialSidebar() {
     return (
       <div 
         style={{ borderColor: preset.border }}
-        className="w-8 h-8 rounded-full border flex items-center justify-center overflow-hidden flex-shrink-0 bg-black/40 shadow-[0_0_8px_rgba(34,211,238,0.2)]"
+        className="w-8 h-8 rounded-full border flex items-center justify-center overflow-hidden flex-shrink-0 bg-black/40 shadow-[0_0_8px_rgba(34,211,238,0.2)] relative"
       >
-        <img src={preset.src} alt="Preset Avatar" className="w-full h-full object-cover" />
+        <Image src={preset.src} alt="Preset Avatar" width={32} height={32} className="w-full h-full object-cover" />
       </div>
     );
   };

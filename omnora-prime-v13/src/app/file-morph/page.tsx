@@ -11,6 +11,7 @@ import {
 import { useDropzone } from "react-dropzone";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
+import { humanizeError } from '@/lib/utils/errors';
 
 import { cn } from "@/lib/utils";
 import { compressImages } from "@/lib/filemorph/imageCompressor";
@@ -393,6 +394,7 @@ function HeicConverterCard() {
   }[]>([]);
   const [processing, setProcessing] = useState(false);
   const [results, setResults] = useState<any[]>([]);
+  const [convertError, setConvertError] = useState('');
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     acceptedFiles.forEach(file => {
@@ -411,12 +413,13 @@ function HeicConverterCard() {
 
   const handleConvert = async () => {
     setProcessing(true);
+    setConvertError('');
     try {
       const res = await convertHeicFiles(files.map(f => ({ name: f.name, data: f.data })));
       setResults(res);
     } catch (err: unknown) {
       const error = err as Error;
-      alert(error.message);
+      setConvertError(humanizeError(error, 'convert HEIC files'));
     } finally {
       setProcessing(false);
     }
@@ -467,6 +470,9 @@ function HeicConverterCard() {
                </button>
              )}
            </div>
+           {convertError && (
+             <p className="text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-sm">{convertError}</p>
+           )}
         </div>
       )}
     </div>

@@ -1,6 +1,6 @@
-const path = require('path')
-require('dotenv').config({ path: path.resolve(__dirname, '../.env.local') })
-const { createClient } = require('@supabase/supabase-js')
+import { resolve } from 'path'
+require('dotenv').config({ path: resolve(__dirname, '../.env.local') })
+import { createClient } from '@supabase/supabase-js'
 
 async function check() {
   const supabase = createClient(

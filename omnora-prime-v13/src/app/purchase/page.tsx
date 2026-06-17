@@ -9,10 +9,12 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { usePersona } from "@/hooks/usePersona";
-import { usePurchaseOrders } from "@/hooks/usePurchaseQueries";
+import { usePurchaseOrders, useUpdatePOStatus } from "@/hooks/usePurchaseQueries";
 import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { ErrorState, EmptyState } from "@/components/ui/StateViews";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useToast } from "@/hooks/useToast";
+import { humanizeError } from '@/lib/utils/errors';
 
 import { useSidebarState } from "@/hooks/useSidebarState";
 import Link from "next/link";
@@ -23,6 +25,8 @@ export default function PurchaseOrdersPage() {
   const { t, fmt, fmtDate, currency } = usePersona();
   const { isCollapsed } = useSidebarState();
   const { data: pos, isLoading, error, refetch } = usePurchaseOrders();
+  const toast = useToast();
+  const updateStatus = useUpdatePOStatus();
 
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearch = useDebounce(searchTerm, 300);
@@ -232,6 +236,16 @@ export default function PurchaseOrdersPage() {
                                  <button 
                                    className="p-2 hover:bg-red-500/10 rounded-sm text-gray-500 hover:text-red-500 transition-all"
                                    title="Cancel Order"
+                                   onClick={async () => {
+                                     if (confirm(`Are you sure you want to cancel Purchase Order ${po.po_number}?`)) {
+                                       try {
+                                         await updateStatus.mutateAsync({ id: po.id, status: 'cancelled' });
+                                         toast.success("Order Cancelled", `Purchase Order ${po.po_number} status updated to cancelled.`);
+                                       } catch (err: any) {
+                                         toast.error('Cancellation failed', humanizeError(err, 'cancel purchase order'));
+                                       }
+                                     }
+                                   }}
                                  >
                                     <XCircle size={14} />
                                  </button>

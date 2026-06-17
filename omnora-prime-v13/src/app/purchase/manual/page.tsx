@@ -6,11 +6,14 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Building2, Upload, CheckCircle2, ArrowLeft, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/hooks/useToast";
+import { humanizeError } from '@/lib/utils/errors';
 
 export default function ManualPaymentPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const supabase = createClient();
+  const toast = useToast();
 
   const plan = searchParams.get('plan') || 'pro';
   const cycle = searchParams.get('cycle') || 'monthly';
@@ -36,7 +39,7 @@ export default function ManualPaymentPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file) return alert("Please upload a payment screenshot");
+    if (!file) { toast.error('Please upload a payment screenshot before submitting.'); return; }
     setIsSubmitting(true);
 
     try {
@@ -75,7 +78,7 @@ export default function ManualPaymentPage() {
 
       setIsSuccess(true);
     } catch (error: any) {
-      alert(error.message);
+      toast.error(humanizeError(error, 'submit payment'));
     } finally {
       setIsSubmitting(false);
     }

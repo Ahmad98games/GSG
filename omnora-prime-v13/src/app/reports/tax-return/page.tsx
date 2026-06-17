@@ -112,12 +112,24 @@ export default function TaxReturnPage() {
       
       
       <main className={` transition-all duration-300 min-h-screen flex flex-col`}>
-        <header className="h-16 border-b border-white/5 flex items-center px-8 bg-surface/50 backdrop-blur-md sticky top-0 z-40">
-           <div className="flex items-center text-[10px] uppercase tracking-[0.2em] text-gray-500 font-medium">
+        <header className="h-16 border-b border-white/5 flex items-center px-8 bg-[#1A1D21]/50 backdrop-blur-md sticky top-0 z-40">
+          <div className="flex items-center text-[10px] uppercase tracking-[0.2em] text-gray-500 font-medium">
             <Link href="/reports" className="hover:text-white transition-colors">Reports</Link>
             <span className="mx-3 opacity-30">/</span>
             <span className="text-white">Tax Reconciliation Return</span>
           </div>
+
+          <nav className="ml-[10%] flex h-16 items-center">
+            <Link href="/reports" className="px-6 h-full flex items-center space-x-2 text-[10px] uppercase tracking-widest font-black text-gray-500 border-b-2 border-transparent hover:text-white hover:bg-white/[0.02]">
+              Overview
+            </Link>
+            <Link href="/reports/tax-return" className="px-6 h-full flex items-center space-x-2 text-[10px] uppercase tracking-widest font-black text-[#60A5FA] border-b-2 border-[#60A5FA] bg-white/5">
+              Tax Return Analysis
+            </Link>
+            <Link href="/reports/tax" className="px-6 h-full flex items-center space-x-2 text-[10px] uppercase tracking-widest font-black text-gray-500 border-b-2 border-transparent hover:text-white hover:bg-white/[0.02]">
+              Year-End FBR Report
+            </Link>
+          </nav>
 
           <div className="ml-auto flex items-center space-x-4">
              <div className="flex items-center bg-white/5 border border-white/10 rounded-sm text-[10px] text-gray-400">

@@ -36,17 +36,24 @@ export async function syncWithRetry<T>(
  */
 export function startSyncSchedule(
   syncTask: () => Promise<void>,
-  baseInterval = 30000
+  baseInterval = 300_000
 ) {
   const jitter = Math.random() * 10000 // 0-10s jitter
   const initialDelay = Math.random() * baseInterval // Initial offset
 
   logger.info({ initialDelay: Math.round(initialDelay), jitter: Math.round(jitter) }, 'Sync schedule initialized')
 
+  let intervalId: ReturnType<typeof setInterval> | null = null
+
   // Randomize initial start
   setTimeout(() => {
-    setInterval(() => {
+    syncTask().catch(err => logger.error({ err }, 'Sync task execution failed'))
+    intervalId = setInterval(() => {
       syncTask().catch(err => logger.error({ err }, 'Sync task execution failed'))
     }, baseInterval + jitter)
   }, initialDelay)
+
+  return () => {
+    if (intervalId) clearInterval(intervalId)
+  }
 }

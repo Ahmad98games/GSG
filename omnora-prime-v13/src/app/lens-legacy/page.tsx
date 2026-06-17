@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { 
   ScanLine, Upload, X, CheckCircle2, AlertTriangle, 
   FileText, ChevronRight, Plus, Loader2,
@@ -55,7 +56,7 @@ export default function LensPage() {
           table: 'lens_scans_incoming',
           filter: `business_id=eq.${profile.id}`,
         },
-        async (payload) => {
+        async (payload: any) => {
           const scan = payload.new as any;
           if (scan && !scan.processed) {
             setIsMobileConnected(true);
@@ -79,7 +80,7 @@ export default function LensPage() {
     
     // Extract image dimensions from base64
     return new Promise((resolve) => {
-      const img = new Image()
+      const img = new window.Image()
       img.src = dataUrl
       img.onload = () => {
         const { width, height } = img
@@ -411,11 +412,12 @@ export default function LensPage() {
             />
             {documentImage ? (
               <div className="relative w-full h-full">
-                <img 
+                <Image 
                   src={documentImage} 
                   alt="Scanned document" 
-                  className="w-full h-full object-contain" 
-                  onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+                  fill
+                  className="object-contain" 
+                  onError={(e: any) => {
                     console.error('Image load error:', e)
                     // Show error state instead of broken icon
                     setAnalysisStage('Image Load Error')

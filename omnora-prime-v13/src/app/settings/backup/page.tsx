@@ -25,6 +25,7 @@ import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { cn } from "@/lib/utils";
 import * as XLSX from 'xlsx';
 import { useToast } from "@/hooks/useToast";
+import { humanizeError } from '@/lib/utils/errors';
 
 // ─────────────────────────────────────────────
 // Web Crypto AES-GCM Helpers
@@ -178,7 +179,7 @@ export default function BackupPage() {
       setBackupSuccess(true);
       setTimeout(() => setBackupSuccess(false), 5000);
     } catch (err: any) {
-      alert("Backup failed: " + err.message);
+      toast.error('Backup failed', humanizeError(err, 'generate backup'));
     } finally {
       setBackupLoading(false);
     }
@@ -287,7 +288,7 @@ export default function BackupPage() {
       toast.success('All data exported to Excel workbook successfully');
       setTimeout(() => setExcelBackupSuccess(false), 5000);
     } catch (err: any) {
-      toast.error('Excel Export Failed', err.message);
+      toast.error('Excel export failed', humanizeError(err, 'export data to Excel'));
     } finally {
       setExcelBackupLoading(false);
     }

@@ -2,6 +2,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useToast } from "@/hooks/useToast";
+import { humanizeError } from '@/lib/utils/errors';
 import { 
   ArrowRightLeft, Search, Package, ArrowRight, 
   CheckCircle2, XCircle, Clock, AlertCircle,
@@ -68,6 +70,7 @@ export default function InterBranchTransferPage() {
   const { profile } = useBusinessProfile();
   const { tier, isLoading: isLicenseLoading } = useLicense();
   const supabase = createClient();
+  const toast = useToast();
 
   const [history, setHistory] = useState<IBTRecord[]>([]);
   const [filter, setFilter] = useState<'all' | 'in_transit' | 'received' | 'cancelled'>('all');
@@ -137,8 +140,9 @@ export default function InterBranchTransferPage() {
       setSelectedSku(null);
       setSkuSearch('');
       fetchHistory();
+      toast.success('Transfer initiated successfully');
     } catch (err: any) {
-      alert(err.message);
+      toast.error(humanizeError(err, 'initiate transfer'));
     }
   };
 
@@ -147,8 +151,9 @@ export default function InterBranchTransferPage() {
       await receiveInterBranchTransfer(transferId, (await supabase.auth.getUser()).data.user!.id);
       setIsReceiving(null);
       fetchHistory();
+      toast.success('Transfer received and stock updated');
     } catch (err: any) {
-      alert(err.message);
+      toast.error(humanizeError(err, 'receive transfer'));
     }
   };
 

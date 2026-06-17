@@ -20,6 +20,7 @@ import { useNoxisLocale } from '@/hooks/useLocale'
 import { useTranslations } from 'next-intl'
 import { TierBadge } from '../ui/TierBadge'
 import { FeedbackModal } from '@/components/ui/FeedbackModal'
+import Image from 'next/image'
 
 const PRESET_AVATARS = [
   { id: 1, src: '/images/presets/preset-1.png', border: '#22d3ee' },
@@ -73,7 +74,6 @@ export default React.memo(function GlobalTopBar() {
       return count || 0
     },
     enabled: !!businessId,
-    refetchInterval: 60_000
   })
 
   // 2. Sync Status Query
@@ -84,8 +84,7 @@ export default React.memo(function GlobalTopBar() {
       if (!res.ok) throw new Error('Sync Status API Error')
       return res.json()
     },
-    refetchInterval: 60_000,
-    retry: 1
+    retry: 1,
   })
 
   // 3. Alerts Query
@@ -102,7 +101,6 @@ export default React.memo(function GlobalTopBar() {
       return data
     },
     enabled: !!businessId,
-    refetchInterval: 60_000
   })
 
   const syncState = !isOnline ? 'offline' : (isSyncError ? 'error' : (syncData?.pending_count > 0 ? 'syncing' : 'synced'))
@@ -251,8 +249,8 @@ export default React.memo(function GlobalTopBar() {
 
               if (profile?.avatar_type === 'custom' && profile?.avatar_url) {
                 return (
-                  <div className="w-8 h-8 rounded-full border border-noxis-border bg-noxis-overlay overflow-hidden flex items-center justify-center">
-                    <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                  <div className="w-8 h-8 rounded-full border border-noxis-border bg-noxis-overlay overflow-hidden flex items-center justify-center relative">
+                    <Image src={profile.avatar_url} alt="Profile" width={32} height={32} className="w-full h-full object-cover" />
                   </div>
                 );
               }
@@ -264,9 +262,9 @@ export default React.memo(function GlobalTopBar() {
               return (
                 <div 
                   style={{ borderColor: preset.border }}
-                  className="w-8 h-8 rounded-full border flex items-center justify-center overflow-hidden bg-black/40 shadow-[0_0_8px_rgba(34,211,238,0.2)]"
+                  className="w-8 h-8 rounded-full border flex items-center justify-center overflow-hidden bg-black/40 shadow-[0_0_8px_rgba(34,211,238,0.2)] relative"
                 >
-                  <img src={preset.src} alt="Preset Avatar" className="w-full h-full object-cover" />
+                  <Image src={preset.src} alt="Preset Avatar" width={32} height={32} className="w-full h-full object-cover" />
                 </div>
               );
             })()}

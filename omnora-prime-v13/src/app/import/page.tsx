@@ -7,6 +7,7 @@ import { useBusinessProfile } from '@/hooks/useBusinessProfile'
 import { PersonaEngine } from '@/lib/persona/PersonaEngine'
 import * as XLSX from 'xlsx'
 import { useToast } from '@/hooks/useToast'
+import { humanizeError } from '@/lib/utils/errors'
 import {
   Table, Upload, Download, Check,
   AlertTriangle, ChevronDown, Plus, X
@@ -356,7 +357,7 @@ export default function SmartImportPage() {
           toast.error('No valid rows found in file')
         }
       } catch (err: any) {
-        toast.error('Could not read file', err.message)
+        toast.error('Could not read file', humanizeError(err, 'parse import file'))
       }
     }
     reader.readAsArrayBuffer(file)
@@ -421,7 +422,7 @@ export default function SmartImportPage() {
           failed++
           const msg = error.message.includes('duplicate')
             ? `Row ${i+1}: ${row.name || row.sku_code} already exists — updated`
-            : `Row ${i+1}: ${error.message}`
+            : `Row ${i+1}: ${humanizeError(error)}`
           errors.push(msg)
           if (error.message.includes('duplicate')) {
             success++ // Upsert = still a success
@@ -432,7 +433,7 @@ export default function SmartImportPage() {
         }
       } catch (err: any) {
         failed++
-        errors.push(`Row ${i+1}: ${err.message}`)
+        errors.push(`Row ${i+1}: ${humanizeError(err)}`)
       }
     }
 

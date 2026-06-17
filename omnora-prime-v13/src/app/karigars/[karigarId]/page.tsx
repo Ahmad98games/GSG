@@ -18,10 +18,14 @@ import * as z from "zod";
 import { openWhatsApp } from '@/lib/utils/whatsapp';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import Image from 'next/image';
+import { useToast } from '@/hooks/useToast';
+import { humanizeError } from '@/lib/utils/errors';
 
 export default function KarigarDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const toast = useToast();
   const { profile } = useBusinessProfile();
   const { isLoaded } = useBusinessProfileStore();
   const { term, workerTerm, fmt } = usePersona();
@@ -175,9 +179,12 @@ export default function KarigarDetailPage() {
         
       if (!error) {
         setIdentity((prev: any) => ({ ...prev, is_public: newPublic }));
+      } else {
+        toast.error("Visibility toggle failed", humanizeError(error, 'toggle visibility'));
       }
     } catch (e) {
       console.error(e);
+      toast.error("Visibility toggle failed", humanizeError(e, 'toggle visibility'));
     }
   };
   
@@ -193,9 +200,12 @@ export default function KarigarDetailPage() {
         
       if (!error) {
         setIdentity((prev: any) => ({ ...prev, open_to_work: newOpen }));
+      } else {
+        toast.error("Job status toggle failed", humanizeError(error, 'toggle job status'));
       }
     } catch (e) {
       console.error(e);
+      toast.error("Job status toggle failed", humanizeError(e, 'toggle job status'));
     }
   };
   
@@ -220,9 +230,12 @@ export default function KarigarDetailPage() {
           worker_skills: [...(prev.worker_skills || []), data]
         }));
         setSkillInput('');
+      } else if (error) {
+        toast.error("Skill tag registration failed", humanizeError(error, 'register skill'));
       }
     } catch (e) {
       console.error(e);
+      toast.error("Skill tag registration failed", humanizeError(e, 'register skill'));
     } finally {
       setAddingSkill(false);
     }
@@ -242,9 +255,12 @@ export default function KarigarDetailPage() {
           ...prev,
           worker_skills: (prev.worker_skills || []).filter((s: any) => s.id !== skillId)
         }));
+      } else {
+        toast.error("Skill tag deletion failed", humanizeError(error, 'delete skill'));
       }
     } catch (e) {
       console.error(e);
+      toast.error("Skill tag deletion failed", humanizeError(e, 'delete skill'));
     }
   };
   
@@ -288,7 +304,7 @@ export default function KarigarDetailPage() {
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center bg-black/40 border-2 border-electric-blue/30 relative flex-shrink-0">
               {karigar?.photo_url ? (
-                <img src={karigar.photo_url} alt={karigar.name} className="w-full h-full object-cover" />
+                <Image src={karigar.photo_url} alt={karigar.name || 'Worker Photo'} width={64} height={64} className="w-full h-full object-cover" />
               ) : (
                 <span className="text-sm font-black text-gray-400 font-mono">{initials}</span>
               )}
@@ -912,6 +928,7 @@ const advanceSchema = z.object({
 function AdvancePeshgiModal({ karigar, onClose, onSaved }: { karigar: any, onClose: () => void, onSaved: () => void }) {
   const { profile } = useBusinessProfile();
   const supabase = createClient();
+  const toast = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { fmt } = usePersona();
   const { register, handleSubmit, watch: watchAdvance } = useForm<z.infer<typeof advanceSchema>>({
@@ -941,8 +958,7 @@ function AdvancePeshgiModal({ karigar, onClose, onSaved }: { karigar: any, onClo
 
       onSaved();
     } catch (err: unknown) {
-      const error = err as Error;
-      alert(`Transaction failed: ${error.message}`);
+      toast.error("Transaction failed", humanizeError(err, 'issue advance'));
     } finally {
       setIsSubmitting(false);
     }

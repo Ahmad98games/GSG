@@ -5,6 +5,5 @@ compatibility_date = "2024-04-01"
 directory = "./omnora-prime-v13/out"
 not_found_handling = "single-page-application"
 
-# Cloudflare dashboard runs `npx wrangler deploy` — wrangler executes this first.
 [build]
-command = "cd omnora-prime-v13 && npm install --legacy-peer-deps && npm run build"
+command = "npm install --legacy-peer-deps --no-scripts && npm run build"

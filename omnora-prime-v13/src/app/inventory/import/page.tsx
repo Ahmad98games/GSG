@@ -12,6 +12,7 @@ import * as XLSX from 'xlsx';
 import { createClient } from "@/lib/supabase/client";
 import { usePersona } from "@/hooks/usePersona";
 import { useToast } from "@/hooks/useToast";
+import { humanizeError } from '@/lib/utils/errors';
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -91,7 +92,7 @@ export default function InventoryImportPage() {
           processParsedData(results.data);
         },
         error: (err) => {
-          toast.error("Parsing failed", err.message);
+          toast.error('CSV parsing failed', humanizeError(err, 'parse CSV file'));
           setIsParsing(false);
         }
       });
@@ -173,7 +174,7 @@ export default function InventoryImportPage() {
 
       if (error) {
         failed++;
-        errors.push({ row: i + 1, msg: error.message });
+        errors.push({ row: i + 1, msg: humanizeError(error) });
       } else {
         if (existing) updated++;
         else success++;

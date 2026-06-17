@@ -38,7 +38,10 @@ export const db = new Proxy({} as Record<string, any>, {
     if (!_db) {
       try {
         /* eslint-disable @typescript-eslint/no-var-requires */
-        const Database = require('better-sqlite3-multiple-ciphers');
+        const sqliteModulePath = process.env.ELECTRON_RESOURCES
+          ? path.join(process.env.ELECTRON_RESOURCES, 'better-sqlite3-multiple-ciphers', 'lib', 'index.js')
+          : 'better-sqlite3-multiple-ciphers';
+        const Database = require(sqliteModulePath);
         const { drizzle } = require('drizzle-orm/better-sqlite3');
         /* eslint-enable @typescript-eslint/no-var-requires */
         

@@ -6,6 +6,7 @@ import {
   flexRender, 
   getCoreRowModel, 
   useReactTable,
+  
 } from "@tanstack/react-table";
 import { useStockQuery } from "@/hooks/useStockQuery";
 
@@ -22,6 +23,7 @@ import {
 import { motion } from "framer-motion";
 import TopBar from "@/components/layout/TopBar";
 import Link from "next/link";
+import Image from "next/image";
 
 // Types
 interface SKU {
@@ -67,9 +69,9 @@ export default function StockLedgerPage() {
     columnHelper.accessor("thumbnail_url", {
       header: "Visual",
       cell: (info) => (
-        <div className="w-8 h-8 bg-onyx border border-white/5 flex items-center justify-center overflow-hidden">
+        <div className="w-8 h-8 bg-onyx border border-white/5 flex items-center justify-center overflow-hidden relative">
           {info.getValue() ? (
-            <img src={info.getValue()} alt="SKU" className="w-full h-full object-cover" />
+            <Image src={info.getValue()!} alt="SKU" width={32} height={32} className="w-full h-full object-cover" />
           ) : (
             <ImageIcon size={14} className="text-gray-700" />
           )}

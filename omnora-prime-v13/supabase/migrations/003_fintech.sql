@@ -132,6 +132,7 @@ CREATE TABLE IF NOT EXISTS production_batches (
   status          TEXT DEFAULT 'open' CHECK (status IN ('open','in_progress','completed','cancelled')),
   started_at      TIMESTAMPTZ,
   completed_at    TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ DEFAULT now(),
   UNIQUE(business_id, batch_no)
 );
 

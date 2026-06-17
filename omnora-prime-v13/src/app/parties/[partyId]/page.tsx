@@ -638,8 +638,20 @@ export default function PartyDetailPage() {
                                     </div>
                                     
                                     <div className="flex items-center gap-2 mt-6">
-                                       <button className="flex-1 p-2 bg-white/5 hover:bg-white/10 text-[9px] font-black uppercase tracking-widest transition-all">View</button>
-                                       <button className="p-2 bg-white/5 hover:bg-emerald-500 hover:text-black transition-all rounded-sm">
+                                       <button 
+                                         onClick={() => router.push(`/invoices/${inv.id}`)}
+                                         className="flex-1 p-2 bg-white/5 hover:bg-white/10 text-[9px] font-black uppercase tracking-widest transition-all"
+                                       >
+                                         View
+                                       </button>
+                                       <button 
+                                         onClick={() => {
+                                           setPaymentAmount(inv.balance_due.toString());
+                                           setPaymentNote(`Payment for Invoice ${inv.invoice_no}`);
+                                           setPaymentModal(true);
+                                         }}
+                                         className="p-2 bg-white/5 hover:bg-emerald-500 hover:text-black transition-all rounded-sm"
+                                       >
                                           <DollarSign size={14} />
                                        </button>
                                     </div>
@@ -676,7 +688,12 @@ export default function PartyDetailPage() {
                                        </div>
                                     </div>
                                     
-                                    <button className="w-full mt-6 p-2 bg-white/5 hover:bg-purple-600 text-[9px] font-black uppercase tracking-widest transition-all">Manage Order</button>
+                                    <button 
+                                      onClick={() => router.push(`/purchase/${po.id}`)}
+                                      className="w-full mt-6 p-2 bg-white/5 hover:bg-purple-600 text-[9px] font-black uppercase tracking-widest transition-all"
+                                    >
+                                      Manage Order
+                                    </button>
                                  </div>
                                ))}
                             </div>

@@ -8,7 +8,7 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import * as schema from '@/lib/db/schema';
 import { sql } from 'drizzle-orm';
 import net from 'net';
-import * as server from '@/lib/nsp/server';
+import { createNSPServer } from '@/lib/nsp/server';
 import { setTestDb } from '@/lib/db/client';
 
 // --- Vitest Hoisted Mocks ---
@@ -692,7 +692,7 @@ beforeAll(async () => {
   ]);
 
   // 4. Start TCP Test Server (OS assigns free port)
-  tcpServer = server.createNSPServer();
+  tcpServer = createNSPServer();
 
   await new Promise<void>((resolve) => {
     tcpServer.listen(0, '127.0.0.1', () => {

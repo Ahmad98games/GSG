@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { UserPlus, Lock, Mail, ArrowRight, ShieldCheck } from "lucide-react";
 import Link from "next/link";
+import { humanizeError } from "@/lib/utils/errors";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -38,7 +39,7 @@ export default function SignupPage() {
         router.push("/");
       }
     } catch (err: any) {
-      setError(err.message || "Registration failed");
+      setError(humanizeError(err, "register account"));
     } finally {
       setIsLoading(false);
     }

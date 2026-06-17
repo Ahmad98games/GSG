@@ -9,6 +9,8 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/useToast";
+import { humanizeError } from '@/lib/utils/errors';
 
 interface LineItem { description: string; qty: number; rate: number; }
 
@@ -16,6 +18,7 @@ export default function NewRecurringInvoicePage() {
   const router = useRouter();
   const { businessId } = usePersona();
   const supabase = createClient();
+  const toast = useToast();
 
   const [partyId, setPartyId] = useState("");
   const [frequency, setFrequency] = useState("monthly");
@@ -59,8 +62,8 @@ export default function NewRecurringInvoicePage() {
       });
       if (error) throw error;
     },
-    onSuccess: () => router.push('/invoices/recurring'),
-    onError: (err: any) => alert(err.message),
+    onSuccess: () => { toast.success('Recurring invoice template saved'); router.push('/invoices/recurring'); },
+    onError: (err: any) => toast.error(humanizeError(err, 'save recurring invoice')),
   });
 
   return (

@@ -13,6 +13,9 @@ import {
 } from "lucide-react";
 import { usePersona } from "@/hooks/usePersona";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/hooks/useToast";
+import { useUpdatePOStatus } from "@/hooks/usePurchaseQueries";
+import { humanizeError } from '@/lib/utils/errors';
 
 import { useParams, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -47,6 +50,8 @@ export default function PurchaseOrderDetailPage() {
   const { fmt, businessId } = usePersona();
   const supabase = createClient();
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const toast = useToast();
+  const updateStatus = useUpdatePOStatus();
   
   const poId = params.poId as string;
 
@@ -155,7 +160,10 @@ export default function PurchaseOrderDetailPage() {
                  <Printer size={12} />
                  <span>Print</span>
               </button>
-              <button className="flex items-center space-x-2 bg-[#C5A059] hover:brightness-110 px-6 py-2 text-[10px] uppercase font-black tracking-widest text-black transition-all">
+              <button 
+                onClick={() => toast.info("Export Document", "This feature is coming soon")}
+                className="flex items-center space-x-2 bg-[#C5A059] hover:brightness-110 px-6 py-2 text-[10px] uppercase font-black tracking-widest text-black transition-all"
+              >
                  <Download size={12} />
                  <span>Export Document</span>
               </button>
@@ -326,10 +334,34 @@ export default function PurchaseOrderDetailPage() {
                        <Truck size={16} />
                        <span>Receive Stock (GRN)</span>
                     </Link>
-                    <button className="w-full flex items-center justify-center space-x-3 bg-white/5 hover:bg-white/10 p-4 text-[10px] uppercase font-black tracking-widest border border-white/5 transition-all group">
-                       <CheckCircle2 size={16} className="text-gray-600 group-hover:text-emerald-500 transition-colors" />
-                       <span>Mark as Fully Received</span>
-                    </button>
+                     <button 
+                       onClick={async () => {
+                         if (po.status === 'received') {
+                           toast.warning("Already Received", "This purchase order is already marked as received.");
+                           return;
+                         }
+                         if (po.status === 'cancelled') {
+                           toast.error("Cancelled Order", "Cannot receive a cancelled purchase order.");
+                           return;
+                         }
+                         if (confirm("Are you sure you want to mark this purchase order as fully received?")) {
+                           try {
+                             await updateStatus.mutateAsync({ id: po.id, status: 'received' });
+                             toast.success("Order Received", "Purchase order status updated to received.");
+                            } catch (err: any) {
+                              toast.error('Operation failed', humanizeError(err, 'mark PO received'));
+                            }
+                         }
+                       }}
+                       className={cn(
+                         "w-full flex items-center justify-center space-x-3 bg-white/5 hover:bg-white/10 p-4 text-[10px] uppercase font-black tracking-widest border border-white/5 transition-all group",
+                         (po.status === 'received' || po.status === 'cancelled') && "opacity-60 cursor-not-allowed"
+                       )}
+                       disabled={po.status === 'received' || po.status === 'cancelled'}
+                     >
+                        <CheckCircle2 size={16} className="text-gray-600 group-hover:text-emerald-500 transition-colors" />
+                        <span>Mark as Fully Received</span>
+                     </button>
                     <button onClick={() => setShowPaymentModal(true)} className="w-full flex items-center justify-center space-x-3 bg-[#C5A059] hover:brightness-110 p-4 text-[10px] uppercase font-black tracking-widest text-black transition-all shadow-lg shadow-[#C5A059]/10">
                        <DollarSign size={16} />
                        <span>Record Payment</span>
@@ -400,18 +432,45 @@ export default function PurchaseOrderDetailPage() {
                  </div>
 
                  <div className="space-y-2 pt-8 border-t border-white/5">
-                    <button className="w-full flex items-center justify-between p-3 text-[9px] uppercase font-black tracking-widest text-gray-500 hover:text-white transition-all group">
-                       <span className="flex items-center space-x-2">
-                          <XCircle size={12} className="text-red-500/50 group-hover:text-red-500 transition-colors" />
-                          <span>Cancel Order Manifesto</span>
-                       </span>
-                    </button>
-                    <button className="w-full flex items-center justify-between p-3 text-[9px] uppercase font-black tracking-widest text-gray-500 hover:text-white transition-all group">
-                       <span className="flex items-center space-x-2">
-                          <History size={12} />
-                          <span>View Audit History</span>
-                       </span>
-                    </button>
+                     <button 
+                       onClick={async () => {
+                         if (po.status === 'cancelled') {
+                           toast.warning("Already Cancelled", "This purchase order is already cancelled.");
+                           return;
+                         }
+                         if (po.status === 'received') {
+                           toast.error("Cannot Cancel", "Cannot cancel an order that has already been received.");
+                           return;
+                         }
+                         if (confirm("Are you sure you want to cancel this purchase order? This action is irreversible.")) {
+                           try {
+                             await updateStatus.mutateAsync({ id: po.id, status: 'cancelled' });
+                             toast.success("Order Cancelled", "Purchase order status updated to cancelled.");
+                            } catch (err: any) {
+                              toast.error('Cancellation failed', humanizeError(err, 'cancel purchase order'));
+                            }
+                         }
+                       }}
+                       className={cn(
+                         "w-full flex items-center justify-between p-3 text-[9px] uppercase font-black tracking-widest text-gray-500 hover:text-white transition-all group",
+                         (po.status === 'cancelled' || po.status === 'received') && "opacity-60 cursor-not-allowed"
+                       )}
+                       disabled={po.status === 'cancelled' || po.status === 'received'}
+                     >
+                        <span className="flex items-center space-x-2">
+                           <XCircle size={12} className={cn("text-red-500/50 group-hover:text-red-500 transition-colors", (po.status === 'cancelled' || po.status === 'received') && "text-gray-600")} />
+                           <span>Cancel Order Manifesto</span>
+                        </span>
+                     </button>
+                     <button 
+                       onClick={() => toast.info("Audit History", "Audit history log stream is coming soon")}
+                       className="w-full flex items-center justify-between p-3 text-[9px] uppercase font-black tracking-widest text-gray-500 hover:text-white transition-all group"
+                     >
+                        <span className="flex items-center space-x-2">
+                           <History size={12} />
+                           <span>View Audit History</span>
+                        </span>
+                     </button>
                  </div>
               </div>
            </aside>

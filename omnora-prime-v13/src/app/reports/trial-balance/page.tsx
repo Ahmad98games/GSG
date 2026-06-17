@@ -15,6 +15,8 @@ import { useSidebarState } from "@/hooks/useSidebarState";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Decimal } from "decimal.js";
+import * as XLSX from "xlsx";
+import { useToast } from "@/hooks/useToast";
 
 interface TBRow {
   account_code: string;
@@ -28,73 +30,136 @@ export default function TrialBalancePage() {
   const { fmt, businessId } = usePersona();
   const { isCollapsed } = useSidebarState();
   const supabase = createClient();
+  const toast = useToast();
 
-  
+  const defaultStart = useMemo(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+  }, []);
+
+  const defaultEnd = useMemo(() => {
+    return new Date().toISOString().split('T')[0];
+  }, []);
+
   const [dateRange, setDateRange] = useState({
-    from: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
-    to: new Date().toISOString().split('T')[0]
+    start: defaultStart,
+    end: defaultEnd
   });
 
-  const { data: rows, isLoading: isRowsLoading } = useQuery<TBRow[]>({
-    queryKey: ['trial-balance-rows', dateRange, businessId],
+  const { data, isLoading } = useQuery({
+    queryKey: ['trial-balance', dateRange, businessId],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_trial_balance', {
-        p_business_id: businessId,
-        p_date_from: dateRange.from,
-        p_date_to: dateRange.to
-      });
+      const { data: entries, error } = await supabase
+        .from('ledger_entries')
+        .select('amount, entry_type, accounts!inner(id, account_code, name, type)')
+        .eq('business_id', businessId)
+        .eq('status', 'posted')
+        .gte('posted_at', dateRange.start)
+        .lte('posted_at', dateRange.end + 'T23:59:59.999Z');
       if (error) throw error;
-      return data;
+      
+      const accountBalances: { [id: string]: { code: string; name: string; type: string; debits: Decimal; credits: Decimal } } = {};
+      
+      (entries || []).forEach((entry: any) => {
+        const acc = entry.accounts;
+        if (!acc) return;
+        
+        if (!accountBalances[acc.id]) {
+          accountBalances[acc.id] = {
+            code: acc.account_code,
+            name: acc.name,
+            type: acc.type,
+            debits: new Decimal(0),
+            credits: new Decimal(0)
+          };
+        }
+        
+        const amt = new Decimal(entry.amount);
+        if (entry.entry_type === 'debit') {
+          accountBalances[acc.id].debits = accountBalances[acc.id].debits.plus(amt);
+        } else {
+          accountBalances[acc.id].credits = accountBalances[acc.id].credits.plus(amt);
+        }
+      });
+      
+      const rows: TBRow[] = [];
+      let totalDebits = new Decimal(0);
+      let totalCredits = new Decimal(0);
+      
+      Object.values(accountBalances).forEach(acc => {
+        let balance = new Decimal(0);
+        if (acc.type === 'asset' || acc.type === 'expense') {
+          balance = acc.debits.minus(acc.credits);
+        } else {
+          balance = acc.credits.minus(acc.debits);
+        }
+        
+        let debitBalance = 0;
+        let creditBalance = 0;
+        
+        if (balance.greaterThanOrEqualTo(0)) {
+          if (acc.type === 'asset' || acc.type === 'expense') {
+            debitBalance = balance.toNumber();
+            totalDebits = totalDebits.plus(balance);
+          } else {
+            creditBalance = balance.toNumber();
+            totalCredits = totalCredits.plus(balance);
+          }
+        }
+        
+        if (debitBalance > 0 || creditBalance > 0) {
+          rows.push({
+            account_code: acc.code,
+            account_name: acc.name,
+            account_type: acc.type,
+            debit_balance: debitBalance,
+            credit_balance: creditBalance
+          });
+        }
+      });
+      
+      rows.sort((a, b) => a.account_code.localeCompare(b.account_code));
+      
+      const variance = totalDebits.minus(totalCredits).abs();
+      const isBalanced = variance.lessThanOrEqualTo(0.01);
+      
+      return {
+        rows,
+        integrity: {
+          total_debits: totalDebits.toNumber(),
+          total_credits: totalCredits.toNumber(),
+          is_balanced: isBalanced,
+          variance: variance.toNumber()
+        }
+      };
     },
     enabled: !!businessId
   });
 
-  const { data: integrity, isLoading: isIntegrityLoading } = useQuery({
-    queryKey: ['trial-balance-integrity', dateRange, businessId],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('check_trial_balance_integrity', {
-        p_business_id: businessId,
-        p_date_from: dateRange.from,
-        p_date_to: dateRange.to
-      });
-      if (error) throw error;
-      return data[0];
-    },
-    enabled: !!businessId
-  });
-
-  const isLoading = isRowsLoading || isIntegrityLoading;
+  const rows = data?.rows || [];
+  const integrity = data?.integrity;
   const isUnbalanced = integrity && !integrity.is_balanced;
 
-  
-
-  const exportCSV = () => {
+  const exportExcel = () => {
     if (!rows) return;
-    const headers = ["Account Code", "Account Name", "Type", "Debit", "Credit"];
-    const csvRows = rows.map(r => [
-      r.account_code,
-      r.account_name,
-      r.account_type,
-      r.debit_balance.toString(),
-      r.credit_balance.toString()
-    ]);
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + headers.join(",") + "\n"
-      + csvRows.map(e => e.join(",")).join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `trial_balance_${dateRange.from}_to_${dateRange.to}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const excelRows = rows.map(r => ({
+      'Account Code': r.account_code,
+      'Account Name': r.account_name,
+      'Account Type': r.account_type.toUpperCase(),
+      'Debit Balance': r.debit_balance,
+      'Credit Balance': r.credit_balance
+    }));
+    
+    const ws = XLSX.utils.json_to_sheet(excelRows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Trial Balance');
+    XLSX.writeFile(wb, `trial_balance_${dateRange.start}_to_${dateRange.end}.xlsx`);
+    toast.success('Excel Export', 'Trial Balance exported to Excel successfully');
   };
 
   return (
     <div className="min-h-screen bg-[#0F1113] text-slate-200 font-inter">
-      
-      
-      <main className={` transition-all duration-300`}>
+      <main className="transition-all duration-300">
         <header className="h-16 border-b border-white/5 flex items-center px-8 bg-surface/50 backdrop-blur-md sticky top-0 z-40">
           <div className="flex items-center text-[10px] uppercase tracking-[0.2em] text-gray-500 font-medium">
             <Link href="/reports" className="hover:text-white transition-colors">Reports Hub</Link>
@@ -107,24 +172,24 @@ export default function TrialBalancePage() {
                 <Calendar size={14} className="ml-3" />
                 <input 
                   type="date" 
-                  value={dateRange.from} 
-                  onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
+                  value={dateRange.start} 
+                  onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
                   className="bg-transparent border-none text-white px-3 py-1.5 focus:ring-0 outline-none w-32"
                 />
                 <span className="opacity-30">/</span>
                 <input 
                   type="date" 
-                  value={dateRange.to} 
-                  onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
+                  value={dateRange.end} 
+                  onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
                   className="bg-transparent border-none text-white px-3 py-1.5 focus:ring-0 outline-none w-32 mr-2"
                 />
              </div>
              <button 
-              onClick={exportCSV}
+              onClick={exportExcel}
               className="flex items-center space-x-2 px-4 py-1.5 bg-[#1A1D21] border border-white/10 text-[10px] uppercase tracking-widest font-bold hover:bg-white/5 transition-colors"
              >
                 <FileSpreadsheet size={14} className="text-[#C5A059]" />
-                <span>Export CSV</span>
+                <span>Export Excel</span>
              </button>
           </div>
         </header>

@@ -6,11 +6,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Banknote, Plus, Lock, Eye, 
   Download, CheckCircle2,
-  AlertCircle, X, Filter
+  AlertCircle, X, Filter, CreditCard
 } from "lucide-react";
 import { usePersona } from "@/hooks/usePersona";
 import { createClient } from "@/lib/supabase/client";
 import { FeedbackModal } from "@/components/ui/FeedbackModal";
+import * as XLSX from "xlsx";
+import { useToast } from "@/hooks/useToast";
 
 import { cn } from "@/lib/utils";
 import { Decimal } from "decimal.js";
@@ -35,6 +37,75 @@ export default function PayrollPage() {
   const { businessId, fmt, fmtDate, term, workerTermPlural } = usePersona();
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const toast = useToast();
+
+  const handleDownloadPeriodExcel = async (periodId: string, periodLabel: string) => {
+    try {
+      const { data: slips, error } = await supabase
+        .from('payroll_slips')
+        .select('*, karigar:karigars(name, karigar_code)')
+        .eq('period_id', periodId);
+        
+      if (error) throw error;
+      if (!slips || slips.length === 0) {
+        toast.info('No Data', 'There are no payslips in this payroll period.');
+        return;
+      }
+      
+      const formatted = slips.map((s: any) => ({
+        'Karigar Code': s.karigar?.karigar_code || '—',
+        'Karigar Name': s.karigar?.name || '—',
+        'Base Wage': s.base_wage || 0,
+        'Bonus': s.bonus || 0,
+        'Advance Deduction': s.advance_deduction || 0,
+        'Net Wage': s.net_wage || 0,
+        'Status': s.is_finalized ? 'Finalized' : 'Draft'
+      }));
+      
+      const ws = XLSX.utils.json_to_sheet(formatted);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Payroll Slips');
+      XLSX.writeFile(wb, `payroll_slips_${periodLabel.replace(/\s+/g, '_')}.xlsx`);
+      toast.success('Excel Export', `Payroll slips for ${periodLabel} exported to Excel.`);
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Export Failed', 'An error occurred while exporting payslips.');
+    }
+  };
+  
+  const handleDownloadBankTransferCSV = async (periodId: string, periodLabel: string) => {
+    try {
+      const { data: slips, error } = await supabase
+        .from('payroll_slips')
+        .select('*, karigar:karigars(name, karigar_code, bank_account)')
+        .eq('period_id', periodId);
+        
+      if (error) throw error;
+      if (!slips || slips.length === 0) {
+        toast.info('No Data', 'There are no payslips in this payroll period.');
+        return;
+      }
+      
+      const rows = slips.map((s: any) => ({
+        'Account Title': s.karigar?.name || '—',
+        'IBAN / Account Number': s.karigar?.bank_account || '',
+        'Amount': s.net_payable || 0,
+        'Currency': 'PKR',
+        'Purpose': `Salary ${new Date().toLocaleString('en-PK', { month: 'long', year: 'numeric' })}`,
+        'Reference': s.karigar?.karigar_code || '',
+      }));
+
+      const XLSX = await import('xlsx');
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Bank Transfer');
+      XLSX.writeFile(wb, `bulk_bank_transfer_${periodLabel.replace(/\s+/g, '_')}.xlsx`);
+      toast.success('Bank Transfer Export', `Bulk bank transfer format for HBL/UBL/MCB/Meezan exported.`);
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Export Failed', 'An error occurred while exporting bank transfer file.');
+    }
+  };
   
 
   const [isRunModalOpen, setIsRunModalOpen] = useState(false);
@@ -234,8 +305,19 @@ export default function PayrollPage() {
                                          <Lock size={16} />
                                       </button>
                                     )}
-                                    <button className="p-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all">
+                                    <button 
+                                       onClick={() => handleDownloadPeriodExcel(p.id, p.period_label)}
+                                       className="p-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
+                                       title="Download Period Excel"
+                                    >
                                        <Download size={16} />
+                                    </button>
+                                    <button 
+                                       onClick={() => handleDownloadBankTransferCSV(p.id, p.period_label)}
+                                       className="p-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
+                                       title="Download Bank Transfer CSV"
+                                    >
+                                       <CreditCard size={16} />
                                     </button>
                                  </div>
                               </td>

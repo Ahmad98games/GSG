@@ -18,6 +18,8 @@ import { cn } from "@/lib/utils";
 import IndustrialEmptyState from "@/components/ui/IndustrialEmptyState";
 import { useRouter } from "next/navigation";
 import { Decimal } from "decimal.js";
+import * as XLSX from "xlsx";
+import { useToast } from "@/hooks/useToast";
 
 interface PLRow {
   section: string;
@@ -32,13 +34,22 @@ export default function ProfitLossPage() {
   const { fmt, fmtDate, t, businessId } = usePersona();
   const { tier } = useLicense();
   const { isCollapsed } = useSidebarState();
+  const toast = useToast();
   
   const supabase = createClient();
 
-  
+  const defaultStart = useMemo(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+  }, []);
+
+  const defaultEnd = useMemo(() => {
+    return new Date().toISOString().split('T')[0];
+  }, []);
+
   const [dateRange, setDateRange] = useState({
-    from: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
-    to: new Date().toISOString().split('T')[0]
+    start: defaultStart,
+    end: defaultEnd
   });
 
   const [selectedBranch, setSelectedBranch] = useState<string>("all");
@@ -56,14 +67,141 @@ export default function ProfitLossPage() {
   const { data, isLoading } = useQuery<PLRow[]>({
     queryKey: ['profit-loss', dateRange, selectedBranch, businessId],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_profit_loss', {
-        p_business_id: businessId,
-        p_date_from: dateRange.from,
-        p_date_to: dateRange.to
-        // Note: RPC currently doesn't support branch filtering, so we fetch business-wide
-      });
+      let query = supabase
+        .from('ledger_entries')
+        .select('amount, entry_type, posted_at, branch_id, accounts!inner(id, account_code, name, type)')
+        .eq('business_id', businessId)
+        .eq('status', 'posted')
+        .gte('posted_at', dateRange.start)
+        .lte('posted_at', dateRange.end + 'T23:59:59.999Z');
+      
+      if (selectedBranch && selectedBranch !== 'all') {
+        query = query.eq('branch_id', selectedBranch);
+      }
+      
+      const { data: entries, error } = await query;
       if (error) throw error;
-      return data;
+
+      const accountBalances: { [id: string]: { code: string; name: string; type: string; debits: Decimal; credits: Decimal } } = {};
+      
+      (entries || []).forEach((entry: any) => {
+        const acc = entry.accounts;
+        if (!acc) return;
+        
+        if (!accountBalances[acc.id]) {
+          accountBalances[acc.id] = {
+            code: acc.account_code,
+            name: acc.name,
+            type: acc.type,
+            debits: new Decimal(0),
+            credits: new Decimal(0)
+          };
+        }
+        
+        const amt = new Decimal(entry.amount);
+        if (entry.entry_type === 'debit') {
+          accountBalances[acc.id].debits = accountBalances[acc.id].debits.plus(amt);
+        } else {
+          accountBalances[acc.id].credits = accountBalances[acc.id].credits.plus(amt);
+        }
+      });
+      
+      const accountsList = Object.values(accountBalances).map(acc => {
+        let balance = new Decimal(0);
+        if (acc.type === 'asset' || acc.type === 'expense') {
+          balance = acc.debits.minus(acc.credits);
+        } else {
+          balance = acc.credits.minus(acc.debits);
+        }
+        return {
+          code: acc.code,
+          name: acc.name,
+          type: acc.type,
+          balance: balance
+        };
+      });
+
+      const revenueAccounts = accountsList.filter(a => a.type === 'revenue' && !a.balance.isZero());
+      const totalRevenue = accountsList
+        .filter(a => a.type === 'revenue')
+        .reduce((sum, a) => sum.plus(a.balance), new Decimal(0));
+      
+      const cogsAccounts = accountsList.filter(a => a.code === '5001' && !a.balance.isZero());
+      const totalCogs = accountsList
+        .filter(a => a.code === '5001')
+        .reduce((sum, a) => sum.plus(a.balance), new Decimal(0));
+        
+      const grossProfit = totalRevenue.minus(totalCogs);
+      
+      const expenseAccounts = accountsList.filter(a => a.type === 'expense' && a.code !== '5001' && !a.balance.isZero());
+      const totalExpenses = accountsList
+        .filter(a => a.type === 'expense' && a.code !== '5001')
+        .reduce((sum, a) => sum.plus(a.balance), new Decimal(0));
+        
+      const netProfit = grossProfit.minus(totalExpenses);
+
+      const rows: PLRow[] = [];
+      
+      revenueAccounts.forEach(a => {
+        rows.push({
+          section: 'revenue',
+          account_code: a.code,
+          account_name: a.name,
+          amount: a.balance.toNumber(),
+          is_subtotal: false
+        });
+      });
+      rows.push({
+        section: 'revenue',
+        account_code: null,
+        account_name: 'Total Revenue',
+        amount: totalRevenue.toNumber(),
+        is_subtotal: true
+      });
+      
+      cogsAccounts.forEach(a => {
+        rows.push({
+          section: 'cogs',
+          account_code: a.code,
+          account_name: a.name,
+          amount: a.balance.toNumber(),
+          is_subtotal: false
+        });
+      });
+      rows.push({
+        section: 'cogs',
+        account_code: null,
+        account_name: 'Gross Profit',
+        amount: grossProfit.toNumber(),
+        is_subtotal: true
+      });
+      
+      expenseAccounts.forEach(a => {
+        rows.push({
+          section: 'operating_expense',
+          account_code: a.code,
+          account_name: a.name,
+          amount: a.balance.toNumber(),
+          is_subtotal: false
+        });
+      });
+      rows.push({
+        section: 'operating_expense',
+        account_code: null,
+        account_name: 'Total Operating Expenses',
+        amount: totalExpenses.toNumber(),
+        is_subtotal: true
+      });
+      
+      rows.push({
+        section: 'net_profit',
+        account_code: null,
+        account_name: netProfit.isNegative() ? 'Net Loss' : 'Net Profit',
+        amount: netProfit.abs().toNumber(),
+        is_subtotal: true
+      });
+      
+      return rows;
     },
     enabled: !!businessId
   });
@@ -84,25 +222,19 @@ export default function ProfitLossPage() {
 
   const hasData = (data?.length || 0) > 0;
 
-  const exportCSV = () => {
+  const exportExcel = () => {
     if (!data) return;
-    const headers = ["Section", "Account Code", "Account Name", "Amount"];
-    const rows = data.map(r => [
-      r.section,
-      r.account_code || "",
-      r.account_name,
-      r.amount.toString()
-    ]);
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + headers.join(",") + "\n"
-      + rows.map(e => e.join(",")).join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `profit_loss_${dateRange.from}_to_${dateRange.to}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const excelRows = data.map(r => ({
+      'Section': r.section.toUpperCase(),
+      'Account Code': r.account_code || '—',
+      'Account Name': r.account_name,
+      'Amount': r.amount
+    }));
+    const ws = XLSX.utils.json_to_sheet(excelRows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Profit & Loss');
+    XLSX.writeFile(wb, `profit_loss_${dateRange.start}_to_${dateRange.end}.xlsx`);
+    toast.success('Excel Export', 'Profit & Loss statement exported to Excel successfully');
   };
 
   const handlePrint = () => window.print();
@@ -137,24 +269,24 @@ export default function ProfitLossPage() {
                 <Calendar size={14} className="ml-3" />
                 <input 
                   type="date" 
-                  value={dateRange.from} 
-                  onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
+                  value={dateRange.start} 
+                  onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
                   className="bg-transparent border-none text-white px-3 py-1.5 focus:ring-0 outline-none w-32"
                 />
                 <span className="opacity-30">/</span>
                 <input 
                   type="date" 
-                  value={dateRange.to} 
-                  onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
+                  value={dateRange.end} 
+                  onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
                   className="bg-transparent border-none text-white px-3 py-1.5 focus:ring-0 outline-none w-32 mr-2"
                 />
              </div>
              <button 
-              onClick={exportCSV}
+              onClick={exportExcel}
               className="flex items-center space-x-2 px-4 py-1.5 bg-white/5 border border-white/10 text-[10px] uppercase tracking-widest font-bold hover:bg-white/10 transition-colors"
              >
                 <Download size={14} />
-                <span>CSV</span>
+                <span>Excel</span>
              </button>
              <button 
               onClick={handlePrint}
@@ -185,7 +317,7 @@ export default function ProfitLossPage() {
               <div className="text-center space-y-2 border-b border-white/10 pb-8 relative z-10 print:border-black">
                 <h1 className="text-4xl font-bold text-white tracking-[0.1em] uppercase print:text-black">Profit & Loss Statement</h1>
                 <p className="text-gray-500 text-[10px] uppercase tracking-[0.2em] font-bold">
-                  Fiscal Period: {fmtDate(dateRange.from)} — {fmtDate(dateRange.to)}
+                  Fiscal Period: {fmtDate(dateRange.start)} — {fmtDate(dateRange.end)}
                 </p>
                 {selectedBranch !== 'all' && (
                   <p className="text-[#C5A059] text-[10px] uppercase font-bold tracking-widest">

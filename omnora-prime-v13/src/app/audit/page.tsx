@@ -19,6 +19,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import EmptyState from "@/components/ui/EmptyState";
+import { useToast } from "@/hooks/useToast";
+import { humanizeError } from '@/lib/utils/errors';
 
 interface AuditSession {
   id: string;
@@ -36,6 +38,7 @@ const auditSessionSchema = z.object({
 export default function AuditPage() {
   const { businessId, fmt } = usePersona();
   const supabase = createClient();
+  const toast = useToast();
   const queryClient = useQueryClient();
   const router = useRouter();
   
@@ -99,8 +102,9 @@ export default function AuditPage() {
       queryClient.invalidateQueries({ queryKey: ['audit_sessions'] });
       setIsModalOpen(false);
       router.push(`/audit/${data.id}`);
+      toast.success('Audit session created');
     } catch (err: any) {
-      alert(err.message);
+      toast.error(humanizeError(err, 'create audit session'));
     }
   };
 

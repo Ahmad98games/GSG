@@ -15,6 +15,8 @@ import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { useToast } from "@/hooks/useToast";
 import { useRouter } from 'next/navigation';
 import InvoiceSelector from "@/components/ui/InvoiceSelector";
+import { humanizeError } from '@/lib/utils/errors';
+import { Skeleton } from "@/components/ui/Skeleton";
 
 // --- Types ---
 interface DispatchOrder {
@@ -178,7 +180,7 @@ export default function DispatchCenterPage() {
                     toast.success(`${pendingIds.length} orders marked as delivered`)
                     loadOrders()
                   } else {
-                    toast.error('Failed: ' + error.message)
+                    toast.error(humanizeError(error, 'mark orders as delivered'))
                   }
                 }}
                 className="px-6 py-2 bg-white/5 border border-white/10 text-white text-[10px] uppercase tracking-widest font-black hover:bg-white/10 transition-all"
@@ -245,9 +247,12 @@ export default function DispatchCenterPage() {
                     <option>Delivered</option>
                     <option>Returned</option>
                  </select>
-                 <button className="p-2 border border-white/10 text-gray-500 hover:text-white transition-all">
-                    <Filter size={16} />
-                 </button>
+                  <button 
+                    onClick={() => toast.info("Filter", "Advanced logistical filtering is coming soon")}
+                    className="p-2 border border-white/10 text-gray-500 hover:text-white transition-all"
+                  >
+                     <Filter size={16} />
+                  </button>
               </div>
            </div>
 
@@ -259,8 +264,22 @@ export default function DispatchCenterPage() {
               </div>
 
               {loading ? (
-                <div className="flex items-center justify-center py-20">
-                  <div className="w-6 h-6 border-2 border-white/15 border-t-[#60A5FA] rounded-full animate-spin" />
+                <div className="p-4 space-y-3">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="flex items-center justify-between p-4 bg-[#0F1114] border border-white/5 animate-pulse rounded-sm">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-white/5 rounded-sm" />
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-3 w-48" />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-6 w-20 rounded-full" />
+                        <Skeleton className="h-8 w-24 rounded-sm" />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : filteredOrders.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -379,7 +398,7 @@ export default function DispatchCenterPage() {
                       setSelectedInvoice(null);
                       loadOrders();
                     } catch (err: any) {
-                      toast.error('Failed: ' + err.message);
+                      toast.error(humanizeError(err, 'create dispatch order'));
                     } finally {
                       setSaving(false);
                     }

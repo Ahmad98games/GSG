@@ -31,7 +31,16 @@ const getCSP = () => {
     .join('; ');
 };
 
-const serverOnlyPackages = ['puppeteer', 'better-sqlite3', 'better-sqlite3-multiple-ciphers', 'pino', 'node-cron'];
+const serverOnlyPackages = [
+  'better-sqlite3-multiple-ciphers',
+  'better-sqlite3',
+  '@noxis/sqlite',
+  'sharp',
+  'canvas',
+  'puppeteer',
+  'pino',
+  'node-cron'
+];
 
 const isStaticBuild = 
   process.env.NEXT_PUBLIC_PLATFORM === 'electron' || 
@@ -50,6 +59,13 @@ const nextConfig: NextConfig = {
     unoptimized: true,
   },
   serverExternalPackages: serverOnlyPackages,
+  outputFileTracingRoot: path.join(__dirname),
+  outputFileTracingIncludes: {
+    '**': [
+      './node_modules/better-sqlite3-multiple-ciphers/**',
+      './node_modules/better-sqlite3/**',
+    ],
+  },
   experimental: {
     optimizePackageImports: [
       'framer-motion',

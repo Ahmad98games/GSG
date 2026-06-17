@@ -294,36 +294,7 @@ export default function AboutPage() {
           </div>
         </SectionReveal>
 
-        {/* Section 6: Milestone Timeline */}
-        <SectionReveal delay={0.22} className="space-y-8">
-          <div className="flex items-center space-x-3">
-            <Calendar size={18} className="text-[#00E5FF]" />
-            <h3 className="text-xs font-black uppercase tracking-[0.25em] text-gray-400 font-mono">The Story of Noxis</h3>
-          </div>
-          
-          <div className="relative border-l border-white/5 pl-6 ml-4 space-y-10">
-            <TimelineItem 
-              year="2021" 
-              title="Textile Pilot (Faisalabad)" 
-              desc="Ahmad Mahboob designs a simple piece-rate compiler to eliminate daily disputes over fabric yardage and advance payroll logs (Peshgi) on textile looms. Hand-tested at Faisalabad mill hubs."
-            />
-            <TimelineItem 
-              year="2023" 
-              title="Local Wi-Fi Mesh (v8.0)" 
-              desc="Introduced the local WebSocket mesh bridge. Supervisors could now log attendance and production yardage directly from Android phones, writing to the workstation SQLite server completely offline."
-            />
-            <TimelineItem 
-              year="2025" 
-              title="Sentinel CCTV AI (v12.0)" 
-              desc="Integrated edge computer vision to utilize local factory CCTV cameras as smart security boundaries, firing physical alarms without monthly cloud fees or data leaks."
-            />
-            <TimelineItem 
-              year="2026" 
-              title="Hardened Industrial v13.0" 
-              desc="Flagship release featuring advanced SQLite recovery protocols, automated multi-currency bookkeeping, local ledger audits, and English/Urdu Nastaliq translation systems."
-            />
-          </div>
-        </SectionReveal>
+       
 
         {/* Section 7: Founders Card */}
         <SectionReveal delay={0.25} className="space-y-8">

@@ -8,6 +8,8 @@ import { usePersona } from "@/hooks/usePersona";
 import { createClient } from "@/lib/supabase/client";
 import { useParams, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/useToast";
+import { humanizeError } from '@/lib/utils/errors';
 
 export default function SkuBatchesPage() {
   const params = useParams();
@@ -16,6 +18,7 @@ export default function SkuBatchesPage() {
   const { businessId, fmt, fmtDate } = usePersona();
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ batch_number: '', lot_number: '', manufacture_date: '', expiry_date: '', qty_received: 0, cost_price: 0, notes: '' });
 
@@ -42,8 +45,8 @@ export default function SkuBatchesPage() {
       });
       if (error) throw error;
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['sku_batches'] }); setShowAdd(false); setForm({ batch_number: '', lot_number: '', manufacture_date: '', expiry_date: '', qty_received: 0, cost_price: 0, notes: '' }); },
-    onError: (err: any) => alert(err.message),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['sku_batches'] }); setShowAdd(false); setForm({ batch_number: '', lot_number: '', manufacture_date: '', expiry_date: '', qty_received: 0, cost_price: 0, notes: '' }); toast.success('Batch added successfully'); },
+    onError: (err: any) => toast.error(humanizeError(err, 'add batch')),
   });
 
   const getExpiryColor = (expiryDate: string | null) => {

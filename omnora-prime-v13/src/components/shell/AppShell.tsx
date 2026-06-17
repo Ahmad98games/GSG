@@ -1,6 +1,7 @@
+/* eslint-disable @next/next/no-html-link-for-pages */
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import { usePathname } from "next/navigation";
 import QuickActions from "@/components/shell/QuickActions";
 import ActionTrail from "@/components/ui/ActionTrail";
@@ -50,7 +51,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   
   const getTrialBannerData = () => {
     if (!trialExpiryDate) return { text: "", isRed: false, isToday: false };
-    const diffMs = trialExpiryDate.getTime() - Date.now();
+    const diffMs = trialExpiryDate.getTime() - new Date().getTime();
     
     if (diffMs <= 0) {
       return {
@@ -329,7 +330,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               />
             </div>
           </div>
-          {children}
+          <Suspense fallback={<PageSkeleton />}>
+            {children}
+          </Suspense>
         </div>
       </div>
 
@@ -386,5 +389,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
     </>
+  );
+}
+
+function PageSkeleton() {
+  return (
+    <div className="p-6 space-y-4 animate-pulse">
+      <div className="h-8 w-48 bg-white/[0.04] rounded-sm" />
+      <div className="grid grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-20 bg-white/[0.04] rounded-sm" />
+        ))}
+      </div>
+      <div className="h-64 bg-white/[0.04] rounded-sm" />
+    </div>
   );
 }

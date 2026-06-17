@@ -9,9 +9,12 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/hooks/useToast";
+import { humanizeError } from '@/lib/utils/errors';
 
 export default function PortalManagerPage() {
   const supabase = createClient();
+  const toast = useToast();
   const [customers, setCustomers] = useState<any[]>([]);
   const [parties, setParties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,8 +71,9 @@ export default function PortalManagerPage() {
 
       setShowInviteModal(false);
       fetchData();
+      toast.success('Portal access granted successfully');
     } catch (err: any) {
-      alert(err.message);
+      toast.error(humanizeError(err, 'invite customer'));
     } finally {
       setInviting(false);
     }
@@ -81,7 +85,7 @@ export default function PortalManagerPage() {
       .update({ portal_enabled: !current })
       .eq("id", id);
 
-    if (error) alert(error.message);
+    if (error) toast.error(humanizeError(error, 'toggle portal status'));
     else fetchData();
   };
 

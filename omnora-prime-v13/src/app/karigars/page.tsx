@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
@@ -21,13 +21,13 @@ import DataFreshness from "@/components/ui/DataFreshness";
 import { SummaryCard } from "@/components/ui/SummaryCard";
 import * as XLSX from 'xlsx';
 import { useToast } from "@/hooks/useToast";
+import { humanizeError } from "@/lib/utils/errors";
 import { emitWageSignal } from "@/lib/network/signalCollector";
 import { 
   createColumnHelper, 
   flexRender, 
   getCoreRowModel, 
   useReactTable,
-  getPaginationRowModel
 } from "@tanstack/react-table";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -42,6 +42,7 @@ import AnimatedNumber from "@/components/ui/AnimatedNumber";
 import { Skeleton, KpiCardSkeleton, CardGridSkeleton } from "@/components/ui/Skeleton";
 import { ErrorState, EmptyState as NewEmptyState, FieldError } from "@/components/ui/StateViews";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 // --- Types ---
 
@@ -377,18 +378,40 @@ export default function KarigarsPage() {
 
   const debouncedSearch = useDebounce(searchTerm, 300);
 
+  const filteredKarigars = useMemo(
+    () =>
+      karigars.filter((k) =>
+        k.name.toLowerCase().includes(debouncedSearch.toLowerCase())
+      ),
+    [karigars, debouncedSearch]
+  );
+
   const table = useReactTable({
-    data: karigars.filter(k => k.name.toLowerCase().includes(debouncedSearch.toLowerCase())),
+    data: filteredKarigars,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: 20 } },
+    initialState: { pagination: { pageSize: 100_000 } },
     meta: {
       onLogOutput: handleLogOutput,
       onAttend: handleAttend,
       onAdvance: handleAdvance,
     }
   });
+
+  const parentRef = useRef<HTMLDivElement>(null);
+  const { rows } = table.getRowModel();
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 52,
+    overscan: 10,
+  });
+  const virtualRows = rowVirtualizer.getVirtualItems();
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0]?.start ?? 0 : 0;
+  const paddingBottom =
+    virtualRows.length > 0
+      ? rowVirtualizer.getTotalSize() - (virtualRows[virtualRows.length - 1]?.end ?? 0)
+      : 0;
 
   if (isLoading) return (
     <div className="p-6 bg-noxis-bg">
@@ -486,7 +509,12 @@ export default function KarigarsPage() {
                  />
               </div>
               <div className="flex items-center space-x-2">
-                 <button className="p-2 border border-white/5 text-gray-500 hover:text-white hover:bg-white/5"><Filter size={16} /></button>
+                  <button 
+                    onClick={() => toast.info('Coming soon', 'Filtering controls will be available in the next iteration.')}
+                    className="p-2 border border-white/5 text-gray-500 hover:text-white hover:bg-white/5"
+                  >
+                    <Filter size={16} />
+                  </button>
                  <button onClick={exportToExcel}
                    className="flex items-center gap-1.5
                      px-3 py-1.5 text-xs font-medium
@@ -514,9 +542,13 @@ export default function KarigarsPage() {
                   }}
                 />
               ) : (
-                <div className="overflow-x-auto">
+                <div
+                  ref={parentRef}
+                  className="overflow-x-auto overflow-y-auto"
+                  style={{ maxHeight: 'calc(100vh - 200px)' }}
+                >
                    <table className="w-full text-left">
-                      <thead className="bg-[#1A1D21] border-b border-white/10">
+                      <thead className="bg-[#1A1D21] border-b border-white/10 sticky top-0 z-10">
                          {table.getHeaderGroups().map(hg => (
                            <tr key={hg.id}>
                               {hg.headers.map(h => (
@@ -528,9 +560,22 @@ export default function KarigarsPage() {
                          ))}
                       </thead>
                       <tbody>
-                         {table.getRowModel().rows.map((row, i) => (
-                           <KarigarRow key={row.id} row={row} i={i} />
-                         ))}
+                         {paddingTop > 0 && (
+                           <tr>
+                             <td style={{ height: `${paddingTop}px` }} colSpan={columns.length} />
+                           </tr>
+                         )}
+                         {virtualRows.map((virtualRow) => {
+                           const row = rows[virtualRow.index];
+                           return (
+                             <KarigarRow key={row.id} row={row} i={virtualRow.index} />
+                           );
+                         })}
+                         {paddingBottom > 0 && (
+                           <tr>
+                             <td style={{ height: `${paddingBottom}px` }} colSpan={columns.length} />
+                           </tr>
+                         )}
                       </tbody>
                    </table>
                 </div>
@@ -623,6 +668,7 @@ const KarigarRow = React.memo(
 function RegisterKarigarModal({ grades, onClose, onSuccess }: { grades: Grade[], onClose: () => void, onSuccess: (msg: string) => void }) {
   const { profile } = useBusinessProfile();
   const supabase = createClient();
+  const toast = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { workerTerm } = usePersona();
 
@@ -677,8 +723,7 @@ function RegisterKarigarModal({ grades, onClose, onSuccess }: { grades: Grade[],
 
       onSuccess(`Successfully registered ${values.name} into the registry.`);
     } catch (err: unknown) {
-      const error = err as Error;
-      alert(`Onboarding failed: ${error.message}`);
+      toast.error("Onboarding failed", humanizeError(err, 'register worker'));
     } finally {
       setIsSubmitting(false);
     }
@@ -781,6 +826,7 @@ function RegisterKarigarModal({ grades, onClose, onSuccess }: { grades: Grade[],
 function AttendanceModal({ karigar, onClose, onSuccess }: { karigar: Karigar, onClose: () => void, onSuccess: (msg: string) => void }) {
   const { profile } = useBusinessProfile();
   const supabase = createClient();
+  const toast = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, handleSubmit } = useForm<z.infer<typeof attendanceSchema>>({
     resolver: zodResolver(attendanceSchema),
@@ -800,8 +846,7 @@ function AttendanceModal({ karigar, onClose, onSuccess }: { karigar: Karigar, on
       if (error) throw error;
       onSuccess(`Attendance logged for ${karigar.name}`);
     } catch (err: unknown) {
-      const error = err as Error;
-      alert(`Logging failed: ${error.message}`);
+      toast.error("Logging failed", humanizeError(err, 'log attendance'));
     } finally {
       setIsSubmitting(false);
     }
@@ -843,6 +888,7 @@ function AttendanceModal({ karigar, onClose, onSuccess }: { karigar: Karigar, on
 function AdvanceModal({ karigar, onClose, onSuccess }: { karigar: Karigar, onClose: () => void, onSuccess: (msg: string) => void }) {
   const { profile } = useBusinessProfile();
   const supabase = createClient();
+  const toast = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { fmt } = usePersona();
   const { register, handleSubmit, watch: watchAdvance } = useForm<z.infer<typeof advanceSchema>>({
@@ -871,8 +917,7 @@ function AdvanceModal({ karigar, onClose, onSuccess }: { karigar: Karigar, onClo
 
       onSuccess(`Advance of ${fmt(values.amount)} issued to ${karigar.name}`);
     } catch (err: unknown) {
-      const error = err as Error;
-      alert(`Transaction failed: ${error.message}`);
+      toast.error("Transaction failed", humanizeError(err, 'issue advance'));
     } finally {
       setIsSubmitting(false);
     }
@@ -939,6 +984,7 @@ interface LogProductionModalProps {
 function LogProductionModal({ karigar, batches = [], onClose, onSuccess }: LogProductionModalProps) {
   const { profile } = useBusinessProfile();
   const supabase = createClient();
+  const toast = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { fmt } = usePersona();
 
@@ -981,7 +1027,7 @@ function LogProductionModal({ karigar, batches = [], onClose, onSuccess }: LogPr
 
       onSuccess(`Logged production of ${values.qty_produced} ${unit} for ${karigar.name}`);
     } catch (err: any) {
-      alert(`Logging failed: ${err.message}`);
+      toast.error("Logging failed", humanizeError(err, 'log production'));
     } finally {
       setIsSubmitting(false);
     }

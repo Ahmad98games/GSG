@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { ShieldCheck, Lock, Mail, ArrowRight } from "lucide-react";
+import { humanizeError } from "@/lib/utils/errors";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -29,7 +30,7 @@ export default function LoginPage() {
       if (loginError) throw loginError;
       router.push("/");
     } catch (err: any) {
-      setError(err.message || "Authentication failed");
+      setError(humanizeError(err, "login"));
     } finally {
       setIsLoading(false);
     }

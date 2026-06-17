@@ -35,7 +35,6 @@ export default function SentinelAlertOverlay() {
       return data || [];
     },
     enabled: !!profile?.id,
-    refetchInterval: 60_000,
   });
 
   // 2. Realtime subscription for alerts

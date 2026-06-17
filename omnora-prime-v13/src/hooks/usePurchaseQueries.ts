@@ -161,3 +161,25 @@ export function useProcessGRN() {
   });
 }
 
+export function useUpdatePOStatus() {
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { data, error } = await supabase
+        .from('purchase_orders')
+        .update({ status })
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['purchase-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['purchase-order', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['purchase_order', variables.id] });
+    }
+  });
+}

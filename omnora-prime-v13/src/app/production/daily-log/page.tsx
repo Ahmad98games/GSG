@@ -4,6 +4,8 @@ import React from 'react';
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
+import { useToast } from "@/hooks/useToast";
+import { humanizeError } from "@/lib/utils/errors";
 
 import { useSidebarState } from "@/hooks/useSidebarState";
 import { 
@@ -18,6 +20,7 @@ export default function DailyProductionLogPage() {
   const { isCollapsed } = useSidebarState();
   const { profile, currency = "PKR" } = useBusinessProfile();
   const supabase = createClient();
+  const toast = useToast();
   
   const [logDate, setLogDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedBatch, setSelectedBatch] = useState("");
@@ -82,7 +85,10 @@ export default function DailyProductionLogPage() {
   };
 
   const handleSave = async () => {
-    if (!selectedBatch) return alert("Select a production batch first.");
+    if (!selectedBatch) {
+      toast.warning("Selection Required", "Select a production batch first.");
+      return;
+    }
     setIsSaving(true);
     
     try {
@@ -101,10 +107,10 @@ export default function DailyProductionLogPage() {
       const { error } = await supabase.from('karigar_production_logs').insert(validRows);
       if (error) throw error;
       
-      alert("Daily production logs synchronized successfully.");
+      toast.success("Logs Sync completed", "Daily production logs synchronized successfully.");
       setProductionRows(prev => prev.map(r => ({ ...r, qty: 0 })));
     } catch (err: any) {
-      alert(err.message || "Failed to save logs.");
+      toast.error("Sync Failed", humanizeError(err, 'save logs'));
     } finally {
       setIsSaving(false);
     }

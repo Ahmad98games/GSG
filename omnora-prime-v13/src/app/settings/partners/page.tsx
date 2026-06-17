@@ -14,6 +14,8 @@ import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { usePersona } from "@/hooks/usePersona";
 import Link from "next/link";
+import { useToast } from "@/hooks/useToast";
+import { humanizeError } from "@/lib/utils/errors";
 
 interface Partner {
   id: string;
@@ -29,6 +31,7 @@ interface Partner {
 export default function PartnersSettingsPage() {
   const { businessId } = usePersona();
   const supabase = createClient();
+  const toast = useToast();
 
   const [partners, setPartners] = useState<Partner[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,7 +75,7 @@ export default function PartnersSettingsPage() {
       setFormData({ partner_name: "", relationship_type: "vendor", status: "active" });
       fetchPartners();
     } else {
-      alert("Failed to add partner: " + error.message);
+      toast.error("Failed to add partner", humanizeError(error, 'partner'));
     }
     setIsSubmitting(false);
   };
@@ -84,7 +87,11 @@ export default function PartnersSettingsPage() {
       .delete()
       .eq('id', id);
 
-    if (!error) fetchPartners();
+    if (!error) {
+      fetchPartners();
+    } else {
+      toast.error("Failed to terminate partnership", humanizeError(error, 'terminate partnership'));
+    }
   };
 
   const filteredPartners = partners.filter(p => 

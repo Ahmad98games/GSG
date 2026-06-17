@@ -16,6 +16,7 @@ import { useParams, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { WhatsAppSender, WhatsAppTemplates } from "@/lib/whatsapp/WhatsAppSender";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
+import { humanizeError } from '@/lib/utils/errors';
 
 // --- Types ---
 
@@ -414,7 +415,12 @@ export default function InvoiceDetailPage() {
                  <div className="space-y-4">
                     <div className="flex items-center justify-between">
                        <h4 className="text-[10px] uppercase font-black text-gray-500 tracking-widest">Payment History</h4>
-                       <button className="text-[9px] uppercase font-black text-[#C5A059] hover:underline transition-all">Record New</button>
+                       <button 
+                          onClick={() => toast.info('Record Payment', 'To record a new payment, please navigate to the Parties page, select the customer, and click Record Payment.')}
+                          className="text-[9px] uppercase font-black text-[#C5A059] hover:underline transition-all"
+                       >
+                          Record New
+                       </button>
                     </div>
                     {payments && payments.length > 0 ? (
                       <div className="space-y-2">
@@ -488,7 +494,7 @@ export default function InvoiceDetailPage() {
                            .single();
 
                          if (error) {
-                           toast.error('Failed to duplicate invoice: ' + error.message);
+                           toast.error('Invoice duplication failed', humanizeError(error, 'duplicate invoice'));
                            return;
                          }
 
@@ -507,7 +513,7 @@ export default function InvoiceDetailPage() {
                              .insert(itemInserts);
 
                            if (itemsError) {
-                             toast.error('Invoice created but items failed to copy: ' + itemsError.message);
+                             toast.error('Partial duplicate failure', humanizeError(itemsError, 'copy invoice items'));
                              return;
                            }
                          }
@@ -542,7 +548,7 @@ export default function InvoiceDetailPage() {
                            toast.success('Invoice voided');
                            window.location.reload();
                          } else {
-                           toast.error('Failed to void invoice: ' + error.message);
+                           toast.error('Void invoice failed', humanizeError(error, 'void invoice'));
                          }
                        }}
                        className="w-full flex items-center justify-between p-4 bg-red-500/5 hover:bg-red-500/10 border border-red-500/10 transition-all group"

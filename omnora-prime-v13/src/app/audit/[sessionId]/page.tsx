@@ -12,6 +12,8 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { usePersona } from "@/hooks/usePersona";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/useToast";
+import { humanizeError } from '@/lib/utils/errors';
 
 export default function AuditSessionPage() {
   const { sessionId } = useParams();
@@ -19,6 +21,7 @@ export default function AuditSessionPage() {
   const router = useRouter();
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const toast = useToast();
   
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [searchTerm, setSearchTerm] = useState("");
@@ -175,8 +178,9 @@ export default function AuditSessionPage() {
       // 3. Create stock adjustments if variance exists (Optional depending on business rules)
       // For now, we'll just navigate back
       router.push('/audit');
+      toast.success('Audit session finalized successfully');
     } catch (err: any) {
-      alert(err.message);
+      toast.error(humanizeError(err, 'finalize audit'));
     } finally {
       setIsFinalizing(false);
     }

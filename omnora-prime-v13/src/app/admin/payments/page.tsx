@@ -7,9 +7,13 @@ import {
   Search, ExternalLink, Calendar, Phone, Mail, Loader2
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/hooks/useToast";
+import { humanizeError } from '@/lib/utils/errors';
+import Image from 'next/image';
 
 export default function AdminPaymentsPage() {
   const supabase = createClient();
+  const toast = useToast();
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("pending");
@@ -78,10 +82,10 @@ export default function AdminPaymentsPage() {
         completed_at: new Date().toISOString()
       });
 
-      alert("Payment verified and license generated!");
+      toast.success('Payment verified and license activated!');
       fetchRequests();
     } catch (error: any) {
-      alert(error.message);
+      toast.error(humanizeError(error, 'verify payment'));
     } finally {
       setProcessingId(null);
     }
@@ -96,8 +100,8 @@ export default function AdminPaymentsPage() {
       .update({ status: 'rejected', notes: reason })
       .eq('id', id);
 
-    if (error) alert(error.message);
-    else fetchRequests();
+    if (error) toast.error(humanizeError(error, 'reject payment'));
+    else { toast.success('Request rejected'); fetchRequests(); }
   };
 
   return (
@@ -175,8 +179,8 @@ export default function AdminPaymentsPage() {
                  {/* Middle: Proof */}
                  <div className="p-8 border-r border-white/5 flex flex-col justify-center items-center">
                     {req.screenshot_url ? (
-                      <a href={req.screenshot_url} target="_blank" rel="noopener noreferrer" className="group relative">
-                        <img src={req.screenshot_url} alt="Proof" className="w-full h-32 object-cover rounded-sm border border-white/10 group-hover:brightness-50 transition-all" />
+                      <a href={req.screenshot_url} target="_blank" rel="noopener noreferrer" className="group relative block w-full h-32">
+                        <Image src={req.screenshot_url} alt="Proof" fill className="object-cover rounded-sm border border-white/10 group-hover:brightness-50 transition-all" />
                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
                            <ExternalLink size={20} className="text-white" />
                         </div>

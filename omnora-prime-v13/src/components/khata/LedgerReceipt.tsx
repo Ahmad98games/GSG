@@ -4,6 +4,7 @@ import React from 'react';
 import { format } from 'date-fns';
 import { usePersona } from '@/hooks/usePersona';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
+import Image from 'next/image';
 
 interface LedgerReceiptProps {
   transaction: any; // GroupedTransaction
@@ -22,7 +23,9 @@ export function LedgerReceipt({ transaction }: LedgerReceiptProps) {
         <div className="flex justify-between items-start border-b-2 border-black pb-6">
           <div className="flex items-center space-x-4">
             {profile?.logo_url ? (
-              <img src={profile.logo_url} alt="Logo" className="w-16 h-16 object-contain" />
+              <div className="relative w-16 h-16">
+                <Image src={profile.logo_url} alt="Logo" fill className="object-contain" />
+              </div>
             ) : (
               <div className="w-16 h-16 bg-black flex items-center justify-center rounded-sm">
                 <span className="text-white font-black text-xl italic">NX</span>

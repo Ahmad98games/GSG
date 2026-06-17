@@ -218,10 +218,10 @@ export default function IntelligencePage() {
         <div>
           <div className="inline-flex items-center gap-2 bg-electric-blue/5 border border-electric-blue/20 px-3 py-1 rounded-full mb-3">
             <BrainCircuit className="text-electric-blue" size={14} />
-            <span className="text-[10px] font-black text-electric-blue uppercase tracking-widest">Noxis Command AI</span>
+            <span className="text-[10px] font-black text-electric-blue uppercase tracking-widest"> (Beta)</span>
           </div>
           <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-white italic">
-            Noxis Intelligence Hub
+            Noxis Intelligence Hub (Beta)
           </h1>
           <p className="text-gray-500 text-xs mt-1 uppercase font-bold tracking-wider">
             Market data from verified factories in your industry: {getIndustryLabel(profile?.industry_key || '', lang)}

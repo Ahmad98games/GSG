@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { usePersona } from "@/hooks/usePersona";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { useToast } from "@/hooks/useToast";
+import { humanizeError } from '@/lib/utils/errors';
 import { 
   Calendar, DollarSign, AlertCircle, CheckCircle2, 
   Plus, MessageSquare, Check, X, Search, Clock, 
@@ -78,7 +79,7 @@ export default function PromisesPage() {
         .order("promise_date", { ascending: true });
 
       if (error) {
-        toast.error("Fetch failed", error.message);
+        toast.error('Failed to load promises', humanizeError(error, 'load payment promises'));
         return [];
       }
       return data || [];
@@ -162,7 +163,7 @@ export default function PromisesPage() {
       setIsRecordModalOpen(false);
       resetForm();
     } catch (err: any) {
-      toast.error("Registration failed", err.message);
+      toast.error('Registration failed', humanizeError(err, 'record promise'));
     } finally {
       setIsSubmitting(false);
     }
@@ -197,7 +198,7 @@ export default function PromisesPage() {
       setActualPaidAmount("");
       setPaymentDate("");
     } catch (err: any) {
-      toast.error("Action failed", err.message);
+      toast.error('Fulfill promise failed', humanizeError(err, 'fulfill promise'));
     } finally {
       setIsFulfilling(false);
     }
@@ -220,7 +221,7 @@ export default function PromisesPage() {
       toast.success("Promise Broken", "Commitment status marked as broken.");
       refetch();
     } catch (err: any) {
-      toast.error("Action failed", err.message);
+      toast.error('Mark broken failed', humanizeError(err, 'mark promise broken'));
     }
   };
 
@@ -248,7 +249,7 @@ export default function PromisesPage() {
       window.open(waUrl, "_blank");
       toast.success("WhatsApp Reminded Sent", "Reminder counter updated.");
     } catch (err: any) {
-      toast.error("Log failed", err.message);
+      toast.error('Log failed', humanizeError(err, 'log WhatsApp reminder'));
     }
   };
 

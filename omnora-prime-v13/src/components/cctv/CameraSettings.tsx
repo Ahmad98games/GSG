@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/useToast';
 import { usePersona } from '@/hooks/usePersona';
 import { FeatureGate } from '../ui/FeatureGate';
 import { useTierStore } from '@/stores/tierStore';
+import { humanizeError } from '@/lib/utils/errors';
 
 interface CameraSettingsProps {
   isOpen: boolean;
@@ -117,7 +118,7 @@ export default function CameraSettings({ isOpen, onClose, cameras, tierLimit, on
       is_active: true
     });
 
-    if (error) toast.error("Registration failed", error.message);
+    if (error) toast.error('Camera registration failed', humanizeError(error, 'register camera'));
     else {
       toast.success(`Camera ${newCamera.node_label} registered ✓`, "Connecting to stream...");
       setIsAdding(false);
@@ -131,7 +132,7 @@ export default function CameraSettings({ isOpen, onClose, cameras, tierLimit, on
       .update({ recording_enabled: !current })
       .eq('id', cameraId);
 
-    if (error) toast.error("Toggle failed", error.message);
+    if (error) toast.error('Recording toggle failed', humanizeError(error, 'toggle recording'));
     else onUpdate();
   };
 

@@ -6,6 +6,8 @@ import { DollarSign, Loader2, Save, X } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { usePersona } from "@/hooks/usePersona";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/hooks/useToast";
+import { humanizeError } from '@/lib/utils/errors';
 
 interface Props {
   isOpen: boolean;
@@ -20,6 +22,7 @@ export default function SupplierPaymentModal({ isOpen, onClose, poId, partyId, p
   const { businessId, fmt } = usePersona();
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const toast = useToast();
 
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("cash");
@@ -107,8 +110,9 @@ export default function SupplierPaymentModal({ isOpen, onClose, poId, partyId, p
       queryClient.invalidateQueries({ queryKey: ['purchase_order'] });
       onClose();
       setAmount(""); setReference(""); setNotes("");
+      toast.success('Payment recorded successfully');
     },
-    onError: (err: any) => alert(err.message),
+    onError: (err: any) => toast.error(humanizeError(err, 'record supplier payment')),
   });
 
   return (

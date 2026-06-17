@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from 'react';
 import React from 'react';
+import Image from 'next/image';
 // app/cctv/detections/page.tsx
 import { usePersona } from "@/hooks/usePersona";
 import { createClient } from "@/lib/supabase/client";
@@ -10,11 +11,14 @@ import {
   Search, Download, ExternalLink, ShieldAlert
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useToast } from "@/hooks/useToast";
 
 export default function DetectionHistoryPage() {
   const { t, fmtDate } = usePersona();
   const { profile } = useBusinessProfile();
   const supabase = createClient();
+  const toast = useToast();
+
   
   const [events, setEvents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,7 +67,10 @@ export default function DetectionHistoryPage() {
             <option value="fire">Fire/Smoke</option>
             <option value="animal">Animal</option>
           </select>
-          <button className="bg-white/5 border border-white/10 text-white p-2 hover:bg-white/10 transition-all">
+          <button 
+            onClick={() => toast.info("Export Timeline", "Timeline spreadsheet export is coming soon")}
+            className="bg-white/5 border border-white/10 text-white p-2 hover:bg-white/10 transition-all"
+          >
             <Download size={18} />
           </button>
         </div>
@@ -136,7 +143,7 @@ export default function DetectionHistoryPage() {
                     <td className="px-6 py-4">
                       <div className="w-16 h-10 bg-onyx border border-white/10 flex items-center justify-center overflow-hidden relative cursor-pointer group-hover:border-electric-blue transition-colors">
                         {event.thumbnail_url ? (
-                          <img src={event.thumbnail_url} className="w-full h-full object-cover" />
+                          <Image src={event.thumbnail_url} alt="Detection Snapshot" width={64} height={40} className="w-full h-full object-cover" />
                         ) : (
                           <Camera size={14} className="text-gray-700" />
                         )}

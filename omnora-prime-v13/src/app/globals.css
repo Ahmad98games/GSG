@@ -1,6 +1,30 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap');
 @import "tailwindcss";
 
+/* Electron: disable transitions that cause jank */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Hardware accelerate sidebar and table */
+.sidebar-nav,
+[data-sidebar],
+table,
+tbody {
+  transform: translateZ(0);
+  will-change: transform;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Prevent layout thrash on hover */
+button, a, [role="button"] {
+  transform: translateZ(0);
+}
+
 /* Prevent layout shift during font load */
 [lang="ur"] {
   font-family: "Noto Nastaliq Urdu", serif;
@@ -1051,4 +1075,10 @@ td {
 /* Hardware-accelerate table rows */
 tbody tr {
   transform: translateZ(0);
+}
+
+/* Framer Motion and transition reduction in Electron environment for production performance */
+.electron-env .framer-motion-reduce * {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
 }

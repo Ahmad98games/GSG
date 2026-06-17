@@ -22,6 +22,7 @@ import ForecastBadge from "@/components/intelligence/ForecastBadge";
 import { useFloorVoice } from "@/hooks/useFloorVoice";
 import * as XLSX from 'xlsx';
 import { useToast } from "@/hooks/useToast";
+import { humanizeError } from "@/lib/utils/errors";
 import { emitSkuPriceSignal } from "@/lib/network/signalCollector";
 import { PersonaEngine } from "@/lib/persona/PersonaEngine";
 
@@ -116,6 +117,7 @@ export default function InventoryPage() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [sorting, setSorting] = useState<SortingState>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingSKU, setEditingSKU] = useState<SKU | null>(null);
   const [prefilledBarcode, setPrefilledBarcode] = useState<string>("");
   const [adjustingSKU, setAdjustingSKU] = useState<SKU | null>(null);
   const [selectedSku, setSelectedSku] = useState<SKU | null>(null);
@@ -261,7 +263,7 @@ export default function InventoryPage() {
     }),
     columnHelper.display({
       id: "actions",
-      cell: (info) => <TableActions sku={info.row.original} onAdjust={() => setAdjustingSKU(info.row.original)} />,
+      cell: (info) => <TableActions sku={info.row.original} onAdjust={() => setAdjustingSKU(info.row.original)} onEdit={() => setEditingSKU(info.row.original)} />,
     }),
   ], [fmt, profile?.id]);
 
@@ -525,19 +527,57 @@ export default function InventoryPage() {
                           ))}
                         </thead>
                        <tbody>
-                          {rows.map((row) => (
-                            <tr 
-                              key={row.id} 
-                              onClick={() => setSelectedSku(row.original)}
-                              className="border-b border-white/4 hover:bg-white/[0.02] transition-colors cursor-pointer"
-                            >
-                              {row.getVisibleCells().map((cell) => (
-                                <td key={cell.id} className="px-4 py-2.5 text-sm text-gray-200 border-b border-white/[0.04]">
-                                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
+                          {(() => {
+                            const virtualRows = rowVirtualizer.getVirtualItems();
+                            const paddingTop =
+                              virtualRows.length > 0 ? virtualRows[0]?.start ?? 0 : 0;
+                            const paddingBottom =
+                              virtualRows.length > 0
+                                ? rowVirtualizer.getTotalSize() -
+                                  (virtualRows[virtualRows.length - 1]?.end ?? 0)
+                                : 0;
+                            const colCount = table.getAllColumns().length;
+
+                            return (
+                              <>
+                                {paddingTop > 0 && (
+                                  <tr>
+                                    <td style={{ height: `${paddingTop}px` }} colSpan={colCount} />
+                                  </tr>
+                                )}
+                                {virtualRows.map((virtualRow) => {
+                                  const row = rows[virtualRow.index];
+                                  return (
+                                    <tr
+                                      key={row.id}
+                                      onClick={() => setSelectedSku(row.original)}
+                                      className="border-b border-white/4 hover:bg-white/[0.02] transition-colors cursor-pointer"
+                                    >
+                                      {row.getVisibleCells().map((cell) => (
+                                        <td
+                                          key={cell.id}
+                                          className="px-4 py-2.5 text-sm text-gray-200 border-b border-white/[0.04]"
+                                        >
+                                          {flexRender(
+                                            cell.column.columnDef.cell,
+                                            cell.getContext()
+                                          )}
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  );
+                                })}
+                                {paddingBottom > 0 && (
+                                  <tr>
+                                    <td
+                                      style={{ height: `${paddingBottom}px` }}
+                                      colSpan={colCount}
+                                    />
+                                  </tr>
+                                )}
+                              </>
+                            );
+                          })()}
                        </tbody>
                     </table>
                     
@@ -572,6 +612,13 @@ export default function InventoryPage() {
             initialBarcode={prefilledBarcode}
             onClose={() => { setIsAddModalOpen(false); setPrefilledBarcode(""); }} 
             onSuccess={(msg) => { setSuccessToast(msg); setIsAddModalOpen(false); setPrefilledBarcode(""); queryClient.invalidateQueries({ queryKey: ['inventory'] }); }}
+          />
+        )}
+        {editingSKU && (
+          <AddProductModal 
+            skuToEdit={editingSKU}
+            onClose={() => setEditingSKU(null)} 
+            onSuccess={(msg) => { setSuccessToast(msg); setEditingSKU(null); queryClient.invalidateQueries({ queryKey: ['inventory'] }); }}
           />
         )}
         {adjustingSKU && (
@@ -722,7 +769,7 @@ function SkuDetailPanel({ sku, onClose, onEdit, fmt }: { sku: SKU; onClose: () =
 
 // --- Sub-Components ---
 
-function TableActions({ sku, onAdjust }: { sku: SKU, onAdjust: () => void }) {
+function TableActions({ sku, onAdjust, onEdit }: { sku: SKU, onAdjust: () => void, onEdit: () => void }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
@@ -771,7 +818,7 @@ function TableActions({ sku, onAdjust }: { sku: SKU, onAdjust: () => void }) {
                <span>Adjust Stock</span>
             </button>
             <button
-               onClick={(e) => { e.stopPropagation(); onAdjust(); setOpen(false); }}
+               onClick={(e) => { e.stopPropagation(); onEdit(); setOpen(false); }}
                className="w-full px-4 py-2.5 text-left text-[10px] uppercase font-bold text-gray-400 hover:text-white hover:bg-white/5 flex items-center space-x-3">
                <Edit size={14} />
                <span>Edit Details</span>
@@ -787,17 +834,29 @@ function TableActions({ sku, onAdjust }: { sku: SKU, onAdjust: () => void }) {
   );
 }
 
-function AddProductModal({ onClose, onSuccess, initialBarcode }: { onClose: () => void, onSuccess: (msg: string) => void, initialBarcode?: string }) {
+function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { onClose: () => void, onSuccess: (msg: string) => void, initialBarcode?: string, skuToEdit?: SKU }) {
   const { profile } = useBusinessProfile();
   const supabase = createClient();
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const toast = useToast();
+  const [imagePreview, setImagePreview] = useState<string | null>(skuToEdit?.thumbnail_url || null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<SKUFormValues>({
     resolver: zodResolver(skuSchema),
     mode: "onChange",
-    defaultValues: {
+    defaultValues: skuToEdit ? {
+      sku_code: skuToEdit.sku_code,
+      name: skuToEdit.name,
+      unit: skuToEdit.unit,
+      category: skuToEdit.category || undefined,
+      current_location: skuToEdit.current_location,
+      cost_price: skuToEdit.cost_price ?? 0,
+      sale_price: skuToEdit.sale_price ?? 0,
+      reorder_level: skuToEdit.reorder_level,
+      barcode: skuToEdit.barcode || "",
+      description: skuToEdit.description || ""
+    } : {
       unit: "pcs",
       current_location: "warehouse",
       cost_price: 0,
@@ -812,26 +871,29 @@ function AddProductModal({ onClose, onSuccess, initialBarcode }: { onClose: () =
   const showPriceWarning = watchSalePrice > 0 && watchCostPrice > 0 && watchSalePrice < watchCostPrice;
 
   useEffect(() => {
-    if (initialBarcode) {
+    if (initialBarcode && !skuToEdit) {
       setValue("barcode", initialBarcode);
     }
-  }, [initialBarcode, setValue]);
+  }, [initialBarcode, setValue, skuToEdit]);
 
   const productName = watch("name");
 
   // Auto-generate SKU Code
   useEffect(() => {
-    if (productName && productName.length >= 3) {
+    if (!skuToEdit && productName && productName.length >= 3) {
       const prefix = productName.substring(0, 3).toUpperCase();
       const random = Math.floor(1000 + Math.random() * 9000);
       setValue("sku_code", `${prefix}-${random}`);
     }
-  }, [productName, setValue]);
+  }, [productName, setValue, skuToEdit]);
 
   const onImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) return alert("Image must be under 2MB");
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error("Image too large", "Image must be under 2MB");
+        return;
+      }
       setSelectedFile(file);
       setImagePreview(URL.createObjectURL(file));
     }
@@ -850,26 +912,53 @@ function AddProductModal({ onClose, onSuccess, initialBarcode }: { onClose: () =
         throw new Error("BUSINESS_CONTEXT_MISSING: We couldn't detect your business profile. Please refresh the page.");
       }
 
-      // 1. Insert SKU
-      const { data: sku, error: insertError } = await supabase
-        .from('skus')
-        .insert({
-          ...values,
-          business_id: profile.id,
-          qty_on_hand: 0, 
-          qty_reserved: 0,
-          is_active: true
-        })
-        .select()
-        .single();
+      let skuId = skuToEdit?.id;
 
-      if (insertError) {
-        console.error("Supabase SKU Insert Error:", insertError);
-        throw new Error(`DATABASE_REJECT: ${insertError.message} (Code: ${insertError.code})`);
+      if (skuToEdit) {
+        // UPDATE MODE
+        const { error: updateError } = await supabase
+          .from('skus')
+          .update({
+            sku_code: values.sku_code,
+            name: values.name,
+            unit: values.unit,
+            category: values.category,
+            current_location: values.current_location,
+            cost_price: values.cost_price,
+            sale_price: values.sale_price,
+            reorder_level: values.reorder_level,
+            barcode: values.barcode,
+            description: values.description
+          })
+          .eq('id', skuToEdit.id);
+
+        if (updateError) {
+          console.error("Supabase SKU Update Error:", updateError);
+          throw new Error(`DATABASE_REJECT: ${updateError.message} (Code: ${updateError.code})`);
+        }
+      } else {
+        // 1. Insert SKU
+        const { data: sku, error: insertError } = await supabase
+          .from('skus')
+          .insert({
+            ...values,
+            business_id: profile.id,
+            qty_on_hand: 0, 
+            qty_reserved: 0,
+            is_active: true
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error("Supabase SKU Insert Error:", insertError);
+          throw new Error(`DATABASE_REJECT: ${insertError.message} (Code: ${insertError.code})`);
+        }
+        skuId = sku.id;
       }
 
       // Telemetry — Emit anonymous SKU price signal silently
-      if (profile?.industry_key && profile?.city && values.cost_price) {
+      if (profile?.industry_key && profile?.city && values.cost_price && !skuToEdit) {
         emitSkuPriceSignal(
           profile.industry_key,
           profile.city,
@@ -882,23 +971,22 @@ function AddProductModal({ onClose, onSuccess, initialBarcode }: { onClose: () =
       }
 
       // 2. Upload Image if provided
-      if (selectedFile && sku) {
+      if (selectedFile && skuId) {
         const ext = selectedFile.name.split('.').pop();
-        const path = `${profile.id}/${sku.id}.${ext}`;
+        const path = `${profile.id}/${skuId}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from('sku-images')
-          .upload(path, selectedFile);
+          .upload(path, selectedFile, { upsert: true });
 
         if (!uploadError) {
           const { data: { publicUrl } } = supabase.storage.from('sku-images').getPublicUrl(path);
-          await supabase.from('skus').update({ thumbnail_url: publicUrl }).eq('id', sku.id);
+          await supabase.from('skus').update({ thumbnail_url: publicUrl }).eq('id', skuId);
         }
       }
 
-      onSuccess(`Successfully committed ${values.name} to the registry.`);
+      onSuccess(skuToEdit ? `Successfully updated ${values.name} in the registry.` : `Successfully committed ${values.name} to the registry.`);
     } catch (err: unknown) {
-      const error = err as Error;
-      alert(`SKU REGISTRATION FAILED\n\n${error.message}`);
+      toast.error("SKU Process Failed", humanizeError(err, 'save SKU'));
     } finally {
       setIsSubmitting(false);
     }
@@ -919,7 +1007,7 @@ function AddProductModal({ onClose, onSuccess, initialBarcode }: { onClose: () =
                    <Package size={24} />
                 </div>
                 <div>
-                   <h2 className="text-xl font-bold text-white uppercase tracking-tighter">Onboard New SKU</h2>
+                   <h2 className="text-xl font-bold text-white uppercase tracking-tighter">{skuToEdit ? "Edit SKU details" : "Onboard New SKU"}</h2>
                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Inventory Management System v9.0</p>
                 </div>
              </div>
@@ -1036,7 +1124,7 @@ function AddProductModal({ onClose, onSuccess, initialBarcode }: { onClose: () =
               disabled={isSubmitting}
               className="flex-[2] py-4 bg-electric-blue text-onyx text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
              >
-                {isSubmitting ? "Syncing Mesh..." : "Commit SKU to Registry"}
+                {isSubmitting ? "Syncing Mesh..." : skuToEdit ? "Update Registry" : "Commit SKU to Registry"}
              </button>
           </div>
        </motion.div>
@@ -1046,6 +1134,7 @@ function AddProductModal({ onClose, onSuccess, initialBarcode }: { onClose: () =
 
 function AdjustStockModal({ sku, onClose, onSuccess }: { sku: SKU, onClose: () => void, onSuccess: (msg: string) => void }) {
   const supabase = createClient();
+  const toast = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, handleSubmit, formState: { errors } } = useForm<AdjustStockValues>({
     resolver: zodResolver(adjustStockSchema),
@@ -1072,8 +1161,7 @@ function AdjustStockModal({ sku, onClose, onSuccess }: { sku: SKU, onClose: () =
 
       onSuccess(`Updated ${sku.name} quantity to ${newQty}`);
     } catch (err: unknown) {
-      const error = err as Error;
-      alert(`Failed to adjust stock: ${error.message}`);
+      toast.error("Adjustment Failed", humanizeError(err, 'adjust stock'));
     } finally {
       setIsSubmitting(false);
     }
@@ -1204,7 +1292,7 @@ async function handleCSVImport(
       setSuccess(`Imported ${dataToInsert.length} products successfully.`);
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
     } else {
-      alert(`Import failed: ${error.message}`);
+      alert(humanizeError(error, 'import inventory'));
     }
   };
   reader.readAsText(file);

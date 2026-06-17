@@ -14,6 +14,7 @@ import { deriveDbKey } from '../src/lib/security/dbKeyManager'
 // 0. GLOBAL REFERENCES
 // ─────────────────────────────────────────────
 let mainWindow: BrowserWindow | null = null;
+let splashWindow: BrowserWindow | null = null;
 let nextServer: ChildProcess | null = null;
 let visionProcess: ChildProcess | null = null;
 let sessionTimeoutTimer: NodeJS.Timeout | null = null;
@@ -27,20 +28,17 @@ const isDev = !app.isPackaged;
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 const WARNING_LEAD_MS    = 60 * 1000;
 
-// Configure logging
 log.transports.file.level = 'info'
-log.transports.file.maxSize = 5 * 1024 * 1024 // 5MB
+log.transports.file.maxSize = 5 * 1024 * 1024
 autoUpdater.logger = log
 
-// Configure update server
 autoUpdater.setFeedURL({
   provider: 'github',
-  owner: 'omnoralabs',      // your GitHub username
-  repo: 'noxis-releases',  // public repo for releases
+  owner: 'omnoralabs',
+  repo: 'noxis-releases',
   private: false
 })
 
-// Check for updates every 4 hours
 const CHECK_INTERVAL = 4 * 60 * 60 * 1000
 
 // ─────────────────────────────────────────────
@@ -48,39 +46,27 @@ const CHECK_INTERVAL = 4 * 60 * 60 * 1000
 // ─────────────────────────────────────────────
 let logPath = '';
 
-/** 
- * Internal logger that preserves original behavior while using electron-log 
- */
 function startupLog(msg: string): void {
   try {
     if (!logPath) {
       logPath = path.join(app.getPath('userData'), 'startup.log');
     }
     fs.appendFileSync(logPath, `[${new Date().toISOString()}] ${msg}\n`);
-  } catch {
-    // userData not ready yet
-  }
-  log.info(msg); // use electron-log instead of console.log
+  } catch { /* userData not ready yet */ }
+  log.info(msg);
 }
 
 startupLog('════════════ NOXIS STARTUP ════════════');
 startupLog(`Platform: ${process.platform} | Arch: ${process.arch} | isDev: ${isDev}`);
 
-/**
- * Safely and recursively terminates a child process and all of its spawned children.
- * Crucial on Windows to prevent lingering standalone Next.js server zombie processes.
- */
 function killProcess(child: ChildProcess | null, name: string): void {
   if (!child) return;
   startupLog(`[Cleanup] Terminating ${name} (PID: ${child.pid})...`);
   try {
     if (process.platform === 'win32') {
       exec(`taskkill /pid ${child.pid} /T /F`, (err) => {
-        if (err) {
-          startupLog(`[Cleanup ERR] Failed to taskkill ${name}: ${err.message}`);
-        } else {
-          startupLog(`[Cleanup] Successfully taskkilled ${name}`);
-        }
+        if (err) startupLog(`[Cleanup ERR] Failed to taskkill ${name}: ${err.message}`);
+        else startupLog(`[Cleanup] Successfully taskkilled ${name}`);
       });
     } else {
       child.kill('SIGKILL');
@@ -96,7 +82,6 @@ function killProcess(child: ChildProcess | null, name: string): void {
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
-  // Defer dialog until app is ready — calling it before ready crashes on Windows
   app.on('ready', () => {
     dialog.showErrorBox(
       'Noxis Hub Already Running',
@@ -106,7 +91,6 @@ if (!gotTheLock) {
   });
 } else {
 
-  // Bring existing window to front if user launches a second instance
   app.on('second-instance', () => {
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
@@ -117,8 +101,6 @@ if (!gotTheLock) {
   // ─────────────────────────────────────────────
   // 3. HELPERS
   // ─────────────────────────────────────────────
-
-  /** Find a free TCP port starting from startPort */
   function findAvailablePort(startPort: number): Promise<number> {
     return new Promise((resolve) => {
       const server = net.createServer();
@@ -130,32 +112,127 @@ if (!gotTheLock) {
     });
   }
 
-
+  function waitForServer(
+    url: string,
+    timeout = 90000,
+    interval = 300
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const start = Date.now();
+      const check = () => {
+        if (Date.now() - start > timeout) {
+          reject(new Error(`Server did not start within ${timeout / 1000}s`));
+          return;
+        }
+        const req = http.get(url, (res) => {
+          if (res.statusCode) resolve();
+        });
+        req.on('error', () => setTimeout(check, interval));
+        req.setTimeout(interval, () => { req.destroy(); setTimeout(check, interval); });
+      };
+      check();
+    });
+  }
 
   // ─────────────────────────────────────────────
-  // 4. VISION ENGINE  (production-only)
+  // 4. SPLASH WINDOW
+  // Creates a small centered branded window
+  // that shows instantly before main loads.
+  // ─────────────────────────────────────────────
+  function createSplashWindow(): void {
+    splashWindow = new BrowserWindow({
+      width: 420,
+      height: 300,
+      frame: false,
+      transparent: false,
+      resizable: false,
+      movable: false,
+      center: true,
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      backgroundColor: '#070809',
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        sandbox: true,
+      },
+      icon: app.isPackaged
+        ? path.join(process.resourcesPath, 'build', 'icon.ico')
+        : path.join(__dirname, '../../build/icon.ico'),
+    });
+
+    const splashHtml = `data:text/html,<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;background:#070809;overflow:hidden;}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;}
+.logo-ring{width:72px;height:72px;border-radius:18px;background:linear-gradient(135deg,#1A1D21 0%,#0F1114 100%);border:1.5px solid rgba(96,165,250,0.25);display:flex;align-items:center;justify-content:center;margin-bottom:22px;box-shadow:0 0 40px rgba(96,165,250,0.12);}
+.logo-ring img{width:42px;height:42px;object-fit:contain;}
+.logo-fallback{width:42px;height:42px;display:flex;align-items:center;justify-content:center;color:#60A5FA;font-size:22px;font-weight:800;letter-spacing:-1px;}
+.wordmark{color:#FFFFFF;font-size:18px;font-weight:700;letter-spacing:6px;text-transform:uppercase;margin-bottom:6px;}
+.tagline{color:#374151;font-size:10px;letter-spacing:3px;text-transform:uppercase;margin-bottom:32px;}
+.progress-track{width:160px;height:2px;background:#111418;border-radius:1px;overflow:hidden;}
+.progress-bar{height:100%;background:linear-gradient(90deg,#3B82F6,#60A5FA);border-radius:1px;animation:prog 2s cubic-bezier(0.4,0,0.2,1) infinite;}
+@keyframes prog{0%{width:0%;margin-left:0%;}50%{width:60%;margin-left:20%;}100%{width:0%;margin-left:100%;}}
+.version{position:absolute;bottom:18px;color:#1F2937;font-size:9px;letter-spacing:2px;text-transform:uppercase;}
+.dots{display:flex;gap:4px;margin-top:16px;}
+.dot{width:4px;height:4px;border-radius:50%;background:#1F2937;animation:dot 1.4s ease-in-out infinite;}
+.dot:nth-child(1){animation-delay:0s;}
+.dot:nth-child(2){animation-delay:0.2s;}
+.dot:nth-child(3){animation-delay:0.4s;}
+@keyframes dot{0%,80%,100%{background:#1F2937;}40%{background:#3B82F6;}}
+</style>
+</head>
+<body>
+<div class="logo-ring">
+  <img src="./logos/noxis.png" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+  <div class="logo-fallback" style="display:none;">N</div>
+</div>
+<div class="wordmark">Noxis</div>
+<div class="tagline">Industrial ERP</div>
+<div class="progress-track"><div class="progress-bar"></div></div>
+<div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+<div class="version">v13.1 &nbsp;·&nbsp; Omnora Labs</div>
+</body>
+</html>`;
+
+    splashWindow.loadURL(splashHtml);
+    splashWindow.show();
+    startupLog('[Splash] Splash window displayed');
+  }
+
+  function destroySplash(): void {
+    if (!splashWindow || splashWindow.isDestroyed()) return;
+    splashWindow.webContents.executeJavaScript(`
+      document.body.style.transition = 'opacity 0.35s ease';
+      document.body.style.opacity = '0';
+    `).catch(() => {});
+    setTimeout(() => {
+      if (splashWindow && !splashWindow.isDestroyed()) {
+        splashWindow.destroy();
+        splashWindow = null;
+        startupLog('[Splash] Splash destroyed');
+      }
+    }, 380);
+  }
+
+  // ─────────────────────────────────────────────
+  // 5. VISION ENGINE
   // ─────────────────────────────────────────────
   function spawnVisionEngine(): void {
-    if (isDev) {
-      startupLog('[Vision] Skipped in dev mode');
-      return;
-    }
-
-    if (isReadOnly) {
-      startupLog('[Vision] Blocked: System in Read-Only mode (License Expired)');
-      return;
-    }
+    if (isDev) { startupLog('[Vision] Skipped in dev mode'); return; }
+    if (isReadOnly) { startupLog('[Vision] Blocked: Read-Only mode'); return; }
 
     const visionScriptPath = path.join(process.resourcesPath, 'vision', 'vision_engine.py');
-
     if (!fs.existsSync(visionScriptPath)) {
       startupLog(`[Vision] Script not found at ${visionScriptPath} — skipping`);
       return;
     }
 
     const configPath = path.join(app.getPath('userData'), 'cameras.json');
-
-    // Windows always uses 'python' (not python3)
     visionProcess = spawn('python', [visionScriptPath, '--config', configPath], {
       env: {
         ...process.env,
@@ -167,81 +244,55 @@ if (!gotTheLock) {
     visionProcess.on('error', (err) => startupLog(`[Vision] Spawn error: ${err.message}`));
     visionProcess.stdout?.on('data', (d: Buffer) => startupLog(`[Vision] ${d.toString().trim()}`));
     visionProcess.stderr?.on('data', (d: Buffer) => startupLog(`[Vision ERR] ${d.toString().trim()}`));
-    visionProcess.on('exit', (code) => {
-      startupLog(`[Vision] Exited with code ${code}`);
-      visionProcess = null;
-    });
-  }
-
-  function setupAutoUpdater(mainWindow: BrowserWindow) {
-    // Don't check in development
-    if (isDev) return
-    
-    autoUpdater.on('checking-for-update', () => {
-      startupLog('[Update] Checking for update...')
-    })
-    
-    autoUpdater.on('update-available', (info) => {
-      startupLog(`[Update] Update available: ${info.version}`)
-      // Notify renderer — show subtle banner
-      mainWindow.webContents.send(
-        'update-available', info
-      )
-    })
-    
-    autoUpdater.on('update-not-available', () => {
-      startupLog('[Update] Up to date')
-    })
-    
-    autoUpdater.on('download-progress', (progress) => {
-      startupLog(`[Update] Download: ${Math.round(progress.percent)}%`)
-      mainWindow.webContents.send(
-        'update-progress', progress
-      )
-    })
-    
-    autoUpdater.on('update-downloaded', (info) => {
-      startupLog(`[Update] Update downloaded: ${info.version}`)
-      mainWindow.webContents.send(
-        'update-downloaded', info
-      )
-    })
-    
-    autoUpdater.on('error', (err) => {
-      startupLog(`[Update] Error: ${err.message}`)
-      // Silent fail — never crash over update error
-    })
-    
-    // Check on startup (after 30 second delay)
-    setTimeout(() => {
-      autoUpdater.checkForUpdates()
-        .catch(err => startupLog(`[Update] Check failed: ${err}`))
-    }, 30000)
-    
-    // Check every 4 hours
-    setInterval(() => {
-      autoUpdater.checkForUpdates()
-        .catch(err => startupLog(`[Update] Check failed: ${err}`))
-    }, CHECK_INTERVAL)
+    visionProcess.on('exit', (code) => { startupLog(`[Vision] Exited: ${code}`); visionProcess = null; });
   }
 
   // ─────────────────────────────────────────────
-  // 5. SESSION / INACTIVITY TIMERS
+  // 6. AUTO UPDATER
+  // ─────────────────────────────────────────────
+  function setupAutoUpdater(win: BrowserWindow): void {
+    if (isDev) return;
+
+    autoUpdater.on('checking-for-update', () => startupLog('[Update] Checking...'));
+    autoUpdater.on('update-available', (info) => {
+      startupLog(`[Update] Available: ${info.version}`);
+      win.webContents.send('update-available', info);
+    });
+    autoUpdater.on('update-not-available', () => startupLog('[Update] Up to date'));
+    autoUpdater.on('download-progress', (p) => {
+      startupLog(`[Update] Download: ${Math.round(p.percent)}%`);
+      win.webContents.send('update-progress', p);
+    });
+    autoUpdater.on('update-downloaded', (info) => {
+      startupLog(`[Update] Downloaded: ${info.version}`);
+      win.webContents.send('update-downloaded', info);
+    });
+    autoUpdater.on('error', (err) => startupLog(`[Update] Error: ${err.message}`));
+
+    setTimeout(() => {
+      autoUpdater.checkForUpdates().catch(e => startupLog(`[Update] Check failed: ${e}`));
+    }, 30000);
+
+    setInterval(() => {
+      autoUpdater.checkForUpdates().catch(e => startupLog(`[Update] Check failed: ${e}`));
+    }, CHECK_INTERVAL);
+  }
+
+  // ─────────────────────────────────────────────
+  // 7. SESSION TIMERS
   // ─────────────────────────────────────────────
   function resetInactivityTimer(): void {
     if (sessionTimeoutTimer) clearTimeout(sessionTimeoutTimer);
     if (warningTimer)        clearTimeout(warningTimer);
 
     warningTimer = setTimeout(() => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow && !mainWindow.isDestroyed())
         mainWindow.webContents.send('session-expiring-warning');
-      }
     }, SESSION_TIMEOUT_MS - WARNING_LEAD_MS);
 
     sessionTimeoutTimer = setTimeout(() => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow && !mainWindow.isDestroyed())
         mainWindow.webContents.send('session-timeout-logout');
-      }
     }, SESSION_TIMEOUT_MS);
   }
 
@@ -250,59 +301,34 @@ if (!gotTheLock) {
   function startMemoryMonitor(): void {
     if (memoryMonitorInterval) clearInterval(memoryMonitorInterval);
     memoryMonitorInterval = setInterval(() => {
-      const mem = process.memoryUsage();
-      const heapMB = Math.round(mem.heapUsed / 1024 / 1024);
+      const heapMB = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
       if (heapMB > 800) {
         if (typeof global.gc === 'function') global.gc();
-        startupLog(`[Memory] GC triggered: ${heapMB} MB`);
+        startupLog(`[Memory] GC triggered: ${heapMB}MB`);
       }
     }, 30000);
   }
 
   // ─────────────────────────────────────────────
-  // 6. TITLE BAR IPC
+  // 8. TITLE BAR IPC
   // ─────────────────────────────────────────────
-  ipcMain.on('window-minimize', () => {
-    BrowserWindow.getFocusedWindow()?.minimize();
-  });
-
+  ipcMain.on('window-minimize', () => BrowserWindow.getFocusedWindow()?.minimize());
   ipcMain.on('window-maximize', () => {
     const win = BrowserWindow.getFocusedWindow();
-    if (win?.isMaximized()) win.unmaximize();
-    else win?.maximize();
+    if (win?.isMaximized()) win.unmaximize(); else win?.maximize();
   });
-
-  ipcMain.on('window-close', () => {
-    BrowserWindow.getFocusedWindow()?.close();
-  });
-
-  // handle (async) instead of returnValue — safer for IPC
-  ipcMain.handle('window-is-maximized', () => {
-    return BrowserWindow.getFocusedWindow()?.isMaximized() ?? false;
-  });
-
-  // IPC for manual check and install
-  ipcMain.handle('check-for-updates', async () => {
-    return autoUpdater.checkForUpdates()
-  })
-
-  ipcMain.handle('install-update', () => {
-    autoUpdater.quitAndInstall(false, true)
-  })
+  ipcMain.on('window-close', () => BrowserWindow.getFocusedWindow()?.close());
+  ipcMain.handle('window-is-maximized', () => BrowserWindow.getFocusedWindow()?.isMaximized() ?? false);
+  ipcMain.handle('check-for-updates', async () => autoUpdater.checkForUpdates());
+  ipcMain.handle('install-update', () => autoUpdater.quitAndInstall(false, true));
 
   ipcMain.handle('sync-tier', (_, data: { tier: string, expiresAt: string | null }) => {
     startupLog(`[Tier] Sync: ${data.tier} (Expires: ${data.expiresAt || 'Never'})`);
-    
     if (data.expiresAt && new Date() > new Date(data.expiresAt)) {
       isReadOnly = true;
-      startupLog("[Security] License expired. Enabling Read-Only mode.");
+      startupLog('[Security] License expired — Read-Only mode');
       mainWindow?.webContents.send('license-expired');
-      
-      if (visionProcess) {
-        startupLog("[Vision] Terminating background processes...");
-        killProcess(visionProcess, 'Vision Engine');
-        visionProcess = null;
-      }
+      if (visionProcess) { killProcess(visionProcess, 'Vision Engine'); visionProcess = null; }
     } else {
       isReadOnly = false;
     }
@@ -310,110 +336,58 @@ if (!gotTheLock) {
   });
 
   // ─────────────────────────────────────────────
-  // FILE MORPH IPC HANDLERS (Local Processing)
+  // FILE MORPH IPC
   // ─────────────────────────────────────────────
   ipcMain.handle('compress-images', async (_, files: { data: string, quality?: number, name: string }[]) => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const sharp = require('sharp')
-      const results = []
-      
+      const sharp = require('sharp');
+      const results = [];
       for (const file of files) {
-        const buffer = Buffer.from(file.data, 'base64')
-        
-        const compressed = await sharp(buffer)
-          .jpeg({ quality: file.quality || 75, progressive: true })
-          .toBuffer()
-        
+        const buffer = Buffer.from(file.data, 'base64');
+        const compressed = await sharp(buffer).jpeg({ quality: file.quality || 75, progressive: true }).toBuffer();
         results.push({
           name: file.name.replace(/\.[^.]+$/, '.jpg'),
           data: compressed.toString('base64'),
           originalSize: buffer.length,
           compressedSize: compressed.length,
-        })
+        });
       }
-      return results
+      return results;
     } catch (error: any) {
-      startupLog(`[FileMorph] Compression error: ${error.message}`)
-      throw error
+      startupLog(`[FileMorph] Compression error: ${error.message}`);
+      throw error;
     }
-  })
+  });
 
   ipcMain.handle('convert-heic', async (_, files: { data: string, quality?: number, name: string }[]) => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const heicConvert = require('heic-convert')
-      const results = []
-      
+      const heicConvert = require('heic-convert');
+      const results = [];
       for (const file of files) {
-        const buffer = Buffer.from(file.data, 'base64')
-        const output = await heicConvert({
-          buffer,
-          format: 'JPEG',
-          quality: (file.quality || 90) / 100
-        })
+        const buffer = Buffer.from(file.data, 'base64');
+        const output = await heicConvert({ buffer, format: 'JPEG', quality: (file.quality || 90) / 100 });
         results.push({
           name: file.name.replace(/\.heic$/i, '.jpg'),
           data: Buffer.from(output).toString('base64'),
-          size: output.byteLength
-        })
+          size: output.byteLength,
+        });
       }
-      return results
+      return results;
     } catch (error: any) {
-      startupLog(`[FileMorph] HEIC conversion error: ${error.message}`)
-      throw error
+      startupLog(`[FileMorph] HEIC error: ${error.message}`);
+      throw error;
     }
-  })
-
-  // ─────────────────────────────────────────────
-  // DATA SOVEREIGNTY IPC — returns where user data lives on disk
-  // ─────────────────────────────────────────────
-  ipcMain.handle('get-app-data-path', () => {
-    return app.getPath('userData');
   });
 
-  // ─────────────────────────────────────────────
-  // 7. WINDOW CREATION
-  // ─────────────────────────────────────────────
-  function writeStartupLog(message: string) {
-    startupLog(message);
-  }
+  ipcMain.handle('get-app-data-path', () => app.getPath('userData'));
 
-  function waitForServer(
-    url: string,
-    timeout: number = 60000,
-    interval: number = 250
-  ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const start = Date.now();
-      
-      const check = () => {
-        if (Date.now() - start > timeout) {
-          reject(new Error(`Server did not start within ${timeout / 1000} seconds`));
-          return;
-        }
-        
-        const req = http.get(url, (res) => {
-          if (res.statusCode) {
-            resolve();
-          }
-        });
-        
-        req.on('error', () => {
-          setTimeout(check, interval);
-        });
-        
-        req.setTimeout(interval, () => {
-          req.destroy();
-          setTimeout(check, interval);
-        });
-      };
-      
-      check();
-    });
-  }
-
-  async function createWindow(): Promise<void> {
+  // ─────────────────────────────────────────────
+  // 9. MAIN WINDOW CREATION
+  // Splash is already visible. Main window
+  // loads silently behind it. When ready,
+  // splash fades out and main slides in.
+  // ─────────────────────────────────────────────
+  async function createMainWindow(): Promise<void> {
     const iconPath = app.isPackaged
       ? path.join(process.resourcesPath, 'build', 'icon.ico')
       : path.join(__dirname, '../../build/icon.ico');
@@ -423,11 +397,12 @@ if (!gotTheLock) {
       height: 900,
       minWidth: 1024,
       minHeight: 768,
-      show: false,              // revealed only after ready-to-show
+      show: false,            // hidden until fully loaded
       frame: false,
       titleBarStyle: 'hidden',
       transparent: false,
-      backgroundColor: '#121417',
+      backgroundColor: '#070809',
+      center: true,
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -445,30 +420,24 @@ if (!gotTheLock) {
       app.setAppUserModelId('com.omnoralabs.noxis');
     }
 
-    // Show only when the first frame is painted — no blank flash
-    mainWindow.once('ready-to-show', () => {
-      startupLog('[Electron] ready-to-show — displaying window');
-      mainWindow?.show();
-      mainWindow?.focus();
-    });
-
-    // Auto-retry on load failure (transient port/timing issues)
+    // Track load retries for transient failures
     let loadRetries = 0;
+
     mainWindow.webContents.on('did-fail-load', (_e, errorCode, errorDesc) => {
       startupLog(`[Electron] did-fail-load: ${errorCode} ${errorDesc}`);
       if (loadRetries < 5) {
         loadRetries++;
         startupLog(`[Electron] Retrying load (${loadRetries}/5)...`);
         setTimeout(() => {
-          mainWindow?.loadURL(`http://127.0.0.1:${PORT}`).catch((e) =>
-            startupLog(`[Electron] Retry loadURL error: ${e.message}`)
-          );
+          mainWindow?.loadURL(`http://127.0.0.1:${PORT}`)
+            .catch(e => startupLog(`[Electron] Retry error: ${e.message}`));
         }, 2000);
       } else {
-        startupLog('[Electron] Max retries reached — giving up');
+        startupLog('[Electron] Max retries reached');
+        destroySplash();
         dialog.showErrorBox(
           'Page Load Failed',
-          `Could not load the app from http://127.0.0.1:${PORT}\n\nCheck logs at:\n${logPath}`
+          `Could not load the app.\n\nCheck logs at:\n${logPath}`
         );
         app.quit();
       }
@@ -479,104 +448,62 @@ if (!gotTheLock) {
       loadRetries = 0;
     });
 
+    // THE KEY MOMENT:
+    // ready-to-show fires when first paint is done.
+    // At this point we fade splash and show main.
+    mainWindow.once('ready-to-show', () => {
+      startupLog('[Electron] ready-to-show → revealing main window');
+
+      // Destroy splash with fade
+      destroySplash();
+
+      // Show main window with smooth opacity animation
+      mainWindow!.setOpacity(0);
+      mainWindow!.show();
+      mainWindow!.focus();
+
+      // Fade in over 300ms
+      let opacity = 0;
+      const fadeIn = setInterval(() => {
+        opacity += 0.08;
+        if (opacity >= 1) {
+          opacity = 1;
+          clearInterval(fadeIn);
+        }
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.setOpacity(opacity);
+        }
+      }, 16); // ~60fps
+    });
+
     mainWindow.on('maximize',   () => mainWindow?.webContents.send('maximize-changed', true));
     mainWindow.on('unmaximize', () => mainWindow?.webContents.send('maximize-changed', false));
     mainWindow.on('closed',     () => { mainWindow = null; });
 
-    // Show a loading state while waiting
-    const loadingHtml = `data:text/html,
-<!DOCTYPE html>
-<html>
-<head>
-<style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    background: #070809;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100vh;
-    font-family: Arial, sans-serif;
-  }
-  .logo {
-    color: #60A5FA;
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: 6px;
-    text-transform: uppercase;
-    margin-bottom: 12px;
-    text-align: center;
-  }
-  .sub {
-    color: #4B5563;
-    font-size: 11px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    text-align: center;
-    margin-bottom: 24px;
-  }
-  .bar-track {
-    width: 120px;
-    height: 2px;
-    background: #1F2937;
-    margin: 0 auto;
-    overflow: hidden;
-  }
-  .bar {
-    height: 100%;
-    background: #60A5FA;
-    animation: load 1.2s ease-in-out infinite;
-    transform-origin: left;
-  }
-  @keyframes load {
-    0%   { transform: translateX(-100%); }
-    100% { transform: translateX(200%); }
-  }
-</style>
-</head>
-<body>
-  <div>
-    <div class="logo">NOXIS</div>
-    <div class="sub">by Omnora Labs</div>
-    <div class="bar-track">
-      <div class="bar"></div>
-    </div>
-  </div>
-</body>
-</html>
-`;
-    await mainWindow.loadURL(loadingHtml);
-    mainWindow.show(); // Show loading screen
-
     const url = `http://127.0.0.1:${PORT}`;
 
     try {
-      writeStartupLog('Waiting for Next.js server...');
+      startupLog('[Electron] Waiting for Next.js server...');
       await waitForServer(url, 90000, 300);
-      writeStartupLog('Server ready — loading app');
-      
-      startupLog(`[Electron] Loading ${url}`);
-      await mainWindow.loadURL(url).catch((e) =>
-        startupLog(`[Electron] loadURL error: ${e.message}`)
-      );
-      
+      startupLog('[Electron] Server ready — loading main window');
+
+      await mainWindow.loadURL(url);
+
       if (isDev) {
         mainWindow.webContents.openDevTools();
       }
+
     } catch (err: any) {
-      writeStartupLog(`Server failed: ${err}`);
-      const logDir = app.getPath('userData');
-      const logPathFile = path.join(logDir, 'startup.log');
+      startupLog(`[Electron] Server failed to start: ${err.message}`);
+      destroySplash();
       dialog.showMessageBoxSync({
         type: 'error',
         title: 'Noxis Failed to Start',
         message: 'The app server could not start.',
         detail:
-          `Please check the log file:\n` +
-          `${logPathFile}\n\n` +
-          `Try restarting Noxis. If this ` +
-          `persists, contact support on WhatsApp: ` +
-          `+92 333 435 5475`,
+          `Log file:\n${logPath}\n\n` +
+          `Try restarting Noxis. If this persists:\n` +
+          `WhatsApp: +92 333 435 5475`,
         buttons: ['OK'],
       });
       app.quit();
@@ -584,148 +511,220 @@ if (!gotTheLock) {
   }
 
   // ─────────────────────────────────────────────
-  // 8. APP LIFECYCLE
+  // 10. APP LIFECYCLE
   // ─────────────────────────────────────────────
   app.whenReady().then(async () => {
 
-    // ── Load .env from all likely Windows locations ──
-    dotenv.config(); // dev: project root
-    dotenv.config({ path: path.join(process.resourcesPath, '.env') });             // resources\.env
-    dotenv.config({ path: path.join(path.dirname(app.getPath('exe')), '.env') });  // next to .exe
-    dotenv.config({ path: path.join(app.getPath('userData'), '.env') });           // AppData override
+    // Load env from all possible locations
+    dotenv.config();
+    dotenv.config({ path: path.join(process.resourcesPath, '.env') });
+    dotenv.config({ path: path.join(path.dirname(app.getPath('exe')), '.env') });
+    dotenv.config({ path: path.join(app.getPath('userData'), '.env') });
 
-    startupLog(`[ENV] NEXT_PUBLIC_SUPABASE_URL present:    ${!!process.env.NEXT_PUBLIC_SUPABASE_URL}`);
-    startupLog(`[ENV] SUPABASE_SERVICE_ROLE_KEY present: ${!!process.env.SUPABASE_SERVICE_ROLE_KEY}`);
-    startupLog(`[ENV] SENTRY_DSN present:                ${!!process.env.SENTRY_DSN}`);
+    startupLog(`[ENV] SUPABASE_URL: ${!!process.env.NEXT_PUBLIC_SUPABASE_URL}`);
+    startupLog(`[ENV] SERVICE_ROLE: ${!!process.env.SUPABASE_SERVICE_ROLE_KEY}`);
 
-    // ── Validate required env vars BEFORE spawning anything ──
-    const REQUIRED_ENV = ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'];
-    const missing = REQUIRED_ENV.filter((k) => !process.env[k]);
+    const missing = ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
+      .filter(k => !process.env[k]);
 
     if (missing.length > 0) {
       dialog.showErrorBox(
         'Missing Configuration',
-        `The following required environment variables are missing:\n\n` +
-        `  ${missing.join('\n  ')}\n\n` +
-        `Place a .env file in one of these locations:\n` +
-        `  • Next to Noxis.exe\n` +
-        `  • ${process.resourcesPath}\\.env\n` +
-        `  • ${app.getPath('userData')}\\.env`
+        `Required env vars missing:\n\n  ${missing.join('\n  ')}\n\n` +
+        `Place a .env file next to Noxis.exe`
       );
       app.quit();
       return;
     }
 
-    // ── Sentry (after env is loaded) ──
     if (process.env.SENTRY_DSN) {
       Sentry.init({ dsn: process.env.SENTRY_DSN });
     }
 
     process.on('uncaughtException', (error) => {
-      startupLog(`[CRITICAL] Uncaught Exception: ${error.message}`);
+      startupLog(`[CRITICAL] ${error.message}`);
       if (error.stack) startupLog(error.stack);
       Sentry.captureException(error);
-      // Don't quit immediately — let Sentry flush and maybe show a dialog if critical
     });
 
-    process.on('unhandledRejection', (reason, promise) => {
-      startupLog(`[CRITICAL] Unhandled Rejection at: ${promise} reason: ${reason}`);
+    process.on('unhandledRejection', (reason) => {
+      startupLog(`[CRITICAL] Unhandled rejection: ${reason}`);
       Sentry.captureException(reason instanceof Error ? reason : new Error(String(reason)));
     });
 
-    // ── Find available port ──
+    // Find port
     PORT = await findAvailablePort(PORT);
-    startupLog(`[Electron] Resolved port: ${PORT}`);
-    startupLog(`[Electron] userData: ${app.getPath('userData')}`);
-    startupLog(`[Electron] resourcesPath: ${process.resourcesPath}`);
+    startupLog(`[Electron] Port: ${PORT}`);
 
-    // ── Spawn Next.js standalone server (production only) ──
+    // ── STEP 1: Show splash immediately ──
+    // User sees branded screen within ~200ms
+    createSplashWindow();
+
+    // ── STEP 2: Spawn Next.js server (production) ──
     if (!isDev) {
-      const serverPath = path.join(process.resourcesPath, 'standalone', 'server.js');
-      startupLog(`[Electron] Standalone server path: ${serverPath}`);
+      const serverPath = path.join(
+        process.resourcesPath,
+        'standalone',
+        'server.js'
+      )
+
+      // The native sqlite binding path
+      const sqlitePath = path.join(
+        process.resourcesPath,
+        'better-sqlite3-multiple-ciphers'
+      )
+
+      startupLog(`[Electron] Server path: ${serverPath}`)
+      startupLog(`[Electron] SQLite path: ${sqlitePath}`)
+      startupLog(`[Electron] Resources: ${process.resourcesPath}`)
 
       if (!fs.existsSync(serverPath)) {
-        startupLog('[Electron] FATAL: standalone server.js not found');
+        startupLog('[FATAL] server.js not found')
+        destroySplash();
         dialog.showErrorBox(
-          'Initialization Error',
-          `Standalone server not found at:\n${serverPath}\n\nPlease reinstall the application.`
-        );
-        app.quit();
-        return;
+          'Installation Error',
+          `Server not found at:\n${serverPath}\n\nPlease reinstall Noxis.`
+        )
+        app.quit()
+        return
+      }
+
+      // Check SQLite binding exists (check both node-gyp build and prebuilds layout)
+      let sqliteBinding = path.join(
+        sqlitePath,
+        'build',
+        'Release',
+        'better_sqlite3.node'
+      )
+      if (!fs.existsSync(sqliteBinding)) {
+        sqliteBinding = path.join(
+          sqlitePath,
+          'prebuilds',
+          `win32-x64`,
+          `node.napi.node`
+        )
+      }
+      const sqliteExists = fs.existsSync(sqliteBinding)
+      startupLog(`[Electron] SQLite binding exists: ${sqliteExists}`)
+      if (!sqliteExists) {
+        startupLog(`[WARN] SQLite binding not found at ${sqliteBinding}`)
+        startupLog(`[WARN] Listing sqlite dir:`)
+        try {
+          const listDir = (dir: string, depth = 0) => {
+            if (depth > 3) return
+            fs.readdirSync(dir).forEach(f => {
+              startupLog(
+                `${'  '.repeat(depth)}${f}`
+              )
+              const full = path.join(dir, f)
+              if (fs.statSync(full).isDirectory()) {
+                listDir(full, depth + 1)
+              }
+            })
+          }
+          listDir(sqlitePath)
+        } catch (e: any) {
+          startupLog(`[WARN] Could not list: ${e.message}`)
+        }
       }
 
       const userDataPath = app.getPath('userData');
       fs.mkdirSync(userDataPath, { recursive: true });
-
-      let serverErrorOutput = '';
-
-      startupLog('[Electron] Spawning Next.js server...');
 
       nextServer = spawn(process.execPath, [serverPath], {
         env: {
           ...process.env,
           PORT:                 String(PORT),
           NODE_ENV:             'production',
+          HOSTNAME:             '127.0.0.1',
           ELECTRON_USER_DATA:   userDataPath,
           ELECTRON_RESOURCES:   process.resourcesPath,
           ELECTRON_RUN_AS_NODE: '1',
-          ELECTRON_DB_KEY:      deriveDbKey(process.env.USER_ID || 'SYSTEM'),
-          // Explicitly forward critical keys — don't rely solely on spread
-          NEXT_PUBLIC_SUPABASE_URL:  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+
+          // CRITICAL: Tell Node where to find
+          // the native sqlite binding
           NODE_PATH: [
-            path.join(process.resourcesPath, 'app.asar', 'node_modules'),
+            sqlitePath,
             path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules'),
             path.join(process.resourcesPath, 'standalone', 'node_modules'),
+            path.join(process.resourcesPath, 'standalone'),
           ].join(path.delimiter),
+
+          // Native module path override
+          BETTER_SQLITE3_BINDING: sqliteBinding,
+
+          // Supabase from env
+          NEXT_PUBLIC_SUPABASE_URL:  process.env.NEXT_PUBLIC_SUPABASE_URL  ?? '',
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
+          SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+
+          // Electron DB key
+          ELECTRON_DB_KEY: deriveDbKey(
+            process.env.USER_ID || 'SYSTEM'
+          ),
         },
         stdio: 'pipe',
-      });
+      })
 
-      nextServer.stdout?.on('data', (d: Buffer) =>
-        startupLog(`[Next.js] ${d.toString().trim()}`)
-      );
+      // Log ALL server output — this shows the exact crash message
+      let serverLog = ''
+      nextServer.stdout?.on('data', (d: Buffer) => {
+        const msg = d.toString().trim()
+        startupLog(`[Next.js] ${msg}`)
+        serverLog += msg + '\n'
+      })
       nextServer.stderr?.on('data', (d: Buffer) => {
-        const msg = d.toString().trim();
-        startupLog(`[Next.js ERR] ${msg}`);
-        serverErrorOutput += msg + '\n';
-      });
+        const msg = d.toString().trim()
+        startupLog(`[Next.js ERR] ${msg}`)
+        serverLog += '[ERR] ' + msg + '\n'
+      })
       nextServer.on('error', (err) => {
-        startupLog(`[Next.js] Spawn error: ${err.message}`);
-        dialog.showErrorBox('Server Error', `Failed to start server:\n${err.message}`);
-      });
+        startupLog(`[Next.js] Spawn error: ${err.message}`)
+      })
       nextServer.on('exit', (code) => {
-        startupLog(`[Next.js] Exited with code: ${code}`);
+        startupLog(`[Next.js] Exit code: ${code}`)
+        startupLog(`[Next.js] Last output:\n${serverLog.slice(-1000)}`)
         if (code !== 0 && code !== null) {
+          destroySplash();
           dialog.showErrorBox(
             'Server Crashed',
-            `Background server exited with code ${code}.\n\nLast errors:\n${serverErrorOutput.slice(-500)}`
+            `Server exited with code ${code}.\n\nLast server output:\n${serverLog.slice(-500)}`
           );
         }
         nextServer = null;
-      });
-
-
+      })
     }
 
-    // ── Create window (server is guaranteed ready at this point) ──
-    startupLog('[Electron] Creating window...');
-    await createWindow();
+    // ── STEP 3: Create main window (loads silently) ──
+    // Splash stays visible while this loads.
+    // ready-to-show event handles the transition.
+    await createMainWindow();
 
+    // ── STEP 4: Setup non-blocking features ──
+    // Run these AFTER window is shown, not before.
+    // This prevents blocking the UI thread at startup.
     if (mainWindow) {
-      setupAutoUpdater(mainWindow);
+      // Delay non-critical setup to keep UI responsive
+      setTimeout(() => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          setupAutoUpdater(mainWindow);
+        }
+      }, 5000);
+
+      setTimeout(() => {
+        startMemoryMonitor();
+      }, 10000);
+
+      setTimeout(() => {
+        spawnVisionEngine();
+      }, 8000);
     }
-
-    startMemoryMonitor();
-
-    // ── Start vision engine ──
-    spawnVisionEngine();
   });
 
-  // Windows: closing all windows = quit app (no darwin exception needed)
+  // Windows: quit when all windows close
   app.on('window-all-closed', () => app.quit());
 
-  // ── Cleanup everything on quit ──
+  // Cleanup on quit
   app.on('before-quit', () => {
     startupLog('[Electron] Shutting down...');
 
@@ -733,19 +732,17 @@ if (!gotTheLock) {
     if (warningTimer)        clearTimeout(warningTimer);
     if (memoryMonitorInterval) clearInterval(memoryMonitorInterval);
 
-    if (visionProcess) {
-      startupLog('[Vision] Killing vision process...');
-      killProcess(visionProcess, 'Vision Engine');
-      visionProcess = null;
+    if (splashWindow && !splashWindow.isDestroyed()) {
+      splashWindow.destroy();
     }
 
-    if (nextServer) {
-      startupLog('[Next.js] Killing server process...');
-      killProcess(nextServer, 'Next.js Server');
-      nextServer = null;
-    }
+    killProcess(visionProcess, 'Vision Engine');
+    killProcess(nextServer, 'Next.js Server');
+
+    visionProcess = null;
+    nextServer = null;
 
     startupLog('[Electron] Shutdown complete ✓');
   });
 
-} // end gotTheLock
+}

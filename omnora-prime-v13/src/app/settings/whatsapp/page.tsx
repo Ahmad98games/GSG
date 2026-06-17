@@ -20,6 +20,7 @@ import { FeatureGate } from "@/components/ui/FeatureGate";
 import { useToast } from "@/hooks/useToast";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { createClient } from "@/lib/supabase/client";
+import { humanizeError } from "@/lib/utils/errors";
 
 import FeatureLock from "@/components/ui/FeatureLock";
 import { cn } from "@/lib/utils";
@@ -86,9 +87,8 @@ export default function WhatsAppSettingsPage() {
       if (error) throw error;
       toast.success("Configuration saved", "WhatsApp business parameters committed successfully.");
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
       console.error(err);
-      toast.error("Failed to save", message);
+      toast.error("Failed to save", humanizeError(err, "save whatsapp configuration"));
     } finally {
       setIsSaving(false);
     }
@@ -116,7 +116,7 @@ export default function WhatsAppSettingsPage() {
       setTestResult("Test message dispatched to " + config.owner_phone);
       toast.success("Test message sent!", "Check your WhatsApp for the verification text.");
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
+      const message = humanizeError(err, "send test message");
       setTestStatus("error");
       setTestResult(message);
       toast.error("Failed to send test", message);

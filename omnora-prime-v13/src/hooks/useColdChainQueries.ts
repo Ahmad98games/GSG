@@ -12,7 +12,6 @@ export function useColdChainLatest() {
       if (error) throw error;
       return data;
     },
-    refetchInterval: 60_000,
   });
 }
 

@@ -11,6 +11,7 @@ import { ROLE_LABELS, type StaffRole } from "@/lib/auth/permissions";
 import { useTierStore } from "@/stores/tierStore";
 import { FeatureGate } from "@/components/ui/FeatureGate";
 import { useToast } from "@/hooks/useToast";
+import { humanizeError } from '@/lib/utils/errors';
 
 export default function StaffUsersPage() {
   const router = useRouter();
@@ -47,8 +48,9 @@ export default function StaffUsersPage() {
       queryClient.invalidateQueries({ queryKey: ['staff_users'] });
       setShowInvite(false);
       setInviteEmail(""); setInviteName(""); setInviteRole("viewer");
+      toast.success('Invitation sent successfully');
     },
-    onError: (err: any) => alert(err.message),
+    onError: (err: any) => toast.error(humanizeError(err, 'send invitation')),
   });
 
   const roleInfo = (role: string) => ROLE_LABELS[role as StaffRole] || ROLE_LABELS.viewer;

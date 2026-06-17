@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
+import { useToast } from '@/hooks/useToast';
 import { motion } from 'framer-motion';
 import { Globe, Users, Inbox, CheckCircle2, Search, MapPin, Factory } from 'lucide-react';
 import { GLOBAL_INDUSTRIES, getIndustryLabel } from '@/lib/network/industries';
@@ -67,7 +68,9 @@ function NetworkDirectory() {
   const [loading, setLoading] = useState(false);
   const searchRef = useRef(search);
   searchRef.current = search;
+  const toast = useToast();
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const searchFactories = useCallback(async () => {
     setLoading(true);
     const term = searchRef.current.trim();
@@ -340,7 +343,7 @@ export default function NetworkPage() {
             
             <h1 className="text-3xl font-black tracking-tight text-white uppercase italic flex items-center justify-center md:justify-start gap-3">
               <Globe className="text-electric-blue animate-spin-slow" size={28} />
-              <span>Noxis Factory Network</span>
+              <span>Noxis Factory Network(Beta)</span>
             </h1>
             <p className="text-gray-400 text-sm max-w-xl leading-relaxed">
               Connect with verified factories across Pakistan, UAE, Bangladesh, Turkey and beyond. Find suppliers. Sell surplus. Trade directly.

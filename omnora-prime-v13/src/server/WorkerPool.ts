@@ -3,9 +3,6 @@ import path from 'path';
 import fs from 'fs';
 import { logger } from '../lib/logger';
 
-// Ensures TypeScript emits the worker alongside the Electron/server bundle (.js path at runtime).
-// import '../lib/nsp/nsp-worker';
-
 /**
  * Noxis v13.0 — Priority Worker Pool
  */
@@ -26,8 +23,15 @@ interface Task {
   timestamp: number;
 }
 
+interface WorkerState {
+  worker: Worker;
+  lastActive: number;
+  isStalled: boolean;
+  activeTask: Task | null;
+}
+
 export class WorkerPool {
-  private workers: { worker: Worker; lastActive: number; isStalled: boolean }[] = [];
+  private workers: WorkerState[] = [];
   private queues: Task[][] = [[], [], [], []];
   private poolSize: number;
   private workerPath: string;
@@ -57,70 +61,97 @@ export class WorkerPool {
 
   private init() {
     for (let i = 0; i < this.poolSize; i++) {
-      this.spawnWorker();
+      this.spawnWorker(i);
     }
   }
 
-  private spawnWorker() {
+  private spawnWorker(index: number) {
     const worker = new Worker(this.workerPath, {
       execArgv: this.workerExecArgv,
     });
 
-    const index = this.workers.length;
-    
+    const workerState: WorkerState = {
+      worker,
+      lastActive: Date.now(),
+      isStalled: false,
+      activeTask: null
+    };
+
+    this.workers[index] = workerState;
+
     worker.on('message', (result) => {
-      this.workers[index].lastActive = Date.now();
+      workerState.lastActive = Date.now();
+      const task = workerState.activeTask;
+      workerState.activeTask = null;
+
+      if (task) {
+        if (result && result.status === 'ok') {
+          task.resolve(result.payload);
+        } else {
+          task.reject(new Error(result?.error || 'Worker execution failed'));
+        }
+      }
       this.processNext();
     });
 
     worker.on('error', (err) => {
       logger.error({ err, workerIndex: index }, 'Worker error');
+      const task = workerState.activeTask;
+      workerState.activeTask = null;
+      if (task) {
+        task.reject(err);
+      }
       this.restartWorker(index);
     });
 
     worker.on('exit', (code) => {
       if (code !== 0) {
         logger.warn({ code, workerIndex: index }, 'Worker exited unexpectedly');
+        const task = workerState.activeTask;
+        workerState.activeTask = null;
+        if (task) {
+          task.reject(new Error(`Worker exited with code ${code}`));
+        }
         this.restartWorker(index);
       }
     });
-
-    this.workers.push({ worker, lastActive: Date.now(), isStalled: false });
   }
 
   private restartWorker(index: number) {
-    this.workers[index].worker.terminate();
-    // Spawn new worker logic simplified for brevity
     logger.info({ workerIndex: index }, 'Restarting worker');
-    // ... logic to replace worker in array ...
+    try {
+      if (this.workers[index] && this.workers[index].worker) {
+        this.workers[index].worker.terminate();
+      }
+    } catch (e) {}
+    this.spawnWorker(index);
   }
 
   private startWatchdog() {
     setInterval(() => {
       const now = Date.now();
       this.workers.forEach((w, i) => {
-        if (now - w.lastActive > 10000) { // 10s timeout
-          logger.warn({ workerIndex: i }, 'Worker stalled — watchdog triggering restart');
+        // Only restart if the worker is currently executing a task and has been stuck for > 10 seconds
+        if (w.activeTask !== null && (now - w.lastActive > 10000)) {
+          logger.warn({ workerIndex: i, taskType: w.activeTask.type }, 'Worker stalled on active task — watchdog triggering restart');
           this.restartWorker(i);
         }
       });
 
-      // Log metrics
       const metrics = this.getMetrics();
       logger.info(metrics, 'Worker Pool Status');
-    }, 30000);
+    }, 300_000);
   }
 
   public getMetrics() {
     return {
       queueDepth: this.queues.reduce((acc, q) => acc + q.length, 0),
-      workerUtilization: this.workers.filter(w => !w.isStalled).length / this.poolSize * 100,
+      workerUtilization: this.workers.filter(w => w.activeTask !== null).length / this.poolSize * 100,
       activeWorkers: this.workers.length
     };
   }
 
   public enqueue(type: string, payload: any, priority: TaskPriority = TaskPriority.MEDIUM): Promise<any> {
-    // Backpressure
     if (this.queues[TaskPriority.MEDIUM].length > 500 && priority === TaskPriority.MEDIUM) {
       return Promise.reject(new Error('BACKPRESSURE_REJECT'));
     }
@@ -134,16 +165,35 @@ export class WorkerPool {
   }
 
   private processNext() {
-    // Priority dequeue logic
-    for (const queue of this.queues) {
-      if (queue.length > 0) {
-        const task = queue.shift();
-        if (task) {
-          // Find idle worker and post task
-          const worker = this.workers[0].worker; // Simplified round-robin for now
-          worker.postMessage({ type: task.type, payload: task.payload });
-          // In real implementation, handle resolve/reject on message return
+    const SHARED_KEY = Buffer.alloc(32, process.env.NSP_SHARED_KEY || 'test-key-001');
+
+    while (true) {
+      const idleWorkerState = this.workers.find(w => !w.isStalled && w.activeTask === null);
+      if (!idleWorkerState) {
+        break;
+      }
+
+      let taskToProcess: Task | null = null;
+      for (const queue of this.queues) {
+        if (queue.length > 0) {
+          taskToProcess = queue.shift() || null;
+          break;
         }
+      }
+
+      if (!taskToProcess) {
+        break;
+      }
+
+      idleWorkerState.activeTask = taskToProcess;
+      idleWorkerState.lastActive = Date.now();
+
+      if (taskToProcess.type === 'DECRYPT_AND_PARSE') {
+        const rawData = taskToProcess.payload.data as Buffer;
+        const encrypted = rawData.subarray(4);
+        idleWorkerState.worker.postMessage({ encrypted, key: SHARED_KEY });
+      } else {
+        idleWorkerState.worker.postMessage({ type: taskToProcess.type, payload: taskToProcess.payload });
       }
     }
   }
@@ -151,11 +201,9 @@ export class WorkerPool {
 
 let globalPoolInstance: WorkerPool | null = null;
 
-/** Lazy singleton so importing `@/server/server` during `next build` never starts worker threads. */
 export function getGlobalPool(): WorkerPool {
   if (!globalPoolInstance) {
     globalPoolInstance = new WorkerPool(Number(process.env.HUB_WORKER_POOL_SIZE) || 4);
   }
   return globalPoolInstance;
 }
-

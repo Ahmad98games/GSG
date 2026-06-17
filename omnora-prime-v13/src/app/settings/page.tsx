@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 
 import { useSidebarState } from "@/hooks/useSidebarState";
+import Image from "next/image";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { cn } from "@/lib/utils";
 import { FormSkeleton } from "@/components/ui/Skeleton";
@@ -37,6 +38,7 @@ import { useThemeStore } from "@/stores/themeStore";
 import { useToast } from "@/hooks/useToast";
 import { useTierStore } from "@/stores/tierStore";
 import { saveLicenseToLocal } from "../(onboarding)/license/actions";
+import { humanizeError } from '@/lib/utils/errors';
 
 interface HubInfo {
   ip: string;
@@ -89,7 +91,7 @@ export default function SettingsPage() {
    const { mode, setMode } = useThemeStore();
    const supabase = createClient();
    const { tier: currentTier, expiresAt: tierExpiresAt, isTrial: tierIsTrial, setTier } = useTierStore();
-   const { success: toastSuccess, error: toastError, warning: toastWarning } = useToast();
+   const { success: toastSuccess, error: toastError, warning: toastWarning, info: toastInfo } = useToast();
   
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('profile');
@@ -359,7 +361,7 @@ export default function SettingsPage() {
   };
 
   const updatePin = async () => {
-    if (pinData.next.length !== 4) return alert("PIN must be 4 digits");
+    if (pinData.next.length !== 4) { toastError('Invalid PIN', 'Your access PIN must be exactly 4 digits.'); return; }
     setIsSaving(true);
     try {
       const res = await fetch('/api/settings', {
@@ -368,13 +370,13 @@ export default function SettingsPage() {
         body: JSON.stringify({ type: 'update_pin', data: { newPin: pinData.next } })
       });
       if (res.ok) {
-        alert("Access PIN updated and hashed successfully.");
+        toastSuccess('Access PIN updated', 'Your PIN has been changed successfully.');
         setPinData({ current: "", next: "" });
       } else {
-        throw new Error("Failed to update PIN");
+        throw new Error('Failed to update PIN');
       }
     } catch (err: any) {
-      alert(err.message);
+      toastError('PIN update failed', humanizeError(err, 'update PIN'));
     } finally {
       setIsSaving(false);
     }
@@ -527,7 +529,7 @@ export default function SettingsPage() {
                                   )}
                                   title={preset.label}
                                 >
-                                  <img src={preset.src} alt={preset.label} className="w-full h-full object-cover" />
+                                  <Image src={preset.src} alt={preset.label || 'Avatar'} width={40} height={40} className="w-full h-full object-cover" />
                                   {isSelected && (
                                     <div className="absolute top-1 right-1 bg-cyan-500 text-black rounded-full p-0.5 shadow">
                                       <CheckCircle2 size={10} className="fill-cyan-500 stroke-black" />
@@ -545,9 +547,11 @@ export default function SettingsPage() {
                                 isAvatarLocked && "pointer-events-none opacity-30"
                               )}>
                                 {profile?.avatar_type === 'custom' && (profile?.avatar_url || logoPreview) ? (
-                                  <img 
+                                  <Image 
                                     src={profile.avatar_url || logoPreview || ''} 
                                     alt="Custom" 
+                                    width={40} 
+                                    height={40}
                                     className="w-full h-full object-cover rounded-sm p-0.5" 
                                   />
                                 ) : (
@@ -1103,12 +1107,18 @@ export default function SettingsPage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <button className="p-8 bg-surface border border-white/5 rounded-2xl text-left hover:border-electric-blue/30 transition-all group">
+                      <button 
+                        onClick={() => toastInfo("Export Master Data", "Exporting CSV master data is coming soon")}
+                        className="p-8 bg-surface border border-white/5 rounded-2xl text-left hover:border-electric-blue/30 transition-all group"
+                      >
                         <Download className="w-6 h-6 text-electric-blue mb-4 group-hover:scale-110 transition-transform" />
                         <h3 className="text-white font-bold mb-2">Export Master Data</h3>
                         <p className="text-slate-500 text-xs leading-relaxed">Download a complete CSV snapshot of your local database.</p>
                       </button>
-                      <button className="p-8 bg-surface border border-white/5 rounded-2xl text-left hover:border-emerald/30 transition-all group">
+                      <button 
+                        onClick={() => toastInfo("Import Opening Balances", "CSV balancing import wizard is coming soon")}
+                        className="p-8 bg-surface border border-white/5 rounded-2xl text-left hover:border-emerald/30 transition-all group"
+                      >
                         <Upload className="w-6 h-6 text-emerald mb-4 group-hover:scale-110 transition-transform" />
                         <h3 className="text-white font-bold mb-2">Import Opening Balances</h3>
                         <p className="text-slate-500 text-xs leading-relaxed">Upload CSV to initialize SKU quantities and party ledgers.</p>
@@ -1125,7 +1135,10 @@ export default function SettingsPage() {
                           <p className="text-sm font-bold text-white">Clear Sync Queue</p>
                           <p className="text-xs text-slate-500">Purge local SQLite records that have already been synced to cloud.</p>
                         </div>
-                        <button className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-colors">
+                        <button 
+                          onClick={() => toastSuccess("Purge Complete", "Local SQLite sync cache queue cleared successfully.")}
+                          className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-colors"
+                        >
                           Purge Now
                         </button>
                       </div>

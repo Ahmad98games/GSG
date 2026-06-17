@@ -13,6 +13,7 @@ import { isRTL, getFontFamily } from "@/lib/locale-utils";
 import AskNoxis from "@/components/knowledge/AskNoxis";
 import { GlobalErrorBoundary } from "@/components/ui/GlobalErrorBoundary";
 import Script from "next/script";
+import ElectronMotionWrapper from "@/components/providers/ElectronMotionWrapper";
 
 export const metadata = {
   title: 'Noxis — Industrial ERP for Factories',
@@ -140,6 +141,7 @@ export default async function RootLayout({
           crossOrigin="anonymous"
           strategy="afterInteractive"
         />
+        <ElectronMotionWrapper>
         <ClientI18nProvider initialLocale={locale} initialMessages={messages}>
           <AuditProvider>
             <QueryProvider>
@@ -156,6 +158,7 @@ export default async function RootLayout({
             </QueryProvider>
           </AuditProvider>
         </ClientI18nProvider>
+        </ElectronMotionWrapper>
       </body>
     </html>
   );

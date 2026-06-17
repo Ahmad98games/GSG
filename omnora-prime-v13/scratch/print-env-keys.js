@@ -1,9 +1,16 @@
-const path = require('path')
-require('dotenv').config({ path: path.resolve(__dirname, '../.env.local') })
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env.local') });
 
-console.log('Env Keys containing DB or PASSWORD or KEY:')
-for (const key of Object.keys(process.env)) {
-  if (key.includes('DB') || key.includes('PASSWORD') || key.includes('KEY') || key.includes('POSTGRES') || key.includes('DATABASE')) {
-    console.log(`${key}: ${process.env[key] ? 'DEFINED (length ' + process.env[key].length + ')' : 'UNDEFINED'}`)
+for (const [key, value] of Object.entries(process.env)) {
+  if (key.includes('SUPABASE') || key.includes('DB') || key.includes('URL') || key.includes('DATABASE')) {
+    let masked = value;
+    if (value && value.includes('://')) {
+      const parts = value.split('://');
+      const authParts = parts[1].split('@');
+      if (authParts.length > 1) {
+        masked = `${parts[0]}://****:****@${authParts[1]}`;
+      }
+    }
+    console.log(`${key}: ${masked}`);
   }
 }

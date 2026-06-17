@@ -5,6 +5,7 @@ import { useBusinessProfile }
   from '@/hooks/useBusinessProfile'
 import { useTierStore }
   from '@/stores/tierStore'
+import { humanizeError } from '@/lib/utils/errors'
 
 interface FeedbackModalProps {
   isOpen: boolean
@@ -88,9 +89,7 @@ export function FeedbackModal({
       setStep('done')
     } catch (err: any) {
       console.error('[Feedback] Submission failed:', err)
-      setError(
-        err?.message || 'Could not submit. Check internet and try again.'
-      )
+      setError(humanizeError(err, 'submit feedback'))
     } finally {
       setSubmitting(false)
     }

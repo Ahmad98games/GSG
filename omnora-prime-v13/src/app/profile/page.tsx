@@ -230,9 +230,9 @@ export default function BusinessProfilePage() {
                     {/* Avatar Section */}
                     <div className="flex flex-col items-center space-y-4 pb-6 mb-6 border-b border-white/5">
                        <div className="relative group w-20 h-20">
-                          <div className="w-full h-full rounded-full bg-electric-blue flex items-center justify-center text-white text-2xl font-mono overflow-hidden border-2 border-white/10 shadow-2xl">
+                          <div className="w-full h-full rounded-full bg-electric-blue flex items-center justify-center text-white text-2xl font-mono overflow-hidden border-2 border-white/10 shadow-2xl relative">
                              {currentAvatar ? (
-                               <img src={currentAvatar} alt="Avatar" className="w-full h-full object-cover" />
+                               <Image src={currentAvatar} alt="Avatar" width={80} height={80} className="w-full h-full object-cover" />
                              ) : (
                                (profile?.business_name?.[0] || 'N').toUpperCase()
                              )}
