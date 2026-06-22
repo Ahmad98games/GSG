@@ -6,4 +6,4 @@ directory = "./omnora-prime-v13/out"
 not_found_handling = "single-page-application"
 
 [build]
-command = "npm install --legacy-peer-deps --no-scripts && npm run build"
+command = "npm install --prefix omnora-prime-v13 --legacy-peer-deps && npm run build"

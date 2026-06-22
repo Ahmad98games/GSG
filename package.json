@@ -6,7 +6,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "npm run build --prefix omnora-prime-v13",
+    "build": "npm install --prefix omnora-prime-v13 --legacy-peer-deps && npm run build --prefix omnora-prime-v13",
     "cf:deploy": "npm run build && wrangler deploy",
     "cf:pages": "npm run build && wrangler pages deploy omnora-prime-v13/out --project-name=noxishub"
   },
