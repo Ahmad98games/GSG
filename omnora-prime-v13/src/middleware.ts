@@ -74,7 +74,7 @@ export async function middleware(request: NextRequest) {
   const { data: { session } } = await supabase.auth.getSession()
   
   // Public routes — no auth needed
-  const publicRoutes = ['/', '/login', '/pricing', '/docs', '/download', '/portal', '/api', '/license', '/admin']
+  const publicRoutes = ['/', '/login', '/pricing', '/docs', '/download', '/portal', '/api', '/license', '/admin', '/dashboard/login']
   const isPublic = publicRoutes.some(r => pathname === r || pathname.startsWith(r))
   
   // A. License Check (Industrial Gate)
@@ -114,18 +114,27 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  if (!licenseActive && !isPublic && !pathname.startsWith('/_next')) {
+  if (!licenseActive && !isPublic && !pathname.startsWith('/_next') && !pathname.startsWith('/dashboard')) {
     return NextResponse.redirect(new URL('/license', request.url))
   }
 
   // C. Auth Check
-  if (!session && !isPublic) {
-    return NextResponse.redirect(new URL('/login', request.url))
-  }
-  
-  // Redirect to dashboard if already logged in
-  if (session && pathname === '/login') {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+  if (pathname.startsWith('/dashboard')) {
+    if (!session && pathname !== '/dashboard/login') {
+      return NextResponse.redirect(new URL('/dashboard/login', request.url))
+    }
+    if (session && pathname === '/dashboard/login') {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+  } else {
+    if (!session && !isPublic) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+    
+    // Redirect to dashboard if already logged in
+    if (session && pathname === '/login') {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
   }
 
   // Redirect to setup if onboarding is not complete
@@ -142,6 +151,7 @@ export async function middleware(request: NextRequest) {
       if (!isComplete
         && pathname !== '/setup'
         && pathname !== '/license'
+        && !pathname.startsWith('/dashboard')
         && !pathname.startsWith('/api')
         && !pathname.startsWith('/_next')) {
         return NextResponse.redirect(new URL('/setup', request.url))

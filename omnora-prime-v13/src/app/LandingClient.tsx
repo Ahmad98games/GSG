@@ -192,13 +192,31 @@ export default function LandingClient() {
                 ))}
               </div>
 
-              <Link
-                href="/download"
-                className="hidden lg:inline-flex items-center text-[10px] font-bold tracking-[0.2em] uppercase px-6 py-2.5 rounded-sm transition-all"
-                style={{ background: CHAMPAGNE, color: OBSIDIAN, boxShadow: `0 0 40px ${CHAMPAGNE}22` }}
-              >
-                Download Studio
-              </Link>
+              <div className="hidden lg:flex items-center gap-4">
+                <Link
+                  href="/dashboard"
+                  style={{
+                    background: 'rgba(96,165,250,0.1)',
+                    border: '1px solid rgba(96,165,250,0.2)',
+                    color: '#60A5FA',
+                    padding: '8px 16px',
+                    borderRadius: 4,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                  }}
+                  className="inline-flex items-center text-[10px] font-bold tracking-[0.15em] uppercase hover:bg-blue-400/20 transition-all"
+                >
+                  Owner Login →
+                </Link>
+                <Link
+                  href="/download"
+                  className="inline-flex items-center text-[10px] font-bold tracking-[0.2em] uppercase px-6 py-2.5 rounded-sm transition-all"
+                  style={{ background: CHAMPAGNE, color: OBSIDIAN, boxShadow: `0 0 40px ${CHAMPAGNE}22` }}
+                >
+                  Download Studio
+                </Link>
+              </div>
 
               <button type="button" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="lg:hidden p-2 text-white/70 hover:text-white" aria-label="Menu">
                 {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
@@ -220,6 +238,24 @@ export default function LandingClient() {
                         {link.label}
                       </Link>
                     ))}
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setMobileMenuOpen(false)}
+                      style={{
+                        background: 'rgba(96,165,250,0.1)',
+                        border: '1px solid rgba(96,165,250,0.2)',
+                        color: '#60A5FA',
+                        padding: '10px 16px',
+                        borderRadius: 4,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        textDecoration: 'none',
+                        textAlign: 'center',
+                      }}
+                      className="text-[10px] font-bold tracking-widest uppercase"
+                    >
+                      Owner Login →
+                    </Link>
                     <Link href="/download" onClick={() => setMobileMenuOpen(false)} className="text-center text-[10px] font-bold tracking-widest uppercase py-3 rounded-sm" style={{ background: CHAMPAGNE, color: OBSIDIAN }}>
                       Download Studio
                     </Link>

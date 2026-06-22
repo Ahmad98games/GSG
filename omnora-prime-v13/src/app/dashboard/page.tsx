@@ -1,714 +1,827 @@
-"use client";
+'use client'
 
-import React, { useEffect, useMemo, useState, useRef, memo } from "react";
-import Link from "next/link";
-
-import SentinelAlertOverlay from "@/components/alerts/SentinelAlertOverlay";
-import { useSidebarState } from "@/hooks/useSidebarState";
-import { useBusinessProfile } from "@/hooks/useBusinessProfile";
-import { usePersona } from "@/hooks/usePersona";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import { 
-  AlertCircle, Clock, CheckCircle2, Globe, ShieldCheck, 
-  TrendingUp, TrendingDown, DollarSign, Package, 
-  ShoppingCart, Truck, Wallet, Activity, Zap,
-  ArrowUpRight, ArrowDownRight, MessageCircle
-} from "lucide-react";
-import { sendWhatsAppAlert, ALERT_TEMPLATES } from "@/lib/whatsapp/alertEngine";
-import { openWhatsApp, WA_TEMPLATES } from "@/lib/utils/whatsapp";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { Decimal } from 'decimal.js';
-import { cn } from "@/lib/utils";
-import { format, subDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
-import EmptyState from "@/components/ui/EmptyState";
-import OnboardingChecklist from "@/components/shell/OnboardingChecklist";
-import DataFreshness from "@/components/ui/DataFreshness";
-import DailyBrief from "@/components/dashboard/DailyBrief";
-import PatternAlerts from "@/components/dashboard/PatternAlerts";
-import AnimatedNumber from "@/components/ui/AnimatedNumber";
-import WelcomeGuide from "@/components/onboarding/WelcomeGuide";
-import CCTVWidget from "@/components/dashboard/CCTVWidget";
-import DeadStockWidget from "@/components/dashboard/DeadStockWidget";
-import PromiseAlertWidget from "@/components/dashboard/PromiseAlertWidget";
-import { useIndustry, useIndustryLabels } from "@/components/providers/IndustryProvider";
-import { MobileAppBanner } from "@/components/dashboard/MobileAppBanner";
-import { Skeleton, KpiCardSkeleton } from "@/components/ui/Skeleton";
-import { ErrorState } from "@/components/ui/StateViews";
-import { FeedbackModal } from "@/components/ui/FeedbackModal";
-import { IntelligenceWidget } from "@/components/dashboard/IntelligenceWidget";
+  Users, 
+  TrendingUp, 
+  DollarSign, 
+  Package, 
+  Truck, 
+  ShoppingBag, 
+  RefreshCw, 
+  LogOut, 
+  AlertTriangle, 
+  Calendar, 
+  ChevronRight,
+  ShieldAlert,
+  MapPin,
+  Sparkles,
+  Lock
+} from 'lucide-react'
 
+interface DashboardData {
+  businessName: string
+  industry: string
+  city: string
+  tier: string
+  currency: string
 
-import { useToast } from "@/hooks/useToast";
+  // Today
+  presentToday: number
+  totalKarigars: number
+  absentToday: number
 
-export default function DashboardPage() {
-  const { profile, businessName, setProfile } = useBusinessProfile();
-  const { persona, isLoading: isPersonaLoading, fmt, fmtQty, vocab, t, businessId } = usePersona();
-  const { activeIndustry } = useIndustry();
-  const { getIndustryLabel } = useIndustryLabels();
-  const toast = useToast();
+  // This month
+  revenueThisMonth: number
+  invoiceCount: number
+  pendingReceivables: number
+  overdueCount: number
 
-  const [showWelcome, setShowWelcome] = useState(false);
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [show7DayPrompt, setShow7DayPrompt] = useState(false);
-  const welcomeDismissedRef = useRef(false);
-  const supabase = createClient();
-  const queryClient = useQueryClient();
+  // Stock
+  stockValue: number
+  lowStockCount: number
 
-  useEffect(() => {
-    const installDate = localStorage.getItem('noxis_install_date');
-    if (!installDate) {
-      localStorage.setItem('noxis_install_date', new Date().toISOString());
-      return;
-    }
-    const days = Math.floor((Date.now() - new Date(installDate).getTime()) / (1000 * 60 * 60 * 24));
-    const feedbackShown = localStorage.getItem('feedback_7day_shown');
-    if (days >= 7 && !feedbackShown) {
-      localStorage.setItem('feedback_7day_shown', 'true');
-      queueMicrotask(() => setShow7DayPrompt(true));
-    }
-  }, []);
-  
+  // Pending
+  pendingDispatch: number
+  pendingPurchases: number
 
-  // Realtime Subscriptions
-  useEffect(() => {
-    if (!businessId) return;
+  // Payroll
+  totalPayrollThisMonth: number
+  totalPeshgiOutstanding: number
 
-    const channel = supabase.channel('dashboard-updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices', filter: `business_id=eq.${businessId}` }, () => {
-        queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ledger_entries', filter: `business_id=eq.${businessId}` }, () => {
-        queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'anomaly_alerts', filter: `business_id=eq.${businessId}` }, () => {
-        queryClient.invalidateQueries({ queryKey: ['anomalies'] });
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [businessId, supabase, queryClient]);
-
-  // Fetch KPIs
-  const { data: kpis, isLoading: isKpiLoading, error: kpiError, refetch: refetchKpis } = useQuery({
-    queryKey: ['dashboard-kpis', businessId],
-    queryFn: async () => {
-      const now = new Date();
-      const startOfMonthStr = format(startOfMonth(now), 'yyyy-MM-dd');
-      const todayStr = format(now, 'yyyy-MM-dd');
-
-      const [
-        { data: salesMonth, error: salesError },
-        { data: receivables, error: recvError },
-        { data: skus, error: skusError },
-        { data: cash, error: cashError },
-        { data: tax, error: taxError },
-        { data: pl, error: plError },
-        { count: activeOrders, error: ordersError },
-        { count: pendingDeliveries, error: logisticsError }
-      ] = await Promise.all([
-        supabase.from('invoices').select('total').eq('business_id', businessId).gte('issue_date', startOfMonthStr).not('status', 'in', ['cancelled']),
-        supabase.from('invoices').select('balance_due').eq('business_id', businessId).not('status', 'in', ['paid', 'cancelled']),
-        supabase.from('skus').select('qty_on_hand, cost_price').eq('business_id', businessId),
-        supabase.rpc('get_account_balances', { p_business_id: businessId, p_as_at_date: todayStr }),
-        supabase.from('ledger_entries').select('amount, entry_type').eq('business_id', businessId).eq('account_id', (await supabase.from('accounts').select('id').eq('business_id', businessId).eq('account_code', '2100').single()).data?.id),
-        supabase.rpc('get_profit_loss', { p_business_id: businessId, p_date_from: startOfMonthStr, p_date_to: todayStr }),
-        supabase.from('production_batches').select('*', { count: 'exact', head: true }).eq('business_id', businessId).not('status', 'in', ['completed', 'cancelled']),
-        supabase.from('invoices').select('*', { count: 'exact', head: true }).eq('business_id', businessId).eq('status', 'posted').not('metadata->>dispatch_status', 'eq', 'delivered')
-      ]);
-
-      if (salesError || recvError || skusError || cashError || taxError || plError) {
-        console.error("Dashboard Fetch Error:", { salesError, recvError, skusError, cashError, taxError, plError });
-      }
-
-      const totalSales = (salesMonth || []).reduce((acc: Decimal, inv: any) => acc.plus(new Decimal(inv.total ?? '0')), new Decimal(0));
-      const totalReceivables = (receivables || []).reduce((acc: Decimal, inv: any) => acc.plus(new Decimal(inv.balance_due ?? '0')), new Decimal(0));
-      const inventoryValue = (skus || []).reduce((acc: Decimal, s: any) => acc.plus(new Decimal(s.qty_on_hand ?? '0').times(new Decimal(s.cost_price ?? '0'))), new Decimal(0));
-      const cashOnHand = new Decimal((cash || []).find((c: any) => c.account_code === '1001' || c.account_code === '1002')?.balance ?? '0');
-      const netProfit = new Decimal(pl?.find((r: any) => r.section === 'net_profit' && r.is_subtotal)?.amount ?? '0');
-      
-      return {
-        totalSales: totalSales.toString(),
-        totalReceivables: totalReceivables.toString(),
-        inventoryValue: inventoryValue.toString(),
-        cashOnHand: cashOnHand.toString(),
-        netProfit: netProfit.toString(),
-        taxLiability: (tax || []).reduce((acc: Decimal, le: any) => 
-          le.entry_type === 'credit' 
-            ? acc.plus(new Decimal(le.amount ?? '0')) 
-            : acc.minus(new Decimal(le.amount ?? '0')), 
-          new Decimal(0)
-        ).toString(),
-        activeOrders: activeOrders || 0,
-        pendingDeliveries: pendingDeliveries || 0,
-        dataUpdatedAt: new Date().toISOString()
-      };
-    },
-    enabled: !!businessId,
-    refetchInterval: false,
-    staleTime: 60 * 1000
-  });
-
-
-  // Fetch Anomalies
-  const { data: anomalies } = useQuery({
-    queryKey: ['anomalies', businessId],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('anomaly_alerts').select('*').eq('business_id', businessId).eq('resolved', false).order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!businessId,
-    staleTime: 30 * 1000,
-  });
-
-  // Fetch Chart Data (Last 7 Days Sales)
-  const { data: chartData = [] } = useQuery({
-    queryKey: ['dashboard-velocity', businessId],
-    queryFn: async () => {
-      const sevenDaysAgo = format(subDays(new Date(), 6), 'yyyy-MM-dd');
-      const { data, error } = await supabase
-        .from('invoices')
-        .select('total, issue_date')
-        .eq('business_id', businessId)
-        .gte('issue_date', sevenDaysAgo)
-        .not('status', 'eq', 'cancelled');
-      
-      if (error) throw error;
-
-      const dailyMap: Record<string, number> = {};
-      for (let i = 6; i >= 0; i--) {
-        const date = format(subDays(new Date(), i), 'dd MMM');
-        dailyMap[date] = 0;
-      }
-
-      data.filter((inv: any) => inv.total !== null).forEach((inv: any) => {
-        const date = format(new Date(inv.issue_date), 'dd MMM');
-        if (dailyMap[date] !== undefined) {
-          dailyMap[date] = new Decimal(dailyMap[date]).plus(new Decimal(inv.total)).toNumber();
-        }
-      });
-
-      return Object.entries(dailyMap).map(([name, velocity]) => ({ name, velocity }));
-    },
-    enabled: !!businessId
-  });
-
-  // Fetch Seasonal Context
-  const { data: seasonalContext } = useQuery({
-    queryKey: ['seasonal-context', businessId],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_seasonal_context', { p_business_id: businessId });
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!businessId
-  });
-
-  // Fetch Onboarding Status & Activity
-  const { data: onboardingData } = useQuery({
-    queryKey: ['onboarding-data', businessId],
-    queryFn: async () => {
-      const [
-        { count: skus }, 
-        { count: invoices }, 
-        { count: parties },
-        settingsRes
-      ] = await Promise.all([
-        supabase.from('skus').select('*', { count: 'exact', head: true }).eq('business_id', businessId),
-        supabase.from('invoices').select('*', { count: 'exact', head: true }).eq('business_id', businessId),
-        supabase.from('parties').select('*', { count: 'exact', head: true }).eq('business_id', businessId),
-        fetch('/api/settings').then(res => res.json())
-      ]);
-
-      const config = settingsRes?.localConfig || [];
-      const complete = config.find((c: any) => c.key === 'onboarding_complete')?.value === 'true';
-      const skipped = config.find((c: any) => c.key === 'onboarding_skipped')?.value === 'true';
-
-      return { 
-        skus: skus || 0, 
-        invoices: invoices || 0, 
-        parties: parties || 0,
-        complete,
-        skipped
-      };
-    },
-    enabled: !!businessId
-  });
-
-  const [userEmail, setUserEmail] = useState<string>("");
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }: { data: any }) => {
-      if (data.user?.email) setUserEmail(data.user.email);
-    });
-  }, [supabase]);
-
-  useEffect(() => {
-    if (welcomeDismissedRef.current) return;
-    if (profile) {
-      const isComplete = (profile.onboarding_complete ?? profile.onboarding_done) === true;
-      const hasSeen = profile.has_seen_first_action === true || 
-                      (typeof window !== 'undefined' && localStorage.getItem('noxis_has_seen_first_action') === 'true');
-
-      if (isComplete && !hasSeen) {
-        queueMicrotask(() => setShowWelcome(true));
-      }
-    }
-  }, [profile]);
-
-  const handleWelcomeClose = async (skipped = false) => {
-    welcomeDismissedRef.current = true;
-    setShowWelcome(false);
-
-    if (profile) {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('noxis_has_seen_first_action', 'true');
-      }
-
-      const updatedProfile = { ...profile, has_seen_first_action: true };
-      setProfile(updatedProfile);
-
-      try {
-        const { error } = await supabase
-          .from('business_profiles')
-          .update({ has_seen_first_action: true })
-          .eq('id', profile.id);
-        if (error) {
-          console.warn('Failed to update has_seen_first_action on database:', error.message);
-        }
-      } catch (err) {
-        console.error('Failed to update has_seen_first_action:', err);
-      }
-    }
-
-    const key = skipped ? 'onboarding_skipped' : 'onboarding_complete';
-    try {
-      await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'local_config',
-          data: { [key]: 'true' }
-        })
-      });
-    } catch (err) {
-      console.error('Failed to update settings:', err);
-    }
-    
-    queryClient.invalidateQueries({ queryKey: ['onboarding-data'] });
-  };
-
-  const profitChartData = useMemo(
-    () => chartData.map((d) => ({ ...d, velocity: d.velocity * 0.2 })),
-    [chartData]
-  );
-  const receivablesChartData = useMemo(
-    () => chartData.map((d) => ({ ...d, velocity: d.velocity * 0.5 })),
-    [chartData]
-  );
-  const inventoryChartData = useMemo(
-    () => chartData.map((d) => ({ ...d, velocity: d.velocity * 0.3 })),
-    [chartData]
-  );
-
-  const isLoading = isKpiLoading || isPersonaLoading;
-  if (isLoading) return (
-    <div className="p-6">
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <KpiCardSkeleton key={i} />
-        ))}
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="bg-[#0F1114] border border-white/[0.06] rounded-sm p-4">
-          <Skeleton className="h-4 w-32 mb-4" />
-          <Skeleton className="h-40 w-full" />
-        </div>
-        <div className="bg-[#0F1114] border border-white/[0.06] rounded-sm p-4">
-          <Skeleton className="h-4 w-28 mb-4" />
-          <Skeleton className="h-40 w-full" />
-        </div>
-      </div>
-    </div>
-  );
-
-  if (kpiError) return (
-    <div className="p-6 min-h-screen bg-noxis-bg flex items-center justify-center">
-      <ErrorState
-        message="Could not load Dashboard KPIs"
-        detail={(kpiError as Error).message}
-        onRetry={refetchKpis}
-      />
-    </div>
-  );
-
-  const ownerName = profile?.owner_name || userEmail.split('@')[0] || 'User';
-
-  return (
-    <div className="min-h-screen bg-noxis-bg text-noxis-text selection:bg-electric-blue/30">
-      <SentinelAlertOverlay />
-      
-      <AnimatePresence>
-        {showWelcome && (
-          <WelcomeGuide 
-            ownerName={ownerName} 
-            businessName={businessName || 'Your Business'} 
-            industry={profile?.industry_type || 'general'}
-            hasActivity={(onboardingData?.skus || 0) > 0 || (onboardingData?.parties || 0) > 0}
-            onClose={handleWelcomeClose}
-          />
-        )}
-      </AnimatePresence>
-      
-      <main className="transition-all duration-300 min-h-screen flex flex-col">
-        
-        {/* SEASONAL BANNER */}
-        <AnimatePresence>
-          {seasonalContext?.current_season && (
-            <motion.div 
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="bg-[#C5A059] text-black px-8 py-3 flex items-center justify-between overflow-hidden"
-            >
-              <div className="flex items-center space-x-4">
-                <Globe size={18} className="animate-spin-slow" />
-                <div>
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em]">
-                    {seasonalContext.current_season} ACTIVE — {seasonalContext.days_remaining} DAYS REMAINING
-                  </span>
-                  <div className="flex items-center space-x-3 mt-1">
-                    <span className="text-[11px] font-bold">
-                      Target: {fmt(new Decimal(seasonalContext.revenue_target ?? '0'), { compact: true })} | Current: {fmt(new Decimal(kpis?.totalSales ?? '0'), { compact: true })}
-                    </span>
-                    <div className="w-32 h-1 bg-black/10 rounded-full overflow-hidden">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${Math.min(100, ((kpis?.totalSales || 0) / (seasonalContext.revenue_target || 1)) * 100)}%` }}
-                        className="h-full bg-black"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <span 
-                onClick={() => toast.info('Coming soon', 'Production boosting capabilities will be enabled in the upcoming release.')}
-                className="text-[10px] font-black uppercase border border-black/20 px-3 py-1 hover:bg-black hover:text-[#C5A059] transition-all cursor-pointer"
-              >
-                Boost Production
-              </span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div className="p-6 max-w-[1600px] mx-auto w-full space-y-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-lg font-semibold tracking-tight text-white">
-                Dashboard
-              </h1>
-              <p className="text-xs text-gray-500 mt-0.5">
-                {format(new Date(), 'EEEE, d MMMM yyyy')}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-               <button 
-                 onClick={() => {
-                   const phone = profile?.owner_phone || profile?.phone
-                   if (!phone) {
-                     alert('Add your WhatsApp number in Settings → Business Profile first, then save.')
-                     return
-                   }
-                   const msg = WA_TEMPLATES.dailySummary({
-                     businessName: profile?.business_name || 'Your Business',
-                     currency: profile?.currency || 'PKR',
-                     revenue: fmt(new Decimal(kpis?.totalSales || 0)),
-                     activeOrders: kpis?.activeOrders || 0,
-                     date: format(new Date(), 'EEEE, d MMMM yyyy'),
-                   })
-                   openWhatsApp(phone, msg, profile?.country_code || 'PK');
-                 }}
-                 className="flex items-center space-x-2 px-4 py-2 bg-[#25D366]/10 border border-[#25D366]/20 text-[#25D366] text-[10px] font-black uppercase tracking-widest hover:bg-[#25D366]/20 transition-all"
-               >
-                  <MessageCircle size={14} />
-                  <span>Send Daily Summary</span>
-               </button>
-            </div>
-          </div>
-
-          {/* 7-day banner (subtle, dismissable): */}
-          {show7DayPrompt && (
-            <div className="flex items-center justify-between p-3 mb-4 bg-[#C5A059]/5 border border-[#C5A059]/20 rounded-sm">
-              <p className="text-xs text-gray-400">
-                You have been using Noxis for a week.
-                <span className="text-[#C5A059] ml-1">
-                  How is it going?
-                </span>
-              </p>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => {
-                    setFeedbackOpen(true);
-                    setShow7DayPrompt(false);
-                  }}
-                  className="text-xs font-semibold text-[#C5A059] hover:text-amber-300 transition-colors"
-                >
-                  Share feedback →
-                </button>
-                <button
-                  onClick={() => setShow7DayPrompt(false)}
-                  className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-          )}
-
-          <OnboardingChecklist />
-
-          <div className="space-y-4">
-            <PromiseAlertWidget />
-            <DailyBrief />
-            <PatternAlerts />
-          </div>
-
-          <MobileAppBanner />
-
-          <IntelligenceWidget />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-max">
-            <KpiCard 
-              label="Monthly Revenue" 
-              value={kpis?.totalSales || 0} 
-              icon={DollarSign} 
-              isLoading={isKpiLoading} 
-              chartData={chartData} 
-              sub={Number(kpis?.totalSales || 0) > 0 ? "This month" : <Link href="/invoices" className="text-electric-blue hover:underline">Create your first invoice →</Link>}
-            />
-            <KpiCard 
-              label="Net Profit (MTD)" 
-              value={kpis?.netProfit || 0} 
-              icon={TrendingUp} 
-              isLoading={isKpiLoading}
-              chartData={profitChartData} 
-              sub={Number(kpis?.netProfit || 0) > 0 ? "After expenses" : <Link href="/khata" className="text-electric-blue hover:underline">Record transactions →</Link>}
-            />
-            <KpiCard 
-              label="Accounts Receivable" 
-              value={kpis?.totalReceivables || 0} 
-              icon={Clock} 
-              isLoading={isKpiLoading}
-              chartData={receivablesChartData} 
-              sub={Number(kpis?.totalReceivables || 0) > 0 ? "Owed to you by customers" : <Link href="/promises" className="text-electric-blue hover:underline">View payment promises →</Link>}
-            />
-            <KpiCard 
-              label={getIndustryLabel('stock') + " Value"} 
-              value={kpis?.inventoryValue || 0} 
-              icon={Package} 
-              isLoading={isKpiLoading}
-              chartData={inventoryChartData} 
-              sub="Current inventory value"
-            />
-            
-            {/* Contextual Industry Widgets */}
-            {activeIndustry.dashboardWidgets.includes('karigar_efficiency') && (
-              <KpiCard label={getIndustryLabel('persona') + " Efficiency"} value={88} icon={Activity} isPositive trend="4.2%" />
-            )}
-            
-            {activeIndustry.dashboardWidgets.includes('expiry_alerts') && (
-              <KpiCard label="Expiry Risks" value={12} icon={AlertCircle} isPositive={false} trend="High" />
-            )}
-
-            {activeIndustry.dashboardWidgets.includes('moisture_levels') && (
-              <KpiCard label="Avg. Moisture" value="14.2%" icon={Activity} trend="Stable" />
-            )}
-
-            <KpiCard 
-              label="Pending Logistics" 
-              value={kpis?.pendingDeliveries || 0} 
-              icon={Truck} 
-              isLoading={isKpiLoading} 
-              sub={Number(kpis?.pendingDeliveries || 0) > 0 ? "Awaiting delivery" : <Link href="/dispatch" className="text-electric-blue hover:underline">Create dispatch →</Link>}
-            />
-            <KpiCard 
-              label="Liquidity (Cash)" 
-              value={kpis?.cashOnHand || 0} 
-              icon={Wallet} 
-              isLoading={isKpiLoading} 
-              sub={Number(kpis?.cashOnHand || 0) > 0 ? "Available cash" : <Link href="/khata" className="text-electric-blue hover:underline">Record a cash entry →</Link>}
-            />
-            <KpiCard label="Estimated Tax Liab." value={kpis?.taxLiability || 0} icon={ShieldCheck} isLoading={isKpiLoading} />
-            <CCTVWidget />
-          </div>
-
-          <DeadStockWidget />
-
-          {/* Main Analytics Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 bg-noxis-surface border border-noxis-border p-8 relative overflow-hidden group">
-               <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-                  <TrendingUp size={120} />
-               </div>
-               <div className="flex items-center justify-between mb-8">
-                  <div>
-                    <h3 className="text-xs font-black text-white uppercase tracking-widest">Financial Velocity</h3>
-                    <p className="text-[9px] text-gray-500 uppercase font-bold tracking-widest mt-1">Industrial Output Intensity</p>
-                  </div>
-                  <div className="flex space-x-4">
-                     <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-noxis-accent rounded-full" />
-                        <span className="text-[9px] uppercase font-bold text-gray-500">Revenue Stream</span>
-                     </div>
-                  </div>
-               </div>
-               <div className="h-[300px] w-full">
-                 <ResponsiveContainer width="100%" height="100%">
-                   <AreaChart data={chartData}>
-                     <defs>
-                       <linearGradient id="colorVel" x1="0" y1="0" x2="0" y2="1">
-                         <stop offset="5%" stopColor="var(--color-noxis-accent)" stopOpacity={0.3}/>
-                         <stop offset="95%" stopColor="var(--color-noxis-accent)" stopOpacity={0}/>
-                       </linearGradient>
-                     </defs>
-                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
-                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#4B5563', fontSize: 10}} />
-                     <YAxis hide />
-                     <Tooltip 
-                        contentStyle={{ backgroundColor: 'var(--color-noxis-surface)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '10px' }}
-                        itemStyle={{ color: 'var(--color-noxis-accent)' }}
-                     />
-                     <Area type="monotone" dataKey="velocity" stroke="var(--color-noxis-accent)" fillOpacity={1} fill="url(#colorVel)" strokeWidth={3} />
-                   </AreaChart>
-                 </ResponsiveContainer>
-               </div>
-            </div>
-
-            {/* Anomaly & Alert Sidebar */}
-            <div className="space-y-6">
-               <div className="bg-noxis-surface border border-noxis-border p-6 h-full flex flex-col">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center">
-                      <AlertCircle size={14} className="text-critical-red mr-2" />
-                      Anomalies Detected
-                    </h3>
-                    <span className="text-[9px] bg-critical-red/10 text-critical-red px-2 py-0.5 rounded-full font-black uppercase tracking-widest">{anomalies?.length || 0}</span>
-                  </div>
-                  
-                  <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar pr-2">
-                    {anomalies && anomalies.length > 0 ? anomalies.map((alert: any) => (
-                      <div key={alert.id} className="p-4 bg-white/5 border border-white/5 hover:border-red-500/30 transition-all cursor-pointer group">
-                        <div className="flex justify-between items-start mb-2">
-                          <span className={cn(
-                            "text-[8px] uppercase font-black px-1.5 py-0.5 rounded-sm",
-                            alert.severity === 'critical' ? "bg-red-500 text-white" : "bg-orange-500 text-white"
-                          )}>{alert.severity}</span>
-                          <span className="text-[8px] text-gray-600 font-mono">{new Date(alert.created_at).toLocaleTimeString()}</span>
-                        </div>
-                        <p className="text-[10px] text-white font-bold leading-tight uppercase group-hover:text-red-400 transition-colors">{alert.alert_type.replace(/_/g, ' ')}</p>
-                        <p className="text-[9px] text-gray-500 mt-1 line-clamp-2">{alert.payload?.message || "Data integrity variance detected."}</p>
-                      </div>
-                    )) : (
-                      <div className="flex-1 flex flex-col items-center justify-center space-y-4 opacity-20 py-12">
-                        <ShieldCheck size={48} />
-                        <span className="text-[10px] uppercase font-black tracking-widest">No Integrity Gaps</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <Link 
-                    href="/audit"
-                    className="block w-full text-center mt-6 py-3 bg-white/5 border border-white/5 text-[9px] uppercase font-black text-gray-500 hover:text-white hover:bg-white/10 transition-all"
-                  >
-                    View Event History
-                  </Link>
-               </div>
-            </div>
-          </div>
-
-          {/* Footer Status */}
-          <div className="pt-8 border-t border-white/5 flex items-center justify-between">
-             <div className="flex space-x-12">
-               <DataFreshness lastFetchedAt={kpis?.dataUpdatedAt ? new Date(kpis.dataUpdatedAt) : null} />
-               <StatusItem label="Hub Uptime" value="14d 6h 22m" status="OK" />
-               <StatusItem label="Sync Pipeline" value="99.9% Reliable" status="OK" />
-               <StatusItem label="DB Latency" value="42ms" status="OK" />
-             </div>
-             <div className="text-[9px] text-gray-700 font-black uppercase tracking-[0.4em]">
-                System Protected by Noxis Sentinel
-             </div>
-          </div>
-        </div>
-      </main>
-
-      <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 3px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(255,255,255,0.05);
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(255,255,255,0.1);
-        }
-      `}</style>
-      
-      <FeedbackModal
-        isOpen={feedbackOpen}
-        onClose={() => setFeedbackOpen(false)}
-        trigger="milestone"
-      />
-    </div>
-  );
+  // Recent activity
+  recentInvoices: any[]
+  recentAttendance: any[]
+  topKarigars: any[]
+  promises: any[]
 }
 
-const KpiCard = memo(function KpiCard({
-  label,
-  value,
-  sub,
-  isLoading,
-}: {
-  label: string
-  value: string | number
-  sub?: React.ReactNode
-  isLoading?: boolean
-  icon?: React.ComponentType<{ size?: number }>
-  chartData?: unknown[]
-  isPositive?: boolean
-  trend?: string
-}) {
-  return (
-    <div className="rounded-sm bg-noxis-surface border border-noxis-border p-5 hover:border-noxis-border/20 transition-colors relative overflow-hidden">
-      <div className="absolute top-0 left-0 w-1/3 h-[1px] bg-gradient-to-r from-[#60A5FA] to-transparent opacity-60" />
-      <p className="text-xxs font-semibold tracking-wide-md uppercase text-gray-500">
-        {label}
-      </p>
-      <div className="mt-2 font-mono text-2xl font-semibold text-[#C5A059] tabular-nums">
-        {isLoading ? (
-          <div className="h-8 w-24 bg-white/5 animate-pulse rounded" />
-        ) : (
-          <AnimatedNumber value={value} />
-        )}
-      </div>
-      {sub && (
-        <p className="text-[11px] text-gray-600 mt-1">{sub}</p>
-      )}
+export default function OwnerDashboard() {
+  const router = useRouter()
+  const supabase = createClient()
+  const [data, setData] = useState<DashboardData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
+  const [activeTab, setActiveTab] = useState<'overview' | 'people' | 'finance' | 'stock'>('overview')
+
+  const loadDashboard = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        router.push('/dashboard/login')
+        return
+      }
+
+      const { data: profile } = await supabase
+        .from('business_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+
+      if (!profile) {
+        router.push('/dashboard/login')
+        return
+      }
+
+      const biz = profile.id
+      const today = new Date().toISOString().split('T')[0]
+      const monthStart = new Date(today.slice(0, 7) + '-01').toISOString()
+
+      // Parallel fetch
+      const [
+        attendanceToday,
+        karigarsRes,
+        invoicesMonth,
+        receivables,
+        stockRes,
+        lowStockRes,
+        dispatchRes,
+        purchaseRes,
+        payrollRes,
+        peshgiRes,
+        recentInvoicesRes,
+        recentAttendanceRes,
+        topKarigarsRes,
+        promisesRes,
+      ] = await Promise.allSettled([
+        // Today attendance present
+        supabase.from('attendance_logs')
+          .select('id', { count: 'exact', head: true })
+          .eq('business_id', biz)
+          .eq('attendance_date', today)
+          .eq('status', 'present'),
+
+        // Total active karigars
+        supabase.from('karigars')
+          .select('id, name, peshgi_balance', { count: 'exact' })
+          .eq('business_id', biz)
+          .eq('status', 'active'),
+
+        // This month invoices
+        supabase.from('invoices')
+          .select('total_amount, subtotal, status')
+          .eq('business_id', biz)
+          .eq('status', 'posted')
+          .gte('created_at', monthStart),
+
+        // Outstanding receivables
+        supabase.from('invoices')
+          .select('total_amount, due_date, created_at')
+          .eq('business_id', biz)
+          .eq('status', 'posted')
+          .gt('balance_due', 0),
+
+        // Stock value
+        supabase.from('skus')
+          .select('qty_on_hand, cost_price')
+          .eq('business_id', biz)
+          .eq('is_active', true),
+
+        // Low stock count
+        supabase.from('skus')
+          .select('id', { count: 'exact', head: true })
+          .eq('business_id', biz)
+          .eq('is_active', true)
+          .filter('qty_on_hand', 'lte', 'reorder_level'),
+
+        // Pending dispatch
+        supabase.from('dispatch_orders')
+          .select('id', { count: 'exact', head: true })
+          .eq('business_id', biz)
+          .in('status', ['pending', 'packed']),
+
+        // Pending purchases
+        supabase.from('purchase_orders')
+          .select('id', { count: 'exact', head: true })
+          .eq('business_id', biz)
+          .in('status', ['draft', 'sent']),
+
+        // This month payroll total
+        supabase.from('payroll_runs')
+          .select('total_net')
+          .eq('business_id', biz)
+          .gte('period_start', monthStart),
+
+        // Total peshgi outstanding
+        supabase.from('karigars')
+          .select('peshgi_balance')
+          .eq('business_id', biz)
+          .eq('status', 'active')
+          .gt('peshgi_balance', 0),
+
+        // Recent 5 invoices
+        supabase.from('invoices')
+          .select(`
+            id, invoice_number, total_amount,
+            status, created_at,
+            party:parties(name)
+          `)
+          .eq('business_id', biz)
+          .order('created_at', { ascending: false })
+          .limit(5),
+
+        // Recent attendance summary
+        supabase.from('attendance_logs')
+          .select(`
+            karigar_id, status, attendance_date,
+            karigar:karigars(name)
+          `)
+          .eq('business_id', biz)
+          .eq('attendance_date', today)
+          .limit(10),
+
+        // Top karigars by production this month
+        supabase.from('karigar_production_logs')
+          .select(`
+            karigar_id, units_produced, earnings,
+            karigar:karigars(name, karigar_code)
+          `)
+          .eq('business_id', biz)
+          .gte('log_date', monthStart)
+          .order('earnings', { ascending: false })
+          .limit(5),
+
+        // Active payment promises
+        supabase.from('payment_promises')
+          .select(`
+            id, amount, promise_date, status,
+            party:parties(name)
+          `)
+          .eq('business_id', biz)
+          .eq('status', 'pending')
+          .order('promise_date', { ascending: true })
+          .limit(5),
+      ])
+
+      const invoices = invoicesMonth.status === 'fulfilled' ? invoicesMonth.value.data || [] : []
+      const receivablesData = receivables.status === 'fulfilled' ? receivables.value.data || [] : []
+      const stock = stockRes.status === 'fulfilled' ? stockRes.value.data || [] : []
+      const payrolls = payrollRes.status === 'fulfilled' ? payrollRes.value.data || [] : []
+      const peshgi = peshgiRes.status === 'fulfilled' ? peshgiRes.value.data || [] : []
+
+      const now = new Date()
+      const overdueInvoices = receivablesData.filter(
+        (inv: any) => inv.due_date && new Date(inv.due_date) < now
+      )
+
+      setData({
+        businessName: profile.business_name || 'My Factory',
+        industry: profile.industry || 'textile',
+        city: profile.city || '',
+        tier: profile.tier || 'lite',
+        currency: profile.currency || 'PKR',
+
+        presentToday: attendanceToday.status === 'fulfilled' ? attendanceToday.value.count || 0 : 0,
+        totalKarigars: karigarsRes.status === 'fulfilled' ? karigarsRes.value.count || 0 : 0,
+        absentToday: Math.max(0,
+          (karigarsRes.status === 'fulfilled' ? karigarsRes.value.count || 0 : 0) -
+          (attendanceToday.status === 'fulfilled' ? attendanceToday.value.count || 0 : 0)
+        ),
+
+        revenueThisMonth: invoices.reduce((s: number, i: any) => s + (i.subtotal || 0), 0),
+        invoiceCount: invoices.length,
+        pendingReceivables: receivablesData.reduce((s: number, i: any) => s + (i.total_amount || 0), 0),
+        overdueCount: overdueInvoices.length,
+
+        stockValue: stock.reduce((s: number, i: any) => s + ((i.qty_on_hand || 0) * (i.cost_price || 0)), 0),
+        lowStockCount: lowStockRes.status === 'fulfilled' ? lowStockRes.value.count || 0 : 0,
+
+        pendingDispatch: dispatchRes.status === 'fulfilled' ? dispatchRes.value.count || 0 : 0,
+        pendingPurchases: purchaseRes.status === 'fulfilled' ? purchaseRes.value.count || 0 : 0,
+
+        totalPayrollThisMonth: payrolls.reduce((s: number, p: any) => s + (p.total_net || 0), 0),
+        totalPeshgiOutstanding: peshgi.reduce((s: number, k: any) => s + (k.peshgi_balance || 0), 0),
+
+        recentInvoices: recentInvoicesRes.status === 'fulfilled' ? recentInvoicesRes.value.data || [] : [],
+        recentAttendance: recentAttendanceRes.status === 'fulfilled' ? recentAttendanceRes.value.data || [] : [],
+        topKarigars: topKarigarsRes.status === 'fulfilled' ? topKarigarsRes.value.data || [] : [],
+        promises: promisesRes.status === 'fulfilled' ? promisesRes.value.data || [] : [],
+      })
+
+      setLastUpdated(new Date())
+    } catch (err) {
+      console.error('Dashboard load error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadDashboard()
+    const interval = setInterval(loadDashboard, 300000)
+    return () => clearInterval(interval)
+  }, [loadDashboard])
+
+  const formatCurrency = (n: number) =>
+    `${data?.currency || 'PKR'} ${
+      n >= 1000000
+        ? (n / 1000000).toFixed(1) + 'M'
+        : n >= 1000
+        ? (n / 1000).toFixed(0) + 'K'
+        : n.toLocaleString()
+    }`
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push('/dashboard/login')
+  }
+
+  if (loading) return <LoadingScreen />
+
+  if (!data) return (
+    <div className="min-h-screen bg-[#040608] flex items-center justify-center text-slate-500 font-mono tracking-widest text-[10px] uppercase">
+      Could not load dashboard. Check connection.
     </div>
   )
-})
 
-function StatusItem({ label, value, status }: any) {
   return (
-     <div className="flex flex-col">
-        <span className="text-xxs font-semibold tracking-wide-md uppercase text-gray-600">{label}</span>
-        <div className="flex items-center space-x-2">
-           <span className="financial text-xs text-white">{value}</span>
-           <span className="text-[8px] font-black text-emerald-500 uppercase">{status}</span>
+    <div className="bg-[#040608] min-h-screen text-[#94A3B8] font-sans pb-32 selection:bg-[#C5A059]/30 selection:text-white relative overflow-hidden">
+      
+      {/* Background Gradients */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-[#C5A059]/[0.015] rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-[#00E5FF]/[0.01] rounded-full blur-[120px]" />
+      </div>
+
+      {/* Fixed top accent line */}
+      <div className="fixed top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#C5A059] via-[#00E5FF] to-[#C5A059] z-[100]" />
+
+      {/* ═══ HEADER NAVIGATION ═══ */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#040608]/85 backdrop-blur-xl border-b border-white/[0.04] py-4">
+        <div className="max-w-4xl mx-auto px-6 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 flex items-center justify-center bg-white/5 border border-white/10 rounded-sm">
+              <img src="/logos/noxis.png" alt="Noxis Logo" width={20} height={20} className="object-contain" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-white font-extrabold tracking-wider leading-none text-xs">NOXIS REMOTE</span>
+              <span className="text-[10px] text-[#C5A059] font-black uppercase mt-0.5 tracking-wider">{data.businessName}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={loadDashboard}
+              className="p-2 border border-white/5 hover:border-white/10 rounded-sm transition-all text-slate-500 hover:text-white"
+              title="Refresh Data"
+            >
+              <RefreshCw size={14} className="animate-hover" />
+            </button>
+            <button
+              onClick={handleLogout}
+              className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-[#EF4444] flex items-center space-x-1.5 transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Sign Out</span>
+            </button>
+          </div>
         </div>
-     </div>
-  );
+      </nav>
+
+      {/* ═══ MAIN LAYOUT ═══ */}
+      <div className="max-w-4xl mx-auto px-6 pt-24">
+        
+        {/* Status Line */}
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4 text-[10px] font-mono font-bold uppercase tracking-widest text-slate-650 border-b border-white/[0.03] pb-4">
+          <div className="flex items-center space-x-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>LIVE DATA · UPDATED {lastUpdated.toLocaleTimeString()}</span>
+          </div>
+          <div className="flex items-center space-x-3">
+            {data.city && (
+              <span className="flex items-center gap-1"><MapPin size={10} />{data.city}</span>
+            )}
+            <span>•</span>
+            <span className="text-[#C5A059]">{data.tier.toUpperCase()} TIER</span>
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex border-b border-white/[0.04] mb-8 overflow-x-auto scrollbar-none">
+          {([
+            ['overview', 'Overview'],
+            ['people', 'People'],
+            ['finance', 'Finance'],
+            ['stock', 'Stock'],
+          ] as const).map(([tab, label]) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`py-3 px-6 text-xs font-black uppercase tracking-widest transition-all border-b-2 ${
+                activeTab === tab
+                  ? 'border-[#C5A059] text-white bg-white/[0.01]'
+                  : 'border-transparent text-slate-500 hover:text-slate-350'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab Panels */}
+        <div className="space-y-8">
+          
+          {/* ── OVERVIEW TAB ── */}
+          {activeTab === 'overview' && (
+            <>
+              {/* Warnings Banner */}
+              {(data.overdueCount > 0 || data.lowStockCount > 0) && (
+                <div className="space-y-3">
+                  {data.overdueCount > 0 && (
+                    <AlertBanner
+                      color="red"
+                      message={`${data.overdueCount} invoice${data.overdueCount > 1 ? 's' : ''} overdue`}
+                      sub="Outstanding balances require customer follow-up."
+                    />
+                  )}
+                  {data.lowStockCount > 0 && (
+                    <AlertBanner
+                      color="amber"
+                      message={`${data.lowStockCount} SKU${data.lowStockCount > 1 ? 's' : ''} low on stock`}
+                      sub="Replenish stock units to avoid floor bottlenecks."
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* KPI Cards Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <KpiCard
+                  label="Revenue This Month"
+                  value={formatCurrency(data.revenueThisMonth)}
+                  sub={`${data.invoiceCount} issued invoices`}
+                  accent="text-emerald-400"
+                  icon={<TrendingUp className="w-4 h-4 text-emerald-400" />}
+                />
+                <KpiCard
+                  label="Outstanding Receivables"
+                  value={formatCurrency(data.pendingReceivables)}
+                  sub={`${data.overdueCount} overdue items`}
+                  accent={data.overdueCount > 0 ? "text-red-400" : "text-slate-500"}
+                  icon={<DollarSign className="w-4 h-4 text-[#C5A059]" />}
+                />
+                <KpiCard
+                  label="Attendance Today"
+                  value={`${data.presentToday} / ${data.totalKarigars}`}
+                  sub={`${data.absentToday} staff absent`}
+                  accent="text-[#00E5FF]"
+                  icon={<Users className="w-4 h-4 text-[#00E5FF]" />}
+                />
+                <KpiCard
+                  label="Valued Stock"
+                  value={formatCurrency(data.stockValue)}
+                  sub={`${data.lowStockCount} items at low level`}
+                  accent="text-white"
+                  icon={<Package className="w-4 h-4 text-slate-500" />}
+                />
+                <KpiCard
+                  label="Pending Dispatch"
+                  value={String(data.pendingDispatch)}
+                  sub="orders waiting delivery"
+                  accent="text-white"
+                  icon={<Truck className="w-4 h-4 text-slate-500" />}
+                />
+                <KpiCard
+                  label="Peshgi Outstanding"
+                  value={formatCurrency(data.totalPeshgiOutstanding)}
+                  sub="advances to recover"
+                  accent="text-[#C5A059]"
+                  icon={<Lock className="w-4 h-4 text-[#C5A059]" />}
+                />
+              </div>
+
+              {/* Promises Section */}
+              {data.promises.length > 0 && (
+                <Section title="Payment Promises Due">
+                  {data.promises.map((p: any) => (
+                    <RowItem
+                      key={p.id}
+                      left={p.party?.name || 'Unknown Partner'}
+                      right={formatCurrency(p.amount)}
+                      sub={`Promise date: ${new Date(p.promise_date).toLocaleDateString('en-PK')}`}
+                      accent={new Date(p.promise_date) < new Date() ? 'text-red-400' : 'text-[#C5A059]'}
+                      badge={new Date(p.promise_date) < new Date() ? 'overdue' : 'pending'}
+                    />
+                  ))}
+                </Section>
+              )}
+
+              {/* Recent Invoices */}
+              <Section title="Recent Posted Invoices">
+                {data.recentInvoices.length === 0 ? (
+                  <EmptyState message="No billing entries posted this month." />
+                ) : data.recentInvoices.map((inv: any) => (
+                  <RowItem
+                    key={inv.id}
+                    left={inv.party?.name || 'Walk-in Client'}
+                    right={formatCurrency(inv.total_amount)}
+                    sub={`${inv.invoice_number} · ${new Date(inv.created_at).toLocaleDateString('en-PK')}`}
+                    accent="text-emerald-400"
+                    badge={inv.status}
+                  />
+                ))}
+              </Section>
+            </>
+          )}
+
+          {/* ── PEOPLE TAB ── */}
+          {activeTab === 'people' && (
+            <>
+              <div className="grid grid-cols-3 gap-4">
+                <KpiCard
+                  label="Active Workers"
+                  value={String(data.totalKarigars)}
+                  sub="registered floor staff"
+                  accent="text-[#00E5FF]"
+                />
+                <KpiCard
+                  label="Present"
+                  value={String(data.presentToday)}
+                  sub="today"
+                  accent="text-emerald-400"
+                />
+                <KpiCard
+                  label="Absent"
+                  value={String(data.absentToday)}
+                  sub="today"
+                  accent={data.absentToday > 0 ? "text-red-400" : "text-slate-500"}
+                />
+              </div>
+
+              {/* Attendance list */}
+              <Section title="Attendance Logs (Today)">
+                {data.recentAttendance.length === 0 ? (
+                  <EmptyState message="No attendance entries recorded today." />
+                ) : data.recentAttendance.map((a: any, i: number) => (
+                  <RowItem
+                    key={i}
+                    left={a.karigar?.name || 'Unknown Staff'}
+                    right=""
+                    sub=""
+                    accent={
+                      a.status === 'present'
+                        ? 'text-emerald-400'
+                        : a.status === 'half'
+                        ? 'text-amber-400'
+                        : 'text-red-400'
+                    }
+                    badge={a.status}
+                  />
+                ))}
+              </Section>
+
+              {/* Top Workers Production */}
+              <Section title="Top Production (MTD)">
+                {data.topKarigars.length === 0 ? (
+                  <EmptyState message="No production entries logged this month." />
+                ) : data.topKarigars.map((k: any, i: number) => (
+                  <RowItem
+                    key={i}
+                    left={k.karigar?.name || 'Unknown Staff'}
+                    right={formatCurrency(k.earnings)}
+                    sub={`${k.units_produced?.toLocaleString() || 0} pieces produced · Code: ${k.karigar?.karigar_code || 'N/A'}`}
+                    accent="text-[#C5A059]"
+                  />
+                ))}
+              </Section>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <KpiCard
+                  label="MTD Net Wages"
+                  value={formatCurrency(data.totalPayrollThisMonth)}
+                  sub="cumulative wages run"
+                  accent="text-[#00E5FF]"
+                />
+                <KpiCard
+                  label="Active Peshgi Balances"
+                  value={formatCurrency(data.totalPeshgiOutstanding)}
+                  sub="total advances given"
+                  accent="text-[#C5A059]"
+                />
+              </div>
+            </>
+          )}
+
+          {/* ── FINANCE TAB ── */}
+          {activeTab === 'finance' && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <KpiCard
+                  label="Revenue MTD"
+                  value={formatCurrency(data.revenueThisMonth)}
+                  sub="posted invoices"
+                  accent="text-emerald-400"
+                />
+                <KpiCard
+                  label="Total Ledger Balances"
+                  value={formatCurrency(data.pendingReceivables)}
+                  sub="due customer accounts"
+                  accent={data.overdueCount > 0 ? "text-red-400" : "text-slate-500"}
+                />
+                <KpiCard
+                  label="Wages Paid (MTD)"
+                  value={formatCurrency(data.totalPayrollThisMonth)}
+                  sub="wages run payments"
+                  accent="text-[#00E5FF]"
+                />
+                <KpiCard
+                  label="Pending Purchases"
+                  value={String(data.pendingPurchases)}
+                  sub="POs awaiting receipt"
+                  accent="text-amber-400"
+                />
+              </div>
+
+              {/* Overdue Accounts */}
+              <Section title="Overdue Invoices Alert">
+                {data.overdueCount === 0 ? (
+                  <EmptyState message="All customer accounts have active payment status." />
+                ) : (
+                  <div className="bg-red-500/5 border border-red-500/10 p-5 rounded-sm flex items-center justify-between text-xs">
+                    <div className="space-y-1">
+                      <p className="text-red-400 font-bold uppercase tracking-wider">
+                        {data.overdueCount} customer accounts overdue
+                      </p>
+                      <p className="text-slate-500 leading-normal font-medium">
+                        Open Noxis Hub on your workstation to dispatch automated WhatsApp billing reminders.
+                      </p>
+                    </div>
+                    <ShieldAlert size={18} className="text-red-400 shrink-0" />
+                  </div>
+                )}
+              </Section>
+
+              {/* Promises */}
+              <Section title="Payment Promises">
+                {data.promises.length === 0 ? (
+                  <EmptyState message="No pending payment commitments logged." />
+                ) : data.promises.map((p: any) => (
+                  <RowItem
+                    key={p.id}
+                    left={p.party?.name || 'Unknown'}
+                    right={formatCurrency(p.amount)}
+                    sub={`Promise date: ${new Date(p.promise_date).toLocaleDateString('en-PK')}`}
+                    accent={new Date(p.promise_date) < new Date() ? 'text-red-400' : 'text-emerald-400'}
+                    badge={new Date(p.promise_date) < new Date() ? 'overdue' : 'pending'}
+                  />
+                ))}
+              </Section>
+            </>
+          )}
+
+          {/* ── STOCK TAB ── */}
+          {activeTab === 'stock' && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <KpiCard
+                  label="Stock Inventory Value"
+                  value={formatCurrency(data.stockValue)}
+                  sub="on hand costing basis"
+                  accent="text-[#00E5FF]"
+                />
+                <KpiCard
+                  label="Low Stock Warnings"
+                  value={String(data.lowStockCount)}
+                  sub="items below reorder"
+                  accent={data.lowStockCount > 0 ? "text-amber-400" : "text-emerald-400"}
+                />
+                <KpiCard
+                  label="Outbound Orders"
+                  value={String(data.pendingDispatch)}
+                  sub="units awaiting dispatch"
+                  accent="text-white"
+                />
+                <KpiCard
+                  label="Purchases Placed"
+                  value={String(data.pendingPurchases)}
+                  sub="POs in queue"
+                  accent="text-[#C5A059]"
+                />
+              </div>
+
+              {/* Low stock alerts */}
+              {data.lowStockCount > 0 && (
+                <div className="bg-amber-500/5 border border-amber-500/10 p-5 rounded-sm flex items-center justify-between text-xs">
+                  <div className="space-y-1">
+                    <p className="text-amber-400 font-bold uppercase tracking-wider">
+                      {data.lowStockCount} product units require restocking
+                    </p>
+                    <p className="text-slate-500 leading-normal font-medium">
+                      Open Noxis Hub on your workstation to create and issue purchase order slips.
+                    </p>
+                  </div>
+                  <AlertTriangle size={18} className="text-amber-400 shrink-0" />
+                </div>
+              )}
+            </>
+          )}
+
+        </div>
+      </div>
+
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@700&display=swap');
+        .font-sans { font-family: 'Outfit', sans-serif; }
+        .font-mono { font-family: 'JetBrains+Mono', monospace; }
+        body { background-color: #040608; }
+      `}</style>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────
+// COMPONENT SHARDS
+// ─────────────────────────────────────────────
+
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen bg-[#040608] flex flex-col items-center justify-center gap-6 relative overflow-hidden">
+      {/* Background Gradients */}
+      <div className="absolute top-1/3 left-1/3 w-[300px] h-[300px] bg-[#C5A059]/[0.015] rounded-full blur-[80px]" />
+      <div className="absolute bottom-1/3 right-1/3 w-[300px] h-[300px] bg-[#00E5FF]/[0.01] rounded-full blur-[80px]" />
+      
+      <div className="w-8 h-8 border-2 border-slate-700/50 border-t-[#C5A059] rounded-full animate-spin" />
+      <div className="flex flex-col items-center space-y-1 z-10">
+        <span className="text-[10px] font-bold text-[#C5A059] uppercase tracking-[0.2em]">Noxis Control</span>
+        <span className="text-slate-500 font-mono tracking-widest text-[9px] uppercase">Retrieving factory ledger logs...</span>
+      </div>
+    </div>
+  )
+}
+
+function KpiCard({
+  label, value, sub, accent, icon
+}: {
+  label: string
+  value: string
+  sub: string
+  accent: string
+  icon?: React.ReactNode
+}) {
+  return (
+    <div className="bg-[#0A0D10] border border-white/[0.04] p-5 rounded-sm space-y-4">
+      <div className="flex items-start justify-between">
+        <p className="text-slate-500 text-[9px] font-bold tracking-widest uppercase">
+          {label}
+        </p>
+        {icon}
+      </div>
+      <div className="space-y-1">
+        <p className={`text-2xl font-mono font-black ${accent} tracking-tight`}>
+          {value}
+        </p>
+        <p className="text-slate-650 text-[10px] font-medium leading-none">
+          {sub}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function AlertBanner({
+  color, message, sub
+}: {
+  color: 'red' | 'amber'
+  message: string
+  sub: string
+}) {
+  const colorClass = color === 'red' ? 'text-red-400 bg-red-500/5 border-red-500/10' : 'text-amber-400 bg-amber-500/5 border-amber-500/10'
+  const dotColor = color === 'red' ? 'bg-red-400' : 'bg-amber-400'
+
+  return (
+    <div className={`border p-4 rounded-sm flex items-center gap-3.5 text-xs ${colorClass}`}>
+      <div className={`w-1.5 h-1.5 rounded-full ${dotColor} animate-pulse shrink-0`} />
+      <div className="space-y-0.5">
+        <p className="font-bold uppercase tracking-wider">{message}</p>
+        <p className="text-slate-500 font-medium">{sub}</p>
+      </div>
+    </div>
+  )
+}
+
+function Section({
+  title, children
+}: {
+  title: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="space-y-3">
+      <p className="text-slate-500 text-[9px] font-bold tracking-[0.2em] uppercase">
+        {title}
+      </p>
+      <div className="bg-[#0A0D10] border border-white/[0.04] rounded-sm divide-y divide-white/[0.03] overflow-hidden">
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function RowItem({
+  left, right, sub, accent, badge
+}: {
+  left: string
+  right: string
+  sub: string
+  accent: string
+  badge?: string
+}) {
+  return (
+    <div className="flex items-center justify-between p-4 gap-4">
+      <div className="min-w-0 flex-1 space-y-1">
+        <p className="text-white text-xs sm:text-sm font-semibold truncate uppercase">
+          {left}
+        </p>
+        {sub && (
+          <p className="text-slate-500 text-[10px] font-medium leading-none">
+            {sub}
+          </p>
+        )}
+      </div>
+      <div className="flex items-center gap-3 shrink-0">
+        {badge && (
+          <span className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-sm ${accent} bg-white/[0.02] border border-white/[0.04]`}>
+            {badge}
+          </span>
+        )}
+        {right && (
+          <p className={`text-xs font-mono font-bold ${accent}`}>
+            {right}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="p-8 text-center">
+      <p className="text-slate-650 text-xs font-medium">
+        {message}
+      </p>
+    </div>
+  )
 }

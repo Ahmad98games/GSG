@@ -37,8 +37,10 @@ export const createClient = () => {
       // Clear all Zustand stores
       resetAllStores();
       
-      // Redirect to /login
-      window.location.href = '/login';
+      // Redirect to appropriate login page based on context
+      window.location.href = window.location.pathname.startsWith('/dashboard')
+        ? '/dashboard/login'
+        : '/login';
       
       // Log to Pino (Simulated via console for now, assuming window.pino exists)
       // window.pino?.info({ event: 'session_expired', userId: session?.user?.id });
