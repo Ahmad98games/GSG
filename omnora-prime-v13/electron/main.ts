@@ -824,10 +824,11 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       // file-existence checks above took
       await releaseReservedPort();
 
-      nextServer = utilityProcess.fork(serverPath, [], {
+      nextServer = spawn(process.execPath, [serverPath], {
         cwd: path.dirname(serverPath),
         env: {
           ...process.env,
+          ELECTRON_RUN_AS_NODE: '1',
           PORT:                 String(PORT),
           NODE_ENV:             'production',
           // 0.0.0.0 allows mobile phones on the same WiFi to connect.

@@ -61,7 +61,7 @@ export default function OwnerLogin() {
           </div>
           <div className="space-y-1">
             <p className="text-[#C5A059] text-[9px] font-bold tracking-[0.3em] uppercase">
-              NOXIS CONTROL
+              Noxis hub
             </p>
             <h1 className="text-2xl font-black text-white uppercase tracking-tight">
               Owner Dashboard
