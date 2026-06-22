@@ -271,7 +271,6 @@ export default function NewInvoicePage() {
             .from('invoices')
             .insert({
               business_id: profile.id,
-              branch_id: values.branch_id || null,
               party_id: values.party_id,
               invoice_no: values.invoice_no,
               status: 'issued',
@@ -282,9 +281,7 @@ export default function NewInvoicePage() {
               discount_amount: discAmt,
               tax_pct: values.tax_pct || 0,
               tax_amount: taxAmt,
-              total: netTotal,
-              currency: values.currency,
-              exchange_rate: values.exchange_rate || 1.0
+              total: netTotal
             })
             .select('id')
             .single();
@@ -331,7 +328,6 @@ export default function NewInvoicePage() {
           // DEBIT: Accounts Receivable
           ledgerInserts.push({
             business_id: profile.id,
-            branch_id: values.branch_id || null,
             tx_ref: values.invoice_no,
             entry_type: 'debit',
             account_id: arAcc,
@@ -339,16 +335,12 @@ export default function NewInvoicePage() {
             amount: netTotal,
             description: `Sales Invoice: ${values.invoice_no}`,
             posted_by: user.id,
-            invoice_id: invId,
-            currency: values.currency,
-            exchange_rate: exRate,
-            amount_base_currency: netTotal * exRate
+            invoice_id: invId
           });
 
           // CREDIT: Sales Revenue
           ledgerInserts.push({
             business_id: profile.id,
-            branch_id: values.branch_id || null,
             tx_ref: values.invoice_no,
             entry_type: 'credit',
             account_id: salesAcc,
@@ -356,17 +348,13 @@ export default function NewInvoicePage() {
             amount: subtotal - discAmt,
             description: `Sales Revenue: ${values.invoice_no}`,
             posted_by: user.id,
-            invoice_id: invId,
-            currency: values.currency,
-            exchange_rate: exRate,
-            amount_base_currency: (subtotal - discAmt) * exRate
+            invoice_id: invId
           });
 
           // CREDIT: Sales Tax (if applicable)
           if (taxAmt > 0 && taxAcc) {
             ledgerInserts.push({
               business_id: profile.id,
-              branch_id: values.branch_id || null,
               tx_ref: values.invoice_no,
               entry_type: 'credit',
               account_id: taxAcc,
@@ -374,10 +362,7 @@ export default function NewInvoicePage() {
               amount: taxAmt,
               description: `Sales Tax: ${values.invoice_no}`,
               posted_by: user.id,
-              invoice_id: invId,
-              currency: values.currency,
-              exchange_rate: exRate,
-              amount_base_currency: taxAmt * exRate
+              invoice_id: invId
             });
           }
 
@@ -386,33 +371,25 @@ export default function NewInvoicePage() {
             // DEBIT: Cost of Goods Sold
             ledgerInserts.push({
               business_id: profile.id,
-              branch_id: values.branch_id || null,
               tx_ref: values.invoice_no,
               entry_type: 'debit',
               account_id: cogsAcc,
               amount: totalCost,
               description: `Cost of Goods Sold: ${values.invoice_no}`,
               posted_by: user.id,
-              invoice_id: invId,
-              currency: values.currency,
-              exchange_rate: exRate,
-              amount_base_currency: totalCost * exRate
+              invoice_id: invId
             });
 
             // CREDIT: Inventory Account
             ledgerInserts.push({
               business_id: profile.id,
-              branch_id: values.branch_id || null,
               tx_ref: values.invoice_no,
               entry_type: 'credit',
               account_id: invAcc,
               amount: totalCost,
               description: `Inventory Deduction: ${values.invoice_no}`,
               posted_by: user.id,
-              invoice_id: invId,
-              currency: values.currency,
-              exchange_rate: exRate,
-              amount_base_currency: totalCost * exRate
+              invoice_id: invId
             });
           }
 

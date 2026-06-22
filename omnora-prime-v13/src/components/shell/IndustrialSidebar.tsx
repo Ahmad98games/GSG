@@ -48,6 +48,8 @@ import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import Image from "next/image";
 import QuickProductionModal from "@/components/production/QuickProductionModal";
 import { TierBadge } from "../ui/TierBadge";
+import { createClient } from "@/lib/supabase/client";
+import { resetAllStores } from "@/stores";
 
 const PRESET_AVATARS = [
   { id: 1, src: '/images/presets/preset-1.png', border: '#22d3ee' },
@@ -83,6 +85,7 @@ export default React.memo(function IndustrialSidebar() {
   const { role, isLoading: isRoleLoading } = useStaff(businessId);
   const [mounted, setMounted] = useState(false);
   const [isProductionModalOpen, setIsProductionModalOpen] = useState(false);
+  const supabase = createClient();
 
   const isLoading = isPersonaLoading || isRoleLoading;
 
@@ -264,8 +267,14 @@ export default React.memo(function IndustrialSidebar() {
               );
               if (visibleItems.length === 0) return null;
 
+              const dataTourAttr =
+                group.label === 'CORE' ? 'sidebar-core' :
+                group.label === 'COMMERCE' ? 'sidebar-commerce' :
+                group.label === 'FINANCE' ? 'sidebar-finance' :
+                undefined;
+
               return (
-                <div key={idx} className="space-y-2">
+                <div key={idx} className="space-y-2" data-tour={dataTourAttr}>
                   {!isCollapsed && (
                     <p className="text-[9px] uppercase font-black text-noxis-text-muted tracking-widest px-4 mb-2">
                       {group.label}
@@ -313,6 +322,16 @@ export default React.memo(function IndustrialSidebar() {
           )}
           
           <button 
+            onClick={async () => {
+              try {
+                resetAllStores();
+                await supabase.auth.signOut();
+              } catch (err) {
+                console.error("Logout failed:", err);
+              } finally {
+                window.location.href = "/login";
+              }
+            }}
             className={cn(
               "w-full flex items-center h-8 rounded-sm px-2 text-noxis-text-muted hover:text-noxis-text hover:bg-noxis-overlay transition-all group",
               isCollapsed && "justify-center"

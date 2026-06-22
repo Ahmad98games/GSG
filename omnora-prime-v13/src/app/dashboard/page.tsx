@@ -43,7 +43,7 @@ import { IntelligenceWidget } from "@/components/dashboard/IntelligenceWidget";
 import { useToast } from "@/hooks/useToast";
 
 export default function DashboardPage() {
-  const { profile, businessName } = useBusinessProfile();
+  const { profile, businessName, setProfile } = useBusinessProfile();
   const { persona, isLoading: isPersonaLoading, fmt, fmtQty, vocab, t, businessId } = usePersona();
   const { activeIndustry } = useIndustry();
   const { getIndustryLabel } = useIndustryLabels();
@@ -246,41 +246,43 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (welcomeDismissedRef.current) return;
-    if (profile && onboardingData) {
-      const businessCreated = new Date(profile.created_at || Date.now());
-      const isNew = (Date.now() - businessCreated.getTime()) < 7 * 24 * 60 * 60 * 1000;
-      
-      const shouldShow = 
-        !onboardingData.complete && 
-        !onboardingData.skipped && 
-        onboardingData.skus === 0 && 
-        onboardingData.invoices === 0 && 
-        isNew;
+    if (profile) {
+      const isComplete = (profile.onboarding_complete ?? profile.onboarding_done) === true;
+      const hasSeen = profile.has_seen_first_action === true || 
+                      (typeof window !== 'undefined' && localStorage.getItem('noxis_has_seen_first_action') === 'true');
 
-      // Also show if they have some activity now but haven't finished the guide (Step 3)
-      const hasSomeActivity = onboardingData.skus > 0 || onboardingData.parties > 0;
-      
-      if (shouldShow || (hasSomeActivity && !onboardingData.complete && !onboardingData.skipped)) {
+      if (isComplete && !hasSeen) {
         queueMicrotask(() => setShowWelcome(true));
       }
     }
-  }, [profile, onboardingData]);
+  }, [profile]);
 
   const handleWelcomeClose = async (skipped = false) => {
     welcomeDismissedRef.current = true;
     setShowWelcome(false);
-    const key = skipped ? 'onboarding_skipped' : 'onboarding_complete';
 
-    // Optimistically update query data
-    queryClient.setQueryData(['onboarding-data', businessId], (oldData: any) => {
-      if (!oldData) return oldData;
-      return {
-        ...oldData,
-        complete: !skipped,
-        skipped: skipped
-      };
-    });
-    
+    if (profile) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('noxis_has_seen_first_action', 'true');
+      }
+
+      const updatedProfile = { ...profile, has_seen_first_action: true };
+      setProfile(updatedProfile);
+
+      try {
+        const { error } = await supabase
+          .from('business_profiles')
+          .update({ has_seen_first_action: true })
+          .eq('id', profile.id);
+        if (error) {
+          console.warn('Failed to update has_seen_first_action on database:', error.message);
+        }
+      } catch (err) {
+        console.error('Failed to update has_seen_first_action:', err);
+      }
+    }
+
+    const key = skipped ? 'onboarding_skipped' : 'onboarding_complete';
     try {
       await fetch('/api/settings', {
         method: 'POST',
@@ -296,6 +298,19 @@ export default function DashboardPage() {
     
     queryClient.invalidateQueries({ queryKey: ['onboarding-data'] });
   };
+
+  const profitChartData = useMemo(
+    () => chartData.map((d) => ({ ...d, velocity: d.velocity * 0.2 })),
+    [chartData]
+  );
+  const receivablesChartData = useMemo(
+    () => chartData.map((d) => ({ ...d, velocity: d.velocity * 0.5 })),
+    [chartData]
+  );
+  const inventoryChartData = useMemo(
+    () => chartData.map((d) => ({ ...d, velocity: d.velocity * 0.3 })),
+    [chartData]
+  );
 
   const isLoading = isKpiLoading || isPersonaLoading;
   if (isLoading) return (
@@ -330,22 +345,8 @@ export default function DashboardPage() {
 
   const ownerName = profile?.owner_name || userEmail.split('@')[0] || 'User';
 
-  const profitChartData = useMemo(
-    () => chartData.map((d) => ({ ...d, velocity: d.velocity * 0.2 })),
-    [chartData]
-  );
-  const receivablesChartData = useMemo(
-    () => chartData.map((d) => ({ ...d, velocity: d.velocity * 0.5 })),
-    [chartData]
-  );
-  const inventoryChartData = useMemo(
-    () => chartData.map((d) => ({ ...d, velocity: d.velocity * 0.3 })),
-    [chartData]
-  );
-
   return (
     <div className="min-h-screen bg-noxis-bg text-noxis-text selection:bg-electric-blue/30">
-      
       <SentinelAlertOverlay />
       
       <AnimatePresence>

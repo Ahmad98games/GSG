@@ -126,8 +126,16 @@ export default function GlobalSearch() {
         setOpen(false)
       }
     }
+    const handleOpenSearch = () => {
+      setOpen(true)
+      setTimeout(() => inputRef.current?.focus(), 50)
+    }
     document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
+    window.addEventListener('open-global-search', handleOpenSearch)
+    return () => {
+      document.removeEventListener('keydown', handler)
+      window.removeEventListener('open-global-search', handleOpenSearch)
+    }
   }, [])
 
   useEffect(() => {

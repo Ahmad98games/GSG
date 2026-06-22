@@ -1,14 +1,12 @@
+"use client";
+
 import React from "react";
+import { NoxisLogoLoader } from "@/components/ui/NoxisLogoLoader";
 
 export default function Loading() {
   return (
-    <div className="flex items-center justify-center h-screen w-full bg-[#0F1113]">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-8 h-8 border-2 border-electric-blue border-t-transparent rounded-full animate-spin" />
-        <p className="text-gray-500 text-xs font-mono uppercase tracking-[0.2em]">
-          Loading...
-        </p>
-      </div>
+    <div className="flex items-center justify-center h-[calc(100vh-64px)] w-full bg-[#070809]">
+      <NoxisLogoLoader label="Loading Module..." fullScreen={false} />
     </div>
   );
 }

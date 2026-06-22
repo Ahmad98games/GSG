@@ -1,20 +1,23 @@
-const { createClient } = require('@supabase/supabase-js');
-const dotenv = require('dotenv');
 const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env.local') });
+const { createClient } = require('@supabase/supabase-js');
 
-dotenv.config({ path: path.join(__dirname, '../.env.local') });
+async function main() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabase = createClient(url, key);
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  console.log('Querying licenses...');
+  const { data, error } = await supabase
+    .from('licenses')
+    .select('*')
+    .limit(1);
 
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-async function check() {
-  const { data: dOrders, error: dError } = await supabase.from('dispatch_orders').select('*').limit(1);
-  console.log('dispatch_orders exists check:', { hasError: !!dError, errorMessage: dError?.message });
-
-  const { data: kLogs, error: kError } = await supabase.from('karigar_production_logs').select('*').limit(1);
-  console.log('karigar_production_logs exists check:', { hasError: !!kError, errorMessage: kError?.message });
+  if (error) {
+    console.log('Error querying licenses:', error.message || error);
+  } else {
+    console.log('licenses exists! Data:', data);
+  }
 }
 
-check();
+main().catch(console.error);

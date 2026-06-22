@@ -131,14 +131,25 @@ button, a, [role="button"] {
 }
 
 :root.theme-transitioning,
-:root.theme-transitioning * {
+:root.theme-transitioning body,
+:root.theme-transitioning aside,
+:root.theme-transitioning header,
+:root.theme-transitioning button,
+:root.theme-transitioning input,
+:root.theme-transitioning select,
+:root.theme-transitioning textarea,
+:root.theme-transitioning .glass-panel,
+:root.theme-transitioning .glass-panel-light,
+:root.theme-transitioning td,
+:root.theme-transitioning th {
   transition:
-    background-color 300ms cubic-bezier(0.4, 0, 0.2, 1),
-    border-color 300ms cubic-bezier(0.4, 0, 0.2, 1),
-    color 300ms cubic-bezier(0.4, 0, 0.2, 1),
-    fill 300ms cubic-bezier(0.4, 0, 0.2, 1),
-    stroke 300ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+    background-color 200ms cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 200ms cubic-bezier(0.4, 0, 0.2, 1),
+    color 200ms cubic-bezier(0.4, 0, 0.2, 1),
+    fill 200ms cubic-bezier(0.4, 0, 0.2, 1),
+    stroke 200ms cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
+
 
 /* --- Professional Typography System --- */
 

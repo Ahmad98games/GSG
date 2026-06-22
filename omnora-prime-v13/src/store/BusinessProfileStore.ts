@@ -26,6 +26,8 @@ export interface BusinessProfile {
   logo_url?: string;
   visual_theme?: string;
   onboarding_done: boolean;
+  onboarding_complete?: boolean;
+  has_seen_first_action?: boolean;
   persona_locked: boolean;
   whatsapp_config?: Record<string, unknown>;
   date_format?: string;

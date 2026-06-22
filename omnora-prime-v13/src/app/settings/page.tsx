@@ -1300,12 +1300,29 @@ export default function SettingsPage() {
                     <div className="space-y-6">
                       <label className="text-[10px] uppercase font-black text-gray-500 tracking-[0.2em]">Color Theme</label>
                       <ThemePicker />
-                    </div>
+                      <div className="p-6 bg-electric-blue/5 border border-electric-blue/10 rounded-2xl space-y-4">
+                        <p className="text-sm text-slate-300 leading-relaxed italic">
+                          "Each industrial operation has its own soul. Your software should reflect that."
+                        </p>
+                      </div>
 
-                    <div className="p-6 bg-electric-blue/5 border border-electric-blue/10 rounded-2xl space-y-4">
-                       <p className="text-sm text-slate-300 leading-relaxed italic">
-                         "Each industrial operation has its own soul. Your software should reflect that."
-                       </p>
+                      <div className="p-6 bg-white/5 border border-white/10 rounded-2xl space-y-4">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <h3 className="text-white font-bold text-sm">Guided Interface Tour</h3>
+                            <p className="text-slate-500 text-xs mt-0.5">Need a refresher on how the Noxis interface works?</p>
+                          </div>
+                          <button
+                            onClick={() => {
+                              localStorage.removeItem('noxis-tour-completed')
+                              window.location.href = '/dashboard'
+                            }}
+                            className="text-xs text-[#60A5FA] hover:text-blue-300 transition-colors bg-[#60A5FA]/10 border border-[#60A5FA]/20 px-3 py-1.5 rounded-sm uppercase tracking-wider font-bold"
+                          >
+                            Replay product tour
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </motion.div>
                 )}

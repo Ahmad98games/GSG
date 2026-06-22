@@ -4,6 +4,7 @@ const path = require('path')
 const REQUIRED_FILES = [
   '.next/standalone/server.js',
   '.next/standalone/package.json',
+  '.next/standalone/node_modules/next/headers.js',
   'build/icon.ico',
 ]
 
@@ -17,6 +18,7 @@ const REQUIRED_DIRS = [
 const checkWinUnpacked = process.argv.includes('--package')
 if (checkWinUnpacked) {
   REQUIRED_FILES.push('dist/win-unpacked/resources/standalone/server.js')
+  REQUIRED_FILES.push('dist/win-unpacked/resources/standalone/node_modules/next/headers.js')
 }
 
 let allGood = true

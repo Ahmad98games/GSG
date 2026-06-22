@@ -56,8 +56,8 @@ jobs:
           NEXT_PUBLIC_CLOUDFLARE_DEPLOY: 'true'
           CI: 'true'
           CF_PAGES: '1'
-          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+          NEXT_PUBLIC_SUPABASE_URL: https://zgxmvwxzjmpmesqliwxl.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_cGJQMAam_R4JU3X4IEIrkQ_EPeSsQIt
           SUPABASE_SERVICE_ROLE_KEY: placeholder
 
       - name: Verify static output

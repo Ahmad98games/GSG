@@ -41,8 +41,22 @@ export const db = new Proxy({} as Record<string, any>, {
         const sqliteModulePath = process.env.ELECTRON_RESOURCES
           ? path.join(process.env.ELECTRON_RESOURCES, 'better-sqlite3-multiple-ciphers', 'lib', 'index.js')
           : 'better-sqlite3-multiple-ciphers';
-        const Database = require(sqliteModulePath);
-        const { drizzle } = require('drizzle-orm/better-sqlite3');
+
+        // Use native require to avoid Turbopack/Webpack bundle-time interception
+        let nativeRequire: (id: string) => any;
+        try {
+          const mod = typeof (globalThis as any).__non_webpack_require__ !== 'undefined'
+            ? (globalThis as any).__non_webpack_require__('module')
+            : eval('require')('module');
+          nativeRequire = mod.createRequire(process.cwd() + '/index.js');
+        } catch (e) {
+          nativeRequire = typeof (globalThis as any).__non_webpack_require__ !== 'undefined'
+            ? (globalThis as any).__non_webpack_require__
+            : (process as any).mainModule?.require || eval('require');
+        }
+
+        const Database = nativeRequire(sqliteModulePath);
+        const { drizzle } = nativeRequire('drizzle-orm/better-sqlite3');
         /* eslint-enable @typescript-eslint/no-var-requires */
         
         const dbPath = getDbPath();

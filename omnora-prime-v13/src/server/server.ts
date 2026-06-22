@@ -29,6 +29,11 @@ export function startHubServer(onActivity?: () => void) {
   // 1. TCP Server for Industrial Nodes
   const tcpServer = createTCPServer(onActivity);
   const tcpPort = Number(process.env.HUB_TCP_PORT) || 9000;
+
+  tcpServer.on('error', (err: any) => {
+    logger.error({ err }, `[NSP] Industrial TCP Server error`);
+  });
+
   tcpServer.listen(tcpPort, '0.0.0.0', () => {
     logger.info(`[NSP] Industrial TCP Server listening on port ${tcpPort}`);
   });

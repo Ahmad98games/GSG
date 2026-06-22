@@ -12,6 +12,8 @@ import {
 import { useBusinessProfile } from '@/hooks/useBusinessProfile'
 import { usePersona } from '@/hooks/usePersona'
 import { createClient } from '@/lib/supabase/client'
+import { resetAllStores } from '@/stores'
+import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { useLanguageStore } from '@/stores/languageStore'
@@ -119,7 +121,7 @@ export default React.memo(function GlobalTopBar() {
       )}>
         {/* LEFT: Search */}
         <div className="flex-1 flex items-center">
-          <div className="relative group w-[240px]">
+          <div className="relative group w-[240px]" data-tour="search-bar">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-noxis-text-muted group-focus-within:text-noxis-accent transition-colors" />
             <input 
               type="text"
@@ -146,7 +148,7 @@ export default React.memo(function GlobalTopBar() {
         </div>
 
         {/* CENTER: The Pulse */}
-        <div className="flex items-center space-x-8">
+        <div className="flex items-center space-x-8" data-tour="hub-status">
           {/* Hub Connection */}
           <div className="flex items-center space-x-2">
             <div className="relative flex items-center justify-center w-1.5 h-1.5 flex-shrink-0">
@@ -233,51 +235,108 @@ export default React.memo(function GlobalTopBar() {
 
           <div className="h-6 w-[1px] bg-noxis-border mx-2" />
 
-          <button 
-            onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
-          >
-            {(() => {
-              const initials = (() => {
-                const name = (profile as any)?.owner_name?.trim() || profile?.business_name?.trim() || 'N';
-                const parts = name.split(/\s+/).filter(Boolean);
-                if (parts.length >= 2) {
-                  return (parts[0][0] + parts[1][0]).toUpperCase();
-                }
-                return name.substring(0, Math.min(name.length, 2)).toUpperCase();
-              })();
+          <div className="relative">
+            <button 
+              onClick={() => setIsProfileOpen(!isProfileOpen)}
+              data-tour="user-menu"
+              className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
+            >
+              {(() => {
+                const initials = (() => {
+                  const name = (profile as any)?.owner_name?.trim() || profile?.business_name?.trim() || 'N';
+                  const parts = name.split(/\s+/).filter(Boolean);
+                  if (parts.length >= 2) {
+                    return (parts[0][0] + parts[1][0]).toUpperCase();
+                  }
+                  return name.substring(0, Math.min(name.length, 2)).toUpperCase();
+                })();
 
-              if (profile?.avatar_type === 'custom' && profile?.avatar_url) {
+                if (profile?.avatar_type === 'custom' && profile?.avatar_url) {
+                  return (
+                    <div className="w-8 h-8 rounded-full border border-noxis-border bg-noxis-overlay overflow-hidden flex items-center justify-center relative">
+                      <Image src={profile.avatar_url} alt="Profile" width={32} height={32} className="w-full h-full object-cover" />
+                    </div>
+                  );
+                }
+
+                // Fallback to preset
+                const presetId = Number(profile?.avatar_preset_id || 1);
+                const preset = PRESET_AVATARS.find(p => p.id === presetId) || PRESET_AVATARS[0];
+
                 return (
-                  <div className="w-8 h-8 rounded-full border border-noxis-border bg-noxis-overlay overflow-hidden flex items-center justify-center relative">
-                    <Image src={profile.avatar_url} alt="Profile" width={32} height={32} className="w-full h-full object-cover" />
+                  <div 
+                    style={{ borderColor: preset.border }}
+                    className="w-8 h-8 rounded-full border flex items-center justify-center overflow-hidden bg-black/40 shadow-[0_0_8px_rgba(34,211,238,0.2)] relative"
+                  >
+                    <Image src={preset.src} alt="Preset Avatar" width={32} height={32} className="w-full h-full object-cover" />
                   </div>
                 );
-              }
-
-              // Fallback to preset
-              const presetId = Number(profile?.avatar_preset_id || 1);
-              const preset = PRESET_AVATARS.find(p => p.id === presetId) || PRESET_AVATARS[0];
-
-              return (
-                <div 
-                  style={{ borderColor: preset.border }}
-                  className="w-8 h-8 rounded-full border flex items-center justify-center overflow-hidden bg-black/40 shadow-[0_0_8px_rgba(34,211,238,0.2)] relative"
-                >
-                  <Image src={preset.src} alt="Preset Avatar" width={32} height={32} className="w-full h-full object-cover" />
+              })()}
+              <div className="text-left hidden md:block">
+                <div className="flex items-center gap-2">
+                  <p className="text-[10px] font-black text-noxis-text uppercase tracking-tight truncate max-w-[120px]">
+                    {profile?.business_name || 'Noxis Hub'}
+                  </p>
+                  <TierBadge />
                 </div>
-              );
-            })()}
-            <div className="text-left hidden md:block">
-              <div className="flex items-center gap-2">
-                <p className="text-[10px] font-black text-noxis-text uppercase tracking-tight truncate max-w-[120px]">
-                  {profile?.business_name || 'Noxis Hub'}
-                </p>
-                <TierBadge />
+                <p className="text-[9px] text-noxis-text-muted font-bold uppercase tracking-widest">Administrator</p>
               </div>
-              <p className="text-[9px] text-noxis-text-muted font-bold uppercase tracking-widest">Administrator</p>
-            </div>
-          </button>
+            </button>
+
+            <AnimatePresence>
+              {isProfileOpen && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setIsProfileOpen(false)} 
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-2 w-48 bg-noxis-surface border border-noxis-border rounded-sm shadow-2xl z-50 py-1"
+                  >
+                    <div className="px-4 py-2 border-b border-noxis-border">
+                      <p className="text-[10px] font-bold text-noxis-text uppercase tracking-tight truncate">
+                        {profile?.business_name || 'Noxis Hub'}
+                      </p>
+                      <p className="text-[8px] text-noxis-text-muted font-mono uppercase tracking-widest mt-0.5">
+                        Administrator
+                      </p>
+                    </div>
+                    
+                    <Link 
+                      href="/settings"
+                      onClick={() => setIsProfileOpen(false)}
+                      className="flex items-center w-full px-4 py-2 text-[10px] font-bold text-noxis-text-muted hover:text-noxis-text hover:bg-noxis-overlay transition-colors uppercase tracking-wider"
+                    >
+                      <Settings className="w-3.5 h-3.5 mr-2" />
+                      Settings
+                    </Link>
+                    
+                    <button 
+                      onClick={async () => {
+                        setIsProfileOpen(false);
+                        try {
+                          resetAllStores();
+                          await supabase.auth.signOut();
+                        } catch (err) {
+                          console.error("Logout failed:", err);
+                        } finally {
+                          window.location.href = '/login';
+                        }
+                      }}
+                      className="flex items-center w-full px-4 py-2 text-[10px] font-bold text-noxis-danger hover:bg-noxis-danger/10 transition-colors text-left uppercase tracking-wider border-t border-noxis-border"
+                    >
+                      <LogOut className="w-3.5 h-3.5 mr-2" />
+                      Log Out
+                    </button>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </header>
 

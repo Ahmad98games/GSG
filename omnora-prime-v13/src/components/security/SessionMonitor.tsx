@@ -21,7 +21,7 @@ export default function SessionMonitor() {
       resetAllStores(); // Line X: Store cleanup
       await supabase.auth.signOut(); // Line Y: Auth invalidation
       
-      window.location.href = '/auth/login';
+      window.location.href = '/login';
     });
 
     // 3. User activity tracking (send to main process)

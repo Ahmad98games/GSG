@@ -8,11 +8,27 @@ directories:
 
 # Files to include in the app
 files:
-  - dist-electron/**/*
-  - package.json
-  - "!node_modules"
+  - "**/*"
   - "!src"
   - "!.next"
+  - "!dist"
+  - "!*.ts"
+  - "!*.map"
+  - "!.git"
+  - "!scratch"
+  - "!.agents"
+  - "!.claude"
+  - "!.windsurf"
+  - "!.github"
+  - "!.venv"
+  - "!android"
+  - "!supabase"
+  - "!scripts"
+  - "!*.html"
+  - "!audit*"
+  - "!lint_results*"
+  - dist-electron/**/*
+  - package.json
 
 # Extra resources copied to resources/
 # These are accessible via process.resourcesPath
@@ -22,6 +38,18 @@ extraResources:
     to: "standalone"
     filter:
       - "**/*"
+
+  # Standalone node_modules (copied explicitly since electron-builder ignores nested node_modules)
+  - from: ".next/standalone/node_modules"
+    to: "standalone/node_modules"
+    filter:
+      - "**/*"
+
+  # Mobile WebSocket bridge wrapper server
+  # Spawned by electron/main.ts instead of bare server.js.
+  # Boots Next.js + attaches /mobile-bridge WebSocket endpoint.
+  - from: "server-with-bridge.js"
+    to: "standalone/server-with-bridge.js"
 
   # Static files the server needs
   - from: ".next/static"
@@ -57,8 +85,8 @@ win:
   target:
     - target: nsis
       arch: [x64]
-  # Avoid winCodeSign / asar integrity tooling that extracts symlinks (fails without Dev Mode/admin on Windows).
-  signAndEditExecutable: false
+  # Edit executable resources (icon and metadata) in the final Windows binary
+  signAndEditExecutable: true
 
 asarUnpack:
   - "**/*.node"
@@ -69,13 +97,27 @@ asarUnpack:
 
 nsis:
   oneClick: false
-  allowToChangeInstallationDirectory: false
-  createDesktopShortcut: true
-  shortcutName: Noxis Hub
+  perMachine: false
+  allowToChangeInstallationDirectory: true
   installerIcon: build/icon.ico
   uninstallerIcon: build/icon.ico
-  # Multi-language stubs (e.g. Korean LangString fallback) emit NSIS warnings; default treats them as errors.
+  installerHeaderIcon: build/icon.ico
+  installerSidebar: build/installerSidebar.bmp
+  uninstallerSidebar: build/installerSidebar.bmp
+  installerHeader: build/installerHeader.bmp
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Noxis Hub
+  menuCategory: Business
+  artifactName: "NoxisHub-Setup-${version}.${ext}"
+  deleteAppDataOnUninstall: false
+  license: build/license.txt
   warningsAsErrors: false
+  differentialPackage: false
+  displayLanguageSelector: false
+  multiLanguageInstaller: false
+  runAfterFinish: true
+  include: build/installer.nsh
   # Stock NSIS (~2GiB+) produces a tiny useless Setup.exe; NSISBI embeds huge app payloads.
   # Ref: https://github.com/electron-userland/electron-builder/issues/8399
   customNsisBinary:

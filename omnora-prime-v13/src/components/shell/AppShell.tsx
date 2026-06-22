@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { UpdateBanner } from "@/components/shell/UpdateBanner";
 import IndustrialSidebar from "@/components/shell/IndustrialSidebar";
 import { useNoxisLocale } from "@/hooks/useLocale";
+import { NoxisLogoLoader } from "@/components/ui/NoxisLogoLoader";
 
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -33,7 +34,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const { isRTL } = useLanguageStore();
 
   const { profile } = useBusinessProfile();
-  const { setTheme, activeThemeId } = useThemeStore();
 
   const [showIntro, setShowIntro] = React.useState(false);
   const [introChecked, setIntroChecked] = React.useState(false);
@@ -114,10 +114,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
 
   React.useEffect(() => {
-    if (profile?.visual_theme && profile.visual_theme !== activeThemeId) {
-      setTheme(profile.visual_theme as any);
+    const currentThemeId = useThemeStore.getState().activeThemeId;
+    if (profile?.visual_theme && profile.visual_theme !== currentThemeId) {
+      useThemeStore.getState().setTheme(profile.visual_theme as any);
     }
-  }, [profile?.visual_theme, setTheme, activeThemeId]);
+  }, [profile?.visual_theme]);
 
   React.useEffect(() => {
     // Show intro if user has completed onboarding
@@ -150,13 +151,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-[#121417] flex items-center justify-center">
+      <>
         <ToastContainer />
-        <div className="flex flex-col items-center space-y-4">
-          <div className="w-12 h-12 border-4 border-electric-blue/20 border-t-electric-blue rounded-full animate-spin" />
-          <span className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-500">Initializing Noxis...</span>
-        </div>
-      </div>
+        <NoxisLogoLoader label="Initializing Noxis..." fullScreen={true} />
+      </>
     );
   }
 

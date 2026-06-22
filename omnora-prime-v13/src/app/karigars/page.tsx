@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
@@ -583,7 +584,7 @@ export default function KarigarsPage() {
            </div>
       </main>
 
-      {/* Modals */}
+      {/* Modals — each in its own AnimatePresence to avoid cross-modal exit diffing */}
       <AnimatePresence>
          {isRegisterOpen && (
            <RegisterKarigarModal 
@@ -592,6 +593,8 @@ export default function KarigarsPage() {
             onSuccess={(msg) => { setSuccessToast(msg); setIsRegisterOpen(false); queryClient.invalidateQueries({ queryKey: ['karigars'] }); }} 
            />
          )}
+      </AnimatePresence>
+      <AnimatePresence>
          {attendingKarigar && (
            <AttendanceModal 
             karigar={attendingKarigar}
@@ -599,6 +602,8 @@ export default function KarigarsPage() {
             onSuccess={(msg) => { setSuccessToast(msg); setAttendingKarigar(null); }}
            />
          )}
+      </AnimatePresence>
+      <AnimatePresence>
          {advancingKarigar && (
            <AdvanceModal 
             karigar={advancingKarigar}
@@ -606,15 +611,16 @@ export default function KarigarsPage() {
             onSuccess={(msg) => { setSuccessToast(msg); setAdvancingKarigar(null); queryClient.invalidateQueries({ queryKey: ['karigars'] }); }}
            />
          )}
-         {loggingKarigar && (
-            <LogProductionModal
-             karigar={loggingKarigar}
-             batches={activeBatches}
-             onClose={() => setLoggingKarigar(null)}
-             onSuccess={(msg) => { setSuccessToast(msg); setLoggingKarigar(null); queryClient.invalidateQueries({ queryKey: ['karigars'] }); }}
-            />
-          )}
       </AnimatePresence>
+
+      {/* LogProductionModal rendered via portal — mounts outside this page's render tree
+          so setLoggingKarigar() does NOT trigger table/virtualizer re-renders */}
+      <LogProductionPortal
+        karigar={loggingKarigar}
+        batches={activeBatches}
+        onClose={() => setLoggingKarigar(null)}
+        onSuccess={(msg) => { setSuccessToast(msg); setLoggingKarigar(null); queryClient.invalidateQueries({ queryKey: ['karigars'] }); }}
+      />
 
       {/* Toast Notification */}
       <AnimatePresence>
@@ -980,6 +986,42 @@ interface LogProductionModalProps {
   onClose: () => void;
   onSuccess: (msg: string) => void;
 }
+
+// Portal wrapper — renders the modal into document.body so it is
+// completely outside KarigarsPage's render subtree.
+// This means clicking "Log Output" no longer causes the virtualized
+// table, TanStack Table, or useMemo(columns) to re-run at all.
+function LogProductionPortal({
+  karigar,
+  batches,
+  onClose,
+  onSuccess,
+}: {
+  karigar: Karigar | null;
+  batches: any[];
+  onClose: () => void;
+  onSuccess: (msg: string) => void;
+}) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
+  if (!mounted || !karigar) return null;
+
+  return createPortal(
+    <AnimatePresence>
+      {karigar && (
+        <LogProductionModal
+          karigar={karigar}
+          batches={batches}
+          onClose={onClose}
+          onSuccess={onSuccess}
+        />
+      )}
+    </AnimatePresence>,
+    document.body
+  );
+}
+
 
 function LogProductionModal({ karigar, batches = [], onClose, onSuccess }: LogProductionModalProps) {
   const { profile } = useBusinessProfile();

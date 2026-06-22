@@ -12,11 +12,11 @@ interface ThemeStore {
   isPanelOpen: boolean
   customAccentColor: string | null
   customFinancialColor: string | null
-  setTheme: (themeId: ThemeId) => void
+  setTheme: (themeId: ThemeId, enableTransition?: boolean) => void
   setMode: (mode: ThemeMode) => void
-  setThemeByIndustry: (industry: string) => void
+  setThemeByIndustry: (industry: string, enableTransition?: boolean) => void
   setIsPanelOpen: (isOpen: boolean) => void
-  setCustomColors: (accent: string | null, financial: string | null) => void
+  setCustomColors: (accent: string | null, financial: string | null, enableTransition?: boolean) => void
 }
 
 export const useThemeStore = create<ThemeStore>()(
@@ -29,11 +29,11 @@ export const useThemeStore = create<ThemeStore>()(
       customAccentColor: null,
       customFinancialColor: null,
       
-      setTheme: (themeId) => {
+      setTheme: (themeId, enableTransition = true) => {
         const theme = themes.find(t => t.id === themeId)
           || themes[0]
         set({ activeThemeId: themeId, activeTheme: theme })
-        applyThemeToDOM(theme, get().customAccentColor, get().customFinancialColor)
+        applyThemeToDOM(theme, get().customAccentColor, get().customFinancialColor, enableTransition)
       },
 
       setMode: (mode) => {
@@ -43,23 +43,23 @@ export const useThemeStore = create<ThemeStore>()(
           ? (systemPrefersDark ? 'electric-slate' : 'light-slate')
           : (mode === 'dark' ? 'electric-slate' : 'light-slate')
         
-        get().setTheme(effectiveThemeId as ThemeId)
+        get().setTheme(effectiveThemeId as ThemeId, true)
       },
       
-      setThemeByIndustry: (industry) => {
+      setThemeByIndustry: (industry, enableTransition = true) => {
         const theme = getThemeForIndustry(industry)
         set({
           activeThemeId: theme.id,
           activeTheme: theme
         })
-        applyThemeToDOM(theme, get().customAccentColor, get().customFinancialColor)
+        applyThemeToDOM(theme, get().customAccentColor, get().customFinancialColor, enableTransition)
       },
 
       setIsPanelOpen: (isOpen) => set({ isPanelOpen: isOpen }),
 
-      setCustomColors: (accent, financial) => {
+      setCustomColors: (accent, financial, enableTransition = true) => {
         set({ customAccentColor: accent, customFinancialColor: financial })
-        applyThemeToDOM(get().activeTheme, accent, financial)
+        applyThemeToDOM(get().activeTheme, accent, financial, enableTransition)
       }
     }),
     { 
@@ -71,7 +71,7 @@ export const useThemeStore = create<ThemeStore>()(
           const handler = (e: MediaQueryListEvent) => {
             if (state.mode === 'auto') {
               const themeId = e.matches ? 'electric-slate' : 'light-slate'
-              state.setTheme(themeId as ThemeId)
+              state.setTheme(themeId as ThemeId, true)
             }
           }
           mediaQuery.addEventListener('change', handler)
@@ -79,9 +79,9 @@ export const useThemeStore = create<ThemeStore>()(
           // Initial apply
           if (state.mode === 'auto') {
             const themeId = mediaQuery.matches ? 'electric-slate' : 'light-slate'
-            state.setTheme(themeId as ThemeId)
+            state.setTheme(themeId as ThemeId, false)
           } else {
-            applyThemeToDOM(state.activeTheme, state.customAccentColor, state.customFinancialColor)
+            applyThemeToDOM(state.activeTheme, state.customAccentColor, state.customFinancialColor, false)
           }
         }
       }
@@ -92,13 +92,16 @@ export const useThemeStore = create<ThemeStore>()(
 export function applyThemeToDOM(
   theme: Theme, 
   customAccent?: string | null, 
-  customFinancial?: string | null
+  customFinancial?: string | null,
+  enableTransition: boolean = false
 ) {
   if (typeof document === 'undefined') return
   const root = document.documentElement
   
-  // Add temporary transition class to root
-  root.classList.add('theme-transitioning')
+  if (enableTransition) {
+    // Add temporary transition class to root
+    root.classList.add('theme-transitioning')
+  }
   
   root.style.setProperty('--color-bg', theme.colors.background)
   root.style.setProperty('--color-surface', theme.colors.surface)
@@ -127,8 +130,10 @@ export function applyThemeToDOM(
     root.style.removeProperty('--font-ui')
   }
 
-  // Remove transition class after animation completes
-  setTimeout(() => {
-    root.classList.remove('theme-transitioning')
-  }, 500)
+  if (enableTransition) {
+    // Remove transition class after animation completes
+    setTimeout(() => {
+      root.classList.remove('theme-transitioning')
+    }, 500)
+  }
 }

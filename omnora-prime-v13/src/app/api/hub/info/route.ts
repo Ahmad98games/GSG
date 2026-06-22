@@ -20,11 +20,17 @@ export async function GET() {
     if (localIP !== '127.0.0.1') break;
   }
 
+  const port = parseInt(process.env.PORT ?? '3000', 10);
+
   return NextResponse.json({
     ip: localIP,
-    port: 9000,
+    port: 9000,          // NSP TCP port (desktop-to-desktop, unchanged)
+    bridgePort: port,    // WebSocket bridge port (same as Next.js)
+    bridgeUrl: `ws://${localIP}:${port}/mobile-bridge`,
+    httpUrl: `http://${localIP}:${port}`,
     hostname: os.hostname(),
     platform: os.platform(),
     uptime: os.uptime(),
   });
 }
+
