@@ -116,21 +116,21 @@ CREATE INDEX IF NOT EXISTS idx_anomaly_unresolved
   WHERE resolved = false;
 
 -- 4. MILLION-ROW PERFORMANCE INDEXES
-CREATE INDEX CONCURRENTLY IF NOT EXISTS 
+CREATE INDEX IF NOT EXISTS 
   idx_ledger_business_status_posted
   ON ledger_entries(business_id, status, posted_at DESC)
   WHERE status = 'posted';
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS
+CREATE INDEX IF NOT EXISTS
   idx_ledger_account_type
   ON ledger_entries(account_id, entry_type, amount)
   WHERE status = 'posted';
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS
+CREATE INDEX IF NOT EXISTS
   idx_skus_business_active
   ON skus(business_id, is_active, qty_on_hand)
   WHERE is_active = true;
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS
+CREATE INDEX IF NOT EXISTS
   idx_transfer_logs_sku
   ON transfer_logs(sku_id, operation_type, qty);
