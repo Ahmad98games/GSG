@@ -75,7 +75,7 @@ export function buildWhatsAppLink(
   message = '',
   countryCode = 'PK',
 ): string {
-  const SUPPORT = '923334355475' // Omnora Labs support fallback
+  const SUPPORT = '923264742678' // Omnora Labs support fallback
 
   const number = phone?.trim()
     ? normalisePhone(phone.trim(), countryCode)

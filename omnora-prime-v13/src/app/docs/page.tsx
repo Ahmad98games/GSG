@@ -509,8 +509,8 @@ export default function DocsPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2 border-t border-white/[0.03]">
                       <div>
                         <span className="text-[9px] text-emerald-400 font-bold uppercase tracking-widest block mb-1">Direct Floor WhatsApp Support</span>
-                        <a href="https://wa.me/923334355475" target="_blank" rel="noopener noreferrer" className="text-xs font-mono font-bold text-emerald-400 hover:underline">
-                          +92 333 4355475
+                        <a href="https://wa.me/923264742678" target="_blank" rel="noopener noreferrer" className="text-xs font-mono font-bold text-emerald-400 hover:underline">
+                          +92 326 4742678
                         </a>
                       </div>
                       <div>

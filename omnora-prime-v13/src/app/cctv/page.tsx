@@ -730,7 +730,7 @@ export default function CCTVPage() {
           Your feedback shapes what we build next.
         </p>
         <a
-          href={`https://wa.me/923334355475?text=${encodeURIComponent(
+          href={`https://wa.me/923264742678?text=${encodeURIComponent(
             'Noxis CCTV Feedback:\n\nCamera brand: \nWhat I need: \n'
           )}`}
           target="_blank"

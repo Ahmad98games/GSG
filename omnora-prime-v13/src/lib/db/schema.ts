@@ -148,10 +148,20 @@ export const processedEvents = sqliteTable('processed_events', {
 
 export const authorizedDevices = sqliteTable('authorized_devices', {
   nodeId: sqliteText('node_id').primaryKey(),
-  meshKey: sqliteText('mesh_key').notNull(),
+  meshKey: sqliteText('mesh_key').notNull().default(''),
   label: sqliteText('label'),
   isActive: integer('is_active').notNull().default(1),
-});
+  // Mobile bridge fields (added v13.1)
+  businessId: sqliteText('business_id'),
+  deviceId: sqliteText('device_id'),           // the client-reported device UUID
+  deviceLabel: sqliteText('device_label'),
+  lastSeen: sqliteText('last_seen'),
+  isRevoked: integer('is_revoked').notNull().default(0),
+  createdAt: sqliteText('created_at').notNull().default(sql`(datetime('now'))`),
+}, (table) => ({
+  businessIdx: index('idx_auth_devices_business').on(table.businessId),
+  deviceIdIdx: index('idx_auth_devices_device_id').on(table.deviceId),
+}));
 
 export const guardianAuthRequests = sqliteTable('guardian_auth_requests', {
   requestId: sqliteText('request_id').primaryKey(),

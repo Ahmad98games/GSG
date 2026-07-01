@@ -116,17 +116,35 @@ export default function InvoiceListPage() {
   );
 
   if (!invoices || invoices.length === 0) return (
-    <div className="min-h-screen bg-[#0F1113] text-slate-200 p-6 flex flex-col justify-center">
-      <div className="flex justify-between mb-4">
-        <Skeleton className="h-8 w-32" />
-        <Skeleton className="h-9 w-28" />
+    <div className="min-h-screen bg-[#0F1113] text-slate-200 p-6 flex flex-col">
+      {/* Header with Create Invoice button still prominent in zero-data state */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-lg font-semibold tracking-tight text-white">
+            Invoicing Registry
+          </h1>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Financial Asset Tracking
+          </p>
+        </div>
+        <button
+          onClick={() => router.push('/invoices/new')}
+          className="flex items-center space-x-2 px-4 py-2 bg-electric-blue text-onyx text-sm font-semibold rounded-sm hover:brightness-110 shadow-lg"
+        >
+          <Plus size={14} />
+          <span>Create Invoice</span>
+        </button>
       </div>
-      <NewEmptyState
-        icon="📄"
-        title="No invoices yet"
-        description="Create your first invoice when you make a sale"
-        action={{ label: 'New invoice', href: '/invoices/new' }}
-      />
+
+      {/* Clean empty state — no skeleton, no broken numbers */}
+      <div className="flex-1 flex items-center justify-center">
+        <NewEmptyState
+          icon="📄"
+          title="No invoices yet"
+          description="Create your first invoice when you make a sale to start tracking receivables."
+          action={{ label: 'New Invoice', href: '/invoices/new' }}
+        />
+      </div>
     </div>
   );
 

@@ -18,7 +18,7 @@ export default function ErrorPage({
           <AlertTriangle className="w-8 h-8 text-red-400" />
         </div>
         <h2 className="text-white text-xl font-semibold mb-2">
-          Something went wrong
+          Something went wrong!
         </h2>
         <p className="text-gray-400 text-sm mb-2">
           {error.message || 'An unexpected error occurred'}
@@ -38,7 +38,7 @@ export default function ErrorPage({
           <Link href="/dashboard"
             className="px-4 py-2 bg-white/5 border border-white/10 text-gray-400 text-sm hover:bg-white/10 transition-colors"
           >
-            Back to Dashboard
+           Go Back to Dashboard
           </Link>
         </div>
       </div>

@@ -12,6 +12,7 @@ import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { useSidebarState } from "@/hooks/useSidebarState";
 import { IndustrialMath } from "@/lib/finance/IndustrialMath";
 import { numberToWords } from "@/utils/NumberToWords";
+import { seedChartOfAccounts } from "@/lib/accounting/seedAccounts";
 import { 
   FileText, Plus, Trash2, Search, 
   User, Package, ShieldCheck,
@@ -25,6 +26,7 @@ import { Decimal } from 'decimal.js';
 import CreditRiskBadge from "@/components/invoices/CreditRiskBadge";
 import { useDebounce } from "@/hooks/useDebounce";
 import { FieldError } from "@/components/ui/StateViews";
+import { useToast } from "@/hooks/useToast";
 
 import { CURRENCIES, formatCurrency, CurrencyCode } from '@/lib/currency/currencyEngine';
 
@@ -67,6 +69,7 @@ export default function NewInvoicePage() {
   const [docHash, setDocHash] = useState("");
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [pendingRedirectUrl, setPendingRedirectUrl] = useState<string | null>(null);
+  const toast = useToast();
 
   useEffect(() => {
     setDocHash(Math.random().toString(36).substring(2, 15).toUpperCase());
@@ -215,6 +218,17 @@ export default function NewInvoicePage() {
           console.warn("Stored procedure 'create_invoice_atomic' not found. Executing client-side transaction fallback.");
           
           if (!profile?.id) throw new Error("Business profile context missing.");
+
+          // Safety net: auto-seed chart of accounts if missing
+          const { count: accountCount } = await supabase
+            .from('accounts')
+            .select('id', { count: 'exact', head: true })
+            .eq('business_id', profile.id);
+
+          if (!accountCount || accountCount === 0) {
+            console.warn('[Invoice] No accounts found — auto-seeding chart of accounts...');
+            await seedChartOfAccounts(profile.id);
+          }
 
           // 1. Fetch Core Accounts
           const { data: accounts, error: accError } = await supabase
@@ -398,11 +412,55 @@ export default function NewInvoicePage() {
             .insert(ledgerInserts);
           if (ledgerError) throw ledgerError;
 
+          // Update party current_balance — non-fatal if it fails
+          // (ledger is the source of truth; balance reconciles on next sync)
+          try {
+            const { data: currentParty } = await supabase
+              .from('parties')
+              .select('current_balance')
+              .eq('id', values.party_id)
+              .single();
+            if (currentParty) {
+              await supabase
+                .from('parties')
+                .update({ current_balance: (currentParty.current_balance || 0) + netTotal })
+                .eq('id', values.party_id);
+            }
+          } catch (balanceErr: any) {
+            console.warn('Party balance update failed (non-fatal):', balanceErr.message);
+          }
+
         } else {
           throw rpcError;
         }
       } else {
+        // RPC succeeded — also update party balance (belt-and-suspenders;
+        // the stored procedure may already do this, but we ensure consistency)
         invId = data;
+        try {
+          const { data: currentParty } = await supabase
+            .from('parties')
+            .select('current_balance')
+            .eq('id', values.party_id)
+            .single();
+          if (currentParty) {
+            // Recompute netTotal from watched form values for the RPC path
+            const watchedItems = values.items;
+            let rpcSubtotal = 0;
+            for (const item of watchedItems) {
+              rpcSubtotal += (item.qty || 0) * (item.unit_price || 0);
+            }
+            const rpcDiscAmt = rpcSubtotal * ((values.discount_pct || 0) / 100);
+            const rpcTaxAmt = (rpcSubtotal - rpcDiscAmt) * ((values.tax_pct || 0) / 100);
+            const rpcNetTotal = rpcSubtotal - rpcDiscAmt + rpcTaxAmt;
+            await supabase
+              .from('parties')
+              .update({ current_balance: (currentParty.current_balance || 0) + rpcNetTotal })
+              .eq('id', values.party_id);
+          }
+        } catch (balanceErr: any) {
+          console.warn('Party balance update failed (non-fatal, RPC path):', balanceErr.message);
+        }
       }
 
       // Check invoice count
@@ -422,7 +480,20 @@ export default function NewInvoicePage() {
       }
     } catch (err: any) {
       console.error(err);
-      alert("Post failed: " + err.message);
+      // Translate raw Supabase/DB errors into human-readable messages
+      let userMessage = "Failed to post invoice. Please try again.";
+      if (err?.message) {
+        if (err.message.includes('party_id') || err.message.includes('party')) {
+          userMessage = "Please select a customer before posting.";
+        } else if (err.message.includes('accounts') || err.message.includes('1100')) {
+          userMessage = "Chart of accounts not set up. Please contact support or set up accounts in Settings.";
+        } else if (err.message.includes('network') || err.message.includes('fetch')) {
+          userMessage = "Network error. Check your internet connection and try again.";
+        } else if (err.message.includes('permission') || err.message.includes('denied')) {
+          userMessage = "You don't have permission to create invoices. Contact your administrator.";
+        }
+      }
+      toast.error("Post failed", userMessage);
     } finally {
       setIsSubmitting(false);
     }

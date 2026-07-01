@@ -436,18 +436,36 @@ export default function KarigarsPage() {
   );
 
   if (!karigars || karigars.length === 0) return (
-    <div className="min-h-screen bg-noxis-bg text-slate-200 p-6 flex flex-col justify-center">
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <KpiCardSkeleton key={i} />
-        ))}
+    <div className="min-h-screen bg-noxis-bg text-slate-200 p-6 flex flex-col">
+      {/* Header with Register button still visible in zero-data state */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-lg font-semibold tracking-tight text-white">
+            {workerTermPlural} Registry
+          </h1>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Human Resource Management &amp; Payouts
+          </p>
+        </div>
+        <button
+          onClick={() => setIsRegisterOpen(true)}
+          className="flex items-center space-x-2 px-4 py-2 bg-electric-blue text-onyx text-sm font-semibold rounded-sm hover:brightness-110 transition-all shadow-lg"
+        >
+          <UserPlus size={14} />
+          <span>Register {workerTerm}</span>
+        </button>
       </div>
-      <NewEmptyState
-        icon="👷"
-        title="No workers registered"
-        description="Register your first Karigar to track attendance and wages"
-        action={{ label: 'Add Karigar', onClick: () => setIsRegisterOpen(true) }}
-      />
+
+      {/* Clean empty state — no broken numbers, no skeleton placeholders */}
+      <div className="flex-1 flex items-center justify-center">
+        <NewEmptyState
+          icon="👷"
+          title="No workers registered yet"
+          description="Add your first karigar to start tracking attendance, advances, and wages."
+          action={{ label: `Register First ${workerTerm}`, onClick: () => setIsRegisterOpen(true) }}
+        />
+      </div>
+
       <AnimatePresence>
          {isRegisterOpen && (
            <RegisterKarigarModal 

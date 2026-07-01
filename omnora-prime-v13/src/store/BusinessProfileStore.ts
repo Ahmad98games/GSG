@@ -104,4 +104,3 @@ export const useBusinessProfileStore = create<BusinessProfileState>()(
     }
   )
 );
-

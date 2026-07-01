@@ -10,122 +10,6 @@ import {
   Zap, Clock, ChevronRight
 } from 'lucide-react'
 
-// ─── SECURITY CONFIG ───
-const ADMIN_PASS =
-  process.env.NEXT_PUBLIC_ADMIN_PASS ||
-  'noxis-omnora-2026-secure'
-const SESSION_KEY = 'noxis_admin_session'
-const SESSION_DURATION = 8 * 60 * 60 * 1000 // 8h
-
-function verifySession(): boolean {
-  try {
-    const raw = sessionStorage.getItem(SESSION_KEY)
-    if (!raw) return false
-    const { token, expires } = JSON.parse(raw)
-    if (Date.now() > expires) {
-      sessionStorage.removeItem(SESSION_KEY)
-      return false
-    }
-    return token === ADMIN_PASS
-  } catch {
-    return false
-  }
-}
-
-function createSession(): void {
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify({
-    token: ADMIN_PASS,
-    expires: Date.now() + SESSION_DURATION,
-  }))
-}
-
-// ─── LOGIN GATE ───
-function AdminLogin({ onSuccess }: {
-  onSuccess: () => void
-}) {
-  const router = useRouter()
-  const [pass, setPass] = useState('')
-  const [error, setError] = useState('')
-  const [attempts, setAttempts] = useState(0)
-  const [locked, setLocked] = useState(false)
-
-  const handleLogin = () => {
-    if (locked) return
-
-    if (pass === ADMIN_PASS) {
-      createSession()
-      onSuccess()
-    } else {
-      const next = attempts + 1
-      setAttempts(next)
-      setError(`Wrong password. ${3 - next} attempts remaining.`)
-      setPass('')
-
-      if (next >= 3) {
-        setLocked(true)
-        // Redirect to home after 3 failed attempts
-        setTimeout(() => router.push('/'), 2000)
-        setError('Too many failed attempts. Redirecting...')
-      }
-    }
-  }
-
-  return (
-    <div className="min-h-screen bg-[#060708] flex items-center justify-center">
-      <div className="w-full max-w-sm px-6">
-        <div className="flex items-center justify-center gap-3 mb-10">
-          <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
-            <Shield size={18} className="text-red-400" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-white">Admin Access</p>
-            <p className="text-[9px] text-gray-600 uppercase tracking-widest">
-              Noxis Control Panel
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <input
-            type="password"
-            value={pass}
-            onChange={e => {
-              setPass(e.target.value)
-              setError('')
-            }}
-            onKeyDown={e => {
-              if (e.key === 'Enter') handleLogin()
-            }}
-            placeholder="Admin password"
-            autoFocus
-            disabled={locked}
-            className="w-full bg-[#161A1F] border border-white/10 text-white text-sm px-4 py-3 outline-none focus:border-red-500/30 placeholder:text-gray-700 disabled:opacity-50"
-          />
-
-          {error && (
-            <p className="text-xs text-red-400 flex items-center gap-1.5">
-              <AlertTriangle size={11} />
-              {error}
-            </p>
-          )}
-
-          <button
-            onClick={handleLogin}
-            disabled={locked || !pass.trim()}
-            className="w-full py-3 text-sm font-bold bg-red-500/80 text-white hover:bg-red-500 disabled:opacity-40 transition-colors"
-          >
-            Authenticate
-          </button>
-        </div>
-
-        <p className="text-center text-[9px] text-gray-805 mt-8">
-          Unauthorized access is logged
-        </p>
-      </div>
-    </div>
-  )
-}
-
 // ─── STAT CARD ───
 function StatCard({ label, value, sub, color, icon }: {
   label: string; value: string | number;
@@ -296,6 +180,53 @@ function AdminDashboard() {
   const [generatedKey, setGeneratedKey] = useState('')
   const [tab, setTab] = useState<'licenses' | 'generate'>('licenses')
 
+  const [logs, setLogs] = useState<any[]>([])
+  const [loadingLogs, setLoadingLogs] = useState(true)
+
+  const [activationLogs, setActivationLogs] = useState<any[]>([])
+  const [loadingActivationLogs, setLoadingActivationLogs] = useState(true)
+
+  const loadLogs = useCallback(async () => {
+    setLoadingLogs(true)
+    try {
+      const res = await fetch('/api/admin/logs')
+      if (res.ok) {
+        const data = await res.json()
+        setLogs(data)
+      }
+    } catch (err) {
+      console.error('Failed to load logs:', err)
+    } finally {
+      setLoadingLogs(false)
+    }
+  }, [])
+
+  const loadActivationLogs = useCallback(async () => {
+    setLoadingActivationLogs(true)
+    try {
+      const res = await fetch('/api/admin/activation-logs')
+      if (res.ok) {
+        const data = await res.json()
+        setActivationLogs(data)
+      }
+    } catch (err) {
+      console.error('Failed to load activation logs:', err)
+    } finally {
+      setLoadingActivationLogs(false)
+    }
+  }, [])
+
+  const handleLogout = async () => {
+    await fetch('/api/admin/logout', {
+      method: 'POST'
+    })
+    const adminPath =
+      process.env.NEXT_PUBLIC_ADMIN_PATH ||
+      'admin'
+    window.location.href =
+      `/${adminPath}/login`
+  }
+
   const loadLicenses = useCallback(async () => {
     setLoading(true)
     const { data } = await supabase
@@ -308,7 +239,9 @@ function AdminDashboard() {
 
   useEffect(() => {
     loadLicenses()
-  }, [loadLicenses])
+    loadLogs()
+    loadActivationLogs()
+  }, [loadLicenses, loadLogs, loadActivationLogs])
 
   // ── STATS ──
   const now = new Date()
@@ -482,17 +415,18 @@ function AdminDashboard() {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={loadLicenses}
+            onClick={async () => {
+              await loadLicenses()
+              await loadLogs()
+              await loadActivationLogs()
+            }}
             className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-white transition-colors cursor-pointer"
           >
             <RefreshCw size={12} />
             Refresh
           </button>
           <button
-            onClick={() => {
-              sessionStorage.removeItem(SESSION_KEY)
-              window.location.reload()
-            }}
+            onClick={handleLogout}
             className="text-xs text-gray-500 hover:text-red-400 transition-colors cursor-pointer"
           >
             Sign Out
@@ -753,30 +687,131 @@ function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {/* Access Logs */}
+        <div className="mt-12 p-6 bg-[#0F1114] border border-white/8 rounded-sm">
+          <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-widest">
+            Recent Access Attempts
+          </h3>
+          {loadingLogs ? (
+            <p className="text-xs text-gray-500 font-mono">Loading logs...</p>
+          ) : logs.length === 0 ? (
+            <p className="text-xs text-gray-500 font-mono">No access attempts logged.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-white/[0.06] text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+                    <th className="py-2.5 px-4">Date</th>
+                    <th className="py-2.5 px-4">Event</th>
+                    <th className="py-2.5 px-4">IP Address</th>
+                    <th className="py-2.5 px-4">Attempts</th>
+                    <th className="py-2.5 px-4">Locked</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {logs.map((log) => {
+                    const isSuccess = log.event === 'login_success';
+                    return (
+                      <tr key={log.id} className="border-b border-white/[0.04] text-xs font-mono">
+                        <td className="py-2.5 px-4 text-gray-400">
+                          {new Date(log.created_at).toLocaleString('en-PK')}
+                        </td>
+                        <td className="py-2.5 px-4">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            isSuccess ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+                          }`}>
+                            {log.event}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-4 text-gray-300">
+                          {log.ip_address || 'unknown'}
+                        </td>
+                        <td className="py-2.5 px-4 text-gray-300">
+                          {log.attempt_count !== null ? log.attempt_count : '-'}
+                        </td>
+                        <td className="py-2.5 px-4">
+                          {log.locked ? (
+                            <span className="text-red-400 font-bold">YES</span>
+                          ) : (
+                            <span className="text-gray-600">NO</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* License Activation Logs */}
+        <div className="mt-12 p-6 bg-[#0F1114] border border-white/8 rounded-sm">
+          <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-widest">
+            Recent License Activation Log
+          </h3>
+          {loadingActivationLogs ? (
+            <p className="text-xs text-gray-500 font-mono">Loading activation logs...</p>
+          ) : activationLogs.length === 0 ? (
+            <p className="text-xs text-gray-500 font-mono">No activation attempts logged.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-white/[0.06] text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+                    <th className="py-2.5 px-4">Date</th>
+                    <th className="py-2.5 px-4">License Key / Attempted</th>
+                    <th className="py-2.5 px-4">Event</th>
+                    <th className="py-2.5 px-4">Customer</th>
+                    <th className="py-2.5 px-4">Tier</th>
+                    <th className="py-2.5 px-4">Device ID</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activationLogs.map((log) => {
+                    const eventColors: Record<string, string> = {
+                      activated: 'bg-emerald-500/10 text-emerald-400',
+                      key_expired: 'bg-amber-500/10 text-amber-400',
+                      key_deactivated: 'bg-red-500/10 text-red-400',
+                      key_not_found: 'bg-red-500/10 text-red-400',
+                    }
+                    const badgeClass = eventColors[log.event] || 'bg-white/10 text-gray-400'
+                    const keyDisplay = log.license?.license_key || log.key_attempted || 'UNKNOWN'
+
+                    return (
+                      <tr key={log.id} className="border-b border-white/[0.04] text-xs font-mono">
+                        <td className="py-2.5 px-4 text-gray-400">
+                          {new Date(log.created_at).toLocaleString('en-PK')}
+                        </td>
+                        <td className="py-2.5 px-4 text-white font-bold tracking-wider">
+                          {keyDisplay}
+                        </td>
+                        <td className="py-2.5 px-4">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${badgeClass}`}>
+                            {log.event}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-4 text-gray-300">
+                          {log.license?.customer_name || '-'}
+                        </td>
+                        <td className="py-2.5 px-4 text-gray-300 uppercase">
+                          {log.license?.tier || '-'}
+                        </td>
+                        <td className="py-2.5 px-4 text-gray-500 text-[10px] max-w-[120px] truncate" title={log.device_id || ''}>
+                          {log.device_id || '-'}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
 }
 
-// ─── PAGE EXPORT ───
-export default function AdminDashboardPage() {
-  const [authed, setAuthed] = useState(false)
-  const [checking, setChecking] = useState(true)
-
-  useEffect(() => {
-    if (verifySession()) setAuthed(true)
-    setChecking(false)
-  }, [])
-
-  if (checking) return (
-    <div className="min-h-screen bg-[#060708] flex items-center justify-center">
-      <div className="w-6 h-6 border-2 border-white/10 border-t-red-400 rounded-full animate-spin" />
-    </div>
-  )
-
-  if (!authed) return (
-    <AdminLogin onSuccess={() => setAuthed(true)} />
-  )
-
-  return <AdminDashboard />
-}
+export default AdminDashboard;

@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/useToast";
 import { 
   LayoutDashboard, 
   Users, 
@@ -79,6 +81,9 @@ interface NavGroup {
 
 export default React.memo(function IndustrialSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const toast = useToast();
   const { isCollapsed, toggle } = useSidebarState();
   const { hasModule, term, workerTermPlural, isLoading: isPersonaLoading, t, businessId } = usePersona();
   const { profile } = useBusinessProfile();
@@ -326,10 +331,13 @@ export default React.memo(function IndustrialSidebar() {
               try {
                 resetAllStores();
                 await supabase.auth.signOut();
+                localStorage.removeItem('noxis-business-profile');
+                localStorage.removeItem('noxis-bridge-status');
+                localStorage.removeItem('NOXIS-profile-cache');
+                queryClient.clear();
+                router.push('/license');
               } catch (err) {
-                console.error("Logout failed:", err);
-              } finally {
-                window.location.href = "/login";
+                toast.error('Could not sign out. Please try again.');
               }
             }}
             className={cn(

@@ -58,7 +58,7 @@ export default function LicensePage() {
       if (expired) {
         localStorage.removeItem('noxis_license')
         setError(
-          'Your 3-day trial has expired. Contact +92 333 435 5475 to purchase.'
+          'Your 3-day trial has expired. Contact +92  326 4742678 to purchase.'
         )
         setChecking(false)
         return
@@ -89,103 +89,113 @@ export default function LicensePage() {
     setLoading(true)
     setError('')
 
-    try {
-      const deviceId = getDeviceId()
+    // Collect machine info for device fingerprint
+    const machineInfo = {
+      platform: navigator.platform,
+      language: navigator.language,
+      cores: String(navigator.hardwareConcurrency || 'unknown'),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      screen: `${screen.width}x${screen.height}`,
+    }
 
-      const response = await fetch(
-        EDGE_FUNCTION_URL,
-        {
+    // Retry up to 3 times on network failure
+    let lastError: string | null = null
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const res = await fetch('/api/license/activate', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'apikey': process.env
-              .NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            license_key: trimmed,
-            device_id: deviceId,
+            licenseKey: trimmed,
+            machineInfo,
+            appVersion: '13.0.0',
           }),
-        }
-      )
-
-      const data = await response.json()
-
-      if (!data.valid) {
-        setError(
-          data.error ||
-          'Invalid license key. Check the key and try again.'
-        )
-        setLoading(false)
-        return
-      }
-
-      // Store license locally
-      localStorage.setItem(
-        'noxis_license',
-        JSON.stringify({
-          ...data,
-          license_key: trimmed,
-          activated_locally_at:
-            new Date().toISOString(),
         })
-      )
 
-      // Store tier for tierStore
-      localStorage.setItem(
-        'noxis_tier', data.tier
-      )
-      localStorage.setItem(
-        'noxis_max_devices',
-        String(data.max_devices)
-      )
+        const data = await res.json()
 
-      // Set cookie for quick middleware check
-      document.cookie = `noxis_license_active=true; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Strict`;
+        if (res.ok && data.success) {
+          // Store license data locally
+          localStorage.setItem(
+            'noxis_license',
+            JSON.stringify({
+              ...data.license,
+              activatedAt: Date.now(),
+              activated_locally_at: new Date().toISOString(),
+              cacheExpires: Date.now() + 24 * 60 * 60 * 1000,
+            })
+          )
 
-      // Save to local config SQLite DB via Server Action
-      try {
-        await saveLicenseToLocal(
-          trimmed,
-          data.tier,
-          data.is_trial,
-          data.expires_at
-        )
-      } catch (dbErr) {
-        console.error('Failed to save license to local DB:', dbErr)
+          // Store legacy variables
+          localStorage.setItem('noxis_tier', data.license.tier)
+          localStorage.setItem('noxis_max_devices', String(data.license.maxDevices))
+
+          // Set cookie for quick middleware check
+          document.cookie = `noxis_license_active=true; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Strict`;
+
+          // Save to local config SQLite DB via Server Action
+          try {
+            await saveLicenseToLocal(
+              trimmed,
+              data.license.tier,
+              data.license.isTrialActive,
+              data.license.expiresAt
+            )
+          } catch (dbErr) {
+            console.error('Failed to save license to local DB:', dbErr)
+          }
+
+          // Redirect to setup page
+          router.push('/setup')
+          return
+        }
+
+        // Non-retryable errors (wrong key, deactivated, expired)
+        if (res.status === 404 || res.status === 403) {
+          setError(data.error)
+          setLoading(false)
+          return
+        }
+
+        // Server error — retry
+        lastError = data.error || `Server error (attempt ${attempt}/3)`
+
+      } catch (networkErr: any) {
+        lastError = attempt < 3
+          ? `Connection failed, retrying... (${attempt}/3)`
+          : 'Cannot connect to activation server. Check your internet connection and try again.'
+
+        setError(lastError)
+
+        if (attempt < 3) {
+          // Wait 2 seconds before retry
+          await new Promise(r => setTimeout(r, 2000))
+        }
       }
+    }
 
-      // Show success then redirect
-      router.push('/setup')
-
-    } catch (err) {
-      // Network offline — try offline grace period
-      const stored = localStorage.getItem(
-        'noxis_license'
-      )
-      if (stored) {
+    // All retries exhausted — fallback to offline grace period if a valid local license was active
+    const stored = localStorage.getItem('noxis_license')
+    if (stored) {
+      try {
         const license = JSON.parse(stored)
-        const lastValidated = new Date(
-          license.activated_locally_at || 0
-        )
-        const hoursAgo = (Date.now() -
-          lastValidated.getTime())
-          / (1000 * 60 * 60)
+        const lastValidated = new Date(license.activated_locally_at || 0)
+        const hoursAgo = (Date.now() - lastValidated.getTime()) / (1000 * 60 * 60)
 
         if (hoursAgo < 72) {
           // Set cookie for quick middleware check
           document.cookie = `noxis_license_active=true; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Strict`;
-          // 72 hour offline grace period
           router.push('/dashboard')
           return
         }
-      }
-
-      setError(
-        'Cannot connect to verify license. Check internet connection. Offline grace period: 72 hours.'
-      )
-    } finally {
-      setLoading(false)
+      } catch {}
     }
+
+    setError(lastError || 'Activation failed after 3 attempts. Try again.')
+    setLoading(false)
   }
 
   if (checking) return (
@@ -289,7 +299,7 @@ export default function LicensePage() {
             text-center">
             No key?{' '}
             <a
-              href="https://wa.me/923334355475?text=I want to buy Noxis Hub"
+              href="https://wa.me/923264742678?text=I want to buy Noxis Hub"
               target="_blank"
               rel="noopener noreferrer"
               className="text-[#60A5FA]

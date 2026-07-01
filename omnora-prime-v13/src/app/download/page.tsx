@@ -120,7 +120,7 @@ export default function DownloadPage() {
           <p className="text-xs text-gray-600 mt-1">
             No key?{' '}
             <a
-              href="https://wa.me/923334355475"
+              href="https://wa.me/923264742678"
               target="_blank"
               rel="noopener noreferrer"
               className="text-sandstone-gold
@@ -349,7 +349,7 @@ export default function DownloadPage() {
                   text-gray-600">
                   Need help installing?{' '}
                   <a
-                    href="https://wa.me/923334355475?text=Help installing Noxis"
+                    href="https://wa.me/923264742678?text=Help installing Noxis"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-[#25D366]
@@ -394,7 +394,7 @@ export default function DownloadPage() {
             </a>
             {' · '}
             <a
-              href="https://wa.me/923334355475"
+              href="https://wa.me/923264742678"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-gray-500">

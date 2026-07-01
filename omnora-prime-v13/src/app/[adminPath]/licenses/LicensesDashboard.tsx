@@ -67,8 +67,8 @@ function AdminLicensesContent() {
   const [loadingLicenses, setLoadingLicenses] = useState(true)
 
   useEffect(() => {
-    if (token === ADMIN_TOKEN) loadLicenses()
-  }, [token])
+    loadLicenses()
+  }, [])
 
   const loadLicenses = async () => {
     setLoadingLicenses(true)
@@ -79,14 +79,6 @@ function AdminLicensesContent() {
       .limit(50)
     setLicenses(data || [])
     setLoadingLicenses(false)
-  }
-
-  if (token !== ADMIN_TOKEN) {
-    return (
-      <div className="min-h-screen bg-[#060708] flex items-center justify-center">
-        <p className="text-gray-700 text-sm font-mono">Not found</p>
-      </div>
-    )
   }
 
   const createLicense = async () => {
@@ -434,7 +426,7 @@ function AdminLicensesContent() {
           <ol className="space-y-2">
             {[
               'Customer WhatsApps: "I want to buy Noxis Pro"',
-              'Reply with payment: JazzCash 0333-4355475 · PKR 6,500',
+              'Reply with payment: JazzCash 0326-4742678 · PKR 6,500',
               'Customer sends payment screenshot',
               'Fill the form above and click Generate',
               'Click "Send on WhatsApp" — message is pre-filled',

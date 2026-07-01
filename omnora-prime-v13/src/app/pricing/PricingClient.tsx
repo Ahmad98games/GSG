@@ -69,7 +69,7 @@ export default function PricingClient() {
       `Please activate my license key.\nMy business: ${profile?.business_name || ''}\nCity: ${profile?.city || ''}`
     );
     window.open(
-      `https://wa.me/923334355475?text=${msg}`,
+      `https://wa.me/923264742678?text=${msg}`,
       '_blank'
     );
     setCheckoutModalOpen(false);
@@ -215,7 +215,7 @@ export default function PricingClient() {
               { label: "Unlimited Document Scans", included: true },
               { label: "Scheduled WhatsApp Summaries", included: true },
               { label: "Up to 5 Staff Users", included: true },
-              { label: "10GB Document Storage", included: true },
+              { label: "5GB Document Storage", included: true },
             ]}
             cta="Deploy Pro"
             onPurchase={handlePurchase}
@@ -236,7 +236,7 @@ export default function PricingClient() {
               { label: "20 CCTV AI Detection Zones", included: true },
               { label: "Up to 25 Staff Users", included: true },
               { label: "Fire & Intrusion Detection", included: true },
-              { label: "50GB Document Storage", included: true },
+              { label: "10GB Document Storage", included: true },
               { label: "Priority Engineering Support", included: true },
             ]}
             cta="Request Elite"

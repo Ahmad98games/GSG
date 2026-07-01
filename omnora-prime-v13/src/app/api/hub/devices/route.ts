@@ -1,15 +1,28 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
 import * as schema from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * GET /api/hub/devices
+ * Returns all non-revoked authorized devices from the local SQLite DB.
+ * Used by Settings → Connected Devices page.
+ */
 export async function GET() {
   try {
-    const devices = await db.select().from(schema.authorizedDevices);
+    const devices = await db
+      .select()
+      .from(schema.authorizedDevices)
+      .where(eq(schema.authorizedDevices.isRevoked, 0));
+
     return NextResponse.json(devices);
-  } catch (error) {
-    console.error("Failed to fetch authorized devices:", error);
-    return NextResponse.json({ error: "Failed to fetch devices" }, { status: 500 });
+  } catch (error: any) {
+    console.error('[API] Failed to fetch authorized devices:', error.message);
+    return NextResponse.json(
+      { error: 'Failed to fetch devices', details: error.message },
+      { status: 500 }
+    );
   }
 }

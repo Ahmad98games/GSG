@@ -55,6 +55,11 @@ export const db = new Proxy({} as Record<string, any>, {
             : (process as any).mainModule?.require || eval('require');
         }
 
+        console.log('[DB Debug] sqliteModulePath:', sqliteModulePath);
+        console.log('[DB Debug] BETTER_SQLITE3_BINDING:', process.env.BETTER_SQLITE3_BINDING);
+        console.log('[DB Debug] Node Version:', process.version);
+        console.log('[DB Debug] Module Version:', process.versions.modules);
+
         const Database = nativeRequire(sqliteModulePath);
         const { drizzle } = nativeRequire('drizzle-orm/better-sqlite3');
         /* eslint-enable @typescript-eslint/no-var-requires */
@@ -78,6 +83,7 @@ export const db = new Proxy({} as Record<string, any>, {
           verbose: process.env.NODE_ENV === 'development'
             ? (msg: string) => logger.debug({ msg }, 'sqlite')
             : undefined,
+          nativeBinding: process.env.BETTER_SQLITE3_BINDING || undefined,
         });
 
         // Apply encryption key if present
@@ -91,53 +97,71 @@ export const db = new Proxy({} as Record<string, any>, {
             console.log('[DB] Encryption check failed, checking if unencrypted...');
             try {
               // Try without key
-              const checkDb = new Database(dbPath);
+              const checkDb = new Database(dbPath, {
+                nativeBinding: process.env.BETTER_SQLITE3_BINDING || undefined,
+              });
               checkDb.prepare('SELECT count(*) FROM sqlite_master').get();
               checkDb.close();
               
-              console.log('[DB] Database is UNENCRYPTED. Triggering migration...');
-              /* eslint-disable @typescript-eslint/no-var-requires */
-              const { migrateToEncrypted } = require('./migrateToEncrypted');
-              /* eslint-enable @typescript-eslint/no-var-requires */
-              const tempPath = dbPath + '.encrypted';
-              const backupPath = dbPath + '.bak';
-              
-              // This is synchronous in our context but migrateToEncrypted is currently async in definition
-              // We'll wrap it or use a sync version if needed. 
-              // For simplicity in this proxy, we'll assume the caller can handle the migration.
-              // Actually, SQLCipher export is very fast.
+              console.log('[DB] Database is UNENCRYPTED. Triggering in-place encryption...');
               
               sqlite.close(); // Close existing connection
               
-              // Perform migration
-              // Note: Using require here to avoid circular dependencies or early loads
-              /* eslint-disable @typescript-eslint/no-var-requires */
-              const fs = require('fs');
-              /* eslint-enable @typescript-eslint/no-var-requires */
-              const oldPath = dbPath;
-              const newPath = tempPath;
-              
-              // Run migration (simplified for sync context)
-              const migrator = new Database(oldPath);
-              migrator.exec(`ATTACH DATABASE '${newPath}' AS encrypted KEY '${dbKey}'`);
-              migrator.exec(`SELECT sqlcipher_export('encrypted')`);
-              migrator.exec(`DETACH DATABASE encrypted`);
+              // Open without key to execute rekey
+              const migrator = new Database(dbPath, {
+                nativeBinding: process.env.BETTER_SQLITE3_BINDING || undefined,
+              });
+              migrator.pragma(`rekey = '${dbKey}'`);
               migrator.close();
               
-              // Swap files
-              fs.renameSync(oldPath, backupPath);
-              fs.renameSync(newPath, oldPath);
+              console.log('[DB] Encryption complete. Re-opening encrypted database...');
               
-              console.log('[DB] Migration complete. Re-opening encrypted database...');
-              
-              // Re-open
-              const newSqlite = new Database(dbPath);
+              // Re-open with key
+              const newSqlite = new Database(dbPath, {
+                verbose: process.env.NODE_ENV === 'development'
+                  ? (msg: string) => logger.debug({ msg }, 'sqlite')
+                  : undefined,
+                nativeBinding: process.env.BETTER_SQLITE3_BINDING || undefined,
+              });
               newSqlite.pragma(`key = '${dbKey}'`);
               _db = Object.assign(drizzle(newSqlite, { schema }), { $client: newSqlite });
+              if (dbPath !== ':memory:') {
+                try { applyProductionPragmas(newSqlite); } catch {}
+              }
               return (_db as Record<string | symbol, any>)[prop];
             } catch (migrationErr) {
               console.error('[DB] Migration failed FATAL:', migrationErr);
-              throw migrationErr;
+              console.log('[DB] Deleting corrupt or incompatible database and starting fresh...');
+              try {
+                sqlite.close();
+              } catch {}
+              
+              let targetDbPath = dbPath;
+              try {
+                if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
+                if (fs.existsSync(dbPath + '-wal')) fs.unlinkSync(dbPath + '-wal');
+                if (fs.existsSync(dbPath + '-shm')) fs.unlinkSync(dbPath + '-shm');
+              } catch (deleteErr) {
+                console.error('[DB] Failed to delete incompatible database files:', deleteErr);
+                targetDbPath = path.join(path.dirname(dbPath), 'noxis-local-fallback.db');
+                console.log('[DB] Falling back to alternative database path:', targetDbPath);
+                try {
+                  if (fs.existsSync(targetDbPath)) fs.unlinkSync(targetDbPath);
+                } catch {}
+              }
+              
+              const freshSqlite = new Database(targetDbPath, {
+                verbose: process.env.NODE_ENV === 'development'
+                  ? (msg: string) => logger.debug({ msg }, 'sqlite')
+                  : undefined,
+                nativeBinding: process.env.BETTER_SQLITE3_BINDING || undefined,
+              });
+              freshSqlite.pragma(`key = '${dbKey}'`);
+              _db = Object.assign(drizzle(freshSqlite, { schema }), { $client: freshSqlite });
+              if (targetDbPath !== ':memory:') {
+                try { applyProductionPragmas(freshSqlite); } catch {}
+              }
+              return (_db as Record<string | symbol, any>)[prop];
             }
           }
         }

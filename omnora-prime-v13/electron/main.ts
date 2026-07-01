@@ -100,16 +100,21 @@ startupLog(`Platform: ${process.platform} | Arch: ${process.arch} | isDev: ${isD
 function killProcess(child: ChildProcess | UtilityProcess | null, name: string): Promise<void> {
   return new Promise((resolve) => {
     if (!child) { resolve(); return; }
-    startupLog(`[Cleanup] Terminating ${name} (PID: ${child.pid})...`);
+    startupLog(`[Cleanup] Terminating ${name} (PID: ${child.pid || 'N/A'})...`);
     try {
-      if (process.platform === 'win32') {
+      try {
+        child.kill();
+      } catch (killErr: any) {
+        startupLog(`[Cleanup] child.kill() failed: ${killErr.message}`);
+      }
+
+      if (process.platform === 'win32' && child.pid) {
         exec(`taskkill /pid ${child.pid} /T /F`, (err) => {
           if (err) startupLog(`[Cleanup ERR] Failed to taskkill ${name}: ${err.message}`);
           else startupLog(`[Cleanup] Successfully taskkilled ${name}`);
           resolve();
         });
       } else {
-        child.kill('SIGKILL');
         resolve();
       }
     } catch (e: any) {
@@ -610,7 +615,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         detail:
           `Log file:\n${logPath}\n\n` +
           `Try restarting Noxis. If this persists:\n` +
-          `WhatsApp: +92 333 435 5475`,
+          `WhatsApp: +92 326 4742678`,
         buttons: ['OK'],
       });
       app.quit();
@@ -649,9 +654,19 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       }
 
       process.on('uncaughtException', (error) => {
-        startupLog(`[CRITICAL] ${error.message}`);
-        if (error.stack) startupLog(error.stack);
-        Sentry.captureException(error);
+        startupLog(
+          `[CRITICAL] ${error.message}`
+        )
+        if (error.stack) startupLog(error.stack)
+        try {
+          dialog.showErrorBox(
+            'Noxis Hub Crashed',
+            `Unexpected error:\n\n${error.message}\n\n` +
+            `Log: ${logPath}\n\n` +
+            `WhatsApp: +92 326 4742678`
+          )
+        } catch {}
+        setTimeout(() => app.exit(1), 200)
       });
 
       process.on('unhandledRejection', (reason) => {
@@ -742,28 +757,22 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     createSplashWindow();
 
     // ── STEP 2: Spawn Next.js server (production) ──
-    if (!isDev) {
-      // Prefer server-with-bridge.js (includes mobile WebSocket bridge).
-      // Falls back to plain server.js if bridge wrapper is absent
-      // (e.g. after a partial build) — desktop ERP still works.
-      const bridgeServerPath = path.join(
-        process.resourcesPath,
-        'standalone',
-        'server-with-bridge.js'
-      )
-      const serverPath = fs.existsSync(bridgeServerPath)
-        ? bridgeServerPath
-        : path.join(process.resourcesPath, 'standalone', 'server.js')
+    const resourcesPath = app.isPackaged ? process.resourcesPath : process.cwd();
+    const serverPath = app.isPackaged
+      ? (fs.existsSync(path.join(resourcesPath, 'standalone', 'server-with-bridge.js'))
+          ? path.join(resourcesPath, 'standalone', 'server-with-bridge.js')
+          : path.join(resourcesPath, 'standalone', 'server.js'))
+      : (fs.existsSync(path.join(resourcesPath, '.next', 'standalone', 'server-with-bridge.js'))
+          ? path.join(resourcesPath, '.next', 'standalone', 'server-with-bridge.js')
+          : path.join(resourcesPath, '.next', 'standalone', 'server.js'));
 
-      // The native sqlite binding path
-      const sqlitePath = path.join(
-        process.resourcesPath,
-        'better-sqlite3-multiple-ciphers'
-      )
+    const sqlitePath = app.isPackaged
+      ? path.join(resourcesPath, 'better-sqlite3-multiple-ciphers')
+      : path.join(resourcesPath, 'node_modules', 'better-sqlite3-multiple-ciphers');
 
-      startupLog(`[Electron] Server path: ${serverPath}`)
-      startupLog(`[Electron] SQLite path: ${sqlitePath}`)
-      startupLog(`[Electron] Resources: ${process.resourcesPath}`)
+    startupLog(`[Electron] Server path: ${serverPath}`)
+    startupLog(`[Electron] SQLite path: ${sqlitePath}`)
+    startupLog(`[Electron] Resources: ${resourcesPath}`)
 
       if (!fs.existsSync(serverPath)) {
         startupLog('[FATAL] Neither server-with-bridge.js nor server.js found')
@@ -818,17 +827,47 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       const userDataPath = app.getPath('userData');
       fs.mkdirSync(userDataPath, { recursive: true });
 
+      // ── FIX B/C: Log spawn diagnostics before starting ──
+      const normalizedServerPath = path.normalize(serverPath);
+      startupLog(`[Electron] execPath: ${process.execPath}`);
+      startupLog(`[Electron] serverPath (normalized): ${normalizedServerPath}`);
+      startupLog(`[Electron] serverPath exists: ${fs.existsSync(normalizedServerPath)}`);
+      startupLog(`[Electron] cwd for spawn: ${path.dirname(normalizedServerPath)}`);
+      try {
+        const serverContent = fs.readFileSync(normalizedServerPath, 'utf-8');
+        startupLog(`[Electron] server.js size: ${serverContent.length} bytes`);
+        startupLog(`[Electron] server.js first line: ${serverContent.split('\n')[0].slice(0, 120)}`);
+      } catch (e: any) {
+        startupLog(`[FATAL] Cannot read server file: ${e.message}`);
+      }
+      startupLog(`[Electron] NODE_PATH will be: ${[
+        sqlitePath,
+        path.join(resourcesPath, '.next', 'standalone', 'node_modules'),
+      ].join(path.delimiter)}`);
+
+      // ── FIX D: Dedicated stderr file written synchronously ──
+      // If the process crashes before async handlers flush,
+      // appendFileSync ensures we still capture the error.
+      const stderrPath = path.join(userDataPath, 'server-stderr.log');
+      try { fs.writeFileSync(stderrPath, `--- ${new Date().toISOString()} ---\n`); } catch {}
+
       // Release the held port RIGHT BEFORE spawning —
       // this minimizes the gap to milliseconds instead
       // of however long createSplashWindow() and the
       // file-existence checks above took
       await releaseReservedPort();
 
-      nextServer = spawn(process.execPath, [serverPath], {
-        cwd: path.dirname(serverPath),
+      // ── Windows port-release race guard ──
+      // On Windows, server.close() fires the callback before the
+      // OS fully releases the ephemeral port binding. A 50ms pause
+      // ensures the port is truly free when the child process tries
+      // to bind it, preventing silent EADDRINUSE exits.
+      await new Promise<void>(r => setTimeout(r, 50));
+
+      nextServer = utilityProcess.fork(normalizedServerPath, [], {
+        cwd: path.dirname(normalizedServerPath),
         env: {
           ...process.env,
-          ELECTRON_RUN_AS_NODE: '1',
           PORT:                 String(PORT),
           NODE_ENV:             'production',
           // 0.0.0.0 allows mobile phones on the same WiFi to connect.
@@ -836,16 +875,16 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
           // (see waitForServer / loadURL below) — only the TCP listen binding changes.
           HOSTNAME:             '0.0.0.0',
           ELECTRON_USER_DATA:   userDataPath,
-          ELECTRON_RESOURCES:   process.resourcesPath,
+          ELECTRON_RESOURCES:   resourcesPath,
 
           // CRITICAL: Tell Node where to find
           // the native sqlite binding
           NODE_PATH: [
             sqlitePath,
-            path.join(process.resourcesPath, 'app.asar', 'node_modules'),
-            path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules'),
-            path.join(process.resourcesPath, 'standalone', 'node_modules'),
-            path.join(process.resourcesPath, 'standalone'),
+            path.join(resourcesPath, 'app.asar', 'node_modules'),
+            path.join(resourcesPath, 'app.asar.unpacked', 'node_modules'),
+            path.join(resourcesPath, '.next', 'standalone', 'node_modules'),
+            path.join(resourcesPath, '.next', 'standalone'),
           ].join(path.delimiter),
 
           // Native module path override
@@ -861,8 +900,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             process.env.USER_ID || 'SYSTEM'
           ),
         },
-        stdio: 'pipe',
-      })
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
 
       // Log ALL server output — this shows the exact crash message
       let serverLog = ''
@@ -872,26 +911,32 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         serverLog += msg + '\n'
       })
       nextServer.stderr?.on('data', (d: Buffer) => {
-        const msg = d.toString().trim()
-        startupLog(`[Next.js ERR] ${msg}`)
+        const msg = d.toString()
+        startupLog(`[Next.js ERR] ${msg.trim()}`)
         serverLog += '[ERR] ' + msg + '\n'
+        // ── FIX D: Synchronous write so data is never lost on fast crash ──
+        try { fs.appendFileSync(stderrPath, msg); } catch {}
       })
 
-      nextServer.on('exit', (code) => {
-        startupLog(`[Next.js] Exit code: ${code}`)
-        startupLog(`[Next.js] Last output:\n${serverLog.slice(-1000)}`)
-        if (code !== 0 && code !== null) {
+      nextServer.on('exit', (code: number) => {
+        startupLog(`[Next.js] Exit: code=${code}`);
+        // Read the stderr file on exit in case async handlers lost data
+        try {
+          const stderrContents = fs.readFileSync(stderrPath, 'utf-8');
+          if (stderrContents && stderrContents.trim() !== `--- ${new Date().toISOString().slice(0,10)}`) {
+            startupLog(`[Next.js] Full stderr on exit:\n${stderrContents.slice(-2000)}`);
+          }
+        } catch {}
+        startupLog(`[Next.js] Last buffered output:\n${serverLog.slice(-1000)}`)
+        if (code !== 0) {
           destroySplash();
           dialog.showErrorBox(
             'Server Crashed',
-            `Server exited with code ${code}.\n\nLast server output:\n${serverLog.slice(-500)}`
+            `Server exited with code ${code}.\n\nLast server output:\n${serverLog.slice(-500) || '(no output — see server-stderr.log in userData folder)'}`
           );
         }
         nextServer = null;
       })
-    } else {
-      await releaseReservedPort();
-    }
 
     // ── STEP 3: Create main window (loads silently) ──
     // Splash stays visible while this loads.
@@ -918,18 +963,16 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       }, 8000);
     }
     } catch (fatalErr: any) {
-      startupLog(`[FATAL STARTUP ERROR] ${fatalErr.message}`);
-      if (fatalErr.stack) startupLog(fatalErr.stack);
-      try {
-        destroySplash();
-      } catch {}
+      startupLog(
+        `[FATAL] ${fatalErr.message}`
+      )
+      try { destroySplash() } catch {}
       dialog.showErrorBox(
         'Noxis Failed to Start',
-        `A fatal error occurred during startup:\n\n${fatalErr.message}\n\n` +
-        `Log file:\n${logPath}\n\n` +
-        `WhatsApp: +92 333 435 5475`
-      );
-      app.quit();
+        `Fatal error:\n\n${fatalErr.message}\n\n` +
+        `Log: ${logPath}`
+      )
+      app.quit()
     }
   });
 

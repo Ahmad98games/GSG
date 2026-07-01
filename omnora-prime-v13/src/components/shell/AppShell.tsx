@@ -25,9 +25,11 @@ import { UpdateBanner } from "@/components/shell/UpdateBanner";
 import IndustrialSidebar from "@/components/shell/IndustrialSidebar";
 import { useNoxisLocale } from "@/hooks/useLocale";
 import { NoxisLogoLoader } from "@/components/ui/NoxisLogoLoader";
+import { useLicenseValidation } from '@/hooks/useLicenseValidation';
 
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
+  const { license } = useLicenseValidation();
   const pathname = usePathname();
   const [mounted, setMounted] = React.useState(false);
   const { isCollapsed } = useSidebarState();

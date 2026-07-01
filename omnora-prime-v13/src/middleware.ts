@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { verifyToken } from '@/lib/admin/auth'
 
 const PUBLIC_FILE = /\.(.*)$/;
 const locales = ['en', 'ur', 'fr', 'ar', 'zh', 'tr', 'hi', 'fa', 'es', 'de'];
@@ -16,6 +17,27 @@ export async function middleware(request: NextRequest) {
     PUBLIC_FILE.test(pathname)
   ) {
     return NextResponse.next();
+  }
+
+  // 1.5. Protect admin routes
+  const ADMIN_SEGMENT = process.env.ADMIN_PATH_SEGMENT;
+  if (
+    ADMIN_SEGMENT &&
+    pathname.startsWith(`/${ADMIN_SEGMENT}`) &&
+    pathname !== `/${ADMIN_SEGMENT}/login`
+  ) {
+    const token = request.cookies.get('noxis_admin_token')?.value;
+    const ip =
+      request.headers.get('cf-connecting-ip') ||
+      request.headers.get('x-real-ip') ||
+      request.headers.get('x-forwarded-for')?.split(',')[0] ||
+      'unknown';
+
+    const valid = token ? await verifyToken(token, ip) : false;
+
+    if (!valid) {
+      return NextResponse.redirect(new URL(`/${ADMIN_SEGMENT}/login`, request.url));
+    }
   }
 
   // 2. Auth & License Logic (from proxy.ts)
@@ -74,7 +96,7 @@ export async function middleware(request: NextRequest) {
   const { data: { session } } = await supabase.auth.getSession()
   
   // Public routes — no auth needed
-  const publicRoutes = ['/', '/login', '/pricing', '/docs', '/download', '/portal', '/api', '/license', '/admin', '/dashboard/login']
+  const publicRoutes = ['/', '/login', '/pricing', '/docs', '/download', '/portal', '/api', '/license', '/dashboard/login']
   const isPublic = publicRoutes.some(r => pathname === r || pathname.startsWith(r))
   
   // A. License Check (Industrial Gate)
@@ -142,11 +164,11 @@ export async function middleware(request: NextRequest) {
     try {
       const { data: profile } = await supabase
         .from('business_profiles')
-        .select('onboarding_complete')
+        .select('onboarding_done')
         .eq('user_id', session.user.id)
         .single()
       
-      const isComplete = profile ? profile.onboarding_complete : false
+      const isComplete = profile ? profile.onboarding_done : false
       
       if (!isComplete
         && pathname !== '/setup'

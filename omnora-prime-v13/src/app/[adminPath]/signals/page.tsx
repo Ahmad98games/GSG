@@ -1,7 +1,6 @@
 import React from 'react';
 import { createAdminClient } from '@/lib/supabase/admin';
-
-const ADMIN_SECRET = process.env.NEXT_PUBLIC_ADMIN_TOKEN || 'noxis-admin-2025';
+import { notFound } from 'next/navigation';
 
 function getWeekBucket(): string {
   const now = new Date();
@@ -12,19 +11,14 @@ function getWeekBucket(): string {
 }
 
 export default async function AdminSignalsPage({
-  searchParams,
+  params,
 }: {
-  searchParams: Promise<{ token?: string }>;
+  params: Promise<{ adminPath: string }>;
 }) {
-  const resolvedParams = await searchParams;
-  const token = typeof resolvedParams.token === 'string' ? resolvedParams.token : undefined;
+  const { adminPath } = await params;
 
-  if (token !== ADMIN_SECRET) {
-    return (
-      <div style={{ padding: '2rem', fontFamily: 'monospace', color: '#EF4444' }}>
-        Not found
-      </div>
-    );
+  if (adminPath !== process.env.ADMIN_PATH_SEGMENT) {
+    notFound();
   }
 
   const admin = createAdminClient();
@@ -212,3 +206,5 @@ export default async function AdminSignalsPage({
     </div>
   );
 }
+
+export const dynamic = 'force-dynamic';

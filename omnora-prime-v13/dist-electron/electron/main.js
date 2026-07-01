@@ -618,7 +618,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 message: 'The app server could not start.',
                 detail: `Log file:\n${logPath}\n\n` +
                     `Try restarting Noxis. If this persists:\n` +
-                    `WhatsApp: +92 333 435 5475`,
+                    `WhatsApp: +92 326 4742678`,
                 buttons: ['OK'],
             });
             electron_1.app.quit();
@@ -651,7 +651,13 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 startupLog(`[CRITICAL] ${error.message}`);
                 if (error.stack)
                     startupLog(error.stack);
-                Sentry.captureException(error);
+                try {
+                    electron_1.dialog.showErrorBox('Noxis Hub Crashed', `Unexpected error:\n\n${error.message}\n\n` +
+                        `Log: ${logPath}\n\n` +
+                        `WhatsApp: +92 326 4742678`);
+                }
+                catch { }
+                setTimeout(() => electron_1.app.exit(1), 200);
             });
             process.on('unhandledRejection', (reason) => {
                 startupLog(`[CRITICAL] Unhandled rejection: ${reason}`);
@@ -742,119 +748,160 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             // User sees branded screen within ~200ms
             createSplashWindow();
             // ── STEP 2: Spawn Next.js server (production) ──
-            if (!isDev) {
-                // Prefer server-with-bridge.js (includes mobile WebSocket bridge).
-                // Falls back to plain server.js if bridge wrapper is absent
-                // (e.g. after a partial build) — desktop ERP still works.
-                const bridgeServerPath = path.join(process.resourcesPath, 'standalone', 'server-with-bridge.js');
-                const serverPath = fs.existsSync(bridgeServerPath)
-                    ? bridgeServerPath
-                    : path.join(process.resourcesPath, 'standalone', 'server.js');
-                // The native sqlite binding path
-                const sqlitePath = path.join(process.resourcesPath, 'better-sqlite3-multiple-ciphers');
-                startupLog(`[Electron] Server path: ${serverPath}`);
-                startupLog(`[Electron] SQLite path: ${sqlitePath}`);
-                startupLog(`[Electron] Resources: ${process.resourcesPath}`);
-                if (!fs.existsSync(serverPath)) {
-                    startupLog('[FATAL] Neither server-with-bridge.js nor server.js found');
+            const resourcesPath = electron_1.app.isPackaged ? process.resourcesPath : process.cwd();
+            const serverPath = electron_1.app.isPackaged
+                ? (fs.existsSync(path.join(resourcesPath, 'standalone', 'server-with-bridge.js'))
+                    ? path.join(resourcesPath, 'standalone', 'server-with-bridge.js')
+                    : path.join(resourcesPath, 'standalone', 'server.js'))
+                : (fs.existsSync(path.join(resourcesPath, '.next', 'standalone', 'server-with-bridge.js'))
+                    ? path.join(resourcesPath, '.next', 'standalone', 'server-with-bridge.js')
+                    : path.join(resourcesPath, '.next', 'standalone', 'server.js'));
+            const sqlitePath = electron_1.app.isPackaged
+                ? path.join(resourcesPath, 'better-sqlite3-multiple-ciphers')
+                : path.join(resourcesPath, 'node_modules', 'better-sqlite3-multiple-ciphers');
+            startupLog(`[Electron] Server path: ${serverPath}`);
+            startupLog(`[Electron] SQLite path: ${sqlitePath}`);
+            startupLog(`[Electron] Resources: ${resourcesPath}`);
+            if (!fs.existsSync(serverPath)) {
+                startupLog('[FATAL] Neither server-with-bridge.js nor server.js found');
+                destroySplash();
+                electron_1.dialog.showErrorBox('Installation Error', `Server not found at:\n${serverPath}\n\nPlease reinstall Noxis.`);
+                electron_1.app.quit();
+                return;
+            }
+            // Check SQLite binding exists (check both node-gyp build and prebuilds layout)
+            let sqliteBinding = path.join(sqlitePath, 'build', 'Release', 'better_sqlite3.node');
+            if (!fs.existsSync(sqliteBinding)) {
+                sqliteBinding = path.join(sqlitePath, 'prebuilds', `win32-x64`, `node.napi.node`);
+            }
+            const sqliteExists = fs.existsSync(sqliteBinding);
+            startupLog(`[Electron] SQLite binding exists: ${sqliteExists}`);
+            if (!sqliteExists) {
+                startupLog(`[WARN] SQLite binding not found at ${sqliteBinding}`);
+                startupLog(`[WARN] Listing sqlite dir:`);
+                try {
+                    const listDir = (dir, depth = 0) => {
+                        if (depth > 3)
+                            return;
+                        fs.readdirSync(dir).forEach(f => {
+                            startupLog(`${'  '.repeat(depth)}${f}`);
+                            const full = path.join(dir, f);
+                            if (fs.statSync(full).isDirectory()) {
+                                listDir(full, depth + 1);
+                            }
+                        });
+                    };
+                    listDir(sqlitePath);
+                }
+                catch (e) {
+                    startupLog(`[WARN] Could not list: ${e.message}`);
+                }
+            }
+            const userDataPath = electron_1.app.getPath('userData');
+            fs.mkdirSync(userDataPath, { recursive: true });
+            // ── FIX B/C: Log spawn diagnostics before starting ──
+            const normalizedServerPath = path.normalize(serverPath);
+            startupLog(`[Electron] execPath: ${process.execPath}`);
+            startupLog(`[Electron] serverPath (normalized): ${normalizedServerPath}`);
+            startupLog(`[Electron] serverPath exists: ${fs.existsSync(normalizedServerPath)}`);
+            startupLog(`[Electron] cwd for spawn: ${path.dirname(normalizedServerPath)}`);
+            try {
+                const serverContent = fs.readFileSync(normalizedServerPath, 'utf-8');
+                startupLog(`[Electron] server.js size: ${serverContent.length} bytes`);
+                startupLog(`[Electron] server.js first line: ${serverContent.split('\n')[0].slice(0, 120)}`);
+            }
+            catch (e) {
+                startupLog(`[FATAL] Cannot read server file: ${e.message}`);
+            }
+            startupLog(`[Electron] NODE_PATH will be: ${[
+                sqlitePath,
+                path.join(resourcesPath, '.next', 'standalone', 'node_modules'),
+            ].join(path.delimiter)}`);
+            // ── FIX D: Dedicated stderr file written synchronously ──
+            // If the process crashes before async handlers flush,
+            // appendFileSync ensures we still capture the error.
+            const stderrPath = path.join(userDataPath, 'server-stderr.log');
+            try {
+                fs.writeFileSync(stderrPath, `--- ${new Date().toISOString()} ---\n`);
+            }
+            catch { }
+            // Release the held port RIGHT BEFORE spawning —
+            // this minimizes the gap to milliseconds instead
+            // of however long createSplashWindow() and the
+            // file-existence checks above took
+            await releaseReservedPort();
+            // ── Windows port-release race guard ──
+            // On Windows, server.close() fires the callback before the
+            // OS fully releases the ephemeral port binding. A 50ms pause
+            // ensures the port is truly free when the child process tries
+            // to bind it, preventing silent EADDRINUSE exits.
+            await new Promise(r => setTimeout(r, 50));
+            nextServer = electron_1.utilityProcess.fork(normalizedServerPath, [], {
+                cwd: path.dirname(normalizedServerPath),
+                env: {
+                    ...process.env,
+                    PORT: String(PORT),
+                    NODE_ENV: 'production',
+                    // 0.0.0.0 allows mobile phones on the same WiFi to connect.
+                    // Electron's BrowserWindow still uses http://127.0.0.1:PORT
+                    // (see waitForServer / loadURL below) — only the TCP listen binding changes.
+                    HOSTNAME: '0.0.0.0',
+                    ELECTRON_USER_DATA: userDataPath,
+                    ELECTRON_RESOURCES: resourcesPath,
+                    // CRITICAL: Tell Node where to find
+                    // the native sqlite binding
+                    NODE_PATH: [
+                        sqlitePath,
+                        path.join(resourcesPath, 'app.asar', 'node_modules'),
+                        path.join(resourcesPath, 'app.asar.unpacked', 'node_modules'),
+                        path.join(resourcesPath, '.next', 'standalone', 'node_modules'),
+                        path.join(resourcesPath, '.next', 'standalone'),
+                    ].join(path.delimiter),
+                    // Native module path override
+                    BETTER_SQLITE3_BINDING: sqliteBinding,
+                    // Supabase from env
+                    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+                    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
+                    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+                    // Electron DB key
+                    ELECTRON_DB_KEY: (0, dbKeyManager_1.deriveDbKey)(process.env.USER_ID || 'SYSTEM'),
+                },
+                stdio: ['ignore', 'pipe', 'pipe'],
+            });
+            // Log ALL server output — this shows the exact crash message
+            let serverLog = '';
+            nextServer.stdout?.on('data', (d) => {
+                const msg = d.toString().trim();
+                startupLog(`[Next.js] ${msg}`);
+                serverLog += msg + '\n';
+            });
+            nextServer.stderr?.on('data', (d) => {
+                const msg = d.toString();
+                startupLog(`[Next.js ERR] ${msg.trim()}`);
+                serverLog += '[ERR] ' + msg + '\n';
+                // ── FIX D: Synchronous write so data is never lost on fast crash ──
+                try {
+                    fs.appendFileSync(stderrPath, msg);
+                }
+                catch { }
+            });
+            nextServer.on('exit', (code) => {
+                startupLog(`[Next.js] Exit: code=${code}`);
+                // Read the stderr file on exit in case async handlers lost data
+                try {
+                    const stderrContents = fs.readFileSync(stderrPath, 'utf-8');
+                    if (stderrContents && stderrContents.trim() !== `--- ${new Date().toISOString().slice(0, 10)}`) {
+                        startupLog(`[Next.js] Full stderr on exit:\n${stderrContents.slice(-2000)}`);
+                    }
+                }
+                catch { }
+                startupLog(`[Next.js] Last buffered output:\n${serverLog.slice(-1000)}`);
+                if (code !== 0) {
                     destroySplash();
-                    electron_1.dialog.showErrorBox('Installation Error', `Server not found at:\n${serverPath}\n\nPlease reinstall Noxis.`);
-                    electron_1.app.quit();
-                    return;
+                    electron_1.dialog.showErrorBox('Server Crashed', `Server exited with code ${code}.\n\nLast server output:\n${serverLog.slice(-500) || '(no output — see server-stderr.log in userData folder)'}`);
                 }
-                // Check SQLite binding exists (check both node-gyp build and prebuilds layout)
-                let sqliteBinding = path.join(sqlitePath, 'build', 'Release', 'better_sqlite3.node');
-                if (!fs.existsSync(sqliteBinding)) {
-                    sqliteBinding = path.join(sqlitePath, 'prebuilds', `win32-x64`, `node.napi.node`);
-                }
-                const sqliteExists = fs.existsSync(sqliteBinding);
-                startupLog(`[Electron] SQLite binding exists: ${sqliteExists}`);
-                if (!sqliteExists) {
-                    startupLog(`[WARN] SQLite binding not found at ${sqliteBinding}`);
-                    startupLog(`[WARN] Listing sqlite dir:`);
-                    try {
-                        const listDir = (dir, depth = 0) => {
-                            if (depth > 3)
-                                return;
-                            fs.readdirSync(dir).forEach(f => {
-                                startupLog(`${'  '.repeat(depth)}${f}`);
-                                const full = path.join(dir, f);
-                                if (fs.statSync(full).isDirectory()) {
-                                    listDir(full, depth + 1);
-                                }
-                            });
-                        };
-                        listDir(sqlitePath);
-                    }
-                    catch (e) {
-                        startupLog(`[WARN] Could not list: ${e.message}`);
-                    }
-                }
-                const userDataPath = electron_1.app.getPath('userData');
-                fs.mkdirSync(userDataPath, { recursive: true });
-                // Release the held port RIGHT BEFORE spawning —
-                // this minimizes the gap to milliseconds instead
-                // of however long createSplashWindow() and the
-                // file-existence checks above took
-                await releaseReservedPort();
-                nextServer = (0, child_process_1.spawn)(process.execPath, [serverPath], {
-                    cwd: path.dirname(serverPath),
-                    env: {
-                        ...process.env,
-                        ELECTRON_RUN_AS_NODE: '1',
-                        PORT: String(PORT),
-                        NODE_ENV: 'production',
-                        // 0.0.0.0 allows mobile phones on the same WiFi to connect.
-                        // Electron's BrowserWindow still uses http://127.0.0.1:PORT
-                        // (see waitForServer / loadURL below) — only the TCP listen binding changes.
-                        HOSTNAME: '0.0.0.0',
-                        ELECTRON_USER_DATA: userDataPath,
-                        ELECTRON_RESOURCES: process.resourcesPath,
-                        // CRITICAL: Tell Node where to find
-                        // the native sqlite binding
-                        NODE_PATH: [
-                            sqlitePath,
-                            path.join(process.resourcesPath, 'app.asar', 'node_modules'),
-                            path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules'),
-                            path.join(process.resourcesPath, 'standalone', 'node_modules'),
-                            path.join(process.resourcesPath, 'standalone'),
-                        ].join(path.delimiter),
-                        // Native module path override
-                        BETTER_SQLITE3_BINDING: sqliteBinding,
-                        // Supabase from env
-                        NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
-                        NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
-                        SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
-                        // Electron DB key
-                        ELECTRON_DB_KEY: (0, dbKeyManager_1.deriveDbKey)(process.env.USER_ID || 'SYSTEM'),
-                    },
-                    stdio: 'pipe',
-                });
-                // Log ALL server output — this shows the exact crash message
-                let serverLog = '';
-                nextServer.stdout?.on('data', (d) => {
-                    const msg = d.toString().trim();
-                    startupLog(`[Next.js] ${msg}`);
-                    serverLog += msg + '\n';
-                });
-                nextServer.stderr?.on('data', (d) => {
-                    const msg = d.toString().trim();
-                    startupLog(`[Next.js ERR] ${msg}`);
-                    serverLog += '[ERR] ' + msg + '\n';
-                });
-                nextServer.on('exit', (code) => {
-                    startupLog(`[Next.js] Exit code: ${code}`);
-                    startupLog(`[Next.js] Last output:\n${serverLog.slice(-1000)}`);
-                    if (code !== 0 && code !== null) {
-                        destroySplash();
-                        electron_1.dialog.showErrorBox('Server Crashed', `Server exited with code ${code}.\n\nLast server output:\n${serverLog.slice(-500)}`);
-                    }
-                    nextServer = null;
-                });
-            }
-            else {
-                await releaseReservedPort();
-            }
+                nextServer = null;
+            });
             // ── STEP 3: Create main window (loads silently) ──
             // Splash stays visible while this loads.
             // ready-to-show event handles the transition.
@@ -878,16 +925,13 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             }
         }
         catch (fatalErr) {
-            startupLog(`[FATAL STARTUP ERROR] ${fatalErr.message}`);
-            if (fatalErr.stack)
-                startupLog(fatalErr.stack);
+            startupLog(`[FATAL] ${fatalErr.message}`);
             try {
                 destroySplash();
             }
             catch { }
-            electron_1.dialog.showErrorBox('Noxis Failed to Start', `A fatal error occurred during startup:\n\n${fatalErr.message}\n\n` +
-                `Log file:\n${logPath}\n\n` +
-                `WhatsApp: +92 333 435 5475`);
+            electron_1.dialog.showErrorBox('Noxis Failed to Start', `Fatal error:\n\n${fatalErr.message}\n\n` +
+                `Log: ${logPath}`);
             electron_1.app.quit();
         }
     });

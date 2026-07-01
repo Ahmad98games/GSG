@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { 
   Download, MessageCircle, 
   Trash2, Copy, Printer, CheckCircle2,
@@ -68,7 +68,10 @@ interface InvoiceItem {
 interface Payment {
   id: string;
   payment_date: string;
+  amount: number;
   total_amount: number;
+  payment_method: string;
+  notes: string | null;
 }
 
 interface LedgerEntry {
@@ -114,6 +117,15 @@ export default function InvoiceDetailPage() {
   const { profile } = useBusinessProfile();
   const supabase = createClient();
   const toast = useToast();
+  const queryClient = useQueryClient();
+
+  // ── Payment modal state ──
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'bank' | 'cheque'>('cash');
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [paymentNote, setPaymentNote] = useState('');
+  const [recordingPayment, setRecordingPayment] = useState(false);
 
   const handleWhatsAppSend = () => {
     if (!invoice || !invoice.party?.phone) return;
@@ -127,6 +139,105 @@ export default function InvoiceDetailPage() {
     );
     
     WhatsAppSender.send({ phone: invoice.party.phone, message }, profile?.tier || 'starter', supabase);
+  };
+
+  // ── Record Payment handler ──
+  const handleRecordPayment = async () => {
+    const amount = parseFloat(paymentAmount);
+    if (!amount || amount <= 0) {
+      toast.error('Enter a valid payment amount');
+      return;
+    }
+    if (!invoice?.id || !profile?.id) return;
+
+    const balanceDue = invoice.balance_due ?? 0;
+    if (amount > balanceDue + 0.01) {
+      toast.error(`Payment cannot exceed outstanding balance of ${fmt(balanceDue)}`);
+      return;
+    }
+
+    setRecordingPayment(true);
+    try {
+      const newPaidAmount = (invoice.paid_amount || 0) + amount;
+      const newBalanceDue = (invoice.total || 0) - newPaidAmount;
+      const isFullyPaid = newBalanceDue <= 0.01;
+
+      // 1. Insert payment record
+      const { error: payError } = await supabase
+        .from('payments')
+        .insert({
+          business_id: profile.id,
+          invoice_id: invoice.id,
+          party_id: invoice.party_id,
+          amount,
+          payment_method: paymentMethod,
+          payment_date: paymentDate,
+          notes: paymentNote || null,
+          received_by: 'Hub',
+        });
+      if (payError) throw payError;
+
+      // 2. Update invoice paid_amount + balance_due + status
+      const { error: invError } = await supabase
+        .from('invoices')
+        .update({
+          paid_amount: newPaidAmount,
+          balance_due: newBalanceDue,
+          status: isFullyPaid ? 'paid' : 'posted',
+        })
+        .eq('id', invoice.id);
+      if (invError) throw invError;
+
+      // 3. Ledger credit entry (keeps Aging Report accurate)
+      const { error: ledgerError } = await supabase
+        .from('ledger_entries')
+        .insert({
+          business_id: profile.id,
+          invoice_id: invoice.id,
+          party_id: invoice.party_id,
+          entry_date: paymentDate,
+          debit_amount: 0,
+          credit_amount: amount,
+          debit_account: null,
+          credit_account: 'accounts_receivable',
+          account_code: '1100',
+          description: `Payment received — INV ${invoice.invoice_no}`,
+          voucher_type: 'payment',
+          posted_by: profile.id,
+        });
+      if (ledgerError) throw ledgerError;
+
+      // 4. Decrement party balance (non-fatal — ledger is source of truth)
+      try {
+        const { data: partyRow } = await supabase
+          .from('parties')
+          .select('current_balance')
+          .eq('id', invoice.party_id)
+          .single();
+        if (partyRow) {
+          await supabase
+            .from('parties')
+            .update({ current_balance: (partyRow.current_balance || 0) - amount })
+            .eq('id', invoice.party_id);
+        }
+      } catch (balanceErr) {
+        console.warn('Party balance update failed — ledger is source of truth', balanceErr);
+      }
+
+      // 5. Refresh queries
+      await queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] });
+      await queryClient.invalidateQueries({ queryKey: ['invoice_payments', invoiceId] });
+
+      toast.success(`Payment of ${fmt(amount)} recorded`);
+      setShowPaymentModal(false);
+      setPaymentAmount('');
+      setPaymentNote('');
+      setPaymentDate(new Date().toISOString().split('T')[0]);
+    } catch (err: any) {
+      toast.error(`Payment failed: ${humanizeError(err, 'record payment')}`);
+    } finally {
+      setRecordingPayment(false);
+    }
   };
   
   const invoiceId = params.id as string;
@@ -348,7 +459,7 @@ export default function InvoiceDetailPage() {
                  </div>
 
                  <div className="mt-8">
-                    <p className="text-[9px] uppercase font-black text-gray-400 mb-2">Terms & Conditions</p>
+                    <p className="text-[9px] uppercase font-black text-gray-400 mb-2">Terms &amp; Conditions</p>
                     <p className="text-[10px] text-gray-600 leading-relaxed max-w-[500px]">
                        1. Payments are due within the agreed credit period. <br/>
                        2. Late payments may incur interest charges of 2.5% per month. <br/>
@@ -416,7 +527,7 @@ export default function InvoiceDetailPage() {
                     <div className="flex items-center justify-between">
                        <h4 className="text-[10px] uppercase font-black text-gray-500 tracking-widest">Payment History</h4>
                        <button 
-                          onClick={() => toast.info('Record Payment', 'To record a new payment, please navigate to the Parties page, select the customer, and click Record Payment.')}
+                          onClick={() => setShowPaymentModal(true)}
                           className="text-[9px] uppercase font-black text-[#C5A059] hover:underline transition-all"
                        >
                           Record New
@@ -432,10 +543,12 @@ export default function InvoiceDetailPage() {
                                  </div>
                                  <div>
                                     <p className="text-[11px] font-bold text-white">{p.payment_date}</p>
-                                    <p className="text-[9px] text-gray-500 font-mono">ID: {p.id.substring(0, 8)}</p>
+                                    <p className="text-[9px] text-gray-500 font-mono uppercase tracking-wide">
+                                      {p.payment_method || 'cash'}{p.notes ? ` · ${p.notes}` : ''}
+                                    </p>
                                  </div>
                               </div>
-                              <span className="text-sm font-mono font-black text-emerald-500">{fmt(p.total_amount)}</span>
+                              <span className="text-sm font-mono font-black text-emerald-500">{fmt(p.amount ?? p.total_amount)}</span>
                            </div>
                          ))}
                       </div>
@@ -590,6 +703,143 @@ export default function InvoiceDetailPage() {
            </aside>
         </div>
       </main>
+
+      {/* ── Payment Modal ── */}
+      {showPaymentModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setShowPaymentModal(false)}
+        >
+          <div
+            className="w-full max-w-md bg-[#0F1114] border border-white/10 rounded-sm shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/8">
+              <div>
+                <h2 className="text-sm font-black uppercase tracking-widest text-white">Record Payment</h2>
+                <p className="text-[10px] text-gray-500 mt-0.5 font-mono">
+                  {invoice?.invoice_no} · Outstanding: {fmt(invoice?.balance_due ?? 0)}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowPaymentModal(false)}
+                className="text-gray-600 hover:text-gray-200 text-xl leading-none transition-colors"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-5 space-y-5">
+              {/* Amount */}
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1.5">
+                  Amount Received *
+                </label>
+                <input
+                  type="number"
+                  value={paymentAmount}
+                  onChange={e => setPaymentAmount(e.target.value)}
+                  placeholder="0.00"
+                  autoFocus
+                  min="0"
+                  step="0.01"
+                  className="w-full bg-[#161A1F] border border-white/8 text-white text-lg font-mono px-3 py-2.5 outline-none focus:border-[#60A5FA]/50 transition-colors"
+                />
+              </div>
+
+              {/* Method */}
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1.5">
+                  Payment Method
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['cash', 'bank', 'cheque'] as const).map(m => (
+                    <button
+                      key={m}
+                      onClick={() => setPaymentMethod(m)}
+                      className={cn(
+                        'py-2 text-[10px] font-black uppercase tracking-widest border transition-all',
+                        paymentMethod === m
+                          ? 'border-[#60A5FA]/50 bg-[#60A5FA]/10 text-[#60A5FA]'
+                          : 'border-white/8 text-gray-500 hover:border-white/20 hover:text-gray-300'
+                      )}
+                    >
+                      {m === 'bank' ? 'Bank' : m === 'cheque' ? 'Cheque' : 'Cash'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Date */}
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1.5">
+                  Payment Date
+                </label>
+                <input
+                  type="date"
+                  value={paymentDate}
+                  onChange={e => setPaymentDate(e.target.value)}
+                  className="w-full bg-[#161A1F] border border-white/8 text-white text-sm px-3 py-2.5 outline-none focus:border-[#60A5FA]/50 transition-colors"
+                />
+              </div>
+
+              {/* Note */}
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1.5">
+                  Note <span className="normal-case font-normal text-gray-700">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={paymentNote}
+                  onChange={e => setPaymentNote(e.target.value)}
+                  placeholder="e.g. Cheque #12345"
+                  className="w-full bg-[#161A1F] border border-white/8 text-white text-sm px-3 py-2.5 outline-none focus:border-[#60A5FA]/50 transition-colors"
+                />
+              </div>
+
+              {/* Balance preview */}
+              {paymentAmount && parseFloat(paymentAmount) > 0 && (
+                <div className="bg-white/[0.02] border border-white/5 px-4 py-3 space-y-1">
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-gray-500 uppercase font-bold tracking-widest">Applying</span>
+                    <span className="font-mono text-white">{fmt(parseFloat(paymentAmount) || 0)}</span>
+                  </div>
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-gray-500 uppercase font-bold tracking-widest">Remaining after</span>
+                    <span className={cn(
+                      'font-mono font-black',
+                      (invoice?.balance_due ?? 0) - (parseFloat(paymentAmount) || 0) <= 0.01
+                        ? 'text-emerald-400'
+                        : 'text-amber-400'
+                    )}>
+                      {fmt(Math.max(0, (invoice?.balance_due ?? 0) - (parseFloat(paymentAmount) || 0)))}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-white/8 flex gap-3">
+              <button
+                onClick={() => setShowPaymentModal(false)}
+                className="flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest border border-white/10 text-gray-500 hover:border-white/25 hover:text-gray-300 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRecordPayment}
+                disabled={recordingPayment || !paymentAmount || parseFloat(paymentAmount) <= 0}
+                className="flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest bg-[#60A5FA] text-black hover:bg-blue-400 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                {recordingPayment ? 'Recording…' : 'Record Payment'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

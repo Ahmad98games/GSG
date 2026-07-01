@@ -19,6 +19,7 @@ import { INDUSTRIES } from "@/lib/persona/industries";
 import { CurrencyCode } from "@/lib/currency/currencyEngine";
 import { useToast } from "@/hooks/useToast";
 import { humanizeError } from "@/lib/utils/errors";
+import { seedChartOfAccounts } from "@/lib/accounting/seedAccounts";
 
 // --- Country Infrastructure ---
 type CountrySetup = {
@@ -322,7 +323,6 @@ export default function OnboardingPage() {
         tax_number: values.tax_number,
         role_pin_hash: values.pin, // plain text storage as per schema pin constraint
         onboarding_done: true,
-        onboarding_complete: true, // Both fields set to true
         persona_locked: true,
         worker_term: values.worker_term,
         stock_unit_primary: 'unit',
@@ -337,6 +337,23 @@ export default function OnboardingPage() {
       }, { onConflict: 'user_id' });
 
       if (error) throw error;
+
+      // Seed default chart of accounts for new business
+      try {
+        const { data: profileData } = await supabase
+          .from('business_profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+        if (profileData?.id) {
+          const { seeded } = await seedChartOfAccounts(profileData.id);
+          if (seeded > 0) {
+            console.log(`[Setup] Seeded ${seeded} default accounts for business ${profileData.id}`);
+          }
+        }
+      } catch (seedErr) {
+        console.warn('[Setup] Chart of accounts seeding failed (non-fatal):', seedErr);
+      }
 
       // Persist onboarding status to local SQLite configuration
       try {

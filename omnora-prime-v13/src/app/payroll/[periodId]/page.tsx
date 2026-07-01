@@ -16,6 +16,7 @@ import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
+import { generatePayslipPDF } from "@/lib/payroll/generatePayslip";
 import { 
   CreditCard, Download, MessageCircle, 
   Printer, CheckCircle2, AlertTriangle, 
@@ -278,141 +279,64 @@ export default function PayrollPeriodDetailPage() {
       window.print();
    };
 
-   const handleDownloadA5PDF = async (slip: any) => {
+   const handleDownloadA5PDF = (slip: any) => {
       try {
-         const doc = new jsPDF({
-            orientation: "portrait",
-            unit: "mm",
-            format: "a5"
+         const otherDeductions = Number(
+           (slip.total_deductions || 0) - (slip.advance_deduction || 0)
+         );
+         generatePayslipPDF({
+           businessName: business?.business_name || 'Noxis Hub',
+           businessCity: business?.city || '',
+           karigarName: slip.karigar?.name || '—',
+           karigarCode: slip.karigar?.karigar_code || '—',
+           wageType: slip.karigar?.wage_type || 'monthly_salary',
+           periodLabel: period?.period_label || '',
+           daysPresent: slip.days_present || 0,
+           totalDays: 26,
+           unitsProduced: slip.piece_rate_earning > 0 ? undefined : undefined,
+           pieceRate: slip.karigar?.piece_rate,
+           grossEarnings: Number(slip.gross_earning || 0),
+           peshgiDeduction: Number(slip.advance_deduction || 0),
+           otherDeductions: otherDeductions > 0 ? otherDeductions : 0,
+           netPay: Number(slip.net_payable || 0),
+           currency: business?.currency || 'PKR',
          });
-
-         // A5 dimensions: width = 148 mm, height = 210 mm
-         // Top banner
-         doc.setFillColor(15, 23, 42); // dark slate/onyx banner
-         doc.rect(0, 0, 148, 24, "F");
-
-         // Title
-         doc.setTextColor(255, 255, 255);
-         doc.setFont("helvetica", "bold");
-         doc.setFontSize(12);
-         doc.text((business?.business_name || "Noxis Industrial Hub").toUpperCase(), 8, 9);
-
-         doc.setFont("helvetica", "normal");
-         doc.setFontSize(8);
-         doc.setTextColor(200, 200, 200);
-         doc.text("Human Capital Compensation Slip", 8, 14);
-         doc.text(period?.period_label || "Payroll Period Details", 8, 19);
-
-         // PAYSLIP label on the right
-         doc.setFont("helvetica", "bold");
-         doc.setFontSize(15);
-         doc.setTextColor(255, 255, 255);
-         doc.text("PAYSLIP", 112, 14);
-
-         // Reset text color
-         doc.setTextColor(0, 0, 0);
-
-         // Section: Worker Details
-         doc.setFontSize(9);
-         doc.setFont("helvetica", "bold");
-         doc.text("WORKER PROFILE", 8, 33);
-         doc.line(8, 35, 140, 35);
-
-         doc.setFont("helvetica", "normal");
-         doc.setFontSize(8);
-         doc.text(`Name: ${slip.karigar?.name || "—"}`, 8, 41);
-         doc.text(`ID/Code: ${slip.karigar?.karigar_code || "—"}`, 8, 47);
-         doc.text(`Designation: ${slip.karigar?.skill_type || "—"}`, 8, 53);
-         doc.text(`Wage Type: ${slip.karigar?.wage_type?.replace('_', ' ') || "—"}`, 8, 59);
-
-         doc.text(`Phone: ${slip.karigar?.phone || "—"}`, 75, 41);
-         doc.text(`Bank Account: ${slip.karigar?.bank_account || "—"}`, 75, 47);
-         doc.text(`City: ${slip.karigar?.city || business?.city || "—"}`, 75, 53);
-
-         // Section: Financial Ledger
-         doc.setFont("helvetica", "bold");
-         doc.setFontSize(9);
-         doc.text("FINANCIAL COMPILATION", 8, 70);
-         doc.line(8, 72, 140, 72);
-
-         // Sub-headings
-         doc.text("Description", 8, 78);
-         doc.text("Earnings", 65, 78, { align: "right" });
-         doc.text("Recoveries / Deductions", 140, 78, { align: "right" });
-         doc.line(8, 80, 140, 80);
-
-         doc.setFont("helvetica", "normal");
-         doc.setFontSize(8);
-
-         // Line items
-         let currentY = 86;
-         
-         // Base Salary / Daily
-         doc.text("Base Salary / Daily Wages:", 8, currentY);
-         const basePay = Number(slip.monthly_base || slip.daily_wage_earning || 0);
-         doc.text(`${fmt(basePay)}`, 65, currentY, { align: "right" });
-         currentY += 6;
-
-         // Piece Rate Production
-         doc.text("Piece Rate Production:", 8, currentY);
-         const piecePay = Number(slip.piece_rate_earning || 0);
-         doc.text(`${fmt(piecePay)}`, 65, currentY, { align: "right" });
-         currentY += 6;
-
-         // Overtime/Bonus
-         doc.text("Overtime / Incentives:", 8, currentY);
-         const bonusPay = Number(slip.overtime_earning || slip.bonus || 0);
-         doc.text(`${fmt(bonusPay)}`, 65, currentY, { align: "right" });
-
-         // Deductions on the right
-         doc.text("Advance Deduction (Peshgi):", 80, 86);
-         doc.text(`-${fmt(Number(slip.advance_deduction || 0))}`, 140, 86, { align: "right" });
-
-         doc.text("Other Recoveries:", 80, 92);
-         const otherDeduction = Number((slip.total_deductions || 0) - (slip.advance_deduction || 0));
-         doc.text(`-${fmt(otherDeduction)}`, 140, 92, { align: "right" });
-
-         // Divider
-         doc.line(8, 110, 140, 110);
-
-         // Totals
-         doc.setFont("helvetica", "bold");
-         doc.text("Gross Total:", 8, 116);
-         doc.text(`${fmt(Number(slip.gross_earning || 0))}`, 65, 116, { align: "right" });
-
-         doc.text("Total Deductions:", 80, 116);
-         doc.text(`-${fmt(Number(slip.total_deductions || 0))}`, 140, 116, { align: "right" });
-
-         // Net Box
-         doc.setFillColor(248, 250, 252);
-         doc.rect(8, 124, 132, 14, "F");
-         doc.setFontSize(10);
-         doc.setTextColor(15, 23, 42);
-         doc.text("NET DISBURSED AMOUNT:", 12, 133);
-         doc.setFontSize(12);
-         doc.text(`${fmt(Number(slip.net_payable || 0))}`, 136, 133, { align: "right" });
-
-         // Signatures
-         doc.setTextColor(0, 0, 0);
-         doc.setFontSize(8);
-         doc.setFont("helvetica", "normal");
-         doc.line(15, 165, 60, 165);
-         doc.text("Supervisor / Accountant", 22, 169);
-
-         doc.line(88, 165, 133, 165);
-         doc.text("Receiver Signature", 98, 169);
-
-         // Footer
-         doc.setFontSize(7);
-         doc.setTextColor(148, 163, 184);
-         doc.text("Securely generated by Noxis Hub Studio. Standard ISO A5.", 148 / 2, 192, { align: "center" });
-
-         doc.save(`payslip_${slip.karigar?.name?.replace(/\s+/g, "_") || "worker"}_${period?.period_label?.replace(/\s+/g, "_")}.pdf`);
-         toast.success("PDF Generated", `A5 Payslip for ${slip.karigar?.name} downloaded successfully.`);
+         toast.success('PDF Generated', `Payslip for ${slip.karigar?.name} downloaded successfully.`);
       } catch (err: any) {
          console.error(err);
-         toast.error("Generation Failed", "Could not generate PDF payslip.");
+         toast.error('Generation Failed', 'Could not generate PDF payslip.');
       }
+   };
+
+   const handleDownloadAllPayslips = () => {
+      if (!slips || slips.length === 0) {
+        toast.info('No Data', 'There are no payslips in this period.');
+        return;
+      }
+      slips.forEach((slip: any, index: number) => {
+        setTimeout(() => {
+          const otherDeductions = Number(
+            (slip.total_deductions || 0) - (slip.advance_deduction || 0)
+          );
+          generatePayslipPDF({
+            businessName: business?.business_name || 'Noxis Hub',
+            businessCity: business?.city || '',
+            karigarName: slip.karigar?.name || '—',
+            karigarCode: slip.karigar?.karigar_code || '—',
+            wageType: slip.karigar?.wage_type || 'monthly_salary',
+            periodLabel: period?.period_label || '',
+            daysPresent: slip.days_present || 0,
+            totalDays: 26,
+            pieceRate: slip.karigar?.piece_rate,
+            grossEarnings: Number(slip.gross_earning || 0),
+            peshgiDeduction: Number(slip.advance_deduction || 0),
+            otherDeductions: otherDeductions > 0 ? otherDeductions : 0,
+            netPay: Number(slip.net_payable || 0),
+            currency: business?.currency || 'PKR',
+          });
+        }, index * 300);
+      });
+      toast.success('Bulk PDF', `Downloading ${slips.length} payslips — check your downloads folder.`);
    };
 
    const handleDownloadSlip = (slip: any) => {
@@ -489,13 +413,14 @@ export default function PayrollPeriodDetailPage() {
                      <FileSpreadsheet size={12} />
                      <span>CSV</span>
                   </button>
-                  <button 
-                    onClick={handlePrintAllSlips}
-                    className="flex items-center space-x-2 px-4 py-2 text-[10px] uppercase font-black tracking-widest hover:bg-white/5 transition-all"
-                  >
-                     <Printer size={12} />
-                     <span>PDF</span>
-                  </button>
+                   <button 
+                     onClick={handleDownloadAllPayslips}
+                     className="flex items-center space-x-2 px-4 py-2 text-[10px] uppercase font-black tracking-widest hover:bg-white/5 transition-all"
+                     title="Download all payslips as individual PDFs"
+                   >
+                      <Download size={12} />
+                      <span>All PDFs</span>
+                   </button>
                </div>
                <button 
                  onClick={handleSendAllWhatsApp}
@@ -609,9 +534,11 @@ export default function PayrollPeriodDetailPage() {
                                    </button>
                                    <button 
                                      onClick={() => handleDownloadSlip(slip)}
-                                     className="p-2 bg-white/5 hover:bg-white/10 rounded-sm transition-all text-gray-400 hover:text-white"
+                                     className="flex items-center space-x-1.5 px-2.5 py-1.5 bg-[#60A5FA]/5 border border-[#60A5FA]/20 text-[#60A5FA] hover:bg-[#60A5FA]/15 rounded-sm transition-all text-[9px] font-black uppercase tracking-widest"
+                                     title="Download PDF Payslip"
                                    >
-                                      <Download size={14} />
+                                      <Download size={11} />
+                                      <span>PDF Slip</span>
                                    </button>
                                    <button 
                                      onClick={() => handleFinalizeSlip(slip.id)}

@@ -20,8 +20,11 @@ export default function SessionMonitor() {
       // ORDER MATTERS: Clear stores first, then invalidate session
       resetAllStores(); // Line X: Store cleanup
       await supabase.auth.signOut(); // Line Y: Auth invalidation
+      localStorage.removeItem('noxis-business-profile');
+      localStorage.removeItem('noxis-bridge-status');
+      localStorage.removeItem('NOXIS-profile-cache');
       
-      window.location.href = '/login';
+      window.location.href = '/license';
     });
 
     // 3. User activity tracking (send to main process)

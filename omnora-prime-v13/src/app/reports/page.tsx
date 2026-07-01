@@ -60,7 +60,7 @@ export default function ReportsHubPage() {
   }, []);
 
   // Live Data Fetches
-  const { data: plData, error: plError, refetch: refetchPl } = useQuery({
+  const { data: plData, error: plError, refetch: refetchPl, isPending: plPending } = useQuery({
     queryKey: ['report-summary-pl', businessId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -70,13 +70,16 @@ export default function ReportsHubPage() {
         .eq('status', 'posted')
         .gte('posted_at', startOfMonth)
         .lte('posted_at', endOfMonth + 'T23:59:59.999Z');
-      if (error) throw error;
+      // Gracefully handle missing accounts table (new business)
+      if (error && error.code !== 'PGRST116' && !error.message?.includes('accounts')) {
+        throw error;
+      }
 
       let revenue = new Decimal(0);
       let expenses = new Decimal(0);
 
-      data.forEach((entry: any) => {
-        const amt = new Decimal(entry.amount);
+      (data || []).forEach((entry: any) => {
+        const amt = new Decimal(entry.amount || 0);
         const type = entry.accounts?.type;
         const isDebit = entry.entry_type === 'debit';
 
@@ -98,7 +101,7 @@ export default function ReportsHubPage() {
     enabled: !!businessId
   });
 
-  const { data: tbData } = useQuery({
+  const { data: tbData, isPending: tbPending } = useQuery({
     queryKey: ['report-summary-tb', businessId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -131,7 +134,7 @@ export default function ReportsHubPage() {
     enabled: !!businessId
   });
 
-  const { data: bsData, error: bsError, refetch: refetchBs } = useQuery({
+  const { data: bsData, error: bsError, refetch: refetchBs, isPending: bsPending } = useQuery({
     queryKey: ['report-summary-bs', businessId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -164,7 +167,7 @@ export default function ReportsHubPage() {
     enabled: !!businessId
   });
 
-  const { data: receivablesData, error: recError, refetch: refetchRec } = useQuery({
+  const { data: receivablesData, error: recError, refetch: refetchRec, isPending: recPending } = useQuery({
     queryKey: ['report-summary-receivables', businessId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -173,11 +176,14 @@ export default function ReportsHubPage() {
         .eq('business_id', businessId)
         .eq('status', 'posted')
         .eq('accounts.account_code', '1100');
-      if (error) throw error;
+      // Gracefully handle missing accounts (new business with no chart of accounts)
+      if (error && error.code !== 'PGRST116' && !error.message?.includes('accounts')) {
+        throw error;
+      }
 
       let balance = new Decimal(0);
-      data.forEach((entry: any) => {
-        const amt = new Decimal(entry.amount);
+      (data || []).forEach((entry: any) => {
+        const amt = new Decimal(entry.amount || 0);
         if (entry.entry_type === 'debit') {
           balance = balance.plus(amt);
         } else {
@@ -331,7 +337,8 @@ export default function ReportsHubPage() {
     },
   ];
 
-  const isLoading = !plData || !bsData || !receivablesData || ledgerData === undefined;
+  // Use React Query's isPending flags — avoids false "loading" when data is zero/empty
+  const isLoading = plPending || tbPending || bsPending || recPending;
   if (isLoading) return (
     <div className="p-6 bg-[#0F1113]">
       <div className="grid grid-cols-3 gap-4 mb-6">
@@ -357,19 +364,22 @@ export default function ReportsHubPage() {
     </div>
   );
 
-  if (ledgerData === 0) return (
-    <div className="min-h-screen bg-[#0F1113] text-slate-200 p-6 flex flex-col justify-center">
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <KpiCardSkeleton key={i} />
-        ))}
+  // Zero-data empty state: show clean message with zeroes, not skeletons
+  if (ledgerData === 0 || ledgerData === null) return (
+    <div className="min-h-screen bg-[#0F1113] text-slate-200 p-6 flex flex-col">
+      <header className="h-16 border-b border-white/5 flex items-center px-8 bg-[#1A1D21]/50 backdrop-blur-md sticky top-0 z-40 -mx-6 -mt-6 mb-6">
+        <div className="flex items-center text-[10px] uppercase tracking-[0.2em] text-gray-500 font-medium">
+          <span className="text-white">Reports Overview</span>
+        </div>
+      </header>
+      <div className="flex-1 flex items-center justify-center">
+        <EmptyState
+          icon="📊"
+          title="No data for this period"
+          description="Post your first invoice or record a transaction to see financial reports with real data."
+          action={{ label: 'Create first invoice', href: '/invoices/new' }}
+        />
       </div>
-      <EmptyState
-        icon="📊"
-        title="No data for this period"
-        description="Post some transactions to see reports"
-        action={{ label: 'Create invoice', href: '/invoices/new' }}
-      />
     </div>
   );
 

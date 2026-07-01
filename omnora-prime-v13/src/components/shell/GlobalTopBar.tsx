@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Search, Bell, Smartphone, Cloud, 
@@ -14,7 +14,8 @@ import { usePersona } from '@/hooks/usePersona'
 import { createClient } from '@/lib/supabase/client'
 import { resetAllStores } from '@/stores'
 import Link from 'next/link'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useToast } from '@/hooks/useToast'
 import { cn } from '@/lib/utils'
 import { useLanguageStore } from '@/stores/languageStore'
 import LanguageSwitcher from './LanguageSwitcher'
@@ -23,6 +24,7 @@ import { useTranslations } from 'next-intl'
 import { TierBadge } from '../ui/TierBadge'
 import { FeedbackModal } from '@/components/ui/FeedbackModal'
 import Image from 'next/image'
+import { CloudSyncIndicator } from './CloudSyncIndicator'
 
 const PRESET_AVATARS = [
   { id: 1, src: '/images/presets/preset-1.png', border: '#22d3ee' },
@@ -39,6 +41,9 @@ const PRESET_AVATARS = [
 
 export default React.memo(function GlobalTopBar() {
   const pathname = usePathname()
+  const router = useRouter()
+  const queryClient = useQueryClient()
+  const toast = useToast()
   const { profile } = useBusinessProfile()
   const { businessId } = usePersona()
   const { locale, isRTL } = useNoxisLocale()
@@ -205,6 +210,8 @@ export default React.memo(function GlobalTopBar() {
               {syncState === 'synced' ? 'Synced' : syncState === 'syncing' ? 'Syncing...' : syncState === 'error' ? 'Sync Error' : 'Offline'}
             </span>
           </div>
+
+          <CloudSyncIndicator />
         </div>
 
         {/* RIGHT: Notifications & User */}
@@ -314,17 +321,19 @@ export default React.memo(function GlobalTopBar() {
                       <Settings className="w-3.5 h-3.5 mr-2" />
                       Settings
                     </Link>
-                    
                     <button 
                       onClick={async () => {
                         setIsProfileOpen(false);
                         try {
                           resetAllStores();
                           await supabase.auth.signOut();
+                          localStorage.removeItem('noxis-business-profile');
+                          localStorage.removeItem('noxis-bridge-status');
+                          localStorage.removeItem('NOXIS-profile-cache');
+                          queryClient.clear();
+                          router.push('/license');
                         } catch (err) {
-                          console.error("Logout failed:", err);
-                        } finally {
-                          window.location.href = '/login';
+                          toast.error('Could not sign out. Please try again.');
                         }
                       }}
                       className="flex items-center w-full px-4 py-2 text-[10px] font-bold text-noxis-danger hover:bg-noxis-danger/10 transition-colors text-left uppercase tracking-wider border-t border-noxis-border"

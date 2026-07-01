@@ -121,9 +121,8 @@ export default function AgingReportPage() {
 
             partyWise[partyId].total = partyWise[partyId].total.plus(outstanding);
 
-            let bucketKey: keyof typeof buckets = 'current';
-            if (diffDays <= 0) bucketKey = 'current';
-            else if (diffDays <= 30) bucketKey = 'overdue_30';
+            let bucketKey: keyof typeof buckets = 'overdue_30';
+            if (diffDays <= 30) bucketKey = 'overdue_30';
             else if (diffDays <= 60) bucketKey = 'overdue_60';
             else if (diffDays <= 90) bucketKey = 'overdue_90';
             else bucketKey = 'overdue_critical';
@@ -227,9 +226,8 @@ export default function AgingReportPage() {
         </header>
 
         <div className="p-8 max-w-[1600px] mx-auto w-full space-y-8">
-           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <BucketCard label="Current" value={agingAnalysis.buckets.current.total} color="emerald" />
-              <BucketCard label="1-30 Days" value={agingAnalysis.buckets.overdue_30.total} color="amber" />
+           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <BucketCard label="0-30 Days" value={agingAnalysis.buckets.overdue_30.total} color="amber" />
               <BucketCard label="31-60 Days" value={agingAnalysis.buckets.overdue_60.total} color="orange" />
               <BucketCard label="61-90 Days" value={agingAnalysis.buckets.overdue_90.total} color="red" />
               <BucketCard label="90+ Days" value={agingAnalysis.buckets.overdue_critical.total} color="red-critical" />
@@ -324,8 +322,8 @@ function BucketCard({ label, value, color }: { label: string, value: Decimal, co
 
 function SeverityBadge({ bucket }: { bucket: string }) {
   const configs: any = {
-    current: { label: "Current", style: "bg-emerald/10 text-emerald border-emerald/20" },
-    overdue_30: { label: "1-30 Days", style: "bg-amber-500/10 text-amber-500 border-amber-500/20" },
+    current: { label: "0-30 Days", style: "bg-amber-500/10 text-amber-500 border-amber-500/20" },
+    overdue_30: { label: "0-30 Days", style: "bg-amber-500/10 text-amber-500 border-amber-500/20" },
     overdue_60: { label: "31-60 Days", style: "bg-orange-500/10 text-orange-500 border-orange-500/20" },
     overdue_90: { label: "61-90 Days", style: "bg-red-500/10 text-red-500 border-red-500/20" },
     overdue_critical: { label: "90+ Days", style: "bg-red-600/20 text-red-600 border-red-600/40 animate-pulse" },
