@@ -3,6 +3,7 @@ import { db } from '@/lib/db/client';
 import * as schema from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { disconnectDevice } from '@/lib/mobile-bridge/server';
+import { verifyUserSession } from '@/lib/security/authHelpers';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,11 @@ export const dynamic = 'force-dynamic';
  * The device will need to re-pair (re-scan QR code) to reconnect.
  */
 export async function POST(req: NextRequest) {
+  const auth = await verifyUserSession();
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
     const { nodeId, deviceId } = body as {

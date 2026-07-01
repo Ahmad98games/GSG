@@ -107,7 +107,11 @@ export async function middleware(request: NextRequest) {
     try {
       // Attempt to get license from local DB via API route to avoid Edge runtime errors
       const apiUrl = new URL('/api/settings', request.url);
-      const res = await fetch(apiUrl);
+      const res = await fetch(apiUrl, {
+        headers: {
+          'x-internal-bypass-key': process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+        },
+      });
       if (res.ok) {
         const { localConfig } = await res.json();
         

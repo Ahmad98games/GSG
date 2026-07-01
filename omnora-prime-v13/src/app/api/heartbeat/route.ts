@@ -1,9 +1,15 @@
 import { NextResponse } from 'next/server';
 import os from 'os';
+import { verifyUserSession } from '@/lib/security/authHelpers';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  const auth = await verifyUserSession();
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const uptime = process.uptime();
   
   return NextResponse.json({

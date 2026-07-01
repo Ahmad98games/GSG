@@ -3,6 +3,7 @@ import { db } from '@/lib/db/client';
 import * as schema from '@/lib/db/schema';
 import { createClient } from '@supabase/supabase-js';
 import { sql } from 'drizzle-orm';
+import { verifyUserSession } from '@/lib/security/authHelpers';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +13,11 @@ const supabase = createClient(
 );
 
 export async function GET() {
+  const auth = await verifyUserSession();
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const results: any = {
     supabase: { status: 'loading', detail: '' },
     sqlite: { status: 'loading', detail: '' },

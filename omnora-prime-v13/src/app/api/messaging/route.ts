@@ -3,10 +3,16 @@ import { db } from '@/lib/db/client';
 import * as schema from '@/lib/db/schema';
 import { eq, or, and } from 'drizzle-orm';
 import { NspBroadcaster } from '@/server/NspBroadcaster';
+import { verifyUserSession } from '@/lib/security/authHelpers';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
+  const auth = await verifyUserSession();
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { searchParams } = new URL(req.url);
   const nodeId = searchParams.get('nodeId');
 
@@ -31,6 +37,11 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const auth = await verifyUserSession();
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
     const { toNodeId, text, mediaType = 'text' } = body;

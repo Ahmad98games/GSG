@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { generatePortalToken } from '@/lib/portal/portal-token-utils';
+import { verifyBusinessOwnership } from '@/lib/security/authHelpers';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,6 +19,11 @@ export async function POST(request: NextRequest) {
 
     if (!partyId || !businessId) {
       return NextResponse.json({ error: 'partyId and businessId are required' }, { status: 400 });
+    }
+
+    const access = await verifyBusinessOwnership(businessId);
+    if (!access) {
+      return NextResponse.json({ error: 'Unauthorized or access denied to this business' }, { status: 403 });
     }
 
     // Generate JWT token

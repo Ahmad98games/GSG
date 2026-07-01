@@ -3,6 +3,7 @@ import { db } from '@/lib/db/client';
 import * as schema from '@/lib/db/schema';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import { verifyUserSession } from '@/lib/security/authHelpers';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +12,17 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export async function GET() {
+export async function GET(req: Request) {
+  const bypassKey = req.headers.get('x-internal-bypass-key');
+  const isInternal = bypassKey && bypassKey === process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!isInternal) {
+    const auth = await verifyUserSession();
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+  }
+
   try {
     let config = [];
     let sessions = [];
@@ -41,6 +52,11 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const auth = await verifyUserSession();
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
     const { type, data } = body;
@@ -49,7 +65,8 @@ export async function POST(req: Request) {
       const { error } = await supabase
         .from('business_profiles')
         .update(data)
-        .eq('id', data.id);
+        .eq('id', data.id)
+        .eq('user_id', auth.user.id);
       if (error) throw error;
     }
 

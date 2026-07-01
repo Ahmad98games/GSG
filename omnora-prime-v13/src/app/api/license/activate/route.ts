@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createHmac } from 'crypto'
+import { checkRateLimit } from '@/lib/security/rateLimiter'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,6 +20,17 @@ function generateDeviceId(factors: Record<string, string>): string {
 }
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for') ?? 
+           req.headers.get('x-real-ip') ?? 
+           'unknown';
+
+  if (!checkRateLimit(ip, 5, 60_000)) {
+    return NextResponse.json(
+      { error: 'Too many license activation attempts. Please try again in a minute.' },
+      { status: 429 }
+    );
+  }
+
   let body: any
 
   try {
@@ -55,16 +67,18 @@ export async function POST(req: NextRequest) {
 
   if (lookupError || !license) {
     // Log failed activation attempt
-    await supabase.from('license_activation_log')
-      .insert({
-        key_attempted: cleanKey,
-        event: 'key_not_found',
-        machine_info: machineInfo || null,
-        app_version: appVersion || null,
-        created_at: new Date().toISOString(),
-      }).catch((e) => {
-        console.error('[License] Failed to log failure to DB:', e.message)
-      })
+    try {
+      await supabase.from('license_activation_log')
+        .insert({
+          key_attempted: cleanKey,
+          event: 'key_not_found',
+          machine_info: machineInfo || null,
+          app_version: appVersion || null,
+          created_at: new Date().toISOString(),
+        })
+    } catch (e: any) {
+      console.error('[License] Failed to log failure to DB:', e.message)
+    }
 
     return NextResponse.json(
       { error: 'Invalid license key. Check the key and try again.' },
@@ -74,17 +88,19 @@ export async function POST(req: NextRequest) {
 
   // Check if deactivated
   if (license.is_deactivated) {
-    await supabase.from('license_activation_log')
-      .insert({
-        license_id: license.id,
-        key_attempted: cleanKey,
-        event: 'key_deactivated',
-        machine_info: machineInfo || null,
-        app_version: appVersion || null,
-        created_at: new Date().toISOString(),
-      }).catch((e) => {
-        console.error('[License] Failed to log deactivation to DB:', e.message)
-      })
+    try {
+      await supabase.from('license_activation_log')
+        .insert({
+          license_id: license.id,
+          key_attempted: cleanKey,
+          event: 'key_deactivated',
+          machine_info: machineInfo || null,
+          app_version: appVersion || null,
+          created_at: new Date().toISOString(),
+        })
+    } catch (e: any) {
+      console.error('[License] Failed to log deactivation to DB:', e.message)
+    }
 
     return NextResponse.json(
       { error: 'This license has been deactivated. Contact support on WhatsApp: +92 326 4742678' },
@@ -96,17 +112,19 @@ export async function POST(req: NextRequest) {
   if (license.expires_at && new Date() > new Date(license.expires_at)) {
     const expiredDate = new Date(license.expires_at).toLocaleDateString('en-PK')
 
-    await supabase.from('license_activation_log')
-      .insert({
-        license_id: license.id,
-        key_attempted: cleanKey,
-        event: 'key_expired',
-        machine_info: machineInfo || null,
-        app_version: appVersion || null,
-        created_at: new Date().toISOString(),
-      }).catch((e) => {
-        console.error('[License] Failed to log expiry to DB:', e.message)
-      })
+    try {
+      await supabase.from('license_activation_log')
+        .insert({
+          license_id: license.id,
+          key_attempted: cleanKey,
+          event: 'key_expired',
+          machine_info: machineInfo || null,
+          app_version: appVersion || null,
+          created_at: new Date().toISOString(),
+        })
+    } catch (e: any) {
+      console.error('[License] Failed to log expiry to DB:', e.message)
+    }
 
     return NextResponse.json(
       {
@@ -139,18 +157,20 @@ export async function POST(req: NextRequest) {
   }
 
   // Log successful activation
-  await supabase.from('license_activation_log')
-    .insert({
-      license_id: license.id,
-      key_attempted: cleanKey,
-      event: 'activated',
-      device_id: deviceId,
-      machine_info: machineInfo || null,
-      app_version: appVersion || null,
-      created_at: new Date().toISOString(),
-    }).catch((e) => {
-      console.error('[License] Failed to log success to DB:', e.message)
-    })
+  try {
+    await supabase.from('license_activation_log')
+      .insert({
+        license_id: license.id,
+        key_attempted: cleanKey,
+        event: 'activated',
+        device_id: deviceId,
+        machine_info: machineInfo || null,
+        app_version: appVersion || null,
+        created_at: new Date().toISOString(),
+      })
+  } catch (e: any) {
+    console.error('[License] Failed to log success to DB:', e.message)
+  }
 
   // Return everything the app needs
   return NextResponse.json({

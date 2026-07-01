@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
 import * as schema from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { verifyUserSession } from '@/lib/security/authHelpers';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +12,11 @@ export const dynamic = 'force-dynamic';
  * Used by Settings → Connected Devices page.
  */
 export async function GET() {
+  const auth = await verifyUserSession();
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const devices = await db
       .select()

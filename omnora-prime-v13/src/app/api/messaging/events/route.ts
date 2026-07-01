@@ -1,9 +1,15 @@
 import { NextRequest } from 'next/server';
 import { NspBroadcaster } from '@/server/NspBroadcaster';
+import { verifyUserSession } from '@/lib/security/authHelpers';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
+  const auth = await verifyUserSession();
+  if (!auth) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
   const stream = new ReadableStream({
     start(controller) {
       const encoder = new TextEncoder();

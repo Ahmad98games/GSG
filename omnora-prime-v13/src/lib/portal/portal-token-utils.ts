@@ -3,7 +3,7 @@
 
 import jwt from 'jsonwebtoken';
 
-const PORTAL_SECRET = process.env.PORTAL_JWT_SECRET || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'noxis-portal-fallback-secret';
+const PORTAL_SECRET = process.env.PORTAL_JWT_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || 'noxis-portal-fallback-secret-non-public';
 const TOKEN_EXPIRY_DAYS = 90;
 
 interface PortalTokenPayload {

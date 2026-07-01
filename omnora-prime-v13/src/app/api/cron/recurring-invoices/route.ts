@@ -3,7 +3,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -28,7 +28,13 @@ function getNextRunDate(currentDate: string, frequency: string): string {
   return date.toISOString().split('T')[0];
 }
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  // Security Check
+  const authHeader = request.headers.get('authorization');
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const today = new Date().toISOString().split('T')[0];
     console.log(`[Cron] Processing recurring invoices for ${today}`);
@@ -133,6 +139,6 @@ export async function POST() {
 }
 
 // Also support GET for manual triggers
-export async function GET() {
-  return POST();
+export async function GET(request: NextRequest) {
+  return POST(request);
 }

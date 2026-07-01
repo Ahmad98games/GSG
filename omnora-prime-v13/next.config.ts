@@ -90,12 +90,11 @@ const nextConfig: NextConfig = {
     }
     return config;
   },
-/*
   async headers() {
-    // ... existing headers code ...
+    if (isStaticExport) return [];
     return [
       {
-        source: '/(.*)',
+        source: '/:path*',
         headers: [
           { key: 'X-DNS-Prefetch-Control', value: 'off' },
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
@@ -103,18 +102,17 @@ const nextConfig: NextConfig = {
           { key: 'X-XSS-Protection', value: '1; mode=block' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-// { key: 'Content-Security-Policy', value: getCSP() },
+          { key: 'Content-Security-Policy', value: getCSP() },
         ],
       },
       {
-        source: '/cctv/(.*)',
+        source: '/cctv/:path*',
         headers: [
           { key: 'Permissions-Policy', value: 'camera=(self)' },
         ],
       },
     ];
   },
-*/
 };
 
 // Bundle Analyzer integration

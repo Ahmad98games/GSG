@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { verifyBusinessOwnership } from '@/lib/security/authHelpers';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -20,6 +21,11 @@ export async function POST(request: NextRequest) {
         { error: 'email, name, role, and businessId are required' },
         { status: 400 }
       );
+    }
+
+    const access = await verifyBusinessOwnership(businessId);
+    if (!access) {
+      return NextResponse.json({ error: 'Unauthorized or access denied to this business' }, { status: 403 });
     }
 
     // Validate role
@@ -85,6 +91,11 @@ export async function GET(request: NextRequest) {
     const businessId = request.nextUrl.searchParams.get('businessId');
     if (!businessId) {
       return NextResponse.json({ error: 'businessId is required' }, { status: 400 });
+    }
+
+    const access = await verifyBusinessOwnership(businessId);
+    if (!access) {
+      return NextResponse.json({ error: 'Unauthorized or access denied to this business' }, { status: 403 });
     }
 
     const { data: staff, error } = await supabase

@@ -1,12 +1,17 @@
 import { NextResponse } from 'next/server';
 import { startHubServer } from '@/server/server';
 import { logger } from '@/lib/logger';
+import { verifyUserSession } from '@/lib/security/authHelpers';
 
 export const dynamic = 'force-dynamic';
 
 let isStarted = false;
 
 export async function GET() {
+  const auth = await verifyUserSession();
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   if (!isStarted) {
     logger.info('[Startup] Initializing Hub Services from API...');
     try {

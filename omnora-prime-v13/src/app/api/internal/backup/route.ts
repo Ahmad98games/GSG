@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { verifyBusinessOwnership } from '@/lib/security/authHelpers';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,6 +48,11 @@ export async function GET(req: NextRequest) {
 
     if (!businessId) {
       return NextResponse.json({ error: 'business_id required' }, { status: 400 });
+    }
+
+    const access = await verifyBusinessOwnership(businessId);
+    if (!access) {
+      return NextResponse.json({ error: 'Unauthorized or access denied to this business' }, { status: 403 });
     }
 
     const supabase = getAdminClient();
@@ -112,6 +118,11 @@ export async function POST(req: NextRequest) {
 
     if (!backup || !business_id) {
       return NextResponse.json({ error: 'backup and business_id required' }, { status: 400 });
+    }
+
+    const access = await verifyBusinessOwnership(business_id);
+    if (!access) {
+      return NextResponse.json({ error: 'Unauthorized or access denied to this business' }, { status: 403 });
     }
 
     const supabase = getAdminClient();

@@ -1,9 +1,15 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { verifyUserSession, verifyBusinessOwnership } from '@/lib/security/authHelpers';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request, { params }: { params: { skuId: string } }) {
+  const auth = await verifyUserSession();
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { skuId } = params;
   const admin = createAdminClient();
   if (!admin) throw new Error('Admin client failed to initialize');
@@ -16,7 +22,15 @@ export async function GET(req: Request, { params }: { params: { skuId: string } 
       .eq('id', skuId)
       .single();
 
-    if (skuError) throw skuError;
+    if (skuError || !sku) {
+      return NextResponse.json({ error: 'SKU not found' }, { status: 404 });
+    }
+
+    // Verify ownership of the SKU's business
+    const access = await verifyBusinessOwnership(sku.business_id);
+    if (!access) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     // 2. Fetch Movements (transfer_logs)
     const { data: movements, error: moveError } = await admin
