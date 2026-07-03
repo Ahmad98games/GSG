@@ -9,7 +9,7 @@ import {
   Plus, TrendingUp, TrendingDown, Clock,
   ShieldCheck, Layers
 } from "lucide-react";
-import { usePersona } from "@/hooks/usePersona";
+import { useIndustryConfig } from "@/hooks/useIndustryConfig";
 import { createClient } from "@/lib/supabase/client";
 import { useSidebarState } from "@/hooks/useSidebarState";
 import { useToast } from "@/hooks/useToast";
@@ -51,7 +51,9 @@ interface ProductionLog {
 }
 
 export default function ProductionCommandCenter() {
-  const { fmt, t, businessId, term } = usePersona();
+  const { t, features, fmt } = useIndustryConfig();
+  const { profile } = useBusinessProfile();
+  const businessId = profile?.id;
   const { success: showSuccess, error: showError } = useToast();
   const supabase = createClient();
 
@@ -234,7 +236,7 @@ export default function ProductionCommandCenter() {
         <header className="h-20 border-b border-white/5 flex items-center px-8 bg-[#1A1D21]/50 backdrop-blur-md sticky top-24 z-40">
           <div className="flex flex-col">
             <h1 className="text-xl font-semibold tracking-tight text-white uppercase italic">
-              {term('production')} CommandCenter
+              {t.production} CommandCenter
             </h1>
             <p className="text-xxs font-semibold tracking-wide-md uppercase text-gray-500">Live Intelligence Stream • Noxis v13.0</p>
           </div>
@@ -252,7 +254,7 @@ export default function ProductionCommandCenter() {
               className="flex items-center space-x-2 px-6 py-2.5 bg-[#0070F3] text-white text-[10px] uppercase tracking-widest font-black hover:brightness-110 shadow-[0_0_20px_rgba(0,112,243,0.3)] transition-all"
             >
                <Plus size={14} />
-               <span>Log {term('production')} <span className="opacity-50 ml-2">(N)</span></span>
+               <span>Log {t.production} <span className="opacity-50 ml-2">(N)</span></span>
             </button>
           </div>
         </header>
@@ -528,6 +530,7 @@ function QuickLogPanel({ businessId, batches, qtyRef }: {
   const supabase = createClient();
   const queryClient = useQueryClient();
   const { register, handleSubmit, reset, watch, setValue } = useForm();
+  const { t } = useIndustryConfig();
   
   // Destructure ref from register to combine with qtyRef
   const { ref: registerRef, ...qtyRegister } = register('qty', { required: true });
@@ -574,7 +577,7 @@ function QuickLogPanel({ businessId, batches, qtyRef }: {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
        <div className="space-y-4">
           <div className="space-y-1">
-             <label className="text-[9px] font-black uppercase text-gray-600 tracking-widest">Operating Karigar</label>
+             <label className="text-[9px] font-black uppercase text-gray-600 tracking-widest">{`Operating ${t.worker}`}</label>
              <input {...register('karigar_id')} className="w-full bg-[#0F1113] border border-white/10 px-4 py-2.5 text-xs text-white outline-none focus:border-[#0070F3]" placeholder="Search code..." />
           </div>
 
@@ -604,7 +607,7 @@ function QuickLogPanel({ businessId, batches, qtyRef }: {
           </div>
 
           <div className="space-y-2">
-             <label className="text-[9px] font-black uppercase text-gray-600 tracking-widest">Production Qty</label>
+             <label className="text-[9px] font-black uppercase text-gray-600 tracking-widest">{`${t.productionUnit} Produced`}</label>
              <input 
                type="number" 
                {...qtyRegister}
@@ -617,7 +620,7 @@ function QuickLogPanel({ businessId, batches, qtyRef }: {
           </div>
 
           <div className="space-y-2">
-             <label className="text-[9px] font-black uppercase text-gray-600 tracking-widest">Quality Grading</label>
+             <label className="text-[9px] font-black uppercase text-gray-600 tracking-widest">{`${t.qualityGrade} Grading`}</label>
              <div className="grid grid-cols-4 gap-2">
                 {['A', 'B', 'C', 'rejected'].map(g => (
                    <button 

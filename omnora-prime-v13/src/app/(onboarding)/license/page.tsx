@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveLicenseToLocal } from './actions'
+import { getApiUrl } from '@/lib/utils/apiUrl'
 
 const EDGE_FUNCTION_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL +
@@ -103,7 +104,7 @@ export default function LicensePage() {
 
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
-        const res = await fetch('/api/license/activate', {
+        const res = await fetch(getApiUrl('/api/license/activate'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -113,9 +114,16 @@ export default function LicensePage() {
             machineInfo,
             appVersion: '13.0.0',
           }),
+          // Explicit timeout — don't let the user wait forever on a bad connection
+          signal: AbortSignal.timeout(15000),
         })
 
-        const data = await res.json()
+        let data: any = {}
+        try {
+          data = await res.json()
+        } catch {
+          data = { error: 'Invalid server response' }
+        }
 
         if (res.ok && data.success) {
           // Store license data locally
@@ -153,26 +161,65 @@ export default function LicensePage() {
           return
         }
 
-        // Non-retryable errors (wrong key, deactivated, expired)
-        if (res.status === 404 || res.status === 403) {
-          setError(data.error)
+        // These errors are NOT network errors — show them clearly without "check internet"
+        if (res.status === 404) {
+          setError(
+            '❌ License key not found. ' +
+            'Check the key exactly as provided — ' +
+            'it is case-sensitive and includes dashes.'
+          )
           setLoading(false)
           return
         }
 
-        // Server error — retry
-        lastError = data.error || `Server error (attempt ${attempt}/3)`
+        if (res.status === 403) {
+          setError(
+            data.error ||
+            '⛔ This license cannot be activated. ' +
+            'WhatsApp: +92 333 435 5475'
+          )
+          setLoading(false)
+          return
+        }
+
+        if (res.status === 500) {
+          setError(`Server error (attempt ${attempt}/3). Retrying...`)
+          if (attempt < 3) {
+            await new Promise(r => setTimeout(r, 2000))
+            continue
+          }
+          setError(
+            'Activation server is unavailable. ' +
+            'Please try again later or contact ' +
+            'support: WhatsApp +92 333 435 5475'
+          )
+          setLoading(false)
+          return
+        }
 
       } catch (networkErr: any) {
-        lastError = attempt < 3
-          ? `Connection failed, retrying... (${attempt}/3)`
-          : 'Cannot connect to activation server. Check your internet connection and try again.'
+        const isTimeout =
+          networkErr.name === 'TimeoutError' ||
+          networkErr.name === 'AbortError'
+
+        if (isTimeout) {
+          lastError =
+            `Request timed out (attempt ${attempt}/3).` +
+            (attempt < 3 ? ' Retrying...' : ' ' +
+            'Make sure Noxis Hub is fully loaded ' +
+            'before entering your license key.')
+        } else {
+          lastError =
+            `Connection failed (attempt ${attempt}/3).` +
+            (attempt < 3 ? ' Retrying...' : ' ' +
+            'The local server may still be starting. ' +
+            'Wait 10 seconds and try again.')
+        }
 
         setError(lastError)
 
         if (attempt < 3) {
-          // Wait 2 seconds before retry
-          await new Promise(r => setTimeout(r, 2000))
+          await new Promise(r => setTimeout(r, 3000))
         }
       }
     }

@@ -84,6 +84,22 @@ export default async function RootLayout({
         <link rel="icon" href="/favicon.ico" type="image/x-icon" />
         <link rel="apple-touch-icon" href="/favicon.ico" />
         <script
+          id="fetch-interceptor"
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                var originalFetch = window.fetch;
+                window.fetch = function(input, init) {
+                  if (typeof input === 'string' && input.startsWith('/api/')) {
+                    input = window.location.origin + input;
+                  }
+                  return originalFetch(input, init);
+                };
+              })();
+            `
+          }}
+        />
+        <script
           id="ld-json-schema"
           type="application/ld+json"
           dangerouslySetInnerHTML={{

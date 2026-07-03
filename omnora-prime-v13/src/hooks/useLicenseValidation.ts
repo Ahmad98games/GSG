@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 
+import { getApiUrl } from '@/lib/utils/apiUrl'
+
 export function useLicenseValidation() {
   const router = useRouter()
   const pathname = usePathname()
@@ -44,7 +46,7 @@ export function useLicenseValidation() {
 
         // Check if cache is stale (> 24 hours) and needs silent background verification
         if (!parsed.cacheExpires || Date.now() > parsed.cacheExpires) {
-          const res = await fetch('/api/license/activate', {
+          const res = await fetch(getApiUrl('/api/license/activate'), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'

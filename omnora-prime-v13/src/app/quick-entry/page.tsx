@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/useToast";
-import { usePersona } from "@/hooks/usePersona";
+import { useIndustryConfig } from "@/hooks/useIndustryConfig";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import Decimal from "decimal.js";
@@ -27,7 +27,8 @@ interface ActivityItem {
 
 export default function QuickEntryPage() {
   const [activeTab, setActiveTab] = useState<TabMode>("production");
-  const { businessId } = usePersona();
+  const { t, features, fmt, region } = useIndustryConfig();
+  const businessId = region.profile?.id;
   const supabase = createClient();
   const [localActivityList, setLocalActivityList] = useState<ActivityItem[]>([]);
   const [isActivityLoading, setIsActivityLoading] = useState(true);
@@ -330,7 +331,7 @@ function ProductionForm({ onSaved }: { onSaved: () => void }) {
       <div className="p-5 bg-electric-blue/5 border border-electric-blue/10 rounded-2xl flex items-center justify-between">
         <div className="space-y-1">
           <span className="text-[9px] uppercase font-black text-gray-500 tracking-widest block">Floor Output Today</span>
-          <h4 className="text-xs text-white font-bold">Total units logged by all karigars</h4>
+          <h4 className="text-xs text-white font-bold">{`Total units logged by all ${t.workers.toLowerCase()}`}</h4>
         </div>
         <div className="text-3xl font-black text-electric-blue font-mono tracking-tight">
           {todayTotal.toLocaleString()} <span className="text-xs uppercase text-slate-500 font-bold tracking-widest">pcs</span>
@@ -339,7 +340,7 @@ function ProductionForm({ onSaved }: { onSaved: () => void }) {
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="space-y-1.5">
-          <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Karigar Search</label>
+          <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">{`${t.worker} Search`}</label>
           {!selectedKarigar ? (
             <div className="relative">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" size={14} />

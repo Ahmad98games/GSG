@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { usePersona } from "@/hooks/usePersona";
+import { useIndustryConfig } from "@/hooks/useIndustryConfig";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/useToast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -49,8 +49,9 @@ const Badge = ({ children, variant = "default" }: any) => {
 export default function PayrollPeriodDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { fmt, businessId } = usePersona();
+  const { t, features, fmt } = useIndustryConfig();
   const { profile } = useBusinessProfile();
+  const businessId = profile?.id;
   const supabase = createClient();
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -485,10 +486,10 @@ export default function PayrollPeriodDetailPage() {
                   <table className="w-full text-left border-collapse">
                      <thead>
                         <tr className="text-[9px] uppercase font-black text-gray-600 tracking-[0.2em] border-b border-noxis-border">
-                           <th className="p-4">Karigar</th>
+                           <th className="p-4">{t.worker}</th>
                            <th className="p-4">Wage Type</th>
                            <th className="p-4 text-right">Gross Earnings</th>
-                           <th className="p-4 text-right">Advance Recovery</th>
+                           {features.peshgiAdvances && <th className="p-4 text-right">{`${t.advance} Recovery`}</th>}
                            <th className="p-4 text-right">Net Payable</th>
                            <th className="p-4 text-center">Status</th>
                            <th className="p-4 text-right">Actions</th>
@@ -512,7 +513,9 @@ export default function PayrollPeriodDetailPage() {
                                 <Badge variant="blue">{slip.karigar?.wage_type.replace('_', ' ')}</Badge>
                              </td>
                              <td className="p-4 text-right font-mono font-bold text-white">{fmt(slip.gross_earning)}</td>
-                             <td className="p-4 text-right font-mono font-bold text-red-500">-{fmt(slip.advance_deduction)}</td>
+                             {features.peshgiAdvances && (
+                               <td className="p-4 text-right font-mono font-bold text-red-500">-{fmt(slip.advance_deduction)}</td>
+                             )}
                              <td className="p-4 text-right font-mono font-black text-sandstone-gold">{fmt(slip.net_payable)}</td>
                              <td className="p-4 text-center">
                                 <Badge variant={slip.is_finalized ? 'emerald' : 'amber'}>
@@ -617,10 +620,12 @@ export default function PayrollPeriodDetailPage() {
                                     <td className="py-3 uppercase font-bold">Base Wage / Salary</td>
                                     <td className="py-3 text-right font-mono">{fmt(selectedSlip.monthly_base || selectedSlip.daily_wage_earning || 0)}</td>
                                  </tr>
-                                 <tr className="border-b border-gray-100">
-                                    <td className="py-3 uppercase font-bold">Production Earnings (Piece Rate)</td>
-                                    <td className="py-3 text-right font-mono">{fmt(selectedSlip.piece_rate_earning)}</td>
-                                 </tr>
+                                 {features.pieceRateWages && (
+                                    <tr className="border-b border-gray-100">
+                                       <td className="py-3 uppercase font-bold">Production Earnings (Piece Rate)</td>
+                                       <td className="py-3 text-right font-mono">{fmt(selectedSlip.piece_rate_earning)}</td>
+                                    </tr>
+                                 )}
                                  <tr className="border-b border-gray-100">
                                     <td className="py-3 uppercase font-bold">Overtime Compensation</td>
                                     <td className="py-3 text-right font-mono">{fmt(selectedSlip.overtime_earning)}</td>
@@ -637,10 +642,12 @@ export default function PayrollPeriodDetailPage() {
                            <p className="text-[9px] uppercase font-black text-gray-400 mb-4 tracking-widest">Deductions</p>
                            <table className="w-full border-collapse">
                               <tbody className="text-[11px]">
-                                 <tr className="border-b border-gray-100">
-                                    <td className="py-3 uppercase font-bold text-red-600">Advance Recovery (Peshgi)</td>
-                                    <td className="py-3 text-right font-mono text-red-600">-{fmt(selectedSlip.advance_deduction)}</td>
-                                 </tr>
+                                 {features.peshgiAdvances && (
+                                    <tr className="border-b border-gray-100">
+                                       <td className="py-3 uppercase font-bold text-red-600">{`${t.advance} Recovery`}</td>
+                                       <td className="py-3 text-right font-mono text-red-600">-{fmt(selectedSlip.advance_deduction)}</td>
+                                    </tr>
+                                 )}
                                  <tr className="border-b border-gray-100">
                                     <td className="py-3 uppercase font-bold text-gray-400">EOBI / Social Security</td>
                                     <td className="py-3 text-right font-mono text-gray-400">-{fmt(selectedSlip.eobi_deduction)}</td>

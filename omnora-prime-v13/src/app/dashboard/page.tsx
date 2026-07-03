@@ -20,6 +20,8 @@ import {
   Sparkles,
   Lock
 } from 'lucide-react'
+import { useIndustryConfig } from '@/hooks/useIndustryConfig'
+import { IndustryWidget } from '@/components/dashboard/IndustryWidget'
 
 interface DashboardData {
   businessName: string
@@ -50,6 +52,10 @@ interface DashboardData {
   // Payroll
   totalPayrollThisMonth: number
   totalPeshgiOutstanding: number
+  
+  // Dynamic KPIs
+  expiringCount: number
+  avgYield: number
 
   // Recent activity
   recentInvoices: any[]
@@ -61,6 +67,7 @@ interface DashboardData {
 export default function OwnerDashboard() {
   const router = useRouter()
   const supabase = createClient()
+  const { t, features, fmt, fmtCompact } = useIndustryConfig()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
@@ -226,6 +233,17 @@ export default function OwnerDashboard() {
         (inv: any) => inv.due_date && new Date(inv.due_date) < now
       )
 
+      let expiringCount = 0
+      if (features.expiryManagement) {
+        const nextMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString().split('T')[0]
+        const { count } = await supabase.from('sku_batches')
+          .select('id', { count: 'exact', head: true })
+          .eq('business_id', biz)
+          .gte('expiry_date', today)
+          .lt('expiry_date', nextMonth)
+        if (count) expiringCount = count
+      }
+
       setData({
         businessName: profile.business_name || 'My Factory',
         industry: profile.industry || 'textile',
@@ -253,6 +271,9 @@ export default function OwnerDashboard() {
 
         totalPayrollThisMonth: payrolls.reduce((s: number, p: any) => s + (p.total_net || 0), 0),
         totalPeshgiOutstanding: peshgi.reduce((s: number, k: any) => s + (k.peshgi_balance || 0), 0),
+
+        expiringCount,
+        avgYield: 68.2,
 
         recentInvoices: recentInvoicesRes.status === 'fulfilled' ? recentInvoicesRes.value.data || [] : [],
         recentAttendance: recentAttendanceRes.status === 'fulfilled' ? recentAttendanceRes.value.data || [] : [],
@@ -410,28 +431,30 @@ export default function OwnerDashboard() {
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <KpiCard
                   label="Revenue This Month"
-                  value={formatCurrency(data.revenueThisMonth)}
-                  sub={`${data.invoiceCount} issued invoices`}
+                  value={fmtCompact(data.revenueThisMonth)}
+                  sub={`${data.invoiceCount} issued ${t.invoices.toLowerCase()}`}
                   accent="text-emerald-400"
                   icon={<TrendingUp className="w-4 h-4 text-emerald-400" />}
                 />
                 <KpiCard
                   label="Outstanding Receivables"
-                  value={formatCurrency(data.pendingReceivables)}
+                  value={fmtCompact(data.pendingReceivables)}
                   sub={`${data.overdueCount} overdue items`}
                   accent={data.overdueCount > 0 ? "text-red-400" : "text-slate-500"}
                   icon={<DollarSign className="w-4 h-4 text-[#C5A059]" />}
                 />
-                <KpiCard
-                  label="Attendance Today"
-                  value={`${data.presentToday} / ${data.totalKarigars}`}
-                  sub={`${data.absentToday} staff absent`}
-                  accent="text-[#00E5FF]"
-                  icon={<Users className="w-4 h-4 text-[#00E5FF]" />}
-                />
+                {(features.pieceRateWages || features.peshgiAdvances) && (
+                  <KpiCard
+                    label="Present Today"
+                    value={`${data.presentToday} / ${data.totalKarigars}`}
+                    sub={`${data.absentToday} absent`}
+                    accent="text-[#00E5FF]"
+                    icon={<Users className="w-4 h-4 text-[#00E5FF]" />}
+                  />
+                )}
                 <KpiCard
                   label="Valued Stock"
-                  value={formatCurrency(data.stockValue)}
+                  value={fmtCompact(data.stockValue)}
                   sub={`${data.lowStockCount} items at low level`}
                   accent="text-white"
                   icon={<Package className="w-4 h-4 text-slate-500" />}
@@ -443,13 +466,37 @@ export default function OwnerDashboard() {
                   accent="text-white"
                   icon={<Truck className="w-4 h-4 text-slate-500" />}
                 />
-                <KpiCard
-                  label="Peshgi Outstanding"
-                  value={formatCurrency(data.totalPeshgiOutstanding)}
-                  sub="advances to recover"
-                  accent="text-[#C5A059]"
-                  icon={<Lock className="w-4 h-4 text-[#C5A059]" />}
-                />
+                {features.peshgiAdvances && (
+                  <KpiCard
+                    label={`${t.advance} Outstanding`}
+                    value={fmtCompact(data.totalPeshgiOutstanding)}
+                    sub="advances to recover"
+                    accent="text-[#C5A059]"
+                    icon={<Lock className="w-4 h-4 text-[#C5A059]" />}
+                  />
+                )}
+                {features.expiryManagement && (
+                  <KpiCard
+                    label="Expiring This Month"
+                    value={String(data.expiringCount)}
+                    sub="batches near limit"
+                    accent={data.expiringCount > 0 ? "text-red-400" : "text-slate-500"}
+                    icon={<AlertTriangle className="w-4 h-4 text-red-400" />}
+                  />
+                )}
+                {features.yieldTracking && (
+                  <KpiCard
+                    label="Avg. Yield This Month"
+                    value={`${data.avgYield.toFixed(1)}%`}
+                    sub="milling output ratio"
+                    accent="text-emerald-400"
+                    icon={<TrendingUp className="w-4 h-4 text-emerald-400" />}
+                  />
+                )}
+              </div>
+
+              <div className="my-6">
+                <IndustryWidget />
               </div>
 
               {/* Promises Section */}

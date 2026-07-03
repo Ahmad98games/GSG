@@ -1,10 +1,10 @@
 # Details
 
-Date : 2026-06-06 15:28:05
+Date : 2026-07-01 23:35:47
 
 Directory c:\\Users\\omnora\\OneDrive\\Desktop\\new_system
 
-Total : 663 files,  116264 codes, 3456 comments, 11297 blanks, all 131017 lines
+Total : 837 files,  490256 codes, 4335 comments, 41613 blanks, all 536204 lines
 
 [Summary](results.md) / Details / [Diff Summary](diff.md) / [Diff Details](diff-details.md)
 
@@ -79,31 +79,80 @@ Total : 663 files,  116264 codes, 3456 comments, 11297 blanks, all 131017 lines
 | [omnora-prime-v13/android/app/src/test/java/com/getcapacitor/myapp/ExampleUnitTest.java](/omnora-prime-v13/android/app/src/test/java/com/getcapacitor/myapp/ExampleUnitTest.java) | Java | 14 | 0 | 5 | 19 |
 | [omnora-prime-v13/android/build.gradle](/omnora-prime-v13/android/build.gradle) | Groovy | 20 | 3 | 7 | 30 |
 | [omnora-prime-v13/android/capacitor.settings.gradle](/omnora-prime-v13/android/capacitor.settings.gradle) | Groovy | 2 | 1 | 1 | 4 |
-| [omnora-prime-v13/android/gradle.properties](/omnora-prime-v13/android/gradle.properties) | Properties | 2 | 15 | 6 | 23 |
-| [omnora-prime-v13/android/gradle/wrapper/gradle-wrapper.properties](/omnora-prime-v13/android/gradle/wrapper/gradle-wrapper.properties) | Properties | 7 | 0 | 1 | 8 |
+| [omnora-prime-v13/android/gradle.properties](/omnora-prime-v13/android/gradle.properties) | Java Properties | 2 | 15 | 6 | 23 |
+| [omnora-prime-v13/android/gradle/wrapper/gradle-wrapper.properties](/omnora-prime-v13/android/gradle/wrapper/gradle-wrapper.properties) | Java Properties | 7 | 0 | 1 | 8 |
 | [omnora-prime-v13/android/gradlew.bat](/omnora-prime-v13/android/gradlew.bat) | Batch | 41 | 32 | 22 | 95 |
 | [omnora-prime-v13/android/settings.gradle](/omnora-prime-v13/android/settings.gradle) | Groovy | 4 | 0 | 1 | 5 |
 | [omnora-prime-v13/android/variables.gradle](/omnora-prime-v13/android/variables.gradle) | Groovy | 16 | 0 | 0 | 16 |
 | [omnora-prime-v13/audit-report.json](/omnora-prime-v13/audit-report.json) | JSON | 205 | 0 | 2 | 207 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/README.md](/omnora-prime-v13/better-sqlite3-multiple-ciphers/README.md) | Markdown | 127 | 0 | 63 | 190 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/binding.gyp](/omnora-prime-v13/better-sqlite3-multiple-ciphers/binding.gyp) | Python | 35 | 3 | 2 | 40 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/deps/common.gypi](/omnora-prime-v13/better-sqlite3-multiple-ciphers/deps/common.gypi) | Python | 63 | 4 | 2 | 69 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/deps/copy.js](/omnora-prime-v13/better-sqlite3-multiple-ciphers/deps/copy.js) | JavaScript | 24 | 2 | 6 | 32 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/deps/defines.gypi](/omnora-prime-v13/better-sqlite3-multiple-ciphers/deps/defines.gypi) | Python | 41 | 1 | 2 | 44 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/deps/sqlite3.gyp](/omnora-prime-v13/better-sqlite3-multiple-ciphers/deps/sqlite3.gyp) | Python | 73 | 6 | 2 | 81 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/deps/sqlite3/sqlite3.c](/omnora-prime-v13/better-sqlite3-multiple-ciphers/deps/sqlite3/sqlite3.c) | C | 340,443 | 134 | 27,751 | 368,328 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/deps/sqlite3/sqlite3.h](/omnora-prime-v13/better-sqlite3-multiple-ciphers/deps/sqlite3/sqlite3.h) | C++ | 14,210 | 1 | 410 | 14,621 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/deps/sqlite3/sqlite3ext.h](/omnora-prime-v13/better-sqlite3-multiple-ciphers/deps/sqlite3/sqlite3ext.h) | C++ | 734 | 0 | 6 | 740 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/deps/test_extension.c](/omnora-prime-v13/better-sqlite3-multiple-ciphers/deps/test_extension.c) | C | 17 | 0 | 5 | 22 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/deps/update-sqlite3mc.sh](/omnora-prime-v13/better-sqlite3-multiple-ciphers/deps/update-sqlite3mc.sh) | Shell Script | 101 | 22 | 19 | 142 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/index.d.ts](/omnora-prime-v13/better-sqlite3-multiple-ciphers/index.d.ts) | TypeScript | 130 | 15 | 22 | 167 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/lib/database.js](/omnora-prime-v13/better-sqlite3-multiple-ciphers/lib/database.js) | JavaScript | 72 | 8 | 13 | 93 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/lib/index.js](/omnora-prime-v13/better-sqlite3-multiple-ciphers/lib/index.js) | JavaScript | 3 | 0 | 1 | 4 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/lib/methods/aggregate.js](/omnora-prime-v13/better-sqlite3-multiple-ciphers/lib/methods/aggregate.js) | JavaScript | 34 | 3 | 7 | 44 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/lib/methods/backup.js](/omnora-prime-v13/better-sqlite3-multiple-ciphers/lib/methods/backup.js) | JavaScript | 55 | 4 | 9 | 68 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/lib/methods/function.js](/omnora-prime-v13/better-sqlite3-multiple-ciphers/lib/methods/function.js) | JavaScript | 22 | 4 | 6 | 32 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/lib/methods/inspect.js](/omnora-prime-v13/better-sqlite3-multiple-ciphers/lib/methods/inspect.js) | JavaScript | 5 | 0 | 3 | 8 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/lib/methods/pragma.js](/omnora-prime-v13/better-sqlite3-multiple-ciphers/lib/methods/pragma.js) | JavaScript | 10 | 0 | 3 | 13 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/lib/methods/serialize.js](/omnora-prime-v13/better-sqlite3-multiple-ciphers/lib/methods/serialize.js) | JavaScript | 10 | 2 | 5 | 17 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/lib/methods/table.js](/omnora-prime-v13/better-sqlite3-multiple-ciphers/lib/methods/table.js) | JavaScript | 161 | 10 | 19 | 190 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/lib/methods/transaction.js](/omnora-prime-v13/better-sqlite3-multiple-ciphers/lib/methods/transaction.js) | JavaScript | 67 | 4 | 8 | 79 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/lib/methods/wrappers.js](/omnora-prime-v13/better-sqlite3-multiple-ciphers/lib/methods/wrappers.js) | JavaScript | 55 | 0 | 10 | 65 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/lib/sqlite-error.js](/omnora-prime-v13/better-sqlite3-multiple-ciphers/lib/sqlite-error.js) | JavaScript | 19 | 0 | 2 | 21 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/lib/util.js](/omnora-prime-v13/better-sqlite3-multiple-ciphers/lib/util.js) | JavaScript | 10 | 0 | 3 | 13 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/package.json](/omnora-prime-v13/better-sqlite3-multiple-ciphers/package.json) | JSON | 76 | 0 | 1 | 77 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/src/addon.cpp](/omnora-prime-v13/better-sqlite3-multiple-ciphers/src/addon.cpp) | C++ | 42 | 0 | 6 | 48 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/src/better_sqlite3.cpp](/omnora-prime-v13/better-sqlite3-multiple-ciphers/src/better_sqlite3.cpp) | C++ | 61 | 4 | 10 | 75 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/src/objects/backup.cpp](/omnora-prime-v13/better-sqlite3-multiple-ciphers/src/objects/backup.cpp) | C++ | 105 | 1 | 15 | 121 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/src/objects/backup.hpp](/omnora-prime-v13/better-sqlite3-multiple-ciphers/src/objects/backup.hpp) | C++ | 26 | 2 | 9 | 37 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/src/objects/database.cpp](/omnora-prime-v13/better-sqlite3-multiple-ciphers/src/objects/database.cpp) | C++ | 406 | 2 | 50 | 458 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/src/objects/database.hpp](/omnora-prime-v13/better-sqlite3-multiple-ciphers/src/objects/database.hpp) | C++ | 81 | 8 | 17 | 106 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/src/objects/statement-iterator.cpp](/omnora-prime-v13/better-sqlite3-multiple-ciphers/src/objects/statement-iterator.cpp) | C++ | 98 | 3 | 13 | 114 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/src/objects/statement-iterator.hpp](/omnora-prime-v13/better-sqlite3-multiple-ciphers/src/objects/statement-iterator.hpp) | C++ | 38 | 3 | 10 | 51 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/src/objects/statement.cpp](/omnora-prime-v13/better-sqlite3-multiple-ciphers/src/objects/statement.cpp) | C++ | 342 | 3 | 39 | 384 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/src/objects/statement.hpp](/omnora-prime-v13/better-sqlite3-multiple-ciphers/src/objects/statement.hpp) | C++ | 44 | 4 | 11 | 59 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/src/util/bind-map.cpp](/omnora-prime-v13/better-sqlite3-multiple-ciphers/src/util/bind-map.cpp) | C++ | 55 | 3 | 16 | 74 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/src/util/binder.cpp](/omnora-prime-v13/better-sqlite3-multiple-ciphers/src/util/binder.cpp) | C++ | 154 | 16 | 24 | 194 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/src/util/constants.cpp](/omnora-prime-v13/better-sqlite3-multiple-ciphers/src/util/constants.cpp) | C++ | 163 | 0 | 10 | 173 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/src/util/custom-aggregate.cpp](/omnora-prime-v13/better-sqlite3-multiple-ciphers/src/util/custom-aggregate.cpp) | C++ | 102 | 0 | 20 | 122 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/src/util/custom-function.cpp](/omnora-prime-v13/better-sqlite3-multiple-ciphers/src/util/custom-function.cpp) | C++ | 48 | 0 | 12 | 60 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/src/util/custom-table.cpp](/omnora-prime-v13/better-sqlite3-multiple-ciphers/src/util/custom-table.cpp) | C++ | 317 | 39 | 54 | 410 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/src/util/data-converter.cpp](/omnora-prime-v13/better-sqlite3-multiple-ciphers/src/util/data-converter.cpp) | C++ | 14 | 0 | 4 | 18 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/src/util/data.cpp](/omnora-prime-v13/better-sqlite3-multiple-ciphers/src/util/data.cpp) | C++ | 175 | 0 | 20 | 195 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/src/util/helpers.cpp](/omnora-prime-v13/better-sqlite3-multiple-ciphers/src/util/helpers.cpp) | C++ | 90 | 6 | 14 | 110 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/src/util/macros.cpp](/omnora-prime-v13/better-sqlite3-multiple-ciphers/src/util/macros.cpp) | C++ | 74 | 8 | 9 | 91 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/src/util/query-macros.cpp](/omnora-prime-v13/better-sqlite3-multiple-ciphers/src/util/query-macros.cpp) | C++ | 60 | 0 | 12 | 72 |
+| [omnora-prime-v13/better-sqlite3-multiple-ciphers/src/util/row-builder.cpp](/omnora-prime-v13/better-sqlite3-multiple-ciphers/src/util/row-builder.cpp) | C++ | 44 | 0 | 6 | 50 |
 | [omnora-prime-v13/capacitor.config.ts](/omnora-prime-v13/capacitor.config.ts) | TypeScript | 7 | 0 | 3 | 10 |
 | [omnora-prime-v13/create_icons.js](/omnora-prime-v13/create_icons.js) | JavaScript | 20 | 5 | 8 | 33 |
-| [omnora-prime-v13/dist-electron/electron/main.js](/omnora-prime-v13/dist-electron/electron/main.js) | JavaScript | 547 | 64 | 1 | 612 |
+| [omnora-prime-v13/dist-electron/electron/main.js](/omnora-prime-v13/dist-electron/electron/main.js) | JavaScript | 863 | 102 | 1 | 966 |
 | [omnora-prime-v13/dist-electron/electron/preload.js](/omnora-prime-v13/dist-electron/electron/preload.js) | JavaScript | 61 | 3 | 1 | 65 |
 | [omnora-prime-v13/dist-electron/src/lib/security/dbKeyManager.js](/omnora-prime-v13/dist-electron/src/lib/security/dbKeyManager.js) | JavaScript | 53 | 2 | 1 | 56 |
 | [omnora-prime-v13/drizzle.config.ts](/omnora-prime-v13/drizzle.config.ts) | TypeScript | 11 | 0 | 3 | 14 |
 | [omnora-prime-v13/ecosystem.config.js](/omnora-prime-v13/ecosystem.config.js) | JavaScript | 25 | 2 | 3 | 30 |
-| [omnora-prime-v13/electron-builder.yml](/omnora-prime-v13/electron-builder.yml) | YAML | 48 | 5 | 3 | 56 |
-| [omnora-prime-v13/electron/main.ts](/omnora-prime-v13/electron/main.ts) | TypeScript | 515 | 64 | 93 | 672 |
+| [omnora-prime-v13/electron-builder.yml](/omnora-prime-v13/electron-builder.yml) | YAML | 108 | 20 | 18 | 146 |
+| [omnora-prime-v13/electron/main.ts](/omnora-prime-v13/electron/main.ts) | TypeScript | 799 | 102 | 108 | 1,009 |
 | [omnora-prime-v13/electron/preload.ts](/omnora-prime-v13/electron/preload.ts) | TypeScript | 60 | 3 | 4 | 67 |
 | [omnora-prime-v13/electron/tsconfig.json](/omnora-prime-v13/electron/tsconfig.json) | JSON with Comments | 17 | 0 | 1 | 18 |
 | [omnora-prime-v13/eslint.config.mjs](/omnora-prime-v13/eslint.config.mjs) | JavaScript | 14 | 2 | 4 | 20 |
 | [omnora-prime-v13/lint_results.json](/omnora-prime-v13/lint_results.json) | JSON | 1 | 0 | 1 | 2 |
-| [omnora-prime-v13/next.config.ts](/omnora-prime-v13/next.config.ts) | TypeScript | 85 | 6 | 13 | 104 |
-| [omnora-prime-v13/noxis_full_test_report.html](/omnora-prime-v13/noxis_full_test_report.html) | HTML | 344 | 0 | 11 | 355 |
+| [omnora-prime-v13/next.config.ts](/omnora-prime-v13/next.config.ts) | TypeScript | 108 | 6 | 13 | 127 |
+| [omnora-prime-v13/noxis_full_test_report.html](/omnora-prime-v13/noxis_full_test_report.html) | HTML | 345 | 0 | 12 | 357 |
 | [omnora-prime-v13/noxis_tester_sheet.html](/omnora-prime-v13/noxis_tester_sheet.html) | HTML | 159 | 0 | 8 | 167 |
-| [omnora-prime-v13/package-lock.json](/omnora-prime-v13/package-lock.json) | JSON | 21,848 | 0 | 1 | 21,849 |
-| [omnora-prime-v13/package.json](/omnora-prime-v13/package.json) | JSON | 129 | 0 | 1 | 130 |
+| [omnora-prime-v13/package-lock.json](/omnora-prime-v13/package-lock.json) | JSON | 22,730 | 0 | 1 | 22,731 |
+| [omnora-prime-v13/package.json](/omnora-prime-v13/package.json) | JSON | 135 | 0 | 1 | 136 |
 | [omnora-prime-v13/postcss.config.mjs](/omnora-prime-v13/postcss.config.mjs) | JavaScript | 6 | 0 | 3 | 9 |
+| [omnora-prime-v13/public/admin/index.html](/omnora-prime-v13/public/admin/index.html) | HTML | 1,004 | 0 | 98 | 1,102 |
 | [omnora-prime-v13/public/file.svg](/omnora-prime-v13/public/file.svg) | XML | 1 | 0 | 1 | 2 |
 | [omnora-prime-v13/public/globe.svg](/omnora-prime-v13/public/globe.svg) | XML | 1 | 0 | 1 | 2 |
 | [omnora-prime-v13/public/next.svg](/omnora-prime-v13/public/next.svg) | XML | 1 | 0 | 1 | 2 |
@@ -111,19 +160,94 @@ Total : 663 files,  116264 codes, 3456 comments, 11297 blanks, all 131017 lines
 | [omnora-prime-v13/public/vercel.svg](/omnora-prime-v13/public/vercel.svg) | XML | 1 | 0 | 1 | 2 |
 | [omnora-prime-v13/public/version.json](/omnora-prime-v13/public/version.json) | JSON | 12 | 0 | 2 | 14 |
 | [omnora-prime-v13/public/window.svg](/omnora-prime-v13/public/window.svg) | XML | 1 | 0 | 1 | 2 |
+| [omnora-prime-v13/scratch/analyze_migrations_rls.js](/omnora-prime-v13/scratch/analyze_migrations_rls.js) | JavaScript | 34 | 4 | 9 | 47 |
+| [omnora-prime-v13/scratch/check-all-env.js](/omnora-prime-v13/scratch/check-all-env.js) | JavaScript | 15 | 0 | 1 | 16 |
+| [omnora-prime-v13/scratch/check-c-source.js](/omnora-prime-v13/scratch/check-c-source.js) | JavaScript | 9 | 0 | 1 | 10 |
+| [omnora-prime-v13/scratch/check-columns-rpc-invoices.js](/omnora-prime-v13/scratch/check-columns-rpc-invoices.js) | JavaScript | 16 | 0 | 4 | 20 |
 | [omnora-prime-v13/scratch/check-columns.ts](/omnora-prime-v13/scratch/check-columns.ts) | TypeScript | 10 | 1 | 3 | 14 |
+| [omnora-prime-v13/scratch/check-invoices.js](/omnora-prime-v13/scratch/check-invoices.js) | JavaScript | 19 | 0 | 5 | 24 |
+| [omnora-prime-v13/scratch/check-onboarding-column.js](/omnora-prime-v13/scratch/check-onboarding-column.js) | JavaScript | 19 | 0 | 5 | 24 |
+| [omnora-prime-v13/scratch/check-sqlite-db.js](/omnora-prime-v13/scratch/check-sqlite-db.js) | JavaScript | 14 | 0 | 2 | 16 |
+| [omnora-prime-v13/scratch/check-supabase-columns.js](/omnora-prime-v13/scratch/check-supabase-columns.js) | JavaScript | 14 | 0 | 5 | 19 |
 | [omnora-prime-v13/scratch/check_auth.js](/omnora-prime-v13/scratch/check_auth.js) | JavaScript | 24 | 1 | 5 | 30 |
 | [omnora-prime-v13/scratch/check_business.js](/omnora-prime-v13/scratch/check_business.js) | JavaScript | 19 | 0 | 5 | 24 |
 | [omnora-prime-v13/scratch/check_db.js](/omnora-prime-v13/scratch/check_db.js) | JavaScript | 27 | 0 | 8 | 35 |
 | [omnora-prime-v13/scratch/check_db.ts](/omnora-prime-v13/scratch/check_db.ts) | TypeScript | 17 | 1 | 6 | 24 |
+| [omnora-prime-v13/scratch/check_missing_columns.js](/omnora-prime-v13/scratch/check_missing_columns.js) | JavaScript | 37 | 0 | 4 | 41 |
 | [omnora-prime-v13/scratch/check_tables.js](/omnora-prime-v13/scratch/check_tables.js) | JavaScript | 18 | 0 | 5 | 23 |
+| [omnora-prime-v13/scratch/create-fresh-user.js](/omnora-prime-v13/scratch/create-fresh-user.js) | JavaScript | 36 | 0 | 9 | 45 |
+| [omnora-prime-v13/scratch/debug-env.js](/omnora-prime-v13/scratch/debug-env.js) | JavaScript | 3 | 0 | 1 | 4 |
+| [omnora-prime-v13/scratch/fetch-headers.js](/omnora-prime-v13/scratch/fetch-headers.js) | JavaScript | 18 | 0 | 5 | 23 |
+| [omnora-prime-v13/scratch/fetch-openapi.js](/omnora-prime-v13/scratch/fetch-openapi.js) | JavaScript | 26 | 0 | 5 | 31 |
 | [omnora-prime-v13/scratch/find-dynamic-routes.js](/omnora-prime-v13/scratch/find-dynamic-routes.js) | JavaScript | 21 | 0 | 3 | 24 |
+| [omnora-prime-v13/scratch/find-region.js](/omnora-prime-v13/scratch/find-region.js) | JavaScript | 9 | 0 | 3 | 12 |
+| [omnora-prime-v13/scratch/find_branch_id_files.js](/omnora-prime-v13/scratch/find_branch_id_files.js) | JavaScript | 24 | 0 | 4 | 28 |
+| [omnora-prime-v13/scratch/find_branch_inserts.js](/omnora-prime-v13/scratch/find_branch_inserts.js) | JavaScript | 24 | 0 | 4 | 28 |
+| [omnora-prime-v13/scratch/find_missing_insert_policies.js](/omnora-prime-v13/scratch/find_missing_insert_policies.js) | JavaScript | 36 | 0 | 4 | 40 |
+| [omnora-prime-v13/scratch/find_routes.js](/omnora-prime-v13/scratch/find_routes.js) | JavaScript | 29 | 2 | 7 | 38 |
+| [omnora-prime-v13/scratch/fix-supabase-schema.js](/omnora-prime-v13/scratch/fix-supabase-schema.js) | JavaScript | 27 | 0 | 5 | 32 |
 | [omnora-prime-v13/scratch/init_db.js](/omnora-prime-v13/scratch/init_db.js) | JavaScript | 66 | 3 | 9 | 78 |
+| [omnora-prime-v13/scratch/inspect-schema.js](/omnora-prime-v13/scratch/inspect-schema.js) | JavaScript | 28 | 0 | 4 | 32 |
+| [omnora-prime-v13/scratch/ping_results.json](/omnora-prime-v13/scratch/ping_results.json) | JSON | 862 | 0 | 0 | 862 |
+| [omnora-prime-v13/scratch/ping_routes.js](/omnora-prime-v13/scratch/ping_routes.js) | JavaScript | 83 | 1 | 6 | 90 |
+| [omnora-prime-v13/scratch/print-env-keys.js](/omnora-prime-v13/scratch/print-env-keys.js) | JavaScript | 15 | 0 | 2 | 17 |
+| [omnora-prime-v13/scratch/print-pooler-details.js](/omnora-prime-v13/scratch/print-pooler-details.js) | JavaScript | 13 | 1 | 3 | 17 |
+| [omnora-prime-v13/scratch/print-username.js](/omnora-prime-v13/scratch/print-username.js) | JavaScript | 9 | 0 | 3 | 12 |
+| [omnora-prime-v13/scratch/resolve-direct-db.js](/omnora-prime-v13/scratch/resolve-direct-db.js) | JavaScript | 7 | 0 | 3 | 10 |
+| [omnora-prime-v13/scratch/resolve-dns.js](/omnora-prime-v13/scratch/resolve-dns.js) | JavaScript | 9 | 0 | 3 | 12 |
+| [omnora-prime-v13/scratch/resolve-external.js](/omnora-prime-v13/scratch/resolve-external.js) | JavaScript | 11 | 0 | 2 | 13 |
+| [omnora-prime-v13/scratch/resolve-ipv6.js](/omnora-prime-v13/scratch/resolve-ipv6.js) | JavaScript | 11 | 0 | 2 | 13 |
+| [omnora-prime-v13/scratch/resolve-supabase.js](/omnora-prime-v13/scratch/resolve-supabase.js) | JavaScript | 16 | 0 | 6 | 22 |
+| [omnora-prime-v13/scratch/run-alter.js](/omnora-prime-v13/scratch/run-alter.js) | JavaScript | 30 | 1 | 7 | 38 |
+| [omnora-prime-v13/scratch/run-indexes.js](/omnora-prime-v13/scratch/run-indexes.js) | JavaScript | 92 | 0 | 9 | 101 |
+| [omnora-prime-v13/scratch/run-migrations.js](/omnora-prime-v13/scratch/run-migrations.js) | JavaScript | 66 | 0 | 12 | 78 |
+| [omnora-prime-v13/scratch/run-onboarding-migration.js](/omnora-prime-v13/scratch/run-onboarding-migration.js) | JavaScript | 37 | 0 | 7 | 44 |
+| [omnora-prime-v13/scratch/run-prod-server.js](/omnora-prime-v13/scratch/run-prod-server.js) | JavaScript | 54 | 0 | 7 | 61 |
+| [omnora-prime-v13/scratch/run-test.js](/omnora-prime-v13/scratch/run-test.js) | JavaScript | 30 | 0 | 6 | 36 |
+| [omnora-prime-v13/scratch/search-conn.js](/omnora-prime-v13/scratch/search-conn.js) | JavaScript | 31 | 0 | 3 | 34 |
 | [omnora-prime-v13/scratch/seed_personas.ts](/omnora-prime-v13/scratch/seed_personas.ts) | TypeScript | 47 | 1 | 7 | 55 |
+| [omnora-prime-v13/scratch/test-aws-servers.js](/omnora-prime-v13/scratch/test-aws-servers.js) | JavaScript | 47 | 0 | 8 | 55 |
+| [omnora-prime-v13/scratch/test-direct-db.js](/omnora-prime-v13/scratch/test-direct-db.js) | JavaScript | 36 | 3 | 11 | 50 |
+| [omnora-prime-v13/scratch/test-direct-postgres.js](/omnora-prime-v13/scratch/test-direct-postgres.js) | JavaScript | 29 | 0 | 4 | 33 |
+| [omnora-prime-v13/scratch/test-electron.js](/omnora-prime-v13/scratch/test-electron.js) | JavaScript | 9 | 0 | 1 | 10 |
+| [omnora-prime-v13/scratch/test-fetch.js](/omnora-prime-v13/scratch/test-fetch.js) | JavaScript | 21 | 0 | 4 | 25 |
+| [omnora-prime-v13/scratch/test-full-flow.js](/omnora-prime-v13/scratch/test-full-flow.js) | JavaScript | 105 | 3 | 16 | 124 |
+| [omnora-prime-v13/scratch/test-insert-minimal.js](/omnora-prime-v13/scratch/test-insert-minimal.js) | JavaScript | 72 | 2 | 14 | 88 |
+| [omnora-prime-v13/scratch/test-insert.js](/omnora-prime-v13/scratch/test-insert.js) | JavaScript | 77 | 5 | 14 | 96 |
+| [omnora-prime-v13/scratch/test-middleware-query.js](/omnora-prime-v13/scratch/test-middleware-query.js) | JavaScript | 13 | 0 | 5 | 18 |
+| [omnora-prime-v13/scratch/test-pg-5432.js](/omnora-prime-v13/scratch/test-pg-5432.js) | JavaScript | 22 | 0 | 4 | 26 |
+| [omnora-prime-v13/scratch/test-pg-conn.js](/omnora-prime-v13/scratch/test-pg-conn.js) | JavaScript | 27 | 0 | 5 | 32 |
+| [omnora-prime-v13/scratch/test-pg-direct.js](/omnora-prime-v13/scratch/test-pg-direct.js) | JavaScript | 22 | 0 | 4 | 26 |
+| [omnora-prime-v13/scratch/test-require.js](/omnora-prime-v13/scratch/test-require.js) | JavaScript | 9 | 0 | 1 | 10 |
+| [omnora-prime-v13/scratch/test-rpc.js](/omnora-prime-v13/scratch/test-rpc.js) | JavaScript | 23 | 0 | 6 | 29 |
+| [omnora-prime-v13/scratch/test-server.js](/omnora-prime-v13/scratch/test-server.js) | JavaScript | 51 | 0 | 9 | 60 |
+| [omnora-prime-v13/scratch/test-supabase.js](/omnora-prime-v13/scratch/test-supabase.js) | JavaScript | 19 | 0 | 5 | 24 |
+| [omnora-prime-v13/scratch/test-sydney-sni-hosts.js](/omnora-prime-v13/scratch/test-sydney-sni-hosts.js) | JavaScript | 44 | 0 | 5 | 49 |
+| [omnora-prime-v13/scratch/test-sydney-sni.js](/omnora-prime-v13/scratch/test-sydney-sni.js) | JavaScript | 50 | 0 | 7 | 57 |
+| [omnora-prime-v13/scratch/test-sydney.js](/omnora-prime-v13/scratch/test-sydney.js) | JavaScript | 46 | 0 | 7 | 53 |
+| [omnora-prime-v13/scratch/test-testimonials.js](/omnora-prime-v13/scratch/test-testimonials.js) | JavaScript | 19 | 0 | 5 | 24 |
 | [omnora-prime-v13/scratch/test_persona.ts](/omnora-prime-v13/scratch/test_persona.ts) | TypeScript | 33 | 6 | 9 | 48 |
+| [omnora-prime-v13/scratch/try-all-regions-all-aws.js](/omnora-prime-v13/scratch/try-all-regions-all-aws.js) | JavaScript | 60 | 0 | 9 | 69 |
+| [omnora-prime-v13/scratch/try-all-regions-options.js](/omnora-prime-v13/scratch/try-all-regions-options.js) | JavaScript | 56 | 1 | 10 | 67 |
+| [omnora-prime-v13/scratch/try-extra-poolers.js](/omnora-prime-v13/scratch/try-extra-poolers.js) | JavaScript | 49 | 1 | 9 | 59 |
+| [omnora-prime-v13/scratch/try-global-poolers.js](/omnora-prime-v13/scratch/try-global-poolers.js) | JavaScript | 23 | 0 | 4 | 27 |
+| [omnora-prime-v13/scratch/try-ipv6-db.js](/omnora-prime-v13/scratch/try-ipv6-db.js) | JavaScript | 25 | 0 | 4 | 29 |
+| [omnora-prime-v13/scratch/try-northeast-users.js](/omnora-prime-v13/scratch/try-northeast-users.js) | JavaScript | 47 | 0 | 7 | 54 |
+| [omnora-prime-v13/scratch/try-options-pooler.js](/omnora-prime-v13/scratch/try-options-pooler.js) | JavaScript | 29 | 0 | 5 | 34 |
+| [omnora-prime-v13/scratch/try-other-passwords.js](/omnora-prime-v13/scratch/try-other-passwords.js) | JavaScript | 35 | 0 | 5 | 40 |
+| [omnora-prime-v13/scratch/try-pg-real.js](/omnora-prime-v13/scratch/try-pg-real.js) | JavaScript | 29 | 0 | 4 | 33 |
+| [omnora-prime-v13/scratch/try-pg.js](/omnora-prime-v13/scratch/try-pg.js) | JavaScript | 24 | 0 | 4 | 28 |
+| [omnora-prime-v13/scratch/try-pooler-db-name.js](/omnora-prime-v13/scratch/try-pooler-db-name.js) | JavaScript | 33 | 0 | 5 | 38 |
+| [omnora-prime-v13/scratch/try-pooler-users.js](/omnora-prime-v13/scratch/try-pooler-users.js) | JavaScript | 34 | 0 | 5 | 39 |
+| [omnora-prime-v13/scratch/try-real-pg.js](/omnora-prime-v13/scratch/try-real-pg.js) | JavaScript | 47 | 1 | 5 | 53 |
+| [omnora-prime-v13/scratch/try-sni-pooler.js](/omnora-prime-v13/scratch/try-sni-pooler.js) | JavaScript | 37 | 0 | 5 | 42 |
+| [omnora-prime-v13/scratch/try-supabase-co.js](/omnora-prime-v13/scratch/try-supabase-co.js) | JavaScript | 26 | 0 | 4 | 30 |
+| [omnora-prime-v13/scratch/try-supabase-poolers.js](/omnora-prime-v13/scratch/try-supabase-poolers.js) | JavaScript | 59 | 1 | 10 | 70 |
+| [omnora-prime-v13/scratch/verify-db-file.js](/omnora-prime-v13/scratch/verify-db-file.js) | JavaScript | 12 | 0 | 2 | 14 |
 | [omnora-prime-v13/scratch/verify_persona.ts](/omnora-prime-v13/scratch/verify_persona.ts) | TypeScript | 28 | 6 | 8 | 42 |
 | [omnora-prime-v13/scratch_setup_avatars.js](/omnora-prime-v13/scratch_setup_avatars.js) | JavaScript | 53 | 3 | 9 | 65 |
-| [omnora-prime-v13/scripts/build-electron.mjs](/omnora-prime-v13/scripts/build-electron.mjs) | JavaScript | 21 | 1 | 5 | 27 |
+| [omnora-prime-v13/scripts/build-electron.mjs](/omnora-prime-v13/scripts/build-electron.mjs) | JavaScript | 41 | 2 | 7 | 50 |
+| [omnora-prime-v13/scripts/build-icon.js](/omnora-prime-v13/scripts/build-icon.js) | JavaScript | 31 | 0 | 7 | 38 |
 | [omnora-prime-v13/scripts/build-production.sh](/omnora-prime-v13/scripts/build-production.sh) | Shell Script | 23 | 8 | 8 | 39 |
 | [omnora-prime-v13/scripts/build-static.mjs](/omnora-prime-v13/scripts/build-static.mjs) | JavaScript | 64 | 4 | 11 | 79 |
 | [omnora-prime-v13/scripts/check-columns-esm.js](/omnora-prime-v13/scripts/check-columns-esm.js) | JavaScript | 19 | 0 | 5 | 24 |
@@ -131,13 +255,17 @@ Total : 663 files,  116264 codes, 3456 comments, 11297 blanks, all 131017 lines
 | [omnora-prime-v13/scripts/check-columns.js](/omnora-prime-v13/scripts/check-columns.js) | JavaScript | 19 | 0 | 5 | 24 |
 | [omnora-prime-v13/scripts/check-parties-cols.js](/omnora-prime-v13/scripts/check-parties-cols.js) | JavaScript | 19 | 0 | 3 | 22 |
 | [omnora-prime-v13/scripts/clean-env.js](/omnora-prime-v13/scripts/clean-env.js) | JavaScript | 24 | 7 | 5 | 36 |
+| [omnora-prime-v13/scripts/clean-standalone-sqlite.js](/omnora-prime-v13/scripts/clean-standalone-sqlite.js) | JavaScript | 20 | 0 | 4 | 24 |
 | [omnora-prime-v13/scripts/create-demo-user.ts](/omnora-prime-v13/scripts/create-demo-user.ts) | TypeScript | 71 | 3 | 15 | 89 |
+| [omnora-prime-v13/scripts/generate-installer-assets.js](/omnora-prime-v13/scripts/generate-installer-assets.js) | JavaScript | 97 | 7 | 15 | 119 |
 | [omnora-prime-v13/scripts/generate-license.ts](/omnora-prime-v13/scripts/generate-license.ts) | TypeScript | 178 | 5 | 20 | 203 |
 | [omnora-prime-v13/scripts/install-service.bat](/omnora-prime-v13/scripts/install-service.bat) | Batch | 22 | 2 | 7 | 31 |
 | [omnora-prime-v13/scripts/list-tables.js](/omnora-prime-v13/scripts/list-tables.js) | JavaScript | 19 | 1 | 4 | 24 |
+| [omnora-prime-v13/scripts/make-ico.js](/omnora-prime-v13/scripts/make-ico.js) | JavaScript | 26 | 1 | 3 | 30 |
 | [omnora-prime-v13/scripts/print-env.js](/omnora-prime-v13/scripts/print-env.js) | JavaScript | 5 | 0 | 2 | 7 |
 | [omnora-prime-v13/scripts/restore-app.js](/omnora-prime-v13/scripts/restore-app.js) | JavaScript | 25 | 1 | 8 | 34 |
 | [omnora-prime-v13/scripts/seed-demo-data.ts](/omnora-prime-v13/scripts/seed-demo-data.ts) | TypeScript | 147 | 5 | 25 | 177 |
+| [omnora-prime-v13/scripts/test-exec-sql-more.js](/omnora-prime-v13/scripts/test-exec-sql-more.js) | JavaScript | 19 | 0 | 2 | 21 |
 | [omnora-prime-v13/scripts/test-exec-sql.js](/omnora-prime-v13/scripts/test-exec-sql.js) | JavaScript | 20 | 0 | 2 | 22 |
 | [omnora-prime-v13/scripts/test-insert-sku.js](/omnora-prime-v13/scripts/test-insert-sku.js) | JavaScript | 66 | 1 | 13 | 80 |
 | [omnora-prime-v13/scripts/test-insert-sku.ts](/omnora-prime-v13/scripts/test-insert-sku.ts) | TypeScript | 66 | 1 | 13 | 80 |
@@ -145,12 +273,14 @@ Total : 663 files,  116264 codes, 3456 comments, 11297 blanks, all 131017 lines
 | [omnora-prime-v13/scripts/try-insert-license.js](/omnora-prime-v13/scripts/try-insert-license.js) | JavaScript | 33 | 1 | 5 | 39 |
 | [omnora-prime-v13/scripts/uninstall-service.bat](/omnora-prime-v13/scripts/uninstall-service.bat) | Batch | 8 | 1 | 3 | 12 |
 | [omnora-prime-v13/scripts/verify-backup.ts](/omnora-prime-v13/scripts/verify-backup.ts) | TypeScript | 49 | 7 | 17 | 73 |
+| [omnora-prime-v13/scripts/verify-build.js](/omnora-prime-v13/scripts/verify-build.js) | JavaScript | 58 | 3 | 14 | 75 |
+| [omnora-prime-v13/server-with-bridge.js](/omnora-prime-v13/server-with-bridge.js) | JavaScript | 94 | 13 | 17 | 124 |
 | [omnora-prime-v13/skills-lock.json](/omnora-prime-v13/skills-lock.json) | JSON | 17 | 0 | 1 | 18 |
-| [omnora-prime-v13/src/app/(auth)/login/page.tsx](/omnora-prime-v13/src/app/(auth)/login/page.tsx) | TypeScript JSX | 138 | 0 | 16 | 154 |
-| [omnora-prime-v13/src/app/(auth)/signup/page.tsx](/omnora-prime-v13/src/app/(auth)/signup/page.tsx) | TypeScript JSX | 135 | 1 | 16 | 152 |
+| [omnora-prime-v13/src/app/(auth)/login/page.tsx](/omnora-prime-v13/src/app/(auth)/login/page.tsx) | TypeScript JSX | 139 | 0 | 16 | 155 |
+| [omnora-prime-v13/src/app/(auth)/signup/page.tsx](/omnora-prime-v13/src/app/(auth)/signup/page.tsx) | TypeScript JSX | 136 | 1 | 16 | 153 |
 | [omnora-prime-v13/src/app/(hub)/clients/portals/PortalManagementClient.tsx](/omnora-prime-v13/src/app/(hub)/clients/portals/PortalManagementClient.tsx) | TypeScript JSX | 282 | 5 | 20 | 307 |
 | [omnora-prime-v13/src/app/(hub)/clients/portals/page.tsx](/omnora-prime-v13/src/app/(hub)/clients/portals/page.tsx) | TypeScript JSX | 41 | 3 | 9 | 53 |
-| [omnora-prime-v13/src/app/(hub)/inventory/transfers/inter-branch/page.tsx](/omnora-prime-v13/src/app/(hub)/inventory/transfers/inter-branch/page.tsx) | TypeScript JSX | 399 | 18 | 36 | 453 |
+| [omnora-prime-v13/src/app/(hub)/inventory/transfers/inter-branch/page.tsx](/omnora-prime-v13/src/app/(hub)/inventory/transfers/inter-branch/page.tsx) | TypeScript JSX | 404 | 18 | 36 | 458 |
 | [omnora-prime-v13/src/app/(hub)/settings/branches/page.tsx](/omnora-prime-v13/src/app/(hub)/settings/branches/page.tsx) | TypeScript JSX | 446 | 12 | 30 | 488 |
 | [omnora-prime-v13/src/app/(kitchen)/layout.tsx](/omnora-prime-v13/src/app/(kitchen)/layout.tsx) | TypeScript JSX | 21 | 1 | 7 | 29 |
 | [omnora-prime-v13/src/app/(kitchen)/live/page.tsx](/omnora-prime-v13/src/app/(kitchen)/live/page.tsx) | TypeScript JSX | 152 | 1 | 14 | 167 |
@@ -160,62 +290,76 @@ Total : 663 files,  116264 codes, 3456 comments, 11297 blanks, all 131017 lines
 | [omnora-prime-v13/src/app/(medical)/expiry/page.tsx](/omnora-prime-v13/src/app/(medical)/expiry/page.tsx) | TypeScript JSX | 234 | 1 | 20 | 255 |
 | [omnora-prime-v13/src/app/(medical)/layout.tsx](/omnora-prime-v13/src/app/(medical)/layout.tsx) | TypeScript JSX | 21 | 1 | 7 | 29 |
 | [omnora-prime-v13/src/app/(onboarding)/license/actions.ts](/omnora-prime-v13/src/app/(onboarding)/license/actions.ts) | TypeScript | 67 | 4 | 9 | 80 |
-| [omnora-prime-v13/src/app/(onboarding)/license/page.tsx](/omnora-prime-v13/src/app/(onboarding)/license/page.tsx) | TypeScript JSX | 311 | 23 | 29 | 363 |
-| [omnora-prime-v13/src/app/(onboarding)/setup/page.tsx](/omnora-prime-v13/src/app/(onboarding)/setup/page.tsx) | TypeScript JSX | 761 | 4 | 60 | 825 |
-| [omnora-prime-v13/src/app/LandingClient.tsx](/omnora-prime-v13/src/app/LandingClient.tsx) | TypeScript JSX | 572 | 2 | 42 | 616 |
-| [omnora-prime-v13/src/app/admin/payments/page.tsx](/omnora-prime-v13/src/app/admin/payments/page.tsx) | TypeScript JSX | 209 | 8 | 22 | 239 |
-| [omnora-prime-v13/src/app/admin/signals/page.tsx](/omnora-prime-v13/src/app/admin/signals/page.tsx) | TypeScript JSX | 186 | 7 | 22 | 215 |
+| [omnora-prime-v13/src/app/(onboarding)/license/page.tsx](/omnora-prime-v13/src/app/(onboarding)/license/page.tsx) | TypeScript JSX | 312 | 27 | 34 | 373 |
+| [omnora-prime-v13/src/app/LandingClient.tsx](/omnora-prime-v13/src/app/LandingClient.tsx) | TypeScript JSX | 692 | 18 | 39 | 749 |
+| [omnora-prime-v13/src/app/[adminPath]/dashboard/AdminDashboard.tsx](/omnora-prime-v13/src/app/%5BadminPath%5D/dashboard/AdminDashboard.tsx) | TypeScript JSX | 736 | 28 | 54 | 818 |
+| [omnora-prime-v13/src/app/[adminPath]/dashboard/page.tsx](/omnora-prime-v13/src/app/%5BadminPath%5D/dashboard/page.tsx) | TypeScript JSX | 13 | 4 | 6 | 23 |
+| [omnora-prime-v13/src/app/[adminPath]/licenses/LicensesDashboard.tsx](/omnora-prime-v13/src/app/%5BadminPath%5D/licenses/LicensesDashboard.tsx) | TypeScript JSX | 410 | 15 | 37 | 462 |
+| [omnora-prime-v13/src/app/[adminPath]/licenses/page.tsx](/omnora-prime-v13/src/app/%5BadminPath%5D/licenses/page.tsx) | TypeScript JSX | 13 | 1 | 6 | 20 |
+| [omnora-prime-v13/src/app/[adminPath]/login/page.tsx](/omnora-prime-v13/src/app/%5BadminPath%5D/login/page.tsx) | TypeScript JSX | 115 | 0 | 8 | 123 |
+| [omnora-prime-v13/src/app/[adminPath]/payments/PaymentsDashboard.tsx](/omnora-prime-v13/src/app/%5BadminPath%5D/payments/PaymentsDashboard.tsx) | TypeScript JSX | 213 | 8 | 22 | 243 |
+| [omnora-prime-v13/src/app/[adminPath]/payments/page.tsx](/omnora-prime-v13/src/app/%5BadminPath%5D/payments/page.tsx) | TypeScript JSX | 13 | 1 | 6 | 20 |
+| [omnora-prime-v13/src/app/[adminPath]/signals/page.tsx](/omnora-prime-v13/src/app/%5BadminPath%5D/signals/page.tsx) | TypeScript JSX | 182 | 7 | 22 | 211 |
+| [omnora-prime-v13/src/app/about/about.tsx](/omnora-prime-v13/src/app/about/about.tsx) | TypeScript JSX | 656 | 16 | 61 | 733 |
+| [omnora-prime-v13/src/app/about/page.tsx](/omnora-prime-v13/src/app/about/page.tsx) | TypeScript JSX | 17 | 0 | 3 | 20 |
 | [omnora-prime-v13/src/app/analytics/page.tsx](/omnora-prime-v13/src/app/analytics/page.tsx) | TypeScript JSX | 342 | 16 | 31 | 389 |
+| [omnora-prime-v13/src/app/api/admin/activation-logs/route.ts](/omnora-prime-v13/src/app/api/admin/activation-logs/route.ts) | TypeScript | 38 | 0 | 6 | 44 |
+| [omnora-prime-v13/src/app/api/admin/login/route.ts](/omnora-prime-v13/src/app/api/admin/login/route.ts) | TypeScript | 107 | 9 | 17 | 133 |
+| [omnora-prime-v13/src/app/api/admin/logout/route.ts](/omnora-prime-v13/src/app/api/admin/logout/route.ts) | TypeScript | 8 | 0 | 2 | 10 |
+| [omnora-prime-v13/src/app/api/admin/logs/route.ts](/omnora-prime-v13/src/app/api/admin/logs/route.ts) | TypeScript | 31 | 0 | 6 | 37 |
 | [omnora-prime-v13/src/app/api/cron/daily-summary/route.ts](/omnora-prime-v13/src/app/api/cron/daily-summary/route.ts) | TypeScript | 47 | 5 | 13 | 65 |
-| [omnora-prime-v13/src/app/api/cron/recurring-invoices/route.ts](/omnora-prime-v13/src/app/api/cron/recurring-invoices/route.ts) | TypeScript | 108 | 9 | 22 | 139 |
-| [omnora-prime-v13/src/app/api/diagnostics/route.ts](/omnora-prime-v13/src/app/api/diagnostics/route.ts) | TypeScript | 62 | 5 | 10 | 77 |
+| [omnora-prime-v13/src/app/api/cron/recurring-invoices/route.ts](/omnora-prime-v13/src/app/api/cron/recurring-invoices/route.ts) | TypeScript | 112 | 10 | 23 | 145 |
+| [omnora-prime-v13/src/app/api/diagnostics/route.ts](/omnora-prime-v13/src/app/api/diagnostics/route.ts) | TypeScript | 67 | 5 | 11 | 83 |
 | [omnora-prime-v13/src/app/api/download/route.ts](/omnora-prime-v13/src/app/api/download/route.ts) | TypeScript | 40 | 5 | 13 | 58 |
-| [omnora-prime-v13/src/app/api/heartbeat/route.ts](/omnora-prime-v13/src/app/api/heartbeat/route.ts) | TypeScript | 18 | 0 | 5 | 23 |
-| [omnora-prime-v13/src/app/api/hub/devices/route.ts](/omnora-prime-v13/src/app/api/hub/devices/route.ts) | TypeScript | 13 | 0 | 3 | 16 |
-| [omnora-prime-v13/src/app/api/hub/info/route.ts](/omnora-prime-v13/src/app/api/hub/info/route.ts) | TypeScript | 26 | 0 | 5 | 31 |
-| [omnora-prime-v13/src/app/api/internal/backup/route.ts](/omnora-prime-v13/src/app/api/internal/backup/route.ts) | TypeScript | 139 | 4 | 26 | 169 |
-| [omnora-prime-v13/src/app/api/messaging/events/route.ts](/omnora-prime-v13/src/app/api/messaging/events/route.ts) | TypeScript | 29 | 1 | 8 | 38 |
-| [omnora-prime-v13/src/app/api/messaging/route.ts](/omnora-prime-v13/src/app/api/messaging/route.ts) | TypeScript | 53 | 2 | 9 | 64 |
-| [omnora-prime-v13/src/app/api/portal/generate/route.ts](/omnora-prime-v13/src/app/api/portal/generate/route.ts) | TypeScript | 39 | 5 | 11 | 55 |
+| [omnora-prime-v13/src/app/api/heartbeat/route.ts](/omnora-prime-v13/src/app/api/heartbeat/route.ts) | TypeScript | 23 | 0 | 6 | 29 |
+| [omnora-prime-v13/src/app/api/hub/devices/revoke/route.ts](/omnora-prime-v13/src/app/api/hub/devices/revoke/route.ts) | TypeScript | 59 | 3 | 9 | 71 |
+| [omnora-prime-v13/src/app/api/hub/devices/route.ts](/omnora-prime-v13/src/app/api/hub/devices/route.ts) | TypeScript | 30 | 0 | 5 | 35 |
+| [omnora-prime-v13/src/app/api/hub/info/route.ts](/omnora-prime-v13/src/app/api/hub/info/route.ts) | TypeScript | 35 | 0 | 8 | 43 |
+| [omnora-prime-v13/src/app/api/internal/backup/route.ts](/omnora-prime-v13/src/app/api/internal/backup/route.ts) | TypeScript | 148 | 4 | 28 | 180 |
+| [omnora-prime-v13/src/app/api/internal/sync/route.ts](/omnora-prime-v13/src/app/api/internal/sync/route.ts) | TypeScript | 39 | 0 | 6 | 45 |
+| [omnora-prime-v13/src/app/api/license/activate/route.ts](/omnora-prime-v13/src/app/api/license/activate/route.ts) | TypeScript | 150 | 11 | 23 | 184 |
+| [omnora-prime-v13/src/app/api/messaging/events/route.ts](/omnora-prime-v13/src/app/api/messaging/events/route.ts) | TypeScript | 34 | 1 | 9 | 44 |
+| [omnora-prime-v13/src/app/api/messaging/route.ts](/omnora-prime-v13/src/app/api/messaging/route.ts) | TypeScript | 62 | 2 | 11 | 75 |
+| [omnora-prime-v13/src/app/api/portal/generate/route.ts](/omnora-prime-v13/src/app/api/portal/generate/route.ts) | TypeScript | 44 | 5 | 12 | 61 |
 | [omnora-prime-v13/src/app/api/portal/verify/route.ts](/omnora-prime-v13/src/app/api/portal/verify/route.ts) | TypeScript | 66 | 8 | 15 | 89 |
 | [omnora-prime-v13/src/app/api/sentinel/recording-complete/route.ts](/omnora-prime-v13/src/app/api/sentinel/recording-complete/route.ts) | TypeScript | 27 | 0 | 7 | 34 |
 | [omnora-prime-v13/src/app/api/sentinel/recording-started/route.ts](/omnora-prime-v13/src/app/api/sentinel/recording-started/route.ts) | TypeScript | 27 | 0 | 7 | 34 |
-| [omnora-prime-v13/src/app/api/settings/route.ts](/omnora-prime-v13/src/app/api/settings/route.ts) | TypeScript | 109 | 0 | 11 | 120 |
-| [omnora-prime-v13/src/app/api/staff/invite/route.ts](/omnora-prime-v13/src/app/api/staff/invite/route.ts) | TypeScript | 80 | 6 | 17 | 103 |
-| [omnora-prime-v13/src/app/api/startup/route.ts](/omnora-prime-v13/src/app/api/startup/route.ts) | TypeScript | 20 | 1 | 5 | 26 |
-| [omnora-prime-v13/src/app/api/stock/[skuId]/route.ts](/omnora-prime-v13/src/app/api/stock/%5BskuId%5D/route.ts) | TypeScript | 32 | 3 | 8 | 43 |
-| [omnora-prime-v13/src/app/api/sync/status/route.ts](/omnora-prime-v13/src/app/api/sync/status/route.ts) | TypeScript | 26 | 4 | 5 | 35 |
+| [omnora-prime-v13/src/app/api/settings/route.ts](/omnora-prime-v13/src/app/api/settings/route.ts) | TypeScript | 123 | 0 | 14 | 137 |
+| [omnora-prime-v13/src/app/api/staff/invite/route.ts](/omnora-prime-v13/src/app/api/staff/invite/route.ts) | TypeScript | 89 | 6 | 19 | 114 |
+| [omnora-prime-v13/src/app/api/startup/route.ts](/omnora-prime-v13/src/app/api/startup/route.ts) | TypeScript | 25 | 1 | 5 | 31 |
+| [omnora-prime-v13/src/app/api/stock/[skuId]/route.ts](/omnora-prime-v13/src/app/api/stock/%5BskuId%5D/route.ts) | TypeScript | 43 | 4 | 10 | 57 |
+| [omnora-prime-v13/src/app/api/sync/status/route.ts](/omnora-prime-v13/src/app/api/sync/status/route.ts) | TypeScript | 35 | 4 | 7 | 46 |
 | [omnora-prime-v13/src/app/api/webhooks/easypaisa/route.ts](/omnora-prime-v13/src/app/api/webhooks/easypaisa/route.ts) | TypeScript | 52 | 7 | 15 | 74 |
 | [omnora-prime-v13/src/app/api/webhooks/jazzcash/route.ts](/omnora-prime-v13/src/app/api/webhooks/jazzcash/route.ts) | TypeScript | 57 | 6 | 16 | 79 |
 | [omnora-prime-v13/src/app/api/webhooks/stripe/route.ts](/omnora-prime-v13/src/app/api/webhooks/stripe/route.ts) | TypeScript | 63 | 7 | 14 | 84 |
 | [omnora-prime-v13/src/app/artisans/page.tsx](/omnora-prime-v13/src/app/artisans/page.tsx) | TypeScript JSX | 4 | 0 | 2 | 6 |
-| [omnora-prime-v13/src/app/audit/[sessionId]/page.tsx](/omnora-prime-v13/src/app/audit/%5BsessionId%5D/page.tsx) | TypeScript JSX | 296 | 13 | 33 | 342 |
-| [omnora-prime-v13/src/app/audit/page.tsx](/omnora-prime-v13/src/app/audit/page.tsx) | TypeScript JSX | 434 | 7 | 38 | 479 |
+| [omnora-prime-v13/src/app/audit/[sessionId]/page.tsx](/omnora-prime-v13/src/app/audit/%5BsessionId%5D/page.tsx) | TypeScript JSX | 300 | 13 | 33 | 346 |
+| [omnora-prime-v13/src/app/audit/page.tsx](/omnora-prime-v13/src/app/audit/page.tsx) | TypeScript JSX | 438 | 7 | 38 | 483 |
 | [omnora-prime-v13/src/app/batches/page.tsx](/omnora-prime-v13/src/app/batches/page.tsx) | TypeScript JSX | 4 | 0 | 2 | 6 |
-| [omnora-prime-v13/src/app/blog/BlogListingClient.tsx](/omnora-prime-v13/src/app/blog/BlogListingClient.tsx) | TypeScript JSX | 160 | 13 | 21 | 194 |
-| [omnora-prime-v13/src/app/blog/[slug]/page.tsx](/omnora-prime-v13/src/app/blog/%5Bslug%5D/page.tsx) | TypeScript JSX | 185 | 12 | 25 | 222 |
-| [omnora-prime-v13/src/app/blog/[slug]/term of services/terms.tsx](/omnora-prime-v13/src/app/blog/%5Bslug%5D/term%20of%20services/terms.tsx) | TypeScript JSX | 221 | 8 | 11 | 240 |
+| [omnora-prime-v13/src/app/blog/BlogListingClient.tsx](/omnora-prime-v13/src/app/blog/BlogListingClient.tsx) | TypeScript JSX | 208 | 14 | 25 | 247 |
+| [omnora-prime-v13/src/app/blog/[slug]/page.tsx](/omnora-prime-v13/src/app/blog/%5Bslug%5D/page.tsx) | TypeScript JSX | 210 | 7 | 27 | 244 |
 | [omnora-prime-v13/src/app/blog/page.tsx](/omnora-prime-v13/src/app/blog/page.tsx) | TypeScript JSX | 11 | 0 | 3 | 14 |
 | [omnora-prime-v13/src/app/calculators/page.tsx](/omnora-prime-v13/src/app/calculators/page.tsx) | TypeScript JSX | 1,373 | 89 | 129 | 1,591 |
 | [omnora-prime-v13/src/app/cashflow/page.tsx](/omnora-prime-v13/src/app/cashflow/page.tsx) | TypeScript JSX | 467 | 6 | 35 | 508 |
 | [omnora-prime-v13/src/app/cctv/cameras/new/page.tsx](/omnora-prime-v13/src/app/cctv/cameras/new/page.tsx) | TypeScript JSX | 278 | 3 | 23 | 304 |
 | [omnora-prime-v13/src/app/cctv/cameras/page.tsx](/omnora-prime-v13/src/app/cctv/cameras/page.tsx) | TypeScript JSX | 322 | 6 | 22 | 350 |
-| [omnora-prime-v13/src/app/cctv/detections/page.tsx](/omnora-prime-v13/src/app/cctv/detections/page.tsx) | TypeScript JSX | 147 | 3 | 9 | 159 |
-| [omnora-prime-v13/src/app/cctv/page.tsx](/omnora-prime-v13/src/app/cctv/page.tsx) | TypeScript JSX | 659 | 33 | 51 | 743 |
+| [omnora-prime-v13/src/app/cctv/detections/page.tsx](/omnora-prime-v13/src/app/cctv/detections/page.tsx) | TypeScript JSX | 153 | 3 | 10 | 166 |
+| [omnora-prime-v13/src/app/cctv/page.tsx](/omnora-prime-v13/src/app/cctv/page.tsx) | TypeScript JSX | 664 | 33 | 51 | 748 |
 | [omnora-prime-v13/src/app/compliance/layout.tsx](/omnora-prime-v13/src/app/compliance/layout.tsx) | TypeScript JSX | 21 | 1 | 7 | 29 |
 | [omnora-prime-v13/src/app/compliance/page.tsx](/omnora-prime-v13/src/app/compliance/page.tsx) | TypeScript JSX | 194 | 1 | 16 | 211 |
 | [omnora-prime-v13/src/app/converters/page.tsx](/omnora-prime-v13/src/app/converters/page.tsx) | TypeScript JSX | 450 | 2 | 58 | 510 |
-| [omnora-prime-v13/src/app/dashboard/page.tsx](/omnora-prime-v13/src/app/dashboard/page.tsx) | TypeScript JSX | 582 | 17 | 67 | 666 |
+| [omnora-prime-v13/src/app/dashboard/login/page.tsx](/omnora-prime-v13/src/app/dashboard/login/page.tsx) | TypeScript JSX | 124 | 5 | 18 | 147 |
+| [omnora-prime-v13/src/app/dashboard/page.tsx](/omnora-prime-v13/src/app/dashboard/page.tsx) | TypeScript JSX | 707 | 45 | 76 | 828 |
 | [omnora-prime-v13/src/app/dealers/page.tsx](/omnora-prime-v13/src/app/dealers/page.tsx) | TypeScript JSX | 4 | 0 | 2 | 6 |
-| [omnora-prime-v13/src/app/dispatch/page.tsx](/omnora-prime-v13/src/app/dispatch/page.tsx) | TypeScript JSX | 369 | 12 | 35 | 416 |
+| [omnora-prime-v13/src/app/dispatch/page.tsx](/omnora-prime-v13/src/app/dispatch/page.tsx) | TypeScript JSX | 575 | 15 | 50 | 640 |
 | [omnora-prime-v13/src/app/docs/layout.tsx](/omnora-prime-v13/src/app/docs/layout.tsx) | TypeScript JSX | 4 | 0 | 2 | 6 |
-| [omnora-prime-v13/src/app/docs/page.tsx](/omnora-prime-v13/src/app/docs/page.tsx) | TypeScript JSX | 534 | 21 | 42 | 597 |
-| [omnora-prime-v13/src/app/download/page.tsx](/omnora-prime-v13/src/app/download/page.tsx) | TypeScript JSX | 371 | 11 | 26 | 408 |
+| [omnora-prime-v13/src/app/docs/page.tsx](/omnora-prime-v13/src/app/docs/page.tsx) | TypeScript JSX | 564 | 22 | 45 | 631 |
+| [omnora-prime-v13/src/app/download/page.tsx](/omnora-prime-v13/src/app/download/page.tsx) | TypeScript JSX | 372 | 11 | 26 | 409 |
 | [omnora-prime-v13/src/app/error.tsx](/omnora-prime-v13/src/app/error.tsx) | TypeScript JSX | 45 | 0 | 3 | 48 |
 | [omnora-prime-v13/src/app/export/page.tsx](/omnora-prime-v13/src/app/export/page.tsx) | TypeScript JSX | 192 | 6 | 21 | 219 |
-| [omnora-prime-v13/src/app/file-morph/DocumentConverter.tsx](/omnora-prime-v13/src/app/file-morph/DocumentConverter.tsx) | TypeScript JSX | 547 | 19 | 29 | 595 |
-| [omnora-prime-v13/src/app/file-morph/page.tsx](/omnora-prime-v13/src/app/file-morph/page.tsx) | TypeScript JSX | 724 | 15 | 72 | 811 |
-| [omnora-prime-v13/src/app/finance/page.tsx](/omnora-prime-v13/src/app/finance/page.tsx) | TypeScript JSX | 515 | 17 | 61 | 593 |
+| [omnora-prime-v13/src/app/file-morph/DocumentConverter.tsx](/omnora-prime-v13/src/app/file-morph/DocumentConverter.tsx) | TypeScript JSX | 554 | 19 | 29 | 602 |
+| [omnora-prime-v13/src/app/file-morph/page.tsx](/omnora-prime-v13/src/app/file-morph/page.tsx) | TypeScript JSX | 730 | 15 | 72 | 817 |
+| [omnora-prime-v13/src/app/finance/page.tsx](/omnora-prime-v13/src/app/finance/page.tsx) | TypeScript JSX | 520 | 17 | 61 | 598 |
 | [omnora-prime-v13/src/app/fleet/page.tsx](/omnora-prime-v13/src/app/fleet/page.tsx) | TypeScript JSX | 238 | 7 | 23 | 268 |
 | [omnora-prime-v13/src/app/fulfillment/page.tsx](/omnora-prime-v13/src/app/fulfillment/page.tsx) | TypeScript JSX | 4 | 0 | 2 | 6 |
 | [omnora-prime-v13/src/app/generators/barcode/page.tsx](/omnora-prime-v13/src/app/generators/barcode/page.tsx) | TypeScript JSX | 245 | 3 | 28 | 276 |
@@ -226,43 +370,43 @@ Total : 663 files,  116264 codes, 3456 comments, 11297 blanks, all 131017 lines
 | [omnora-prime-v13/src/app/generators/payslip/page.tsx](/omnora-prime-v13/src/app/generators/payslip/page.tsx) | TypeScript JSX | 460 | 14 | 36 | 510 |
 | [omnora-prime-v13/src/app/generators/purchase-order/page.tsx](/omnora-prime-v13/src/app/generators/purchase-order/page.tsx) | TypeScript JSX | 416 | 6 | 29 | 451 |
 | [omnora-prime-v13/src/app/generators/qr/page.tsx](/omnora-prime-v13/src/app/generators/qr/page.tsx) | TypeScript JSX | 438 | 4 | 28 | 470 |
-| [omnora-prime-v13/src/app/globals.css](/omnora-prime-v13/src/app/globals.css) | CSS | 868 | 0 | 171 | 1,039 |
-| [omnora-prime-v13/src/app/import/page.tsx](/omnora-prime-v13/src/app/import/page.tsx) | TypeScript JSX | 708 | 23 | 71 | 802 |
-| [omnora-prime-v13/src/app/intelligence/page.tsx](/omnora-prime-v13/src/app/intelligence/page.tsx) | TypeScript JSX | 366 | 21 | 51 | 438 |
-| [omnora-prime-v13/src/app/inventory/import/page.tsx](/omnora-prime-v13/src/app/inventory/import/page.tsx) | TypeScript JSX | 373 | 8 | 44 | 425 |
-| [omnora-prime-v13/src/app/inventory/page.tsx](/omnora-prime-v13/src/app/inventory/page.tsx) | TypeScript JSX | 993 | 28 | 101 | 1,122 |
-| [omnora-prime-v13/src/app/invoices/[id]/page.tsx](/omnora-prime-v13/src/app/invoices/%5Bid%5D/page.tsx) | TypeScript JSX | 457 | 9 | 42 | 508 |
-| [omnora-prime-v13/src/app/invoices/new/page.tsx](/omnora-prime-v13/src/app/invoices/new/page.tsx) | TypeScript JSX | 748 | 37 | 78 | 863 |
-| [omnora-prime-v13/src/app/invoices/page.tsx](/omnora-prime-v13/src/app/invoices/page.tsx) | TypeScript JSX | 363 | 1 | 27 | 391 |
-| [omnora-prime-v13/src/app/invoices/recurring/new/page.tsx](/omnora-prime-v13/src/app/invoices/recurring/new/page.tsx) | TypeScript JSX | 126 | 4 | 14 | 144 |
+| [omnora-prime-v13/src/app/globals.css](/omnora-prime-v13/src/app/globals.css) | CSS | 916 | 0 | 179 | 1,095 |
+| [omnora-prime-v13/src/app/import/page.tsx](/omnora-prime-v13/src/app/import/page.tsx) | TypeScript JSX | 690 | 35 | 61 | 786 |
+| [omnora-prime-v13/src/app/intelligence/page.tsx](/omnora-prime-v13/src/app/intelligence/page.tsx) | TypeScript JSX | 415 | 25 | 57 | 497 |
+| [omnora-prime-v13/src/app/inventory/import/page.tsx](/omnora-prime-v13/src/app/inventory/import/page.tsx) | TypeScript JSX | 384 | 8 | 47 | 439 |
+| [omnora-prime-v13/src/app/inventory/page.tsx](/omnora-prime-v13/src/app/inventory/page.tsx) | TypeScript JSX | 1,154 | 36 | 110 | 1,300 |
+| [omnora-prime-v13/src/app/invoices/[id]/page.tsx](/omnora-prime-v13/src/app/invoices/%5Bid%5D/page.tsx) | TypeScript JSX | 754 | 25 | 67 | 846 |
+| [omnora-prime-v13/src/app/invoices/new/page.tsx](/omnora-prime-v13/src/app/invoices/new/page.tsx) | TypeScript JSX | 786 | 44 | 81 | 911 |
+| [omnora-prime-v13/src/app/invoices/page.tsx](/omnora-prime-v13/src/app/invoices/page.tsx) | TypeScript JSX | 379 | 3 | 28 | 410 |
+| [omnora-prime-v13/src/app/invoices/recurring/new/page.tsx](/omnora-prime-v13/src/app/invoices/recurring/new/page.tsx) | TypeScript JSX | 129 | 4 | 14 | 147 |
 | [omnora-prime-v13/src/app/invoices/recurring/page.tsx](/omnora-prime-v13/src/app/invoices/recurring/page.tsx) | TypeScript JSX | 94 | 0 | 9 | 103 |
-| [omnora-prime-v13/src/app/karigars/[karigarId]/page.tsx](/omnora-prime-v13/src/app/karigars/%5BkarigarId%5D/page.tsx) | TypeScript JSX | 716 | 21 | 93 | 830 |
+| [omnora-prime-v13/src/app/karigars/[karigarId]/page.tsx](/omnora-prime-v13/src/app/karigars/%5BkarigarId%5D/page.tsx) | TypeScript JSX | 887 | 26 | 104 | 1,017 |
 | [omnora-prime-v13/src/app/karigars/network/page.tsx](/omnora-prime-v13/src/app/karigars/network/page.tsx) | TypeScript JSX | 154 | 6 | 23 | 183 |
-| [omnora-prime-v13/src/app/karigars/page.tsx](/omnora-prime-v13/src/app/karigars/page.tsx) | TypeScript JSX | 820 | 17 | 66 | 903 |
+| [omnora-prime-v13/src/app/karigars/page.tsx](/omnora-prime-v13/src/app/karigars/page.tsx) | TypeScript JSX | 1,114 | 27 | 95 | 1,236 |
 | [omnora-prime-v13/src/app/karigars/shared/[identityId]/page.tsx](/omnora-prime-v13/src/app/karigars/shared/%5BidentityId%5D/page.tsx) | TypeScript JSX | 169 | 9 | 28 | 206 |
 | [omnora-prime-v13/src/app/khata/page.tsx](/omnora-prime-v13/src/app/khata/page.tsx) | TypeScript JSX | 749 | 20 | 63 | 832 |
-| [omnora-prime-v13/src/app/layout.tsx](/omnora-prime-v13/src/app/layout.tsx) | TypeScript JSX | 157 | 1 | 5 | 163 |
+| [omnora-prime-v13/src/app/layout.tsx](/omnora-prime-v13/src/app/layout.tsx) | TypeScript JSX | 160 | 1 | 5 | 166 |
 | [omnora-prime-v13/src/app/ledger/page.tsx](/omnora-prime-v13/src/app/ledger/page.tsx) | TypeScript JSX | 4 | 0 | 1 | 5 |
 | [omnora-prime-v13/src/app/lens-legacy/history/page.tsx](/omnora-prime-v13/src/app/lens-legacy/history/page.tsx) | TypeScript JSX | 193 | 3 | 14 | 210 |
-| [omnora-prime-v13/src/app/lens-legacy/page.tsx](/omnora-prime-v13/src/app/lens-legacy/page.tsx) | TypeScript JSX | 602 | 24 | 66 | 692 |
-| [omnora-prime-v13/src/app/loading.tsx](/omnora-prime-v13/src/app/loading.tsx) | TypeScript JSX | 13 | 0 | 2 | 15 |
+| [omnora-prime-v13/src/app/lens-legacy/page.tsx](/omnora-prime-v13/src/app/lens-legacy/page.tsx) | TypeScript JSX | 613 | 22 | 65 | 700 |
+| [omnora-prime-v13/src/app/loading.tsx](/omnora-prime-v13/src/app/loading.tsx) | TypeScript JSX | 10 | 0 | 3 | 13 |
 | [omnora-prime-v13/src/app/mandi/page.tsx](/omnora-prime-v13/src/app/mandi/page.tsx) | TypeScript JSX | 255 | 7 | 32 | 294 |
 | [omnora-prime-v13/src/app/menu/page.tsx](/omnora-prime-v13/src/app/menu/page.tsx) | TypeScript JSX | 185 | 10 | 24 | 219 |
 | [omnora-prime-v13/src/app/messaging/page.tsx](/omnora-prime-v13/src/app/messaging/page.tsx) | TypeScript JSX | 317 | 11 | 25 | 353 |
 | [omnora-prime-v13/src/app/network-preview/NetworkPreviewClient.tsx](/omnora-prime-v13/src/app/network-preview/NetworkPreviewClient.tsx) | TypeScript JSX | 249 | 23 | 23 | 295 |
 | [omnora-prime-v13/src/app/network-preview/page.tsx](/omnora-prime-v13/src/app/network-preview/page.tsx) | TypeScript JSX | 14 | 0 | 3 | 17 |
-| [omnora-prime-v13/src/app/network/page.tsx](/omnora-prime-v13/src/app/network/page.tsx) | TypeScript JSX | 500 | 9 | 48 | 557 |
+| [omnora-prime-v13/src/app/network/page.tsx](/omnora-prime-v13/src/app/network/page.tsx) | TypeScript JSX | 502 | 10 | 48 | 560 |
 | [omnora-prime-v13/src/app/not-found.tsx](/omnora-prime-v13/src/app/not-found.tsx) | TypeScript JSX | 23 | 0 | 3 | 26 |
 | [omnora-prime-v13/src/app/orders/page.tsx](/omnora-prime-v13/src/app/orders/page.tsx) | TypeScript JSX | 232 | 8 | 23 | 263 |
 | [omnora-prime-v13/src/app/page.tsx](/omnora-prime-v13/src/app/page.tsx) | TypeScript JSX | 38 | 0 | 3 | 41 |
-| [omnora-prime-v13/src/app/pairing/page.tsx](/omnora-prime-v13/src/app/pairing/page.tsx) | TypeScript JSX | 135 | 4 | 19 | 158 |
-| [omnora-prime-v13/src/app/parties/[partyId]/edit/page.tsx](/omnora-prime-v13/src/app/parties/%5BpartyId%5D/edit/page.tsx) | TypeScript JSX | 167 | 0 | 13 | 180 |
-| [omnora-prime-v13/src/app/parties/[partyId]/page.tsx](/omnora-prime-v13/src/app/parties/%5BpartyId%5D/page.tsx) | TypeScript JSX | 686 | 9 | 69 | 764 |
-| [omnora-prime-v13/src/app/parties/import/page.tsx](/omnora-prime-v13/src/app/parties/import/page.tsx) | TypeScript JSX | 204 | 1 | 25 | 230 |
+| [omnora-prime-v13/src/app/pairing/page.tsx](/omnora-prime-v13/src/app/pairing/page.tsx) | TypeScript JSX | 173 | 7 | 22 | 202 |
+| [omnora-prime-v13/src/app/parties/[partyId]/edit/page.tsx](/omnora-prime-v13/src/app/parties/%5BpartyId%5D/edit/page.tsx) | TypeScript JSX | 176 | 0 | 13 | 189 |
+| [omnora-prime-v13/src/app/parties/[partyId]/page.tsx](/omnora-prime-v13/src/app/parties/%5BpartyId%5D/page.tsx) | TypeScript JSX | 804 | 14 | 80 | 898 |
+| [omnora-prime-v13/src/app/parties/import/page.tsx](/omnora-prime-v13/src/app/parties/import/page.tsx) | TypeScript JSX | 220 | 1 | 28 | 249 |
 | [omnora-prime-v13/src/app/parties/page.tsx](/omnora-prime-v13/src/app/parties/page.tsx) | TypeScript JSX | 561 | 3 | 54 | 618 |
-| [omnora-prime-v13/src/app/payroll/[periodId]/page.tsx](/omnora-prime-v13/src/app/payroll/%5BperiodId%5D/page.tsx) | TypeScript JSX | 553 | 16 | 55 | 624 |
-| [omnora-prime-v13/src/app/payroll/page.tsx](/omnora-prime-v13/src/app/payroll/page.tsx) | TypeScript JSX | 415 | 13 | 54 | 482 |
-| [omnora-prime-v13/src/app/portal-manager/page.tsx](/omnora-prime-v13/src/app/portal-manager/page.tsx) | TypeScript JSX | 235 | 7 | 27 | 269 |
+| [omnora-prime-v13/src/app/payroll/[periodId]/page.tsx](/omnora-prime-v13/src/app/payroll/%5BperiodId%5D/page.tsx) | TypeScript JSX | 703 | 16 | 64 | 783 |
+| [omnora-prime-v13/src/app/payroll/page.tsx](/omnora-prime-v13/src/app/payroll/page.tsx) | TypeScript JSX | 489 | 13 | 62 | 564 |
+| [omnora-prime-v13/src/app/portal-manager/page.tsx](/omnora-prime-v13/src/app/portal-manager/page.tsx) | TypeScript JSX | 239 | 7 | 27 | 273 |
 | [omnora-prime-v13/src/app/portal/[businessSlug]/invoices/page.tsx](/omnora-prime-v13/src/app/portal/%5BbusinessSlug%5D/invoices/page.tsx) | TypeScript JSX | 115 | 0 | 9 | 124 |
 | [omnora-prime-v13/src/app/portal/[businessSlug]/page.tsx](/omnora-prime-v13/src/app/portal/%5BbusinessSlug%5D/page.tsx) | TypeScript JSX | 146 | 0 | 11 | 157 |
 | [omnora-prime-v13/src/app/portal/auth/page.tsx](/omnora-prime-v13/src/app/portal/auth/page.tsx) | TypeScript JSX | 49 | 5 | 10 | 64 |
@@ -276,70 +420,73 @@ Total : 663 files,  116264 codes, 3456 comments, 11297 blanks, all 131017 lines
 | [omnora-prime-v13/src/app/pos/page.tsx](/omnora-prime-v13/src/app/pos/page.tsx) | TypeScript JSX | 389 | 19 | 47 | 455 |
 | [omnora-prime-v13/src/app/pricing/PricingClient.tsx](/omnora-prime-v13/src/app/pricing/PricingClient.tsx) | TypeScript JSX | 558 | 18 | 44 | 620 |
 | [omnora-prime-v13/src/app/pricing/page.tsx](/omnora-prime-v13/src/app/pricing/page.tsx) | TypeScript JSX | 9 | 0 | 3 | 12 |
-| [omnora-prime-v13/src/app/privacy/page.tsx](/omnora-prime-v13/src/app/privacy/page.tsx) | TypeScript JSX | 186 | 6 | 15 | 207 |
+| [omnora-prime-v13/src/app/privacy/page.tsx](/omnora-prime-v13/src/app/privacy/page.tsx) | TypeScript JSX | 264 | 7 | 20 | 291 |
 | [omnora-prime-v13/src/app/production/analytics/page.tsx](/omnora-prime-v13/src/app/production/analytics/page.tsx) | TypeScript JSX | 209 | 2 | 27 | 238 |
 | [omnora-prime-v13/src/app/production/batches/[batchId]/costing/page.tsx](/omnora-prime-v13/src/app/production/batches/%5BbatchId%5D/costing/page.tsx) | TypeScript JSX | 292 | 6 | 32 | 330 |
 | [omnora-prime-v13/src/app/production/batches/page.tsx](/omnora-prime-v13/src/app/production/batches/page.tsx) | TypeScript JSX | 168 | 3 | 23 | 194 |
-| [omnora-prime-v13/src/app/production/daily-log/page.tsx](/omnora-prime-v13/src/app/production/daily-log/page.tsx) | TypeScript JSX | 220 | 3 | 24 | 247 |
+| [omnora-prime-v13/src/app/production/daily-log/page.tsx](/omnora-prime-v13/src/app/production/daily-log/page.tsx) | TypeScript JSX | 226 | 3 | 24 | 253 |
 | [omnora-prime-v13/src/app/production/handover/page.tsx](/omnora-prime-v13/src/app/production/handover/page.tsx) | TypeScript JSX | 328 | 11 | 37 | 376 |
 | [omnora-prime-v13/src/app/production/page.tsx](/omnora-prime-v13/src/app/production/page.tsx) | TypeScript JSX | 572 | 12 | 61 | 645 |
 | [omnora-prime-v13/src/app/profile/page.tsx](/omnora-prime-v13/src/app/profile/page.tsx) | TypeScript JSX | 364 | 10 | 47 | 421 |
-| [omnora-prime-v13/src/app/promises/page.tsx](/omnora-prime-v13/src/app/promises/page.tsx) | TypeScript JSX | 914 | 35 | 82 | 1,031 |
-| [omnora-prime-v13/src/app/purchase/[poId]/page.tsx](/omnora-prime-v13/src/app/purchase/%5BpoId%5D/page.tsx) | TypeScript JSX | 393 | 9 | 32 | 434 |
+| [omnora-prime-v13/src/app/promises/page.tsx](/omnora-prime-v13/src/app/promises/page.tsx) | TypeScript JSX | 915 | 35 | 82 | 1,032 |
+| [omnora-prime-v13/src/app/purchase/[poId]/page.tsx](/omnora-prime-v13/src/app/purchase/%5BpoId%5D/page.tsx) | TypeScript JSX | 452 | 9 | 32 | 493 |
 | [omnora-prime-v13/src/app/purchase/grn/new/page.tsx](/omnora-prime-v13/src/app/purchase/grn/new/page.tsx) | TypeScript JSX | 294 | 1 | 20 | 315 |
 | [omnora-prime-v13/src/app/purchase/layout.tsx](/omnora-prime-v13/src/app/purchase/layout.tsx) | TypeScript JSX | 23 | 3 | 11 | 37 |
-| [omnora-prime-v13/src/app/purchase/manual/page.tsx](/omnora-prime-v13/src/app/purchase/manual/page.tsx) | TypeScript JSX | 199 | 5 | 28 | 232 |
+| [omnora-prime-v13/src/app/purchase/manual/page.tsx](/omnora-prime-v13/src/app/purchase/manual/page.tsx) | TypeScript JSX | 202 | 5 | 28 | 235 |
 | [omnora-prime-v13/src/app/purchase/new/page.tsx](/omnora-prime-v13/src/app/purchase/new/page.tsx) | TypeScript JSX | 427 | 6 | 33 | 466 |
-| [omnora-prime-v13/src/app/purchase/page.tsx](/omnora-prime-v13/src/app/purchase/page.tsx) | TypeScript JSX | 272 | 2 | 22 | 296 |
+| [omnora-prime-v13/src/app/purchase/page.tsx](/omnora-prime-v13/src/app/purchase/page.tsx) | TypeScript JSX | 286 | 2 | 22 | 310 |
 | [omnora-prime-v13/src/app/purchase/success/page.tsx](/omnora-prime-v13/src/app/purchase/success/page.tsx) | TypeScript JSX | 76 | 3 | 10 | 89 |
 | [omnora-prime-v13/src/app/purchase/suggestions/page.tsx](/omnora-prime-v13/src/app/purchase/suggestions/page.tsx) | TypeScript JSX | 201 | 2 | 21 | 224 |
 | [omnora-prime-v13/src/app/purchase/suppliers/page.tsx](/omnora-prime-v13/src/app/purchase/suppliers/page.tsx) | TypeScript JSX | 262 | 3 | 17 | 282 |
 | [omnora-prime-v13/src/app/quick-entry/page.tsx](/omnora-prime-v13/src/app/quick-entry/page.tsx) | TypeScript JSX | 780 | 30 | 72 | 882 |
-| [omnora-prime-v13/src/app/reports/aging/page.tsx](/omnora-prime-v13/src/app/reports/aging/page.tsx) | TypeScript JSX | 256 | 3 | 33 | 292 |
+| [omnora-prime-v13/src/app/reports/aging/page.tsx](/omnora-prime-v13/src/app/reports/aging/page.tsx) | TypeScript JSX | 305 | 0 | 37 | 342 |
 | [omnora-prime-v13/src/app/reports/balance-sheet/page.tsx](/omnora-prime-v13/src/app/reports/balance-sheet/page.tsx) | TypeScript JSX | 199 | 2 | 31 | 232 |
 | [omnora-prime-v13/src/app/reports/export/page.tsx](/omnora-prime-v13/src/app/reports/export/page.tsx) | TypeScript JSX | 255 | 1 | 24 | 280 |
 | [omnora-prime-v13/src/app/reports/ledger/page.tsx](/omnora-prime-v13/src/app/reports/ledger/page.tsx) | TypeScript JSX | 199 | 6 | 23 | 228 |
-| [omnora-prime-v13/src/app/reports/page.tsx](/omnora-prime-v13/src/app/reports/page.tsx) | TypeScript JSX | 358 | 2 | 28 | 388 |
-| [omnora-prime-v13/src/app/reports/profit-loss/page.tsx](/omnora-prime-v13/src/app/reports/profit-loss/page.tsx) | TypeScript JSX | 256 | 7 | 28 | 291 |
-| [omnora-prime-v13/src/app/reports/tax-return/page.tsx](/omnora-prime-v13/src/app/reports/tax-return/page.tsx) | TypeScript JSX | 258 | 6 | 25 | 289 |
-| [omnora-prime-v13/src/app/reports/trial-balance/page.tsx](/omnora-prime-v13/src/app/reports/trial-balance/page.tsx) | TypeScript JSX | 205 | 0 | 19 | 224 |
+| [omnora-prime-v13/src/app/reports/page.tsx](/omnora-prime-v13/src/app/reports/page.tsx) | TypeScript JSX | 444 | 6 | 43 | 493 |
+| [omnora-prime-v13/src/app/reports/profit-loss/page.tsx](/omnora-prime-v13/src/app/reports/profit-loss/page.tsx) | TypeScript JSX | 370 | 6 | 47 | 423 |
+| [omnora-prime-v13/src/app/reports/tax-return/page.tsx](/omnora-prime-v13/src/app/reports/tax-return/page.tsx) | TypeScript JSX | 269 | 6 | 26 | 301 |
+| [omnora-prime-v13/src/app/reports/tax/page.tsx](/omnora-prime-v13/src/app/reports/tax/page.tsx) | TypeScript JSX | 273 | 11 | 32 | 316 |
+| [omnora-prime-v13/src/app/reports/trial-balance/page.tsx](/omnora-prime-v13/src/app/reports/trial-balance/page.tsx) | TypeScript JSX | 261 | 0 | 28 | 289 |
 | [omnora-prime-v13/src/app/reviews/page.tsx](/omnora-prime-v13/src/app/reviews/page.tsx) | TypeScript JSX | 200 | 6 | 20 | 226 |
 | [omnora-prime-v13/src/app/sales/page.tsx](/omnora-prime-v13/src/app/sales/page.tsx) | TypeScript JSX | 4 | 0 | 1 | 5 |
 | [omnora-prime-v13/src/app/samples/page.tsx](/omnora-prime-v13/src/app/samples/page.tsx) | TypeScript JSX | 205 | 6 | 19 | 230 |
 | [omnora-prime-v13/src/app/settings/about/page.tsx](/omnora-prime-v13/src/app/settings/about/page.tsx) | TypeScript JSX | 330 | 5 | 35 | 370 |
 | [omnora-prime-v13/src/app/settings/api/page.tsx](/omnora-prime-v13/src/app/settings/api/page.tsx) | TypeScript JSX | 341 | 12 | 43 | 396 |
-| [omnora-prime-v13/src/app/settings/backup/page.tsx](/omnora-prime-v13/src/app/settings/backup/page.tsx) | TypeScript JSX | 713 | 41 | 75 | 829 |
+| [omnora-prime-v13/src/app/settings/backup/page.tsx](/omnora-prime-v13/src/app/settings/backup/page.tsx) | TypeScript JSX | 714 | 41 | 75 | 830 |
+| [omnora-prime-v13/src/app/settings/devices/page.tsx](/omnora-prime-v13/src/app/settings/devices/page.tsx) | TypeScript JSX | 280 | 9 | 22 | 311 |
 | [omnora-prime-v13/src/app/settings/diagnostics/page.tsx](/omnora-prime-v13/src/app/settings/diagnostics/page.tsx) | TypeScript JSX | 179 | 0 | 22 | 201 |
 | [omnora-prime-v13/src/app/settings/exchange-rates/page.tsx](/omnora-prime-v13/src/app/settings/exchange-rates/page.tsx) | TypeScript JSX | 203 | 0 | 22 | 225 |
 | [omnora-prime-v13/src/app/settings/import/page.tsx](/omnora-prime-v13/src/app/settings/import/page.tsx) | TypeScript JSX | 185 | 8 | 18 | 211 |
-| [omnora-prime-v13/src/app/settings/page.tsx](/omnora-prime-v13/src/app/settings/page.tsx) | TypeScript JSX | 1,450 | 15 | 107 | 1,572 |
-| [omnora-prime-v13/src/app/settings/partners/page.tsx](/omnora-prime-v13/src/app/settings/partners/page.tsx) | TypeScript JSX | 252 | 1 | 31 | 284 |
+| [omnora-prime-v13/src/app/settings/page.tsx](/omnora-prime-v13/src/app/settings/page.tsx) | TypeScript JSX | 1,480 | 15 | 107 | 1,602 |
+| [omnora-prime-v13/src/app/settings/partners/page.tsx](/omnora-prime-v13/src/app/settings/partners/page.tsx) | TypeScript JSX | 259 | 1 | 31 | 291 |
 | [omnora-prime-v13/src/app/settings/updates/page.tsx](/omnora-prime-v13/src/app/settings/updates/page.tsx) | TypeScript JSX | 147 | 10 | 18 | 175 |
-| [omnora-prime-v13/src/app/settings/users/page.tsx](/omnora-prime-v13/src/app/settings/users/page.tsx) | TypeScript JSX | 141 | 3 | 10 | 154 |
+| [omnora-prime-v13/src/app/settings/users/page.tsx](/omnora-prime-v13/src/app/settings/users/page.tsx) | TypeScript JSX | 143 | 3 | 10 | 156 |
 | [omnora-prime-v13/src/app/settings/webhooks/page.tsx](/omnora-prime-v13/src/app/settings/webhooks/page.tsx) | TypeScript JSX | 169 | 5 | 11 | 185 |
 | [omnora-prime-v13/src/app/settings/whatsapp/page.tsx](/omnora-prime-v13/src/app/settings/whatsapp/page.tsx) | TypeScript JSX | 347 | 9 | 32 | 388 |
-| [omnora-prime-v13/src/app/stock/[skuId]/batches/page.tsx](/omnora-prime-v13/src/app/stock/%5BskuId%5D/batches/page.tsx) | TypeScript JSX | 130 | 2 | 12 | 144 |
+| [omnora-prime-v13/src/app/setup/page.tsx](/omnora-prime-v13/src/app/setup/page.tsx) | TypeScript JSX | 885 | 16 | 65 | 966 |
+| [omnora-prime-v13/src/app/stock/[skuId]/batches/page.tsx](/omnora-prime-v13/src/app/stock/%5BskuId%5D/batches/page.tsx) | TypeScript JSX | 133 | 2 | 12 | 147 |
 | [omnora-prime-v13/src/app/stock/[skuId]/page.tsx](/omnora-prime-v13/src/app/stock/%5BskuId%5D/page.tsx) | TypeScript JSX | 548 | 14 | 42 | 604 |
-| [omnora-prime-v13/src/app/stock/page.tsx](/omnora-prime-v13/src/app/stock/page.tsx) | TypeScript JSX | 264 | 4 | 16 | 284 |
+| [omnora-prime-v13/src/app/stock/page.tsx](/omnora-prime-v13/src/app/stock/page.tsx) | TypeScript JSX | 265 | 4 | 17 | 286 |
 | [omnora-prime-v13/src/app/success/page.tsx](/omnora-prime-v13/src/app/success/page.tsx) | TypeScript JSX | 298 | 8 | 18 | 324 |
-| [omnora-prime-v13/src/app/terms/page.tsx](/omnora-prime-v13/src/app/terms/page.tsx) | TypeScript JSX | 167 | 6 | 13 | 186 |
+| [omnora-prime-v13/src/app/terms/page.tsx](/omnora-prime-v13/src/app/terms/page.tsx) | TypeScript JSX | 272 | 7 | 20 | 299 |
 | [omnora-prime-v13/src/app/test-supabase/page.tsx](/omnora-prime-v13/src/app/test-supabase/page.tsx) | TypeScript JSX | 4 | 0 | 2 | 6 |
 | [omnora-prime-v13/src/app/testing/page.tsx](/omnora-prime-v13/src/app/testing/page.tsx) | TypeScript JSX | 65 | 5 | 10 | 80 |
 | [omnora-prime-v13/src/app/unauthorized/page.tsx](/omnora-prime-v13/src/app/unauthorized/page.tsx) | TypeScript JSX | 24 | 0 | 4 | 28 |
 | [omnora-prime-v13/src/app/workforce/page.tsx](/omnora-prime-v13/src/app/workforce/page.tsx) | TypeScript JSX | 4 | 0 | 1 | 5 |
-| [omnora-prime-v13/src/components/alerts/SentinelAlertOverlay.tsx](/omnora-prime-v13/src/components/alerts/SentinelAlertOverlay.tsx) | TypeScript JSX | 153 | 7 | 24 | 184 |
-| [omnora-prime-v13/src/components/cctv/CameraSettings.tsx](/omnora-prime-v13/src/components/cctv/CameraSettings.tsx) | TypeScript JSX | 412 | 6 | 36 | 454 |
+| [omnora-prime-v13/src/components/alerts/SentinelAlertOverlay.tsx](/omnora-prime-v13/src/components/alerts/SentinelAlertOverlay.tsx) | TypeScript JSX | 152 | 7 | 24 | 183 |
+| [omnora-prime-v13/src/components/cctv/CameraSettings.tsx](/omnora-prime-v13/src/components/cctv/CameraSettings.tsx) | TypeScript JSX | 413 | 6 | 36 | 455 |
 | [omnora-prime-v13/src/components/cctv/PlaybackViewer.tsx](/omnora-prime-v13/src/components/cctv/PlaybackViewer.tsx) | TypeScript JSX | 195 | 5 | 17 | 217 |
 | [omnora-prime-v13/src/components/dashboard/CCTVWidget.tsx](/omnora-prime-v13/src/components/dashboard/CCTVWidget.tsx) | TypeScript JSX | 167 | 3 | 17 | 187 |
-| [omnora-prime-v13/src/components/dashboard/CctvNodeGrid.tsx](/omnora-prime-v13/src/components/dashboard/CctvNodeGrid.tsx) | TypeScript JSX | 89 | 1 | 13 | 103 |
+| [omnora-prime-v13/src/components/dashboard/CctvNodeGrid.tsx](/omnora-prime-v13/src/components/dashboard/CctvNodeGrid.tsx) | TypeScript JSX | 88 | 1 | 13 | 102 |
 | [omnora-prime-v13/src/components/dashboard/DailyBrief.tsx](/omnora-prime-v13/src/components/dashboard/DailyBrief.tsx) | TypeScript JSX | 125 | 2 | 18 | 145 |
 | [omnora-prime-v13/src/components/dashboard/DeadStockWidget.tsx](/omnora-prime-v13/src/components/dashboard/DeadStockWidget.tsx) | TypeScript JSX | 109 | 0 | 11 | 120 |
 | [omnora-prime-v13/src/components/dashboard/ExpiryWidget.tsx](/omnora-prime-v13/src/components/dashboard/ExpiryWidget.tsx) | TypeScript JSX | 74 | 0 | 7 | 81 |
-| [omnora-prime-v13/src/components/dashboard/IntelligenceWidget.tsx](/omnora-prime-v13/src/components/dashboard/IntelligenceWidget.tsx) | TypeScript JSX | 151 | 4 | 18 | 173 |
+| [omnora-prime-v13/src/components/dashboard/IntelligenceWidget.tsx](/omnora-prime-v13/src/components/dashboard/IntelligenceWidget.tsx) | TypeScript JSX | 180 | 7 | 23 | 210 |
 | [omnora-prime-v13/src/components/dashboard/MobileAppBanner.tsx](/omnora-prime-v13/src/components/dashboard/MobileAppBanner.tsx) | TypeScript JSX | 54 | 0 | 9 | 63 |
 | [omnora-prime-v13/src/components/dashboard/NoxisChart.tsx](/omnora-prime-v13/src/components/dashboard/NoxisChart.tsx) | TypeScript JSX | 51 | 2 | 15 | 68 |
 | [omnora-prime-v13/src/components/dashboard/PatternAlerts.tsx](/omnora-prime-v13/src/components/dashboard/PatternAlerts.tsx) | TypeScript JSX | 86 | 0 | 8 | 94 |
-| [omnora-prime-v13/src/components/dashboard/PromiseAlertWidget.tsx](/omnora-prime-v13/src/components/dashboard/PromiseAlertWidget.tsx) | TypeScript JSX | 142 | 0 | 14 | 156 |
+| [omnora-prime-v13/src/components/dashboard/PromiseAlertWidget.tsx](/omnora-prime-v13/src/components/dashboard/PromiseAlertWidget.tsx) | TypeScript JSX | 143 | 0 | 14 | 157 |
 | [omnora-prime-v13/src/components/dashboard/widgets/WidgetRegistry.tsx](/omnora-prime-v13/src/components/dashboard/widgets/WidgetRegistry.tsx) | TypeScript JSX | 388 | 18 | 45 | 451 |
 | [omnora-prime-v13/src/components/docs/BackButton.tsx](/omnora-prime-v13/src/components/docs/BackButton.tsx) | TypeScript JSX | 13 | 0 | 3 | 16 |
 | [omnora-prime-v13/src/components/intelligence/ForecastBadge.tsx](/omnora-prime-v13/src/components/intelligence/ForecastBadge.tsx) | TypeScript JSX | 69 | 4 | 14 | 87 |
@@ -348,41 +495,44 @@ Total : 663 files,  116264 codes, 3456 comments, 11297 blanks, all 131017 lines
 | [omnora-prime-v13/src/components/karigars/ApproveAdvanceModal.tsx](/omnora-prime-v13/src/components/karigars/ApproveAdvanceModal.tsx) | TypeScript JSX | 170 | 2 | 22 | 194 |
 | [omnora-prime-v13/src/components/khata/AddAccountModal.tsx](/omnora-prime-v13/src/components/khata/AddAccountModal.tsx) | TypeScript JSX | 80 | 0 | 9 | 89 |
 | [omnora-prime-v13/src/components/khata/KhataEntryModal.tsx](/omnora-prime-v13/src/components/khata/KhataEntryModal.tsx) | TypeScript JSX | 435 | 17 | 45 | 497 |
-| [omnora-prime-v13/src/components/khata/LedgerReceipt.tsx](/omnora-prime-v13/src/components/khata/LedgerReceipt.tsx) | TypeScript JSX | 83 | 5 | 10 | 98 |
+| [omnora-prime-v13/src/components/khata/LedgerReceipt.tsx](/omnora-prime-v13/src/components/khata/LedgerReceipt.tsx) | TypeScript JSX | 86 | 5 | 10 | 101 |
 | [omnora-prime-v13/src/components/knowledge/AskNoxis.tsx](/omnora-prime-v13/src/components/knowledge/AskNoxis.tsx) | TypeScript JSX | 218 | 8 | 29 | 255 |
 | [omnora-prime-v13/src/components/landing/LandingMotion.tsx](/omnora-prime-v13/src/components/landing/LandingMotion.tsx) | TypeScript JSX | 543 | 1 | 36 | 580 |
 | [omnora-prime-v13/src/components/layout/BranchSwitcher.tsx](/omnora-prime-v13/src/components/layout/BranchSwitcher.tsx) | TypeScript JSX | 206 | 3 | 17 | 226 |
 | [omnora-prime-v13/src/components/layout/TopBar.tsx](/omnora-prime-v13/src/components/layout/TopBar.tsx) | TypeScript JSX | 55 | 4 | 11 | 70 |
-| [omnora-prime-v13/src/components/notifications/LowStockBanner.tsx](/omnora-prime-v13/src/components/notifications/LowStockBanner.tsx) | TypeScript JSX | 55 | 0 | 8 | 63 |
-| [omnora-prime-v13/src/components/onboarding/WelcomeGuide.tsx](/omnora-prime-v13/src/components/onboarding/WelcomeGuide.tsx) | TypeScript JSX | 270 | 3 | 21 | 294 |
+| [omnora-prime-v13/src/components/notifications/LowStockBanner.tsx](/omnora-prime-v13/src/components/notifications/LowStockBanner.tsx) | TypeScript JSX | 54 | 0 | 8 | 62 |
+| [omnora-prime-v13/src/components/onboarding/ProductTour.tsx](/omnora-prime-v13/src/components/onboarding/ProductTour.tsx) | TypeScript JSX | 118 | 2 | 6 | 126 |
+| [omnora-prime-v13/src/components/onboarding/WelcomeGuide.tsx](/omnora-prime-v13/src/components/onboarding/WelcomeGuide.tsx) | TypeScript JSX | 271 | 3 | 21 | 295 |
 | [omnora-prime-v13/src/components/payments/PaymentModal.tsx](/omnora-prime-v13/src/components/payments/PaymentModal.tsx) | TypeScript JSX | 215 | 6 | 25 | 246 |
 | [omnora-prime-v13/src/components/payroll/PaySlipModal.tsx](/omnora-prime-v13/src/components/payroll/PaySlipModal.tsx) | TypeScript JSX | 146 | 5 | 19 | 170 |
 | [omnora-prime-v13/src/components/portal/PaymentModal.tsx](/omnora-prime-v13/src/components/portal/PaymentModal.tsx) | TypeScript JSX | 219 | 11 | 23 | 253 |
 | [omnora-prime-v13/src/components/portal/PortalPaymentModal.tsx](/omnora-prime-v13/src/components/portal/PortalPaymentModal.tsx) | TypeScript JSX | 168 | 11 | 22 | 201 |
 | [omnora-prime-v13/src/components/procurement/ReorderSuggestions.tsx](/omnora-prime-v13/src/components/procurement/ReorderSuggestions.tsx) | TypeScript JSX | 100 | 2 | 12 | 114 |
-| [omnora-prime-v13/src/components/procurement/SupplierPaymentModal.tsx](/omnora-prime-v13/src/components/procurement/SupplierPaymentModal.tsx) | TypeScript JSX | 154 | 5 | 20 | 179 |
+| [omnora-prime-v13/src/components/procurement/SupplierPaymentModal.tsx](/omnora-prime-v13/src/components/procurement/SupplierPaymentModal.tsx) | TypeScript JSX | 158 | 5 | 20 | 183 |
 | [omnora-prime-v13/src/components/production/HandoverCard.tsx](/omnora-prime-v13/src/components/production/HandoverCard.tsx) | TypeScript JSX | 144 | 6 | 15 | 165 |
 | [omnora-prime-v13/src/components/production/MomentumBar.tsx](/omnora-prime-v13/src/components/production/MomentumBar.tsx) | TypeScript JSX | 61 | 0 | 11 | 72 |
 | [omnora-prime-v13/src/components/production/QuickProductionModal.tsx](/omnora-prime-v13/src/components/production/QuickProductionModal.tsx) | TypeScript JSX | 216 | 5 | 24 | 245 |
 | [omnora-prime-v13/src/components/providers/AuditProvider.tsx](/omnora-prime-v13/src/components/providers/AuditProvider.tsx) | TypeScript JSX | 36 | 1 | 8 | 45 |
 | [omnora-prime-v13/src/components/providers/ClientI18nProvider.tsx](/omnora-prime-v13/src/components/providers/ClientI18nProvider.tsx) | TypeScript JSX | 58 | 0 | 8 | 66 |
+| [omnora-prime-v13/src/components/providers/ElectronMotionWrapper.tsx](/omnora-prime-v13/src/components/providers/ElectronMotionWrapper.tsx) | TypeScript JSX | 34 | 0 | 5 | 39 |
 | [omnora-prime-v13/src/components/providers/IndustryProvider.tsx](/omnora-prime-v13/src/components/providers/IndustryProvider.tsx) | TypeScript JSX | 75 | 1 | 15 | 91 |
 | [omnora-prime-v13/src/components/providers/LicenseInitializer.tsx](/omnora-prime-v13/src/components/providers/LicenseInitializer.tsx) | TypeScript JSX | 216 | 15 | 26 | 257 |
 | [omnora-prime-v13/src/components/providers/QueryProvider.tsx](/omnora-prime-v13/src/components/providers/QueryProvider.tsx) | TypeScript JSX | 19 | 1 | 7 | 27 |
-| [omnora-prime-v13/src/components/providers/ThemeInitializer.tsx](/omnora-prime-v13/src/components/providers/ThemeInitializer.tsx) | TypeScript JSX | 10 | 0 | 4 | 14 |
+| [omnora-prime-v13/src/components/providers/ThemeInitializer.tsx](/omnora-prime-v13/src/components/providers/ThemeInitializer.tsx) | TypeScript JSX | 15 | 0 | 5 | 20 |
 | [omnora-prime-v13/src/components/reports/PnLChart.tsx](/omnora-prime-v13/src/components/reports/PnLChart.tsx) | TypeScript JSX | 70 | 1 | 9 | 80 |
-| [omnora-prime-v13/src/components/security/SessionMonitor.tsx](/omnora-prime-v13/src/components/security/SessionMonitor.tsx) | TypeScript JSX | 51 | 5 | 12 | 68 |
-| [omnora-prime-v13/src/components/sentinel/SentinelAssistant.tsx](/omnora-prime-v13/src/components/sentinel/SentinelAssistant.tsx) | TypeScript JSX | 245 | 13 | 22 | 280 |
-| [omnora-prime-v13/src/components/shell/AppShell.tsx](/omnora-prime-v13/src/components/shell/AppShell.tsx) | TypeScript JSX | 335 | 9 | 45 | 389 |
+| [omnora-prime-v13/src/components/security/SessionMonitor.tsx](/omnora-prime-v13/src/components/security/SessionMonitor.tsx) | TypeScript JSX | 54 | 5 | 12 | 71 |
+| [omnora-prime-v13/src/components/sentinel/SentinelAssistant.tsx](/omnora-prime-v13/src/components/sentinel/SentinelAssistant.tsx) | TypeScript JSX | 264 | 13 | 23 | 300 |
+| [omnora-prime-v13/src/components/shell/AppShell.tsx](/omnora-prime-v13/src/components/shell/AppShell.tsx) | TypeScript JSX | 354 | 9 | 46 | 409 |
+| [omnora-prime-v13/src/components/shell/CloudSyncIndicator.tsx](/omnora-prime-v13/src/components/shell/CloudSyncIndicator.tsx) | TypeScript JSX | 29 | 0 | 5 | 34 |
 | [omnora-prime-v13/src/components/shell/Footer.tsx](/omnora-prime-v13/src/components/shell/Footer.tsx) | TypeScript JSX | 36 | 0 | 3 | 39 |
-| [omnora-prime-v13/src/components/shell/GlobalSearch.tsx](/omnora-prime-v13/src/components/shell/GlobalSearch.tsx) | TypeScript JSX | 328 | 0 | 26 | 354 |
-| [omnora-prime-v13/src/components/shell/GlobalTopBar.tsx](/omnora-prime-v13/src/components/shell/GlobalTopBar.tsx) | TypeScript JSX | 308 | 11 | 29 | 348 |
-| [omnora-prime-v13/src/components/shell/IndustrialSidebar.tsx](/omnora-prime-v13/src/components/shell/IndustrialSidebar.tsx) | TypeScript JSX | 383 | 4 | 26 | 413 |
+| [omnora-prime-v13/src/components/shell/GlobalSearch.tsx](/omnora-prime-v13/src/components/shell/GlobalSearch.tsx) | TypeScript JSX | 336 | 0 | 27 | 363 |
+| [omnora-prime-v13/src/components/shell/GlobalTopBar.tsx](/omnora-prime-v13/src/components/shell/GlobalTopBar.tsx) | TypeScript JSX | 371 | 11 | 32 | 414 |
+| [omnora-prime-v13/src/components/shell/IndustrialSidebar.tsx](/omnora-prime-v13/src/components/shell/IndustrialSidebar.tsx) | TypeScript JSX | 409 | 4 | 27 | 440 |
 | [omnora-prime-v13/src/components/shell/IntroAnimation.tsx](/omnora-prime-v13/src/components/shell/IntroAnimation.tsx) | TypeScript JSX | 112 | 4 | 7 | 123 |
 | [omnora-prime-v13/src/components/shell/KeyboardShortcuts.tsx](/omnora-prime-v13/src/components/shell/KeyboardShortcuts.tsx) | TypeScript JSX | 165 | 3 | 15 | 183 |
 | [omnora-prime-v13/src/components/shell/LanguageSwitcher.tsx](/omnora-prime-v13/src/components/shell/LanguageSwitcher.tsx) | TypeScript JSX | 125 | 0 | 10 | 135 |
 | [omnora-prime-v13/src/components/shell/OnboardingChecklist.tsx](/omnora-prime-v13/src/components/shell/OnboardingChecklist.tsx) | TypeScript JSX | 105 | 3 | 17 | 125 |
-| [omnora-prime-v13/src/components/shell/QuickActions.tsx](/omnora-prime-v13/src/components/shell/QuickActions.tsx) | TypeScript JSX | 804 | 7 | 77 | 888 |
+| [omnora-prime-v13/src/components/shell/QuickActions.tsx](/omnora-prime-v13/src/components/shell/QuickActions.tsx) | TypeScript JSX | 805 | 7 | 77 | 889 |
 | [omnora-prime-v13/src/components/shell/SyncIndicator.tsx](/omnora-prime-v13/src/components/shell/SyncIndicator.tsx) | TypeScript JSX | 121 | 0 | 14 | 135 |
 | [omnora-prime-v13/src/components/shell/ThemePicker.tsx](/omnora-prime-v13/src/components/shell/ThemePicker.tsx) | TypeScript JSX | 280 | 20 | 26 | 326 |
 | [omnora-prime-v13/src/components/shell/TitleBar.tsx](/omnora-prime-v13/src/components/shell/TitleBar.tsx) | TypeScript JSX | 84 | 4 | 16 | 104 |
@@ -405,6 +555,8 @@ Total : 663 files,  116264 codes, 3456 comments, 11297 blanks, all 131017 lines
 | [omnora-prime-v13/src/components/ui/FinancialAmount.tsx](/omnora-prime-v13/src/components/ui/FinancialAmount.tsx) | TypeScript JSX | 56 | 0 | 10 | 66 |
 | [omnora-prime-v13/src/components/ui/GlobalErrorBoundary.tsx](/omnora-prime-v13/src/components/ui/GlobalErrorBoundary.tsx) | TypeScript JSX | 66 | 0 | 12 | 78 |
 | [omnora-prime-v13/src/components/ui/IndustrialEmptyState.tsx](/omnora-prime-v13/src/components/ui/IndustrialEmptyState.tsx) | TypeScript JSX | 82 | 2 | 11 | 95 |
+| [omnora-prime-v13/src/components/ui/InvoiceSelector.tsx](/omnora-prime-v13/src/components/ui/InvoiceSelector.tsx) | TypeScript JSX | 53 | 0 | 7 | 60 |
+| [omnora-prime-v13/src/components/ui/NoxisLogoLoader.tsx](/omnora-prime-v13/src/components/ui/NoxisLogoLoader.tsx) | TypeScript JSX | 105 | 6 | 8 | 119 |
 | [omnora-prime-v13/src/components/ui/Skeleton.tsx](/omnora-prime-v13/src/components/ui/Skeleton.tsx) | TypeScript JSX | 112 | 7 | 8 | 127 |
 | [omnora-prime-v13/src/components/ui/StateViews.tsx](/omnora-prime-v13/src/components/ui/StateViews.tsx) | TypeScript JSX | 118 | 4 | 5 | 127 |
 | [omnora-prime-v13/src/components/ui/SummaryCard.tsx](/omnora-prime-v13/src/components/ui/SummaryCard.tsx) | TypeScript JSX | 51 | 4 | 8 | 63 |
@@ -422,18 +574,19 @@ Total : 663 files,  116264 codes, 3456 comments, 11297 blanks, all 131017 lines
 | [omnora-prime-v13/src/drizzle-shims.d.ts](/omnora-prime-v13/src/drizzle-shims.d.ts) | TypeScript | 37 | 0 | 3 | 40 |
 | [omnora-prime-v13/src/hooks/useBarcodeScan.ts](/omnora-prime-v13/src/hooks/useBarcodeScan.ts) | TypeScript | 38 | 4 | 8 | 50 |
 | [omnora-prime-v13/src/hooks/useBusinessProfile.ts](/omnora-prime-v13/src/hooks/useBusinessProfile.ts) | TypeScript | 127 | 7 | 12 | 146 |
-| [omnora-prime-v13/src/hooks/useColdChainQueries.ts](/omnora-prime-v13/src/hooks/useColdChainQueries.ts) | TypeScript | 34 | 1 | 7 | 42 |
+| [omnora-prime-v13/src/hooks/useColdChainQueries.ts](/omnora-prime-v13/src/hooks/useColdChainQueries.ts) | TypeScript | 33 | 1 | 7 | 41 |
 | [omnora-prime-v13/src/hooks/useComplianceQueries.ts](/omnora-prime-v13/src/hooks/useComplianceQueries.ts) | TypeScript | 63 | 1 | 14 | 78 |
 | [omnora-prime-v13/src/hooks/useDebounce.ts](/omnora-prime-v13/src/hooks/useDebounce.ts) | TypeScript | 15 | 0 | 4 | 19 |
 | [omnora-prime-v13/src/hooks/useFloorVoice.ts](/omnora-prime-v13/src/hooks/useFloorVoice.ts) | TypeScript | 68 | 2 | 17 | 87 |
 | [omnora-prime-v13/src/hooks/useKitchenQueries.ts](/omnora-prime-v13/src/hooks/useKitchenQueries.ts) | TypeScript | 49 | 0 | 11 | 60 |
-| [omnora-prime-v13/src/hooks/useLicense.ts](/omnora-prime-v13/src/hooks/useLicense.ts) | TypeScript | 38 | 1 | 9 | 48 |
-| [omnora-prime-v13/src/hooks/useLocale.ts](/omnora-prime-v13/src/hooks/useLocale.ts) | TypeScript | 43 | 6 | 7 | 56 |
+| [omnora-prime-v13/src/hooks/useLicense.ts](/omnora-prime-v13/src/hooks/useLicense.ts) | TypeScript | 39 | 1 | 9 | 49 |
+| [omnora-prime-v13/src/hooks/useLicenseValidation.ts](/omnora-prime-v13/src/hooks/useLicenseValidation.ts) | TypeScript | 88 | 5 | 12 | 105 |
+| [omnora-prime-v13/src/hooks/useLocale.ts](/omnora-prime-v13/src/hooks/useLocale.ts) | TypeScript | 45 | 8 | 9 | 62 |
 | [omnora-prime-v13/src/hooks/useLogisticsQueries.ts](/omnora-prime-v13/src/hooks/useLogisticsQueries.ts) | TypeScript | 52 | 0 | 11 | 63 |
 | [omnora-prime-v13/src/hooks/useMedicalQueries.ts](/omnora-prime-v13/src/hooks/useMedicalQueries.ts) | TypeScript | 61 | 1 | 12 | 74 |
 | [omnora-prime-v13/src/hooks/useOnClickOutside.ts](/omnora-prime-v13/src/hooks/useOnClickOutside.ts) | TypeScript | 20 | 0 | 5 | 25 |
 | [omnora-prime-v13/src/hooks/usePersona.ts](/omnora-prime-v13/src/hooks/usePersona.ts) | TypeScript | 51 | 3 | 11 | 65 |
-| [omnora-prime-v13/src/hooks/usePurchaseQueries.ts](/omnora-prime-v13/src/hooks/usePurchaseQueries.ts) | TypeScript | 138 | 3 | 23 | 164 |
+| [omnora-prime-v13/src/hooks/usePurchaseQueries.ts](/omnora-prime-v13/src/hooks/usePurchaseQueries.ts) | TypeScript | 159 | 3 | 24 | 186 |
 | [omnora-prime-v13/src/hooks/useRowHighlight.ts](/omnora-prime-v13/src/hooks/useRowHighlight.ts) | TypeScript | 22 | 0 | 6 | 28 |
 | [omnora-prime-v13/src/hooks/useSentinelAI.ts](/omnora-prime-v13/src/hooks/useSentinelAI.ts) | TypeScript | 59 | 3 | 11 | 73 |
 | [omnora-prime-v13/src/hooks/useSentinelVoice.ts](/omnora-prime-v13/src/hooks/useSentinelVoice.ts) | TypeScript | 51 | 0 | 12 | 63 |
@@ -444,8 +597,10 @@ Total : 663 files,  116264 codes, 3456 comments, 11297 blanks, all 131017 lines
 | [omnora-prime-v13/src/hooks/useToast.ts](/omnora-prime-v13/src/hooks/useToast.ts) | TypeScript | 76 | 1 | 13 | 90 |
 | [omnora-prime-v13/src/i18n.ts](/omnora-prime-v13/src/i18n.ts) | TypeScript | 13 | 0 | 4 | 17 |
 | [omnora-prime-v13/src/instrumentation.ts](/omnora-prime-v13/src/instrumentation.ts) | TypeScript | 29 | 1 | 2 | 32 |
+| [omnora-prime-v13/src/lib/accounting/seedAccounts.ts](/omnora-prime-v13/src/lib/accounting/seedAccounts.ts) | TypeScript | 49 | 7 | 14 | 70 |
 | [omnora-prime-v13/src/lib/actions/clientPortal.ts](/omnora-prime-v13/src/lib/actions/clientPortal.ts) | TypeScript | 272 | 38 | 58 | 368 |
 | [omnora-prime-v13/src/lib/actions/interBranchTransfer.ts](/omnora-prime-v13/src/lib/actions/interBranchTransfer.ts) | TypeScript | 57 | 0 | 16 | 73 |
+| [omnora-prime-v13/src/lib/admin/auth.ts](/omnora-prime-v13/src/lib/admin/auth.ts) | TypeScript | 63 | 0 | 13 | 76 |
 | [omnora-prime-v13/src/lib/animations.ts](/omnora-prime-v13/src/lib/animations.ts) | TypeScript | 181 | 11 | 38 | 230 |
 | [omnora-prime-v13/src/lib/auth/permissions.ts](/omnora-prime-v13/src/lib/auth/permissions.ts) | TypeScript | 121 | 3 | 10 | 134 |
 | [omnora-prime-v13/src/lib/auth/pinGuard.ts](/omnora-prime-v13/src/lib/auth/pinGuard.ts) | TypeScript | 36 | 4 | 10 | 50 |
@@ -460,25 +615,27 @@ Total : 663 files,  116264 codes, 3456 comments, 11297 blanks, all 131017 lines
 | [omnora-prime-v13/src/lib/converters/pdfToWord.ts](/omnora-prime-v13/src/lib/converters/pdfToWord.ts) | TypeScript | 138 | 4 | 29 | 171 |
 | [omnora-prime-v13/src/lib/converters/pdfTools.ts](/omnora-prime-v13/src/lib/converters/pdfTools.ts) | TypeScript | 103 | 0 | 16 | 119 |
 | [omnora-prime-v13/src/lib/currency/currencyEngine.ts](/omnora-prime-v13/src/lib/currency/currencyEngine.ts) | TypeScript | 375 | 5 | 12 | 392 |
-| [omnora-prime-v13/src/lib/db/client.ts](/omnora-prime-v13/src/lib/db/client.ts) | TypeScript | 100 | 23 | 23 | 146 |
-| [omnora-prime-v13/src/lib/db/migrateToEncrypted.ts](/omnora-prime-v13/src/lib/db/migrateToEncrypted.ts) | TypeScript | 34 | 8 | 11 | 53 |
+| [omnora-prime-v13/src/lib/db/client.ts](/omnora-prime-v13/src/lib/db/client.ts) | TypeScript | 148 | 17 | 25 | 190 |
+| [omnora-prime-v13/src/lib/db/migrateToEncrypted.ts](/omnora-prime-v13/src/lib/db/migrateToEncrypted.ts) | TypeScript | 36 | 9 | 12 | 57 |
 | [omnora-prime-v13/src/lib/db/migrations/0000_demonic_silvermane.sql](/omnora-prime-v13/src/lib/db/migrations/0000_demonic_silvermane.sql) | MS SQL | 89 | 8 | 2 | 99 |
+| [omnora-prime-v13/src/lib/db/migrations/0001_add_missing_tables.sql](/omnora-prime-v13/src/lib/db/migrations/0001_add_missing_tables.sql) | MS SQL | 49 | 6 | 2 | 57 |
+| [omnora-prime-v13/src/lib/db/migrations/0002_mobile_bridge_devices.sql](/omnora-prime-v13/src/lib/db/migrations/0002_mobile_bridge_devices.sql) | MS SQL | 8 | 13 | 2 | 23 |
 | [omnora-prime-v13/src/lib/db/migrations/meta/0000_snapshot.json](/omnora-prime-v13/src/lib/db/migrations/meta/0000_snapshot.json) | JSON | 629 | 0 | 2 | 631 |
-| [omnora-prime-v13/src/lib/db/migrations/meta/_journal.json](/omnora-prime-v13/src/lib/db/migrations/meta/_journal.json) | JSON | 13 | 0 | 2 | 15 |
-| [omnora-prime-v13/src/lib/db/pragmas.ts](/omnora-prime-v13/src/lib/db/pragmas.ts) | TypeScript | 11 | 8 | 2 | 21 |
-| [omnora-prime-v13/src/lib/db/schema.ts](/omnora-prime-v13/src/lib/db/schema.ts) | TypeScript | 210 | 12 | 21 | 243 |
+| [omnora-prime-v13/src/lib/db/migrations/meta/_journal.json](/omnora-prime-v13/src/lib/db/migrations/meta/_journal.json) | JSON | 20 | 0 | 2 | 22 |
+| [omnora-prime-v13/src/lib/db/pragmas.ts](/omnora-prime-v13/src/lib/db/pragmas.ts) | TypeScript | 10 | 8 | 1 | 19 |
+| [omnora-prime-v13/src/lib/db/schema.ts](/omnora-prime-v13/src/lib/db/schema.ts) | TypeScript | 219 | 13 | 21 | 253 |
 | [omnora-prime-v13/src/lib/emptyStateMessages.ts](/omnora-prime-v13/src/lib/emptyStateMessages.ts) | TypeScript | 58 | 1 | 7 | 66 |
 | [omnora-prime-v13/src/lib/env.ts](/omnora-prime-v13/src/lib/env.ts) | TypeScript | 54 | 12 | 16 | 82 |
 | [omnora-prime-v13/src/lib/filemorph/formatConverter.ts](/omnora-prime-v13/src/lib/filemorph/formatConverter.ts) | TypeScript | 33 | 0 | 5 | 38 |
-| [omnora-prime-v13/src/lib/filemorph/heicConverter.ts](/omnora-prime-v13/src/lib/filemorph/heicConverter.ts) | TypeScript | 20 | 1 | 5 | 26 |
+| [omnora-prime-v13/src/lib/filemorph/heicConverter.ts](/omnora-prime-v13/src/lib/filemorph/heicConverter.ts) | TypeScript | 25 | 1 | 5 | 31 |
 | [omnora-prime-v13/src/lib/filemorph/imageCompressor.ts](/omnora-prime-v13/src/lib/filemorph/imageCompressor.ts) | TypeScript | 64 | 2 | 9 | 75 |
-| [omnora-prime-v13/src/lib/filemorph/pdfTools.ts](/omnora-prime-v13/src/lib/filemorph/pdfTools.ts) | TypeScript | 97 | 2 | 18 | 117 |
+| [omnora-prime-v13/src/lib/filemorph/pdfTools.ts](/omnora-prime-v13/src/lib/filemorph/pdfTools.ts) | TypeScript | 92 | 2 | 16 | 110 |
 | [omnora-prime-v13/src/lib/finance/IndustrialMath.ts](/omnora-prime-v13/src/lib/finance/IndustrialMath.ts) | TypeScript | 28 | 3 | 8 | 39 |
 | [omnora-prime-v13/src/lib/i18n/en.ts](/omnora-prime-v13/src/lib/i18n/en.ts) | TypeScript | 60 | 7 | 7 | 74 |
-| [omnora-prime-v13/src/lib/i18n/index.ts](/omnora-prime-v13/src/lib/i18n/index.ts) | TypeScript | 203 | 2 | 16 | 221 |
+| [omnora-prime-v13/src/lib/i18n/index.ts](/omnora-prime-v13/src/lib/i18n/index.ts) | TypeScript | 205 | 2 | 16 | 223 |
 | [omnora-prime-v13/src/lib/i18n/ur.ts](/omnora-prime-v13/src/lib/i18n/ur.ts) | TypeScript | 60 | 7 | 7 | 74 |
 | [omnora-prime-v13/src/lib/import/columnMapper.ts](/omnora-prime-v13/src/lib/import/columnMapper.ts) | TypeScript | 183 | 9 | 22 | 214 |
-| [omnora-prime-v13/src/lib/intelligence/engine.ts](/omnora-prime-v13/src/lib/intelligence/engine.ts) | TypeScript | 108 | 2 | 14 | 124 |
+| [omnora-prime-v13/src/lib/intelligence/engine.ts](/omnora-prime-v13/src/lib/intelligence/engine.ts) | TypeScript | 207 | 6 | 27 | 240 |
 | [omnora-prime-v13/src/lib/intelligence/forecasting.ts](/omnora-prime-v13/src/lib/intelligence/forecasting.ts) | TypeScript | 77 | 11 | 19 | 107 |
 | [omnora-prime-v13/src/lib/intelligence/predictions.ts](/omnora-prime-v13/src/lib/intelligence/predictions.ts) | TypeScript | 119 | 11 | 16 | 146 |
 | [omnora-prime-v13/src/lib/intelligence/sentinel-intelligence.ts](/omnora-prime-v13/src/lib/intelligence/sentinel-intelligence.ts) | TypeScript | 56 | 1 | 12 | 69 |
@@ -490,19 +647,20 @@ Total : 663 files,  116264 codes, 3456 comments, 11297 blanks, all 131017 lines
 | [omnora-prime-v13/src/lib/lens/pdfGenerator.ts](/omnora-prime-v13/src/lib/lens/pdfGenerator.ts) | TypeScript | 63 | 7 | 11 | 81 |
 | [omnora-prime-v13/src/lib/locale-utils.ts](/omnora-prime-v13/src/lib/locale-utils.ts) | TypeScript | 62 | 0 | 14 | 76 |
 | [omnora-prime-v13/src/lib/logger.ts](/omnora-prime-v13/src/lib/logger.ts) | TypeScript | 8 | 0 | 4 | 12 |
+| [omnora-prime-v13/src/lib/mobile-bridge/server.ts](/omnora-prime-v13/src/lib/mobile-bridge/server.ts) | TypeScript | 443 | 56 | 66 | 565 |
 | [omnora-prime-v13/src/lib/monitoring/CrashReporter.ts](/omnora-prime-v13/src/lib/monitoring/CrashReporter.ts) | TypeScript | 38 | 2 | 8 | 48 |
 | [omnora-prime-v13/src/lib/monitoring/UptimeMonitor.ts](/omnora-prime-v13/src/lib/monitoring/UptimeMonitor.ts) | TypeScript | 34 | 3 | 9 | 46 |
 | [omnora-prime-v13/src/lib/network/industries.ts](/omnora-prime-v13/src/lib/network/industries.ts) | TypeScript | 93 | 2 | 2 | 97 |
 | [omnora-prime-v13/src/lib/network/productCategories.ts](/omnora-prime-v13/src/lib/network/productCategories.ts) | TypeScript | 37 | 7 | 7 | 51 |
 | [omnora-prime-v13/src/lib/network/signalCollector.ts](/omnora-prime-v13/src/lib/network/signalCollector.ts) | TypeScript | 123 | 4 | 15 | 142 |
-| [omnora-prime-v13/src/lib/nsp/encryption.js](/omnora-prime-v13/src/lib/nsp/encryption.js) | JavaScript | 32 | 1 | 1 | 34 |
 | [omnora-prime-v13/src/lib/nsp/encryption.ts](/omnora-prime-v13/src/lib/nsp/encryption.ts) | TypeScript | 25 | 1 | 6 | 32 |
 | [omnora-prime-v13/src/lib/nsp/nsp-worker.js](/omnora-prime-v13/src/lib/nsp/nsp-worker.js) | JavaScript | 17 | 0 | 1 | 18 |
-| [omnora-prime-v13/src/lib/nsp/nsp-worker.ts](/omnora-prime-v13/src/lib/nsp/nsp-worker.ts) | TypeScript | 15 | 0 | 3 | 18 |
-| [omnora-prime-v13/src/lib/nsp/protobuf.js](/omnora-prime-v13/src/lib/nsp/protobuf.js) | JavaScript | 23 | 1 | 1 | 25 |
+| [omnora-prime-v13/src/lib/nsp/nsp-worker.ts](/omnora-prime-v13/src/lib/nsp/nsp-worker.ts) | TypeScript | 15 | 0 | 2 | 17 |
 | [omnora-prime-v13/src/lib/nsp/protobuf.ts](/omnora-prime-v13/src/lib/nsp/protobuf.ts) | TypeScript | 18 | 1 | 4 | 23 |
-| [omnora-prime-v13/src/lib/nsp/server.ts](/omnora-prime-v13/src/lib/nsp/server.ts) | TypeScript | 313 | 10 | 51 | 374 |
+| [omnora-prime-v13/src/lib/nsp/server.ts](/omnora-prime-v13/src/lib/nsp/server.ts) | TypeScript | 370 | 10 | 57 | 437 |
 | [omnora-prime-v13/src/lib/payroll/PayrollCalculator.ts](/omnora-prime-v13/src/lib/payroll/PayrollCalculator.ts) | TypeScript | 72 | 3 | 17 | 92 |
+| [omnora-prime-v13/src/lib/payroll/generatePayslip.ts](/omnora-prime-v13/src/lib/payroll/generatePayslip.ts) | TypeScript | 166 | 8 | 23 | 197 |
+| [omnora-prime-v13/src/lib/perf/monitor.ts](/omnora-prime-v13/src/lib/perf/monitor.ts) | TypeScript | 21 | 0 | 6 | 27 |
 | [omnora-prime-v13/src/lib/persona/PersonaEngine.ts](/omnora-prime-v13/src/lib/persona/PersonaEngine.ts) | TypeScript | 102 | 19 | 22 | 143 |
 | [omnora-prime-v13/src/lib/persona/formatters.ts](/omnora-prime-v13/src/lib/persona/formatters.ts) | TypeScript | 127 | 1 | 15 | 143 |
 | [omnora-prime-v13/src/lib/persona/industries.ts](/omnora-prime-v13/src/lib/persona/industries.ts) | TypeScript | 1,719 | 139 | 56 | 1,914 |
@@ -511,22 +669,25 @@ Total : 663 files,  116264 codes, 3456 comments, 11297 blanks, all 131017 lines
 | [omnora-prime-v13/src/lib/persona/vocabulary.ts](/omnora-prime-v13/src/lib/persona/vocabulary.ts) | TypeScript | 75 | 0 | 3 | 78 |
 | [omnora-prime-v13/src/lib/persona/workerTerminology.ts](/omnora-prime-v13/src/lib/persona/workerTerminology.ts) | TypeScript | 60 | 0 | 2 | 62 |
 | [omnora-prime-v13/src/lib/portal/portal-token-utils.ts](/omnora-prime-v13/src/lib/portal/portal-token-utils.ts) | TypeScript | 41 | 2 | 9 | 52 |
-| [omnora-prime-v13/src/lib/queryClient.ts](/omnora-prime-v13/src/lib/queryClient.ts) | TypeScript | 18 | 5 | 7 | 30 |
+| [omnora-prime-v13/src/lib/queryClient.ts](/omnora-prime-v13/src/lib/queryClient.ts) | TypeScript | 21 | 8 | 3 | 32 |
 | [omnora-prime-v13/src/lib/query/queryConfig.ts](/omnora-prime-v13/src/lib/query/queryConfig.ts) | TypeScript | 14 | 0 | 3 | 17 |
 | [omnora-prime-v13/src/lib/query/queryKeys.ts](/omnora-prime-v13/src/lib/query/queryKeys.ts) | TypeScript | 39 | 0 | 3 | 42 |
 | [omnora-prime-v13/src/lib/realtime/SyncBroadcast.ts](/omnora-prime-v13/src/lib/realtime/SyncBroadcast.ts) | TypeScript | 37 | 2 | 8 | 47 |
 | [omnora-prime-v13/src/lib/reports/ReportGenerator.ts](/omnora-prime-v13/src/lib/reports/ReportGenerator.ts) | TypeScript | 37 | 6 | 11 | 54 |
+| [omnora-prime-v13/src/lib/security/authHelpers.ts](/omnora-prime-v13/src/lib/security/authHelpers.ts) | TypeScript | 42 | 2 | 8 | 52 |
 | [omnora-prime-v13/src/lib/security/dbKeyManager.ts](/omnora-prime-v13/src/lib/security/dbKeyManager.ts) | TypeScript | 17 | 2 | 3 | 22 |
 | [omnora-prime-v13/src/lib/security/rateLimiter.ts](/omnora-prime-v13/src/lib/security/rateLimiter.ts) | TypeScript | 31 | 3 | 8 | 42 |
-| [omnora-prime-v13/src/lib/sentinel/commandEngine.ts](/omnora-prime-v13/src/lib/sentinel/commandEngine.ts) | TypeScript | 188 | 11 | 11 | 210 |
+| [omnora-prime-v13/src/lib/sentinel/commandEngine.ts](/omnora-prime-v13/src/lib/sentinel/commandEngine.ts) | TypeScript | 292 | 11 | 11 | 314 |
 | [omnora-prime-v13/src/lib/sentinel/recordingManager.ts](/omnora-prime-v13/src/lib/sentinel/recordingManager.ts) | TypeScript | 110 | 11 | 26 | 147 |
 | [omnora-prime-v13/src/lib/supabase/admin.ts](/omnora-prime-v13/src/lib/supabase/admin.ts) | TypeScript | 23 | 0 | 5 | 28 |
-| [omnora-prime-v13/src/lib/supabase/client.ts](/omnora-prime-v13/src/lib/supabase/client.ts) | TypeScript | 100 | 7 | 18 | 125 |
+| [omnora-prime-v13/src/lib/supabase/client.ts](/omnora-prime-v13/src/lib/supabase/client.ts) | TypeScript | 102 | 7 | 18 | 127 |
 | [omnora-prime-v13/src/lib/supabase/server.ts](/omnora-prime-v13/src/lib/supabase/server.ts) | TypeScript | 24 | 4 | 4 | 32 |
-| [omnora-prime-v13/src/lib/sync/syncEngine.ts](/omnora-prime-v13/src/lib/sync/syncEngine.ts) | TypeScript | 42 | 2 | 9 | 53 |
+| [omnora-prime-v13/src/lib/sync/cloudSyncWorker.ts](/omnora-prime-v13/src/lib/sync/cloudSyncWorker.ts) | TypeScript | 113 | 4 | 24 | 141 |
+| [omnora-prime-v13/src/lib/sync/syncEngine.ts](/omnora-prime-v13/src/lib/sync/syncEngine.ts) | TypeScript | 47 | 2 | 11 | 60 |
 | [omnora-prime-v13/src/lib/tax/taxEngine.ts](/omnora-prime-v13/src/lib/tax/taxEngine.ts) | TypeScript | 141 | 0 | 5 | 146 |
 | [omnora-prime-v13/src/lib/themes/themes.ts](/omnora-prime-v13/src/lib/themes/themes.ts) | TypeScript | 511 | 0 | 4 | 515 |
 | [omnora-prime-v13/src/lib/utils.ts](/omnora-prime-v13/src/lib/utils.ts) | TypeScript | 12 | 0 | 4 | 16 |
+| [omnora-prime-v13/src/lib/utils/errors.ts](/omnora-prime-v13/src/lib/utils/errors.ts) | TypeScript | 78 | 7 | 18 | 103 |
 | [omnora-prime-v13/src/lib/utils/whatsapp.ts](/omnora-prime-v13/src/lib/utils/whatsapp.ts) | TypeScript | 135 | 4 | 18 | 157 |
 | [omnora-prime-v13/src/lib/whatsapp/WhatsAppSender.ts](/omnora-prime-v13/src/lib/whatsapp/WhatsAppSender.ts) | TypeScript | 98 | 3 | 20 | 121 |
 | [omnora-prime-v13/src/lib/whatsapp/alertEngine.ts](/omnora-prime-v13/src/lib/whatsapp/alertEngine.ts) | TypeScript | 97 | 3 | 24 | 124 |
@@ -541,18 +702,18 @@ Total : 663 files,  116264 codes, 3456 comments, 11297 blanks, all 131017 lines
 | [omnora-prime-v13/src/messages/tr.json](/omnora-prime-v13/src/messages/tr.json) | JSON | 155 | 0 | 1 | 156 |
 | [omnora-prime-v13/src/messages/ur.json](/omnora-prime-v13/src/messages/ur.json) | JSON | 152 | 0 | 1 | 153 |
 | [omnora-prime-v13/src/messages/zh.json](/omnora-prime-v13/src/messages/zh.json) | JSON | 155 | 0 | 1 | 156 |
-| [omnora-prime-v13/src/middleware.ts](/omnora-prime-v13/src/middleware.ts) | TypeScript | 160 | 15 | 26 | 201 |
+| [omnora-prime-v13/src/middleware.ts](/omnora-prime-v13/src/middleware.ts) | TypeScript | 211 | 17 | 32 | 260 |
 | [omnora-prime-v13/src/server/NspBroadcaster.ts](/omnora-prime-v13/src/server/NspBroadcaster.ts) | TypeScript | 574 | 25 | 89 | 688 |
 | [omnora-prime-v13/src/server/TCPServer.ts](/omnora-prime-v13/src/server/TCPServer.ts) | TypeScript | 75 | 1 | 12 | 88 |
-| [omnora-prime-v13/src/server/WorkerPool.ts](/omnora-prime-v13/src/server/WorkerPool.ts) | TypeScript | 129 | 9 | 24 | 162 |
-| [omnora-prime-v13/src/server/server.ts](/omnora-prime-v13/src/server/server.ts) | TypeScript | 236 | 26 | 50 | 312 |
+| [omnora-prime-v13/src/server/WorkerPool.ts](/omnora-prime-v13/src/server/WorkerPool.ts) | TypeScript | 180 | 1 | 29 | 210 |
+| [omnora-prime-v13/src/server/server.ts](/omnora-prime-v13/src/server/server.ts) | TypeScript | 239 | 26 | 52 | 317 |
 | [omnora-prime-v13/src/services/GuardianService.ts](/omnora-prime-v13/src/services/GuardianService.ts) | TypeScript | 40 | 2 | 6 | 48 |
 | [omnora-prime-v13/src/services/WhatsAppBusinessService.ts](/omnora-prime-v13/src/services/WhatsAppBusinessService.ts) | TypeScript | 53 | 2 | 10 | 65 |
-| [omnora-prime-v13/src/store/BusinessProfileStore.ts](/omnora-prime-v13/src/store/BusinessProfileStore.ts) | TypeScript | 99 | 0 | 7 | 106 |
+| [omnora-prime-v13/src/store/BusinessProfileStore.ts](/omnora-prime-v13/src/store/BusinessProfileStore.ts) | TypeScript | 101 | 0 | 5 | 106 |
 | [omnora-prime-v13/src/stores/branchStore.ts](/omnora-prime-v13/src/stores/branchStore.ts) | TypeScript | 193 | 13 | 41 | 247 |
 | [omnora-prime-v13/src/stores/index.ts](/omnora-prime-v13/src/stores/index.ts) | TypeScript | 12 | 7 | 6 | 25 |
 | [omnora-prime-v13/src/stores/languageStore.ts](/omnora-prime-v13/src/stores/languageStore.ts) | TypeScript | 48 | 2 | 6 | 56 |
-| [omnora-prime-v13/src/stores/themeStore.ts](/omnora-prime-v13/src/stores/themeStore.ts) | TypeScript | 112 | 6 | 17 | 135 |
+| [omnora-prime-v13/src/stores/themeStore.ts](/omnora-prime-v13/src/stores/themeStore.ts) | TypeScript | 117 | 6 | 17 | 140 |
 | [omnora-prime-v13/src/stores/tierStore.ts](/omnora-prime-v13/src/stores/tierStore.ts) | TypeScript | 192 | 5 | 20 | 217 |
 | [omnora-prime-v13/src/templates/BalanceSheet.html](/omnora-prime-v13/src/templates/BalanceSheet.html) | HTML | 96 | 0 | 12 | 108 |
 | [omnora-prime-v13/src/templates/ProfitLoss.html](/omnora-prime-v13/src/templates/ProfitLoss.html) | HTML | 80 | 0 | 8 | 88 |
@@ -560,10 +721,10 @@ Total : 663 files,  116264 codes, 3456 comments, 11297 blanks, all 131017 lines
 | [omnora-prime-v13/src/templates/TrialBalance.html](/omnora-prime-v13/src/templates/TrialBalance.html) | HTML | 68 | 0 | 5 | 73 |
 | [omnora-prime-v13/src/tests/dotenv-setup.ts](/omnora-prime-v13/src/tests/dotenv-setup.ts) | TypeScript | 3 | 0 | 2 | 5 |
 | [omnora-prime-v13/src/tests/integration/ledger-integrity.test.ts](/omnora-prime-v13/src/tests/integration/ledger-integrity.test.ts) | TypeScript | 190 | 31 | 53 | 274 |
-| [omnora-prime-v13/src/tests/integration/rls-security.test.ts](/omnora-prime-v13/src/tests/integration/rls-security.test.ts) | TypeScript | 195 | 23 | 55 | 273 |
-| [omnora-prime-v13/src/tests/integration/security-audit.test.ts](/omnora-prime-v13/src/tests/integration/security-audit.test.ts) | TypeScript | 152 | 10 | 28 | 190 |
+| [omnora-prime-v13/src/tests/integration/rls-security.test.ts](/omnora-prime-v13/src/tests/integration/rls-security.test.ts) | TypeScript | 202 | 24 | 56 | 282 |
+| [omnora-prime-v13/src/tests/integration/security-audit.test.ts](/omnora-prime-v13/src/tests/integration/security-audit.test.ts) | TypeScript | 153 | 10 | 28 | 191 |
 | [omnora-prime-v13/src/tests/integration/tcp-pipeline.test.ts](/omnora-prime-v13/src/tests/integration/tcp-pipeline.test.ts) | TypeScript | 139 | 10 | 44 | 193 |
-| [omnora-prime-v13/src/tests/setup.ts](/omnora-prime-v13/src/tests/setup.ts) | TypeScript | 52 | 9 | 14 | 75 |
+| [omnora-prime-v13/src/tests/setup.ts](/omnora-prime-v13/src/tests/setup.ts) | TypeScript | 610 | 23 | 93 | 726 |
 | [omnora-prime-v13/src/tests/smoke-checklist.md](/omnora-prime-v13/src/tests/smoke-checklist.md) | Markdown | 45 | 0 | 9 | 54 |
 | [omnora-prime-v13/src/utils/NumberToWords.ts](/omnora-prime-v13/src/utils/NumberToWords.ts) | TypeScript | 74 | 3 | 12 | 89 |
 | [omnora-prime-v13/src/utils/check-sessions.ts](/omnora-prime-v13/src/utils/check-sessions.ts) | TypeScript | 18 | 0 | 6 | 24 |
@@ -612,7 +773,7 @@ Total : 663 files,  116264 codes, 3456 comments, 11297 blanks, all 131017 lines
 | [omnora-prime-v13/supabase/functions/whatsapp-send/index.ts](/omnora-prime-v13/supabase/functions/whatsapp-send/index.ts) | TypeScript | 117 | 6 | 20 | 143 |
 | [omnora-prime-v13/supabase/migrations/001_core_identity.sql](/omnora-prime-v13/supabase/migrations/001_core_identity.sql) | MS SQL | 48 | 5 | 10 | 63 |
 | [omnora-prime-v13/supabase/migrations/002_inventory.sql](/omnora-prime-v13/supabase/migrations/002_inventory.sql) | MS SQL | 147 | 7 | 19 | 173 |
-| [omnora-prime-v13/supabase/migrations/003_fintech.sql](/omnora-prime-v13/supabase/migrations/003_fintech.sql) | MS SQL | 197 | 12 | 23 | 232 |
+| [omnora-prime-v13/supabase/migrations/003_fintech.sql](/omnora-prime-v13/supabase/migrations/003_fintech.sql) | MS SQL | 198 | 12 | 23 | 233 |
 | [omnora-prime-v13/supabase/migrations/004_sentinel.sql](/omnora-prime-v13/supabase/migrations/004_sentinel.sql) | MS SQL | 94 | 9 | 15 | 118 |
 | [omnora-prime-v13/supabase/migrations/005_karigar.sql](/omnora-prime-v13/supabase/migrations/005_karigar.sql) | MS SQL | 209 | 12 | 21 | 242 |
 | [omnora-prime-v13/supabase/migrations/006a_persona.sql](/omnora-prime-v13/supabase/migrations/006a_persona.sql) | MS SQL | 275 | 6 | 19 | 300 |
@@ -664,14 +825,27 @@ Total : 663 files,  116264 codes, 3456 comments, 11297 blanks, all 131017 lines
 | [omnora-prime-v13/supabase/migrations/048_intelligence_system.sql](/omnora-prime-v13/supabase/migrations/048_intelligence_system.sql) | MS SQL | 146 | 8 | 14 | 168 |
 | [omnora-prime-v13/supabase/migrations/049_embedded_finance.sql](/omnora-prime-v13/supabase/migrations/049_embedded_finance.sql) | MS SQL | 61 | 7 | 8 | 76 |
 | [omnora-prime-v13/supabase/migrations/050_worker_identity.sql](/omnora-prime-v13/supabase/migrations/050_worker_identity.sql) | MS SQL | 167 | 22 | 31 | 220 |
+| [omnora-prime-v13/supabase/migrations/051_fix_all_missing_rls.sql](/omnora-prime-v13/supabase/migrations/051_fix_all_missing_rls.sql) | MS SQL | 170 | 13 | 21 | 204 |
 | [omnora-prime-v13/supabase/migrations/20240111000000_phase11_branches.sql](/omnora-prime-v13/supabase/migrations/20240111000000_phase11_branches.sql) | MS SQL | 127 | 19 | 21 | 167 |
 | [omnora-prime-v13/supabase/migrations/20240111000001_phase11_rls_branch_aware.sql](/omnora-prime-v13/supabase/migrations/20240111000001_phase11_rls_branch_aware.sql) | MS SQL | 135 | 10 | 11 | 156 |
 | [omnora-prime-v13/supabase/migrations/20240112000000_phase11_transfer_accounts.sql](/omnora-prime-v13/supabase/migrations/20240112000000_phase11_transfer_accounts.sql) | MS SQL | 13 | 4 | 4 | 21 |
 | [omnora-prime-v13/supabase/migrations/20240112000000_phase12_client_portal.sql](/omnora-prime-v13/supabase/migrations/20240112000000_phase12_client_portal.sql) | MS SQL | 162 | 15 | 23 | 200 |
 | [omnora-prime-v13/supabase/migrations/20240113000000_phase11_transfer_functions.sql](/omnora-prime-v13/supabase/migrations/20240113000000_phase11_transfer_functions.sql) | MS SQL | 149 | 34 | 31 | 214 |
+| [omnora-prime-v13/supabase/migrations/20260606000000_add_voided_at_to_invoices.sql](/omnora-prime-v13/supabase/migrations/20260606000000_add_voided_at_to_invoices.sql) | MS SQL | 4 | 2 | 2 | 8 |
+| [omnora-prime-v13/supabase/migrations/20260611000000_add_audit_session_columns.sql](/omnora-prime-v13/supabase/migrations/20260611000000_add_audit_session_columns.sql) | MS SQL | 6 | 2 | 2 | 10 |
+| [omnora-prime-v13/supabase/migrations/20260612000000_create_dispatch_orders.sql](/omnora-prime-v13/supabase/migrations/20260612000000_create_dispatch_orders.sql) | MS SQL | 19 | 3 | 3 | 25 |
+| [omnora-prime-v13/supabase/migrations/20260612000001_update_licenses_schema.sql](/omnora-prime-v13/supabase/migrations/20260612000001_update_licenses_schema.sql) | MS SQL | 14 | 1 | 7 | 22 |
+| [omnora-prime-v13/supabase/migrations/20260612000002_admin_dashboard_rls.sql](/omnora-prime-v13/supabase/migrations/20260612000002_admin_dashboard_rls.sql) | MS SQL | 17 | 10 | 6 | 33 |
+| [omnora-prime-v13/supabase/migrations/20260613000000_add_onboarding_complete.sql](/omnora-prime-v13/supabase/migrations/20260613000000_add_onboarding_complete.sql) | MS SQL | 2 | 1 | 1 | 4 |
+| [omnora-prime-v13/supabase/migrations/20260614000000_add_created_at_to_production_batches.sql](/omnora-prime-v13/supabase/migrations/20260614000000_add_created_at_to_production_batches.sql) | MS SQL | 2 | 1 | 1 | 4 |
+| [omnora-prime-v13/supabase/migrations/20260620000000_add_has_seen_first_action.sql](/omnora-prime-v13/supabase/migrations/20260620000000_add_has_seen_first_action.sql) | MS SQL | 3 | 1 | 1 | 5 |
+| [omnora-prime-v13/supabase/migrations/20260622000000_add_scalability_indexes.sql](/omnora-prime-v13/supabase/migrations/20260622000000_add_scalability_indexes.sql) | MS SQL | 22 | 2 | 12 | 36 |
+| [omnora-prime-v13/supabase/migrations/license_hardening.sql](/omnora-prime-v13/supabase/migrations/license_hardening.sql) | MS SQL | 26 | 4 | 5 | 35 |
 | [omnora-prime-v13/tsconfig.json](/omnora-prime-v13/tsconfig.json) | JSON with Comments | 43 | 0 | 2 | 45 |
 | [omnora-prime-v13/vercel.json](/omnora-prime-v13/vercel.json) | JSON | 8 | 0 | 1 | 9 |
 | [omnora-prime-v13/vitest.config.ts](/omnora-prime-v13/vitest.config.ts) | TypeScript | 20 | 0 | 3 | 23 |
+| [omnora-prime-v13/winCodeSign/linux/Dockerfile](/omnora-prime-v13/winCodeSign/linux/Dockerfile) | Docker | 5 | 0 | 4 | 9 |
+| [omnora-prime-v13/winCodeSign/linux/build.sh](/omnora-prime-v13/winCodeSign/linux/build.sh) | Shell Script | 4 | 1 | 2 | 7 |
 | [package-lock.json](/package-lock.json) | JSON | 1,566 | 0 | 1 | 1,567 |
 | [package.json](/package.json) | JSON | 16 | 0 | 1 | 17 |
 

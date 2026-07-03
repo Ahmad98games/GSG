@@ -8,7 +8,7 @@ import {
   Download, CheckCircle2,
   AlertCircle, X, Filter, CreditCard
 } from "lucide-react";
-import { usePersona } from "@/hooks/usePersona";
+import { useIndustryConfig } from "@/hooks/useIndustryConfig";
 import { createClient } from "@/lib/supabase/client";
 import { FeedbackModal } from "@/components/ui/FeedbackModal";
 import * as XLSX from "xlsx";
@@ -34,7 +34,10 @@ const runPayrollSchema = z.object({
 type RunPayrollValues = z.infer<typeof runPayrollSchema>;
 
 export default function PayrollPage() {
-  const { businessId, fmt, fmtDate, term, workerTermPlural } = usePersona();
+  const { t, features, fmt, fmtDate } = useIndustryConfig();
+  const { profile } = useBusinessProfile();
+  const businessId = profile?.id;
+  const workerTermPlural = t.workers;
   const supabase = createClient();
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -53,11 +56,11 @@ export default function PayrollPage() {
       }
       
       const formatted = slips.map((s: any) => ({
-        'Karigar Code': s.karigar?.karigar_code || '—',
-        'Karigar Name': s.karigar?.name || '—',
+        [`${t.worker} Code`]: s.karigar?.karigar_code || '—',
+        [`${t.worker} Name`]: s.karigar?.name || '—',
         'Base Wage': s.base_wage || 0,
         'Bonus': s.bonus || 0,
-        'Advance Deduction': s.advance_deduction || 0,
+        [`${t.advance} Deduction`]: s.advance_deduction || 0,
         'Net Wage': s.net_wage || 0,
         'Status': s.is_finalized ? 'Finalized' : 'Draft'
       }));
@@ -389,7 +392,8 @@ function StatusPill({ status }: { status: string }) {
 }
 
 function RunPayrollModal({ onClose, onSuccess }: { onClose: () => void, onSuccess: (msg: string) => void }) {
-  const { businessId } = usePersona();
+  const { t, region } = useIndustryConfig();
+  const businessId = region.profile?.id;
   const supabase = createClient();
   const [isCalculating, setIsCalculating] = useState(false);
   
@@ -427,7 +431,7 @@ function RunPayrollModal({ onClose, onSuccess }: { onClose: () => void, onSucces
         .eq('business_id', businessId)
         .eq('status', 'active');
 
-      if (!karigars) throw new Error("No active karigars found");
+      if (!karigars || karigars.length === 0) throw new Error(`No active ${t.workers} found`);
 
       // 3. Fetch Production & Attendance for each
       const slips = [];

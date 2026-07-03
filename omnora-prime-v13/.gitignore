@@ -68,3 +68,11 @@ NOXIS-test.db
 google-services.json
 GoogleService-Info.plist
 
+# scratch and tools
+/scratch/
+/better-sqlite3-multiple-ciphers/
+/winCodeSign/
+/*.txt
+/server-with-bridge.js
+
+

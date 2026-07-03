@@ -9,6 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { createClient } from "@/lib/supabase/client";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
+import { useIndustryConfig } from "@/hooks/useIndustryConfig";
 import { useSidebarState } from "@/hooks/useSidebarState";
 import { IndustrialMath } from "@/lib/finance/IndustrialMath";
 import { numberToWords } from "@/utils/NumberToWords";
@@ -57,7 +58,11 @@ type InvoiceFormValues = z.infer<typeof invoiceSchema>;
 
 export default function NewInvoicePage() {
   const router = useRouter();
-  const { profile, currency: businessCurrency = "PKR", taxName, taxRate: defaultTaxRate } = useBusinessProfile();
+  const { t, region, fmt } = useIndustryConfig();
+  const { profile } = useBusinessProfile();
+  const businessCurrency = region.currency;
+  const taxName = region.taxLabel;
+  const defaultTaxRate = region.taxRate;
   const supabase = createClient();
 
   const [parties, setParties] = useState<any[]>([]);
@@ -104,11 +109,11 @@ export default function NewInvoicePage() {
 
   // Sync profile defaults
   useEffect(() => {
-    if (profile) {
-      setValue("tax_pct", profile.tax_rate || 0);
-      setValue("currency", (profile.currency as CurrencyCode) || 'PKR');
+    if (region) {
+      setValue("tax_pct", region.taxRate || 0);
+      setValue("currency", (region.currency as CurrencyCode) || 'PKR');
     }
-  }, [profile, setValue]);
+  }, [region, setValue]);
 
   const totals = useMemo(() => {
     return IndustrialMath.calculateInvoiceTotals(
@@ -581,7 +586,7 @@ export default function NewInvoicePage() {
               {/* Customer Block */}
               <div className="space-y-2">
                 <label className="text-[9px] uppercase font-bold text-gray-500 tracking-widest flex items-center justify-between">
-                  <span>Customer</span>
+                  <span>{t.customer}</span>
                 </label>
                 <div className="relative">
                   <input
@@ -591,7 +596,7 @@ export default function NewInvoicePage() {
                       setValue("party_search", e.target.value);
                       if (e.target.value === "") setValue("party_id", "");
                     }}
-                    placeholder="Search customer name..."
+                    placeholder={`Search ${t.customer.toLowerCase()} name...`}
                     className="industrial-field"
                   />
                   {debouncedPartySearch.length > 0 && !watch("party_id") && (
@@ -637,14 +642,14 @@ export default function NewInvoicePage() {
               {/* Line Items Builder */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                  <h3 className="text-[10px] uppercase font-black tracking-widest text-[#C5A059]">Line Items</h3>
+                  <h3 className="text-[10px] uppercase font-black tracking-widest text-[#C5A059]">{t.items}</h3>
                   <button 
                     type="button"
                     onClick={() => append({ description: "", qty: 1, unit: "piece", unit_price: 0 })}
                     className="text-[9px] uppercase font-bold text-gray-500 hover:text-white transition-colors flex items-center space-x-1"
                   >
                     <Plus size={12} />
-                    <span>Add Item</span>
+                    <span>{`Add ${t.item || 'Item'}`}</span>
                   </button>
                 </div>
 
@@ -753,7 +758,7 @@ export default function NewInvoicePage() {
                    <p className="text-[10px] font-bold text-gray-600">{profile?.tax_number ? `NTN: ${profile.tax_number}` : ""}</p>
                  </div>
                  <div className="text-right">
-                   <h1 className="text-4xl font-black text-gray-200 mb-2">INVOICE</h1>
+                   <h1 className="text-4xl font-black text-gray-200 mb-2">{t.invoice.toUpperCase()}</h1>
                    <div className="text-[10px] font-bold space-y-1 uppercase">
                      <p>Serial: <span className="text-black font-mono">{watchValues.invoice_no || "---"}</span></p>
                      <p>Issued: <span className="text-black font-mono">{watchValues.issue_date}</span></p>
@@ -766,7 +771,7 @@ export default function NewInvoicePage() {
               <div className="grid grid-cols-2 gap-12 mb-12 shrink-0">
                  <div>
                    <p className="text-[9px] font-black text-gray-400 uppercase mb-3 tracking-widest">Bill To</p>
-                   <p className="text-lg font-black uppercase tracking-tight">{selectedParty?.name || "Customer"}</p>
+                   <p className="text-lg font-black uppercase tracking-tight">{selectedParty?.name || t.customer}</p>
                    <p className="text-[10px] text-gray-600 mt-1 max-w-[200px] leading-relaxed uppercase">{selectedParty?.address || ""}</p>
                    <p className="text-[10px] font-mono mt-2 font-bold">{selectedParty?.phone}</p>
                  </div>

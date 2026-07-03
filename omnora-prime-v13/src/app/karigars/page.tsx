@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
-import { usePersona } from "@/hooks/usePersona";
+import { useIndustryConfig } from "@/hooks/useIndustryConfig";
 
 import { useSidebarState } from "@/hooks/useSidebarState";
 import { 
@@ -120,7 +120,9 @@ const advanceSchema = z.object({
 
 export default function KarigarsPage() {
   const { profile } = useBusinessProfile();
-  const { t, fmt, workerTerm, workerTermPlural } = usePersona();
+  const { t, features, fmt } = useIndustryConfig();
+  const workerTerm = t.worker;
+  const workerTermPlural = t.workers;
   const supabase = createClient();
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -263,119 +265,136 @@ export default function KarigarsPage() {
     toast.success('Karigars registry exported to Excel')
   }
 
-  const columns = useMemo(() => [
-    columnHelper.accessor("name", {
-      header: "Name",
-      cell: (info) => {
-        const k = info.row.original;
-        const initials = k.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '';
-        return (
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#60A5FA]/20 flex items-center justify-center text-[10px] font-bold text-[#60A5FA] flex-shrink-0 overflow-hidden relative">
-              {k.photo_url ? (
-                <Image src={k.photo_url} alt={k.name} fill className="object-cover" />
-              ) : (
-                initials
-              )}
+  const columns = useMemo(() => {
+    const cols = [
+      columnHelper.accessor("name", {
+        header: "Name",
+        cell: (info) => {
+          const k = info.row.original;
+          const initials = k.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '';
+          return (
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-[#60A5FA]/20 flex items-center justify-center text-[10px] font-bold text-[#60A5FA] flex-shrink-0 overflow-hidden relative">
+                {k.photo_url ? (
+                  <Image src={k.photo_url} alt={k.name} fill className="object-cover" />
+                ) : (
+                  initials
+                )}
+              </div>
+              <span className="text-sm text-white font-medium">{k.name}</span>
             </div>
-            <span className="text-sm text-white font-medium">{k.name}</span>
-          </div>
-        );
-      }
-    }),
-    columnHelper.accessor("karigar_code", {
-      header: "Code",
-      cell: (info) => {
-        const k = info.row.original;
-        return (
-          <Link
-            href={`/karigars/${k.id}`}
-            className="text-[#60A5FA] hover:text-blue-300 transition-colors text-sm font-mono font-bold"
-          >
-            {k.karigar_code}
-          </Link>
-        );
-      }
-    }),
-    columnHelper.accessor("karigar_grades.grade_name", {
-      header: "Grade",
-      cell: (info) => (
-        <span className="text-xs text-gray-500">
-          {info.getValue() || "—"}
-        </span>
-      ),
-    }),
-    columnHelper.accessor("wage_type", {
-      header: "Pay Type",
-      cell: (info) => {
-        const type = info.getValue();
-        const colors = {
-          piece_rate: "text-electric-blue bg-electric-blue/10",
-          daily_wage: "text-amber-500 bg-amber-500/10",
-          monthly_salary: "text-emerald bg-emerald/10"
-        };
-        return <span className={cn("px-2 py-0.5 text-[9px] uppercase font-black rounded-sm", colors[type])}>{type.replace('_', ' ')}</span>;
-      }
-    }),
-    columnHelper.accessor("id", {
-      id: "rate",
-      header: () => <div className="text-right">Rate</div>,
-      cell: (info) => {
-        const k = info.row.original;
-        let rate = 0;
-        let unit = "";
-        if (k.wage_type === 'piece_rate') { rate = k.piece_rate || 0; unit = "/ pc"; }
-        if (k.wage_type === 'daily_wage') { rate = k.daily_rate || 0; unit = "/ day"; }
-        if (k.wage_type === 'monthly_salary') { rate = k.monthly_salary || 0; unit = "/ mo"; }
-        return (
-          <FinancialAmount 
-            value={rate} 
-            unit={unit}
-            className="text-right"
-          />
-        );
-      }
-    }),
-    columnHelper.accessor("current_advance", {
-      header: () => <div className="text-right">Peshgi</div>,
-      cell: (info) => <FinancialAmount value={info.getValue()} />,
-    }),
-    columnHelper.accessor("status", {
-      header: "Status",
-      cell: (info) => {
-        const s = info.getValue();
-        const colors = { active: "bg-emerald", inactive: "bg-gray-700", on_leave: "bg-amber-500" };
-        return (
-          <div className="flex items-center space-x-2">
-             <div className={cn("w-1.5 h-1.5 rounded-full", colors[s])} />
-             <span className="text-[10px] uppercase font-bold text-gray-500">{s.replace('_', ' ')}</span>
-          </div>
-        );
-      }
-    }),
-    columnHelper.display({
-      id: "actions",
-      cell: (info) => {
-        const k = info.row.original;
-        const meta = info.table.options.meta as any;
-        return (
-          <div className="flex justify-end space-x-4">
-             {k.wage_type === 'piece_rate' && (
-               <button 
-                 onClick={() => meta?.onLogOutput(k)}
-                 className="text-[10px] uppercase font-black text-sandstone-gold hover:text-white transition-colors flex items-center bg-transparent border-none cursor-pointer"
-               >
-                 <Zap size={10} className="mr-1" /> Log Output
-               </button>
-             )}
-             <button onClick={() => meta?.onAttend(k)} className="text-[10px] uppercase font-black text-gray-600 hover:text-white transition-colors">Attend</button>
-             <button onClick={() => meta?.onAdvance(k)} className="text-[10px] uppercase font-black text-gray-600 hover:text-white transition-colors">Advance</button>
-             <Link href={`/karigars/${k.id}`} className="text-gray-500 hover:text-white"><ChevronRight size={16} /></Link>
-          </div>
-        );
-      }
-    })
-  ], [fmt, t, workerTerm, workerTermPlural]);
+          );
+        }
+      }),
+      columnHelper.accessor("karigar_code", {
+        header: "Code",
+        cell: (info) => {
+          const k = info.row.original;
+          return (
+            <Link
+              href={`/karigars/${k.id}`}
+              className="text-[#60A5FA] hover:text-blue-300 transition-colors text-sm font-mono font-bold"
+            >
+              {k.karigar_code}
+            </Link>
+          );
+        }
+      }),
+      columnHelper.accessor("karigar_grades.grade_name", {
+        header: "Grade",
+        cell: (info) => (
+          <span className="text-xs text-gray-500">
+            {info.getValue() || "—"}
+          </span>
+        ),
+      }),
+      columnHelper.accessor("wage_type", {
+        header: "Pay Type",
+        cell: (info) => {
+          const type = info.getValue();
+          const colors = {
+            piece_rate: "text-electric-blue bg-electric-blue/10",
+            daily_wage: "text-amber-500 bg-amber-500/10",
+            monthly_salary: "text-emerald bg-emerald/10"
+          };
+          return <span className={cn("px-2 py-0.5 text-[9px] uppercase font-black rounded-sm", colors[type])}>{type.replace('_', ' ')}</span>;
+        }
+      })
+    ];
+
+    if (features.pieceRateWages) {
+      cols.push(
+        columnHelper.accessor("id", {
+          id: "rate",
+          header: () => <div className="text-right">{`Rate per ${t.productionUnit}`}</div>,
+          cell: (info) => {
+            const k = info.row.original;
+            let rate = 0;
+            let unit = "";
+            if (k.wage_type === 'piece_rate') { rate = k.piece_rate || 0; unit = ` / ${t.productionUnit}`; }
+            if (k.wage_type === 'daily_wage') { rate = k.daily_rate || 0; unit = " / day"; }
+            if (k.wage_type === 'monthly_salary') { rate = k.monthly_salary || 0; unit = " / mo"; }
+            return (
+              <FinancialAmount 
+                value={rate} 
+                unit={unit}
+                className="text-right"
+              />
+            );
+          }
+        })
+      );
+    }
+
+    if (features.peshgiAdvances) {
+      cols.push(
+        columnHelper.accessor("current_advance", {
+          header: () => <div className="text-right">{t.advance}</div>,
+          cell: (info) => <FinancialAmount value={info.getValue()} />,
+        })
+      );
+    }
+
+    cols.push(
+      columnHelper.accessor("status", {
+        header: "Status",
+        cell: (info) => {
+          const s = info.getValue();
+          const colors = { active: "bg-emerald", inactive: "bg-gray-700", on_leave: "bg-amber-500" };
+          return (
+            <div className="flex items-center space-x-2">
+               <div className={cn("w-1.5 h-1.5 rounded-full", colors[s])} />
+               <span className="text-[10px] uppercase font-bold text-gray-500">{s.replace('_', ' ')}</span>
+            </div>
+          );
+        }
+      }),
+      columnHelper.display({
+        id: "actions",
+        cell: (info) => {
+          const k = info.row.original;
+          const meta = info.table.options.meta as any;
+          return (
+            <div className="flex justify-end space-x-4">
+               {k.wage_type === 'piece_rate' && (
+                 <button 
+                   onClick={() => meta?.onLogOutput(k)}
+                   className="text-[10px] uppercase font-black text-sandstone-gold hover:text-white transition-colors flex items-center bg-transparent border-none cursor-pointer"
+                 >
+                   <Zap size={10} className="mr-1" /> {features.pieceRateWages ? 'Log Output' : 'Log Work'}
+                 </button>
+               )}
+               <button onClick={() => meta?.onAttend(k)} className="text-[10px] uppercase font-black text-gray-600 hover:text-white transition-colors">Attend</button>
+               <button onClick={() => meta?.onAdvance(k)} className="text-[10px] uppercase font-black text-gray-600 hover:text-white transition-colors">Advance</button>
+               <Link href={`/karigars/${k.id}`} className="text-gray-500 hover:text-white"><ChevronRight size={16} /></Link>
+            </div>
+          );
+        }
+      })
+    );
+
+    return cols;
+  }, [features, t, fmt]);
 
   const debouncedSearch = useDebounce(searchTerm, 300);
 
@@ -504,7 +523,7 @@ export default function KarigarsPage() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <SummaryCard label={`Total ${workerTermPlural}`} value={stats.activeCount} isCurrency={false} sub="Active duty" />
               <SummaryCard label="Present Today" value={stats.presentCount} isCurrency={false} sub="Attendance logged" />
-              <SummaryCard label="Advances (Peshgi)" value={stats.advancesOutstanding.toNumber()} sub="Total outstanding" />
+              <SummaryCard label={t.advance} value={stats.advancesOutstanding.toNumber()} sub="Total outstanding" />
               <SummaryCard label="Est. Payroll" value={stats.monthlyPayrollEst.toNumber()} sub="Projected this month" />
             </div>
 
@@ -694,7 +713,8 @@ function RegisterKarigarModal({ grades, onClose, onSuccess }: { grades: Grade[],
   const supabase = createClient();
   const toast = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { workerTerm } = usePersona();
+  const { t } = useIndustryConfig();
+  const workerTerm = t.worker;
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm<KarigarFormValues>({
     resolver: zodResolver(karigarSchema),
@@ -914,7 +934,7 @@ function AdvanceModal({ karigar, onClose, onSuccess }: { karigar: Karigar, onClo
   const supabase = createClient();
   const toast = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { fmt } = usePersona();
+  const { t, fmt } = useIndustryConfig();
   const { register, handleSubmit, watch: watchAdvance } = useForm<z.infer<typeof advanceSchema>>({
     resolver: zodResolver(advanceSchema),
     defaultValues: { reason: 'Medical' }
@@ -952,9 +972,9 @@ function AdvanceModal({ karigar, onClose, onSuccess }: { karigar: Karigar, onClo
        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="max-w-md w-full bg-surface border border-white/10 shadow-2xl overflow-hidden">
           <div className="p-6 bg-onyx border-b border-white/5 flex items-center justify-between">
              <div className="flex items-center space-x-3">
-                <Banknote className="text-amber-500" size={18} />
-                <h3 className="text-sm font-bold text-white uppercase tracking-widest">Issue Peshgi (Advance)</h3>
-             </div>
+                 <Banknote className="text-amber-500" size={18} />
+                 <h3 className="text-sm font-bold text-white uppercase tracking-widest">{`Issue ${t.advance}`}</h3>
+             </div>         
              <button onClick={onClose} className="text-gray-500 hover:text-white"><X size={20} /></button>
           </div>
           <div className="p-6 bg-amber-500/5 border-b border-white/5 flex items-center justify-between">
@@ -1046,7 +1066,7 @@ function LogProductionModal({ karigar, batches = [], onClose, onSuccess }: LogPr
   const supabase = createClient();
   const toast = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { fmt } = usePersona();
+  const { t, features, fmt } = useIndustryConfig();
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
     defaultValues: {
@@ -1069,29 +1089,28 @@ function LogProductionModal({ karigar, batches = [], onClose, onSuccess }: LogPr
       const skuId = selectedBatch?.sku_id || null;
       const unit = selectedBatch?.skus?.unit || 'pcs';
 
-      const { error } = await supabase.from('karigar_production_logs').insert({
+      const { error: logError } = await supabase.from('karigar_production_logs').insert({
         business_id: profile?.id,
         karigar_id: karigar.id,
-        batch_id: values.batch_id,
+        batch_id: values.batch_id || null,
         sku_id: skuId,
-        department: values.department,
         qty_produced: Number(values.qty_produced),
-        quality_grade: values.quality_grade,
-        time_taken_minutes: values.time_taken_minutes ? Number(values.time_taken_minutes) : null,
         piece_rate_used: Number(values.piece_rate_used),
-        unit: unit,
-        log_date: values.log_date
+        quality_grade: values.quality_grade,
+        department: values.department,
+        time_taken_minutes: values.time_taken_minutes ? Number(values.time_taken_minutes) : null
       });
+      if (logError) throw logError;
 
-      if (error) throw error;
-
-      onSuccess(`Logged production of ${values.qty_produced} ${unit} for ${karigar.name}`);
-    } catch (err: any) {
-      toast.error("Logging failed", humanizeError(err, 'log production'));
+      onSuccess(`Logged production output for ${karigar.name} ✓`);
+    } catch (err: unknown) {
+      toast.error("Transaction failed", humanizeError(err, 'log production'));
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (!profile) return null;
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
@@ -1103,13 +1122,13 @@ function LogProductionModal({ karigar, batches = [], onClose, onSuccess }: LogPr
           <div className="p-6 bg-onyx border-b border-white/5 flex items-center justify-between">
              <div className="flex items-center space-x-3">
                 <Zap className="text-electric-blue" size={18} />
-                <h3 className="text-sm font-bold text-white uppercase tracking-widest">Log Production Output</h3>
+                <h3 className="text-sm font-bold text-white uppercase tracking-widest">{`Log ${t.production}`}</h3>
              </div>
              <button onClick={onClose} className="text-gray-500 hover:text-white"><X size={20} /></button>
           </div>
           
           <div className="p-6 bg-blue-500/5 border-b border-white/5 flex flex-col space-y-1">
-             <span className="text-[10px] uppercase font-bold text-gray-500 tracking-widest">Worker</span>
+             <span className="text-[10px] uppercase font-bold text-gray-500 tracking-widest">{t.worker}</span>
              <span className="text-sm text-white font-bold">{karigar.name} ({karigar.karigar_code})</span>
           </div>
 
@@ -1154,7 +1173,7 @@ function LogProductionModal({ karigar, batches = [], onClose, onSuccess }: LogPr
 
              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                   <Label>Quantity Produced</Label>
+                   <Label>{`${t.productionUnit} Produced`}</Label>
                    <Input 
                      type="number" 
                      placeholder="0" 
@@ -1166,7 +1185,7 @@ function LogProductionModal({ karigar, batches = [], onClose, onSuccess }: LogPr
                    />
                 </div>
                 <div className="space-y-2">
-                   <Label>Piece Rate (PKR)</Label>
+                   <Label>{`Rate per ${t.productionUnit} (${profile?.currency || 'PKR'})`}</Label>
                    <Input 
                      type="number" 
                      step="0.0001" 
@@ -1180,7 +1199,7 @@ function LogProductionModal({ karigar, batches = [], onClose, onSuccess }: LogPr
              </div>
 
              <div className="space-y-2">
-                <Label>Quality Grading</Label>
+                <Label>{`${t.qualityGrade} Grading`}</Label>
                 <div className="grid grid-cols-4 gap-2">
                    {['A', 'B', 'C', 'rejected'].map(g => (
                       <button 
@@ -1199,7 +1218,7 @@ function LogProductionModal({ karigar, batches = [], onClose, onSuccess }: LogPr
              </div>
 
              <button type="submit" disabled={isSubmitting} className="w-full py-4 bg-[#C5A059] disabled:opacity-50 text-black text-[10px] font-black uppercase tracking-widest shadow-lg">
-                {isSubmitting ? "Logging..." : "Commit Production"}
+                {isSubmitting ? "Logging..." : `Commit ${t.production}`}
              </button>
           </form>
        </motion.div>

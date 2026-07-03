@@ -10,7 +10,7 @@ import {
   FileText, MessageCircle
 } from "lucide-react";
 import { sendWhatsAppAlert, ALERT_TEMPLATES } from "@/lib/whatsapp/alertEngine";
-import { usePersona } from "@/hooks/usePersona";
+import { useIndustryConfig } from "@/hooks/useIndustryConfig";
 import { createClient } from "@/lib/supabase/client";
 import { useSidebarState } from "@/hooks/useSidebarState";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
@@ -30,7 +30,9 @@ import { useToast } from "@/hooks/useToast";
 
 export default function InvoiceListPage() {
   const router = useRouter();
-  const { businessId } = usePersona();
+  const { profile } = useBusinessProfile();
+  const { t, region, fmt, fmtDate } = useIndustryConfig();
+  const businessId = profile?.id;
   const supabase = createClient();
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -121,7 +123,7 @@ export default function InvoiceListPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-lg font-semibold tracking-tight text-white">
-            Invoicing Registry
+            {t.invoices} Registry
           </h1>
           <p className="text-xs text-gray-500 mt-0.5">
             Financial Asset Tracking
@@ -129,10 +131,10 @@ export default function InvoiceListPage() {
         </div>
         <button
           onClick={() => router.push('/invoices/new')}
-          className="flex items-center space-x-2 px-4 py-2 bg-electric-blue text-onyx text-sm font-semibold rounded-sm hover:brightness-110 shadow-lg"
+          className="flex items-center space-x-2 px-4 py-2 bg-electric-blue text-onyx text-sm font-semibold rounded-sm hover:brightness-110 transition-all shadow-lg"
         >
           <Plus size={14} />
-          <span>Create Invoice</span>
+          <span>{`New ${t.invoice}`}</span>
         </button>
       </div>
 
@@ -140,9 +142,9 @@ export default function InvoiceListPage() {
       <div className="flex-1 flex items-center justify-center">
         <NewEmptyState
           icon="📄"
-          title="No invoices yet"
-          description="Create your first invoice when you make a sale to start tracking receivables."
-          action={{ label: 'New Invoice', href: '/invoices/new' }}
+          title={`No ${t.invoices.toLowerCase()} yet`}
+          description={`Create your first ${t.invoice.toLowerCase()} when you make a sale to start tracking receivables.`}
+          action={{ label: `New ${t.invoice}`, href: '/invoices/new' }}
         />
       </div>
     </div>
@@ -154,7 +156,7 @@ export default function InvoiceListPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-lg font-semibold tracking-tight text-white">
-              Invoicing Registry
+              {t.invoices} Registry
             </h1>
             <p className="text-xs text-gray-500 mt-0.5">
               Financial Asset Tracking
@@ -173,10 +175,10 @@ export default function InvoiceListPage() {
              </div>
              <button 
                onClick={() => router.push('/invoices/new')}
-               className="flex items-center space-x-2 px-4 py-2 bg-electric-blue text-onyx text-sm font-semibold rounded-sm hover:brightness-110 shadow-lg"
+               className="flex items-center space-x-2 px-4 py-2 bg-electric-blue text-onyx text-sm font-semibold rounded-sm hover:brightness-110 transition-all shadow-lg"
              >
                 <Plus size={14} />
-                <span>Create Invoice</span>
+                <span>{`New ${t.invoice}`}</span>
              </button>
           </div>
         </div>
@@ -229,7 +231,7 @@ export default function InvoiceListPage() {
               icon={FileText}
               page="invoices"
               action={{
-                label: "Construct New Invoice",
+                label: `New ${t.invoice}`,
                 onClick: () => router.push('/invoices/new')
               }}
             />
@@ -262,7 +264,7 @@ export default function InvoiceListPage() {
 
 function InvoiceRow({ inv }: { inv: any }) {
   const controls = useRowHighlight(inv.status);
-  const { fmt, fmtDate } = usePersona();
+  const { t, region, fmt, fmtDate } = useIndustryConfig();
   const router = useRouter();
   const { profile } = useBusinessProfile();
 
@@ -271,7 +273,7 @@ function InvoiceRow({ inv }: { inv: any }) {
 
   const handleWhatsAppSend = () => {
     if (!inv.party?.phone) return;
-    const msg = `Assalam o Alaikum ${inv.party.name},\n\nThis is a reminder for Invoice ${inv.invoice_no} of ${fmt(inv.balance_due)} which was due on ${fmtDate(inv.due_date || inv.issue_date)}.\n\nPlease arrange payment at your earliest.\n\nThank you,\n${profile?.business_name || 'our business'}\n\n🔒 Noxis Hub | Omnora Labs`;
+    const msg = `Assalam o Alaikum ${inv.party.name},\n\nThis is a reminder for ${t.invoice} ${inv.invoice_no} of ${fmt(inv.balance_due)} which was due on ${fmtDate(inv.due_date || inv.issue_date)}.\n\nPlease arrange payment at your earliest.\n\nThank you,\n${profile?.business_name || 'our business'}\n\n🔒 Noxis Hub | Omnora Labs`;
     const phone = formatPhoneForWhatsApp(inv.party.phone);
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
     window.open(url, '_blank');

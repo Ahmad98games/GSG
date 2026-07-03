@@ -7,6 +7,8 @@ import { useTierStore }
   from '@/stores/tierStore'
 import { humanizeError } from '@/lib/utils/errors'
 
+import { createClient as createDirectSupabaseClient } from '@supabase/supabase-js'
+
 interface FeedbackModalProps {
   isOpen: boolean
   onClose: () => void
@@ -47,14 +49,12 @@ export function FeedbackModal({
   if (!isOpen) return null
   
   const handleSubmit = async () => {
-    if (!text.trim()) {
-      setError('Please write something')
+    if (!rating || rating < 1) {
+      setError('Please select a star rating.')
       return
     }
-    if (text.trim().length < 20) {
-      setError(
-        'Please write at least 20 characters to share a proper review'
-      )
+    if (!text || text.trim().length < 20) {
+      setError('Please write at least 20 characters in your review.')
       return
     }
     if (!displayName.trim()) {
@@ -64,10 +64,69 @@ export function FeedbackModal({
     
     setSubmitting(true)
     setError('')
+
+    const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+    // Guard: check env vars exist
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      setError(
+        'Configuration error. Please contact support on WhatsApp: +92 333 435 5475'
+      )
+      setSubmitting(false)
+      return
+    }
     
     try {
-      const { error: dbError } =
-        await supabase
+      const directSupabase = createDirectSupabaseClient(
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY
+      )
+
+      // Submit to 'feedback' table first as requested
+      const { error: insertError } = await directSupabase
+        .from('feedback')
+        .insert({
+          rating: rating,
+          message: text.trim(),
+          name: displayName.trim(),
+          business_type: businessType || null,
+          city: city?.trim() || null,
+          share_publicly: shareOnWebsite ?? false,
+          submitted_at: new Date().toISOString(),
+        })
+      
+      if (insertError) {
+        // Check for RLS policy error specifically
+        if (
+          insertError.code === '42501' || 
+          insertError.message?.includes('row-level security') || 
+          insertError.message?.includes('permission denied')
+        ) {
+          setError(
+            'Feedback submission is currently unavailable. Please try again later or WhatsApp us: +92 333 435 5475'
+          )
+          console.error('RLS policy blocking feedback insert:', insertError)
+          return
+        }
+
+        // Table doesn't exist
+        if (
+          insertError.code === '42P01' ||
+          insertError.code === 'PGRST205' ||
+          insertError.message?.includes('schema cache')
+        ) {
+          setError('Feedback system not configured. Contact: +92 333 435 5475')
+          console.error('feedback table missing:', insertError)
+          return
+        }
+
+        throw insertError
+      }
+
+      // Also sync/insert to 'testimonials' table for the reviews page display fallback
+      try {
+        await directSupabase
           .from('testimonials')
           .insert({
             business_id: profile?.id || null,
@@ -75,21 +134,31 @@ export function FeedbackModal({
             display_name: displayName.trim(),
             business_type: businessType || null,
             city: city || null,
-            country_code:
-              profile?.country_code || 'PK',
+            country_code: profile?.country_code || 'PK',
             rating,
             tier: tier || 'Starter',
-            status: shareOnWebsite
-              ? 'pending'
-              : 'private',
+            status: shareOnWebsite ? 'pending' : 'private',
           })
-      
-      if (dbError) throw dbError
+      } catch (errTestimonial) {
+        console.warn('Optional testimonials sync failed:', errTestimonial)
+      }
       
       setStep('done')
     } catch (err: any) {
-      console.error('[Feedback] Submission failed:', err)
-      setError(humanizeError(err, 'submit feedback'))
+      console.error('Feedback submit error:', err)
+
+      // Check for actual network failure
+      if (err.message?.includes('fetch') ||
+        err.message?.includes('network') ||
+        err.message?.includes('Failed to fetch') ||
+        err.name === 'TypeError') {
+        setError(
+          'Network error. Make sure you have internet access and try again. ' +
+          'If the problem persists: WhatsApp +92 333 435 5475'
+        )
+      } else {
+        setError(err.message || 'Submission failed. Please try again.')
+      }
     } finally {
       setSubmitting(false)
     }
