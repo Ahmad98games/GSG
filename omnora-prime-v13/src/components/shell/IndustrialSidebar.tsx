@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -37,12 +37,19 @@ import {
   Microscope,
   Upload,
   CalendarCheck,
-  TrendingUp
+  TrendingUp,
+  Building2,
+  BookOpen,
+  Wallet,
+  AlertTriangle,
+  Thermometer,
+  AlertOctagon
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { usePersona } from "@/hooks/usePersona";
 import { useStaff } from "@/hooks/useStaff";
+import { useIndustryConfig } from '@/hooks/useIndustryConfig';
 import { hasModulePermission } from "@/lib/auth/permissions";
 import { cn } from "@/lib/utils";
 import { useSidebarState } from "@/hooks/useSidebarState";
@@ -85,12 +92,14 @@ export default React.memo(function IndustrialSidebar() {
   const queryClient = useQueryClient();
   const toast = useToast();
   const { isCollapsed, toggle } = useSidebarState();
-  const { hasModule, term, workerTermPlural, isLoading: isPersonaLoading, t, businessId } = usePersona();
+  const { hasModule, term, workerTermPlural, isLoading: isPersonaLoading, t: personaT, businessId } = usePersona();
   const { profile } = useBusinessProfile();
   const { role, isLoading: isRoleLoading } = useStaff(businessId);
   const [mounted, setMounted] = useState(false);
   const [isProductionModalOpen, setIsProductionModalOpen] = useState(false);
   const supabase = createClient();
+
+  const { nav, features, industry } = useIndustryConfig();
 
   const isLoading = isPersonaLoading || isRoleLoading;
 
@@ -110,80 +119,105 @@ export default React.memo(function IndustrialSidebar() {
     return () => window.removeEventListener('keydown', handleGlobalKey);
   }, []);
 
-  const NAVIGATION_GROUPS: NavGroup[] = [
+  const NAV_ITEMS = useMemo(() => [
     {
-      label: 'CORE',
-      items: [
-        { id: 'quick-entry', name: "Quick Entry", href: "/quick-entry", icon: Zap },
-        { id: 'dashboard', name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-        { id: 'inventory', name: term('inventory'), href: "/inventory", icon: Package },
-        { id: 'karigars', name: workerTermPlural, href: "/karigars", icon: Users },
-        { id: 'worker-network', name: t('nav_worker_network', "Worker Network"), href: "/karigars/network", icon: Users, badge: "NEW" },
-        { id: 'production', name: term('production'), href: "/production", icon: Factory },
-        { id: 'payroll', name: term('payroll'), href: "/payroll", icon: Banknote },
-        { id: 'dispatch', name: "Dispatch", href: "/dispatch", icon: Truck },
-      ]
+      label: nav.dashboard,
+      href: '/dashboard',
+      icon: LayoutDashboard,
+      always: true,
     },
     {
-      label: 'COMMERCE',
-      items: [
-        { id: 'invoices', name: term('sales'), href: "/invoices", icon: ShoppingCart },
-        { id: 'parties', name: term('parties'), href: "/parties", icon: ShieldCheck },
-        { id: 'purchase', name: term('purchase'), href: "/purchase", icon: Truck },
-        { id: 'orders', name: "Orders", href: "/orders", icon: ClipboardList },
-        { id: 'promises', name: "Promises", href: "/promises", icon: CalendarCheck },
-        { id: 'network', name: t('nav_network', "Factory Network"), href: "/network", icon: Globe, badge: "NEW" },
-        { id: 'finance', name: t('nav_finance', "Finance"), href: "/finance", icon: Banknote, badge: "NEW" },
-      ]
+      label: nav.inventory,
+      href: '/inventory',
+      icon: Package,
+      always: true,
     },
     {
-      label: 'FINANCE',
-      items: [
-        { id: 'khata', name: "Khata", href: "/khata", icon: Book },
-        { id: 'cashflow', name: "Cashflow", href: "/cashflow", icon: ArrowLeftRight },
-        { id: 'reports', name: "Reports", href: "/reports", icon: PieChart },
-        { id: 'audit', name: "Audit", href: "/audit", icon: Shield },
-      ]
+      label: nav.workers,
+      href: '/karigars',
+      icon: Users,
+      always: true,
     },
     {
-      label: 'INTELLIGENCE',
-      items: [
-        { id: 'cctv', name: "CCTV", href: "/cctv", icon: Zap },
-        { id: 'analytics', name: "Analytics", href: "/analytics", icon: BarChart3 },
-      ]
+      label: nav.production,
+      href: '/production',
+      icon: Zap,
+      // Hide production tab for pure
+      // wholesale businesses
+      always: industry.key !== 'general',
     },
     {
-      label: 'TOOLS',
-      items: [
-        { id: 'intelligence', name: t('nav_intelligence', "Noxis Intelligence"), href: "/intelligence", icon: TrendingUp, badge: "NEW" },
-        { 
-          id: 'import', 
-          name: "Import Data", 
-          href: "/import", 
-          icon: Upload,
-          badge: (() => {
-            const launchDate = new Date("2025-05-19");
-            const currentDate = new Date();
-            const diffTime = currentDate.getTime() - launchDate.getTime();
-            const diffDays = diffTime / (1000 * 60 * 60 * 24);
-            return diffDays >= 0 && diffDays <= 30 ? "NEW" : undefined;
-          })()
-        },
-        { id: 'generators', name: t('nav_generators', "Generators"), href: "/generators", icon: FileText },
-        { id: 'calculators', name: t('nav_calculators', "Calculators"), href: "/calculators", icon: Calculator },
-        { id: 'converters', name: t('nav_converters', "Unit Converters"), href: "/converters", icon: ArrowLeftRight },
-        { id: 'file-morph', name: t('nav_file_morph', "PDF & File Tools"), href: "/file-morph", icon: Layers },
-      ]
+      label: nav.invoices,
+      href: '/invoices',
+      icon: FileText,
+      always: true,
     },
     {
-      label: 'SYSTEM',
-      items: [
-        { id: 'messaging', name: "Messaging", href: "/messaging", icon: Bell },
-        { id: 'pairing', name: "Pairing", href: "/pairing", icon: Globe },
-        { id: 'settings', name: "Settings", href: "/settings", icon: Settings },
-      ]
+      label: nav.parties,
+      href: '/parties',
+      icon: Building2,
+      always: true,
     },
-  ];
+    {
+      label: nav.ledger,
+      href: '/khata',
+      icon: BookOpen,
+      always: true,
+    },
+    {
+      label: nav.payroll,
+      href: '/payroll',
+      icon: Wallet,
+      always: true,
+    },
+    {
+      label: nav.dispatch,
+      href: '/dispatch',
+      icon: Truck,
+      always: true,
+    },
+    {
+      label: nav.purchase,
+      href: '/purchase',
+      icon: ShoppingCart,
+      always: true,
+    },
+    {
+      label: nav.reports,
+      href: '/reports',
+      icon: BarChart3,
+      always: true,
+    },
+    // Industry-specific nav items
+    {
+      label: 'Expiry Alerts',
+      href: '/inventory/expiry',
+      icon: AlertTriangle,
+      always: features.expiryManagement,
+    },
+    {
+      label: 'Yield Tracking',
+      href: '/production/yield',
+      icon: TrendingUp,
+      always: features.yieldTracking,
+    },
+    {
+      label: 'Cold Chain Log',
+      href: '/cold-chain',
+      icon: Thermometer,
+      always: features.coldChainLogging,
+    },
+    {
+      label: 'Batch Recall',
+      href: '/inventory/batches',
+      icon: AlertOctagon,
+      always: features.batchTracking,
+    },
+  ], [nav, features, industry.key]);
+
+  const visibleItems = useMemo(() => NAV_ITEMS.filter(
+    item => item.always
+  ), [NAV_ITEMS]);
 
   if (!mounted) return null;
 
@@ -256,8 +290,34 @@ export default React.memo(function IndustrialSidebar() {
           </button>
         </div>
 
+        {/* Industry Badge */}
+        {!isCollapsed && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            paddingLeft: 16,
+            paddingBottom: 12,
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            marginBottom: 8,
+          }}>
+            <span style={{ fontSize: 20 }}>
+              {industry.emoji}
+            </span>
+            <span style={{
+              fontSize: 10,
+              fontWeight: 700,
+              color: industry.accentColor,
+              letterSpacing: 1.5,
+              textTransform: 'uppercase',
+            }}>
+              {industry.displayName}
+            </span>
+          </div>
+        )}
+
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto custom-scrollbar py-6 space-y-8 px-2">
+        <nav className="flex-1 overflow-y-auto custom-scrollbar py-6 px-2">
           {isLoading ? (
             <div className="space-y-4 px-2">
               {[1, 2, 3, 4, 5].map(i => (
@@ -265,42 +325,18 @@ export default React.memo(function IndustrialSidebar() {
               ))}
             </div>
           ) : (
-            NAVIGATION_GROUPS.map((group, idx) => {
-              const visibleItems = group.items.filter(item => 
-                (item.id === 'import' || item.id === 'network' || item.id === 'intelligence' || item.id === 'finance' || item.id === 'worker-network' || hasModule(item.id as string)) && 
-                (role && hasModulePermission(role, item.id))
-              );
-              if (visibleItems.length === 0) return null;
-
-              const dataTourAttr =
-                group.label === 'CORE' ? 'sidebar-core' :
-                group.label === 'COMMERCE' ? 'sidebar-commerce' :
-                group.label === 'FINANCE' ? 'sidebar-finance' :
-                undefined;
-
-              return (
-                <div key={idx} className="space-y-2" data-tour={dataTourAttr}>
-                  {!isCollapsed && (
-                    <p className="text-[9px] uppercase font-black text-noxis-text-muted tracking-widest px-4 mb-2">
-                      {group.label}
-                    </p>
-                  )}
-                  <div className="space-y-1">
-                    {visibleItems.map((item) => (
-                      <SidebarItem 
-                        key={item.id}
-                        href={item.href}
-                        icon={item.icon}
-                        label={item.name}
-                        isCollapsed={isCollapsed}
-                        isActive={pathname.startsWith(item.href)}
-                        badge={item.badge}
-                      />
-                    ))}
-                  </div>
-                </div>
-              );
-            })
+            <div className="space-y-1">
+              {visibleItems.map((item) => (
+                <SidebarItem 
+                  key={item.href}
+                  href={item.href}
+                  icon={item.icon}
+                  label={item.label}
+                  isCollapsed={isCollapsed}
+                  isActive={pathname.startsWith(item.href)}
+                />
+              ))}
+            </div>
           )}
         </nav>
 
