@@ -16,6 +16,8 @@ import { useBusinessProfileStore } from "@/store/BusinessProfileStore";
 import { useThemeStore } from "@/stores/themeStore";
 import { cn } from "@/lib/utils";
 import { INDUSTRIES } from "@/lib/persona/industries";
+import { INDUSTRY_CONFIGS, IndustryKey } from '@/lib/industry/configs';
+import { REGION_CONFIGS } from '@/lib/industry/regionConfigs';
 import { CurrencyCode } from "@/lib/currency/currencyEngine";
 import { useToast } from "@/hooks/useToast";
 import { humanizeError } from "@/lib/utils/errors";
@@ -314,10 +316,11 @@ export default function OnboardingPage() {
         region: values.region,
         country_code: values.country_code,
         industry_key: values.industry_key,
+        industry: values.industry_key,
         industry_type: mapIndustryToType(values.industry_key),
         tax_name: values.tax_name,
         tax_rate: values.tax_rate,
-        tax_label: values.tax_name, // Sync for legacy components
+        tax_label: REGION_CONFIGS[values.country_code as keyof typeof REGION_CONFIGS]?.taxLabel || values.tax_name || 'GST',
         phone: values.phone,
         city: values.city,
         tax_number: values.tax_number,
@@ -326,7 +329,7 @@ export default function OnboardingPage() {
         persona_locked: true,
         worker_term: values.worker_term,
         stock_unit_primary: 'unit',
-        currency: values.currency,
+        currency: REGION_CONFIGS[values.country_code as keyof typeof REGION_CONFIGS]?.currency || values.currency || 'PKR',
         role: 'manufacturer',
         theme_id: activeTheme.id,
         owner_phone: values.phone,
@@ -546,80 +549,135 @@ export default function OnboardingPage() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="space-y-6"
+                className="space-y-6 max-w-3xl mx-auto"
               >
                 <div className="text-center space-y-2">
-                  <h2 className="text-2xl font-black text-white uppercase tracking-tight">Industry Persona Blueprint</h2>
+                  <h2 className="text-2xl font-black text-white uppercase tracking-tight">Industry & Region</h2>
                   <p className="text-zinc-500 text-sm">
-                    Select your vertical layout to customize terminology labels, units of measure, and database schemas.
+                    Select your operating country and industry vertical to customize localization tokens, currency, and tax settings.
                   </p>
                 </div>
 
-                <div className="flex flex-col md:flex-row gap-6 min-h-[380px]">
-                  {/* Category Sidebar */}
-                  <div className="w-full md:w-60 bg-zinc-950/60 p-4 border border-zinc-800 rounded-sm flex flex-col space-y-1">
-                    <p className="text-[9px] uppercase font-black text-zinc-500 tracking-widest px-2 mb-3">Filter Sectors</p>
-                    <button 
-                      type="button"
-                      onClick={() => setSelectedCategory(null)}
-                      className={cn(
-                        "w-full text-left px-3 py-2 text-[10px] font-black uppercase tracking-wider rounded-sm transition-all",
-                        !selectedCategory ? "bg-cyan-500 text-black" : "text-zinc-500 hover:text-white hover:bg-white/5"
-                      )}
-                    >
-                      All Blueprints
-                    </button>
-                    {categories.map(cat => (
-                      <button 
-                        key={cat}
-                        type="button"
-                        onClick={() => setSelectedCategory(cat)}
-                        className={cn(
-                          "w-full text-left px-3 py-2 text-[10px] font-black uppercase tracking-wider rounded-sm transition-all",
-                          selectedCategory === cat ? "bg-cyan-500 text-black" : "text-zinc-500 hover:text-white hover:bg-white/5"
-                        )}
-                      >
-                        {cat}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Industry Cards Grid */}
-                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[420px] overflow-y-auto pr-2 custom-scrollbar">
-                    {industriesInSelectedCategory.map((ind) => {
-                      const Icon = ind.id.includes('textile') || ind.id.includes('garment') ? Factory : ind.id.includes('pharma') ? Landmark : Package;
-                      return (
-                        <div
-                          key={ind.id}
+                <div className="bg-zinc-950/60 p-8 border border-zinc-800 rounded-sm space-y-6">
+                  {/* Country Selector */}
+                  <div className="space-y-3">
+                    <label className="text-[10px] uppercase font-black text-zinc-400 tracking-wider">
+                      Country / Region
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {Object.values(REGION_CONFIGS).map(region => (
+                        <button
+                          type="button"
+                          key={region.countryCode}
                           onClick={() => {
-                            setValue('industry_key', ind.id);
-                            setThemeByIndustry(ind.suggestedTheme);
+                            setValue('country_code', region.countryCode);
                           }}
                           className={cn(
-                            "p-5 bg-zinc-950/40 border cursor-pointer transition-all hover:bg-zinc-900/40 relative overflow-hidden rounded-sm flex flex-col justify-between group",
-                            selectedIndustryKey === ind.id ? "border-cyan-400 ring-1 ring-cyan-400/20 bg-cyan-950/10" : "border-zinc-800"
+                            "p-3 rounded-sm border text-left text-xs transition-all",
+                            selectedCountryCode === region.countryCode
+                              ? 'border-cyan-400 bg-cyan-400/10 text-white'
+                              : 'border-white/8 text-gray-500 hover:border-white/18'
                           )}
                         >
-                          <div>
-                            <div className={cn("mb-3", selectedIndustryKey === ind.id ? "text-cyan-400" : "text-zinc-600 group-hover:text-zinc-400")}>
-                              <Icon size={24} />
-                            </div>
-                            <h4 className="text-white font-black uppercase text-[11px] tracking-wider">{ind.name}</h4>
-                            {ind.nameLocal && (
-                              <p className="text-[9px] text-zinc-500 font-bold font-mono">{ind.nameLocal}</p>
-                            )}
+                          <div className="font-semibold text-white">
+                            {region.countryCode}
                           </div>
-                          <p className="text-[9px] text-zinc-500 uppercase mt-4 font-bold tracking-widest">{ind.category} • {ind.terms.worker}s</p>
-                          
-                          {selectedIndustryKey === ind.id && (
-                            <div className="absolute top-2 right-2 w-4 h-4 bg-cyan-400 flex items-center justify-center">
-                              <Check size={10} className="text-black" />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                          <div className="text-[10px] text-zinc-400 mt-0.5 font-mono">
+                            {region.currency} · {region.taxLabel} {region.taxRate}%
+                          </div>
+                        </button>
+                      ))}
+                    </div>
                   </div>
+
+                  {/* Industry vertical selection grid */}
+                  <div className="space-y-3">
+                    <label className="text-[10px] uppercase font-black text-zinc-400 tracking-wider">
+                      Industry Blueprint
+                    </label>
+                    <p className="text-xs text-gray-500">
+                      Your choice changes the entire software — labels, features, and workflows adapt to your business.
+                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {Object.values(INDUSTRY_CONFIGS).map(config => (
+                        <button
+                          type="button"
+                          key={config.key}
+                          onClick={() => {
+                            setValue('industry_key', config.key);
+                            setThemeByIndustry(config.key);
+                          }}
+                          className={cn(
+                            "p-4 rounded-sm border text-left transition-all",
+                            selectedIndustryKey === config.key
+                              ? 'border-[--accent] bg-[--accent-dim]'
+                              : 'border-white/8 bg-[#0F1114] hover:border-white/18'
+                          )}
+                          style={{
+                            '--accent': config.accentColor,
+                            '--accent-dim': config.accentColorDim,
+                          } as React.CSSProperties}
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-xl">
+                              {config.emoji}
+                            </span>
+                            <span className="text-sm font-semibold text-white">
+                              {config.displayName}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-gray-400 leading-relaxed">
+                            {config.description}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Live preview of what changes */}
+                  {selectedIndustryKey && (
+                    <div className="p-4 bg-[#070809] border border-white/6 rounded-sm space-y-3">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                        How the software will look
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        {[
+                          ['Workers called', INDUSTRY_CONFIGS[selectedIndustryKey as IndustryKey]?.terms.workers],
+                          ['Advances called', INDUSTRY_CONFIGS[selectedIndustryKey as IndustryKey]?.terms.advance],
+                          ['Items called', INDUSTRY_CONFIGS[selectedIndustryKey as IndustryKey]?.terms.items],
+                          ['Production called', INDUSTRY_CONFIGS[selectedIndustryKey as IndustryKey]?.terms.production],
+                          ['Invoice called', INDUSTRY_CONFIGS[selectedIndustryKey as IndustryKey]?.terms.invoice],
+                        ].map(([label, value]) => (
+                          <div key={label} className="flex items-center justify-between">
+                            <span className="text-gray-500">
+                              {label}
+                            </span>
+                            <span className="text-white font-medium">
+                              {value}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="pt-3 border-t border-white/6">
+                        <p className="text-[10px] text-zinc-500 mb-1.5 font-bold uppercase tracking-widest">
+                          Features included
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {Object.entries(
+                            INDUSTRY_CONFIGS[selectedIndustryKey as IndustryKey]?.features || {}
+                          )
+                            .filter(([_, v]) => v)
+                            .map(([key]) => (
+                            <span key={key} className="text-[9px] bg-white/5 text-gray-400 px-2 py-0.5 rounded-full">
+                              {key.replace(/([A-Z])/g, ' $1').trim()}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-between pt-6 border-t border-zinc-800">
@@ -630,7 +688,11 @@ export default function OnboardingPage() {
                     onClick={() => setStep(2)}
                     className="px-10 py-3 bg-cyan-500 hover:bg-cyan-600 disabled:opacity-50 disabled:cursor-not-allowed text-black font-black uppercase tracking-widest text-xs transition-all rounded-sm shadow-[0_4px_20px_rgba(6,182,212,0.25)]"
                   >
-                    Ecosystem Details
+                    Continue with {
+                      selectedIndustryKey
+                        ? INDUSTRY_CONFIGS[selectedIndustryKey as IndustryKey]?.displayName
+                        : '...'
+                    }
                   </button>
                 </div>
               </motion.div>
