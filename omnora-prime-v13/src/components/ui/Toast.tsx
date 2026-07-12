@@ -16,7 +16,7 @@ export const ToastContainer: React.FC = () => {
   const { toasts, removeToast } = useToastStore();
 
   return (
-    <div className="fixed top-24 right-6 z-[200] flex flex-col space-y-3 pointer-events-none w-full max-w-sm">
+    <div className="fixed bottom-6 right-6 z-[200] flex flex-col space-y-3 pointer-events-none w-full max-w-sm">
       <AnimatePresence mode="popLayout">
         {toasts.map((toast) => (
           <ToastItem 

@@ -10,6 +10,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/useToast";
 import { useIndustryConfig } from "@/hooks/useIndustryConfig";
+import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import Decimal from "decimal.js";
@@ -28,7 +29,8 @@ interface ActivityItem {
 export default function QuickEntryPage() {
   const [activeTab, setActiveTab] = useState<TabMode>("production");
   const { t, features, fmt, region } = useIndustryConfig();
-  const businessId = region.profile?.id;
+  const { profile } = useBusinessProfile();
+  const businessId = profile?.id;
   const supabase = createClient();
   const [localActivityList, setLocalActivityList] = useState<ActivityItem[]>([]);
   const [isActivityLoading, setIsActivityLoading] = useState(true);
@@ -249,7 +251,9 @@ function ProductionForm({ onSaved }: { onSaved: () => void }) {
   const [qty, setQty] = useState("");
   const [grade, setGrade] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { businessId } = usePersona();
+  const { profile } = useBusinessProfile();
+  const businessId = profile?.id;
+  const { t } = useIndustryConfig();
   const { success, error } = useToast();
   const supabase = createClient();
   const queryClient = useQueryClient();
@@ -443,7 +447,8 @@ function PaymentForm({ onSaved }: { onSaved: () => void }) {
   const [method, setMethod] = useState("");
   const [direction, setDirection] = useState<"received" | "paid">("received");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { businessId } = usePersona();
+  const { profile } = useBusinessProfile();
+  const businessId = profile?.id;
   const { success, error } = useToast();
   const supabase = createClient();
   const queryClient = useQueryClient();
@@ -648,7 +653,8 @@ function AttendanceForm({ onSaved }: { onSaved: () => void }) {
   const [karigarSearch, setKarigarSearch] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { businessId } = usePersona();
+  const { profile } = useBusinessProfile();
+  const businessId = profile?.id;
   const { success, error } = useToast();
   const supabase = createClient();
   const queryClient = useQueryClient();

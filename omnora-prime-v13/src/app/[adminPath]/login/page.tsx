@@ -17,13 +17,18 @@ export default function AdminLogin() {
     setLoading(true)
     setError('')
 
+    // Generate a secure client-side nonce (32 hex characters)
+    const array = new Uint8Array(16);
+    window.crypto.getRandomValues(array);
+    const nonce = Array.from(array, dec => dec.toString(16).padStart(2, '0')).join('');
+
     try {
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ password, nonce }),
       })
       const data = await res.json()
 

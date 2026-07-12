@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { 
   Download, MessageCircle, 
@@ -17,6 +17,9 @@ import { cn } from "@/lib/utils";
 import { WhatsAppSender, WhatsAppTemplates } from "@/lib/whatsapp/WhatsAppSender";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { humanizeError } from '@/lib/utils/errors';
+import { buildInvoiceMessage, buildPaymentReminderMessage, openWhatsApp } from '@/lib/whatsapp/buildMessage';
+import { logAction } from '@/lib/audit/logAction';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 // --- Types ---
 
@@ -26,6 +29,8 @@ interface BusinessProfile {
   address: string | null;
   phone: string | null;
   tier?: string;
+  currency?: string;
+  country_code?: string;
 }
 
 interface Party {
@@ -126,20 +131,6 @@ export default function InvoiceDetailPage() {
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [paymentNote, setPaymentNote] = useState('');
   const [recordingPayment, setRecordingPayment] = useState(false);
-
-  const handleWhatsAppSend = () => {
-    if (!invoice || !invoice.party?.phone) return;
-    
-    const message = WhatsAppTemplates.invoice(
-      business?.business_name || 'Business',
-      invoice.invoice_no,
-      fmt(invoice.total),
-      invoice.due_date || 'On Receipt',
-      business?.phone || ''
-    );
-    
-    WhatsAppSender.send({ phone: invoice.party.phone, message }, profile?.tier || 'starter', supabase);
-  };
 
   // ── Record Payment handler ──
   const handleRecordPayment = async () => {
@@ -310,6 +301,163 @@ export default function InvoiceDetailPage() {
     },
     enabled: !!businessId
   });
+
+  const { currentUser } = useCurrentUser();
+
+  // Generate portal URL for this party (or null if none exists yet)
+  const [portalUrl, setPortalUrl] = useState<string | null>(null);
+
+  // Load existing portal for this party on mount
+  useEffect(() => {
+    if (!invoice?.party_id) return;
+    supabase
+      .from('portal_sessions')
+      .select('token')
+      .eq('party_id', invoice.party_id)
+      .eq('is_revoked', false)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+      .then(({ data }: any) => {
+        if (data?.token) {
+          setPortalUrl(
+            `${window.location.origin}/portal/${data.token}`
+          );
+        }
+      });
+  }, [invoice?.party_id, supabase]);
+
+  const handleSendWhatsApp = async () => {
+    if (!invoice || !profile) return;
+
+    // If no portal exists yet, offer to generate one automatically
+    let finalPortalUrl = portalUrl;
+    if (!finalPortalUrl && invoice.party_id) {
+      const generate = window.confirm(
+        `Generate a portal link for ${invoice.party?.name || 'this customer'} ` +
+        `so they can view their account online? ` +
+        `The link will be included in the WhatsApp message.`
+      );
+      if (generate) {
+        try {
+          // Generate a secure client-side nonce (32 hex characters)
+          const array = new Uint8Array(16);
+          window.crypto.getRandomValues(array);
+          const nonce = Array.from(array, dec => dec.toString(16).padStart(2, '0')).join('');
+
+          const res = await fetch(
+            `${window.location.origin}/api/portal/generate`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                partyId: invoice.party_id,
+                expiryDays: 30,
+                nonce,
+              }),
+            }
+          );
+          const data = await res.json();
+          if (data.success) {
+            finalPortalUrl = data.url;
+            setPortalUrl(data.url);
+          }
+        } catch {
+          // Non-fatal — send without portal
+        }
+      }
+    }
+
+    const message = buildInvoiceMessage({
+      businessName: business?.business_name || profile.business_name || 'Business',
+      partyName: invoice.party?.name || '',
+      partyPhone: invoice.party?.phone,
+      invoiceNumber: invoice.invoice_no,
+      invoiceDate: invoice.issue_date || new Date().toLocaleDateString('en-PK'),
+      dueDate: invoice.due_date
+        ? new Date(invoice.due_date).toLocaleDateString('en-PK')
+        : null,
+      subtotal: invoice.subtotal || 0,
+      taxAmount: invoice.tax_amount || 0,
+      totalAmount: invoice.total || 0,
+      balanceDue: invoice.balance_due || 0,
+      currency: business?.currency || profile.currency || 'PKR',
+      portalUrl: finalPortalUrl,
+      countryCode: business?.country_code || profile.country_code || 'PK',
+    });
+
+    const sent = openWhatsApp(
+      invoice.party?.phone,
+      message,
+      business?.country_code || profile.country_code || 'PK'
+    );
+
+    if (!sent) {
+      toast.error(
+        'Missing Phone',
+        'No phone number for this customer. Add their WhatsApp number in Parties first.'
+      );
+    } else {
+      toast.success('WhatsApp Opened', 'WhatsApp opened with formatted invoice summary');
+      // Log to audit
+      logAction('invoice.whatsapp_sent', {
+        entityType: 'invoice',
+        entityId: invoice.id,
+        entityLabel: invoice.invoice_no,
+        businessId: profile.id,
+        userName: currentUser?.name,
+        userRole: currentUser?.role,
+      });
+    }
+  };
+
+  // Payment reminder button (separate action)
+  const handleSendReminder = () => {
+    if (!invoice || !profile) return;
+    if (!invoice.balance_due || invoice.balance_due <= 0) {
+      toast.info('Info', 'This invoice is fully paid');
+      return;
+    }
+
+    const message = buildPaymentReminderMessage({
+      businessName: business?.business_name || profile.business_name || 'Business',
+      partyName: invoice.party?.name || '',
+      invoiceNumber: invoice.invoice_no,
+      balanceDue: invoice.balance_due,
+      dueDate: invoice.due_date
+        ? new Date(invoice.due_date).toLocaleDateString('en-PK')
+        : 'ASAP',
+      currency: business?.currency || profile.currency || 'PKR',
+      portalUrl,
+    });
+
+    const sent = openWhatsApp(
+      invoice.party?.phone,
+      message,
+      business?.country_code || profile.country_code || 'PK'
+    );
+
+    if (sent) {
+      toast.success('Success', 'Reminder message loaded into WhatsApp');
+      // Log to audit
+      logAction('invoice.whatsapp_sent', {
+        entityType: 'invoice',
+        entityId: invoice.id,
+        entityLabel: `Reminder: ${invoice.invoice_no}`,
+        businessId: profile.id,
+        userName: currentUser?.name,
+        userRole: currentUser?.role,
+      });
+    } else {
+      toast.error(
+        'Missing Phone',
+        'No phone number for this customer. Add their WhatsApp number in Parties first.'
+      );
+    }
+  };
 
   if (invoiceLoading) return (
     <div className="min-h-screen bg-[#0F1113] flex items-center justify-center font-mono text-[10px] uppercase tracking-[0.5em] text-gray-700 animate-pulse">
@@ -571,16 +719,27 @@ export default function InvoiceDetailPage() {
                         <ChevronRight size={14} className="text-gray-700 group-hover:translate-x-1 transition-transform" />
                      </button>
                      <button 
-                       onClick={handleWhatsAppSend}
-                       disabled={!invoice.party?.phone}
-                       className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 border border-white/5 transition-all group disabled:opacity-30"
+                       onClick={handleSendWhatsApp}
+                       className="w-full flex items-center justify-between p-4 bg-[#25D366]/5 hover:bg-[#25D366]/10 border border-[#25D366]/10 transition-all group text-[#25D366]"
                      >
                         <div className="flex items-center space-x-3">
                            <MessageCircle size={14} className="text-[#25D366]" />
-                           <span className="text-[10px] uppercase font-black tracking-widest">Send via WhatsApp</span>
+                           <span className="text-[10px] uppercase font-black tracking-widest font-bold">Send Invoice via WhatsApp</span>
                         </div>
-                        {!invoice.party?.phone && <span className="text-[8px] font-bold text-red-500 uppercase">No Phone</span>}
+                        <ChevronRight size={14} className="text-[#25D366]/40 group-hover:translate-x-1 transition-transform" />
                      </button>
+                     {invoice.balance_due > 0 && (
+                       <button 
+                         onClick={handleSendReminder}
+                         className="w-full flex items-center justify-between p-4 bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/10 transition-all group text-amber-400"
+                       >
+                          <div className="flex items-center space-x-3">
+                             <MessageCircle size={14} className="text-amber-400" />
+                             <span className="text-[10px] uppercase font-black tracking-widest font-bold">Send Payment Reminder</span>
+                          </div>
+                          <ChevronRight size={14} className="text-amber-400/40 group-hover:translate-x-1 transition-transform" />
+                       </button>
+                     )}
                      <button
                        onClick={async () => {
                          const randomSuffix = Math.floor(1000 + Math.random() * 9000);

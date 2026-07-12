@@ -266,7 +266,7 @@ export default function KarigarsPage() {
   }
 
   const columns = useMemo(() => {
-    const cols = [
+    const cols: any[] = [
       columnHelper.accessor("name", {
         header: "Name",
         cell: (info) => {

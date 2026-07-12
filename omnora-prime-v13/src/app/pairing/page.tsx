@@ -43,6 +43,8 @@ export default function PairingPage() {
         const qrPayload = JSON.stringify({
           bridgeUrl: data.bridgeUrl,
           business_id: profile?.id || "system_default",
+          businessName: profile?.business_name || "My Factory",
+          version: "1",
           key: pairingKey,
           // Legacy NSP fields kept for backward compatibility with older
           // mobile builds — can be removed once all clients are updated

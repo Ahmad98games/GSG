@@ -452,7 +452,7 @@ function DepartmentCard({ name, logs, onLogProduction }: {
   );
 }
 
-function BatchRow({ batch, fmt }: { batch: ProductionBatch, fmt: (v: number | string) => string }) {
+function BatchRow({ batch, fmt }: { batch: ProductionBatch, fmt: (amount: number) => string }) {
   const costToDate = useMemo(() => 
     batch.costs?.reduce((acc: number, c: { total_cost: number }) => acc + Number(c.total_cost), 0) || 0,
   [batch.costs]);

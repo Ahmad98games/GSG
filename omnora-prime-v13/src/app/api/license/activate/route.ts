@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 import { createHmac } from 'crypto'
 import { checkRateLimit } from '@/lib/security/rateLimiter'
 
+import { consumeNonce } from '@/lib/security/nonce'
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -19,6 +21,9 @@ function generateDeviceId(factors: Record<string, string>): string {
     .slice(0, 32)
 }
 
+// In-memory rate limit map for activation attempts
+const activationAttempts = new Map<string, { count: number; lockedUntil: number | null }>()
+
 export async function POST(req: NextRequest) {
   // Guard: env vars must exist
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -33,16 +38,26 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const ip = req.headers.get('x-forwarded-for') ?? 
-             req.headers.get('x-real-ip') ?? 
-             'unknown';
+    const ip = req.headers.get('cf-connecting-ip') ||
+               req.headers.get('x-forwarded-for')?.split(',')[0] ||
+               req.headers.get('x-real-ip') ||
+               'unknown';
 
-    if (!checkRateLimit(ip, 5, 60_000)) {
+    const state = activationAttempts.get(ip) || { count: 0, lockedUntil: null }
+
+    if (state.lockedUntil && Date.now() < state.lockedUntil) {
+      const minutesLeft = Math.ceil((state.lockedUntil - Date.now()) / 60000)
       return NextResponse.json(
-        { error: 'Too many license activation attempts. Please try again in a minute.' },
+        { error: `Too many attempts. Try again in ${minutesLeft} minute(s).` },
         { status: 429 }
-      );
+      )
     }
+
+    state.count++
+    if (state.count >= 10) {
+      state.lockedUntil = Date.now() + 30 * 60 * 1000
+    }
+    activationAttempts.set(ip, state)
 
     let body: any
 
@@ -59,31 +74,64 @@ export async function POST(req: NextRequest) {
       licenseKey,
       machineInfo,
       appVersion,
+      nonce,
+      email,
+      autoDetect,
     } = body
 
-    // Validate request shape
-    if (!licenseKey || typeof licenseKey !== 'string') {
+    if (!consumeNonce(nonce)) {
       return NextResponse.json(
-        { error: 'License key is required' },
+        { error: 'Request already processed. Please try again.' },
         { status: 400 }
       )
     }
 
-    const cleanKey = licenseKey.trim().toUpperCase()
+    let cleanKey = (licenseKey || '').trim().toUpperCase()
+    let license: any = null
+    let lookupError: any = null
 
-    // Look up the license in Supabase
-    const { data: license, error: lookupError } = await supabase
-      .from('licenses')
-      .select('*')
-      .eq('license_key', cleanKey)
-      .single()
+    if (autoDetect && email) {
+      // Auto-detect: find by customer_email
+      const { data, error } = await supabase
+        .from('licenses')
+        .select('*')
+        .eq('customer_email', email.trim().toLowerCase())
+        .eq('is_active', true)
+        .eq('is_deactivated', false)
+        .limit(1)
+        .maybeSingle()
+
+      license = data
+      lookupError = error
+      if (license) {
+        cleanKey = license.license_key
+      }
+    } else {
+      // Validate request shape
+      if (!cleanKey) {
+        return NextResponse.json(
+          { error: 'License key is required' },
+          { status: 400 }
+        )
+      }
+
+      // Look up the license in Supabase
+      const { data, error } = await supabase
+        .from('licenses')
+        .select('*')
+        .eq('license_key', cleanKey)
+        .maybeSingle()
+
+      license = data
+      lookupError = error
+    }
 
     if (lookupError || !license) {
       // Log failed activation attempt
       try {
         await supabase.from('license_activation_log')
           .insert({
-            key_attempted: cleanKey,
+            key_attempted: cleanKey || 'AUTO_DETECT_FAILED',
             event: 'key_not_found',
             machine_info: machineInfo || null,
             app_version: appVersion || null,
@@ -94,8 +142,29 @@ export async function POST(req: NextRequest) {
       }
 
       return NextResponse.json(
-        { error: 'Invalid license key. Check the key and try again.' },
+        { error: autoDetect ? 'No active license found associated with this email.' : 'Invalid license key. Check the key and try again.' },
         { status: 404 }
+      )
+    }
+
+    // Bind email if provided and not set yet
+    if (email && (!license.customer_email || license.customer_email === '')) {
+      const { error: bindError } = await supabase
+        .from('licenses')
+        .update({ customer_email: email.trim().toLowerCase() })
+        .eq('id', license.id)
+      if (bindError) {
+        console.error('[License] Email bind failed:', bindError.message)
+      } else {
+        license.customer_email = email.trim().toLowerCase()
+      }
+    }
+
+    // Verify email match if set
+    if (email && license.customer_email && license.customer_email.trim().toLowerCase() !== email.trim().toLowerCase()) {
+      return NextResponse.json(
+        { error: 'This license is registered to a different email address.' },
+        { status: 403 }
       )
     }
 
@@ -155,14 +224,29 @@ export async function POST(req: NextRequest) {
       deviceId = generateDeviceId(machineInfo)
     }
 
-    // Update last_activated_at and device ID
+    // If it's a trial license and expires_at is null, first activation sets the 10-day countdown
+    let expiresAt = license.expires_at
+    const isTrial = license.is_trial || cleanKey.startsWith('TRIAL')
+    
+    if (isTrial && !expiresAt) {
+      const expirationDate = new Date()
+      expirationDate.setDate(expirationDate.getDate() + 10)
+      expiresAt = expirationDate.toISOString()
+    }
+
+    // Update last_activated_at, device ID, and expires_at if trial activation
+    const updatePayload: any = {
+      last_activated_at: new Date().toISOString(),
+      last_device_id: deviceId,
+      activation_count: license.activation_count ? license.activation_count + 1 : 1,
+    }
+    if (isTrial && !license.expires_at) {
+      updatePayload.expires_at = expiresAt
+    }
+
     const { error: updateError } = await supabase
       .from('licenses')
-      .update({
-        last_activated_at: new Date().toISOString(),
-        last_device_id: deviceId,
-        activation_count: license.activation_count ? license.activation_count + 1 : 1,
-      })
+      .update(updatePayload)
       .eq('id', license.id)
 
     if (updateError) {
@@ -185,6 +269,9 @@ export async function POST(req: NextRequest) {
       console.error('[License] Failed to log success to DB:', e.message)
     }
 
+    // Clear attempt state upon success
+    activationAttempts.delete(ip);
+
     // Return everything the app needs
     return NextResponse.json({
       success: true,
@@ -193,11 +280,11 @@ export async function POST(req: NextRequest) {
         key: cleanKey,
         tier: license.tier,
         customerName: license.customer_name,
-        expiresAt: license.expires_at,
+        expiresAt: expiresAt,
         maxDevices: license.max_devices,
-        isTrialActive: license.is_trial ?? false,
-        trialDaysRemaining: license.expires_at
-          ? Math.max(0, Math.ceil((new Date(license.expires_at).getTime() - Date.now()) / 86400000))
+        isTrialActive: isTrial,
+        trialDaysRemaining: expiresAt
+          ? Math.max(0, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 86400000))
           : null,
       }
     })

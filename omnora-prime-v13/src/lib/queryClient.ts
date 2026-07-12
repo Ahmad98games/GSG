@@ -29,3 +29,15 @@ export const queryClientOptions = {
 };
 
 export const queryClient = new QueryClient(queryClientOptions);
+
+queryClient.getQueryCache().subscribe((event) => {
+  if (
+    event.type === 'observerResultsUpdated' &&
+    event.query.state.status === 'error'
+  ) {
+    const error = event.query.state.error as any;
+    if (error?.message) {
+      console.error('[Query]', event.query.queryKey, ':', error.message);
+    }
+  }
+});

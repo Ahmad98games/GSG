@@ -21,6 +21,19 @@ import { randomUUID } from 'crypto';
 import { db } from '@/lib/db/client';
 import * as schema from '@/lib/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+let adminClient: any = null;
+function getAdmin() {
+  if (!adminClient) {
+    try {
+      adminClient = createAdminClient();
+    } catch (e: any) {
+      console.warn('[Bridge] Admin client init failed:', e.message);
+    }
+  }
+  return adminClient;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -77,6 +90,11 @@ async function getLocalProfile(): Promise<{
   maxDevices: number;
   isDeactivated: boolean;
   expiresAt: string | null;
+  industry: string;
+  worker_term: string;
+  worker_term_plural: string;
+  advance_term: string;
+  country_code: string;
 } | null> {
   try {
     // local_config holds key/value pairs set during onboarding
@@ -100,6 +118,11 @@ async function getLocalProfile(): Promise<{
       maxDevices,
       isDeactivated: cfg['is_deactivated'] === '1',
       expiresAt: cfg['license_expires_at'] || null,
+      industry: cfg['industry'] || 'textile',
+      worker_term: cfg['worker_term'] || 'Karigar',
+      worker_term_plural: cfg['worker_term_plural'] || 'Karigars',
+      advance_term: cfg['advance_term'] || 'Peshgi',
+      country_code: cfg['country_code'] || 'PK',
     };
   } catch (err: any) {
     console.error('[Bridge] Failed to read local config:', err.message);
@@ -164,11 +187,23 @@ export function attachMobileBridge(httpServer: Server): WebSocketServer {
           .catch(() => {});
       }
       clients.delete(clientId);
+      broadcastToHubRenderer('DEVICE_COUNT_CHANGED', {
+        connectedDevices: getPairedCount(),
+        paired: getPairedCount(),
+        connected: clients.size,
+        pairedDevices: getBridgeStatus().pairedDevices,
+      });
     });
 
     ws.on('error', (err) => {
       console.error(`[Bridge] Socket error ${clientId}:`, err.message);
       clients.delete(clientId);
+      broadcastToHubRenderer('DEVICE_COUNT_CHANGED', {
+        connectedDevices: getPairedCount(),
+        paired: getPairedCount(),
+        connected: clients.size,
+        pairedDevices: getBridgeStatus().pairedDevices,
+      });
     });
   });
 
@@ -362,6 +397,57 @@ async function handleMessage(
         `[Bridge] Paired: ${rawLabel} (${rawDeviceId}) — tier: ${profile.tier} — business: ${profile.business_name}`,
       );
 
+      // Verify sub-user PIN if provided
+      let canMarkAttendance = true;
+      let canLogProduction = true;
+      let canGivePeshgi = true;
+      let canViewFinancials = ['pro', 'elite'].includes(profile.tier);
+      let canViewReports = ['pro', 'elite'].includes(profile.tier);
+      let subUserRole: string | null = null;
+
+      const userPin = msg.pin || msg.userPin || msg.subUserPin || msg.sub_user_pin;
+      if (userPin) {
+        const admin = getAdmin();
+        if (admin) {
+          try {
+            const { data: subUser } = await admin
+              .from('sub_users')
+              .select('role, name')
+              .eq('business_id', profile.id)
+              .eq('pin', String(userPin))
+              .eq('is_active', true)
+              .maybeSingle();
+
+            if (subUser) {
+              subUserRole = subUser.role;
+              console.log(`[Bridge] Authenticated sub-user: ${subUser.name} with role: ${subUserRole}`);
+              if (subUserRole === 'supervisor') {
+                canMarkAttendance = true;
+                canLogProduction = true;
+                canGivePeshgi = false;
+                canViewFinancials = false;
+                canViewReports = false;
+              } else {
+                canMarkAttendance = true;
+                canLogProduction = true;
+                canGivePeshgi = false;
+                canViewFinancials = false;
+                canViewReports = false;
+              }
+            } else {
+              console.warn(`[Bridge] PIN ${userPin} not found in sub_users. Rejecting pairing.`);
+              send(ws, {
+                type: 'PAIRING_REJECTED',
+                reason: 'Invalid PIN credentials.',
+              });
+              return;
+            }
+          } catch (pinErr: any) {
+            console.error('[Bridge] PIN verification error:', pinErr.message);
+          }
+        }
+      }
+
       // 8. Send HUB_ACK with full business context
       send(ws, {
         type: 'HUB_ACK',
@@ -383,9 +469,30 @@ async function handleMessage(
         canAccessApi: profile.tier === 'elite',
         canUseAdvancedReports: ['pro', 'elite'].includes(profile.tier),
 
+        // RBAC Gates
+        canMarkAttendance,
+        canLogProduction,
+        canGivePeshgi,
+        canViewFinancials,
+        canViewReports,
+
+        // Morphing and terminology config
+        industry: profile.industry,
+        workerTerm: profile.worker_term,
+        workerTermPlural: profile.worker_term_plural,
+        advanceTerm: profile.advance_term,
+        countryCode: profile.country_code,
+
         // Connection metadata
         connectedDevices: getPairedCount(),
         hubVersion: process.env.npm_package_version || '13.0.0',
+      });
+
+      broadcastToHubRenderer('DEVICE_COUNT_CHANGED', {
+        connectedDevices: getPairedCount(),
+        paired: getPairedCount(),
+        connected: clients.size,
+        pairedDevices: getBridgeStatus().pairedDevices,
       });
       break;
     }
@@ -444,14 +551,132 @@ async function handleMessage(
               .where(eq(schema.branchCache.businessId, client.businessId!));
             break;
 
-          case 'dashboard_kpis':
-            // Lightweight KPIs from local config — no heavy joins
-            data = [{
-              hubVersion: process.env.npm_package_version || '13.0.0',
-              tier: client.tier,
-              connectedDevices: getPairedCount(),
-            }];
+          case 'karigars': {
+            const admin = getAdmin();
+            if (admin) {
+              const { data: resData, error: resErr } = await admin
+                .from('karigars')
+                .select('*')
+                .eq('business_id', client.businessId!)
+                .eq('status', 'active')
+                .order('name');
+              if (resErr) throw resErr;
+              data = resData || [];
+            } else {
+              throw new Error('Supabase admin not available');
+            }
             break;
+          }
+
+          case 'attendance_today': {
+            const admin = getAdmin();
+            if (admin) {
+              const todayStr = new Date().toISOString().split('T')[0];
+              const { data: resData, error: resErr } = await admin
+                .from('attendance_logs')
+                .select('*')
+                .eq('business_id', client.businessId!)
+                .eq('attendance_date', todayStr);
+              if (resErr) throw resErr;
+              data = resData || [];
+            } else {
+              throw new Error('Supabase admin not available');
+            }
+            break;
+          }
+
+          case 'production_log': {
+            const admin = getAdmin();
+            if (admin) {
+              const { data: resData, error: resErr } = await admin
+                .from('karigar_production_logs')
+                .select('*, karigars(name)')
+                .eq('business_id', client.businessId!)
+                .order('created_at', { ascending: false })
+                .limit(100);
+              if (resErr) throw resErr;
+              data = resData || [];
+            } else {
+              throw new Error('Supabase admin not available');
+            }
+            break;
+          }
+
+          case 'dashboard_kpis': {
+            const admin = getAdmin();
+            if (admin) {
+              const todayStr = new Date().toISOString().split('T')[0];
+              const [kCount, aCount, dCount] = await Promise.all([
+                admin
+                  .from('karigars')
+                  .select('id', { count: 'exact', head: true })
+                  .eq('business_id', client.businessId!)
+                  .eq('status', 'active'),
+                admin
+                  .from('attendance_logs')
+                  .select('id', { count: 'exact', head: true })
+                  .eq('business_id', client.businessId!)
+                  .eq('attendance_date', todayStr)
+                  .eq('status', 'present'),
+                admin
+                  .from('dispatch_orders')
+                  .select('id', { count: 'exact', head: true })
+                  .eq('business_id', client.businessId!)
+                  .in('status', ['pending', 'packed'])
+              ]);
+              data = [{
+                totalKarigars: kCount.count || 0,
+                presentToday: aCount.count || 0,
+                pendingDispatch: dCount.count || 0,
+                hubVersion: process.env.npm_package_version || '13.0.0',
+                tier: client.tier,
+                connectedDevices: getPairedCount()
+              }];
+            } else {
+              data = [{
+                totalKarigars: 0,
+                presentToday: 0,
+                pendingDispatch: 0,
+                hubVersion: process.env.npm_package_version || '13.0.0',
+                tier: client.tier,
+                connectedDevices: getPairedCount()
+              }];
+            }
+            break;
+          }
+
+          case 'dispatch_pending': {
+            const admin = getAdmin();
+            if (admin) {
+              const { data: resData, error: resErr } = await admin
+                .from('dispatch_orders')
+                .select('*')
+                .eq('business_id', client.businessId!)
+                .in('status', ['pending', 'packed']);
+              if (resErr) throw resErr;
+              data = resData || [];
+            } else {
+              throw new Error('Supabase admin not available');
+            }
+            break;
+          }
+
+          case 'scan_history': {
+            const admin = getAdmin();
+            if (admin) {
+              const { data: resData, error: resErr } = await admin
+                .from('scan_logs')
+                .select('*')
+                .eq('business_id', client.businessId!)
+                .order('created_at', { ascending: false })
+                .limit(100);
+              if (resErr) throw resErr;
+              data = resData || [];
+            } else {
+              throw new Error('Supabase admin not available');
+            }
+            break;
+          }
 
           default:
             error = `Unknown resource: ${resource}. Fetch detailed data directly from Supabase.`;

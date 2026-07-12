@@ -28,10 +28,24 @@ electron_1.contextBridge.exposeInMainWorld('electron', {
         return () => electron_1.ipcRenderer.removeListener('license-expired', listener);
     }
 });
+const bridgeListeners = new Map();
 // Data Sovereignty API — lets the renderer ask where data lives on disk
 electron_1.contextBridge.exposeInMainWorld('electronAPI', {
     getAppDataPath: () => electron_1.ipcRenderer.invoke('get-app-data-path'),
     setConfig: (key, value) => electron_1.ipcRenderer.invoke('set-config', key, value),
+    getBridgeStatus: () => electron_1.ipcRenderer.invoke('get-bridge-status'),
+    on: (channel, callback) => {
+        const subscription = (_event, ...args) => callback(_event, ...args);
+        bridgeListeners.set(callback, subscription);
+        electron_1.ipcRenderer.on(channel, subscription);
+    },
+    off: (channel, callback) => {
+        const subscription = bridgeListeners.get(callback);
+        if (subscription) {
+            electron_1.ipcRenderer.removeListener(channel, subscription);
+            bridgeListeners.delete(callback);
+        }
+    }
 });
 electron_1.contextBridge.exposeInMainWorld('electronWindow', {
     minimize: () => electron_1.ipcRenderer.send('window-minimize'),

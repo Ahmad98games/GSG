@@ -45,7 +45,7 @@ export default function ClientPortalInvoicesPage() {
     <div className="min-h-screen bg-[#0A0A0A] text-white font-inter">
       <header className="h-20 border-b border-white/5 flex items-center px-12 justify-between bg-black/50 backdrop-blur-xl sticky top-0 z-50">
          <div className="flex items-center space-x-4">
-            <button onClick={() => router.push(`/portal/${businessSlug}`)} className="p-2 hover:bg-white/5 text-gray-500 hover:text-white transition-all mr-2">
+            <button onClick={() => router.push(`/portal/b/${businessSlug}`)} className="p-2 hover:bg-white/5 text-gray-500 hover:text-white transition-all mr-2">
                <ArrowLeft size={20} />
             </button>
             <div>

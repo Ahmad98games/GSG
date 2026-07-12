@@ -3,6 +3,7 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import Link from "next/link";
 import { useQuery, useQueryClient, QueryClient } from "@tanstack/react-query";
+import { Can } from "@/components/rbac/Can";
 import { createClient } from "@/lib/supabase/client";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
@@ -16,6 +17,7 @@ import {
   Calendar, Zap, TrendingDown, Eye, MessageCircle
 } from "lucide-react";
 import { sendWhatsAppAlert, ALERT_TEMPLATES } from "@/lib/whatsapp/alertEngine";
+import { useIndustryConfig } from "@/hooks/useIndustryConfig";
 import { useBarcodeScan } from "@/hooks/useBarcodeScan";
 import { useVirtualizer } from '@tanstack/react-virtual';
 import ForecastBadge from "@/components/intelligence/ForecastBadge";
@@ -71,6 +73,11 @@ interface SKU {
   barcode: string | null;
   thumbnail_url: string | null;
   is_active: boolean;
+  // Batch & Expiry tracking (medical / food)
+  batch_number: string | null;
+  expiry_date: string | null;
+  manufacture_date: string | null;
+  requires_batch_tracking: boolean;
 }
 
 const columnHelper = createColumnHelper<SKU>();
@@ -88,6 +95,11 @@ const skuSchema = z.object({
   current_location: z.enum(['karkhana', 'warehouse', 'retail_shop', 'in_transit', 'disposed']),
   description: z.string().max(500, "Description too long").optional(),
   barcode: z.string().optional(),
+  // Batch & Expiry
+  batch_number: z.string().optional(),
+  manufacture_date: z.string().optional(),
+  expiry_date: z.string().optional(),
+  requires_batch_tracking: z.boolean().optional(),
 });
 
 type SKUFormValues = z.infer<typeof skuSchema>;
@@ -255,7 +267,11 @@ export default function InventoryPage() {
     }),
     columnHelper.accessor("cost_price", {
       header: () => <div className="text-right">Cost</div>,
-      cell: (info) => <FinancialAmount value={info.getValue()} />,
+      cell: (info) => (
+        <Can permission="view:inventory_costs" fallback={<div className="text-right text-gray-600 text-xs">Restricted</div>}>
+          <FinancialAmount value={info.getValue()} />
+        </Can>
+      ),
     }),
     columnHelper.accessor("sale_price", {
       header: () => <div className="text-right">Sale</div>,
@@ -725,18 +741,22 @@ function SkuDetailPanel({ sku, onClose, onEdit, fmt }: { sku: SKU; onClose: () =
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-[10px] text-gray-600 uppercase">Cost</p>
-              <p className="text-sm font-mono font-bold text-[#C5A059] mt-1">{fmt(sku.cost_price)}</p>
+              <Can permission="view:inventory_costs" fallback={<p className="text-xs text-gray-700 mt-1">Restricted</p>}>
+                <p className="text-sm font-mono font-bold text-[#C5A059] mt-1">{fmt(sku.cost_price)}</p>
+              </Can>
             </div>
             <div>
               <p className="text-[10px] text-gray-600 uppercase">Sale</p>
               <p className="text-sm font-mono font-bold text-white mt-1">{fmt(sku.sale_price)}</p>
             </div>
           </div>
-          {sku.cost_price && sku.sale_price && sku.cost_price > 0 && (
-            <p className="text-[10px] text-emerald-400 mt-2">
-              Margin: {(((sku.sale_price - sku.cost_price) / sku.cost_price) * 100).toFixed(1)}%
-            </p>
-          )}
+          <Can permission="view:inventory_costs">
+            {sku.cost_price && sku.sale_price && sku.cost_price > 0 && (
+              <p className="text-[10px] text-emerald-400 mt-2">
+                Margin: {(((sku.sale_price - sku.cost_price) / sku.cost_price) * 100).toFixed(1)}%
+              </p>
+            )}
+          </Can>
         </div>
 
         {sku.description && (
@@ -836,6 +856,7 @@ function TableActions({ sku, onAdjust, onEdit }: { sku: SKU, onAdjust: () => voi
 
 function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { onClose: () => void, onSuccess: (msg: string) => void, initialBarcode?: string, skuToEdit?: SKU }) {
   const { profile } = useBusinessProfile();
+  const { features } = useIndustryConfig();
   const supabase = createClient();
   const toast = useToast();
   const [imagePreview, setImagePreview] = useState<string | null>(skuToEdit?.thumbnail_url || null);
@@ -855,14 +876,22 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
       sale_price: skuToEdit.sale_price ?? 0,
       reorder_level: skuToEdit.reorder_level,
       barcode: skuToEdit.barcode || "",
-      description: skuToEdit.description || ""
+      description: skuToEdit.description || "",
+      batch_number: skuToEdit.batch_number || "",
+      manufacture_date: skuToEdit.manufacture_date || "",
+      expiry_date: skuToEdit.expiry_date || "",
+      requires_batch_tracking: skuToEdit.requires_batch_tracking ?? false,
     } : {
       unit: "pcs",
       current_location: "warehouse",
       cost_price: 0,
       sale_price: 0,
       reorder_level: 10,
-      barcode: initialBarcode || ""
+      barcode: initialBarcode || "",
+      batch_number: "",
+      manufacture_date: "",
+      expiry_date: "",
+      requires_batch_tracking: false,
     }
   });
 
@@ -928,7 +957,11 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
             sale_price: values.sale_price,
             reorder_level: values.reorder_level,
             barcode: values.barcode,
-            description: values.description
+            description: values.description,
+            batch_number: values.batch_number || null,
+            manufacture_date: values.manufacture_date || null,
+            expiry_date: values.expiry_date || null,
+            requires_batch_tracking: values.requires_batch_tracking ?? false,
           })
           .eq('id', skuToEdit.id);
 
@@ -1069,6 +1102,46 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
                    </div>
                 </div>
              </div>
+
+             {/* Batch & Expiry Tracking — medical / food only */}
+             {features.expiryManagement && (
+               <div className="space-y-6">
+                 <SectionHeader icon={Calendar} label="Batch & Expiry Tracking" />
+                 <div className="p-4 bg-emerald-500/5 border border-emerald-500/15 rounded-sm mb-4">
+                   <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">
+                     💊 Regulatory Compliance — Required for Medical & Food
+                   </p>
+                   <p className="text-[10px] text-gray-600 mt-1">
+                     Track batch numbers and expiry dates to stay compliant with DRAP, PSQCA, and FDA requirements.
+                   </p>
+                 </div>
+                 <div className="space-y-2">
+                   <Label>Batch Number</Label>
+                   <Input {...register("batch_number")} placeholder="e.g. BATCH-001 / LOT-2024-A" />
+                 </div>
+                 <div className="grid grid-cols-2 gap-6">
+                   <div className="space-y-2">
+                     <Label>Manufacture Date</Label>
+                     <Input type="date" {...register("manufacture_date")} />
+                   </div>
+                   <div className="space-y-2">
+                     <Label>Expiry Date</Label>
+                     <Input type="date" {...register("expiry_date")} className="border-amber-500/30 focus:border-amber-500" />
+                   </div>
+                 </div>
+                 <div className="flex items-center gap-3">
+                   <input
+                     type="checkbox"
+                     id="requires_batch_tracking"
+                     {...register("requires_batch_tracking")}
+                     className="w-4 h-4 accent-emerald-500"
+                   />
+                   <label htmlFor="requires_batch_tracking" className="text-[10px] uppercase font-bold text-gray-400 tracking-widest cursor-pointer">
+                     Require batch number on every stock adjustment
+                   </label>
+                 </div>
+               </div>
+             )}
 
              {/* Pricing */}
              <div className="space-y-6">

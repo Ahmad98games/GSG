@@ -509,6 +509,7 @@ export const themes: Theme[] = [
 ]
 
 export function getThemeForIndustry(industry: string): Theme {
-  const theme = themes.find(t => t.industry.includes(industry))
+  if (!industry) return themes[0]
+  const theme = themes.find(t => t.industry && Array.isArray(t.industry) && t.industry.includes(industry))
   return theme || themes[0]
 }

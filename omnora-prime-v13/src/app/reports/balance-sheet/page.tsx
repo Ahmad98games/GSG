@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Can } from "@/components/rbac/Can";
 import { motion } from "framer-motion";
 import { 
   Download, 
@@ -189,21 +190,28 @@ export default function BalanceSheetPage() {
                       </div>
                     </div>
 
-                    <div className="space-y-4">
-                      <h3 className="text-[10px] uppercase tracking-[0.2em] text-[#C5A059] font-black">Equity</h3>
-                      <div className="space-y-2">
-                        {equityRows.map((row) => (
-                          <div key={row.account_name} className="flex justify-between items-center text-xs py-1">
-                            <span className="text-gray-400 uppercase tracking-tight print:text-gray-700">{row.account_name}</span>
-                            <span className="font-mono text-white print:text-black">{fmt(row.amount)}</span>
-                          </div>
-                        ))}
+                    <Can permission="view:owner_equity" fallback={
+                      <div className="space-y-4 border border-white/5 p-4 bg-white/[0.01]">
+                        <h3 className="text-[10px] uppercase tracking-[0.2em] text-[#C5A059] font-black">Equity</h3>
+                        <p className="text-[10px] text-gray-600">Restricted — contact owner for access</p>
                       </div>
-                      <div className="flex justify-between pt-2 border-t border-white/5 font-bold text-sm text-white print:border-black print:text-black">
-                        <span className="uppercase tracking-widest text-[10px]">Total Equity</span>
-                        <span className="font-mono">{fmt(totalEquity)}</span>
+                    }>
+                      <div className="space-y-4">
+                        <h3 className="text-[10px] uppercase tracking-[0.2em] text-[#C5A059] font-black">Equity</h3>
+                        <div className="space-y-2">
+                          {equityRows.map((row) => (
+                            <div key={row.account_name} className="flex justify-between items-center text-xs py-1">
+                              <span className="text-gray-400 uppercase tracking-tight print:text-gray-700">{row.account_name}</span>
+                              <span className="font-mono text-white print:text-black">{fmt(row.amount)}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex justify-between pt-2 border-t border-white/5 font-bold text-sm text-white print:border-black print:text-black">
+                          <span className="uppercase tracking-widest text-[10px]">Total Equity</span>
+                          <span className="font-mono">{fmt(totalEquity)}</span>
+                        </div>
                       </div>
-                    </div>
+                    </Can>
                   </div>
 
                   <div className="mt-12 p-6 bg-white/5 border border-white/5 flex justify-between items-center print:bg-gray-50 print:border-black">

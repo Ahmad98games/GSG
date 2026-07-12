@@ -10,11 +10,30 @@ let hiddenDirs = [];
 
 let buildFailed = false;
 
+function robustRmSync(targetPath) {
+  let attempts = 10;
+  while (attempts > 0) {
+    try {
+      if (fs.existsSync(targetPath)) {
+        fs.rmSync(targetPath, { recursive: true, force: true });
+      }
+      return;
+    } catch (err) {
+      if ((err.code === 'EPERM' || err.code === 'EBUSY') && attempts > 1) {
+        attempts--;
+        // Synchronous sleep for 200ms
+        const limit = Date.now() + 200;
+        while (Date.now() < limit) {}
+      } else {
+        throw err;
+      }
+    }
+  }
+}
+
 try {
   // Ensure tempPath exists and is clean
-  if (fs.existsSync(tempPath)) {
-    fs.rmSync(tempPath, { recursive: true, force: true });
-  }
+  robustRmSync(tempPath);
   fs.mkdirSync(tempPath);
 
   // Find all directories inside src/app that should be hidden
@@ -28,7 +47,7 @@ try {
         console.log(`[Build] Temporarily hiding directory: ${file}`);
         const dest = path.join(tempPath, file);
         fs.cpSync(fullPath, dest, { recursive: true });
-        fs.rmSync(fullPath, { recursive: true, force: true });
+        robustRmSync(fullPath);
         hiddenDirs.push(file);
       }
     }
@@ -57,22 +76,19 @@ try {
       const source = path.join(tempPath, dir);
       const dest = path.join(appPath, dir);
       if (fs.existsSync(source)) {
-        if (fs.existsSync(dest)) {
-          fs.rmSync(dest, { recursive: true, force: true });
-        }
+        robustRmSync(dest);
         fs.cpSync(source, dest, { recursive: true });
-        fs.rmSync(source, { recursive: true, force: true });
+        robustRmSync(source);
       }
     }
   }
 
   // Clean up temp directory
-  if (fs.existsSync(tempPath)) {
-    fs.rmSync(tempPath, { recursive: true, force: true });
-  }
+  robustRmSync(tempPath);
 }
 
 if (buildFailed) {
   process.exit(1);
 }
+
 

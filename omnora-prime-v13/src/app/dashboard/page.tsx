@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { createClient, enableAutoRefresh } from '@/lib/supabase/client'
 import { 
   Users, 
   TrendingUp, 
@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { useIndustryConfig } from '@/hooks/useIndustryConfig'
 import { IndustryWidget } from '@/components/dashboard/IndustryWidget'
+import { DataHealthCard } from '@/components/dashboard/DataHealthCard'
 
 interface DashboardData {
   businessName: string
@@ -67,6 +68,11 @@ interface DashboardData {
 export default function OwnerDashboard() {
   const router = useRouter()
   const supabase = createClient()
+  const isElectron = typeof window !== 'undefined' && (
+    !!(window as any).electronWindow || 
+    !!(window as any).electron ||
+    navigator.userAgent.toLowerCase().includes('electron')
+  )
   const { t, features, fmt, fmtCompact } = useIndustryConfig()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -235,12 +241,16 @@ export default function OwnerDashboard() {
 
       let expiringCount = 0
       if (features.expiryManagement) {
-        const nextMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString().split('T')[0]
-        const { count } = await supabase.from('sku_batches')
+        const thirtyDays = new Date()
+        thirtyDays.setDate(thirtyDays.getDate() + 30)
+        const { count } = await supabase
+          .from('skus')
           .select('id', { count: 'exact', head: true })
           .eq('business_id', biz)
-          .gte('expiry_date', today)
-          .lt('expiry_date', nextMonth)
+          .eq('is_active', true)
+          .not('expiry_date', 'is', null)
+          .lte('expiry_date', thirtyDays.toISOString().split('T')[0])
+          .gt('qty_on_hand', 0)
         if (count) expiringCount = count
       }
 
@@ -290,6 +300,7 @@ export default function OwnerDashboard() {
   }, [])
 
   useEffect(() => {
+    enableAutoRefresh()
     loadDashboard()
     const interval = setInterval(loadDashboard, 300000)
     return () => clearInterval(interval)
@@ -327,42 +338,46 @@ export default function OwnerDashboard() {
       </div>
 
       {/* Fixed top accent line */}
-      <div className="fixed top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#C5A059] via-[#00E5FF] to-[#C5A059] z-[100]" />
+      {!isElectron && (
+        <div className="fixed top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#C5A059] via-[#00E5FF] to-[#C5A059] z-[100]" />
+      )}
 
       {/* ═══ HEADER NAVIGATION ═══ */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#040608]/85 backdrop-blur-xl border-b border-white/[0.04] py-4">
-        <div className="max-w-4xl mx-auto px-6 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 flex items-center justify-center bg-white/5 border border-white/10 rounded-sm">
-              <img src="/logos/noxis.png" alt="Noxis Logo" width={20} height={20} className="object-contain" />
+      {!isElectron && (
+        <nav className="fixed top-0 left-0 right-0 z-50 bg-[#040608]/85 backdrop-blur-xl border-b border-white/[0.04] py-4">
+          <div className="max-w-4xl mx-auto px-6 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 flex items-center justify-center bg-white/5 border border-white/10 rounded-sm">
+                <img src="/logos/noxis.png" alt="Noxis Logo" width={20} height={20} className="object-contain" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-white font-extrabold tracking-wider leading-none text-xs">NOXIS REMOTE</span>
+                <span className="text-[10px] text-[#C5A059] font-black uppercase mt-0.5 tracking-wider">{data.businessName}</span>
+              </div>
             </div>
-            <div className="flex flex-col">
-              <span className="text-white font-extrabold tracking-wider leading-none text-xs">NOXIS REMOTE</span>
-              <span className="text-[10px] text-[#C5A059] font-black uppercase mt-0.5 tracking-wider">{data.businessName}</span>
-            </div>
-          </div>
 
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={loadDashboard}
-              className="p-2 border border-white/5 hover:border-white/10 rounded-sm transition-all text-slate-500 hover:text-white"
-              title="Refresh Data"
-            >
-              <RefreshCw size={14} className="animate-hover" />
-            </button>
-            <button
-              onClick={handleLogout}
-              className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-[#EF4444] flex items-center space-x-1.5 transition-colors"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Sign Out</span>
-            </button>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={loadDashboard}
+                className="p-2 border border-white/5 hover:border-white/10 rounded-sm transition-all text-slate-500 hover:text-white"
+                title="Refresh Data"
+              >
+                <RefreshCw size={14} className="animate-hover" />
+              </button>
+              <button
+                onClick={handleLogout}
+                className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-[#EF4444] flex items-center space-x-1.5 transition-colors"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Sign Out</span>
+              </button>
+            </div>
           </div>
-        </div>
-      </nav>
+        </nav>
+      )}
 
       {/* ═══ MAIN LAYOUT ═══ */}
-      <div className="max-w-4xl mx-auto px-6 pt-24">
+      <div className={`max-w-4xl mx-auto px-6 ${isElectron ? "pt-8" : "pt-24"}`}>
         
         {/* Status Line */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4 text-[10px] font-mono font-bold uppercase tracking-widest text-slate-650 border-b border-white/[0.03] pb-4">
@@ -493,6 +508,11 @@ export default function OwnerDashboard() {
                     icon={<TrendingUp className="w-4 h-4 text-emerald-400" />}
                   />
                 )}
+              </div>
+
+              {/* Data Safety Widget */}
+              <div className="mt-4">
+                <DataHealthCard />
               </div>
 
               <div className="my-6">

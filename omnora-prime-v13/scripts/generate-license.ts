@@ -39,7 +39,7 @@ async function createTrialLicense(params: {
       customer_email: params.customerEmail,
       expires_at: null,       // Set on first activation
       is_trial: true,         // Mark as trial
-      notes: params.notes || '3-day trial',
+      notes: params.notes || '10-day trial',
       amount_paid: 0,
       currency: 'PKR',
     })
@@ -185,7 +185,7 @@ if (name && email) {
     createTrialLicense({
       customerName: 'Tester 1',
       customerEmail: 'test1@noxis.test',
-      notes: 'Standard 3-day test trial key'
+      notes: 'Standard 10-day test trial key'
     })
   } else {
     createLicense({

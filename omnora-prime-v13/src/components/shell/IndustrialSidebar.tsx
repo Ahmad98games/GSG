@@ -43,7 +43,10 @@ import {
   Wallet,
   AlertTriangle,
   Thermometer,
-  AlertOctagon
+  AlertOctagon,
+  Video,
+  MessageSquare,
+  Smartphone
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import * as Tooltip from "@radix-ui/react-tooltip";
@@ -119,7 +122,7 @@ export default React.memo(function IndustrialSidebar() {
     return () => window.removeEventListener('keydown', handleGlobalKey);
   }, []);
 
-  const NAV_ITEMS = useMemo(() => [
+  const CORE_ITEMS = useMemo(() => [
     {
       label: nav.dashboard,
       href: '/dashboard',
@@ -215,9 +218,70 @@ export default React.memo(function IndustrialSidebar() {
     },
   ], [nav, features, industry.key]);
 
-  const visibleItems = useMemo(() => NAV_ITEMS.filter(
+  const UTILITY_ITEMS = useMemo(() => [
+    {
+      label: 'CCTV Feeds',
+      href: '/cctv',
+      icon: Video,
+      always: true,
+    },
+    {
+      label: 'Messaging',
+      href: '/messaging',
+      icon: MessageSquare,
+      always: true,
+    },
+    {
+      label: 'Device Pairing',
+      href: '/pairing',
+      icon: Smartphone,
+      always: true,
+    },
+    {
+      label: 'File Conversion',
+      href: '/file-morph',
+      icon: ArrowLeftRight,
+      always: true,
+    },
+    {
+      label: 'CRM / Sales',
+      href: '/sales',
+      icon: TrendingUp,
+      always: true,
+    },
+    {
+      label: 'Expense & Finance',
+      href: '/finance',
+      icon: Banknote,
+      always: true,
+    },
+    {
+      label: 'Compliance & Tax',
+      href: '/compliance',
+      icon: ShieldCheck,
+      always: true,
+    },
+    {
+      label: 'Audit Logs',
+      href: '/audit',
+      icon: ClipboardList,
+      always: true,
+    },
+    {
+      label: 'Configuration',
+      href: '/settings',
+      icon: Settings,
+      always: true,
+    },
+  ], []);
+
+  const visibleCoreItems = useMemo(() => CORE_ITEMS.filter(
     item => item.always
-  ), [NAV_ITEMS]);
+  ), [CORE_ITEMS]);
+
+  const visibleUtilityItems = useMemo(() => UTILITY_ITEMS.filter(
+    item => item.always
+  ), [UTILITY_ITEMS]);
 
   if (!mounted) return null;
 
@@ -317,7 +381,7 @@ export default React.memo(function IndustrialSidebar() {
         )}
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto custom-scrollbar py-6 px-2">
+        <nav className="flex-1 overflow-y-auto custom-scrollbar py-4 px-2">
           {isLoading ? (
             <div className="space-y-4 px-2">
               {[1, 2, 3, 4, 5].map(i => (
@@ -325,17 +389,46 @@ export default React.memo(function IndustrialSidebar() {
               ))}
             </div>
           ) : (
-            <div className="space-y-1">
-              {visibleItems.map((item) => (
-                <SidebarItem 
-                  key={item.href}
-                  href={item.href}
-                  icon={item.icon}
-                  label={item.label}
-                  isCollapsed={isCollapsed}
-                  isActive={pathname.startsWith(item.href)}
-                />
-              ))}
+            <div className="space-y-6">
+              <div>
+                {!isCollapsed && (
+                  <div className="px-3 mb-2 text-[9px] font-black uppercase tracking-widest text-slate-500">
+                    Core ERP
+                  </div>
+                )}
+                <div className="space-y-1">
+                  {visibleCoreItems.map((item) => (
+                    <SidebarItem 
+                      key={item.href}
+                      href={item.href}
+                      icon={item.icon}
+                      label={item.label}
+                      isCollapsed={isCollapsed}
+                      isActive={pathname.startsWith(item.href)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                {!isCollapsed && (
+                  <div className="px-3 mb-2 text-[9px] font-black uppercase tracking-widest text-slate-500">
+                    Utilities & Setup
+                  </div>
+                )}
+                <div className="space-y-1">
+                  {visibleUtilityItems.map((item) => (
+                    <SidebarItem 
+                      key={item.href}
+                      href={item.href}
+                      icon={item.icon}
+                      label={item.label}
+                      isCollapsed={isCollapsed}
+                      isActive={pathname.startsWith(item.href)}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </nav>

@@ -9,6 +9,7 @@ import {
   AlertCircle, X, Filter, CreditCard
 } from "lucide-react";
 import { useIndustryConfig } from "@/hooks/useIndustryConfig";
+import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { createClient } from "@/lib/supabase/client";
 import { FeedbackModal } from "@/components/ui/FeedbackModal";
 import * as XLSX from "xlsx";
@@ -24,6 +25,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
 import { SummaryCard } from "@/components/ui/SummaryCard";
 
+import { Can } from "@/components/rbac/Can";
+
 const runPayrollSchema = z.object({
   period_label: z.string().min(1, "Period name is required"),
   period_start: z.string().min(1, "Start date is required"),
@@ -34,7 +37,7 @@ const runPayrollSchema = z.object({
 type RunPayrollValues = z.infer<typeof runPayrollSchema>;
 
 export default function PayrollPage() {
-  const { t, features, fmt, fmtDate } = useIndustryConfig();
+  const { t, nav, features, fmt, fmtDate } = useIndustryConfig();
   const { profile } = useBusinessProfile();
   const businessId = profile?.id;
   const workerTermPlural = t.workers;
@@ -219,7 +222,7 @@ export default function PayrollPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-lg font-semibold tracking-tight text-white uppercase italic">
-              {term('payroll')} Management
+              {nav.payroll} Management
             </h1>
             <p className="text-xs text-gray-500 mt-0.5">
               Human Capital Compensation Hub
@@ -236,9 +239,13 @@ export default function PayrollPage() {
           </div>
         </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <SummaryCard label={`This Month ${term('payroll')}`} value={thisMonthTotal.toNumber()} sub="Total This Month" />
-              <SummaryCard label={`${workerTermPlural} on ${term('payroll')}`} value={karigarStats?.count || 0} isCurrency={false} sub={`Active ${workerTermPlural}`} />
-              <SummaryCard label="Outstanding Advances" value={karigarStats?.advances?.toNumber() || 0} sub="Outstanding Advances" />
+              <Can permission="view:payroll_amounts" fallback={<SummaryCard label={`This Month ${nav.payroll}`} value="Restricted" isCurrency={false} sub="No Permission" />}>
+                <SummaryCard label={`This Month ${nav.payroll}`} value={thisMonthTotal.toNumber()} sub="Total This Month" />
+              </Can>
+              <SummaryCard label={`${workerTermPlural} on ${nav.payroll}`} value={karigarStats?.count || 0} isCurrency={false} sub={`Active ${workerTermPlural}`} />
+              <Can permission="view:payroll_amounts" fallback={<SummaryCard label="Outstanding Advances" value="Restricted" isCurrency={false} sub="No Permission" />}>
+                <SummaryCard label="Outstanding Advances" value={karigarStats?.advances?.toNumber() || 0} sub="Outstanding Advances" />
+              </Can>
             </div>
 
            {/* Periods Registry */}
@@ -294,7 +301,11 @@ export default function PayrollPage() {
                               <td className="px-6 py-0 text-gray-500 font-mono text-xs">{fmtDate(p.period_start)}</td>
                               <td className="px-6 py-0 text-gray-500 font-mono text-xs">{fmtDate(p.period_end)}</td>
                               <td className="px-6 py-0 text-white font-bold">{p.slips_count?.[0]?.count || 0}</td>
-                              <td className="px-6 py-0 text-[#C5A059] font-mono font-bold text-sm">{fmt(p.total_payroll || 0)}</td>
+                               <td className="px-6 py-0 text-[#C5A059] font-mono font-bold text-sm">
+                                 <Can permission="view:payroll_amounts" fallback={<span className="text-gray-600 text-xs">Restricted</span>}>
+                                   {fmt(p.total_payroll || 0)}
+                                 </Can>
+                               </td>
                               <td className="px-4 py-2.5 text-sm text-gray-200">
                                  <StatusPill status={p.status} />
                               </td>
@@ -393,7 +404,8 @@ function StatusPill({ status }: { status: string }) {
 
 function RunPayrollModal({ onClose, onSuccess }: { onClose: () => void, onSuccess: (msg: string) => void }) {
   const { t, region } = useIndustryConfig();
-  const businessId = region.profile?.id;
+  const { profile } = useBusinessProfile();
+  const businessId = profile?.id;
   const supabase = createClient();
   const [isCalculating, setIsCalculating] = useState(false);
   

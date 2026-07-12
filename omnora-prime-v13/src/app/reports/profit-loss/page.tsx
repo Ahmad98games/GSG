@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Can } from "@/components/rbac/Can";
 import { motion } from "framer-motion";
 import { 
   TrendingUp, Download, Calendar, 
@@ -384,30 +385,36 @@ export default function ProfitLossPage() {
               </div>
 
               {/* Net Result */}
-              <div className={cn(
-                "p-10 border flex flex-col items-center justify-center space-y-3 mt-12",
-                isProfit ? "bg-[#C5A059]/5 border-[#C5A059]/20" : "bg-red-500/5 border-red-500/20",
-                "print:border-2 print:border-black print:bg-white"
-              )}>
-                <span className="text-[10px] uppercase tracking-[0.5em] font-black text-gray-500">Statement Bottom Line</span>
-                <div className="flex items-center space-x-6">
+              <Can permission="view:profit" fallback={
+                <div className="p-10 border border-white/5 bg-white/[0.01] text-center mt-12">
+                  <span className="text-xs text-gray-500 uppercase tracking-widest">Net Profit / Loss Restricted</span>
+                </div>
+              }>
+                <div className={cn(
+                  "p-10 border flex flex-col items-center justify-center space-y-3 mt-12",
+                  isProfit ? "bg-[#C5A059]/5 border-[#C5A059]/20" : "bg-red-500/5 border-red-500/20",
+                  "print:border-2 print:border-black print:bg-white"
+                )}>
+                  <span className="text-[10px] uppercase tracking-[0.5em] font-black text-gray-500">Statement Bottom Line</span>
+                  <div className="flex items-center space-x-6">
+                    <span className={cn(
+                      "text-6xl font-black font-mono tracking-tighter",
+                      isProfit ? "text-[#C5A059]" : "text-red-500",
+                      "print:text-black"
+                    )}>
+                      {fmt(netProfit)}
+                    </span>
+                    {isProfit ? <TrendingUp className="text-[#C5A059]" size={40} /> : <ArrowDownRight className="text-red-500" size={40} />}
+                  </div>
                   <span className={cn(
-                    "text-6xl font-black font-mono tracking-tighter",
+                    "text-[10px] uppercase font-bold tracking-[0.3em]",
                     isProfit ? "text-[#C5A059]" : "text-red-500",
                     "print:text-black"
                   )}>
-                    {fmt(netProfit)}
+                    {isProfit ? "Net Operational Profit" : "Net Operational Loss"}
                   </span>
-                  {isProfit ? <TrendingUp className="text-[#C5A059]" size={40} /> : <ArrowDownRight className="text-red-500" size={40} />}
                 </div>
-                <span className={cn(
-                  "text-[10px] uppercase font-bold tracking-[0.3em]",
-                  isProfit ? "text-[#C5A059]" : "text-red-500",
-                  "print:text-black"
-                )}>
-                  {isProfit ? "Net Operational Profit" : "Net Operational Loss"}
-                </span>
-              </div>
+              </Can>
 
               {/* Footer */}
               <div className="pt-20 text-center opacity-30 text-[8px] uppercase tracking-widest print:opacity-100 print:text-black">

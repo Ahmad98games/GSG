@@ -257,7 +257,7 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (selectedIndustryKey) {
-      const ind = INDUSTRIES.find(i => i.id === selectedIndustryKey);
+      const ind = INDUSTRY_CONFIGS[selectedIndustryKey as IndustryKey];
       if (ind) {
         setValue('worker_term', ind.terms.worker.toLowerCase());
       }
@@ -300,7 +300,7 @@ export default function OnboardingPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No authenticated user found");
 
-      const selectedIndustry = INDUSTRIES.find(i => i.id === values.industry_key);
+      const selectedIndustry = INDUSTRY_CONFIGS[values.industry_key as IndustryKey];
       if (!selectedIndustry) throw new Error("Industry not found");
 
       // Format final whatsapp list
@@ -332,7 +332,6 @@ export default function OnboardingPage() {
         currency: REGION_CONFIGS[values.country_code as keyof typeof REGION_CONFIGS]?.currency || values.currency || 'PKR',
         role: 'manufacturer',
         theme_id: activeTheme.id,
-        owner_phone: values.phone,
         whatsapp_numbers: finalWhatsapp,
         summary_frequency: values.summary_frequency,
         summary_time: values.summary_time,
@@ -399,8 +398,8 @@ export default function OnboardingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#07090B] flex items-center justify-center p-6 font-inter text-slate-300">
-      <div className="max-w-5xl w-full">
+    <div className="min-h-screen bg-[#07090B] overflow-y-auto flex items-start justify-center p-6 font-inter text-slate-300">
+      <div className="max-w-5xl w-full py-6">
         {/* Hub Logo & Stepper */}
         <div className="mb-10 text-center">
           <h1 className="text-3xl font-black text-white mb-2 tracking-tighter italic">
@@ -529,15 +528,14 @@ export default function OnboardingPage() {
                       </p>
                     </div>
                   )}
-                </div>
 
-                <div className="flex justify-end pt-4">
+                  {/* Next button INSIDE the card — always visible */}
                   <button
                     type="button"
                     onClick={() => setStep(1)}
-                    className="px-10 py-3.5 bg-cyan-500 hover:bg-cyan-600 text-black font-black uppercase tracking-widest text-xs transition-all rounded-sm shadow-[0_4px_20px_rgba(6,182,212,0.25)]"
+                    className="w-full py-4 bg-cyan-500 hover:bg-cyan-400 text-black font-black uppercase tracking-widest text-sm transition-all rounded-sm shadow-[0_4px_20px_rgba(6,182,212,0.3)] mt-2"
                   >
-                    Load Industry vertical
+                    Continue → Load Industry Vertical
                   </button>
                 </div>
               </motion.div>
@@ -609,15 +607,15 @@ export default function OnboardingPage() {
                             setThemeByIndustry(config.key);
                           }}
                           className={cn(
-                            "p-4 rounded-sm border text-left transition-all",
+                            "p-4 rounded-sm border text-left transition-all text-white",
                             selectedIndustryKey === config.key
-                              ? 'border-[--accent] bg-[--accent-dim]'
+                              ? ''
                               : 'border-white/8 bg-[#0F1114] hover:border-white/18'
                           )}
                           style={{
-                            '--accent': config.accentColor,
-                            '--accent-dim': config.accentColorDim,
-                          } as React.CSSProperties}
+                            borderColor: selectedIndustryKey === config.key ? config.accentColor : undefined,
+                            backgroundColor: selectedIndustryKey === config.key ? config.accentColorDim : undefined,
+                          }}
                         >
                           <div className="flex items-center gap-2 mb-2">
                             <span className="text-xl">

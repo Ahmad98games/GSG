@@ -28,10 +28,25 @@ contextBridge.exposeInMainWorld('electron', {
   }
 });
 
+const bridgeListeners = new Map<any, any>();
+
 // Data Sovereignty API — lets the renderer ask where data lives on disk
 contextBridge.exposeInMainWorld('electronAPI', {
   getAppDataPath: () => ipcRenderer.invoke('get-app-data-path'),
   setConfig: (key: string, value: string) => ipcRenderer.invoke('set-config', key, value),
+  getBridgeStatus: () => ipcRenderer.invoke('get-bridge-status'),
+  on: (channel: string, callback: (...args: any[]) => void) => {
+    const subscription = (_event: any, ...args: any[]) => callback(_event, ...args);
+    bridgeListeners.set(callback, subscription);
+    ipcRenderer.on(channel, subscription);
+  },
+  off: (channel: string, callback: (...args: any[]) => void) => {
+    const subscription = bridgeListeners.get(callback);
+    if (subscription) {
+      ipcRenderer.removeListener(channel, subscription);
+      bridgeListeners.delete(callback);
+    }
+  }
 });
 
 contextBridge.exposeInMainWorld('electronWindow', {

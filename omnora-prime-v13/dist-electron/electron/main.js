@@ -45,10 +45,20 @@ const http = __importStar(require("http"));
 const net = __importStar(require("net"));
 const electron_updater_1 = require("electron-updater");
 const electron_log_1 = __importDefault(require("electron-log"));
+const os_1 = require("os");
 const dbKeyManager_1 = require("../src/lib/security/dbKeyManager");
 // ─────────────────────────────────────────────
 // 0. GLOBAL REFERENCES
 // ─────────────────────────────────────────────
+try {
+    fs.writeFileSync('C:\\Users\\omnora\\OneDrive\\Desktop\\new_system\\omnora-prime-v13\\debug-startup.txt', `Start execution: packaged=${electron_1.app.isPackaged}\n`);
+}
+catch (e) {
+    try {
+        fs.writeFileSync(path.join(electron_1.app.getPath('userData'), 'debug-startup.txt'), `Start execution: error=${e.message}\n`);
+    }
+    catch { }
+}
 let mainWindow = null;
 let splashWindow = null;
 let nextServer = null;
@@ -58,6 +68,7 @@ let warningTimer = null;
 let memoryMonitorInterval = null;
 let PORT = Number(process.env.PORT || 3000);
 let isReadOnly = false;
+let lastBridgeStatus = { connected: 0, paired: 0, pairedDevices: [] };
 const isDev = !electron_1.app.isPackaged;
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 const WARNING_LEAD_MS = 60 * 1000;
@@ -118,11 +129,57 @@ function loadEnvFile(filePath) {
         startupLog(`[ENV] Failed to load ${filePath}: ${err.message}`);
     }
 }
-if (process.platform === 'win32') {
-    electron_1.app.setAppUserModelId('com.omnoralabs.noxis');
+// Detect Windows version
+// Windows 7 = NT 6.1
+// Windows 8 = NT 6.2
+// Windows 8.1 = NT 6.3
+// Windows 10/11 = NT 10.0
+function getWindowsVersion() {
+    if (process.platform !== 'win32') {
+        return {
+            major: 0, minor: 0,
+            isWin7: false, isWin8: false,
+            isWin10Plus: false,
+        };
+    }
+    const r = (0, os_1.release)();
+    const parts = r.split('.').map(Number);
+    const major = parts[0] || 0;
+    const minor = parts[1] || 0;
+    return {
+        major,
+        minor,
+        isWin7: major === 6 && minor === 1,
+        isWin8: major === 6 && (minor === 2 || minor === 3),
+        isWin10Plus: major >= 10,
+    };
 }
-// Disable hardware acceleration to prevent GPU process crashes on certain Windows systems/drivers
-electron_1.app.disableHardwareAcceleration();
+const winVersion = getWindowsVersion();
+// Windows 7/8 specific: setAppUserModelId
+// works differently — wrap in try/catch
+if (process.platform === 'win32') {
+    try {
+        electron_1.app.setAppUserModelId('com.omnoralabs.noxis');
+    }
+    catch (err) {
+        startupLog(`[Win] AppUserModelId failed: ${err.message}`);
+        // Non-fatal — app still works
+    }
+}
+// Force disable GPU acceleration and sandbox on Windows to resolve KERNELBASE.dll 0x80000003 crashes
+if (process.platform === 'win32') {
+    electron_1.app.disableHardwareAcceleration();
+    electron_1.app.commandLine.appendSwitch('disable-gpu');
+    electron_1.app.commandLine.appendSwitch('disable-gpu-sandbox');
+    electron_1.app.commandLine.appendSwitch('no-sandbox');
+    startupLog('[Win] GPU acceleration and Sandbox disabled defensively to prevent KERNELBASE.dll crashes');
+}
+// On older GPUs/drivers, disable hardware acceleration entirely or features
+// to prevent black screen issues
+electron_1.app.commandLine.appendSwitch('disable-features', 'HardwareMediaKeyHandling,MediaSessionService');
+// V8 heap space flags to prevent OOMs on low-RAM machines:
+electron_1.app.commandLine.appendSwitch('--max-old-space-size', '512');
+electron_1.app.commandLine.appendSwitch('--js-flags', '--max-old-space-size=512');
 startupLog('════════════ NOXIS STARTUP ════════════');
 startupLog(`Platform: ${process.platform} | Arch: ${process.arch} | isDev: ${isDev}`);
 function killProcess(child, name) {
@@ -131,9 +188,15 @@ function killProcess(child, name) {
             resolve();
             return;
         }
-        startupLog(`[Cleanup] Terminating ${name} (PID: ${child.pid})...`);
+        startupLog(`[Cleanup] Terminating ${name} (PID: ${child.pid || 'N/A'})...`);
         try {
-            if (process.platform === 'win32') {
+            try {
+                child.kill();
+            }
+            catch (killErr) {
+                startupLog(`[Cleanup] child.kill() failed: ${killErr.message}`);
+            }
+            if (process.platform === 'win32' && child.pid) {
                 (0, child_process_1.exec)(`taskkill /pid ${child.pid} /T /F`, (err) => {
                     if (err)
                         startupLog(`[Cleanup ERR] Failed to taskkill ${name}: ${err.message}`);
@@ -143,7 +206,6 @@ function killProcess(child, name) {
                 });
             }
             else {
-                child.kill('SIGKILL');
                 resolve();
             }
         }
@@ -290,7 +352,7 @@ else {
             webPreferences: {
                 nodeIntegration: false,
                 contextIsolation: true,
-                sandbox: true,
+                sandbox: false,
             },
             icon: iconPath,
         });
@@ -430,11 +492,26 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         if (memoryMonitorInterval)
             clearInterval(memoryMonitorInterval);
         memoryMonitorInterval = setInterval(() => {
-            const heapMB = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
-            if (heapMB > 800) {
-                if (typeof global.gc === 'function')
+            const usage = process.memoryUsage();
+            const heapMB = Math.round(usage.heapUsed / 1024 / 1024);
+            const rssMB = Math.round(usage.rss / 1024 / 1024);
+            startupLog(`[Memory] Heap: ${heapMB}MB / ` +
+                `RSS: ${rssMB}MB`);
+            // Aggressive GC on machines under memory pressure
+            if (heapMB > 512) {
+                if (typeof global.gc === 'function') {
                     global.gc();
-                startupLog(`[Memory] GC triggered: ${heapMB}MB`);
+                    startupLog(`[Memory] GC triggered: ${heapMB}MB`);
+                }
+            }
+            // If heap exceeds 800MB, log warning
+            if (heapMB > 800) {
+                startupLog(`[Memory] WARNING: High heap ` +
+                    `usage ${heapMB}MB — possible leak`);
+            }
+            // Pass memory stats to renderer for the performance monitor
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('memory-stats', { heapMB, rssMB });
             }
         }, 30000);
     }
@@ -453,6 +530,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     electron_1.ipcMain.handle('window-is-maximized', () => electron_1.BrowserWindow.getFocusedWindow()?.isMaximized() ?? false);
     electron_1.ipcMain.handle('check-for-updates', async () => electron_updater_1.autoUpdater.checkForUpdates());
     electron_1.ipcMain.handle('install-update', () => electron_updater_1.autoUpdater.quitAndInstall(false, true));
+    electron_1.ipcMain.handle('get-bridge-status', () => lastBridgeStatus);
     electron_1.ipcMain.handle('sync-tier', (_, data) => {
         startupLog(`[Tier] Sync: ${data.tier} (Expires: ${data.expiresAt || 'Never'})`);
         if (data.expiresAt && new Date() > new Date(data.expiresAt)) {
@@ -540,12 +618,16 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             webPreferences: {
                 nodeIntegration: false,
                 contextIsolation: true,
-                sandbox: true,
+                sandbox: false,
                 webSecurity: true,
                 allowRunningInsecureContent: false,
                 experimentalFeatures: false,
                 preload: path.join(__dirname, 'preload.js'),
                 partition: 'persist:noxis',
+                scrollBounce: false,
+                spellcheck: false,
+                devTools: true,
+                backgroundThrottling: false,
             },
             icon: iconPath,
         });
@@ -572,6 +654,40 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             startupLog('[Electron] Page loaded successfully ✓');
             loadRetries = 0;
         });
+        mainWindow.webContents.on('unresponsive', () => {
+            startupLog('[FREEZE] Renderer unresponsive');
+            // Capture memory state at freeze time
+            const mem = process.memoryUsage();
+            startupLog(`[FREEZE] Memory at freeze: ` +
+                `heap ${Math.round(mem.heapUsed / 1024 / 1024)}MB`);
+            // Log all active IPC channels
+            startupLog('[FREEZE] Checking for hung IPC...');
+            // Give it 15 seconds to recover
+            const recoveryTimeout = setTimeout(() => {
+                if (mainWindow && !mainWindow.isDestroyed()) {
+                    electron_1.dialog.showMessageBox(mainWindow, {
+                        type: 'question',
+                        title: 'Noxis Hub is not responding',
+                        message: 'Noxis Hub stopped responding. ' +
+                            'Wait for it to recover or restart?',
+                        buttons: ['Wait', 'Restart'],
+                        defaultId: 0,
+                    }).then(({ response }) => {
+                        if (response === 1) {
+                            electron_1.app.relaunch();
+                            electron_1.app.exit(0);
+                        }
+                    });
+                }
+            }, 15000);
+            // If it recovers, cancel the dialog
+            if (mainWindow) {
+                mainWindow.webContents.once('responsive', () => {
+                    clearTimeout(recoveryTimeout);
+                    startupLog('[FREEZE] Renderer recovered');
+                });
+            }
+        });
         // THE KEY MOMENT:
         // ready-to-show fires when first paint is done.
         // At this point we fade splash and show main.
@@ -579,8 +695,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             startupLog('[Electron] ready-to-show → revealing main window');
             // Destroy splash with fade
             destroySplash();
-            // Show main window with smooth opacity animation
+            // Show main window maximized — works on all screen sizes
             mainWindow.setOpacity(0);
+            mainWindow.maximize();
             mainWindow.show();
             mainWindow.focus();
             // Fade in over 300ms
@@ -854,6 +971,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                         sqlitePath,
                         path.join(resourcesPath, 'app.asar', 'node_modules'),
                         path.join(resourcesPath, 'app.asar.unpacked', 'node_modules'),
+                        path.join(resourcesPath, 'standalone', 'node_modules'),
+                        path.join(resourcesPath, 'standalone'),
                         path.join(resourcesPath, '.next', 'standalone', 'node_modules'),
                         path.join(resourcesPath, '.next', 'standalone'),
                     ].join(path.delimiter),
@@ -884,6 +1003,20 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                     fs.appendFileSync(stderrPath, msg);
                 }
                 catch { }
+            });
+            nextServer.on('message', (msg) => {
+                if (msg && msg.type === 'bridge-event') {
+                    if (mainWindow && !mainWindow.isDestroyed()) {
+                        mainWindow.webContents.send('bridge-event', { event: msg.event, data: msg.data });
+                    }
+                    if (msg.event === 'DEVICE_COUNT_CHANGED') {
+                        lastBridgeStatus = {
+                            connected: msg.data.connected,
+                            paired: msg.data.paired,
+                            pairedDevices: msg.data.pairedDevices || [],
+                        };
+                    }
+                }
             });
             nextServer.on('exit', (code) => {
                 startupLog(`[Next.js] Exit: code=${code}`);

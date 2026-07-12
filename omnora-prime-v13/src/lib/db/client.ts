@@ -48,7 +48,26 @@ export const db = new Proxy({} as Record<string, any>, {
           const mod = typeof (globalThis as any).__non_webpack_require__ !== 'undefined'
             ? (globalThis as any).__non_webpack_require__('module')
             : eval('require')('module');
-          nativeRequire = mod.createRequire(process.cwd() + '/index.js');
+          const baseRequirePath = process.env.ELECTRON_RESOURCES
+            ? path.join(process.env.ELECTRON_RESOURCES, 'standalone', 'server.js')
+            : (process.cwd() + '/server.js');
+          nativeRequire = mod.createRequire(baseRequirePath);
+          
+          // Alias better-sqlite3 to better-sqlite3-multiple-ciphers for drizzle-orm
+          if (mod && mod.prototype && !mod.prototype.__noxis_aliased) {
+            mod.prototype.__noxis_aliased = true;
+            const originalRequire = mod.prototype.require;
+            mod.prototype.require = function(id: string) {
+              if (id === 'better-sqlite3') {
+                const sqlitePath = process.env.ELECTRON_RESOURCES
+                  ? path.join(process.env.ELECTRON_RESOURCES, 'better-sqlite3-multiple-ciphers')
+                  : 'better-sqlite3-multiple-ciphers';
+                return originalRequire.call(this, sqlitePath);
+              }
+              return originalRequire.apply(this, arguments);
+            };
+            console.log('[DB] Set up better-sqlite3 module redirection alias');
+          }
         } catch (e) {
           nativeRequire = typeof (globalThis as any).__non_webpack_require__ !== 'undefined'
             ? (globalThis as any).__non_webpack_require__
@@ -63,6 +82,23 @@ export const db = new Proxy({} as Record<string, any>, {
         const Database = nativeRequire(sqliteModulePath);
         const { drizzle } = nativeRequire('drizzle-orm/better-sqlite3');
         /* eslint-enable @typescript-eslint/no-var-requires */
+
+        const initDrizzle = (sqliteInst: any) => {
+          const instance = Object.assign(drizzle(sqliteInst, { schema }), { $client: sqliteInst });
+          try {
+            const { migrate } = nativeRequire('drizzle-orm/better-sqlite3/migrator');
+            const migrationsPath = process.env.ELECTRON_RESOURCES
+              ? path.join(process.env.ELECTRON_RESOURCES, 'standalone', 'src', 'lib', 'db', 'migrations')
+              : path.join(process.cwd(), 'src', 'lib', 'db', 'migrations');
+            
+            console.log('[DB] Running migrations from:', migrationsPath);
+            migrate(instance, { migrationsFolder: migrationsPath });
+            console.log('[DB] Migrations applied successfully ✓');
+          } catch (migrationErr) {
+            console.error('[DB] Failed to run migrations:', migrationErr);
+          }
+          return instance;
+        };
         
         const dbPath = getDbPath();
         const dbKey = process.env.ELECTRON_DB_KEY || '';
@@ -95,24 +131,28 @@ export const db = new Proxy({} as Record<string, any>, {
             console.log('[DB] Encryption verified ✓');
           } catch (err) {
             console.log('[DB] Encryption check failed, checking if unencrypted...');
+            let checkDb: any = null;
+            let migrator: any = null;
             try {
               // Try without key
-              const checkDb = new Database(dbPath, {
+              checkDb = new Database(dbPath, {
                 nativeBinding: process.env.BETTER_SQLITE3_BINDING || undefined,
               });
               checkDb.prepare('SELECT count(*) FROM sqlite_master').get();
               checkDb.close();
+              checkDb = null;
               
               console.log('[DB] Database is UNENCRYPTED. Triggering in-place encryption...');
               
               sqlite.close(); // Close existing connection
               
               // Open without key to execute rekey
-              const migrator = new Database(dbPath, {
+              migrator = new Database(dbPath, {
                 nativeBinding: process.env.BETTER_SQLITE3_BINDING || undefined,
               });
               migrator.pragma(`rekey = '${dbKey}'`);
               migrator.close();
+              migrator = null;
               
               console.log('[DB] Encryption complete. Re-opening encrypted database...');
               
@@ -124,14 +164,25 @@ export const db = new Proxy({} as Record<string, any>, {
                 nativeBinding: process.env.BETTER_SQLITE3_BINDING || undefined,
               });
               newSqlite.pragma(`key = '${dbKey}'`);
-              _db = Object.assign(drizzle(newSqlite, { schema }), { $client: newSqlite });
+              _db = initDrizzle(newSqlite);
               if (dbPath !== ':memory:') {
                 try { applyProductionPragmas(newSqlite); } catch {}
               }
               return (_db as Record<string | symbol, any>)[prop];
             } catch (migrationErr) {
-              console.error('[DB] Migration failed FATAL:', migrationErr);
+              console.error('[DB] Migration/Encryption failed FATAL:', migrationErr);
               console.log('[DB] Deleting corrupt or incompatible database and starting fresh...');
+              
+              // CRITICAL: Close checkDb and migrator connections if they are still open to free the file lock
+              if (checkDb) {
+                try { checkDb.close(); } catch {}
+                checkDb = null;
+              }
+              if (migrator) {
+                try { migrator.close(); } catch {}
+                migrator = null;
+              }
+              
               try {
                 sqlite.close();
               } catch {}
@@ -141,6 +192,7 @@ export const db = new Proxy({} as Record<string, any>, {
                 if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
                 if (fs.existsSync(dbPath + '-wal')) fs.unlinkSync(dbPath + '-wal');
                 if (fs.existsSync(dbPath + '-shm')) fs.unlinkSync(dbPath + '-shm');
+                console.log('[DB] Incompatible database deleted successfully.');
               } catch (deleteErr) {
                 console.error('[DB] Failed to delete incompatible database files:', deleteErr);
                 targetDbPath = path.join(path.dirname(dbPath), 'noxis-local-fallback.db');
@@ -157,16 +209,23 @@ export const db = new Proxy({} as Record<string, any>, {
                 nativeBinding: process.env.BETTER_SQLITE3_BINDING || undefined,
               });
               freshSqlite.pragma(`key = '${dbKey}'`);
-              _db = Object.assign(drizzle(freshSqlite, { schema }), { $client: freshSqlite });
+              _db = initDrizzle(freshSqlite);
               if (targetDbPath !== ':memory:') {
                 try { applyProductionPragmas(freshSqlite); } catch {}
               }
               return (_db as Record<string | symbol, any>)[prop];
+            } finally {
+              if (checkDb) {
+                try { checkDb.close(); } catch {}
+              }
+              if (migrator) {
+                try { migrator.close(); } catch {}
+              }
             }
           }
         }
         
-        _db = Object.assign(drizzle(sqlite, { schema }), { $client: sqlite });
+        _db = initDrizzle(sqlite);
         
         // Apply production-tuned performance pragmas
         if (dbPath !== ':memory:') {

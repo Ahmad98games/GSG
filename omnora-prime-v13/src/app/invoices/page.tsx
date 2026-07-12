@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { motion } from "framer-motion";
 import { 
   Plus, Search, Filter, 
@@ -69,6 +70,21 @@ export default function InvoiceListPage() {
     },
     enabled: !!businessId && (debouncedSearch.length >= 2 || debouncedSearch.length === 0)
   });
+
+  const parentRef = useRef<HTMLDivElement>(null);
+  const items = invoices || [];
+  const rowVirtualizer = useVirtualizer({
+    count: items.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 72,
+    overscan: 10,
+  });
+  const virtualRows = rowVirtualizer.getVirtualItems();
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0]?.start ?? 0 : 0;
+  const paddingBottom =
+    virtualRows.length > 0
+      ? rowVirtualizer.getTotalSize() - (virtualRows[virtualRows.length - 1]?.end ?? 0)
+      : 0;
 
   const exportToExcel = () => {
     if (!invoices || invoices.length === 0) {
@@ -236,10 +252,10 @@ export default function InvoiceListPage() {
               }}
             />
           ) : (
-            <div className="bg-[#1A1D21] border border-white/5 overflow-hidden">
+            <div ref={parentRef} className="bg-[#1A1D21] border border-white/5 overflow-y-auto max-h-[calc(100vh-280px)]">
               <table className="w-full border-collapse">
                 <thead>
-                  <tr className="bg-[#0F1113] table-header border-b border-white/5">
+                  <tr className="bg-[#0F1113] table-header border-b border-white/5 sticky top-0 z-10">
                     <th className="px-8 py-5 text-left">Ref No.</th>
                     <th className="px-8 py-5 text-left">Issue Date</th>
                     <th className="px-8 py-5 text-left">Customer / Entity</th>
@@ -249,9 +265,20 @@ export default function InvoiceListPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.03]">
-                  {invoices.map((inv: any) => (
-                    <InvoiceRow key={inv.id} inv={inv} />
-                  ))}
+                  {paddingTop > 0 && (
+                    <tr>
+                      <td colSpan={6} style={{ height: `${paddingTop}px` }} />
+                    </tr>
+                  )}
+                  {virtualRows.map((virtualRow) => {
+                    const inv = items[virtualRow.index];
+                    return <InvoiceRow key={inv.id} inv={inv} />;
+                  })}
+                  {paddingBottom > 0 && (
+                    <tr>
+                      <td colSpan={6} style={{ height: `${paddingBottom}px` }} />
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

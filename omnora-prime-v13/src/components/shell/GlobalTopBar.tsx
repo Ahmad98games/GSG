@@ -83,6 +83,38 @@ export default React.memo(function GlobalTopBar() {
     enabled: !!businessId,
   })
 
+  const [bridgeDeviceCount, setBridgeDeviceCount] = useState<number | null>(null);
+
+  const refreshDeviceCount = async () => {
+    if ((window as any).electronAPI && typeof (window as any).electronAPI.getBridgeStatus === 'function') {
+      try {
+        const status = await (window as any).electronAPI.getBridgeStatus();
+        if (status && typeof status.paired === 'number') {
+          setBridgeDeviceCount(status.paired);
+        }
+      } catch (err) {
+        console.error('Failed to get bridge status:', err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    refreshDeviceCount();
+    if (!(window as any).electronAPI || typeof (window as any).electronAPI.on !== 'function') return;
+
+    const handleBridgeEvent = (_: any, payload: { event: string; data: any }) => {
+      if (payload.event === 'ATTENDANCE_LOGGED' || payload.event === 'PRODUCTION_LOGGED') {
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      }
+      refreshDeviceCount();
+    };
+
+    (window as any).electronAPI.on('bridge-event', handleBridgeEvent);
+    return () => {
+      (window as any).electronAPI.off('bridge-event', handleBridgeEvent);
+    };
+  }, [queryClient]);
+
   // 2. Sync Status Query
   const { data: syncData, isError: isSyncError } = useQuery({
     queryKey: ['sync-status'],
@@ -175,7 +207,7 @@ export default React.memo(function GlobalTopBar() {
           <div className="flex items-center space-x-2 px-6 border-x border-noxis-border">
             <Smartphone size={14} className="text-gray-500" />
             <span className="text-[10px] font-black uppercase tracking-widest text-noxis-text">
-              {deviceCount} {deviceCount === 1 ? 'Device' : 'Devices'}
+              {bridgeDeviceCount !== null ? bridgeDeviceCount : deviceCount} {(bridgeDeviceCount !== null ? bridgeDeviceCount : deviceCount) === 1 ? 'Device' : 'Devices'}
             </span>
           </div>
 

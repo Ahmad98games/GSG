@@ -22,6 +22,8 @@ import { useParams, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import Decimal from "decimal.js";
 import { FeatureGate } from "@/components/ui/FeatureGate";
+import { SharePortalButton } from "@/components/parties/SharePortalButton";
+import { PartyPortalSection } from "@/components/parties/PartyPortalSection";
 
 // --- Types ---
 
@@ -76,6 +78,14 @@ interface HistoryItem {
   id: string;
   color: 'blue' | 'purple' | 'emerald' | 'default';
   balanceAfter?: number;
+}
+
+interface Commitment {
+  id: string;
+  promised_amount: number;
+  status: string;
+  promise_date: string;
+  notes?: string | null;
 }
 
 // --- Components ---
@@ -294,14 +304,19 @@ export default function PartyDetailPage() {
     if (!businessId) return;
     setPortalLoading(true);
     try {
+      // Generate a secure client-side nonce (32 hex characters)
+      const array = new Uint8Array(16);
+      window.crypto.getRandomValues(array);
+      const nonce = Array.from(array, dec => dec.toString(16).padStart(2, '0')).join('');
+
       const res = await fetch('/api/portal/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ partyId, businessId }),
+        body: JSON.stringify({ partyId, businessId, nonce }),
       });
       const data = await res.json();
       if (data.url) setPortalLink(data.url);
-      else alert('Failed to generate link');
+      else alert('Failed to generate link: ' + (data.error || 'Unknown error'));
     } catch { alert('Failed to generate portal link'); }
     finally { setPortalLoading(false); }
   };
@@ -399,24 +414,31 @@ export default function PartyDetailPage() {
            <div className="h-4 w-px bg-white/10 mx-4" />
            <h1 className="text-[10px] uppercase font-black tracking-[0.3em] text-gray-400">Party Identity: {party.name}</h1>
            
-           {party.phone && (
-              <div className="ml-auto flex items-center gap-2">
-                 <a
-                    href={`tel:${party.phone}`}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 transition-colors"
-                 >
-                    <Phone size={12} />
-                    Call
-                 </a>
-                 <button
-                    onClick={() => handleWhatsAppReminder(party)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-[#25D366]/30 text-[#25D366] hover:bg-[#25D366]/10 transition-colors"
-                 >
-                    <MessageCircle size={12} />
-                    WhatsApp Reminder
-                 </button>
-              </div>
-           )}
+           <div className="ml-auto flex items-center gap-2">
+               {party.phone && (
+                  <>
+                     <a
+                        href={`tel:${party.phone}`}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                     >
+                        <Phone size={12} />
+                        Call
+                     </a>
+                     <button
+                        onClick={() => handleWhatsAppReminder(party)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-[#25D366]/30 text-[#25D366] hover:bg-[#25D366]/10 transition-colors"
+                     >
+                        <MessageCircle size={12} />
+                        WhatsApp Reminder
+                     </button>
+                  </>
+               )}
+               <SharePortalButton
+                  partyId={party.id}
+                  partyName={party.name}
+                  partyPhone={party.phone}
+               />
+            </div>
         </header>
 
         <div className="p-8 max-w-[1600px] mx-auto w-full flex flex-col lg:flex-row gap-8">
@@ -535,6 +557,7 @@ export default function PartyDetailPage() {
                     </button>
                  </div>
               </div>
+              <PartyPortalSection partyId={partyId} />
            </aside>
 
            {/* RIGHT PANEL (2/3) */}
@@ -613,7 +636,7 @@ export default function PartyDetailPage() {
                        {activeTab === "invoices" && (
                          <motion.div key="invoices" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                               {invoices?.map((inv: any) => (
+                               {invoices?.map((inv: Invoice) => (
                                  <div key={inv.id} className="bg-white/[0.02] border border-white/5 p-6 hover:border-[#0070F3]/30 transition-all group">
                                     <div className="flex justify-between items-start mb-4">
                                        <div className="p-2 bg-blue-500/10 text-blue-500 rounded-sm">
@@ -664,7 +687,7 @@ export default function PartyDetailPage() {
                        {activeTab === "pos" && (
                          <motion.div key="pos" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                               {purchaseOrders?.map((po: any) => (
+                               {purchaseOrders?.map((po: PurchaseOrder) => (
                                  <div key={po.id} className="bg-white/[0.02] border border-white/5 p-6 hover:border-purple-500/30 transition-all group">
                                     <div className="flex justify-between items-start mb-4">
                                        <div className="p-2 bg-purple-500/10 text-purple-500 rounded-sm">
@@ -750,7 +773,7 @@ export default function PartyDetailPage() {
                                 </div>
                                 {commitments && commitments.length > 0 ? (
                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                      {commitments.map((c: any) => (
+                                      {commitments.map((c: Commitment) => (
                                          <div key={c.id} className="bg-white/[0.02] border border-white/5 p-4 flex flex-col justify-between hover:border-white/10 transition-colors">
                                             <div className="flex justify-between items-start">
                                                <span className="text-[11px] font-mono font-bold text-[#C5A059]">{fmt(c.promised_amount)}</span>

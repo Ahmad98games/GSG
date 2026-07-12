@@ -11,8 +11,15 @@ class PersonaEngineClass {
   private profile: IndustryProfile | null = null
   
   initialize(industryId: string): void {
+    let lookupId = industryId
+    if (industryId === 'medical') lookupId = 'pharma'
+    else if (industryId === 'rice') lookupId = 'rice_mill'
+    else if (industryId === 'auto') lookupId = 'auto_parts'
+    else if (industryId === 'food') lookupId = 'food_processing'
+    else if (industryId === 'general') lookupId = 'wholesale'
+
     this.profile = INDUSTRIES.find(
-      i => i.id === (industryId as IndustryId)
+      i => i.id === (lookupId as IndustryId)
     ) || INDUSTRIES[0]
     
     // NOTE: Auto-applying suggested theme here on every page mount resets manual user selections.

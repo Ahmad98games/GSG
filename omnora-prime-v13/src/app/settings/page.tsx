@@ -287,7 +287,7 @@ export default function SettingsPage() {
         .update({
           business_name: profile.business_name,
           owner_name: (profile as any).owner_name,
-          owner_phone: (profile as any).owner_phone || null,
+          phone: (profile as any).owner_phone || profile.phone || null,
           tax_number: profile.tax_number,
           address: profile.address,
           currency: profile.currency,
@@ -650,11 +650,13 @@ export default function SettingsPage() {
                             onChange={(e) => profile && setProfile({ ...profile, industry_key: e.target.value })}
                             className="w-full bg-zinc-900 border border-zinc-800 rounded-sm px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400 transition-all duration-200 text-white appearance-none [&>option]:bg-[#1A1D21]"
                           >
-                            <option value="textiles">Textiles & Apparel</option>
-                            <option value="pharma">Pharmaceuticals</option>
+                            <option value="textile">Textile Mill</option>
+                            <option value="garment">Garment Factory</option>
+                            <option value="rice">Rice Mill</option>
+                            <option value="medical">Medical & Pharmacy</option>
                             <option value="auto">Automotive Parts</option>
-                            <option value="food">Food & Beverage</option>
-                            <option value="logistics">Logistics & Supply Chain</option>
+                            <option value="food">Food Processing</option>
+                            <option value="general">General / Wholesale</option>
                           </select>
                         </div>
                       </div>

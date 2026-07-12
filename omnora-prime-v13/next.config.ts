@@ -58,19 +58,32 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production'
+      ? { exclude: ['error', 'warn'] }
+      : false,
+  },
   serverExternalPackages: serverOnlyPackages,
   outputFileTracingRoot: path.join(__dirname),
   outputFileTracingIncludes: {
     '**': [
       './node_modules/better-sqlite3-multiple-ciphers/**',
       './node_modules/better-sqlite3/**',
+      './node_modules/drizzle-orm/**',
+      './src/lib/db/migrations/**',
     ],
   },
   experimental: {
     optimizePackageImports: [
-      'framer-motion',
       'lucide-react',
+      'framer-motion',
       '@supabase/supabase-js',
+      'recharts',
+      'date-fns',
+      '@tanstack/react-table',
+      '@tanstack/react-virtual',
+      '@tanstack/react-query',
+      'react-hot-toast',
     ],
   },
 
@@ -79,15 +92,59 @@ const nextConfig: NextConfig = {
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {
-      // Prevent these from ever reaching the client bundle
+      // Stub server-only modules on the client bundle
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false, 
         net: false, 
         tls: false, 
         child_process: false,
+        crypto: false,
+        path: false,
+        os: false,
+        stream: false,
+        http: false,
+        https: false,
+        zlib: false,
       };
     }
+
+    config.optimization = {
+      ...config.optimization,
+      splitChunks: {
+        ...config.optimization.splitChunks,
+        chunks: 'all',
+        maxInitialRequests: 25,
+        minSize: 20000,
+        cacheGroups: {
+          supabase: {
+            test: /[\\/]node_modules[\\/]@supabase/,
+            name: 'supabase',
+            chunks: 'all',
+            priority: 30,
+          },
+          tanstack: {
+            test: /[\\/]node_modules[\\/]@tanstack/,
+            name: 'tanstack',
+            chunks: 'all',
+            priority: 25,
+          },
+          charts: {
+            test: /[\\/]node_modules[\\/]recharts/,
+            name: 'recharts',
+            chunks: 'async',
+            priority: 20,
+          },
+          lucide: {
+            test: /[\\/]node_modules[\\/]lucide-react/,
+            name: 'lucide',
+            chunks: 'all',
+            priority: 20,
+          },
+        },
+      },
+    };
+
     return config;
   },
   async headers() {
@@ -103,6 +160,12 @@ const nextConfig: NextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
           { key: 'Content-Security-Policy', value: getCSP() },
+        ],
+      },
+      {
+        source: '/static/(.*)',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
         ],
       },
       {

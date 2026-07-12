@@ -92,7 +92,10 @@ export const useBusinessProfile = () => {
             console.error('Failed to load local config fallback:', localErr);
           }
         } else {
-          setProfile(data);
+          setProfile({
+            ...data,
+            owner_phone: (data as any).owner_phone || (data as any).phone || ""
+          });
           setOffline(false);
 
           // Persist business_id and details to local SQLite for background processes and fallbacks

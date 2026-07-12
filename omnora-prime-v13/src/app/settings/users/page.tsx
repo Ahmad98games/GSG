@@ -1,155 +1,272 @@
-"use client";
+'use client'
 
-import React, { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
-import { Users, UserPlus, Shield, Mail, CheckCircle2, XCircle, Loader2, ArrowLeft } from "lucide-react";
-import { usePersona } from "@/hooks/usePersona";
-import { cn } from "@/lib/utils";
-import { useRouter } from "next/navigation";
-import { ROLE_LABELS, type StaffRole } from "@/lib/auth/permissions";
-import { useTierStore } from "@/stores/tierStore";
-import { FeatureGate } from "@/components/ui/FeatureGate";
-import { useToast } from "@/hooks/useToast";
-import { humanizeError } from '@/lib/utils/errors';
+import React, { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { createClient } from '@/lib/supabase/client'
+import { useBusinessProfile } from '@/hooks/useBusinessProfile'
+import { usePermissions } from '@/hooks/usePermissions'
+import { Can } from '@/components/rbac/Can'
+import { ROLE_LABELS, ROLE_DESCRIPTIONS } from '@/lib/rbac/permissions'
+import { UserPlus, Trash2, Shield } from 'lucide-react'
+import { useToast } from '@/hooks/useToast'
 
-export default function StaffUsersPage() {
-  const router = useRouter();
-  const { businessId } = usePersona();
-  const queryClient = useQueryClient();
-  const [showInvite, setShowInvite] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteName, setInviteName] = useState("");
-  const [inviteRole, setInviteRole] = useState<StaffRole>("viewer");
-  const { canAddStaff, limits } = useTierStore();
-  const toast = useToast();
+export default function UsersPage() {
+  const supabase = createClient()
+  const { profile } = useBusinessProfile()
+  const { isOwner } = usePermissions()
+  const queryClient = useQueryClient()
+  const toast = useToast()
 
-  const { data: staffList, isLoading } = useQuery({
-    queryKey: ['staff_users', businessId],
-    queryFn: async () => {
-      const res = await fetch(`/api/staff/invite?businessId=${businessId}`);
-      const data = await res.json();
-      return data.staff || [];
-    },
-    enabled: !!businessId
-  });
+  const [showAddUser, setShowAddUser] = useState(false)
+  const [newUser, setNewUser] = useState({
+    name: '',
+    email: '',
+    role: 'supervisor' as 'manager' | 'accountant' | 'supervisor' | 'viewer',
+    pin: '',
+  })
 
-  const inviteMutation = useMutation({
+  const { data: users = [], isLoading } =
+    useQuery({
+      queryKey: ['sub-users', profile?.id],
+      queryFn: async () => {
+        const { data } = await supabase
+          .from('sub_users')
+          .select('*')
+          .eq('business_id', profile!.id)
+          .eq('is_active', true)
+          .order('created_at')
+        return data || []
+      },
+      enabled: !!profile?.id && isOwner,
+    })
+
+  const addUser = useMutation({
     mutationFn: async () => {
-      const res = await fetch('/api/staff/invite', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: inviteEmail, name: inviteName, role: inviteRole, businessId }),
-      });
-      if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
-      return res.json();
+      const { error } = await supabase
+        .from('sub_users')
+        .insert({
+          business_id: profile!.id,
+          name: newUser.name.trim(),
+          email: newUser.email.trim().toLowerCase(),
+          role: newUser.role,
+        })
+      if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['staff_users'] });
-      setShowInvite(false);
-      setInviteEmail(""); setInviteName(""); setInviteRole("viewer");
-      toast.success('Invitation sent successfully');
+      queryClient.invalidateQueries({
+        queryKey: ['sub-users', profile?.id]
+      })
+      setShowAddUser(false)
+      setNewUser({
+        name: '', email: '',
+        role: 'supervisor', pin: '',
+      })
+      toast.success('Success', 'Team member added successfully')
     },
-    onError: (err: any) => toast.error(humanizeError(err, 'send invitation')),
-  });
+    onError: (err: any) => {
+      toast.error(
+        'Failed',
+        err.message.includes('duplicate')
+          ? 'This email is already a team member'
+          : 'Could not add team member'
+      )
+    },
+  })
 
-  const roleInfo = (role: string) => ROLE_LABELS[role as StaffRole] || ROLE_LABELS.viewer;
+  const removeUser = useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase
+        .from('sub_users')
+        .update({ is_active: false })
+        .eq('id', userId)
+        .eq('business_id', profile!.id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['sub-users', profile?.id]
+      })
+      toast.success('Removed', 'Team member removed successfully')
+    },
+  })
+
+  const INPUT = `w-full bg-[#161A1F] border border-white/8 text-white text-sm px-3 py-2.5 outline-none focus:border-[#60A5FA]/40`
+  const LABEL = `text-[10px] font-bold uppercase tracking-widest text-gray-500 block mb-1.5`
+
+  if (!isOwner) {
+    return (
+      <div className="p-6 max-w-lg">
+        <div className="p-6 bg-[#0F1114] border border-white/8 rounded-sm text-center">
+          <Shield size={32} className="text-gray-600 mx-auto mb-3" />
+          <p className="text-sm text-gray-500">
+            Only the account owner can manage team members.
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-black text-slate-200 p-6">
-      <main className="max-w-4xl mx-auto space-y-8">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <button onClick={() => router.push('/settings')} className="text-gray-500 hover:text-white transition-colors"><ArrowLeft size={16} /></button>
-            <div><h1 className="text-lg font-semibold tracking-tight text-white">Staff & Access Control</h1><p className="text-xs text-gray-500 mt-0.5">Manage team members and role-based permissions</p></div>
-          </div>
-          <FeatureGate feature="staffUsers">
-            <button 
-              onClick={() => {
-                if (!canAddStaff(staffList?.length || 0)) {
-                  toast.error("Limit Reached", `Your plan allows up to ${limits.maxStaffUsers} staff members.`);
-                  return;
-                }
-                setShowInvite(true)
-              }} 
-              className="flex items-center space-x-2 px-4 py-2 bg-[#3B82F6] text-white text-sm font-semibold rounded-sm hover:brightness-110 shadow-lg"
-            >
-              <UserPlus size={14} /><span>Invite Staff</span>
-            </button>
-          </FeatureGate>
+    <div className="p-6 max-w-2xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-xl font-bold text-white tracking-tight uppercase italic">
+            Team Members
+          </h1>
+          <p className="text-xs text-gray-500 mt-1">
+            Control who can access Noxis Hub and what they can see.
+          </p>
         </div>
+        <button
+          onClick={() => setShowAddUser(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-[#60A5FA] text-black text-sm font-bold hover:bg-blue-400 transition-colors rounded-sm"
+        >
+          <UserPlus size={14} />
+          Add Member
+        </button>
+      </div>
 
-        {/* Role Legend */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {Object.entries(ROLE_LABELS).map(([key, info]) => (
-            <div key={key} className="bg-white/5 border border-white/5 p-4 rounded-lg">
-              <div className="flex items-center space-x-2 mb-1">
-                <Shield size={12} className={info.color} />
-                <span className={cn("text-xs font-bold uppercase tracking-widest", info.color)}>{info.label}</span>
+      {/* Role legend */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+        {Object.entries(ROLE_LABELS)
+          .filter(([role]) => role !== 'owner')
+          .map(([role, label]) => (
+          <div key={role} className="p-3 bg-[#0F1114] border border-white/6 rounded-sm">
+            <p className="text-xs font-bold text-white mb-1">{label}</p>
+            <p className="text-[10px] text-gray-600 leading-relaxed">
+              {ROLE_DESCRIPTIONS[role as keyof typeof ROLE_DESCRIPTIONS]}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* Users list */}
+      {isLoading ? (
+        <div className="animate-pulse space-y-2">
+          {[1,2].map(i => (
+            <div key={i} className="h-16 bg-white/4 rounded-sm" />
+          ))}
+        </div>
+      ) : users.length === 0 ? (
+        <div className="p-8 text-center bg-[#0F1114] border border-white/8 rounded-sm">
+          <p className="text-sm text-gray-500">
+            No team members yet.
+          </p>
+          <p className="text-xs text-gray-700 mt-1">
+            Add team members to let staff access Noxis with limited permissions.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {users.map((user: any) => (
+            <div key={user.id} className="flex items-center justify-between p-4 bg-[#0F1114] border border-white/8 rounded-sm">
+              <div>
+                <p className="text-sm font-semibold text-white">
+                  {user.name}
+                </p>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  {user.email}
+                </p>
               </div>
-              <p className="text-[10px] text-gray-500 leading-relaxed">{info.description}</p>
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#60A5FA] bg-[#60A5FA]/10 px-2 py-1 rounded-sm">
+                  {ROLE_LABELS[user.role as keyof typeof ROLE_LABELS]}
+                </span>
+                <button
+                  onClick={() => {
+                    if (confirm(`Remove ${user.name} from your team?`)) {
+                      removeUser.mutate(user.id)
+                    }
+                  }}
+                  className="text-gray-700 hover:text-red-400 transition-colors"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
             </div>
           ))}
         </div>
+      )}
 
-        {/* Staff Table */}
-        {isLoading ? (
-          <div className="py-20 text-center font-mono text-[10px] uppercase tracking-[0.4em] text-gray-600 animate-pulse">Loading Staff Registry...</div>
-        ) : !staffList || staffList.length === 0 ? (
-          <div className="py-20 text-center space-y-4">
-            <Users size={48} className="mx-auto text-gray-700" />
-            <h3 className="text-lg font-bold text-white">No Staff Members Yet</h3>
-            <p className="text-sm text-gray-500">Invite your team to start collaborating.</p>
-          </div>
-        ) : (
-          <FeatureGate feature="staffUsers">
-            <div className="bg-[#1A1D21] border border-white/5 overflow-hidden rounded-lg">
-              <table className="w-full border-collapse">
-                <thead><tr className="bg-[#0F1113] text-[9px] uppercase font-black text-gray-600 tracking-[0.2em] border-b border-white/5">
-                  <th className="px-6 py-4 text-left">Name</th><th className="px-6 py-4 text-left">Email</th><th className="px-6 py-4 text-center">Role</th><th className="px-6 py-4 text-center">Status</th><th className="px-6 py-4 text-left">Invited</th>
-                </tr></thead>
-                <tbody className="divide-y divide-white/[0.03]">
-                  {staffList.map((staff: any) => (
-                    <tr key={staff.id} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="px-6 py-4"><div className="flex items-center space-x-3"><div className="w-8 h-8 bg-white/5 rounded-full flex items-center justify-center text-xs font-bold text-white">{staff.name?.[0] || '?'}</div><span className="text-sm font-bold text-white">{staff.name}</span></div></td>
-                      <td className="px-6 py-4 text-sm text-gray-400 font-mono">{staff.email}</td>
-                      <td className="px-6 py-4 text-center"><span className={cn("px-2.5 py-1 text-[9px] font-black uppercase tracking-widest border rounded-sm", roleInfo(staff.role).color, "bg-white/5 border-white/10")}>{roleInfo(staff.role).label}</span></td>
-                      <td className="px-6 py-4 text-center">{staff.is_active ? <span className="inline-flex items-center space-x-1 text-emerald-500 text-[9px] font-black uppercase"><CheckCircle2 size={10} /><span>Active</span></span> : <span className="inline-flex items-center space-x-1 text-red-500 text-[9px] font-black uppercase"><XCircle size={10} /><span>Inactive</span></span>}</td>
-                      <td className="px-6 py-4 text-[10px] text-gray-500 font-mono">{staff.invited_at ? new Date(staff.invited_at).toLocaleDateString() : '—'}</td>
-                    </tr>
+      {/* Add user modal */}
+      {showAddUser && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-[#0F1114] border border-white/10 rounded-sm p-6">
+            <h2 className="text-base font-bold text-white mb-5">
+              Add Team Member
+            </h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className={LABEL}>
+                  Full Name *
+                </label>
+                <input
+                  value={newUser.name}
+                  onChange={e => setNewUser(p => ({ ...p, name: e.target.value }))}
+                  placeholder="Muhammad Ali"
+                  className={INPUT}
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className={LABEL}>
+                  Email *
+                </label>
+                <input
+                  type="email"
+                  value={newUser.email}
+                  onChange={e => setNewUser(p => ({ ...p, email: e.target.value }))}
+                  placeholder="ali@factory.com"
+                  className={INPUT}
+                />
+              </div>
+
+              <div>
+                <label className={LABEL}>
+                  Role *
+                </label>
+                <div className="space-y-2">
+                  {(['manager', 'accountant', 'supervisor', 'viewer'] as const)
+                    .map(role => (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => setNewUser(p => ({ ...p, role }))}
+                      className={`w-full text-left p-3 rounded-sm border transition-colors ${newUser.role === role ? 'border-[#60A5FA]/40 bg-[#60A5FA]/8' : 'border-white/8 hover:border-white/16'}`}
+                    >
+                      <p className={`text-xs font-bold mb-0.5 ${newUser.role === role ? 'text-[#60A5FA]' : 'text-white'}`}>
+                        {ROLE_LABELS[role]}
+                      </p>
+                      <p className="text-[10px] text-gray-600 leading-relaxed">
+                        {ROLE_DESCRIPTIONS[role]}
+                      </p>
+                    </button>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </div>
             </div>
-          </FeatureGate>
-        )}
 
-        {/* Invite Modal */}
-        <AnimatePresence>
-          {showInvite && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-6" onClick={() => setShowInvite(false)}>
-              <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} onClick={e => e.stopPropagation()} className="bg-[#1A1D21] border border-white/10 p-8 max-w-md w-full space-y-6 rounded-lg shadow-2xl">
-                <div><h2 className="text-xl font-bold text-white">Invite Staff Member</h2><p className="text-xs text-gray-500 mt-1">They will receive an email to set up their account.</p></div>
-                <div className="space-y-4">
-                  <div className="space-y-2"><label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Full Name</label><input value={inviteName} onChange={e => setInviteName(e.target.value)} placeholder="e.g. Ali Hassan" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-electric-blue/50" /></div>
-                  <div className="space-y-2"><label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Email Address</label><input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="ali@company.com" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-electric-blue/50" /></div>
-                  <div className="space-y-2"><label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Role</label>
-                    <select value={inviteRole} onChange={e => setInviteRole(e.target.value as StaffRole)} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-electric-blue/50 appearance-none text-white [&>option]:bg-[#1A1D21]">
-                      {Object.entries(ROLE_LABELS).filter(([k]) => k !== 'owner').map(([key, info]) => (<option key={key} value={key}>{info.label} — {info.description}</option>))}
-                    </select>
-                  </div>
-                </div>
-                <div className="flex items-center justify-end space-x-3 pt-4">
-                  <button onClick={() => setShowInvite(false)} className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors">Cancel</button>
-                  <button onClick={() => inviteMutation.mutate()} disabled={inviteMutation.isPending || !inviteEmail || !inviteName} className="flex items-center space-x-2 px-6 py-2.5 bg-electric-blue text-black font-bold text-sm rounded-sm hover:brightness-110 disabled:opacity-50">
-                    {inviteMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}<span>{inviteMutation.isPending ? 'Sending...' : 'Send Invite'}</span>
-                  </button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </main>
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => setShowAddUser(false)}
+                className="flex-1 py-2.5 text-sm border border-white/10 text-gray-500 hover:border-white/20"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => addUser.mutate()}
+                disabled={addUser.isPending || !newUser.name.trim() || !newUser.email.trim()}
+                className="flex-1 py-2.5 text-sm font-bold bg-[#60A5FA] text-black hover:bg-blue-400 disabled:opacity-50"
+              >
+                {addUser.isPending ? 'Adding...' : 'Add Member'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-  );
+  )
 }

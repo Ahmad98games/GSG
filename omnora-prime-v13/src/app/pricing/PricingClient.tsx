@@ -10,12 +10,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { FloatingOrb } from "@/components/ui/AnimatedComponents";
 
 const FAQS = [
+  { q: "Why i have to Pay manually , why not proper Payment Gateway?", a: "Since we are in early stage of our journey we are lack of proper investment for this reason we are unable to Implement Proper Payment Gateway!!"},
   { q: "Can I use it without internet?", a: "Yes, fully offline. All core industrial logic runs on your local machine. Cloud sync is only used for license verification and optional multi-location data aggregation." },
   { q: "What happens if I stop paying?", a: "Your data stays on your PC. You retain read access to your records and can export everything to CSV or PDF at any time. Active transactions and CCTV security features require an active license." },
   { q: "Can I switch from Lite to Pro?", a: "Yes. You can upgrade your tier at any time through the billing portal. Your data will automatically migrate to include the new Pro/Elite features." },
   { q: "Does it work on all Windows versions?", a: "Noxis is optimized for Windows 10 and 11 (64-bit). It requires a minimum of 4GB RAM, though 8GB is recommended for CCTV security operations." },
   { q: "Is my data safe?", a: "Your financial and industrial data is stored on your own hard drive, not our servers. We never have access to your Khata, payroll, or stock records." },
-  { q: "How many devices can I connect?", a: "Limits vary by plan: Lite supports 5 devices, Pro supports 15, and Elite supports up to 50 devices within a local mesh network." },
+  { q: "How many devices can I connect?", a: "Limits vary by plan: Lite supports 5 devices, Pro supports 5, and Elite supports up to 10 devices within a local mesh network." },
   { q: "Is there a setup fee?", a: "No. We believe in transparency. You only pay the monthly or annual subscription fee. Remote setup assistance is included in Pro and Elite plans." },
   { q: "Do you support custom industry requests?", a: "Yes. The Elite plan includes priority access to our engineering team for specialized terminology or feature requests relevant to your specific sector." }
 ];
@@ -188,7 +189,7 @@ export default function PricingClient() {
               { label: "Double-entry Khata (Ledger)", included: true },
               { label: "Inventory & Stock Tracking", included: true },
               { label: "Dynamic Invoice Generation", included: true },
-              { label: "Up to 5 Paired Devices", included: true },
+              { label: "Up to 2 Paired Devices", included: true },
               { label: "2 CCTV Monitoring Nodes", included: true },
               { label: "10 Document Scans Per Day", included: true },
               { label: "1GB Document Storage", included: true },
@@ -210,7 +211,7 @@ export default function PricingClient() {
             sub="Growing Factories & Warehouses"
             features={[
               { label: "All Lite Features", included: true, highlight: true },
-              { label: "Up to 15 Paired Devices", included: true },
+              { label: "Up to 5 Paired Devices", included: true },
               { label: "8 CCTV AI Detection Zones", included: true },
               { label: "Unlimited Document Scans", included: true },
               { label: "Scheduled WhatsApp Summaries", included: true },
@@ -232,7 +233,7 @@ export default function PricingClient() {
             sub="Enterprise-Scale Multi-Location"
             features={[
               { label: "All Pro Features", included: true, highlight: true },
-              { label: "Up to 50 Paired Devices", included: true },
+              { label: "Up to 10 Paired Devices", included: true },
               { label: "20 CCTV AI Detection Zones", included: true },
               { label: "Up to 25 Staff Users", included: true },
               { label: "Fire & Intrusion Detection", included: true },
@@ -434,13 +435,13 @@ export default function PricingClient() {
               },
               {
                 method: 'JazzCash Mobile',
-                number: '0321-8338768',
-                note: 'Razia Sultana • Mobile account'
+                number: '0326-4742678',
+                note: 'Ahmad Mahboob • Mobile account'
               },
               {
                 method: 'EasyPaisa Mobile',
-                number: '0321-8338768',
-                note: 'Razia Sultana • Mobile account'
+                number: '0326-4742678',
+                note: '(Use Jazz Cash Instead)'
               },
             ].map(p => (
               <div key={p.method}
@@ -465,6 +466,7 @@ export default function PricingClient() {
             License key delivered within 30 minutes.
           </p>
         </div>
+        
 
         {/* Global Infrastructure Banner */}
         <motion.div 

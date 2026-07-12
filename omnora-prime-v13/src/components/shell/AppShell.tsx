@@ -26,6 +26,10 @@ import IndustrialSidebar from "@/components/shell/IndustrialSidebar";
 import { useNoxisLocale } from "@/hooks/useLocale";
 import { NoxisLogoLoader } from "@/components/ui/NoxisLogoLoader";
 import { useLicenseValidation } from '@/hooks/useLicenseValidation';
+import { PageTransition } from "@/components/shell/PageTransition";
+import { useGlobalKeyboardShortcuts } from "@/hooks/useGlobalKeyboardShortcuts";
+import { ShortcutHelp } from "@/components/shell/ShortcutHelp";
+import { OfflineIndicator } from '@/components/shell/OfflineIndicator';
 
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -34,8 +38,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = React.useState(false);
   const { isCollapsed } = useSidebarState();
   const { isRTL } = useLanguageStore();
-
   const { profile } = useBusinessProfile();
+
+  useGlobalKeyboardShortcuts();
 
   const [showIntro, setShowIntro] = React.useState(false);
   const [introChecked, setIntroChecked] = React.useState(false);
@@ -160,6 +165,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Detect Electron for TitleBar and secure access checking
+  const isElectron = typeof window !== 'undefined' && (
+    !!(window as any).electronWindow || 
+    !!(window as any).electron ||
+    navigator.userAgent.toLowerCase().includes('electron')
+  );
+
   // Hide internal shell components on landing, static website, docs, auth, and setup pages
   const shouldHideShell = 
     pathname === "/" || 
@@ -174,15 +186,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname?.startsWith("/reviews") ||
     pathname?.startsWith("/docs") ||
     pathname?.startsWith("/blog") ||
-    pathname?.startsWith("/dashboard") || // Remote owner dashboard
+    (pathname?.startsWith("/dashboard") && !isElectron) || // Remote owner dashboard (hide sidebar only if web browser)
+    pathname === "/dashboard/login" ||
     pathname?.startsWith("/admin"); // Admin dashboard is web-only, bypass Electron guard
-  
-  // Detect Electron for TitleBar and secure access checking
-  const isElectron = typeof window !== 'undefined' && (
-    !!(window as any).electronWindow || 
-    !!(window as any).electron ||
-    navigator.userAgent.toLowerCase().includes('electron')
-  );
 
   // Block web browser access to secured software dashboard paths
   if (!shouldHideShell && !isElectron && process.env.NODE_ENV !== 'development') {
@@ -294,11 +300,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <KeyboardShortcuts />
       <ThemePicker hideTrigger={true} />
       <SentinelAssistant />
+      <ShortcutHelp />
       <div 
         className={cn(
           "relative min-h-screen flex flex-col transition-all duration-300",
           isElectron ? "pt-10" : "pt-0",
-          isCollapsed ? "ps-[64px]" : "ps-[240px]"
+          isCollapsed ? "sidebar-collapsed ps-[64px]" : "sidebar-expanded ps-[240px]"
         )}
         style={{ "--sidebar-width": isCollapsed ? "64px" : "240px" } as React.CSSProperties}
       >
@@ -332,7 +339,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <Suspense fallback={<PageSkeleton />}>
-            {children}
+            <PageTransition>
+              {children}
+            </PageTransition>
           </Suspense>
         </div>
       </div>
@@ -389,6 +398,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       )}
+      <OfflineIndicator />
     </>
   );
 }

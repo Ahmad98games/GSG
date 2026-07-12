@@ -1,419 +1,334 @@
 'use client'
+
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveLicenseToLocal } from './actions'
 import { getApiUrl } from '@/lib/utils/apiUrl'
-
-const EDGE_FUNCTION_URL =
-  process.env.NEXT_PUBLIC_SUPABASE_URL +
-  '/functions/v1/verify-license'
-
-// Generate a device fingerprint
-function getDeviceId(): string {
-  let id = localStorage.getItem(
-    'noxis_device_id'
-  )
-  if (!id) {
-    id = 'hub-' +
-      Math.random().toString(36).slice(2) +
-      '-' +
-      Date.now().toString(36)
-    localStorage.setItem('noxis_device_id', id)
-  }
-  return id
-}
+import { createClient } from '@/lib/supabase/client'
+import { KeyRound, Mail, ShieldAlert, CheckCircle } from 'lucide-react'
 
 export default function LicensePage() {
   const router = useRouter()
+  const supabase = createClient()
+
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [key, setKey] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [checking, setChecking] = useState(true)
 
   useEffect(() => {
-    // Check if already licensed
-    const stored = localStorage.getItem(
-      'noxis_license'
-    )
-    if (stored) {
-      try {
-        const license = JSON.parse(stored)
-        if (license.valid) {
-          // Re-validate to check expiry
-          validateStored(license, stored)
-          return
-        }
-      } catch {}
-    }
-    setChecking(false)
-  }, [])
-
-  const validateStored = async (
-    license: any,
-    raw: string
-  ) => {
-    // If trial, check if expired
-    if (license.is_trial && license.expires_at) {
-      const expired = new Date(license.expires_at)
-        < new Date()
-      if (expired) {
-        localStorage.removeItem('noxis_license')
-        setError(
-          'Your 3-day trial has expired. Contact +92  326 4742678 to purchase.'
-        )
-        setChecking(false)
-        return
-      }
-    }
-    // Set cookie for quick middleware check
-    document.cookie = `noxis_license_active=true; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Strict`;
-    // Still valid
-    router.push('/dashboard')
-  }
-
-  const handleActivate = async () => {
-    const trimmed = key.trim().toUpperCase()
-    if (!trimmed) {
-      setError('Enter your license key')
-      return
-    }
-
-    // Basic format check: XXXX-XXXX-XXXX-XXXX
-    const format = /^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/
-    if (!format.test(trimmed)) {
-      setError(
-        'Invalid format. Key should be like: TRIA-XXXX-XXXX-XXXX'
-      )
-      return
-    }
-
-    setLoading(true)
-    setError('')
-
-    // Collect machine info for device fingerprint
-    const machineInfo = {
-      platform: navigator.platform,
-      language: navigator.language,
-      cores: String(navigator.hardwareConcurrency || 'unknown'),
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      screen: `${screen.width}x${screen.height}`,
-    }
-
-    // Retry up to 3 times on network failure
-    let lastError: string | null = null
-
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        const res = await fetch(getApiUrl('/api/license/activate'), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            licenseKey: trimmed,
-            machineInfo,
-            appVersion: '13.0.0',
-          }),
-          // Explicit timeout — don't let the user wait forever on a bad connection
-          signal: AbortSignal.timeout(15000),
-        })
-
-        let data: any = {}
+    const checkLicenseAndUser = async () => {
+      // 1. Check if already licensed locally
+      const stored = localStorage.getItem('noxis_license')
+      if (stored) {
         try {
-          data = await res.json()
-        } catch {
-          data = { error: 'Invalid server response' }
-        }
+          const license = JSON.parse(stored)
+          if (license.valid) {
+            // Check trial expiry
+            if (license.is_trial && license.expires_at) {
+              const expired = new Date(license.expires_at) < new Date()
+              if (expired) {
+                localStorage.removeItem('noxis_license')
+                setError('Your 10-day trial has expired. Contact support to purchase a key.')
+                setChecking(false)
+                return
+              }
+            }
+            document.cookie = `noxis_license_active=true; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Strict`;
+            router.push('/dashboard')
+            return
+          }
+        } catch {}
+      }
 
-        if (res.ok && data.success) {
-          // Store license data locally
-          localStorage.setItem(
-            'noxis_license',
-            JSON.stringify({
+      // 2. Check if user is logged in -> attempt auto-detect
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user?.email) {
+          setEmail(user.email)
+          // Try silent auto detect
+          const array = new Uint8Array(16);
+          window.crypto.getRandomValues(array);
+          const nonce = Array.from(array, dec => dec.toString(16).padStart(2, '0')).join('');
+
+          const res = await fetch(getApiUrl('/api/license/activate'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: user.email,
+              autoDetect: true,
+              machineInfo: {
+                platform: navigator.platform,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+              },
+              appVersion: '13.0.0',
+              nonce,
+            }),
+            signal: AbortSignal.timeout(10000),
+          })
+
+          const data = await res.json()
+          if (res.ok && data.success) {
+            localStorage.setItem('noxis_license', JSON.stringify({
               ...data.license,
               activatedAt: Date.now(),
               activated_locally_at: new Date().toISOString(),
               cacheExpires: Date.now() + 24 * 60 * 60 * 1000,
-            })
-          )
+            }))
+            localStorage.setItem('noxis_tier', data.license.tier)
+            localStorage.setItem('noxis_max_devices', String(data.license.maxDevices))
+            document.cookie = `noxis_license_active=true; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Strict`;
 
-          // Store legacy variables
-          localStorage.setItem('noxis_tier', data.license.tier)
-          localStorage.setItem('noxis_max_devices', String(data.license.maxDevices))
-
-          // Set cookie for quick middleware check
-          document.cookie = `noxis_license_active=true; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Strict`;
-
-          // Save to local config SQLite DB via Server Action
-          try {
-            await saveLicenseToLocal(
-              trimmed,
-              data.license.tier,
-              data.license.isTrialActive,
-              data.license.expiresAt
-            )
-          } catch (dbErr) {
-            console.error('Failed to save license to local DB:', dbErr)
+            await saveLicenseToLocal(data.license.key, data.license.tier, data.license.isTrialActive, data.license.expiresAt)
+            router.push('/setup')
+            return
           }
-
-          // Redirect to setup page
-          router.push('/setup')
-          return
         }
+      } catch (e) {
+        console.warn('[License] Silent check error:', e)
+      }
 
-        // These errors are NOT network errors — show them clearly without "check internet"
-        if (res.status === 404) {
-          setError(
-            '❌ License key not found. ' +
-            'Check the key exactly as provided — ' +
-            'it is case-sensitive and includes dashes.'
-          )
-          setLoading(false)
-          return
+      setChecking(false)
+    }
+
+    checkLicenseAndUser()
+  }, [router, supabase])
+
+  const handleActivate = async () => {
+    setError('')
+    
+    if (!email || !password) {
+      setError('Please enter your account email and password')
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      // Step 1: Log in user first
+      let { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: password
+      })
+
+      // Auto-signup if user doesn't exist to make onboarding friction-free
+      if (authError && authError.message.includes('Invalid login credentials')) {
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: email.trim(),
+          password: password
+        })
+
+        if (signUpError) {
+          throw new Error('Authentication failed: ' + signUpError.message)
         }
+      } else if (authError) {
+        throw authError
+      }
 
-        if (res.status === 403) {
-          setError(
-            data.error ||
-            '⛔ This license cannot be activated. ' +
-            'WhatsApp: +92 333 435 5475'
-          )
-          setLoading(false)
-          return
-        }
+      // Step 2: Validate/Bind Key
+      const trimmedKey = key.trim().toUpperCase()
+      const autoDetect = !trimmedKey
 
-        if (res.status === 500) {
-          setError(`Server error (attempt ${attempt}/3). Retrying...`)
-          if (attempt < 3) {
-            await new Promise(r => setTimeout(r, 2000))
-            continue
-          }
-          setError(
-            'Activation server is unavailable. ' +
-            'Please try again later or contact ' +
-            'support: WhatsApp +92 333 435 5475'
-          )
-          setLoading(false)
-          return
-        }
-
-      } catch (networkErr: any) {
-        const isTimeout =
-          networkErr.name === 'TimeoutError' ||
-          networkErr.name === 'AbortError'
-
-        if (isTimeout) {
-          lastError =
-            `Request timed out (attempt ${attempt}/3).` +
-            (attempt < 3 ? ' Retrying...' : ' ' +
-            'Make sure Noxis Hub is fully loaded ' +
-            'before entering your license key.')
-        } else {
-          lastError =
-            `Connection failed (attempt ${attempt}/3).` +
-            (attempt < 3 ? ' Retrying...' : ' ' +
-            'The local server may still be starting. ' +
-            'Wait 10 seconds and try again.')
-        }
-
-        setError(lastError)
-
-        if (attempt < 3) {
-          await new Promise(r => setTimeout(r, 3000))
+      if (trimmedKey) {
+        const isValidLicenseKeyFormat = (k: string) => {
+          if (k.length !== 19) return false;
+          const parts = k.split('-');
+          if (parts.length !== 4) return false;
+          return parts.every(p => p.length === 4);
+        };
+        if (!isValidLicenseKeyFormat(trimmedKey)) {
+          throw new Error('Invalid format. Key should be like: TRIA-XXXX-XXXX-XXXX')
         }
       }
-    }
 
-    // All retries exhausted — fallback to offline grace period if a valid local license was active
-    const stored = localStorage.getItem('noxis_license')
-    if (stored) {
+      const machineInfo = {
+        platform: navigator.platform,
+        language: navigator.language,
+        cores: String(navigator.hardwareConcurrency || 'unknown'),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        screen: `${screen.width}x${screen.height}`,
+      }
+
+      const array = new Uint8Array(16);
+      window.crypto.getRandomValues(array);
+      const nonce = Array.from(array, dec => dec.toString(16).padStart(2, '0')).join('');
+
+      const res = await fetch(getApiUrl('/api/license/activate'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          licenseKey: trimmedKey || undefined,
+          email: email.trim().toLowerCase(),
+          autoDetect,
+          machineInfo,
+          appVersion: '13.0.0',
+          nonce,
+        }),
+        signal: AbortSignal.timeout(15000),
+      })
+
+      let data: any = {}
       try {
-        const license = JSON.parse(stored)
-        const lastValidated = new Date(license.activated_locally_at || 0)
-        const hoursAgo = (Date.now() - lastValidated.getTime()) / (1000 * 60 * 60)
+        data = await res.json()
+      } catch {
+        data = { error: 'Invalid response from license server' }
+      }
 
-        if (hoursAgo < 72) {
-          // Set cookie for quick middleware check
-          document.cookie = `noxis_license_active=true; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Strict`;
-          router.push('/dashboard')
-          return
-        }
-      } catch {}
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to activate license')
+      }
+
+      // Step 3: Persistence
+      localStorage.setItem('noxis_license', JSON.stringify({
+        ...data.license,
+        activatedAt: Date.now(),
+        activated_locally_at: new Date().toISOString(),
+        cacheExpires: Date.now() + 24 * 60 * 60 * 1000,
+      }))
+      localStorage.setItem('noxis_tier', data.license.tier)
+      localStorage.setItem('noxis_max_devices', String(data.license.maxDevices))
+      document.cookie = `noxis_license_active=true; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Strict`;
+
+      try {
+        await saveLicenseToLocal(
+          data.license.key,
+          data.license.tier,
+          data.license.isTrialActive,
+          data.license.expiresAt
+        )
+      } catch (dbErr) {
+        console.error('Failed to sync to local SQLite:', dbErr)
+      }
+
+      router.push('/setup')
+    } catch (err: any) {
+      setError(err.message || 'An unexpected error occurred. Try again.')
+      setLoading(false)
     }
-
-    setError(lastError || 'Activation failed after 3 attempts. Try again.')
-    setLoading(false)
   }
 
-  if (checking) return (
-    <div className="min-h-screen bg-[#070809]
-      flex items-center justify-center">
-      <div className="w-8 h-8 border-2
-        border-blue-500/20 border-t-blue-500
-        rounded-full animate-spin" />
-    </div>
-  )
+  if (checking) {
+    return (
+      <div className="min-h-screen bg-[#070809] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-cyan-400/20 border-t-cyan-400 rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-[#070809]
-      flex items-center justify-center p-6">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-[#040608] flex items-center justify-center p-6 text-slate-300 font-sans selection:bg-cyan-500/20 selection:text-white relative">
+      
+      {/* Background cyber glows */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-cyan-500/[0.015] rounded-full blur-[120px]" />
+        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-[#C5A059]/[0.01] rounded-full blur-[120px]" />
+      </div>
 
-        {/* Logo */}
-        <div className="text-center mb-10">
-          <img src="/logos/noxis.png"
-            alt="Noxis"
-            className="w-12 h-12 mx-auto mb-4
-              object-contain"
-            onError={e => {
-              (e.target as HTMLImageElement)
-                .style.display = 'none'
-            }}
-          />
-          <h1 className="text-2xl font-bold
-            text-white tracking-tight">
-            Activate Noxis Hub
-          </h1>
-          <p className="text-sm text-gray-500 mt-2">
-            Enter your license key to continue
-          </p>
-        </div>
-
-        {/* Input */}
-        <div className="mb-4">
-          <label className="text-[10px]
-            font-semibold uppercase tracking-widest
-            text-gray-500 block mb-2">
-            License key
-          </label>
-          <input
-            type="text"
-            value={key}
-            onChange={e => {
-              setError('')
-              // Auto-format as user types:
-              // XXXX-XXXX-XXXX-XXXX
-              const val = e.target.value
-                .toUpperCase()
-                .replace(/[^A-Z0-9-]/g, '')
-                .slice(0, 19)
-              setKey(val)
-            }}
-            onKeyDown={e => {
-              if (e.key === 'Enter')
-                handleActivate()
-            }}
-            placeholder="TRIA-XXXX-XXXX-XXXX"
-            className="w-full bg-[#161A1F]
-              border border-white/10 text-white
-              text-sm font-mono px-4 py-3.5
-              outline-none tracking-widest
-              focus:border-[#60A5FA]/40
-              placeholder:text-gray-700
-              placeholder:tracking-normal"
-            autoFocus
-          />
-        </div>
-
-        {/* Error */}
-        {error && (
-          <div className="mb-4 p-3
-            bg-red-500/5 border border-red-500/20
-            text-xs text-red-400 leading-relaxed">
-            {error}
+      <div className="w-full max-w-md z-10 space-y-8">
+        
+        {/* Title */}
+        <div className="text-center space-y-2">
+          <div className="w-12 h-12 mx-auto flex items-center justify-center bg-white/5 border border-white/10 rounded-sm">
+            <img src="/logos/noxis.png" alt="Noxis Logo" width={28} height={28} className="object-contain" />
           </div>
-        )}
-
-        {/* Activate button */}
-        <button
-          onClick={handleActivate}
-          disabled={loading || !key.trim()}
-          className="w-full py-3.5 text-sm
-            font-bold bg-[#60A5FA] text-black
-            hover:bg-blue-400
-            disabled:opacity-50
-            disabled:cursor-not-allowed
-            transition-colors"
-        >
-          {loading
-            ? 'Activating...'
-            : 'Activate Noxis'}
-        </button>
-
-        {/* Help */}
-        <div className="mt-6 space-y-3">
-          <p className="text-xs text-gray-600
-            text-center">
-            No key?{' '}
-            <a
-              href="https://wa.me/923264742678?text=I want to buy Noxis Hub"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[#60A5FA]
-                hover:text-blue-300
-                transition-colors"
-            >
-              Purchase on WhatsApp →
-            </a>
-          </p>
-          <p className="text-xs text-gray-700
-            text-center">
-            Trial keys available at noxishub.app
-          </p>
+          <div>
+            <h1 className="text-2xl font-black text-white tracking-tight uppercase italic">
+              Noxis <span className="text-cyan-400">License Auth</span>
+            </h1>
+            <p className="text-xs text-slate-500 font-medium">
+              Enter your account credentials to authorize this node.
+            </p>
+          </div>
         </div>
 
-        {/* Tier info */}
-        <div className="mt-8 p-4 bg-[#0F1114]
-          border border-white/6 rounded-sm">
-          <p className="text-[9px] font-semibold
-            uppercase tracking-widest text-gray-600
-            mb-3">
-            License tiers
-          </p>
-          {[
-            {
-              prefix: 'TRIA',
-              name: 'Free Trial',
-              desc: '3 days, all Elite features'
-            },
-            {
-              prefix: 'LITE',
-              name: 'Lite — PKR 2,500/mo',
-              desc: '5 devices, 2 cameras'
-            },
-            {
-              prefix: 'PROP',
-              name: 'Pro — PKR 6,500/mo',
-              desc: '15 devices, AI detection'
-            },
-            {
-              prefix: 'ELIT',
-              name: 'Elite — PKR 14,000/mo',
-              desc: '50 devices, full features'
-            },
-          ].map(t => (
-            <div key={t.prefix}
-              className="flex items-center
-              justify-between py-1.5 border-b
-              border-white/4 last:border-0">
-              <div>
-                <p className="text-[10px]
-                  font-medium text-white">
-                  {t.name}
-                </p>
-                <p className="text-[9px]
-                  text-gray-600">
-                  {t.desc}
-                </p>
-              </div>
-              <span className="text-[9px]
-                font-mono text-gray-600">
-                {t.prefix}-...
-              </span>
+        {/* Form Box */}
+        <div className="bg-[#0A0D10] border border-white/[0.04] p-8 rounded-sm space-y-5">
+          
+          <div className="space-y-2">
+            <label className="block text-slate-500 text-[9px] font-bold tracking-widest uppercase">
+              Account Email
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-650 w-4 h-4" />
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="owner@yourcompany.com"
+                className="w-full bg-[#040608]/50 border border-white/[0.05] rounded-sm pl-10 pr-4 py-3 text-xs text-white placeholder-slate-700 outline-none focus:border-cyan-400/40 transition-colors font-medium"
+              />
             </div>
-          ))}
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-slate-500 text-[9px] font-bold tracking-widest uppercase">
+              Password
+            </label>
+            <div className="relative">
+              <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-650 w-4 h-4" />
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full bg-[#040608]/50 border border-white/[0.05] rounded-sm pl-10 pr-4 py-3 text-xs text-white placeholder-slate-700 outline-none focus:border-cyan-400/40 transition-colors font-medium"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2 pt-2 border-t border-white/[0.03]">
+            <label className="block text-slate-500 text-[9px] font-bold tracking-widest uppercase flex justify-between">
+              <span>License Key</span>
+              <span className="text-[8px] text-slate-600 normal-case font-medium">Optional if key is already linked</span>
+            </label>
+            <input
+              type="text"
+              value={key}
+              onChange={e => {
+                setError('')
+                const val = e.target.value
+                  .toUpperCase()
+                  .replace(/[^A-Z0-9-]/g, '')
+                  .slice(0, 19)
+                setKey(val)
+              }}
+              placeholder="TRIA-XXXX-XXXX-XXXX"
+              className="w-full bg-[#040608]/50 border border-white/[0.05] rounded-sm px-4 py-3 text-xs text-white placeholder-slate-700 outline-none focus:border-cyan-400/40 transition-colors font-mono tracking-wider"
+            />
+          </div>
+
+          {error && (
+            <div className="bg-red-500/5 border border-red-500/20 text-[11px] text-red-400 p-3 rounded-sm leading-relaxed font-medium">
+              {error}
+            </div>
+          )}
+
+          <button
+            onClick={handleActivate}
+            disabled={loading}
+            className={`w-full py-3.5 rounded-sm font-black text-xs uppercase tracking-widest transition-all ${
+              loading 
+                ? 'bg-cyan-500/55 text-black/60 cursor-not-allowed' 
+                : 'bg-cyan-500 text-black hover:bg-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.15)] cursor-pointer'
+            }`}
+          >
+            {loading ? 'Authorizing Node...' : 'Authorize & Activate'}
+          </button>
+        </div>
+
+        {/* Footer info */}
+        <div className="text-center text-[10px] text-slate-600 space-y-1 font-medium">
+          <p>No key? <a href="https://wa.me/923264742678" className="text-cyan-400 hover:underline">Get trial on WhatsApp</a></p>
+          <p className="text-[9px] text-slate-700">Licenses are bound to your account email for high-security verification.</p>
         </div>
       </div>
+      
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+        .font-sans { font-family: 'Outfit', sans-serif; }
+      `}</style>
     </div>
   )
 }

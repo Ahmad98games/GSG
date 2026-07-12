@@ -2,6 +2,18 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
+const fetchWithTimeout = (url: any, options: any = {}) => {
+  const timeout = 5000; // 5 seconds timeout
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  return fetch(url, {
+    ...options,
+    signal: controller.signal
+  }).finally(() => {
+    clearTimeout(id);
+  });
+};
+
 export const createClient = async () => {
   const cookieStore = await cookies();
 
@@ -24,6 +36,9 @@ export const createClient = async () => {
             // user sessions.
           }
         },
+      },
+      global: {
+        fetch: fetchWithTimeout,
       },
     }
   );

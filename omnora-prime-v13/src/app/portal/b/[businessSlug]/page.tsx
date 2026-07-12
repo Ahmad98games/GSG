@@ -52,8 +52,8 @@ export default function ClientPortalLandingPage() {
          </div>
          <div className="flex items-center space-x-8">
             <nav className="hidden md:flex items-center space-x-6 text-[10px] font-black uppercase tracking-widest text-gray-500">
-               <Link href={`/portal/${businessSlug}`} className="text-white">Dashboard</Link>
-               <Link href={`/portal/${businessSlug}/invoices`} className="hover:text-white transition-colors">Documents</Link>
+               <Link href={`/portal/b/${businessSlug}`} className="text-white">Dashboard</Link>
+               <Link href={`/portal/b/${businessSlug}/invoices`} className="hover:text-white transition-colors">Documents</Link>
                <button 
                  onClick={() => toast.info("Support Hub", "Logistics Support node is currently offline. Please contact via WhatsApp.")} 
                  className="hover:text-white transition-colors bg-transparent border-none text-[10px] font-black uppercase tracking-widest cursor-pointer"
@@ -89,7 +89,7 @@ export default function ClientPortalLandingPage() {
                title="My Invoices" 
                desc="Access all current and historical commercial documents and payment statuses." 
                icon={FileText} 
-               onClick={() => router.push(`/portal/${businessSlug}/invoices`)}
+               onClick={() => router.push(`/portal/b/${businessSlug}/invoices`)}
             />
             <PortalCard 
                title="Order Tracking" 

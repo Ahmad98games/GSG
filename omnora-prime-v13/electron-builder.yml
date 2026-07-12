@@ -51,6 +51,12 @@ extraResources:
   - from: "server-with-bridge.js"
     to: "standalone/server-with-bridge.js"
 
+  # SQLite database migrations
+  - from: "src/lib/db/migrations"
+    to: "standalone/src/lib/db/migrations"
+    filter:
+      - "**/*"
+
   # Static files the server needs
   - from: ".next/static"
     to: "standalone/.next/static"
@@ -84,7 +90,9 @@ win:
   icon: build/icon.ico
   target:
     - target: nsis
-      arch: [x64]
+      arch:
+        - x64
+        - ia32
   # Edit executable resources (icon and metadata) in the final Windows binary
   signAndEditExecutable: true
 
@@ -143,3 +151,6 @@ publish:
 # This is what fixes the .node binding crash
 npmRebuild: false
 electronVersion: "41.4.0"
+
+electronDownload:
+  mirror: "https://npmmirror.com/mirrors/electron/"

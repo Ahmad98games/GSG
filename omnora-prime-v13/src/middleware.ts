@@ -1,4 +1,3 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { verifyToken } from '@/lib/admin/auth'
 
@@ -19,7 +18,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 1.5. Protect admin routes
+  // 1.5. Protect admin routes (cookie check + cryptographic verification, no outbound network)
   const ADMIN_SEGMENT = process.env.ADMIN_PATH_SEGMENT;
   if (
     ADMIN_SEGMENT &&
@@ -40,184 +39,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // 2. Auth & License Logic (from proxy.ts)
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  })
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-        },
-        remove(name: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-        },
-      },
-    }
-  )
-
-  const { data: { session } } = await supabase.auth.getSession()
-  
-  // Public routes — no auth needed
-  const publicRoutes = ['/', '/login', '/pricing', '/docs', '/download', '/portal', '/api', '/license', '/dashboard/login']
-  const isPublic = publicRoutes.some(r => pathname === r || pathname.startsWith(r))
-  
-  // A. License Check (Industrial Gate)
-  const licenseActive = request.cookies.get('noxis_license_active');
-
-  // B. Silent Re-Auth Logic
-  if (!session && !isPublic) {
-    try {
-      // Attempt to get license from local DB via API route to avoid Edge runtime errors
-      const apiUrl = new URL('/api/settings', request.url);
-      const res = await fetch(apiUrl, {
-        headers: {
-          'x-internal-bypass-key': process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-        },
-      });
-      if (res.ok) {
-        const { localConfig } = await res.json();
-        
-        const licenseRes = localConfig?.find((c: any) => c.key === 'license_key');
-        const emailRes = localConfig?.find((c: any) => c.key === 'customer_email');
-        
-        if (licenseRes && emailRes) {
-          const licenseKey = licenseRes.value;
-          const email = emailRes.value;
-          
-          console.log('[Middleware] Attempting silent re-auth for:', email);
-          const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-            email,
-            password: licenseKey,
-          });
-
-          if (!authError && authData.session) {
-            console.log('[Middleware] Silent re-auth successful ✓');
-            // Refresh the page to use the new session
-            return NextResponse.redirect(request.url);
-          }
-        }
-      }
-    } catch (e) {
-      console.error('[Middleware] Silent re-auth failed:', e);
-    }
-  }
-
-  if (!licenseActive && !isPublic && !pathname.startsWith('/_next') && !pathname.startsWith('/dashboard')) {
-    return NextResponse.redirect(new URL('/license', request.url))
-  }
-
-  // C. Auth Check
-  if (pathname.startsWith('/dashboard')) {
-    if (!session && pathname !== '/dashboard/login') {
-      return NextResponse.redirect(new URL('/dashboard/login', request.url))
-    }
-    if (session && pathname === '/dashboard/login') {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
-    }
-  } else {
-    if (!session && !isPublic) {
-      return NextResponse.redirect(new URL('/login', request.url))
-    }
-    
-    // Redirect to dashboard if already logged in
-    if (session && pathname === '/login') {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
-    }
-  }
-
-  // Redirect to setup if onboarding is not complete
-  if (session && !isPublic) {
-    try {
-      const { data: profile } = await supabase
-        .from('business_profiles')
-        .select('onboarding_done')
-        .eq('user_id', session.user.id)
-        .single()
-      
-      const isComplete = profile ? profile.onboarding_done : false
-      
-      if (!isComplete
-        && pathname !== '/setup'
-        && pathname !== '/license'
-        && !pathname.startsWith('/dashboard')
-        && !pathname.startsWith('/api')
-        && !pathname.startsWith('/_next')) {
-        return NextResponse.redirect(new URL('/setup', request.url))
-      }
-    } catch (e) {
-      console.error('[Middleware] Failed to check onboarding status:', e)
-    }
-  }
-
-  // D. Role-Based Access Control (RBAC) for staff users
-  if (session && !isPublic && !pathname.startsWith('/unauthorized') && !pathname.startsWith('/dashboard') && !pathname.startsWith('/settings') && !pathname.startsWith('/api')) {
-    try {
-      const { data: staffRecord } = await supabase
-        .from('staff_users')
-        .select('role, is_active')
-        .eq('user_id', session.user.id)
-        .eq('is_active', true)
-        .single()
-
-      // If staff record exists (not the owner), check permissions
-      if (staffRecord && staffRecord.role !== 'owner') {
-        const ROLE_ROUTES: Record<string, string[]> = {
-          manager: ['/dashboard', '/inventory', '/karigars', '/production', '/payroll', '/dispatch', '/invoices', '/parties', '/purchase', '/orders', '/khata', '/cashflow', '/reports', '/audit', '/cctv', '/quick-entry', '/analytics', '/stock', '/generators', '/calculators', '/converters', '/file-morph', '/messaging', '/pairing', '/portal'],
-          accountant: ['/dashboard', '/khata', '/invoices', '/reports', '/parties', '/cashflow', '/audit', '/purchase', '/stock', '/calculators', '/converters', '/generators', '/file-morph'],
-          supervisor: ['/dashboard', '/production', '/karigars', '/payroll', '/dispatch', '/stock', '/inventory'],
-          salesman: ['/dashboard', '/invoices', '/parties', '/stock', '/orders', '/calculators', '/converters'],
-          viewer: ['/dashboard', '/reports', '/analytics'],
-        }
-        const allowed = ROLE_ROUTES[staffRecord.role] || ['/dashboard']
-        const hasAccess = allowed.some(route => pathname.startsWith(route))
-        if (!hasAccess) {
-          return NextResponse.redirect(new URL('/unauthorized', request.url))
-        }
-      }
-    } catch {
-      // If staff_users table doesn't exist yet or query fails, allow access (owner)
-    }
-  }
-
-  // 3. Locale Logic (from original middleware.ts)
+  // 2. Locale Logic (remains offline-friendly)
   let locale = request.cookies.get('NOXIS_LOCALE')?.value;
 
   if (!locale || !locales.includes(locale)) {
@@ -230,17 +52,15 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Set the locale in a header so i18n.ts can read it
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-next-intl-locale', locale);
 
-  response = NextResponse.next({
+  const response = NextResponse.next({
     request: {
       headers: requestHeaders,
     },
   });
 
-  // If no cookie was present, set it for next time
   if (!request.cookies.has('NOXIS_LOCALE')) {
     response.cookies.set('NOXIS_LOCALE', locale, {
       path: '/',
@@ -254,6 +74,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|portal).*)',
   ],
 }

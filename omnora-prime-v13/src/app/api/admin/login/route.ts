@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { generateToken } from '@/lib/admin/auth'
+import { consumeNonce } from '@/lib/security/nonce'
 
 // Track failed attempts per IP
 // (in-memory — resets on server restart,
@@ -47,7 +48,14 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const { password } = body
+  const { password, nonce } = body
+
+  if (!consumeNonce(nonce)) {
+    return NextResponse.json(
+      { error: 'Request already processed. Please try again.' },
+      { status: 400 }
+    )
+  }
 
   if (!ADMIN_PASSWORD) {
     return NextResponse.json(

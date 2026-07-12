@@ -1,13 +1,16 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Can } from "@/components/rbac/Can";
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 import { 
   Users, UserPlus, Search,
   Phone, MapPin,
   ChevronRight, X, CheckCircle2, MoreVertical,
-  ArrowUpRight, ArrowDownLeft, Ban, ShieldAlert
+  ArrowUpRight, ArrowDownLeft, Ban, ShieldAlert, MessageCircle
 } from "lucide-react";
 import DataFreshness from "@/components/ui/DataFreshness";
 import { SummaryCard } from "@/components/ui/SummaryCard";
@@ -24,6 +27,7 @@ import { ErrorState, EmptyState, FieldError } from "@/components/ui/StateViews";
 import { useDebounce } from "@/hooks/useDebounce";
 import * as XLSX from 'xlsx';
 import { useToast } from "@/hooks/useToast";
+import { SharePortalButton } from "@/components/parties/SharePortalButton";
 
 interface Party {
   id: string;
@@ -141,6 +145,23 @@ export default function PartiesPage() {
     };
   }, [parties]);
 
+  const parentRef = useRef<HTMLDivElement>(null);
+  const items = filteredParties || [];
+
+  const chunk = <T,>(arr: T[], size: number): T[][] =>
+    Array.from({ length: Math.ceil(arr.length / size) }, (v, i) =>
+      arr.slice(i * size, i * size + size)
+    );
+
+  const chunkedRows = useMemo(() => chunk(items, 3) as Party[][], [items]);
+
+  const rowVirtualizer = useVirtualizer({
+    count: chunkedRows.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 240,
+    overscan: 5,
+  });
+
   const exportToExcel = () => {
     if (!parties || parties.length === 0) {
       toast.error('No data to export')
@@ -244,6 +265,13 @@ export default function PartiesPage() {
                 <UserPlus size={14} />
                 <span>Add New Party</span>
              </button>
+             <Link
+               href="/parties/reminders"
+               className="flex items-center gap-2 px-3 py-2 border border-[#25D366]/25 text-[#25D366] text-xs font-semibold hover:bg-[#25D366]/10 transition-colors rounded-sm"
+             >
+               <MessageCircle size={13} />
+               Send Reminders
+             </Link>
           </div>
         </div>
 
@@ -284,30 +312,59 @@ export default function PartiesPage() {
               </button>
            </div>
 
-           {/* Parties List */}
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {isLoading ? (
-                [1,2,3,4,5,6].map(i => <div key={i} className="h-48 bg-white/[0.02] animate-pulse border border-white/5" />)
-              ) : filteredParties.length === 0 ? (
-                <div className="col-span-full h-96 flex flex-col items-center justify-center opacity-30 italic">
-                   <Users size={60} strokeWidth={0.5} />
-                   <p className="mt-4 uppercase tracking-[0.2em] text-[10px]">No parties matched criteria</p>
+            {/* Parties List */}
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[1,2,3,4,5,6].map(i => <div key={i} className="h-48 bg-white/[0.02] animate-pulse border border-white/5" />)}
+              </div>
+            ) : filteredParties.length === 0 ? (
+              <div className="h-96 flex flex-col items-center justify-center opacity-30 italic">
+                 <Users size={60} strokeWidth={0.5} />
+                 <p className="mt-4 uppercase tracking-[0.2em] text-[10px]">No parties matched criteria</p>
+              </div>
+            ) : (
+              <div
+                ref={parentRef}
+                className="overflow-y-auto max-h-[calc(100vh-280px)] pr-2"
+              >
+                <div
+                  style={{
+                    height: `${rowVirtualizer.getTotalSize()}px`,
+                    width: '100%',
+                    position: 'relative',
+                  }}
+                >
+                  {rowVirtualizer.getVirtualItems().map((virtualRow) => (
+                    <div
+                      key={virtualRow.key}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: `${virtualRow.size}px`,
+                        transform: `translateY(${virtualRow.start}px)`,
+                      }}
+                    >
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {chunkedRows[virtualRow.index].map((party: Party) => (
+                          <PartyCard 
+                            key={party.id} 
+                            party={party} 
+                            fmt={fmt} 
+                            onView={() => router.push(`/parties/${party.id}`)}
+                            openMenu={openMenu}
+                            setOpenMenu={setOpenMenu}
+                            onToggleBlock={() => handleToggleBlock(party)}
+                            onEdit={() => router.push(`/parties/${party.id}/edit`)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                filteredParties.map((party: Party) => (
-                  <PartyCard 
-                    key={party.id} 
-                    party={party} 
-                    fmt={fmt} 
-                    onView={() => router.push(`/parties/${party.id}`)}
-                    openMenu={openMenu}
-                    setOpenMenu={setOpenMenu}
-                    onToggleBlock={() => handleToggleBlock(party)}
-                    onEdit={() => router.push(`/parties/${party.id}/edit`)}
-                  />
-                ))
-              )}
-           </div>
+              </div>
+            )}
         </div>
       </main>
 
@@ -466,18 +523,27 @@ const PartyCard = React.memo(function PartyCard({
                   "text-lg font-black font-mono tracking-tighter",
                   isOwed ? "text-emerald-500" : isPayable ? "text-red-500" : "text-gray-400"
                 )}>
-                   {isPayable ? `(${fmt(Math.abs(balance))})` : fmt(balance)}
+                   <Can permission="view:party_balances" fallback={<span className="text-gray-600 text-xs">Restricted</span>}>
+                     {isPayable ? `(${fmt(Math.abs(balance))})` : fmt(balance)}
+                   </Can>
                 </p>
              </div>
-             <button 
-               onClick={(e) => {
-                 e.stopPropagation();
-                 onView();
-               }}
-               className="p-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all border border-white/10 hover:border-white/30"
-             >
-                <ChevronRight size={18} />
-             </button>
+             <div className="flex items-center space-x-2">
+                <SharePortalButton
+                  partyId={party.id}
+                  partyName={party.name}
+                  partyPhone={party.phone}
+                />
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onView();
+                  }}
+                  className="p-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all border border-white/10 hover:border-white/30"
+                >
+                   <ChevronRight size={18} />
+                </button>
+             </div>
           </div>
        </div>
     </motion.div>
