@@ -1,14 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Shield, Lock, Cloud, Globe, Cpu, ShieldAlert, Mail, ArrowLeft, ChevronRight } from "lucide-react";
+import { Shield, Lock, Cloud, Globe, Database, Eye, Trash2, Cookie, Mail, ArrowLeft, ChevronRight, Server } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 
-// --- Types ---
-interface PrivacySection {
+interface PolicySection {
   id: string;
   icon: React.ReactNode;
   title: string;
@@ -17,7 +16,7 @@ interface PrivacySection {
 
 export default function PrivacyPolicyPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#07080A] flex items-center justify-center text-gray-500 uppercase tracking-widest text-[10px] font-mono">Loading Security Protocols...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-[#07080A] flex items-center justify-center text-gray-500 uppercase tracking-widest text-[10px] font-mono">Loading Privacy Policy...</div>}>
       <PrivacyContent />
     </Suspense>
   );
@@ -26,216 +25,275 @@ export default function PrivacyPolicyPage() {
 function PrivacyContent() {
   const searchParams = useSearchParams();
   const source = searchParams.get('source');
-  const [activeSection, setActiveSection] = useState('custody');
-  
+  const [activeSection, setActiveSection] = useState('data-collected');
+
   const returnHref = source === 'hub' ? '/dashboard' : '/';
   const returnLabel = source === 'hub' ? 'Return to Hub' : 'Back to Home';
 
-  const sections: PrivacySection[] = [
+  const sections: PolicySection[] = [
     {
-      id: "custody",
-      icon: <Lock className="w-4 h-4" />,
-      title: "1. Zero-Knowledge Local Custody",
+      id: "data-collected",
+      icon: <Database className="w-4 h-4" />,
+      title: "1. Data We Collect",
       content: (
         <div className="space-y-4">
           <p>
-            Noxis Hub operates under a strict Zero-Knowledge paradigm. All primary transaction records, worker ledgers (Khata), cashflow journals, and inventory metrics are written directly to your physical workstation partition.
+            Noxis Hub collects and processes the following categories of data, all of which belong solely to you and your business:
           </p>
+          <ul className="space-y-2 list-none">
+            {[
+              { label: "Business Profile", detail: "Business name, owner name, address, contact numbers, industry type, and logo." },
+              { label: "Financial Records", detail: "Invoices, payments, ledger entries, purchase orders, cashflow journals, and tax records." },
+              { label: "Worker / Karigar Records", detail: "Names, attendance logs, production output (piece rate), wage calculations, and payroll runs. No biometric data is collected." },
+              { label: "Inventory & Stock", detail: "SKU names, quantities, movement logs, and supplier/party records." },
+              { label: "Device Information", detail: "Non-personally-identifiable device fingerprint data (platform, timezone, language) collected during license activation for multi-device enforcement. No hardware serial numbers or MAC addresses are stored." },
+              { label: "Account Credentials", detail: "Email address and hashed authentication token managed by Supabase Auth. Noxis Hub never stores plain-text passwords." },
+            ].map((item) => (
+              <li key={item.label} className="flex gap-3">
+                <span className="text-[#C5A059] mt-1">▸</span>
+                <span><strong className="text-white">{item.label}:</strong> {item.detail}</span>
+              </li>
+            ))}
+          </ul>
           <p className="text-slate-400">
-            Omnora Labs does not operate server-side data extraction or global profiling engines. We have zero remote access vectors, zero backdoor privileges, and zero custody of your operational databases.
+            We do not collect browsing history, personal communications, social media data, or any information beyond what is directly entered into Noxis Hub by you or your staff.
           </p>
         </div>
-      )
+      ),
     },
     {
-      id: "sync",
-      icon: <Cloud className="w-4 h-4" />,
-      title: "2. Cloud Replicator & Telemetry",
+      id: "data-storage",
+      icon: <Lock className="w-4 h-4" />,
+      title: "2. How Data Is Stored",
       content: (
         <div className="space-y-4">
           <p>
-            When cloud synchronization features are explicitly enabled, the Noxis Replicator engine periodically pushes database write-ahead log (WAL) records to the Supabase network cloud.
+            Noxis Hub uses a two-tier storage architecture designed for maximum security and offline resilience:
           </p>
-          <ul className="list-disc pl-5 space-y-2 text-slate-400">
-            <li><strong>Transit Encryption:</strong> All database replications utilize TLS 1.3 cryptographic transport configurations.</li>
-            <li><strong>Rest Encryption:</strong> Cloud hosting nodes protect customer tables using hardware-accelerated AES-256 block storage encryption.</li>
-            <li><strong>Offline Lock:</strong> Disabling the sync component immediately stops all outbound packets. The application operates in a completely isolated local air-gapped system format.</li>
+          <div className="space-y-4">
+            <div className="bg-white/[0.02] border border-white/[0.04] rounded p-4 space-y-2">
+              <p className="text-white font-bold text-xs uppercase tracking-widest">Local Storage (Primary)</p>
+              <p>
+                All business data — invoices, karigars, inventory, ledgers — is stored on your own device in a locally encrypted <strong className="text-white">SQLite database secured with SQLCipher</strong>. The encryption key is derived from a machine-specific identifier, meaning the database cannot be opened on a different device even if the file is copied.
+              </p>
+              <p className="text-slate-500 text-xs">Location: Windows AppData folder on your PC. You own and control this file completely.</p>
+            </div>
+            <div className="bg-white/[0.02] border border-white/[0.04] rounded p-4 space-y-2">
+              <p className="text-white font-bold text-xs uppercase tracking-widest">Cloud Backup (Secondary)</p>
+              <p>
+                A copy of your data is synced to <strong className="text-white">Supabase</strong> (hosted on AWS) for cross-device access and disaster recovery. All data in Supabase is protected by <strong className="text-white">Row Level Security (RLS)</strong> — a database-level policy that makes it technically impossible for one business's data to be read by any other account, including Omnora Labs staff.
+              </p>
+              <p className="text-slate-500 text-xs">All data in transit uses HTTPS/TLS encryption. Data at rest uses AES-256 encryption on Supabase infrastructure.</p>
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: "data-access",
+      icon: <Eye className="w-4 h-4" />,
+      title: "3. Who Can Access Your Data",
+      content: (
+        <div className="space-y-4">
+          <p>
+            <strong className="text-white">Only you and the staff accounts you explicitly authorize</strong> can access your business data.
+          </p>
+          <ul className="space-y-3 list-none">
+            {[
+              { who: "You (Account Owner)", access: "Full read and write access to all your business data." },
+              { who: "Your Staff (Sub-Users)", access: "Access limited by the role you assign: Manager, Operator, Viewer, or Accountant. Each role has explicit permission gates — for example, a Viewer cannot modify invoices." },
+              { who: "Omnora Labs", access: "No access to your business records. Our Supabase RLS policies are enforced at the database engine level and cannot be bypassed by application code. In the event of a technical support request that requires database inspection, we will always ask for your explicit written consent first." },
+              { who: "Third Parties", access: "We do not sell, rent, or share your data with any third party for commercial purposes. Data is only shared with sub-processors listed in Section 6 for the purpose of providing the service." },
+            ].map((item) => (
+              <li key={item.who} className="flex gap-3">
+                <span className="text-[#C5A059] mt-1">▸</span>
+                <span><strong className="text-white">{item.who}:</strong> {item.access}</span>
+              </li>
+            ))}
           </ul>
         </div>
-      )
+      ),
     },
     {
-      id: "surveillance",
-      icon: <Cpu className="w-4 h-4" />,
-      title: "3. Sentinel AI & CCTV Streams",
+      id: "data-deletion",
+      icon: <Trash2 className="w-4 h-4" />,
+      title: "4. Data Deletion",
       content: (
         <div className="space-y-4">
-          <p>
-            The Sentinel AI CCTV module processes RTSP video streams directly on your workstation hardware accelerators (such as CPU/GPU/NPU cores).
-          </p>
-          <div className="p-4 bg-white/[0.02] border border-white/5 rounded-sm">
-            <h4 className="text-white font-bold text-xs uppercase tracking-wider mb-2">Local Memory Processing</h4>
-            <p className="text-slate-400 text-xs leading-relaxed">
-              No video frames, camera streams, employee facial hashes, or movement logs are ever transmitted to Omnora Labs or any third-party cloud infrastructure. Detections and safety check overlays are processed entirely in physical memory and logged directly onto your local SQLite database node.
-            </p>
+          <p>You have the right to request full deletion of your data at any time. Here is what happens:</p>
+          <div className="space-y-3">
+            <div className="flex gap-3">
+              <span className="text-[#C5A059] font-bold font-mono text-xs mt-1">01</span>
+              <div>
+                <p className="text-white font-bold text-sm">Local Data</p>
+                <p>You can delete your local database at any time by uninstalling Noxis Hub and deleting the AppData folder. This immediately and permanently removes all locally stored records from your device.</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <span className="text-[#C5A059] font-bold font-mono text-xs mt-1">02</span>
+              <div>
+                <p className="text-white font-bold text-sm">Cloud Data</p>
+                <p>To request deletion of your cloud data from Supabase, email <a href="mailto:support@noxishub.app" className="text-[#C5A059] hover:underline">support@noxishub.app</a> from your registered account email with the subject line <strong className="text-white">"Data Deletion Request"</strong>. We will permanently delete all your records from our cloud database <strong className="text-white">within 30 days</strong> and confirm via email when complete.</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <span className="text-[#C5A059] font-bold font-mono text-xs mt-1">03</span>
+              <div>
+                <p className="text-white font-bold text-sm">Backup Retention</p>
+                <p>Supabase maintains encrypted point-in-time backups for 7 days. After your deletion request is processed, your data will be fully purged from all backup snapshots within 30 days.</p>
+              </div>
+            </div>
           </div>
         </div>
-      )
+      ),
     },
     {
-      id: "mesh",
+      id: "cookies",
+      icon: <Cookie className="w-4 h-4" />,
+      title: "5. Cookies & Local Storage",
+      content: (
+        <div className="space-y-4">
+          <p>Noxis Hub uses a minimal, functional-only cookie policy. We do not use advertising cookies, tracking pixels, or behavioral analytics.</p>
+          <div className="space-y-3">
+            {[
+              { name: "Supabase Auth Session", type: "HttpOnly Cookie", purpose: "Maintains your authenticated session. Expires when you log out or after 7 days of inactivity.", essential: true },
+              { name: "NOXIS_LOCALE", type: "Cookie", purpose: "Stores your selected language preference (e.g. Urdu, Arabic, English) across sessions.", essential: true },
+              { name: "noxis-locale", type: "localStorage", purpose: "Client-side language preference backup for instant rendering.", essential: true },
+              { name: "noxis_license", type: "localStorage", purpose: "Cached license data to allow offline operation without re-validating against the server every session.", essential: true },
+            ].map((cookie) => (
+              <div key={cookie.name} className="bg-white/[0.02] border border-white/[0.03] rounded p-3 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-white font-bold text-xs">{cookie.name}</span>
+                  <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-mono">Essential</span>
+                </div>
+                <p className="text-[10px] text-slate-500 font-mono">{cookie.type}</p>
+                <p className="text-xs text-slate-400">{cookie.purpose}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-slate-400 text-xs">We do not use Google Analytics, Facebook Pixel, Hotjar, or any third-party tracking scripts on the Noxis Hub application.</p>
+        </div>
+      ),
+    },
+    {
+      id: "third-party",
+      icon: <Cloud className="w-4 h-4" />,
+      title: "6. Third-Party Services",
+      content: (
+        <div className="space-y-4">
+          <p>We use the following sub-processors to deliver Noxis Hub. Each is bound by their own privacy policies and data processing agreements:</p>
+          <div className="space-y-3">
+            {[
+              { name: "Supabase", role: "Database & Authentication", data: "Business profile, encrypted business records, auth tokens", location: "AWS us-east-1", link: "https://supabase.com/privacy" },
+              { name: "Cloudflare", role: "Website hosting, CDN, DNS", data: "Website traffic metadata (no business data)", location: "Global CDN", link: "https://www.cloudflare.com/privacy" },
+              { name: "GitHub", role: "Source code hosting & release distribution", data: "Installer binaries only — no user data", location: "USA", link: "https://docs.github.com/privacy" },
+            ].map((sp) => (
+              <div key={sp.name} className="bg-white/[0.02] border border-white/[0.03] rounded p-4 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-white font-bold text-sm">{sp.name}</span>
+                  <a href={sp.link} target="_blank" rel="noopener noreferrer" className="text-[10px] text-[#C5A059] hover:underline font-mono">Privacy Policy ↗</a>
+                </div>
+                <p className="text-xs text-slate-400"><strong className="text-slate-300">Role:</strong> {sp.role}</p>
+                <p className="text-xs text-slate-400"><strong className="text-slate-300">Data shared:</strong> {sp.data}</p>
+                <p className="text-xs text-slate-500 font-mono">{sp.location}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: "gdpr",
       icon: <Globe className="w-4 h-4" />,
-      title: "4. Node Pairing & Network Routing",
+      title: "7. GDPR Rights (EU Users)",
       content: (
         <div className="space-y-4">
-          <p>
-            Pairing between the workstation node and the Android mobile client utilizes a localized TCP/IP mesh bridge.
-          </p>
-          <p className="text-slate-400">
-            All worker check-ins, barcode scans, and real-time inventory adjustments made via paired handheld devices route directly through your local office router. Network packets are signed with HMAC-SHA256 tokens to prevent local spoofing attacks, never traversing external public routers unless cloud sync is active.
-          </p>
-        </div>
-      )
-    },
-    {
-      id: "telemetry",
-      icon: <ShieldAlert className="w-4 h-4" />,
-      title: "5. License Handshakes & Analytics",
-      content: (
-        <div className="space-y-4">
-          <p>
-            To prevent software duplication and validate active trial allocations, the client executes a periodic cryptographic handshake check with the license verification server.
-          </p>
-          <p className="text-slate-400">
-            This ping transmits basic operational telemetry only, restricted to: License Key validation, UUID hardware hashes, operating system platform tags, and application version identifiers. No operational ledger amounts, customer profiles, or stock logs are included in license check telemetry.
-          </p>
-        </div>
-      )
-    },
-    {
-      id: "erasure",
-      icon: <Shield className="w-4 h-4" />,
-      title: "6. Data Control & Partition Purging",
-      content: (
-        <div className="space-y-4">
-          <p>
-            Because you retain complete custody of your local workstation nodes, you maintain absolute data control.
-          </p>
-          <div className="p-4 bg-amber-500/5 border border-amber-500/10 text-slate-400 text-xs leading-relaxed rounded-sm">
-            <strong className="text-white block mb-1">⚠️ HARDWARE PURGE DIRECTIVE</strong>
-            You may instantly terminate your database records at any time. Deleting the local database folder and purging your browser or client cache will permanently erase your ledger files. If cloud synchronization was active, you must trigger a manual "Cloud Wipe" from the settings console to completely drop remote Supabase table entries.
+          <p>If you are located in the European Union or European Economic Area, you have the following rights under the General Data Protection Regulation (GDPR):</p>
+          <div className="grid gap-2">
+            {[
+              { right: "Right to Access", desc: "Request a copy of all personal data we hold about you." },
+              { right: "Right to Rectification", desc: "Request correction of any inaccurate personal data." },
+              { right: "Right to Erasure", desc: "Request deletion of your personal data ('Right to be Forgotten'). See Section 4." },
+              { right: "Right to Portability", desc: "Request your data in a machine-readable format (JSON/CSV export available in Settings → Data Export)." },
+              { right: "Right to Restrict Processing", desc: "Request that we stop processing your data while a dispute is resolved." },
+              { right: "Right to Object", desc: "Object to processing based on legitimate interests." },
+              { right: "Right to Withdraw Consent", desc: "Withdraw consent at any time without affecting prior processing." },
+            ].map((item) => (
+              <div key={item.right} className="flex gap-3 py-2 border-b border-white/[0.03] last:border-0">
+                <span className="text-[#C5A059] mt-0.5">▸</span>
+                <span><strong className="text-white">{item.right}:</strong> {item.desc}</span>
+              </div>
+            ))}
           </div>
+          <p>To exercise any of these rights, contact us at <a href="mailto:support@noxishub.app" className="text-[#C5A059] hover:underline">support@noxishub.app</a>. We will respond within <strong className="text-white">30 days</strong>.</p>
+          <p className="text-slate-400">Our data controller is Omnora Labs. For EU-related inquiries, you also have the right to lodge a complaint with your local Data Protection Authority.</p>
         </div>
-      )
+      ),
     },
     {
-      id: "governance",
+      id: "contact",
       icon: <Mail className="w-4 h-4" />,
-      title: "7. Inquiries & Board Governance",
+      title: "8. Contact Us",
       content: (
         <div className="space-y-4">
-          <p>
-            For compliance queries, cryptographic audit reports, or specific data retention details, you can consult with the Omnora Labs governance board.
-          </p>
-          <p>
-            Contact the engineering and security team directly at <a href="mailto:omnorainfo28@gmail.com" className="text-[#00E5FF] hover:underline font-mono">omnorainfo28@gmail.com</a>.
-          </p>
+          <p>For any privacy-related questions, data requests, or concerns, contact us through any of the following channels:</p>
+          <div className="space-y-3">
+            {[
+              { label: "General & Support", email: "support@noxishub.app" },
+              { label: "Main Contact", email: "omnora@noxishub.app" },
+            ].map((c) => (
+              <div key={c.email} className="flex items-center justify-between bg-white/[0.02] border border-white/[0.03] rounded p-4">
+                <span className="text-slate-400 text-sm">{c.label}</span>
+                <a href={`mailto:${c.email}`} className="text-[#C5A059] font-bold text-sm hover:underline">{c.email}</a>
+              </div>
+            ))}
+          </div>
+          <p className="text-slate-400 text-xs">Omnora Labs · Lahore, Pakistan · Response time: within 2 business days</p>
         </div>
-      )
-    }
+      ),
+    },
   ];
 
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollPosition = window.scrollY + 200;
-      for (const section of sections) {
-        const el = document.getElementById(section.id);
-        if (el) {
-          const top = el.offsetTop;
-          const height = el.offsetHeight;
-          if (scrollPosition >= top && scrollPosition < top + height) {
-            setActiveSection(section.id);
-            break;
-          }
-        }
-      }
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
   return (
-    <div className="min-h-screen bg-[#040608] text-[#94A3B8] font-sans selection:bg-[#C5A059]/30 selection:text-white pb-32">
-      {/* Background Gradients */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-[#C5A059]/[0.02] rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-[#00E5FF]/[0.01] rounded-full blur-[120px]" />
-      </div>
+    <div className="min-h-screen font-sans" style={{ background: '#040608', color: '#94A3B8' }}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 relative">
 
-      {/* ═══ HEADER NAVIGATION ═══ */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#040608]/85 backdrop-blur-xl border-b border-white/[0.04] py-4">
-        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
-          <Link href="/" className="flex items-center space-x-3 group cursor-pointer">
-            <div className="w-8 h-8 flex items-center justify-center bg-white/5 group-hover:bg-[#C5A059]/10 border border-white/10 group-hover:border-[#C5A059]/30 rounded-sm transition-all">
-              <img src="/logos/noxis.png" alt="Noxis Logo" width={20} height={20} className="object-contain" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-white font-extrabold tracking-wider leading-none text-sm">NOXIS</span>
-              <span className="text-[8px] text-gray-500 font-mono tracking-widest uppercase mt-0.5">Privacy & Security Protocols</span>
-            </div>
-          </Link>
+          {/* Left Sidebar */}
+          <div className="lg:col-span-4 space-y-6">
+            <Link href={returnHref} className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:text-white transition-colors">
+              <ArrowLeft className="w-3 h-3" />
+              {returnLabel}
+            </Link>
 
-          <Link href={returnHref} className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white flex items-center space-x-2 transition-colors">
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>{returnLabel}</span>
-          </Link>
-        </div>
-      </nav>
-
-      {/* ═══ MAIN LAYOUT ═══ */}
-      <div className="max-w-7xl mx-auto px-6 pt-32">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
-          
-          {/* Left Sidebar Menu */}
-          <div className="lg:col-span-4 lg:sticky lg:top-32 h-fit space-y-6 z-10">
-            <div className="bg-[#0A0D10] border border-white/[0.04] p-6 rounded-sm space-y-4">
-              <div className="flex items-center gap-2">
-                <Shield size={16} className="text-[#C5A059]" />
-                <h3 className="text-xs font-black uppercase tracking-widest text-white">Security Sections</h3>
-              </div>
-              <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
-                Our architecture guarantees absolute local ownership of all warehouse ledger details.
-              </p>
-              
-              <div className="space-y-1 pt-2">
-                {sections.map(section => (
-                  <a
-                    key={section.id}
-                    href={`#${section.id}`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      document.getElementById(section.id)?.scrollIntoView({ behavior: 'smooth' });
-                      setActiveSection(section.id);
+            <div className="lg:sticky lg:top-10 space-y-6">
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600 mb-3">Contents</p>
+                {sections.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => {
+                      setActiveSection(s.id);
+                      document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 text-xs font-bold uppercase tracking-wider rounded-sm transition-all border ${
-                      activeSection === section.id
-                        ? 'bg-[#C5A059]/10 border-[#C5A059]/25 text-white shadow-[0_0_15px_rgba(197,160,89,0.03)]'
-                        : 'bg-transparent border-transparent text-slate-500 hover:text-slate-300 hover:bg-white/[0.01]'
-                    }`}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded text-left transition-all text-xs font-medium ${activeSection === s.id ? 'text-white bg-white/[0.04] border border-white/[0.06]' : 'text-slate-500 hover:text-white hover:bg-white/[0.02]'}`}
                   >
-                    <div className="flex items-center gap-3">
-                      {section.icon}
-                      <span>{section.title.split('. ')[1]}</span>
-                    </div>
-                    <ChevronRight size={12} className={`transform transition-transform ${activeSection === section.id ? 'translate-x-0.5 text-[#C5A059]' : 'opacity-20'}`} />
-                  </a>
+                    <span className={activeSection === s.id ? 'text-[#C5A059]' : 'text-slate-600'}>{s.icon}</span>
+                    <span>{s.title}</span>
+                    {activeSection === s.id && <ChevronRight className="w-3 h-3 ml-auto text-[#C5A059]" />}
+                  </button>
                 ))}
               </div>
-            </div>
-            
-            <div className="bg-[#0A0D10] border border-white/[0.04] p-5 rounded-sm flex items-center justify-between text-[10px] font-mono font-bold uppercase tracking-widest text-slate-600">
-              <span>CIPHER MODE: SECURED</span>
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+
+              <div className="bg-[#0A0D10] border border-white/[0.04] p-4 rounded space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">Last Updated</p>
+                <p className="text-white font-bold text-sm">July 13, 2026</p>
+              </div>
+
+              <div className="bg-[#0A0D10] border border-white/[0.04] p-5 rounded flex items-center justify-between text-[10px] font-mono font-bold uppercase tracking-widest text-slate-600">
+                <span>RLS ENFORCED</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              </div>
             </div>
           </div>
 
@@ -243,13 +301,13 @@ function PrivacyContent() {
           <div className="lg:col-span-8 space-y-16 z-10">
             <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
               <span className="text-[10px] font-bold text-[#C5A059] uppercase tracking-widest bg-[#C5A059]/10 border border-[#C5A059]/20 px-3 py-1 rounded-full">
-                Zero-Knowledge Guarantee
+                Your Data. Your Control.
               </span>
               <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight leading-none uppercase">
                 Privacy <span className="text-[#C5A059]">Policy</span>
               </h1>
               <p className="text-slate-400 text-sm sm:text-base leading-relaxed font-medium">
-                Last updated on June 5, 2026. This policy lays down our data localization terms, zero-knowledge storage, local video telemetry rules, and licensing handshake parameters.
+                Last updated July 13, 2026. This policy explains what data Noxis Hub collects, how it is stored and protected, who can access it, and your rights as a user.
               </p>
             </motion.div>
 
@@ -259,7 +317,7 @@ function PrivacyContent() {
                   <div className="space-y-4">
                     <h2 className="text-xl font-bold text-white tracking-tight uppercase flex items-center gap-3">
                       <span className="text-[#C5A059] font-mono text-sm">0{sections.indexOf(section) + 1}.</span>
-                      {section.title.split('. ')[1]}
+                      {section.title.split('. ').slice(1).join('. ')}
                     </h2>
                     <div className="text-sm text-[#94A3B8] leading-relaxed font-medium pl-6 border-l border-white/[0.02]">
                       {section.content}
@@ -271,8 +329,12 @@ function PrivacyContent() {
 
             {/* Footer */}
             <footer className="pt-8 border-t border-white/[0.05] flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] font-mono uppercase tracking-widest text-slate-600">
-              <span>Noxis Core Security Policy v13.0</span>
-              <span>© {new Date().getFullYear()} Omnora Labs · Sandboxed Node Architecture</span>
+              <span>Noxis Hub Privacy Policy v13.0</span>
+              <div className="flex items-center gap-4">
+                <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
+                <Link href="/refund" className="hover:text-white transition-colors">Refund</Link>
+                <span>© {new Date().getFullYear()} Omnora Labs</span>
+              </div>
             </footer>
           </div>
 

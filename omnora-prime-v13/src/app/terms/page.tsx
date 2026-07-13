@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { FileText, Key, Cloud, ShieldAlert, Cpu, AlertCircle, HelpCircle, ArrowLeft, ChevronRight } from "lucide-react";
+import { FileText, Key, Shield, Ban, Database, Scale, MapPin, MessageSquare, Mail, ArrowLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 
-// --- Types ---
 interface TermsSection {
   id: string;
   icon: React.ReactNode;
@@ -17,7 +16,7 @@ interface TermsSection {
 
 export default function TermsOfServicePage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#07080A] flex items-center justify-center text-gray-500 uppercase tracking-widest text-[10px] font-mono">Loading Terms & EULA...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-[#07080A] flex items-center justify-center text-gray-500 uppercase tracking-widest text-[10px] font-mono">Loading Terms of Service...</div>}>
       <TermsContent />
     </Suspense>
   );
@@ -26,224 +25,274 @@ export default function TermsOfServicePage() {
 function TermsContent() {
   const searchParams = useSearchParams();
   const source = searchParams.get('source');
-  const [activeSection, setActiveSection] = useState('agreement');
-  
+  const [activeSection, setActiveSection] = useState('product');
+
   const returnHref = source === 'hub' ? '/dashboard' : '/';
   const returnLabel = source === 'hub' ? 'Return to Hub' : 'Back to Home';
 
   const sections: TermsSection[] = [
     {
-      id: "agreement",
+      id: "product",
       icon: <FileText className="w-4 h-4" />,
-      title: "1. Acceptance of Terms",
+      title: "1. What Is Noxis Hub",
       content: (
         <div className="space-y-4">
           <p>
-            This End-User License Agreement (EULA) is a binding legal contract between you (either an individual or a registered corporate entity) and Omnora Labs. By downloading, deploying, or utilizing Noxis Hub, you agree to be bound by the terms of this agreement.
+            Noxis Hub is a proprietary, offline-first Enterprise Resource Planning (ERP) software application developed and maintained by <strong className="text-white">Omnora Labs</strong>, a software development company based in Lahore, Pakistan.
+          </p>
+          <p>
+            Noxis Hub is designed specifically for manufacturing and industrial businesses operating in Pakistan, UAE, Saudi Arabia, Bangladesh, and other markets. The software operates as a Windows desktop application (the "Hub") that stores all business data locally on the customer's hardware and optionally syncs to Supabase cloud for backup and multi-device access.
           </p>
           <p className="text-slate-400">
-            If you do not agree to these terms, you are not authorized to install or use Noxis Hub. You must immediately delete all local binaries and terminate your workspace database nodes.
+            By downloading, installing, activating, or otherwise using Noxis Hub, you ("the Customer" or "Licensee") agree to be bound by these Terms of Service. If you do not agree, you must immediately uninstall the software and contact <a href="mailto:support@noxishub.app" className="text-[#C5A059] hover:underline">support@noxishub.app</a> to request a refund within 14 days of purchase.
           </p>
         </div>
-      )
+      ),
     },
     {
-      id: "licensing",
+      id: "license",
       icon: <Key className="w-4 h-4" />,
-      title: "2. EULA & Trial Limitations",
+      title: "2. License Tiers & Inclusions",
       content: (
         <div className="space-y-4">
-          <p>
-            Noxis Hub is proprietary software licensed, not sold. Omnora Labs grants you a non-exclusive, non-transferable license to execute the software on authorized workstations.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-            <div className="p-4 bg-white/[0.02] border border-white/5 rounded-sm">
-              <h4 className="text-white font-bold text-xs uppercase tracking-wider mb-2">Evaluation (Trial) Mode</h4>
-              <p className="text-slate-400 text-xs leading-relaxed">
-                Free trial licenses allow full evaluation for exactly 3 calendar days from node activation. Upon expiry, database write mutations are programmatically locked, transitioning the app to Read-Only mode.
-              </p>
-            </div>
-            <div className="p-4 bg-white/[0.02] border border-white/5 rounded-sm">
-              <h4 className="text-white font-bold text-xs uppercase tracking-wider mb-2">Commercial Licenses</h4>
-              <p className="text-slate-400 text-xs leading-relaxed">
-                Standard and Enterprise tier deployments require an active, validated cryptographic license key. Unauthorized key sharing, redistribution, or reverse engineering of binaries is strictly prohibited.
-              </p>
-            </div>
+          <p>Noxis Hub is sold as a perpetual software license with an optional annual maintenance subscription. The following tiers are available:</p>
+          <div className="space-y-3">
+            {[
+              { tier: "Trial", desc: "14-day free trial with full feature access. No payment required. Trial data is preserved if you upgrade.", limit: "1 device, watermarked exports" },
+              { tier: "Lite", desc: "Core ERP features: Invoicing, Ledger (Khata), basic Inventory, and Karigar attendance.", limit: "1 device, up to 2 staff accounts" },
+              { tier: "Pro", desc: "All Lite features plus: Advanced Inventory, Production Tracking, Payroll, Client Portal, and WhatsApp Messaging.", limit: "Up to 3 devices, up to 10 staff accounts" },
+              { tier: "Elite", desc: "All Pro features plus: Multi-branch support, CCTV Sentinel module, custom report builder, and priority support SLA.", limit: "Up to 10 devices, unlimited staff accounts" },
+            ].map((t) => (
+              <div key={t.tier} className="bg-white/[0.02] border border-white/[0.04] rounded p-4 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-white font-bold">{t.tier}</span>
+                  <span className="text-[10px] text-slate-500 font-mono bg-white/[0.03] px-2 py-0.5 rounded">{t.limit}</span>
+                </div>
+                <p className="text-xs text-slate-400">{t.desc}</p>
+              </div>
+            ))}
           </div>
+          <p className="text-slate-400 text-xs">
+            License prices are listed at <Link href="/pricing" className="text-[#C5A059] hover:underline">noxishub.app/pricing</Link>. Prices are subject to change; existing customers are grandfathered at their purchase price for 12 months.
+          </p>
         </div>
-      )
+      ),
     },
     {
-      id: "local-first",
-      icon: <ShieldAlert className="w-4 h-4" />,
-      title: "3. Local Node Custody & Password Loss",
+      id: "acceptable-use",
+      icon: <Shield className="w-4 h-4" />,
+      title: "3. Acceptable Use",
       content: (
         <div className="space-y-4">
-          <p>
-            Noxis Hub runs on a decentralized Local-First Architecture. All database files (including SQLite write-ahead logs, local keys, and employee schemas) are stored directly on your physical hardware partition.
-          </p>
-          <div className="p-4 bg-amber-500/5 border border-amber-500/10 text-slate-400 text-xs leading-relaxed rounded-sm">
-            <strong className="text-white block mb-1">⚠️ CRITICAL DATA NOTICE</strong>
-            Omnora Labs does not maintain database backups, user passwords, or local encryption keys on cloud servers. If you lose your master database encryption password or local recovery keys, your data cannot be recovered. Regular external backups of the SQLite database are entirely your custody.
-          </div>
-        </div>
-      )
-    },
-    {
-      id: "cloud-sync",
-      icon: <Cloud className="w-4 h-4" />,
-      title: "4. Cloud Replicator & Backend Services",
-      content: (
-        <div className="space-y-4">
-          <p>
-            Optional multi-terminal synchronization and offsite backups are processed via Supabase cloud endpoints.
-          </p>
-          <ul className="list-disc pl-5 space-y-2 text-slate-400">
-            <li>Data in transit is encrypted using TLS 1.3 protocols. Datastores at rest utilize AES-256 bit encryption.</li>
-            <li>Operational availability, server uptime, and global routing tables are governed by Supabase's independent SLA guidelines.</li>
-            <li>You can disable cloud sync at any time in settings to operate in a fully sandboxed offline air-gapped node mode.</li>
+          <p>Noxis Hub is licensed for <strong className="text-white">lawful commercial business operations only</strong>. You agree that you will use Noxis Hub only to manage legitimate business activities including but not limited to:</p>
+          <ul className="space-y-2 list-none">
+            {[
+              "Managing invoices, purchase orders, and customer payments",
+              "Tracking inventory, raw materials, and finished goods",
+              "Recording worker attendance and calculating lawful wages",
+              "Managing business ledgers and cash flow",
+              "Generating tax-compliant invoices and reports",
+              "Monitoring CCTV recordings for business security",
+            ].map((use) => (
+              <li key={use} className="flex gap-3 text-slate-400">
+                <span className="text-emerald-500 mt-1">✓</span>
+                <span>{use}</span>
+              </li>
+            ))}
           </ul>
         </div>
-      )
+      ),
     },
     {
-      id: "surveillance",
-      icon: <Cpu className="w-4 h-4" />,
-      title: "5. AI Sentinel CCTV & surveillance Ethics",
+      id: "prohibited",
+      icon: <Ban className="w-4 h-4" />,
+      title: "4. Prohibited Uses",
       content: (
         <div className="space-y-4">
-          <p>
-            Noxis Hub includes Sentinel AI modules for RTSP camera streaming, worker safety checks, and movement logging.
-          </p>
-          <p>
-            All video feeds and neural network detections are processed strictly in memory on local hardware accelerators. No CCTV feeds are ever uploaded to cloud telemetry. You are legally responsible for complying with local employee disclosure and surveillance laws in your jurisdiction.
-          </p>
+          <p>The following uses are strictly prohibited and will result in immediate license termination without refund:</p>
+          <ul className="space-y-2 list-none">
+            {[
+              { act: "Resale or Sublicensing", detail: "You may not resell, sublicense, or transfer your license to a third party without written consent from Omnora Labs." },
+              { act: "Reverse Engineering", detail: "You may not decompile, disassemble, or attempt to derive the source code of Noxis Hub." },
+              { act: "Illegal Activities", detail: "Using Noxis Hub to manage, track, or facilitate any activity that is illegal under applicable law." },
+              { act: "License Bypass", detail: "Attempting to circumvent, spoof, or hack the license activation system." },
+              { act: "Unauthorized Distribution", detail: "Distributing the Noxis Hub installer or its binaries without authorization." },
+              { act: "Competitive Intelligence", detail: "Using Noxis Hub to benchmark, copy, or inform the development of competing software products." },
+            ].map((item) => (
+              <li key={item.act} className="flex gap-3">
+                <span className="text-red-500 mt-1">✕</span>
+                <span><strong className="text-white">{item.act}:</strong> {item.detail}</span>
+              </li>
+            ))}
+          </ul>
         </div>
-      )
+      ),
     },
     {
-      id: "warranty",
-      icon: <AlertCircle className="w-4 h-4" />,
-      title: "6. Warranty & Accounting Disclaimer",
+      id: "data-ownership",
+      icon: <Database className="w-4 h-4" />,
+      title: "5. Data Ownership",
       content: (
         <div className="space-y-4">
           <p>
-            THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. Omnora Labs does not warrant that the operations will be uninterrupted or error-free.
+            <strong className="text-white">You own your data completely and unconditionally.</strong> Omnora Labs claims no ownership, license, or rights over any business data, financial records, or personal information you enter into Noxis Hub.
+          </p>
+          <p>
+            We do not use your business data for advertising, benchmarking, training machine learning models, or any purpose beyond delivering the Noxis Hub service to you. Your data is your intellectual property.
           </p>
           <p className="text-slate-400">
-            Noxis Hub provides operational calculations for raw materials, payroll wages, and ledgers. It does not replace certified tax advisors or professional legal bookkeeping. Always verify auto-generated financial reports before filing official tax logs.
+            You may export all your data at any time from Settings → Data Export. Upon account termination, you may request a full data export before deletion is processed (see Privacy Policy, Section 4).
           </p>
         </div>
-      )
+      ),
     },
     {
-      id: "support",
-      icon: <HelpCircle className="w-4 h-4" />,
-      title: "7. Jurisdiction & Board Support",
+      id: "liability",
+      icon: <Scale className="w-4 h-4" />,
+      title: "6. Limitation of Liability",
       content: (
         <div className="space-y-4">
           <p>
-            This EULA is governed by and construed in accordance with the corporate laws of Pakistan.
+            To the maximum extent permitted by applicable law, Omnora Labs and its officers, employees, and contractors shall not be liable for:
+          </p>
+          <ul className="space-y-2 list-none">
+            {[
+              "Loss of business revenue, profits, or contracts arising from software downtime or data loss",
+              "Errors or inaccuracies in financial calculations produced by the software",
+              "Data loss due to hardware failure, malware, or user error on the customer's own devices",
+              "Inability to access the software due to internet connectivity issues (the software is designed to work offline)",
+              "Indirect, incidental, punitive, or consequential damages of any kind",
+            ].map((item) => (
+              <li key={item} className="flex gap-3 text-slate-400">
+                <span className="text-slate-600 mt-1">—</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+          <p>
+            Our maximum aggregate liability to you for any claim under these Terms shall not exceed the total amount paid by you for the Noxis Hub license in the 12 months preceding the claim.
+          </p>
+          <p className="text-slate-400">
+            Noxis Hub is provided "as is." While we work hard to ensure accuracy, you are responsible for verifying all financial calculations, tax amounts, and payroll figures against applicable law and regulations in your jurisdiction before relying on them for business or legal purposes.
+          </p>
+        </div>
+      ),
+    },
+    {
+      id: "governing-law",
+      icon: <MapPin className="w-4 h-4" />,
+      title: "7. Governing Law",
+      content: (
+        <div className="space-y-4">
+          <p>
+            These Terms of Service are governed by and construed in accordance with the laws of the <strong className="text-white">Islamic Republic of Pakistan</strong>, without regard to its conflict of law provisions.
           </p>
           <p>
-            Technical support SLA tiers, custom hardware driver integration, and billing disputes are managed by the Omnora Labs engineering board.
+            Any legal action or proceeding arising under or relating to these Terms shall be brought exclusively in the courts of <strong className="text-white">Lahore, Punjab, Pakistan</strong>, and the parties irrevocably consent to the jurisdiction and venue thereof.
           </p>
         </div>
-      )
-    }
+      ),
+    },
+    {
+      id: "disputes",
+      icon: <MessageSquare className="w-4 h-4" />,
+      title: "8. Dispute Resolution",
+      content: (
+        <div className="space-y-4">
+          <p>
+            Before initiating any formal legal proceeding, both parties agree to attempt in good faith to resolve any dispute informally.
+          </p>
+          <div className="space-y-3">
+            <div className="flex gap-3">
+              <span className="text-[#C5A059] font-bold font-mono text-xs mt-1">01</span>
+              <div>
+                <p className="text-white font-bold text-sm">Contact First</p>
+                <p>Contact us at <a href="mailto:legal@noxishub.app" className="text-[#C5A059] hover:underline">legal@noxishub.app</a> describing the dispute in writing.</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <span className="text-[#C5A059] font-bold font-mono text-xs mt-1">02</span>
+              <div>
+                <p className="text-white font-bold text-sm">30-Day Resolution Period</p>
+                <p>We will respond within 5 business days and attempt to resolve the issue within 30 days.</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <span className="text-[#C5A059] font-bold font-mono text-xs mt-1">03</span>
+              <div>
+                <p className="text-white font-bold text-sm">Formal Proceedings</p>
+                <p>If the dispute cannot be resolved informally, either party may pursue formal legal remedies under the governing law stated in Section 7.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: "contact",
+      icon: <Mail className="w-4 h-4" />,
+      title: "9. Legal Contact",
+      content: (
+        <div className="space-y-4">
+          <p>For all legal matters, contract inquiries, and Terms of Service questions:</p>
+          <div className="space-y-3">
+            {[
+              { label: "Legal Queries", email: "legal@noxishub.app" },
+              { label: "General Support", email: "support@noxishub.app" },
+              { label: "Main Contact", email: "omnora@noxishub.app" },
+            ].map((c) => (
+              <div key={c.email} className="flex items-center justify-between bg-white/[0.02] border border-white/[0.03] rounded p-4">
+                <span className="text-slate-400 text-sm">{c.label}</span>
+                <a href={`mailto:${c.email}`} className="text-[#C5A059] font-bold text-sm hover:underline">{c.email}</a>
+              </div>
+            ))}
+          </div>
+          <p className="text-slate-400 text-xs">Omnora Labs · Lahore, Pakistan · Response time: within 2 business days</p>
+        </div>
+      ),
+    },
   ];
 
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollPosition = window.scrollY + 200;
-      for (const section of sections) {
-        const el = document.getElementById(section.id);
-        if (el) {
-          const top = el.offsetTop;
-          const height = el.offsetHeight;
-          if (scrollPosition >= top && scrollPosition < top + height) {
-            setActiveSection(section.id);
-            break;
-          }
-        }
-      }
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
   return (
-    <div className="min-h-screen bg-[#040608] text-[#94A3B8] font-sans selection:bg-[#C5A059]/30 selection:text-white pb-32">
-      {/* Background Gradients */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-[#C5A059]/[0.02] rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-[#00E5FF]/[0.01] rounded-full blur-[120px]" />
-      </div>
+    <div className="min-h-screen font-sans" style={{ background: '#040608', color: '#94A3B8' }}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 relative">
 
-      {/* ═══ HEADER NAVIGATION ═══ */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#040608]/85 backdrop-blur-xl border-b border-white/[0.04] py-4">
-        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
-          <Link href="/" className="flex items-center space-x-3 group cursor-pointer">
-            <div className="w-8 h-8 flex items-center justify-center bg-white/5 group-hover:bg-[#C5A059]/10 border border-white/10 group-hover:border-[#C5A059]/30 rounded-sm transition-all">
-              <img src="/logos/noxis.png" alt="Noxis Logo" width={20} height={20} className="object-contain" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-white font-extrabold tracking-wider leading-none text-sm">NOXIS</span>
-              <span className="text-[8px] text-gray-500 font-mono tracking-widest uppercase mt-0.5">EULA & Service Agreements</span>
-            </div>
-          </Link>
+          {/* Left Sidebar */}
+          <div className="lg:col-span-4 space-y-6">
+            <Link href={returnHref} className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:text-white transition-colors">
+              <ArrowLeft className="w-3 h-3" />
+              {returnLabel}
+            </Link>
 
-          <Link href={returnHref} className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white flex items-center space-x-2 transition-colors">
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>{returnLabel}</span>
-          </Link>
-        </div>
-      </nav>
-
-      {/* ═══ MAIN LAYOUT ═══ */}
-      <div className="max-w-7xl mx-auto px-6 pt-32">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
-          
-          {/* Left Sidebar Menu */}
-          <div className="lg:col-span-4 lg:sticky lg:top-32 h-fit space-y-6 z-10">
-            <div className="bg-[#0A0D10] border border-white/[0.04] p-6 rounded-sm space-y-4">
-              <div className="flex items-center gap-2">
-                <FileText size={16} className="text-[#C5A059]" />
-                <h3 className="text-xs font-black uppercase tracking-widest text-white">Document Sections</h3>
-              </div>
-              <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
-                Please read this license agreement carefully before initiating your localized database nodes.
-              </p>
-              
-              <div className="space-y-1 pt-2">
-                {sections.map(section => (
-                  <a
-                    key={section.id}
-                    href={`#${section.id}`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      document.getElementById(section.id)?.scrollIntoView({ behavior: 'smooth' });
-                      setActiveSection(section.id);
+            <div className="lg:sticky lg:top-10 space-y-6">
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600 mb-3">Contents</p>
+                {sections.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => {
+                      setActiveSection(s.id);
+                      document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 text-xs font-bold uppercase tracking-wider rounded-sm transition-all border ${
-                      activeSection === section.id
-                        ? 'bg-[#C5A059]/10 border-[#C5A059]/25 text-white shadow-[0_0_15px_rgba(197,160,89,0.03)]'
-                        : 'bg-transparent border-transparent text-slate-500 hover:text-slate-300 hover:bg-white/[0.01]'
-                    }`}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded text-left transition-all text-xs font-medium ${activeSection === s.id ? 'text-white bg-white/[0.04] border border-white/[0.06]' : 'text-slate-500 hover:text-white hover:bg-white/[0.02]'}`}
                   >
-                    <div className="flex items-center gap-3">
-                      {section.icon}
-                      <span>{section.title.split('. ')[1]}</span>
-                    </div>
-                    <ChevronRight size={12} className={`transform transition-transform ${activeSection === section.id ? 'translate-x-0.5 text-[#C5A059]' : 'opacity-20'}`} />
-                  </a>
+                    <span className={activeSection === s.id ? 'text-[#C5A059]' : 'text-slate-600'}>{s.icon}</span>
+                    <span>{s.title}</span>
+                    {activeSection === s.id && <ChevronRight className="w-3 h-3 ml-auto text-[#C5A059]" />}
+                  </button>
                 ))}
               </div>
-            </div>
-            
-            <div className="bg-[#0A0D10] border border-white/[0.04] p-5 rounded-sm flex items-center justify-between text-[10px] font-mono font-bold uppercase tracking-widest text-slate-600">
-              <span>STATUS: VALIDATED EULA</span>
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+
+              <div className="bg-[#0A0D10] border border-white/[0.04] p-4 rounded space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">Last Updated</p>
+                <p className="text-white font-bold text-sm">July 13, 2026</p>
+              </div>
+
+              <div className="bg-[#0A0D10] border border-white/[0.04] p-5 rounded flex items-center justify-between text-[10px] font-mono font-bold uppercase tracking-widest text-slate-600">
+                <span>VALIDATED EULA v13.0</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              </div>
             </div>
           </div>
 
@@ -257,7 +306,7 @@ function TermsContent() {
                 Terms of <span className="text-[#C5A059]">Service</span>
               </h1>
               <p className="text-slate-400 text-sm sm:text-base leading-relaxed font-medium">
-                Last updated on June 5, 2026. This document governs node operations, license lifecycle policy, local encryption standards, and liabilities inside the Noxis Hub network.
+                Last updated July 13, 2026. This document governs your use of Noxis Hub software, license terms, acceptable use policy, data ownership, and liability limitations.
               </p>
             </motion.div>
 
@@ -267,7 +316,7 @@ function TermsContent() {
                   <div className="space-y-4">
                     <h2 className="text-xl font-bold text-white tracking-tight uppercase flex items-center gap-3">
                       <span className="text-[#C5A059] font-mono text-sm">0{sections.indexOf(section) + 1}.</span>
-                      {section.title.split('. ')[1]}
+                      {section.title.split('. ').slice(1).join('. ')}
                     </h2>
                     <div className="text-sm text-[#94A3B8] leading-relaxed font-medium pl-6 border-l border-white/[0.02]">
                       {section.content}
@@ -279,8 +328,12 @@ function TermsContent() {
 
             {/* Footer */}
             <footer className="pt-8 border-t border-white/[0.05] flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] font-mono uppercase tracking-widest text-slate-600">
-              <span>Noxis Core EULA v13.0</span>
-              <span>© {new Date().getFullYear()} Omnora Labs · Sandboxed Node Architecture</span>
+              <span>Noxis Hub EULA v13.0 · Pakistan Law</span>
+              <div className="flex items-center gap-4">
+                <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+                <Link href="/refund" className="hover:text-white transition-colors">Refund</Link>
+                <span>© {new Date().getFullYear()} Omnora Labs</span>
+              </div>
             </footer>
           </div>
 
