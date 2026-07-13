@@ -177,8 +177,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     !pathname ||
     pathname === "/" || 
     pathname === "/index.html" || 
-    pathname === "/login" || 
-    pathname === "/signup" || 
+    pathname.startsWith("/login") || 
+    pathname.startsWith("/signup") || 
+    pathname.startsWith("/license") || 
     pathname.startsWith("/setup") ||
     pathname.startsWith("/download") ||
     pathname.startsWith("/pricing") ||
@@ -198,8 +199,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const isPublicRoute = !pathname || 
     pathname === "/" || 
     pathname === "/index.html" || 
-    pathname === "/login" || 
-    pathname === "/signup" || 
+    pathname.toLowerCase().startsWith("/login") || 
+    pathname.toLowerCase().startsWith("/signup") || 
+    pathname.toLowerCase().startsWith("/license") || 
     pathname.toLowerCase().startsWith("/setup") ||
     pathname.toLowerCase().startsWith("/download") ||
     pathname.toLowerCase().startsWith("/pricing") ||
