@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 
 interface CachedLicense {
   id: string
@@ -15,11 +15,40 @@ interface CachedLicense {
 
 export function useLicenseValidation() {
   const router = useRouter()
+  const pathname = usePathname()
   const [license, setLicense] = useState<CachedLicense | null>(null)
   const [loading, setLoading] = useState(true)
   const validatedRef = useRef(false)
 
   useEffect(() => {
+    if (!pathname) return
+
+    const normalizedPath = pathname.toLowerCase()
+    const isPublicPath = 
+      normalizedPath === "/" || 
+      normalizedPath === "/index.html" || 
+      normalizedPath.startsWith("/login") || 
+      normalizedPath.startsWith("/signup") || 
+      normalizedPath.startsWith("/license") || 
+      normalizedPath.startsWith("/setup") ||
+      normalizedPath.startsWith("/download") ||
+      normalizedPath.startsWith("/pricing") ||
+      normalizedPath.startsWith("/privacy") ||
+      normalizedPath.startsWith("/terms") ||
+      normalizedPath.startsWith("/refund") ||
+      normalizedPath.startsWith("/file-morph") ||
+      normalizedPath.startsWith("/about") ||
+      normalizedPath.startsWith("/reviews") ||
+      normalizedPath.startsWith("/docs") ||
+      normalizedPath.startsWith("/blog") ||
+      normalizedPath.startsWith("/admin") ||
+      normalizedPath === "/dashboard/login"
+
+    if (isPublicPath) {
+      setLoading(false)
+      return
+    }
+
     // STEP 1: Read cache immediately — never wait for network
     const initLicense = () => {
       try {
@@ -59,7 +88,7 @@ export function useLicenseValidation() {
     }
 
     initLicense()
-  }, [])
+  }, [pathname, router])
 
   const silentRevalidate = async (key: string) => {
     if (validatedRef.current) return
