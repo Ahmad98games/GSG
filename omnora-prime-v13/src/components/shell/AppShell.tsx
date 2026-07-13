@@ -182,6 +182,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname?.startsWith("/download") ||
     pathname?.startsWith("/pricing") ||
     pathname?.startsWith("/privacy") ||
+    pathname?.startsWith("/terms") ||
+    pathname?.startsWith("/refund") ||
+    pathname?.startsWith("/file-morph") ||
     pathname?.startsWith("/about") ||
     pathname?.startsWith("/reviews") ||
     pathname?.startsWith("/docs") ||

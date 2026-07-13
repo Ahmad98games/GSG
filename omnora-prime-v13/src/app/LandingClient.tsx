@@ -19,6 +19,14 @@ import {
   OBSIDIAN,
   AnimatePresence,
   motion,
+  CockpitTabs,
+  TypewriterConsole,
+  SplitHeadline,
+  FeatureCard,
+  Reveal,
+  RevealStagger,
+  RevealItem,
+  SignatureMarquee
 } from '@/components/landing/LandingMotion'
 
 type CockpitTab = 'dashboard' | 'wages' | 'sqlite' | 'khata' | 'cctv'
@@ -42,17 +50,29 @@ const cctvAlerts = [
   { time: '21:35:45', msg: 'Security action: Triggered local PC siren and push notice.', status: 'warning' },
 ]
 
+const marqueeTerms = [
+  'OFFLINE-FIRST CORE',
+  'SQLITE LOCAL ENCRYPTION',
+  'SUPABASE CLOUD SYNC',
+  'ROW-LEVEL SECURITY',
+  'KARIGAR PIECE-RATE PAYROLL',
+  'CCTV SENTINEL AI FEED',
+  'LOCAL WI-FI MESH NODE',
+  'PAKISTAN & UAE TAX COMPLIANCE'
+]
+
 export default function LandingClient() {
   const router = useRouter()
   const supabase = createClient()
 
-  const [checking, setChecking] = useState(() =>
-    typeof window !== 'undefined' && window.navigator.userAgent.toLowerCase().includes('electron')
-  )
+  const [mounted, setMounted] = useState(false)
+  const [checking, setChecking] = useState(true)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<CockpitTab>('dashboard')
 
+  // Hydration-safe initial check
   useEffect(() => {
+    setMounted(true)
     async function handleAuthRedirect() {
       try {
         const { data: { session } } = await supabase.auth.getSession()
@@ -62,19 +82,24 @@ export default function LandingClient() {
             .eq('user_id', session.user.id).single()
           router.push(profile?.onboarding_done ? '/dashboard' : '/setup')
         } else {
-          const isElectron = typeof window !== 'undefined' && window.navigator.userAgent.toLowerCase().includes('electron')
-          if (isElectron) router.push('/login')
-          else setChecking(false)
+          const isElectron = window.navigator.userAgent.toLowerCase().includes('electron')
+          if (isElectron) {
+            router.push('/login')
+          } else {
+            setChecking(false)
+          }
         }
-      } catch { setChecking(false) }
+      } catch {
+        setChecking(false)
+      }
     }
     handleAuthRedirect()
   }, [supabase, router])
 
-  if (checking) {
+  if (!mounted || checking) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-6" style={{ background: OBSIDIAN }}>
-        <BrandLogo size="splash" showWordmark />
+        <BrandLogo size="splash" showWordmark={false} />
         <div
           className="w-10 h-10 rounded-full border-2 border-t-transparent animate-spin"
           style={{ borderColor: `${CHAMPAGNE}33`, borderTopColor: CHAMPAGNE }}
@@ -89,72 +114,84 @@ export default function LandingClient() {
       title: '01. Platform Installation',
       desc: 'Download the optimized Windows desktop client setup binary (.exe) and install the local system node directly on your factory floor PC.',
       badge: 'Workstation Setup',
+      icon: Terminal,
     },
     {
       id: 'license',
       title: '02. Cryptographic Activation',
       desc: 'Perform a secure one-time activation. Your verified license key acts as a cryptographic recovery key for the local database block.',
       badge: 'License Control',
+      icon: Lock,
     },
     {
       id: 'sqlite',
       title: '03. Local SQLite Architecture',
       desc: 'All factory transactions are stored locally with zero internet dependency, utilizing Write-Ahead Logging (WAL) for absolute stability.',
       badge: 'Database Core',
+      icon: Database,
     },
     {
       id: 'mobile',
       title: '04. Local WiFi Phone Pairing',
       desc: 'Connect supervisor Android phones directly to your office PC over local Wi-Fi. Log operator inputs and attendance without internet.',
       badge: 'Floor Sync',
+      icon: Smartphone,
     },
     {
       id: 'inventory',
       title: '05. Barcode & Inventory Config',
       desc: 'Scan grades of fabric rolls, chemical batches, or yarn packs. Get automated stock reorder alerts when inventory levels fall low.',
       badge: 'Stock Tracking',
+      icon: Layers,
     },
     {
       id: 'invoices',
       title: '06. Ledger & Invoicing Setup',
       desc: 'Professional PDF invoice printouts, party-wise accounting registers, and cash book entries automatically keeping double-entry ledger records.',
       badge: 'Accounting',
+      icon: CircleDollarSign,
     },
     {
       id: 'data-safety',
       title: '07. Data Safety Protocol',
       desc: 'Your data is backed up dual-fold: locally via downloadable encrypted JSON files and synced securely to Supabase servers when online.',
       badge: 'Security',
+      icon: ShieldCheck,
     },
     {
       id: 'quickentry',
       title: '08. Floor Quick Entry Console',
       desc: 'A touch-friendly entry cockpit for computers on the floor, enabling quick records of production rates and attendance within seconds.',
       badge: 'Fast Logging',
+      icon: Cpu,
     },
     {
       id: 'troubleshoot',
-      title: '09. Regional Troubleshooting',
+      title: '09. Regional Diagnostics',
       desc: 'Simple diagnostics checks for network subnets, local router connections, and device mapping errors to prevent any floor downtime.',
       badge: 'Diagnostics',
+      icon: ShieldAlert,
     },
     {
       id: 'intelligence',
       title: '10. Predictive Intelligence',
       desc: 'Automated moving average inventory alerts, customer churn metrics, and live regional market rate indices calculated on your dashboard.',
       badge: 'Analytics',
+      icon: BarChart4,
     },
     {
       id: 'finance',
       title: '11. Credit Scoring & Peshgi',
       desc: 'Track worker advance pays (peshgi), calculate credit profiles for operators, and coordinate wage payouts with digital wallet APIs.',
       badge: 'Finance Flow',
+      icon: Globe2,
     },
     {
       id: 'api-worker',
       title: '12. Digital Worker IDs & APIs',
       desc: 'Generate QR badges for karigars displaying credentials, and utilize secure webhook integrations to sync inventory to third-party tools.',
       badge: 'Developer Integration',
+      icon: Terminal,
     },
   ]
 
@@ -169,10 +206,13 @@ export default function LandingClient() {
   return (
     <>
       <div
-        className="font-sans min-h-screen selection:text-black overflow-x-hidden text-[#E2E8F0]"
+        className="font-sans min-h-screen selection:text-black overflow-x-hidden text-[#E2E8F0] relative"
         style={{ background: OBSIDIAN }}
       >
         <LandingBackdrop />
+
+        {/* Global ambient overlay */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(197,160,89,0.05)_0%,transparent_50%)] pointer-events-none z-0" />
 
         <div className="relative z-10">
           {/* Header Navigation */}
@@ -197,23 +237,23 @@ export default function LandingClient() {
                 <Link
                   href="/dashboard"
                   style={{
-                    background: 'rgba(96,165,250,0.1)',
-                    border: '1px solid rgba(96,165,250,0.2)',
-                    color: '#60A5FA',
+                    background: 'rgba(197,160,89,0.05)',
+                    border: '1px solid rgba(197,160,89,0.15)',
+                    color: CHAMPAGNE,
                     padding: '8px 16px',
                     borderRadius: 4,
-                    fontSize: 13,
-                    fontWeight: 600,
+                    fontSize: 11,
+                    fontWeight: 800,
                     textDecoration: 'none',
                   }}
-                  className="inline-flex items-center text-[10px] font-bold tracking-[0.15em] uppercase hover:bg-blue-400/20 transition-all"
+                  className="inline-flex items-center text-[10px] font-bold tracking-[0.15em] uppercase hover:bg-[#C5A059]/10 transition-all font-mono"
                 >
                   Owner Login →
                 </Link>
                 <Link
                   href="/download"
                   className="inline-flex items-center text-[10px] font-bold tracking-[0.2em] uppercase px-6 py-2.5 rounded-sm transition-all"
-                  style={{ background: CHAMPAGNE, color: OBSIDIAN, boxShadow: `0 0 40px ${CHAMPAGNE}22` }}
+                  style={{ background: CHAMPAGNE, color: OBSIDIAN, boxShadow: `0 0 30px ${CHAMPAGNE}33` }}
                 >
                   Download Trial
                 </Link>
@@ -243,17 +283,17 @@ export default function LandingClient() {
                       href="/dashboard"
                       onClick={() => setMobileMenuOpen(false)}
                       style={{
-                        background: 'rgba(96,165,250,0.1)',
-                        border: '1px solid rgba(96,165,250,0.2)',
-                        color: '#60A5FA',
+                        background: 'rgba(197,160,89,0.05)',
+                        border: '1px solid rgba(197,160,89,0.15)',
+                        color: CHAMPAGNE,
                         padding: '10px 16px',
                         borderRadius: 4,
-                        fontSize: 13,
-                        fontWeight: 600,
+                        fontSize: 11,
+                        fontWeight: 800,
                         textDecoration: 'none',
                         textAlign: 'center',
                       }}
-                      className="text-[10px] font-bold tracking-widest uppercase"
+                      className="text-[10px] font-bold tracking-widest uppercase font-mono"
                     >
                       Owner Login →
                     </Link>
@@ -267,7 +307,7 @@ export default function LandingClient() {
           </motion.nav>
 
           {/* Hero Section */}
-          <section className="pt-32 pb-16 lg:pt-44 lg:pb-28 px-4 sm:px-6 max-w-7xl mx-auto">
+          <section className="pt-32 pb-16 lg:pt-48 lg:pb-28 px-4 sm:px-6 max-w-7xl mx-auto">
             <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -275,22 +315,24 @@ export default function LandingClient() {
                 transition={{ duration: 0.5 }}
                 className="mb-8"
               >
-                <BrandLogo size="hero" />
+                <BrandLogo size="hero" showWordmark={true} />
               </motion.div>
 
               <div
-                className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 border border-white/10 bg-white/[0.02] mb-8"
+                className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 border border-[#C5A059]/20 bg-[#C5A059]/5 mb-8"
               >
-                <Sparkles size={12} className="text-[#C5A059]" />
-                <span className="text-[10px] font-bold tracking-[0.25em] uppercase text-gray-300">
-                  Industrial-Grade Factory Management
+                <Sparkles size={12} className="text-[#C5A059] animate-pulse" />
+                <span className="text-[10px] font-bold tracking-[0.25em] uppercase text-[#E8D5B5] font-mono">
+                  Industrial-Grade Factory Core
                 </span>
               </div>
 
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight uppercase leading-none max-w-3xl">
-                Offline-First ERP <br />
-                <span className="text-[#C5A059]">For Manufacturing Plants</span>
-              </h1>
+              <SplitHeadline
+                lines={[
+                  { text: 'Offline-First ERP' },
+                  { text: 'For Manufacturing Plants', accent: true }
+                ]}
+              />
 
               <p className="text-[#94A3B8] text-sm sm:text-base lg:text-lg leading-relaxed max-w-2xl mx-auto mt-8 font-medium">
                 Eliminate calculation disputes and paper registers. Noxis runs locally on your office PC without internet, calculating worker piece-rates, tracking warehouse inventory, and coordinating payouts with ease.
@@ -320,290 +362,281 @@ export default function LandingClient() {
             </div>
           </section>
 
+          {/* Marquee Features */}
+          <SignatureMarquee items={marqueeTerms} />
+
           {/* High-Fidelity B2B Dashboard Cockpit */}
-          <section className="px-4 md:px-6 pb-24 max-w-7xl mx-auto">
-            <div className="mb-8 text-center lg:text-left">
-              <p className="text-[10px] font-bold tracking-[0.3em] uppercase mb-1" style={{ color: CHAMPAGNE }}>Executive Operations Center</p>
-              <h2 className="text-2xl font-bold text-white tracking-tight">Noxis Hub Dashboard Interface</h2>
-              <p className="text-xs text-gray-500 mt-1">Realistic live simulation of Noxis industrial software node</p>
-            </div>
-
-            <div className="rounded-xl overflow-hidden border border-white/[0.06] bg-[#0A0B0D] shadow-2xl">
-              {/* Simulator Header */}
-              <div className="bg-[#070708] border-b border-white/[0.04] px-5 py-4 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#EF4444]" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#C5A059]" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#10B981]" />
-                  <span className="text-[11px] text-white font-mono uppercase font-bold tracking-widest ml-2">Noxis local server : C:\\NoxisData\\</span>
-                </div>
-                <div className="flex items-center gap-4 text-[10px] font-mono uppercase tracking-wider">
-                  <span className="flex items-center gap-1.5 text-emerald-400"><Wifi size={12} /> Local Mesh</span>
-                  <span className="flex items-center gap-1.5 text-amber-500"><Lock size={12} /> Encrypted DB</span>
-                </div>
+          <section className="px-4 md:px-6 py-24 max-w-7xl mx-auto">
+            <Reveal variant="up" className="space-y-8">
+              <div className="mb-8 text-center lg:text-left">
+                <p className="text-[10px] font-bold tracking-[0.3em] uppercase mb-1" style={{ color: CHAMPAGNE }}>Executive Operations Center</p>
+                <h2 className="text-2xl font-bold text-white tracking-tight uppercase">Noxis Hub Dashboard Interface</h2>
+                <p className="text-xs text-gray-500 mt-1">Realistic live simulation of Noxis industrial software node</p>
               </div>
 
-              {/* Operations Overview stats cards inside simulator */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-white/[0.03] border-b border-white/[0.04]">
-                {[
-                  { title: 'Floor Looms', value: '24 Active', detail: 'Local mesh connected', color: 'text-white' },
-                  { title: 'Checked-in Staff', value: '148 Karigars', detail: 'Via Android companion app', color: 'text-white' },
-                  { title: 'Shift Production', value: '12,850 Yards', detail: 'Grey grade A output', color: 'text-[#C5A059]' },
-                  { title: 'Sync Status', value: 'Offline Grace', detail: 'Replicates once online', color: 'text-emerald-400' },
-                ].map((stat) => (
-                  <div key={stat.title} className="p-5 bg-[#0A0B0D]">
-                    <span className="text-[10px] text-gray-500 uppercase tracking-widest block font-bold mb-1">{stat.title}</span>
-                    <span className={`text-lg font-bold block ${stat.color}`}>{stat.value}</span>
-                    <span className="text-[9px] text-gray-600 font-mono block mt-1">{stat.detail}</span>
+              <div className="rounded-xl overflow-hidden border border-white/[0.06] bg-[#0A0B0D] shadow-2xl relative">
+                {/* Decorative border glow */}
+                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#C5A059]/40 to-transparent" />
+
+                {/* Simulator Header */}
+                <div className="bg-[#070708] border-b border-white/[0.04] px-5 py-4 flex flex-wrap items-center justify-between gap-3 relative z-10">
+                  <div className="flex items-center gap-3">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#EF4444]" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#C5A059]" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#10B981]" />
+                    <span className="text-[11px] text-white font-mono uppercase font-bold tracking-widest ml-2">Noxis local server : C:\\NoxisData\\</span>
                   </div>
-                ))}
-              </div>
+                  <div className="flex items-center gap-4 text-[10px] font-mono uppercase tracking-wider">
+                    <span className="flex items-center gap-1.5 text-emerald-400"><Wifi size={12} /> Local Mesh</span>
+                    <span className="flex items-center gap-1.5 text-[#C5A059]"><Lock size={12} /> Encrypted DB</span>
+                  </div>
+                </div>
 
-              {/* Simulator Tab Content */}
-              <div className="grid grid-cols-1 lg:grid-cols-12">
-                {/* Left side vertical tabs */}
-                <div className="lg:col-span-3 bg-[#08090B] border-r border-white/[0.04] p-3 flex flex-row lg:flex-col gap-1 overflow-x-auto">
+                {/* Operations Overview stats cards inside simulator */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-white/[0.03] border-b border-white/[0.04] relative z-10">
                   {[
-                    { id: 'dashboard', label: 'Operations Summary', icon: <Cpu size={14} /> },
-                    { id: 'wages', label: 'Karigar Wages Ledger', icon: <CircleDollarSign size={14} /> },
-                    { id: 'sqlite', label: 'Local Database Logs', icon: <Terminal size={14} /> },
-                    { id: 'khata', label: 'Cash Accounts & Mandi', icon: <BarChart4 size={14} /> },
-                    { id: 'cctv', label: 'Security AI CCTV', icon: <ShieldAlert size={14} /> },
-                  ].map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id as CockpitTab)}
-                      className={`w-full text-left px-4 py-3 rounded text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-3 shrink-0 ${
-                        activeTab === tab.id
-                          ? 'bg-[#C5A059]/10 text-white border border-[#C5A059]/20'
-                          : 'text-gray-500 hover:text-gray-300 hover:bg-white/[0.02] border border-transparent'
-                      }`}
-                    >
-                      {tab.icon}
-                      <span>{tab.label}</span>
-                    </button>
+                    { title: 'Floor Looms', value: '24 Active', detail: 'Local mesh connected', color: 'text-white' },
+                    { title: 'Checked-in Staff', value: '148 Karigars', detail: 'Via Android companion app', color: 'text-white' },
+                    { title: 'Shift Production', value: '12,850 Yards', detail: 'Grey grade A output', color: 'text-[#C5A059]' },
+                    { title: 'Sync Status', value: 'Offline Grace', detail: 'Replicates once online', color: 'text-emerald-400' },
+                  ].map((stat) => (
+                    <div key={stat.title} className="p-5 bg-[#0A0B0D]">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-widest block font-bold mb-1">{stat.title}</span>
+                      <span className={`text-lg font-bold block ${stat.color}`}>{stat.value}</span>
+                      <span className="text-[9px] text-gray-600 font-mono block mt-1">{stat.detail}</span>
+                    </div>
                   ))}
                 </div>
 
-                {/* Right side content window */}
-                <div className="lg:col-span-9 p-6 bg-[#0A0B0D] min-h-[380px] flex flex-col justify-between">
-                  <AnimatePresence mode="wait">
-                    {/* Tab: Dashboard Summary */}
-                    {activeTab === 'dashboard' && (
-                      <motion.div
-                        key="dashboard"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="space-y-6 flex-1"
-                      >
-                        <div className="flex items-center justify-between border-b border-white/[0.03] pb-3">
-                          <h3 className="text-xs font-bold uppercase tracking-widest text-[#C5A059]">Mill Floor Status Overview</h3>
-                          <span className="text-[10px] text-gray-500 font-mono">Telemetry v13.1</span>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="p-4 rounded border border-white/[0.04] bg-white/[0.01] space-y-2">
-                            <span className="text-[9px] font-bold text-[#60A5FA] uppercase tracking-wider block">Local Network Gateway</span>
-                            <p className="text-xs text-gray-400 font-mono">
-                              PC Server running at <span className="text-white">192.168.10.42:3000</span><br />
-                              Android Terminals connected: <span className="text-white">4 Handhelds</span><br />
-                              Ping Latency: <span className="text-emerald-400">0.4ms (Instant)</span>
-                            </p>
+                {/* Simulator Tab Content */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 relative z-10">
+                  {/* Left side vertical tabs */}
+                  <CockpitTabs
+                    tabs={[
+                      { id: 'dashboard', label: 'Operations Summary', icon: <Cpu size={14} /> },
+                      { id: 'wages', label: 'Karigar Wages Ledger', icon: <CircleDollarSign size={14} /> },
+                      { id: 'sqlite', label: 'Local Database Logs', icon: <Terminal size={14} /> },
+                      { id: 'khata', label: 'Cash Accounts & Mandi', icon: <BarChart4 size={14} /> },
+                      { id: 'cctv', label: 'Security AI CCTV', icon: <ShieldAlert size={14} /> },
+                    ]}
+                    activeId={activeTab}
+                    onSelect={(id) => setActiveTab(id as CockpitTab)}
+                  />
+
+                  {/* Right side content window */}
+                  <div className="lg:col-span-9 p-6 bg-[#0A0B0D] min-h-[380px] flex flex-col justify-between border-t lg:border-t-0 border-white/[0.04]">
+                    <AnimatePresence mode="wait">
+                      {/* Tab: Dashboard Summary */}
+                      {activeTab === 'dashboard' && (
+                        <motion.div
+                          key="dashboard"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="space-y-6 flex-1"
+                        >
+                          <div className="flex items-center justify-between border-b border-white/[0.03] pb-3">
+                            <h3 className="text-xs font-bold uppercase tracking-widest text-[#C5A059]">Mill Floor Status Overview</h3>
+                            <span className="text-[10px] text-gray-500 font-mono">Telemetry v13.1</span>
                           </div>
-                          <div className="p-4 rounded border border-white/[0.04] bg-white/[0.01] space-y-2">
-                            <span className="text-[9px] font-bold text-amber-400 uppercase tracking-wider block">Database Health</span>
-                            <p className="text-xs text-gray-400 font-mono">
-                              Encryption Cipher: <span className="text-white">AES-256-GCM</span><br />
-                              File Size: <span className="text-white">4.82 MB</span><br />
-                              Integrity Scan: <span className="text-emerald-400">100% Secure</span>
-                            </p>
-                          </div>
-                        </div>
-                        <div className="p-4 rounded border border-[#C5A059]/20 bg-[#C5A059]/5 flex items-center gap-3">
-                          <ShieldCheck className="text-[#C5A059] shrink-0" size={18} />
-                          <p className="text-xs text-gray-300 font-medium">
-                            <strong>Zero-Internet Operation Active:</strong> The Noxis local server processes worker wages, inventories, and accounting offline. Workstations will mirror these transactions to the cloud once an internet connection is established.
-                          </p>
-                        </div>
-                      </motion.div>
-                    )}
-
-                    {/* Tab: Wages */}
-                    {activeTab === 'wages' && (
-                      <motion.div
-                        key="wages"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="space-y-4 flex-1"
-                      >
-                        <div className="flex items-center justify-between border-b border-white/[0.03] pb-3">
-                          <h3 className="text-xs font-bold uppercase tracking-widest text-[#C5A059]">Karigar Wages & Peshgi (Advances)</h3>
-                          <span className="text-[10px] text-gray-500 font-mono">Current Shift Logs</span>
-                        </div>
-                        <div className="overflow-x-auto rounded border border-white/[0.04]">
-                          <table className="w-full text-left font-mono text-[11px] min-w-[500px]">
-                            <thead>
-                              <tr className="border-b border-white/[0.05] bg-white/[0.02] text-gray-500">
-                                <th className="p-2.5 uppercase font-bold text-[9px]">Operator</th>
-                                <th className="p-2.5 uppercase font-bold text-[9px]">Shift</th>
-                                <th className="p-2.5 uppercase font-bold text-[9px] text-right">Production</th>
-                                <th className="p-2.5 uppercase font-bold text-[9px] text-right">Advance Paid</th>
-                                <th className="p-2.5 uppercase font-bold text-[9px] text-right">Net Salary</th>
-                                <th className="p-2.5 uppercase font-bold text-[9px] text-center">Status</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {[
-                                { name: 'Hamid Saeed', shift: 'Morning', yds: '1,420 yds', adv: '₨ 12,500', net: '₨ 42,600', status: 'PAID' },
-                                { name: 'Muhammad Asif', shift: 'Morning', yds: '1,150 yds', adv: '₨ 5,000', net: '₨ 39,200', status: 'PAID' },
-                                { name: 'Bilal Khan', shift: 'Night', yds: '1,560 yds', adv: '₨ 18,000', net: '₨ 44,400', status: 'DRAFT' },
-                                { name: 'Tariq Mahmood', shift: 'Night', yds: '980 yds', adv: '₨ 0', net: '₨ 34,300', status: 'DRAFT' },
-                              ].map((row) => (
-                                <tr key={row.name} className="border-b border-white/[0.02]">
-                                  <td className="p-2.5 text-white font-bold">{row.name}</td>
-                                  <td className="p-2.5 text-gray-400">{row.shift}</td>
-                                  <td className="p-2.5 text-right text-gray-300">{row.yds}</td>
-                                  <td className="p-2.5 text-right text-red-400">{row.adv}</td>
-                                  <td className="p-2.5 text-right font-bold text-[#C5A059]">{row.net}</td>
-                                  <td className="p-2.5 text-center">
-                                    <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${
-                                      row.status === 'PAID' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'
-                                    }`}>{row.status}</span>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </motion.div>
-                    )}
-
-                    {/* Tab: SQLite Logs */}
-                    {activeTab === 'sqlite' && (
-                      <motion.div
-                        key="sqlite"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="space-y-4 flex-1 flex flex-col justify-between"
-                      >
-                        <div className="flex items-center justify-between border-b border-white/[0.03] pb-3">
-                          <h3 className="text-xs font-bold uppercase tracking-widest text-[#C5A059]">Local SQLite Datagrid Terminal</h3>
-                          <span className="text-[10px] text-gray-500 font-mono">WAL Mode Active</span>
-                        </div>
-                        <div className="bg-[#050608] border border-white/[0.04] p-4 rounded font-mono text-[10px] text-slate-400 space-y-1.5 flex-1">
-                          {sqliteLogs.map((log, index) => (
-                            <p key={index} className={log.includes('SUCCESS') ? 'text-emerald-400' : log.includes('TELEMETRY') ? 'text-amber-400' : 'text-slate-400'}>
-                              {log}
-                            </p>
-                          ))}
-                        </div>
-                      </motion.div>
-                    )}
-
-                    {/* Tab: Khata & Mandi */}
-                    {activeTab === 'khata' && (
-                      <motion.div
-                        key="khata"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="space-y-4 flex-1"
-                      >
-                        <div className="flex items-center justify-between border-b border-white/[0.03] pb-3">
-                          <h3 className="text-xs font-bold uppercase tracking-widest text-[#C5A059]">Double-Entry cash book ledger</h3>
-                          <span className="text-[10px] text-gray-500 font-mono">Balance Reconciled</span>
-                        </div>
-                        <div className="grid grid-cols-3 gap-3">
-                          {[
-                            { item: 'Cotton Mandi', price: '₨ 18,450 / maund', delta: '+1.2%' },
-                            { item: 'Yarn 30s', price: '₨ 412 / kg', delta: '-0.4%' },
-                            { item: 'Grey Fabric 60"', price: '₨ 285 / meter', delta: '+0.8%' },
-                          ].map((rate) => (
-                            <div key={rate.item} className="p-3 bg-white/[0.02] border border-white/[0.04] rounded">
-                              <span className="text-[9px] text-gray-500 uppercase block font-bold mb-1">{rate.item}</span>
-                              <span className="text-xs font-bold block text-white font-mono">{rate.price}</span>
-                              <span className={`text-[9px] font-mono block mt-1 ${rate.delta.startsWith('+') ? 'text-emerald-400' : 'text-red-400'}`}>{rate.delta}</span>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="overflow-x-auto rounded border border-white/[0.04] bg-black/20">
-                          <table className="w-full text-left font-mono text-[11px] min-w-[500px]">
-                            <thead>
-                              <tr className="border-b border-white/[0.05] bg-white/[0.02] text-gray-500">
-                                <th className="p-2 uppercase font-bold text-[9px]">Txn ID</th>
-                                <th className="p-2 uppercase font-bold text-[9px]">Description</th>
-                                <th className="p-2 uppercase font-bold text-[9px] text-right">Debit</th>
-                                <th className="p-2 uppercase font-bold text-[9px] text-right">Credit</th>
-                                <th className="p-2 uppercase font-bold text-[9px] text-right">Balance</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {[
-                                { id: 'TX-9028', desc: 'Bale Yarn Raw Stock Procurement', dr: '₨ 450,000', cr: '—', bal: '₨ 1,240,500' },
-                                { id: 'TX-9029', desc: 'Faisalabad Mandi Sale — Batch 12', dr: '—', cr: '₨ 850,000', bal: '₨ 2,090,500' },
-                                { id: 'TX-9030', desc: 'Weekly Karigar Wages Cashout', dr: '₨ 160,500', cr: '—', bal: '₨ 1,930,000' },
-                              ].map((row) => (
-                                <tr key={row.id} className="border-b border-white/[0.02]">
-                                  <td className="p-2 text-gray-500 font-bold">{row.id}</td>
-                                  <td className="p-2 text-white">{row.desc}</td>
-                                  <td className="p-2 text-right text-red-400 font-bold">{row.dr}</td>
-                                  <td className="p-2 text-right text-emerald-400 font-bold">{row.cr}</td>
-                                  <td className="p-2 text-right text-[#C5A059] font-bold">{row.bal}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </motion.div>
-                    )}
-
-                    {/* Tab: CCTV */}
-                    {activeTab === 'cctv' && (
-                      <motion.div
-                        key="cctv"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="space-y-4 flex-1"
-                      >
-                        <div className="flex items-center justify-between border-b border-white/[0.03] pb-3">
-                          <h3 className="text-xs font-bold uppercase tracking-widest text-[#C5A059]">AI CCTV Sentinel Edge Feed</h3>
-                          <span className="text-[10px] text-gray-500 font-mono">0.12ms Local Inference</span>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="relative aspect-video rounded border border-white/[0.06] bg-black overflow-hidden flex items-center justify-center">
-                            <span className="absolute top-2 left-2 text-[8px] font-mono bg-red-600 text-white font-bold px-1.5 py-0.5 rounded-sm uppercase tracking-widest flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> Cam 01 : Loom Floor
-                            </span>
-                            <div className="border border-emerald-400/40 rounded p-1 text-[8px] font-mono text-emerald-400 bg-black/60">
-                              [Weaver #04 : Hamid Saeed matched 98%]
-                            </div>
-                          </div>
-                          <div className="p-3 bg-black/40 border border-white/[0.04] rounded font-mono text-[9px] space-y-1.5 max-h-[140px] overflow-y-auto">
-                            {cctvAlerts.map((alert, i) => (
-                              <p key={i} className={
-                                alert.status === 'danger' ? 'text-red-400 font-bold' :
-                                alert.status === 'success' ? 'text-emerald-400' : 'text-gray-500'
-                              }>
-                                [{alert.time}] {alert.msg}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="p-4 rounded border border-white/[0.04] bg-white/[0.01] space-y-2">
+                              <span className="text-[9px] font-bold text-[#60A5FA] uppercase tracking-wider block">Local Network Gateway</span>
+                              <p className="text-xs text-gray-400 font-mono">
+                                PC Server running at <span className="text-white">192.168.10.42:3000</span><br />
+                                Android Terminals connected: <span className="text-white">4 Handhelds</span><br />
+                                Ping Latency: <span className="text-emerald-400">0.4ms (Instant)</span>
                               </p>
+                            </div>
+                            <div className="p-4 rounded border border-white/[0.04] bg-white/[0.01] space-y-2">
+                              <span className="text-[9px] font-bold text-amber-400 uppercase tracking-wider block">Database Health</span>
+                              <p className="text-xs text-gray-400 font-mono">
+                                Encryption Cipher: <span className="text-white">AES-256-GCM</span><br />
+                                File Size: <span className="text-white">4.82 MB</span><br />
+                                Integrity Scan: <span className="text-emerald-400">100% Secure</span>
+                              </p>
+                            </div>
+                          </div>
+                          <div className="p-4 rounded border border-[#C5A059]/20 bg-[#C5A059]/5 flex items-center gap-3">
+                            <ShieldCheck className="text-[#C5A059] shrink-0" size={18} />
+                            <p className="text-xs text-gray-300 font-medium">
+                              <strong>Zero-Internet Operation Active:</strong> The Noxis local server processes worker wages, inventories, and accounting offline. Workstations will mirror these transactions to the cloud once an internet connection is established.
+                            </p>
+                          </div>
+                        </motion.div>
+                      )}
+
+                      {/* Tab: Wages */}
+                      {activeTab === 'wages' && (
+                        <motion.div
+                          key="wages"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="space-y-4 flex-1"
+                        >
+                          <div className="flex items-center justify-between border-b border-white/[0.03] pb-3">
+                            <h3 className="text-xs font-bold uppercase tracking-widest text-[#C5A059]">Karigar Wages & Peshgi (Advances)</h3>
+                            <span className="text-[10px] text-gray-500 font-mono">Current Shift Logs</span>
+                          </div>
+                          <div className="overflow-x-auto rounded border border-white/[0.04]">
+                            <table className="w-full text-left font-mono text-[11px] min-w-[500px]">
+                              <thead>
+                                <tr className="border-b border-white/[0.05] bg-white/[0.02] text-gray-500">
+                                  <th className="p-2.5 uppercase font-bold text-[9px]">Operator</th>
+                                  <th className="p-2.5 uppercase font-bold text-[9px]">Shift</th>
+                                  <th className="p-2.5 uppercase font-bold text-[9px] text-right">Production</th>
+                                  <th className="p-2.5 uppercase font-bold text-[9px] text-right">Advance Paid</th>
+                                  <th className="p-2.5 uppercase font-bold text-[9px] text-right">Net Salary</th>
+                                  <th className="p-2.5 uppercase font-bold text-[9px] text-center">Status</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {[
+                                  { name: 'Hamid Saeed', shift: 'Morning', yds: '1,420 yds', adv: '₨ 12,500', net: '₨ 42,600', status: 'PAID' },
+                                  { name: 'Muhammad Asif', shift: 'Morning', yds: '1,150 yds', adv: '₨ 5,000', net: '₨ 39,200', status: 'PAID' },
+                                  { name: 'Bilal Khan', shift: 'Night', yds: '1,560 yds', adv: '₨ 18,000', net: '₨ 44,400', status: 'DRAFT' },
+                                  { name: 'Tariq Mahmood', shift: 'Night', yds: '980 yds', adv: '₨ 0', net: '₨ 34,300', status: 'DRAFT' },
+                                ].map((row) => (
+                                  <tr key={row.name} className="border-b border-white/[0.02]">
+                                    <td className="p-2.5 text-white font-bold">{row.name}</td>
+                                    <td className="p-2.5 text-gray-400">{row.shift}</td>
+                                    <td className="p-2.5 text-right text-gray-300">{row.yds}</td>
+                                    <td className="p-2.5 text-right text-red-400">{row.adv}</td>
+                                    <td className="p-2.5 text-right font-bold text-[#C5A059]">{row.net}</td>
+                                    <td className="p-2.5 text-center">
+                                      <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${
+                                        row.status === 'PAID' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'
+                                      }`}>{row.status}</span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </motion.div>
+                      )}
+
+                      {/* Tab: SQLite Logs */}
+                      {activeTab === 'sqlite' && (
+                        <motion.div
+                          key="sqlite"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="space-y-4 flex-1 flex flex-col justify-between"
+                        >
+                          <div className="flex items-center justify-between border-b border-white/[0.03] pb-3">
+                            <h3 className="text-xs font-bold uppercase tracking-widest text-[#C5A059]">Local SQLite Datagrid Terminal</h3>
+                            <span className="text-[10px] text-gray-500 font-mono">WAL Mode Active</span>
+                          </div>
+                          <TypewriterConsole lines={sqliteLogs} />
+                        </motion.div>
+                      )}
+
+                      {/* Tab: Khata & Mandi */}
+                      {activeTab === 'khata' && (
+                        <motion.div
+                          key="khata"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="space-y-4 flex-1"
+                        >
+                          <div className="flex items-center justify-between border-b border-white/[0.03] pb-3">
+                            <h3 className="text-xs font-bold uppercase tracking-widest text-[#C5A059]">Double-Entry cash book ledger</h3>
+                            <span className="text-[10px] text-gray-500 font-mono">Balance Reconciled</span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-3">
+                            {[
+                              { item: 'Cotton Mandi', price: '₨ 18,450 / maund', delta: '+1.2%' },
+                              { item: 'Yarn 30s', price: '₨ 412 / kg', delta: '-0.4%' },
+                              { item: 'Grey Fabric 60"', price: '₨ 285 / meter', delta: '+0.8%' },
+                            ].map((rate) => (
+                              <div key={rate.item} className="p-3 bg-white/[0.02] border border-white/[0.04] rounded">
+                                <span className="text-[9px] text-gray-500 uppercase block font-bold mb-1">{rate.item}</span>
+                                <span className="text-xs font-bold block text-white font-mono">{rate.price}</span>
+                                <span className={`text-[9px] font-mono block mt-1 ${rate.delta.startsWith('+') ? 'text-emerald-400' : 'text-red-400'}`}>{rate.delta}</span>
+                              </div>
                             ))}
                           </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                          <div className="overflow-x-auto rounded border border-white/[0.04] bg-black/20">
+                            <table className="w-full text-left font-mono text-[11px] min-w-[500px]">
+                              <thead>
+                                <tr className="border-b border-white/[0.05] bg-white/[0.02] text-gray-500">
+                                  <th className="p-2 uppercase font-bold text-[9px]">Txn ID</th>
+                                  <th className="p-2 uppercase font-bold text-[9px]">Description</th>
+                                  <th className="p-2 uppercase font-bold text-[9px] text-right">Debit</th>
+                                  <th className="p-2 uppercase font-bold text-[9px] text-right">Credit</th>
+                                  <th className="p-2 uppercase font-bold text-[9px] text-right">Balance</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {[
+                                  { id: 'TX-9028', desc: 'Bale Yarn Raw Stock Procurement', dr: '₨ 450,000', cr: '—', bal: '₨ 1,240,500' },
+                                  { id: 'TX-9029', desc: 'Faisalabad Mandi Sale — Batch 12', dr: '—', cr: '₨ 850,000', bal: '₨ 2,090,500' },
+                                  { id: 'TX-9030', desc: 'Weekly Karigar Wages Cashout', dr: '₨ 160,500', cr: '—', bal: '₨ 1,930,000' },
+                                ].map((row) => (
+                                  <tr key={row.id} className="border-b border-white/[0.02]">
+                                    <td className="p-2 text-gray-500 font-bold">{row.id}</td>
+                                    <td className="p-2 text-white">{row.desc}</td>
+                                    <td className="p-2 text-right text-red-400 font-bold">{row.dr}</td>
+                                    <td className="p-2 text-right text-emerald-400 font-bold">{row.cr}</td>
+                                    <td className="p-2 text-right text-[#C5A059] font-bold">{row.bal}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </motion.div>
+                      )}
 
-                  {/* Simulator footer */}
-                  <div className="mt-6 pt-4 border-t border-white/[0.04] flex items-center justify-between text-[10px] font-mono text-gray-500">
-                    <span>Noxis Workstation Database Node: active</span>
-                    <span className="text-[#C5A059] font-bold uppercase">Safe local storage</span>
+                      {/* Tab: CCTV */}
+                      {activeTab === 'cctv' && (
+                        <motion.div
+                          key="cctv"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="space-y-4 flex-1"
+                        >
+                          <div className="flex items-center justify-between border-b border-white/[0.03] pb-3">
+                            <h3 className="text-xs font-bold uppercase tracking-widest text-[#C5A059]">AI CCTV Sentinel Edge Feed</h3>
+                            <span className="text-[10px] text-gray-500 font-mono">0.12ms Local Inference</span>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="relative aspect-video rounded border border-white/[0.06] bg-black overflow-hidden flex items-center justify-center">
+                              <span className="absolute top-2 left-2 text-[8px] font-mono bg-red-600 text-white font-bold px-1.5 py-0.5 rounded-sm uppercase tracking-widest flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> Cam 01 : Loom Floor
+                              </span>
+                              <div className="border border-emerald-400/40 rounded p-1 text-[8px] font-mono text-emerald-400 bg-black/60">
+                                [Weaver #04 : Hamid Saeed matched 98%]
+                              </div>
+                            </div>
+                            <div className="p-3 bg-black/40 border border-white/[0.04] rounded font-mono text-[9px] space-y-1.5 max-h-[140px] overflow-y-auto">
+                              {cctvAlerts.map((alert, i) => (
+                                <p key={i} className={
+                                  alert.status === 'danger' ? 'text-red-400 font-bold' :
+                                  alert.status === 'success' ? 'text-emerald-400' : 'text-gray-500'
+                                }>
+                                  [{alert.time}] {alert.msg}
+                                </p>
+                              ))}
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Simulator footer */}
+                    <div className="mt-6 pt-4 border-t border-white/[0.04] flex items-center justify-between text-[10px] font-mono text-gray-500">
+                      <span>Noxis Workstation Database Node: active</span>
+                      <span className="text-[#C5A059] font-bold uppercase">Safe local storage</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            </Reveal>
           </section>
 
           {/* System Capabilities Section - Listing all 12 modules */}
@@ -616,35 +649,23 @@ export default function LandingClient() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {docsFeatures.map((f) => (
-                <div
+            <RevealStagger className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {docsFeatures.map((f, i) => (
+                <FeatureCard
                   key={f.id}
-                  className="p-6 bg-[#0A0D10] border border-white/[0.04] hover:border-[#C5A059]/30 rounded transition-all duration-300 space-y-4 flex flex-col justify-between"
-                >
-                  <div className="space-y-3">
-                    <span className="text-[9px] font-bold uppercase tracking-widest text-[#C5A059] bg-[#C5A059]/10 px-2 py-0.5 rounded">
-                      {f.badge}
-                    </span>
-                    <h3 className="text-base font-bold text-white tracking-tight">{f.title}</h3>
-                    <p className="text-xs text-gray-400 leading-relaxed">{f.desc}</p>
-                  </div>
-                  <div className="pt-2 border-t border-white/[0.03]">
-                    <Link
-                      href={`/docs#${f.id}`}
-                      className="text-[10px] font-bold text-[#E8D5B5] hover:text-white uppercase tracking-widest inline-flex items-center gap-1"
-                    >
-                      Read Documentation <ChevronRight size={10} />
-                    </Link>
-                  </div>
-                </div>
+                  href={`/docs#${f.id}`}
+                  icon={f.icon}
+                  title={f.title}
+                  desc={f.desc}
+                  index={i}
+                />
               ))}
-            </div>
+            </RevealStagger>
           </section>
 
           {/* Comparison Matrix */}
           <section className="py-24 px-4 sm:px-6 border-t border-white/[0.04] bg-[#070708]/50">
-            <div className="max-w-7xl mx-auto space-y-12">
+            <Reveal variant="up" className="max-w-7xl mx-auto space-y-12">
               <div className="text-center space-y-3">
                 <p className="text-[10px] font-bold tracking-[0.3em] uppercase" style={{ color: CHAMPAGNE }}>Platform Parameters</p>
                 <h2 className="text-3xl font-bold tracking-tight text-white uppercase">Designed for Industrial Reality</h2>
@@ -678,43 +699,45 @@ export default function LandingClient() {
                   </tbody>
                 </table>
               </div>
-            </div>
+            </Reveal>
           </section>
 
           {/* Onboarding Invitation CTA */}
           <section className="py-24 px-4 sm:px-6 max-w-4xl mx-auto">
-            <div
-              className="rounded-xl p-10 md:p-14 text-center border relative overflow-hidden"
-              style={{ borderColor: `${CHAMPAGNE}30`, background: 'linear-gradient(165deg, rgba(197,160,89,0.03) 0%, rgba(10,11,13,0.98) 70%)' }}
-            >
-              <div className="absolute top-0 right-0 w-48 h-48 rounded-full blur-3xl pointer-events-none opacity-20" style={{ background: CHAMPAGNE }} />
-              <div className="relative space-y-6">
-                <div className="flex justify-center mb-2">
-                  <BrandLogo size="nav" showWordmark={false} />
-                </div>
-                <p className="text-[10px] font-bold tracking-[0.3em] uppercase" style={{ color: CHAMPAGNE }}>Founding Factory Cohort</p>
-                <h3 className="text-2xl sm:text-3xl font-bold text-white tracking-tight uppercase">Get Started with Noxis Hub</h3>
-                <p className="text-xs text-gray-400 max-w-md mx-auto leading-relaxed">
-                  We assist with local WiFi routing configurations, operator account mapping, and custom piece-rate settings directly for your plant.
-                </p>
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
-                  <a
-                    href="https://wa.me/923264742678"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 font-extrabold text-[10px] tracking-[0.2em] uppercase py-4 px-8 rounded-sm bg-[#25D366] text-black"
-                  >
-                    <MessageSquare size={14} /> WhatsApp Support Board
-                  </a>
-                  <Link
-                    href="/download"
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 border border-white/20 font-extrabold text-[10px] tracking-[0.2em] uppercase py-4 px-8 rounded-sm text-white hover:bg-white/5 transition-colors"
-                  >
-                    <Download size={14} /> Download Free Trial
+            <Reveal variant="scale">
+              <div
+                className="rounded-xl p-10 md:p-14 text-center border relative overflow-hidden"
+                style={{ borderColor: `${CHAMPAGNE}30`, background: 'linear-gradient(165deg, rgba(197,160,89,0.03) 0%, rgba(10,11,13,0.98) 70%)' }}
+              >
+                <div className="absolute top-0 right-0 w-48 h-48 rounded-full blur-3xl pointer-events-none opacity-20" style={{ background: CHAMPAGNE }} />
+                <div className="relative space-y-6">
+                  <div className="flex justify-center mb-2">
+                    <BrandLogo size="nav" showWordmark={false} />
+                  </div>
+                  <p className="text-[10px] font-bold tracking-[0.3em] uppercase" style={{ color: CHAMPAGNE }}>Founding Factory Cohort</p>
+                  <h3 className="text-2xl sm:text-3xl font-bold text-white tracking-tight uppercase">Get Started with Noxis Hub</h3>
+                  <p className="text-xs text-gray-400 max-w-md mx-auto leading-relaxed">
+                    We assist with local WiFi routing configurations, operator account mapping, and custom piece-rate settings directly for your plant.
+                  </p>
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+                    <a
+                      href="https://wa.me/923264742678"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 font-extrabold text-[10px] tracking-[0.2em] uppercase py-4 px-8 rounded-sm bg-[#25D366] text-black"
+                    >
+                      <MessageSquare size={14} /> WhatsApp Support Board
+                    </a>
+                    <Link
+                      href="/download"
+                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 border border-white/20 font-extrabold text-[10px] tracking-[0.2em] uppercase py-4 px-8 rounded-sm text-white hover:bg-white/5 transition-colors"
+                    >
+                      <Download size={14} /> Download Free Trial
                   </Link>
+                  </div>
                 </div>
               </div>
-            </div>
+            </Reveal>
           </section>
 
           {/* Simple Professional Footer */}
@@ -742,6 +765,18 @@ export default function LandingClient() {
         .font-sans { font-family: 'Outfit', sans-serif; }
         .font-mono { font-family: 'JetBrains+Mono', monospace; }
         body { background-color: #08090A; }
+        
+        @keyframes noxis-grid-drift {
+          0% {
+            background-position: 0px 0px;
+          }
+          100% {
+            background-position: 64px 64px;
+          }
+        }
+        .noxis-grid-drift {
+          animation: noxis-grid-drift 24s linear infinite;
+        }
       `}</style>
     </>
   )
