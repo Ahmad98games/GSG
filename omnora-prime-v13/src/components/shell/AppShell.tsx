@@ -174,27 +174,48 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   // Hide internal shell components on landing, static website, docs, auth, and setup pages
   const shouldHideShell = 
+    !pathname ||
     pathname === "/" || 
     pathname === "/index.html" || 
     pathname === "/login" || 
     pathname === "/signup" || 
-    pathname?.startsWith("/setup") ||
-    pathname?.startsWith("/download") ||
-    pathname?.startsWith("/pricing") ||
-    pathname?.startsWith("/privacy") ||
-    pathname?.startsWith("/terms") ||
-    pathname?.startsWith("/refund") ||
-    pathname?.startsWith("/file-morph") ||
-    pathname?.startsWith("/about") ||
-    pathname?.startsWith("/reviews") ||
-    pathname?.startsWith("/docs") ||
-    pathname?.startsWith("/blog") ||
-    (pathname?.startsWith("/dashboard") && !isElectron) || // Remote owner dashboard (hide sidebar only if web browser)
+    pathname.startsWith("/setup") ||
+    pathname.startsWith("/download") ||
+    pathname.startsWith("/pricing") ||
+    pathname.startsWith("/privacy") ||
+    pathname.startsWith("/terms") ||
+    pathname.startsWith("/refund") ||
+    pathname.startsWith("/file-morph") ||
+    pathname.startsWith("/about") ||
+    pathname.startsWith("/reviews") ||
+    pathname.startsWith("/docs") ||
+    pathname.startsWith("/blog") ||
+    (pathname.startsWith("/dashboard") && !isElectron) || // Remote owner dashboard (hide sidebar only if web browser)
     pathname === "/dashboard/login" ||
-    pathname?.startsWith("/admin"); // Admin dashboard is web-only, bypass Electron guard
+    pathname.startsWith("/admin"); // Admin dashboard is web-only, bypass Electron guard
 
   // Block web browser access to secured software dashboard paths
-  if (!shouldHideShell && !isElectron && process.env.NODE_ENV !== 'development') {
+  const isPublicRoute = !pathname || 
+    pathname === "/" || 
+    pathname === "/index.html" || 
+    pathname === "/login" || 
+    pathname === "/signup" || 
+    pathname.toLowerCase().startsWith("/setup") ||
+    pathname.toLowerCase().startsWith("/download") ||
+    pathname.toLowerCase().startsWith("/pricing") ||
+    pathname.toLowerCase().startsWith("/privacy") ||
+    pathname.toLowerCase().startsWith("/terms") ||
+    pathname.toLowerCase().startsWith("/refund") ||
+    pathname.toLowerCase().startsWith("/file-morph") ||
+    pathname.toLowerCase().startsWith("/about") ||
+    pathname.toLowerCase().startsWith("/reviews") ||
+    pathname.toLowerCase().startsWith("/docs") ||
+    pathname.toLowerCase().startsWith("/blog") ||
+    pathname.toLowerCase().startsWith("/admin") ||
+    pathname === "/dashboard/login" ||
+    (pathname.toLowerCase().startsWith("/dashboard") && !isElectron);
+
+  if (!isPublicRoute && !isElectron && process.env.NODE_ENV !== 'development') {
     return (
       <div className="min-h-screen bg-[#0F1113] text-gray-300 font-inter flex flex-col items-center justify-center p-6 select-none">
         <ToastContainer />
