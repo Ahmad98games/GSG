@@ -44,7 +44,7 @@ function TermsContent() {
             Noxis Hub is designed specifically for manufacturing and industrial businesses operating in Pakistan, UAE, Saudi Arabia, Bangladesh, and other markets. The software operates as a Windows desktop application (the "Hub") that stores all business data locally on the customer's hardware and optionally syncs to Supabase cloud for backup and multi-device access.
           </p>
           <p className="text-slate-400">
-            By downloading, installing, activating, or otherwise using Noxis Hub, you ("the Customer" or "Licensee") agree to be bound by these Terms of Service. If you do not agree, you must immediately uninstall the software and contact <a href="mailto:support@noxishub.app" className="text-[#C5A059] hover:underline">support@noxishub.app</a> to request a refund within 14 days of purchase.
+            By downloading, installing, activating, or otherwise using Noxis Hub, you ("the Customer" or "Licensee") agree to be bound by these Terms of Service. If you do not agree, you must immediately uninstall the software and contact <a href="mailto:support@noxis.app" className="text-[#C5A059] hover:underline">support@noxis.app</a> to request a refund within 14 days of purchase.
           </p>
         </div>
       ),
@@ -234,20 +234,26 @@ function TermsContent() {
       title: "9. Legal Contact",
       content: (
         <div className="space-y-4">
-          <p>For all legal matters, contract inquiries, and Terms of Service questions:</p>
-          <div className="space-y-3">
-            {[
-              { label: "Legal Queries", email: "legal@noxishub.app" },
-              { label: "General Support", email: "support@noxishub.app" },
-              { label: "Main Contact", email: "omnora@noxishub.app" },
-            ].map((c) => (
-              <div key={c.email} className="flex items-center justify-between bg-white/[0.02] border border-white/[0.03] rounded p-4">
-                <span className="text-slate-400 text-sm">{c.label}</span>
-                <a href={`mailto:${c.email}`} className="text-[#C5A059] font-bold text-sm hover:underline">{c.email}</a>
-              </div>
-            ))}
+          <p>For all legal matters, contract inquiries, and Terms of Service questions, contact our specific departments:</p>
+          <div className="grid gap-4 mt-4">
+            <div className="border border-white/[0.04] bg-[#0A0D10]/40 p-4 rounded space-y-2">
+              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block font-mono">Support & General Contact</span>
+              <p className="text-xs text-slate-400">For customer assistance, license questions, or general queries, write to our support desk:</p>
+              <a href="mailto:support@noxis.app" className="text-[#C5A059] font-extrabold text-sm hover:underline font-mono">support@noxis.app</a>
+            </div>
+            
+            <div className="border border-white/[0.04] bg-[#0A0D10]/40 p-4 rounded space-y-2">
+              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block font-mono">Legal & Compliance</span>
+              <p className="text-xs text-slate-400">For EULA compliance, licensing terms verification, and dispute notices, contact our legal desk:</p>
+              <a href="mailto:legal@noxishub.app" className="text-[#C5A059] font-extrabold text-sm hover:underline font-mono">legal@noxishub.app</a>
+            </div>
+
+            <div className="border border-white/[0.04] bg-[#0A0D10]/40 p-4 rounded space-y-2">
+              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block font-mono">Main Corporate Office</span>
+              <p className="text-xs text-slate-400">For corporate partnerships, vendor contracts, or business owner inquiries, contact Omnora Labs:</p>
+              <a href="mailto:omnora@noxishub.app" className="text-[#C5A059] font-extrabold text-sm hover:underline font-mono">omnora@noxishub.app</a>
+            </div>
           </div>
-          <p className="text-slate-400 text-xs">Omnora Labs · Lahore, Pakistan · Response time: within 2 business days</p>
         </div>
       ),
     },
