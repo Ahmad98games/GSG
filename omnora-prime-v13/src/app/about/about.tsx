@@ -429,7 +429,7 @@ export default function AboutPage() {
                   </div>
                   <div>
                     <p className="text-[9px] text-gray-500 font-black uppercase tracking-widest">Support Email</p>
-                    <a href="mailto:omnorainfo28@gmail.com" className="text-xs text-gray-300 font-bold hover:text-white transition-colors">omnorainfo28@gmail.com</a>
+                    <a href="mailto:[EMAIL_ADDRESS]" className="text-xs text-gray-300 font-bold hover:text-white transition-colors">omnora@noxis.app</a>
                   </div>
                 </div>
               </div>
@@ -714,7 +714,7 @@ const SupportForm = () => {
 
           {status === "error" && (
             <div className="text-[9px] font-black text-[#EF4444] uppercase tracking-widest bg-[#EF4444]/5 p-2 border border-[#EF4444]/20 text-center">
-              ⚠️ Transmission failed. Please email omnorainfo28@gmail.com instead.
+              ⚠️ Transmission failed. Please email omnora@noxis.app instead.
             </div>
           )}
 

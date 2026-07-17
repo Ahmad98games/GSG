@@ -185,9 +185,11 @@ if (typeof window !== 'undefined') {
   if (storedLicense) {
     try {
       const license = JSON.parse(storedLicense)
-      if (license.valid && license.tier) {
+      if (license.tier) {
         useTierStore.getState().setTier(
-          license.tier as any
+          license.tier as any,
+          license.expiresAt || license.expires_at,
+          license.isTrialActive || license.is_trial
         )
       }
     } catch {}

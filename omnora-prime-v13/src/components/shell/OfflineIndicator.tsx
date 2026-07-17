@@ -9,7 +9,12 @@ export function OfflineIndicator() {
   useEffect(() => {
     const updateStatus = () => {
       const online = navigator.onLine
-      if (!online) setWasOffline(true)
+      if (!online) {
+        setWasOffline(true)
+        import('@/stores/notificationStore').then(({ notify }) => {
+          notify.error('Sync Failed', 'Could not connect to cloud. Data saved locally.')
+        })
+      }
       if (online && wasOffline) {
         setShowReconnected(true)
         setTimeout(() => {

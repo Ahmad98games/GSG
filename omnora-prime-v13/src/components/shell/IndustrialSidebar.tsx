@@ -34,6 +34,7 @@ import {
   Cpu,
   ShieldAlert,
   LayoutGrid,
+  Lightbulb,
   Microscope,
   Upload,
   CalendarCheck,
@@ -46,7 +47,8 @@ import {
   AlertOctagon,
   Video,
   MessageSquare,
-  Smartphone
+  Smartphone,
+  Brain
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import * as Tooltip from "@radix-ui/react-tooltip";
@@ -191,6 +193,18 @@ export default React.memo(function IndustrialSidebar() {
       icon: BarChart3,
       always: true,
     },
+    {
+      label: 'Workflows',
+      href: '/workflows',
+      icon: Zap,
+      always: true,
+    },
+    {
+      label: 'Foresight',
+      href: '/foresight',
+      icon: Brain,
+      always: true,
+    },
     // Industry-specific nav items
     {
       label: 'Expiry Alerts',
@@ -265,6 +279,12 @@ export default React.memo(function IndustrialSidebar() {
       label: 'Audit Logs',
       href: '/audit',
       icon: ClipboardList,
+      always: true,
+    },
+    {
+      label: 'Intelligence',
+      href: '/intelligence',
+      icon: Lightbulb,
       always: true,
     },
     {

@@ -122,6 +122,7 @@ export default async function RootLayout({
             })
           }}
         />
+        
         <link
           rel="preload"
           href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap"

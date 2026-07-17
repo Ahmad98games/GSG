@@ -85,6 +85,15 @@ export const useBusinessProfile = () => {
                 avatar_url: configMap.avatar_url || '',
                 avatar_last_changed: configMap.avatar_last_changed || '',
                 tier: configMap.tier || 'lite',
+                industry_type: configMap.industry_type || 'general',
+                industry_key: configMap.industry_key || 'general',
+                role: configMap.role || 'retailer',
+                currency: configMap.currency || 'PKR',
+                region: configMap.region || 'south_asian',
+                country_code: configMap.country_code || 'PK',
+                tax_name: configMap.tax_name || 'GST',
+                tax_rate: Number(configMap.tax_rate || 0),
+                preferred_locale: configMap.preferred_locale || 'en',
               };
               setProfile(fallbackProfile);
             }
@@ -113,7 +122,16 @@ export const useBusinessProfile = () => {
                   avatar_preset_id: data.avatar_preset_id || 1,
                   avatar_url: data.avatar_url || '',
                   avatar_last_changed: data.avatar_last_changed || '',
-                  tier: data.tier || 'lite'
+                  tier: data.tier || 'lite',
+                  industry_type: data.industry_type || 'general',
+                  industry_key: data.industry_key || data.industry || 'general',
+                  role: data.role || 'retailer',
+                  currency: data.currency || 'PKR',
+                  region: data.region || 'south_asian',
+                  country_code: data.country_code || 'PK',
+                  tax_name: data.tax_name || 'GST',
+                  tax_rate: String(data.tax_rate || 0),
+                  preferred_locale: data.preferred_locale || 'en',
                 }
               })
             }).catch(e => console.error('Failed to sync business details to local DB', e));

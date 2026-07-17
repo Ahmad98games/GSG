@@ -25,6 +25,8 @@ import * as z from 'zod';
 import { inviteClientToPortal } from '@/lib/actions/clientPortal';
 import { usePersona } from '@/hooks/usePersona';
 import { Decimal } from 'decimal.js';
+import { createClient } from '@/lib/supabase/client';
+import { useToast } from '@/hooks/useToast';
 
 // --- Zod Schema ---
 const inviteSchema = z.object({
@@ -58,6 +60,8 @@ export default function PortalManagementPage({
 }) {
   const { tier } = useLicense();
   const { t, fmt } = usePersona();
+  const supabase = createClient();
+  const toast = useToast();
   if (tier === 'lite') redirect('/settings');
 
   const [isInviteOpen, setIsInviteOpen] =  useState(false);
@@ -121,13 +125,52 @@ export default function PortalManagementPage({
     {
       id: 'actions',
       header: () => null,
-      cell: () => (
-        <div className="flex justify-end">
-          <button className="p-2 text-gray-600 hover:text-white hover:bg-white/5 transition-all">
-            <MoreVertical size={16} />
-          </button>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const portal = row.original;
+        if (portal.status === 'revoked') return null;
+        return (
+          <div className="flex justify-end">
+            <button
+              onClick={async () => {
+                if (!confirm(`Revoke portal access for ${portal.display_name}?`)) return;
+                try {
+                  const { error } = await supabase
+                    .from('client_portals')
+                    .update({ status: 'revoked' })
+                    .eq('id', portal.id);
+                    
+                  if (!error) {
+                    import('@/stores/undoStore').then(({ useUndoStore }) => {
+                      useUndoStore.getState().pushAction({
+                        description: `Revoked portal access for ${portal.display_name}`,
+                        undo: async () => {
+                          const supabaseClient = createClient();
+                          await supabaseClient
+                            .from('client_portals')
+                            .update({ status: 'active' })
+                            .eq('id', portal.id);
+                          window.location.reload();
+                        }
+                      });
+                    });
+                    
+                    toast.success('Access revoked', 'Press Ctrl+Z to undo');
+                    window.location.reload();
+                  } else {
+                    toast.error('Failed to revoke access');
+                  }
+                } catch (e) {
+                  console.error(e);
+                  toast.error('Failed to revoke access');
+                }
+              }}
+              className="text-[9px] font-black tracking-widest uppercase text-red-400 hover:text-red-300 border border-red-500/20 bg-red-500/10 px-3 py-1 rounded-sm transition-all"
+            >
+              Revoke
+            </button>
+          </div>
+        );
+      },
     },
   ], [t, fmt]);
 

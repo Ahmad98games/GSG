@@ -3,6 +3,7 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import Link from "next/link";
 import { useQuery, useQueryClient, QueryClient } from "@tanstack/react-query";
+import { useOptimisticMutation } from '@/hooks/useOptimisticMutation';
 import { Can } from "@/components/rbac/Can";
 import { createClient } from "@/lib/supabase/client";
 import { SupabaseClient } from "@supabase/supabase-js";
@@ -192,6 +193,34 @@ export default function InventoryPage() {
     },
     enabled: !!profile?.id,
     staleTime: 5 * 60 * 1000,
+  });
+
+  const { mutate: adjustStock } = useOptimisticMutation<any, any>({
+    queryKey: ['inventory', profile?.id],
+    optimisticUpdate: (current, variables) => {
+      const { skuId, qty_on_hand } = variables;
+      return current.map((sku: any) =>
+        sku.id === skuId
+          ? { ...sku, qty_on_hand }
+          : sku
+      );
+    },
+    mutationFn: async (variables) => {
+      const { error } = await supabase
+        .from('skus')
+        .update({ qty_on_hand: variables.qty_on_hand })
+        .eq('id', variables.skuId);
+      if (error) throw error;
+    },
+    successMessage: 'Stock adjusted',
+    undoDescription: 'Stock adjustment',
+    undoFn: async (variables) => {
+      const supabaseClient = createClient();
+      await supabaseClient
+        .from('skus')
+        .update({ qty_on_hand: variables.previousQty })
+        .eq('id', variables.skuId);
+    }
   });
 
   // Derived Categories
@@ -637,13 +666,14 @@ export default function InventoryPage() {
             onSuccess={(msg) => { setSuccessToast(msg); setEditingSKU(null); queryClient.invalidateQueries({ queryKey: ['inventory'] }); }}
           />
         )}
-        {adjustingSKU && (
-          <AdjustStockModal 
-            sku={adjustingSKU} 
-            onClose={() => setAdjustingSKU(null)} 
-            onSuccess={(msg) => { setSuccessToast(msg); setAdjustingSKU(null); queryClient.invalidateQueries({ queryKey: ['inventory'] }); }}
-          />
-        )}
+         {adjustingSKU && (
+           <AdjustStockModal 
+             sku={adjustingSKU} 
+             onClose={() => setAdjustingSKU(null)} 
+             onAdjust={adjustStock}
+             onSuccess={(msg) => { setSuccessToast(msg); setAdjustingSKU(null); }}
+           />
+         )}
       </AnimatePresence>
 
       {/* SKU Detail Side Panel */}
@@ -795,6 +825,7 @@ function TableActions({ sku, onAdjust, onEdit }: { sku: SKU, onAdjust: () => voi
   const supabase = createClient();
   const queryClient = useQueryClient();
   const { profile } = useBusinessProfile();
+  const toast = useToast();
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -805,9 +836,29 @@ function TableActions({ sku, onAdjust, onEdit }: { sku: SKU, onAdjust: () => voi
   }, [open]);
 
   const handleDelete = async () => {
-    if (!confirm(`Permanently delete ${sku.name}? This cannot be undone.`)) return;
-    const { error } = await supabase.from('skus').delete().eq('id', sku.id);
-    if (!error) queryClient.invalidateQueries({ queryKey: ['inventory'] });
+    if (!confirm(`Permanently delete ${sku.name}?`)) return;
+    try {
+      const backupSku = { ...sku };
+      const { error } = await supabase.from('skus').delete().eq('id', sku.id);
+      if (!error) {
+        import('@/stores/undoStore').then(({ useUndoStore }) => {
+          useUndoStore.getState().pushAction({
+            description: `Deleted SKU ${backupSku.name}`,
+            undo: async () => {
+              const supabaseClient = createClient();
+              await supabaseClient.from('skus').insert(backupSku);
+              queryClient.invalidateQueries({ queryKey: ['inventory'] });
+            }
+          });
+        });
+        toast.success(`${sku.name} deleted`, 'Press Ctrl+Z to undo');
+        queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      } else {
+        toast.error('Failed to delete SKU', humanizeError(error, 'delete sku'));
+      }
+    } catch (err) {
+      toast.error('Failed to delete SKU', humanizeError(err, 'delete sku'));
+    }
   };
 
   return (
@@ -1205,7 +1256,7 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
   );
 }
 
-function AdjustStockModal({ sku, onClose, onSuccess }: { sku: SKU, onClose: () => void, onSuccess: (msg: string) => void }) {
+function AdjustStockModal({ sku, onClose, onAdjust, onSuccess }: { sku: SKU, onClose: () => void, onAdjust: (v: any) => Promise<void>, onSuccess: (msg: string) => void }) {
   const supabase = createClient();
   const toast = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1225,12 +1276,16 @@ function AdjustStockModal({ sku, onClose, onSuccess }: { sku: SKU, onClose: () =
       if (values.type === 'remove') newQty = Math.max(0, newQty - values.quantity);
       if (values.type === 'set') newQty = values.quantity;
 
-      const { error } = await supabase
-        .from('skus')
-        .update({ qty_on_hand: newQty })
-        .eq('id', sku.id);
-
-      if (error) throw error;
+      await onAdjust({
+        table: 'skus',
+        operation: 'update',
+        matchColumn: 'id',
+        matchValue: sku.id,
+        data: { qty_on_hand: newQty },
+        skuId: sku.id,
+        qty_on_hand: newQty,
+        previousQty: sku.qty_on_hand
+      });
 
       onSuccess(`Updated ${sku.name} quantity to ${newQty}`);
     } catch (err: unknown) {

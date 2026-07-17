@@ -8,6 +8,7 @@ import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { useIndustryConfig } from "@/hooks/useIndustryConfig";
 
 import { useSidebarState } from "@/hooks/useSidebarState";
+import { useOptimisticMutation } from '@/hooks/useOptimisticMutation';
 import { 
   Users, Search, Filter, 
   ChevronRight, CreditCard, UserPlus, 
@@ -132,13 +133,13 @@ export default function KarigarsPage() {
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [attendingKarigar, setAttendingKarigar] = useState<Karigar | null>(null);
   const [advancingKarigar, setAdvancingKarigar] = useState<Karigar | null>(null);
-  const [loggingKarigar, setLoggingKarigar] = useState<Karigar | null>(null);
+  const [logOutputKarigar, setLogOutputKarigar] = useState<Karigar | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
 
   // Memoized handlers
   const handleLogOutput = React.useCallback((k: Karigar) => {
-    setLoggingKarigar(k);
+    setLogOutputKarigar(k);
   }, []);
 
   const handleAttend = React.useCallback((k: Karigar) => {
@@ -148,6 +149,40 @@ export default function KarigarsPage() {
   const handleAdvance = React.useCallback((k: Karigar) => {
     setAdvancingKarigar(k);
   }, []);
+
+  const handleDelete = React.useCallback(async (karigar: Karigar) => {
+    if (!confirm(`Are you sure you want to deactivate ${karigar.name}?`)) return;
+
+    try {
+      const { error } = await supabase
+        .from('karigars')
+        .update({ status: 'inactive' })
+        .eq('id', karigar.id);
+
+      if (!error) {
+        import('@/stores/undoStore').then(({ useUndoStore }) => {
+          useUndoStore.getState().pushAction({
+            description: `Deactivated ${karigar.name}`,
+            undo: async () => {
+              const supabaseClient = createClient();
+              await supabaseClient
+                .from('karigars')
+                .update({ status: 'active' })
+                .eq('id', karigar.id);
+              queryClient.invalidateQueries({ queryKey: ['karigars'] });
+            }
+          });
+        });
+
+        toast.success(`${karigar.name} deactivated`, { message: 'Press Ctrl+Z to undo' });
+        queryClient.invalidateQueries({ queryKey: ['karigars'] });
+      } else {
+        toast.error('Failed to deactivate worker', humanizeError(error, 'deactivate karigar'));
+      }
+    } catch (err) {
+      toast.error('Failed to deactivate worker', humanizeError(err, 'deactivate karigar'));
+    }
+  }, [supabase, queryClient, toast]);
 
   // Queries
   const { data: karigars = [], isLoading, error: karigarsError, refetch: refetchKarigars } = useQuery({
@@ -198,17 +233,101 @@ export default function KarigarsPage() {
   const { data: activeBatches = [] } = useQuery({
     queryKey: ['active_batches_karigars', profile?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('production_batches')
-        .select('id, batch_no, sku_id, skus(name, unit)')
-        .eq('business_id', profile?.id)
-        .neq('status', 'completed')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      try {
+        const { data, error } = await supabase
+          .from('production_batches')
+          .select('id, batch_no, sku_id, skus(name, unit)')
+          .eq('business_id', profile?.id)
+          .neq('status', 'completed')
+          .order('created_at', { ascending: false })
+          .abortSignal(controller.signal)
+          .limit(50);
+        if (error) throw error;
+        return data;
+      } finally {
+        clearTimeout(timeoutId);
+      }
     },
     enabled: !!profile?.id,
     staleTime: 10 * 60 * 1000,
+  });
+
+  const { mutate: markAttendance } = useOptimisticMutation<any, any>({
+    queryKey: ['attendance_today', profile?.id],
+    optimisticUpdate: (current, variables) => {
+      const { karigarId, status, date } = variables;
+      const existing = current.find(
+        (a: any) => a.karigar_id === karigarId
+      );
+      if (existing) {
+        return current.map((a: any) =>
+          a.karigar_id === karigarId
+            ? { ...a, status }
+            : a
+        );
+      }
+      return [...current, {
+        karigar_id: karigarId,
+        status,
+        log_date: date,
+        id: `temp_${karigarId}`,
+      }];
+    },
+    mutationFn: async (variables) => {
+      const { error } = await supabase
+        .from('attendance_logs')
+        .upsert({
+          business_id: profile?.id,
+          karigar_id: variables.karigarId,
+          log_date: variables.date,
+          status: variables.status,
+          notes: variables.notes,
+        }, {
+          onConflict: 'business_id,karigar_id,log_date'
+        });
+      if (error) throw error;
+    },
+    successMessage: undefined,
+    errorMessage: 'Attendance queued — will sync when online',
+    undoDescription: 'Attendance mark',
+  });
+
+  const { mutate: logProduction } = useOptimisticMutation<any, any>({
+    queryKey: ['active_batches_karigars', profile?.id],
+    optimisticUpdate: (current, variables) => {
+      return current;
+    },
+    mutationFn: async (variables) => {
+      const { error } = await supabase
+        .from('karigar_production_logs')
+        .insert({
+          business_id: profile?.id,
+          karigar_id: variables.karigar_id,
+          batch_id: variables.batch_id,
+          sku_id: variables.sku_id,
+          qty_produced: variables.qty_produced,
+          piece_rate_used: variables.piece_rate_used,
+          quality_grade: variables.quality_grade,
+          department: variables.department,
+          time_taken_minutes: variables.time_taken_minutes,
+        });
+      if (error) throw error;
+    },
+    successMessage: 'Production logged',
+    undoDescription: 'Logged Production',
+    undoFn: async (variables) => {
+      const supabaseClient = createClient();
+      await supabaseClient
+        .from('karigar_production_logs')
+        .delete()
+        .eq('business_id', profile?.id)
+        .eq('karigar_id', variables.karigar_id)
+        .eq('qty_produced', variables.qty_produced)
+        .order('created_at', { ascending: false })
+        .limit(1);
+    }
   });
 
   // Summary Stats
@@ -386,6 +505,7 @@ export default function KarigarsPage() {
                )}
                <button onClick={() => meta?.onAttend(k)} className="text-[10px] uppercase font-black text-gray-600 hover:text-white transition-colors">Attend</button>
                <button onClick={() => meta?.onAdvance(k)} className="text-[10px] uppercase font-black text-gray-600 hover:text-white transition-colors">Advance</button>
+               <button onClick={() => meta?.onDelete(k)} className="text-[10px] uppercase font-black text-red-500 hover:text-red-400 transition-colors">Remove</button>
                <Link href={`/karigars/${k.id}`} className="text-gray-500 hover:text-white"><ChevronRight size={16} /></Link>
             </div>
           );
@@ -415,6 +535,7 @@ export default function KarigarsPage() {
       onLogOutput: handleLogOutput,
       onAttend: handleAttend,
       onAdvance: handleAdvance,
+      onDelete: handleDelete,
     }
   });
 
@@ -637,6 +758,7 @@ export default function KarigarsPage() {
             karigar={attendingKarigar}
             onClose={() => setAttendingKarigar(null)}
             onSuccess={(msg) => { setSuccessToast(msg); setAttendingKarigar(null); }}
+            onMark={markAttendance}
            />
          )}
       </AnimatePresence>
@@ -651,13 +773,29 @@ export default function KarigarsPage() {
       </AnimatePresence>
 
       {/* LogProductionModal rendered via portal — mounts outside this page's render tree
-          so setLoggingKarigar() does NOT trigger table/virtualizer re-renders */}
-      <LogProductionPortal
-        karigar={loggingKarigar}
-        batches={activeBatches}
-        onClose={() => setLoggingKarigar(null)}
-        onSuccess={(msg) => { setSuccessToast(msg); setLoggingKarigar(null); queryClient.invalidateQueries({ queryKey: ['karigars'] }); }}
-      />
+          so setLogOutputKarigar() does NOT trigger table/virtualizer re-renders */}
+      {logOutputKarigar &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <LogProductionModal
+            karigar={logOutputKarigar}
+            batches={activeBatches}
+            onClose={() => setLogOutputKarigar(null)}
+            onLog={logProduction}
+            onSaved={() => {
+              setSuccessToast(`Logged production output for ${logOutputKarigar.name} ✓`);
+              setLogOutputKarigar(null);
+              queryClient.invalidateQueries({
+                queryKey: ['karigars']
+              });
+              queryClient.invalidateQueries({
+                queryKey: ['production-logs']
+              });
+            }}
+          />,
+          document.body
+        )
+      }
 
       {/* Toast Notification */}
       <AnimatePresence>
@@ -867,7 +1005,7 @@ function RegisterKarigarModal({ grades, onClose, onSuccess }: { grades: Grade[],
   );
 }
 
-function AttendanceModal({ karigar, onClose, onSuccess }: { karigar: Karigar, onClose: () => void, onSuccess: (msg: string) => void }) {
+function AttendanceModal({ karigar, onClose, onSuccess, onMark }: { karigar: Karigar, onClose: () => void, onSuccess: (msg: string) => void, onMark: (v: any) => Promise<void> }) {
   const { profile } = useBusinessProfile();
   const supabase = createClient();
   const toast = useToast();
@@ -880,14 +1018,21 @@ function AttendanceModal({ karigar, onClose, onSuccess }: { karigar: Karigar, on
   const onSubmit = async (values: z.infer<typeof attendanceSchema>) => {
     setIsSubmitting(true);
     try {
-      const { error } = await supabase.from('attendance_logs').insert({
-        business_id: profile?.id,
-        karigar_id: karigar.id,
-        log_date: values.date,
+      await onMark({
+        table: 'attendance_logs',
+        operation: 'upsert',
+        data: {
+          business_id: profile?.id,
+          karigar_id: karigar.id,
+          log_date: values.date,
+          status: values.status,
+          notes: values.notes
+        },
+        karigarId: karigar.id,
         status: values.status,
+        date: values.date,
         notes: values.notes
       });
-      if (error) throw error;
       onSuccess(`Attendance logged for ${karigar.name}`);
     } catch (err: unknown) {
       toast.error("Logging failed", humanizeError(err, 'log attendance'));
@@ -1022,46 +1167,11 @@ interface LogProductionModalProps {
   karigar: Karigar;
   batches: any[];
   onClose: () => void;
-  onSuccess: (msg: string) => void;
+  onSaved: () => void;
+  onLog: (v: any) => Promise<void>;
 }
 
-// Portal wrapper — renders the modal into document.body so it is
-// completely outside KarigarsPage's render subtree.
-// This means clicking "Log Output" no longer causes the virtualized
-// table, TanStack Table, or useMemo(columns) to re-run at all.
-function LogProductionPortal({
-  karigar,
-  batches,
-  onClose,
-  onSuccess,
-}: {
-  karigar: Karigar | null;
-  batches: any[];
-  onClose: () => void;
-  onSuccess: (msg: string) => void;
-}) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-
-  if (!mounted || !karigar) return null;
-
-  return createPortal(
-    <AnimatePresence>
-      {karigar && (
-        <LogProductionModal
-          karigar={karigar}
-          batches={batches}
-          onClose={onClose}
-          onSuccess={onSuccess}
-        />
-      )}
-    </AnimatePresence>,
-    document.body
-  );
-}
-
-
-function LogProductionModal({ karigar, batches = [], onClose, onSuccess }: LogProductionModalProps) {
+function LogProductionModal({ karigar, batches = [], onClose, onSaved, onLog }: LogProductionModalProps) {
   const { profile } = useBusinessProfile();
   const supabase = createClient();
   const toast = useToast();
@@ -1089,8 +1199,20 @@ function LogProductionModal({ karigar, batches = [], onClose, onSuccess }: LogPr
       const skuId = selectedBatch?.sku_id || null;
       const unit = selectedBatch?.skus?.unit || 'pcs';
 
-      const { error: logError } = await supabase.from('karigar_production_logs').insert({
-        business_id: profile?.id,
+      await onLog({
+        table: 'karigar_production_logs',
+        operation: 'insert',
+        data: {
+          business_id: profile?.id,
+          karigar_id: karigar.id,
+          batch_id: values.batch_id || null,
+          sku_id: skuId,
+          qty_produced: Number(values.qty_produced),
+          piece_rate_used: Number(values.piece_rate_used),
+          quality_grade: values.quality_grade,
+          department: values.department,
+          time_taken_minutes: values.time_taken_minutes ? Number(values.time_taken_minutes) : null
+        },
         karigar_id: karigar.id,
         batch_id: values.batch_id || null,
         sku_id: skuId,
@@ -1100,9 +1222,8 @@ function LogProductionModal({ karigar, batches = [], onClose, onSuccess }: LogPr
         department: values.department,
         time_taken_minutes: values.time_taken_minutes ? Number(values.time_taken_minutes) : null
       });
-      if (logError) throw logError;
 
-      onSuccess(`Logged production output for ${karigar.name} ✓`);
+      onSaved();
     } catch (err: unknown) {
       toast.error("Transaction failed", humanizeError(err, 'log production'));
     } finally {

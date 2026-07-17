@@ -14,6 +14,7 @@ import { useLicense } from "@/hooks/useLicense";
 import { createClient } from "@/lib/supabase/client";
 
 import { useSidebarState } from "@/hooks/useSidebarState";
+import { useBranchStore } from "@/stores/branchStore";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import IndustrialEmptyState from "@/components/ui/IndustrialEmptyState";
@@ -38,6 +39,7 @@ export default function ProfitLossPage() {
   const toast = useToast();
   
   const supabase = createClient();
+  const { currentBranchId, currentBranchName } = useBranchStore();
 
   const defaultStart = useMemo(() => {
     const d = new Date();
@@ -53,8 +55,6 @@ export default function ProfitLossPage() {
     end: defaultEnd
   });
 
-  const [selectedBranch, setSelectedBranch] = useState<string>("all");
-
   const { data: branches } = useQuery({
     queryKey: ['branches', businessId],
     queryFn: async () => {
@@ -66,7 +66,7 @@ export default function ProfitLossPage() {
   });
 
   const { data, isLoading } = useQuery<PLRow[]>({
-    queryKey: ['profit-loss', dateRange, selectedBranch, businessId],
+    queryKey: ['profit-loss', dateRange, currentBranchId, businessId],
     queryFn: async () => {
       let query = supabase
         .from('ledger_entries')
@@ -76,8 +76,8 @@ export default function ProfitLossPage() {
         .gte('posted_at', dateRange.start)
         .lte('posted_at', dateRange.end + 'T23:59:59.999Z');
       
-      if (selectedBranch && selectedBranch !== 'all') {
-        query = query.eq('branch_id', selectedBranch);
+      if (currentBranchId) {
+        query = query.eq('branch_id', currentBranchId);
       }
       
       const { data: entries, error } = await query;
@@ -249,23 +249,19 @@ export default function ProfitLossPage() {
           <div className="flex items-center text-[10px] uppercase tracking-[0.2em] text-gray-500 font-medium">
             <Link href="/reports" className="hover:text-white transition-colors">Reports Hub</Link>
             <span className="mx-3 opacity-30">/</span>
-            <span className="text-white">Profit & Loss</span>
+            <span className="text-white mr-3">Profit & Loss</span>
+            {currentBranchId ? (
+              <span className="text-[10px] bg-[#60A5FA]/10 text-[#60A5FA] border border-[#60A5FA]/20 px-2 py-0.5 rounded-sm font-bold">
+                {currentBranchName}
+              </span>
+            ) : (
+              <span className="text-[10px] bg-white/5 text-gray-550 border border-white/8 px-2 py-0.5 rounded-sm font-bold font-mono">
+                ALL BRANCHES CONSOLIDATED
+              </span>
+            )}
           </div>
 
           <div className="ml-auto flex items-center space-x-4">
-             {tier === 'elite' && branches && branches.length > 0 && (
-               <div className="flex items-center bg-white/5 border border-white/10 rounded-sm px-3 py-1.5 text-[10px] text-gray-400">
-                 <Filter size={14} className="mr-2" />
-                 <select 
-                   value={selectedBranch}
-                   onChange={(e) => setSelectedBranch(e.target.value)}
-                   className="bg-transparent border-none text-white focus:ring-0 outline-none cursor-pointer"
-                 >
-                   <option value="all">All Branches</option>
-                   {branches.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                 </select>
-               </div>
-             )}
              <div className="flex items-center bg-white/5 border border-white/10 rounded-sm overflow-hidden text-[10px] text-gray-400">
                 <Calendar size={14} className="ml-3" />
                 <input 
@@ -320,9 +316,13 @@ export default function ProfitLossPage() {
                 <p className="text-gray-500 text-[10px] uppercase tracking-[0.2em] font-bold">
                   Fiscal Period: {fmtDate(dateRange.start)} — {fmtDate(dateRange.end)}
                 </p>
-                {selectedBranch !== 'all' && (
-                  <p className="text-[#C5A059] text-[10px] uppercase font-bold tracking-widest">
-                    Branch: {branches?.find((b: any) => b.id === selectedBranch)?.name}
+                {currentBranchId ? (
+                  <p className="text-[#60A5FA] text-[10px] uppercase font-bold tracking-widest">
+                    Branch: {currentBranchName}
+                  </p>
+                ) : (
+                  <p className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">
+                    All Branches Consolidated
                   </p>
                 )}
               </div>

@@ -138,6 +138,21 @@ export default function NewInvoicePage() {
   useEffect(() => {
     if (!profile?.id) return;
     const loadData = async () => {
+      // Auto-seed chart of accounts if missing
+      try {
+        const { count: accountCount } = await supabase
+          .from('accounts')
+          .select('id', { count: 'exact', head: true })
+          .eq('business_id', profile.id);
+
+        if (!accountCount || accountCount === 0) {
+          console.warn('[Invoice Load] Auto-seeding chart of accounts...');
+          await seedChartOfAccounts(profile.id);
+        }
+      } catch (e) {
+        console.warn('[Invoice Load] Seeding check failed:', e);
+      }
+
       const [{ data: pData }, { data: sData }, { data: bData }, { data: count }] = await Promise.all([
         supabase.from('parties').select('*').eq('business_id', profile.id),
         supabase.from('skus').select('*').eq('business_id', profile.id).eq('is_active', true),
@@ -193,6 +208,18 @@ export default function NewInvoicePage() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No user session");
+      if (!profile?.id) throw new Error("Business profile context missing.");
+
+      // Verify and seed chart of accounts before submitting
+      const { count: accountCount } = await supabase
+        .from('accounts')
+        .select('id', { count: 'exact', head: true })
+        .eq('business_id', profile.id);
+
+      if (!accountCount || accountCount === 0) {
+        console.warn('[Invoice Submit] Seeding chart of accounts...');
+        await seedChartOfAccounts(profile.id);
+      }
 
       let invId: string | null = null;
       

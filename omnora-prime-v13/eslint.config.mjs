@@ -5,7 +5,34 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  // Override default ignores of eslint-config-next.
+  {
+    rules: {
+      // Prevent any type — international standard code has typed everything
+      "@typescript-eslint/no-explicit-any": "warn",
+
+      // Prevent unused variables silently
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { "argsIgnorePattern": "^_" }
+      ],
+
+      // Prevent console.log in production
+      "no-console": [
+        "warn",
+        { "allow": ["warn", "error"] }
+      ],
+
+      // Prevent eval
+      "no-eval": "error",
+
+      // Require explicit return types on exported functions
+      "@typescript-eslint/explicit-function-return-type": "off",
+
+      // Prevent unsafe operations
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-member-access": "off"
+    }
+  },
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
@@ -16,4 +43,3 @@ const eslintConfig = defineConfig([
 ]);
 
 export default eslintConfig;
-

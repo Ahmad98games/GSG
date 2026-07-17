@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import { useToast } from '@/hooks/useToast'
 
 interface CachedLicense {
   id: string
@@ -16,6 +17,7 @@ interface CachedLicense {
 export function useLicenseValidation() {
   const router = useRouter()
   const pathname = usePathname()
+  const toast = useToast()
   const [license, setLicense] = useState<CachedLicense | null>(null)
   const [loading, setLoading] = useState(true)
   const validatedRef = useRef(false)
@@ -125,24 +127,35 @@ export function useLicenseValidation() {
       )
       clearTimeout(timeoutId)
 
-      if (!res.ok) {
-        // 403 = deactivated/expired
-        // 404 = key deleted from admin
-        // These are the ONLY cases where we force-logout the user offline
-        if (res.status === 403 || res.status === 404) {
-          const data = await res.json()
-          // Store the error for the license page to show
+      // ONLY act on explicit business errors
+      // Network errors (catch block) = do nothing
+      // 5xx server errors = do nothing
+      // 404 = license deleted (rare) = warn
+      // 403 with deactivated/expired = redirect
+
+      if (res.status === 403) {
+        const data = await res.json()
+        // Must be EXPLICIT deactivation not just any 403
+        if (data.code === 'DEACTIVATED' || data.code === 'EXPIRED') {
           localStorage.setItem(
             'noxis_license_error',
-            data.error || 'License expired'
+            data.error
           )
           localStorage.removeItem('noxis_license')
-          // Give the user 10 seconds to save their work before redirect
+          // 30 second grace period so user can save their work
+          toast.error(
+            'License Invalid',
+            data.error + ' You have 30 seconds to save your work.'
+          )
           setTimeout(() => {
             router.replace('/license?expired=true')
-          }, 10000)
+          }, 30000)
         }
-        // 5xx or network errors: silently continue with cached license
+        return
+      }
+
+      if (!res.ok) {
+        // Any other non-ok (5xx, etc.): ignore completely
         return
       }
 
@@ -157,19 +170,20 @@ export function useLicenseValidation() {
           JSON.stringify({
             ...existing,
             ...data.license,
+            valid: true,
             activatedAt: existing.activatedAt,
             cacheExpires: Date.now() + 24 * 60 * 60 * 1000,
           })
         )
         setLicense(prev =>
-          prev ? { ...prev, ...data.license } : prev
+          prev ? { ...prev, ...data.license, valid: true } : prev
         )
       }
     } catch (err: any) {
       // Network error, timeout, DNS failure — ALL silently ignored
       // User keeps working with cached license
       console.warn(
-        '[License] Background revalidation failed:',
+        '[License] Background check failed — continuing with cached license:',
         err.message
       )
     }

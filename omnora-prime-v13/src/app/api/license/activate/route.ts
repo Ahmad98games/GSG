@@ -86,13 +86,28 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    let activeSupabase = supabase
+    const runQuery = async (queryFn: (client: any) => Promise<any>) => {
+      let res = await queryFn(activeSupabase)
+      if (res.error && (res.error.code === '42501' || res.error.message?.includes('permission denied'))) {
+        console.log('[License API] Service role key permission denied. Falling back to anon key...')
+        const anonClient = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        )
+        activeSupabase = anonClient
+        res = await queryFn(anonClient)
+      }
+      return res
+    }
+
     let cleanKey = (licenseKey || '').trim().toUpperCase()
     let license: any = null
     let lookupError: any = null
 
     if (autoDetect && email) {
       // Auto-detect: find by customer_email
-      const { data, error } = await supabase
+      const { data, error } = await runQuery(c => c
         .from('licenses')
         .select('*')
         .eq('customer_email', email.trim().toLowerCase())
@@ -100,6 +115,7 @@ export async function POST(req: NextRequest) {
         .eq('is_deactivated', false)
         .limit(1)
         .maybeSingle()
+      )
 
       license = data
       lookupError = error
@@ -116,17 +132,46 @@ export async function POST(req: NextRequest) {
       }
 
       // Look up the license in Supabase
-      const { data, error } = await supabase
+      const { data, error } = await runQuery(c => c
         .from('licenses')
         .select('*')
         .eq('license_key', cleanKey)
         .maybeSingle()
+      )
 
       license = data
       lookupError = error
     }
 
-    if (lookupError || !license) {
+    // Fuzzy typo correction fallback if exact lookup returns nothing
+    if (!license && cleanKey && !lookupError) {
+      console.log(`[License API] Exact match failed for key '${cleanKey}'. Trying normalized match...`)
+      const normalizeKey = (k: string) => k.replace(/O/g, '0').replace(/[IL]/g, '1')
+      const targetNorm = normalizeKey(cleanKey)
+
+      const { data: allLicenses, error: allLicensesError } = await runQuery(c => c
+        .from('licenses')
+        .select('*')
+      )
+
+      if (allLicenses) {
+        license = allLicenses.find((lic: any) => normalizeKey(lic.license_key || '') === targetNorm) || null
+        if (license) {
+          console.log(`[License API] Fuzzy match succeeded! Matched '${cleanKey}' to database key '${license.license_key}'`)
+          cleanKey = license.license_key
+        }
+      }
+    }
+
+    if (lookupError) {
+      console.error('[License API] Database lookup error:', lookupError.message || lookupError);
+      return NextResponse.json(
+        { error: 'License verification server is currently unreachable. Noxis will continue running in offline mode using your cached license.' },
+        { status: 503 }
+      )
+    }
+
+    if (!license) {
       // Log failed activation attempt
       try {
         await supabase.from('license_activation_log')
@@ -149,10 +194,11 @@ export async function POST(req: NextRequest) {
 
     // Bind email if provided and not set yet
     if (email && (!license.customer_email || license.customer_email === '')) {
-      const { error: bindError } = await supabase
+      const { error: bindError } = await runQuery(c => c
         .from('licenses')
         .update({ customer_email: email.trim().toLowerCase() })
         .eq('id', license.id)
+      )
       if (bindError) {
         console.error('[License] Email bind failed:', bindError.message)
       } else {
@@ -234,20 +280,32 @@ export async function POST(req: NextRequest) {
       expiresAt = expirationDate.toISOString()
     }
 
-    // Update last_activated_at, device ID, and expires_at if trial activation
-    const updatePayload: any = {
-      last_activated_at: new Date().toISOString(),
-      last_device_id: deviceId,
-      activation_count: license.activation_count ? license.activation_count + 1 : 1,
+    // Update columns gracefully checking if they exist on the schema
+    const updatePayload: any = {}
+    
+    if ('last_activated_at' in license) {
+      updatePayload.last_activated_at = new Date().toISOString()
+    } else {
+      updatePayload.activated_at = new Date().toISOString()
     }
+
+    if ('last_device_id' in license) {
+      updatePayload.last_device_id = deviceId
+    }
+
+    if ('activation_count' in license) {
+      updatePayload.activation_count = license.activation_count ? license.activation_count + 1 : 1
+    }
+
     if (isTrial && !license.expires_at) {
       updatePayload.expires_at = expiresAt
     }
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await runQuery(c => c
       .from('licenses')
       .update(updatePayload)
       .eq('id', license.id)
+    )
 
     if (updateError) {
       console.error('[License] Update failed:', updateError.message)

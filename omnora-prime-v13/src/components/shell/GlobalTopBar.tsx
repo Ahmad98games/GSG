@@ -7,9 +7,10 @@ import {
   Search, Bell, Smartphone, Cloud, 
   ChevronRight, AlertTriangle, CheckCircle2,
   Settings, User, LogOut, Info, ShieldAlert,
-  Wifi, WifiOff, Mic
+  Wifi, WifiOff, Mic, Zap
 } from 'lucide-react'
 import { useBusinessProfile } from '@/hooks/useBusinessProfile'
+import { useBranchStore } from '@/stores/branchStore'
 import { usePersona } from '@/hooks/usePersona'
 import { createClient } from '@/lib/supabase/client'
 import { resetAllStores } from '@/stores'
@@ -25,6 +26,7 @@ import { TierBadge } from '../ui/TierBadge'
 import { FeedbackModal } from '@/components/ui/FeedbackModal'
 import Image from 'next/image'
 import { CloudSyncIndicator } from './CloudSyncIndicator'
+import { NotificationBell } from './NotificationBell'
 
 const PRESET_AVATARS = [
   { id: 1, src: '/images/presets/preset-1.png', border: '#22d3ee' },
@@ -49,8 +51,40 @@ export default React.memo(function GlobalTopBar() {
   const { locale, isRTL } = useNoxisLocale()
   const t = useTranslations()
   const supabase = createClient()
+
+  const [updateReady, setUpdateReady] = useState(false)
+  const [updateVersion, setUpdateVersion] = useState('')
+
+  useEffect(() => {
+    if (!(window as any).electronAPI) return
+
+    const cleanup = (window as any).electronAPI.onUpdateStatus((data: any) => {
+      if (data.status === 'ready') {
+        setUpdateReady(true)
+        setUpdateVersion(data.version || '')
+      }
+    })
+
+    return cleanup
+  }, [])
+
+  const { currentBranchId, currentBranchName, setBranch, clearBranch } = useBranchStore()
+
+  const { data: branches = [] } = useQuery({
+    queryKey: ['branches', profile?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('branches')
+        .select('*')
+        .eq('business_id', profile!.id)
+        .eq('is_active', true)
+        .order('name')
+      return data || []
+    },
+    enabled: !!profile?.id,
+    staleTime: 10 * 60 * 1000,
+  })
   
-  const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [isOnline, setIsOnline] = useState(() => 
@@ -115,16 +149,18 @@ export default React.memo(function GlobalTopBar() {
     };
   }, [queryClient]);
 
-  // 2. Sync Status Query
-  const { data: syncData, isError: isSyncError } = useQuery({
-    queryKey: ['sync-status'],
-    queryFn: async () => {
-      const res = await fetch('/api/sync/status')
-      if (!res.ok) throw new Error('Sync Status API Error')
-      return res.json()
-    },
-    retry: 1,
-  })
+  // 2. Sync Status Local Polling
+  const [localQueueCount, setLocalQueueCount] = useState(0)
+
+  useEffect(() => {
+    const { getQueuedCount } = require('@/lib/sync/offlineQueue')
+    const check = () => {
+      setLocalQueueCount(getQueuedCount())
+    }
+    check()
+    const interval = setInterval(check, 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   // 3. Alerts Query
   const { data: alerts = [] } = useQuery({
@@ -142,7 +178,7 @@ export default React.memo(function GlobalTopBar() {
     enabled: !!businessId,
   })
 
-  const syncState = !isOnline ? 'offline' : (isSyncError ? 'error' : (syncData?.pending_count > 0 ? 'syncing' : 'synced'))
+  const syncState = !isOnline ? 'offline' : (localQueueCount > 0 ? 'syncing' : 'synced')
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -239,11 +275,20 @@ export default React.memo(function GlobalTopBar() {
               syncState === 'synced' ? 'text-[#00E5FF]' : 
               syncState === 'syncing' ? 'text-amber-500' : 'text-red-500'
             )}>
-              {syncState === 'synced' ? 'Synced' : syncState === 'syncing' ? 'Syncing...' : syncState === 'error' ? 'Sync Error' : 'Offline'}
+              {syncState === 'synced' ? 'Synced' : syncState === 'syncing' ? 'Syncing...' : 'Offline'}
             </span>
           </div>
 
           <CloudSyncIndicator />
+
+          {updateReady && (
+            <Link href="/settings/updates">
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold animate-pulse hover:bg-emerald-500/25 transition-colors cursor-pointer ml-3">
+                <Zap size={10} />
+                v{updateVersion} ready
+              </div>
+            </Link>
+          )}
         </div>
 
         {/* RIGHT: Notifications & User */}
@@ -256,23 +301,48 @@ export default React.memo(function GlobalTopBar() {
             ★ Feedback
           </button>
 
-          <button 
-            onClick={() => setIsNotificationPanelOpen(true)}
-            className="p-2 relative hover:bg-noxis-overlay rounded-full transition-colors"
-          >
-            <Bell size={18} className="text-noxis-text-muted" />
-            {alerts.length > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 bg-noxis-danger text-[9px] font-black text-white flex items-center justify-center rounded-full border-2 border-noxis-bg">
-                {alerts.length}
-              </span>
-            )}
-          </button>
+          <NotificationBell />
 
           <div className="h-6 w-[1px] bg-noxis-border mx-2" />
 
           <LanguageSwitcher />
 
           <div className="h-6 w-[1px] bg-noxis-border mx-2" />
+
+          {branches.length > 1 && (
+            <div className="relative flex items-center">
+              <select
+                value={currentBranchId || 'all'}
+                onChange={e => {
+                  const id = e.target.value
+                  if (id === 'all') {
+                    clearBranch()
+                  } else {
+                    const branch = branches.find((b: any) => b.id === id)
+                    if (branch) {
+                      setBranch(
+                        branch.id,
+                        branch.name,
+                        branch.is_headquarters
+                      )
+                    }
+                  }
+                }}
+                className="bg-[#0F1114] border border-white/8 text-white text-xs px-3 py-1.5 outline-none focus:border-[#60A5FA]/40 cursor-pointer rounded-sm"
+              >
+                <option value="all">
+                  All Branches
+                </option>
+                {branches.map((b: any) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                    {b.is_headquarters ? ' (HQ)' : ''}
+                  </option>
+                ))}
+              </select>
+              <div className="h-6 w-[1px] bg-noxis-border mx-2" />
+            </div>
+          )}
 
           <div className="relative">
             <button 
@@ -381,59 +451,7 @@ export default React.memo(function GlobalTopBar() {
         </div>
       </header>
 
-      {/* Notification Panel */}
-      <AnimatePresence>
-        {isNotificationPanelOpen && (
-          <>
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsNotificationPanelOpen(false)}
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100]"
-            />
-            <motion.div 
-              initial={{ x: 320 }}
-              animate={{ x: 0 }}
-              exit={{ x: 320 }}
-              className={cn(
-                "fixed top-0 right-0 h-full w-[320px] bg-noxis-surface border-l border-noxis-border z-[101] flex flex-col shadow-2xl",
-                isElectron ? "top-10" : "top-0"
-              )}
-            >
-              <div className="h-14 border-b border-noxis-border flex items-center justify-between px-6">
-                <h3 className="text-[11px] font-black uppercase tracking-widest text-noxis-text">Notifications</h3>
-                <button className="text-[9px] font-bold text-electric-blue uppercase tracking-widest hover:underline">Mark all read</button>
-              </div>
 
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-                {alerts.length > 0 ? alerts.map((alert: any) => (
-                  <div key={alert.id} className="p-4 bg-noxis-overlay border border-noxis-border hover:bg-noxis-overlay-hover transition-all cursor-pointer group rounded-sm">
-                    <div className="flex space-x-3">
-                      <div className={cn(
-                        "p-2 rounded-sm h-fit",
-                        alert.severity === 'critical' ? 'bg-noxis-danger/10 text-noxis-danger' : 'bg-noxis-financial/10 text-noxis-financial'
-                      )}>
-                        <ShieldAlert size={14} />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-[10px] font-bold text-noxis-text uppercase leading-tight">{alert.alert_type.replace(/_/g, ' ')}</p>
-                        <p className="text-[9px] text-noxis-text-muted mt-1 line-clamp-2">{alert.payload?.message || "Operational variance detected."}</p>
-                        <p className="text-[8px] text-noxis-text-muted mt-2 font-mono uppercase">{new Date(alert.created_at).toLocaleTimeString()}</p>
-                      </div>
-                    </div>
-                  </div>
-                )) : (
-                  <div className="h-full flex flex-col items-center justify-center space-y-4 opacity-30">
-                    <CheckCircle2 size={40} strokeWidth={1} />
-                    <p className="text-[10px] uppercase font-black tracking-widest text-center">No alerts — all systems normal ✓</p>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
       
       <FeedbackModal
         isOpen={feedbackOpen}

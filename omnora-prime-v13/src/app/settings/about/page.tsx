@@ -170,7 +170,7 @@ export default function AboutPage() {
                 <div className="space-y-4">
                   <h4 className="text-[10px] font-black uppercase tracking-widest text-white font-mono">Backup Inquiries</h4>
                   <div className="space-y-3">
-                    <ContactLink icon={Mail} label="Support Email" email="omnorainfo28@gmail.com" />
+                    <ContactLink icon={Mail} label="Support Email" email="[EMAIL_ADDRESS]" />
                   </div>
                 </div>
               </div>
@@ -317,7 +317,7 @@ const SupportForm = () => {
 
           {status === "error" && (
             <div className="text-[9px] font-black text-critical-red uppercase tracking-widest bg-critical-red/5 p-2 border border-critical-red/20 text-center">
-              ⚠️ Transmission failed. Please email omnorainfo28@gmail.com instead.
+              ⚠️ Transmission failed. Please email omnora@noxis.app instead.
             </div>
           )}
 

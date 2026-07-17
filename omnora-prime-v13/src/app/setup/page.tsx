@@ -238,7 +238,9 @@ export default function OnboardingPage() {
 
   const selectedRegion = watch('region');
   const selectedIndustryKey = watch('industry_key');
-  const selectedCountryCode = watch('country_code');
+  const selectedCountryCode = watch('country_code') || 'PK';
+  const selectedCountrySetup = COUNTRY_SETUPS.find(c => c.code === selectedCountryCode) || COUNTRY_SETUPS[0];
+  const phonePrefix = selectedCountrySetup.phonePrefix;
   const primaryPhone = watch('phone');
 
   // Handle Country Selection Logic
@@ -720,7 +722,7 @@ export default function OnboardingPage() {
                     </InputGroup>
 
                     <InputGroup label="Primary Contact Number" error={errors.phone?.message}>
-                      <input {...register("phone")} className="industrial-input" placeholder="e.g. +923001234567" />
+                      <input {...register("phone")} className="industrial-input" placeholder={`e.g. ${phonePrefix}3001234567`} />
                     </InputGroup>
 
                     <InputGroup label="City / Hub Location" error={errors.city?.message}>
@@ -822,7 +824,7 @@ export default function OnboardingPage() {
                             />
                             <input 
                               type="text"
-                              placeholder="Phone (+92...)" 
+                              placeholder={`Phone (${phonePrefix}...)`} 
                               value={c.phone}
                               onChange={(e) => handleContactChange(idx, 'phone', e.target.value)}
                               className="industrial-input text-xs" 

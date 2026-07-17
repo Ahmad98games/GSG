@@ -63,6 +63,8 @@ let mainWindow = null;
 let splashWindow = null;
 let nextServer = null;
 let visionProcess = null;
+let tunnelProcess = null;
+let tunnelUrl = null;
 let sessionTimeoutTimer = null;
 let warningTimer = null;
 let memoryMonitorInterval = null;
@@ -75,13 +77,15 @@ const WARNING_LEAD_MS = 60 * 1000;
 electron_log_1.default.transports.file.level = 'info';
 electron_log_1.default.transports.file.maxSize = 5 * 1024 * 1024;
 electron_updater_1.autoUpdater.logger = electron_log_1.default;
-electron_updater_1.autoUpdater.setFeedURL({
-    provider: 'github',
-    owner: 'omnoralabs',
-    repo: 'noxis-releases',
-    private: false
-});
-const CHECK_INTERVAL = 4 * 60 * 60 * 1000;
+// Update channel — can be changed per license tier (Pro/Elite get beta channel)
+electron_updater_1.autoUpdater.channel = 'stable';
+electron_updater_1.autoUpdater.autoDownload = false;
+// We download manually so we can show progress to the user
+electron_updater_1.autoUpdater.allowPrerelease = false;
+// Track update state for IPC
+let updateAvailable = false;
+let updateDownloaded = false;
+let downloadProgress = 0;
 // ─────────────────────────────────────────────
 // 1. LOGGER
 // ─────────────────────────────────────────────
@@ -95,6 +99,80 @@ function startupLog(msg) {
     }
     catch { /* userData not ready yet */ }
     electron_log_1.default.info(msg);
+}
+function startCloudflaredTunnel() {
+    const cloudflaredPath = path.join(process.env['ProgramFiles'] || 'C:\\Program Files', 'Cloudflare', 'cloudflared.exe');
+    if (!fs.existsSync(cloudflaredPath)) {
+        startupLog('[Tunnel] cloudflared not installed — skipping');
+        return;
+    }
+    startupLog('[Tunnel] Starting Cloudflare tunnel...');
+    tunnelProcess = (0, child_process_1.spawn)(cloudflaredPath, ['tunnel', 'run'], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    tunnelProcess.stdout?.on('data', (data) => {
+        const output = data.toString();
+        startupLog(`[Tunnel] ${output.trim()}`);
+        const urlMatch = output.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/) || output.match(/https:\/\/[a-z0-9-]+\.cfargotunnel\.com/);
+        if (urlMatch && !tunnelUrl) {
+            tunnelUrl = urlMatch[0];
+            startupLog(`[Tunnel] URL: ${tunnelUrl}`);
+            process.env.CLOUDFLARE_TUNNEL_URL = tunnelUrl.replace('https://', '');
+            mainWindow?.webContents.send('tunnel-ready', { url: tunnelUrl });
+        }
+    });
+    tunnelProcess.stderr?.on('data', (data) => {
+        const output = data.toString();
+        startupLog(`[Tunnel ERR] ${output.trim()}`);
+        const urlMatch = output.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/) || output.match(/https:\/\/[a-z0-9-]+\.cfargotunnel\.com/);
+        if (urlMatch && !tunnelUrl) {
+            tunnelUrl = urlMatch[0];
+            startupLog(`[Tunnel] URL: ${tunnelUrl}`);
+            process.env.CLOUDFLARE_TUNNEL_URL = tunnelUrl.replace('https://', '');
+            mainWindow?.webContents.send('tunnel-ready', { url: tunnelUrl });
+        }
+    });
+    tunnelProcess.on('exit', (code) => {
+        startupLog(`[Tunnel] Exited with code ${code}`);
+        tunnelUrl = null;
+        tunnelProcess = null;
+    });
+}
+function startQuickTunnel() {
+    const cloudflaredPath = path.join(process.env['ProgramFiles'] || 'C:\\Program Files', 'Cloudflare', 'cloudflared.exe');
+    if (!fs.existsSync(cloudflaredPath))
+        return;
+    startupLog('[QuickTunnel] Starting temporary tunnel...');
+    tunnelProcess = (0, child_process_1.spawn)(cloudflaredPath, [
+        'tunnel',
+        '--url',
+        `http://127.0.0.1:${PORT}`,
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    tunnelProcess.stdout?.on('data', (data) => {
+        const output = data.toString();
+        const urlMatch = output.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/);
+        if (urlMatch && !tunnelUrl) {
+            tunnelUrl = urlMatch[0];
+            startupLog(`[QuickTunnel] URL: ${tunnelUrl}`);
+            process.env.CLOUDFLARE_TUNNEL_URL = tunnelUrl.replace('https://', '');
+            mainWindow?.webContents.send('tunnel-ready', { url: tunnelUrl });
+        }
+    });
+    tunnelProcess.stderr?.on('data', (data) => {
+        const output = data.toString();
+        const urlMatch = output.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/);
+        if (urlMatch && !tunnelUrl) {
+            tunnelUrl = urlMatch[0];
+            startupLog(`[QuickTunnel] URL: ${tunnelUrl}`);
+            process.env.CLOUDFLARE_TUNNEL_URL = tunnelUrl.replace('https://', '');
+            mainWindow?.webContents.send('tunnel-ready', { url: tunnelUrl });
+        }
+    });
+    tunnelProcess.on('exit', (code) => {
+        startupLog(`[QuickTunnel] Exited with code ${code}`);
+        tunnelUrl = null;
+        tunnelProcess = null;
+    });
 }
 // ─────────────────────────────────────────────
 // INLINE ENV LOADER (replaces dotenv dependency)
@@ -189,6 +267,11 @@ function killProcess(child, name) {
             return;
         }
         startupLog(`[Cleanup] Terminating ${name} (PID: ${child.pid || 'N/A'})...`);
+        // Safety timeout: resolve after 2.5 seconds no matter what to prevent app hangs
+        const safetyTimeout = setTimeout(() => {
+            startupLog(`[Cleanup] Safety timeout reached for ${name}, forcing resolve`);
+            resolve();
+        }, 2500);
         try {
             try {
                 child.kill();
@@ -198,6 +281,7 @@ function killProcess(child, name) {
             }
             if (process.platform === 'win32' && child.pid) {
                 (0, child_process_1.exec)(`taskkill /pid ${child.pid} /T /F`, (err) => {
+                    clearTimeout(safetyTimeout);
                     if (err)
                         startupLog(`[Cleanup ERR] Failed to taskkill ${name}: ${err.message}`);
                     else
@@ -206,10 +290,12 @@ function killProcess(child, name) {
                 });
             }
             else {
+                clearTimeout(safetyTimeout);
                 resolve();
             }
         }
         catch (e) {
+            clearTimeout(safetyTimeout);
             startupLog(`[Cleanup ERR] Error killing ${name}: ${e.message}`);
             resolve();
         }
@@ -446,29 +532,78 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     // 6. AUTO UPDATER
     // ─────────────────────────────────────────────
     function setupAutoUpdater(win) {
-        if (isDev)
-            return;
-        electron_updater_1.autoUpdater.on('checking-for-update', () => startupLog('[Update] Checking...'));
-        electron_updater_1.autoUpdater.on('update-available', (info) => {
-            startupLog(`[Update] Available: ${info.version}`);
-            win.webContents.send('update-available', info);
+        // ── AUTO-UPDATER EVENT HANDLERS ──
+        electron_updater_1.autoUpdater.on('checking-for-update', () => {
+            startupLog('[Update] Checking for update...');
+            win.webContents.send('update-status', {
+                status: 'checking',
+                message: 'Checking for updates...',
+            });
         });
-        electron_updater_1.autoUpdater.on('update-not-available', () => startupLog('[Update] Up to date'));
-        electron_updater_1.autoUpdater.on('download-progress', (p) => {
-            startupLog(`[Update] Download: ${Math.round(p.percent)}%`);
-            win.webContents.send('update-progress', p);
+        electron_updater_1.autoUpdater.on('update-available', (info) => {
+            startupLog(`[Update] Update available: v${info.version}`);
+            updateAvailable = true;
+            win.webContents.send('update-status', {
+                status: 'available',
+                version: info.version,
+                releaseDate: info.releaseDate,
+                releaseName: info.releaseName || `Version ${info.version}`,
+                releaseNotes: info.releaseNotes || '',
+            });
+        });
+        electron_updater_1.autoUpdater.on('update-not-available', () => {
+            startupLog('[Update] Up to date');
+            win.webContents.send('update-status', {
+                status: 'up-to-date',
+                message: 'You are on the latest version.',
+            });
+        });
+        electron_updater_1.autoUpdater.on('download-progress', (progress) => {
+            downloadProgress = progress.percent;
+            startupLog(`[Update] Download: ${progress.percent.toFixed(1)}%`);
+            win.webContents.send('update-status', {
+                status: 'downloading',
+                percent: progress.percent,
+                transferred: progress.transferred,
+                total: progress.total,
+                bytesPerSecond: progress.bytesPerSecond,
+            });
         });
         electron_updater_1.autoUpdater.on('update-downloaded', (info) => {
-            startupLog(`[Update] Downloaded: ${info.version}`);
-            win.webContents.send('update-downloaded', info);
+            startupLog(`[Update] Downloaded: v${info.version}`);
+            updateDownloaded = true;
+            win.webContents.send('update-status', {
+                status: 'ready',
+                version: info.version,
+            });
         });
-        electron_updater_1.autoUpdater.on('error', (err) => startupLog(`[Update] Error: ${err.message}`));
-        setTimeout(() => {
-            electron_updater_1.autoUpdater.checkForUpdates().catch(e => startupLog(`[Update] Check failed: ${e}`));
-        }, 30000);
-        setInterval(() => {
-            electron_updater_1.autoUpdater.checkForUpdates().catch(e => startupLog(`[Update] Check failed: ${e}`));
-        }, CHECK_INTERVAL);
+        electron_updater_1.autoUpdater.on('error', (err) => {
+            startupLog(`[Update] Error: ${err.message}`);
+            win.webContents.send('update-status', {
+                status: 'error',
+                message: err.message.includes('net::')
+                    ? 'No internet connection. Update check skipped.'
+                    : `Update error: ${err.message}`,
+            });
+        });
+        if (isDev)
+            return;
+        // Initial check — 5 seconds after launch
+        setTimeout(async () => {
+            try {
+                await electron_updater_1.autoUpdater.checkForUpdates();
+            }
+            catch { /* non-fatal */ }
+        }, 5000);
+        // Periodic check — every 4 hours
+        setInterval(async () => {
+            if (!updateDownloaded) {
+                try {
+                    await electron_updater_1.autoUpdater.checkForUpdates();
+                }
+                catch { /* non-fatal */ }
+            }
+        }, 4 * 60 * 60 * 1000);
     }
     // ─────────────────────────────────────────────
     // 7. SESSION TIMERS
@@ -518,19 +653,69 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     // ─────────────────────────────────────────────
     // 8. TITLE BAR IPC
     // ─────────────────────────────────────────────
-    electron_1.ipcMain.on('window-minimize', () => electron_1.BrowserWindow.getFocusedWindow()?.minimize());
+    electron_1.ipcMain.on('window-minimize', () => mainWindow?.minimize());
     electron_1.ipcMain.on('window-maximize', () => {
-        const win = electron_1.BrowserWindow.getFocusedWindow();
-        if (win?.isMaximized())
-            win.unmaximize();
+        if (mainWindow?.isMaximized())
+            mainWindow.unmaximize();
         else
-            win?.maximize();
+            mainWindow?.maximize();
     });
-    electron_1.ipcMain.on('window-close', () => electron_1.BrowserWindow.getFocusedWindow()?.close());
-    electron_1.ipcMain.handle('window-is-maximized', () => electron_1.BrowserWindow.getFocusedWindow()?.isMaximized() ?? false);
-    electron_1.ipcMain.handle('check-for-updates', async () => electron_updater_1.autoUpdater.checkForUpdates());
-    electron_1.ipcMain.handle('install-update', () => electron_updater_1.autoUpdater.quitAndInstall(false, true));
+    electron_1.ipcMain.on('window-close', () => mainWindow?.close());
+    electron_1.ipcMain.handle('window-is-maximized', () => mainWindow?.isMaximized() ?? false);
+    electron_1.ipcMain.handle('check-for-updates', async () => {
+        try {
+            // Don't check in development
+            if (!electron_1.app.isPackaged) {
+                return {
+                    status: 'dev',
+                    message: 'Auto-update disabled in development'
+                };
+            }
+            await electron_updater_1.autoUpdater.checkForUpdates();
+            return { status: 'checking' };
+        }
+        catch (err) {
+            return {
+                status: 'error',
+                message: err.message
+            };
+        }
+    });
+    electron_1.ipcMain.handle('download-update', async () => {
+        if (!updateAvailable)
+            return;
+        try {
+            await electron_updater_1.autoUpdater.downloadUpdate();
+        }
+        catch (err) {
+            startupLog(`[Update] Download failed: ${err.message}`);
+        }
+    });
+    electron_1.ipcMain.handle('install-update', () => {
+        if (!updateDownloaded)
+            return;
+        // Let app finish current operations then quit and install
+        setImmediate(() => {
+            electron_updater_1.autoUpdater.quitAndInstall(false, // don't run installer silently
+            true // restart after install
+            );
+        });
+    });
+    electron_1.ipcMain.handle('get-update-status', () => ({
+        updateAvailable,
+        updateDownloaded,
+        downloadProgress,
+        currentVersion: electron_1.app.getVersion(),
+    }));
+    electron_1.ipcMain.handle('set-update-channel', (_, channel) => {
+        electron_updater_1.autoUpdater.channel = channel;
+        startupLog(`[Update] Channel changed to: ${channel}`);
+    });
     electron_1.ipcMain.handle('get-bridge-status', () => lastBridgeStatus);
+    electron_1.ipcMain.handle('get-tunnel-url', () => ({
+        url: tunnelUrl,
+        ready: !!tunnelUrl,
+    }));
     electron_1.ipcMain.handle('sync-tier', (_, data) => {
         startupLog(`[Tier] Sync: ${data.tier} (Expires: ${data.expiresAt || 'Never'})`);
         if (data.expiresAt && new Date() > new Date(data.expiresAt)) {
@@ -552,6 +737,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     // ─────────────────────────────────────────────
     electron_1.ipcMain.handle('compress-images', async (_, files) => {
         try {
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
             const sharp = require('sharp');
             const results = [];
             for (const file of files) {
@@ -675,7 +861,14 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                     }).then(({ response }) => {
                         if (response === 1) {
                             electron_1.app.relaunch();
-                            electron_1.app.exit(0);
+                            Promise.all([
+                                killProcess(visionProcess, 'Vision Engine'),
+                                killProcess(nextServer, 'Next.js Server'),
+                            ]).then(() => {
+                                electron_1.app.exit(0);
+                            }).catch(() => {
+                                electron_1.app.exit(0);
+                            });
                         }
                     });
                 }
@@ -774,7 +967,15 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                         `WhatsApp: +92 326 4742678`);
                 }
                 catch { }
-                setTimeout(() => electron_1.app.exit(1), 200);
+                // Clean up child processes before exiting on crash
+                Promise.all([
+                    killProcess(visionProcess, 'Vision Engine'),
+                    killProcess(nextServer, 'Next.js Server'),
+                ]).then(() => {
+                    electron_1.app.exit(1);
+                }).catch(() => {
+                    electron_1.app.exit(1);
+                });
             });
             process.on('unhandledRejection', (reason) => {
                 startupLog(`[CRITICAL] Unhandled rejection: ${reason}`);
@@ -1043,12 +1244,26 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             // Run these AFTER window is shown, not before.
             // This prevents blocking the UI thread at startup.
             if (mainWindow) {
-                // Delay non-critical setup to keep UI responsive
                 setTimeout(() => {
                     if (mainWindow && !mainWindow.isDestroyed()) {
                         setupAutoUpdater(mainWindow);
                     }
                 }, 5000);
+                setTimeout(() => {
+                    if (electron_1.app.isPackaged) {
+                        if (process.env.CLOUDFLARE_TUNNEL_URL) {
+                            startupLog('[Tunnel] Custom CLOUDFLARE_TUNNEL_URL defined — skipping local daemon spawn');
+                            return;
+                        }
+                        const configPath = path.join(process.env.USERPROFILE || process.env.HOME || '', '.cloudflared', 'config.yml');
+                        if (fs.existsSync(configPath)) {
+                            startCloudflaredTunnel();
+                        }
+                        else {
+                            startQuickTunnel();
+                        }
+                    }
+                }, 6000);
                 setTimeout(() => {
                     startMemoryMonitor();
                 }, 10000);
@@ -1072,7 +1287,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     electron_1.app.on('window-all-closed', () => electron_1.app.quit());
     // Cleanup on quit
     electron_1.app.on('before-quit', (event) => {
-        if (nextServer || visionProcess) {
+        if (nextServer || visionProcess || tunnelProcess) {
             event.preventDefault();
             startupLog('[Electron] Shutting down...');
             if (sessionTimeoutTimer)
@@ -1087,9 +1302,11 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             Promise.all([
                 killProcess(visionProcess, 'Vision Engine'),
                 killProcess(nextServer, 'Next.js Server'),
+                tunnelProcess ? killProcess(tunnelProcess, 'Cloudflare Tunnel') : Promise.resolve(),
             ]).then(() => {
                 visionProcess = null;
                 nextServer = null;
+                tunnelProcess = null;
                 startupLog('[Electron] Shutdown complete ✓');
                 electron_1.app.quit();
             });

@@ -2,35 +2,34 @@
 
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
-import { Monitor, Smartphone, Loader2, Wifi } from "lucide-react";
+import { Monitor, Smartphone, Loader2, Wifi, Globe, Link as LinkIcon, Info, ShieldCheck, Cpu } from "lucide-react";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import Image from "next/image";
 
 interface HubInfo {
   ip: string;
+  localIp: string;
   port: number;
   bridgePort: number;
   bridgeUrl: string;
-  httpUrl: string;
+  mobileUrl: string;
+  tunnelUrl: string | null;
   hostname: string;
+  version: string;
 }
 
 interface PairingDevice {
-  nodeId: string;
-  label?: string;
-  isActive: boolean;
-  lastSeen?: string;
+  device_id: string;
+  device_label?: string;
+  last_seen?: string;
 }
 
 export default function PairingPage() {
   const { profile } = useBusinessProfile();
   const [hubInfo, setHubInfo] = useState<HubInfo | null>(null);
-  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
+  const [tunnelUrl, setTunnelUrl] = useState<string | null>(null);
+  const [unifiedQrCode, setUnifiedQrCode] = useState<string>("");
   const [connectedDevices, setConnectedDevices] = useState<PairingDevice[]>([]);
-  // 32-byte hex pairing key
-  const [pairingKey] = useState(() =>
-    Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('')
-  );
 
   useEffect(() => {
     async function fetchHubInfo() {
@@ -38,36 +37,30 @@ export default function PairingPage() {
         const res = await fetch("/api/hub/info");
         const data: HubInfo = await res.json();
         setHubInfo(data);
-
-        // QR encodes WebSocket bridge URL so mobile TWA connects via ws://
-        const qrPayload = JSON.stringify({
-          bridgeUrl: data.bridgeUrl,
-          business_id: profile?.id || "system_default",
-          businessName: profile?.business_name || "My Factory",
-          version: "1",
-          key: pairingKey,
-          // Legacy NSP fields kept for backward compatibility with older
-          // mobile builds — can be removed once all clients are updated
-          ip: data.ip,
-          port: data.port,
-        });
-
-        const url = await QRCode.toDataURL(qrPayload, {
-          width: 400,
-          margin: 2,
-          color: {
-            dark: "#FACC15",
-            light: "#00000000"
-          }
-        });
-        setQrCodeDataUrl(url);
       } catch (err) {
-        console.error("Failed to fetch hub info or generate QR", err);
+        console.error("Failed to fetch hub info", err);
       }
     }
 
     fetchHubInfo();
-  }, [profile?.id, pairingKey]);
+
+    // Check for tunnel URL via IPC in desktop environment
+    const electronAPI = (window as any).electronAPI;
+    if (electronAPI?.getTunnelUrl) {
+      electronAPI.getTunnelUrl().then((data: any) => {
+        if (data?.url) {
+          setTunnelUrl(data.url);
+        }
+      });
+
+      // Listen for tunnel becoming ready dynamically
+      electronAPI.onTunnelReady?.((data: any) => {
+        if (data?.url) {
+          setTunnelUrl(data.url);
+        }
+      });
+    }
+  }, []);
 
   useEffect(() => {
     async function fetchDevices() {
@@ -75,7 +68,8 @@ export default function PairingPage() {
         const res = await fetch("/api/hub/devices");
         const data = await res.json();
         if (!data.error) {
-          setConnectedDevices(data);
+          // Accept array directly or nested devices field
+          setConnectedDevices(data.devices || data);
         }
       } catch (err) {
         console.error("Failed to fetch devices", err);
@@ -83,120 +77,243 @@ export default function PairingPage() {
     }
 
     fetchDevices();
-    const interval = setInterval(fetchDevices, 300000);
+    const interval = setInterval(fetchDevices, 5000);
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    if (!hubInfo) return;
+    const currentHubInfo = hubInfo;
+
+    async function generateUnifiedQR() {
+      try {
+        const finalTunnelUrl = tunnelUrl
+          ? (tunnelUrl.startsWith("ws")
+              ? tunnelUrl
+              : "wss://" +
+                tunnelUrl.replace("https://", "").replace("http://", "") +
+                "/mobile-bridge")
+          : currentHubInfo.tunnelUrl;
+
+        const payload = JSON.stringify({
+          v: 2,
+          businessName: profile?.business_name || "Noxis Hub",
+          bridgeUrl: currentHubInfo.bridgeUrl,
+          mobileUrl: currentHubInfo.mobileUrl,
+          tunnelUrl: finalTunnelUrl,
+          ts: Date.now(),
+        });
+
+        const url = await QRCode.toDataURL(payload, {
+          width: 400,
+          margin: 2,
+          color: {
+            dark: "#10B981", // Beautiful Emerald Green for verification
+            light: "#00000000"
+          }
+        });
+        setUnifiedQrCode(url);
+      } catch (err) {
+        console.error("Failed to generate unified QR", err);
+      }
+    }
+
+    generateUnifiedQR();
+  }, [hubInfo, tunnelUrl, profile]);
+
+  const activeTunnel = tunnelUrl || hubInfo?.tunnelUrl;
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 p-8 flex flex-col items-center justify-center font-mono">
-      <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-
-        {/* Left: QR Code Section */}
-        <div className="flex flex-col items-center text-center space-y-6">
-          <h1 className="text-3xl font-bold text-yellow-400 tracking-tighter uppercase">
-            Mobile Pairing Portal
+    <div className="min-h-screen bg-slate-950 text-slate-200 p-6 md:p-12 flex flex-col font-mono">
+      {/* Header */}
+      <div className="max-w-7xl mx-auto w-full mb-10 border-b border-slate-900 pb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Cpu className="text-emerald-500 w-5 h-5 animate-pulse" />
+            <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Noxis Hub Pipeline</span>
+          </div>
+          <h1 className="text-2xl md:text-3xl font-black text-white tracking-widest uppercase">
+            Mobile Connection Pipeline
           </h1>
+        </div>
+        <div className="flex items-center gap-3 bg-slate-900 border border-slate-800 px-4 py-2 rounded-lg">
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-xs font-bold text-slate-400">Node Status: Active</span>
+        </div>
+      </div>
 
-          <div className="relative p-4 bg-slate-900 border-2 border-yellow-400/30 rounded-2xl shadow-[0_0_50px_rgba(250,204,21,0.1)]">
-            {qrCodeDataUrl ? (
-              <Image
-                src={qrCodeDataUrl}
-                alt="Pairing QR Code"
-                width={320}
-                height={320}
-                className="w-64 h-64 md:w-80 md:h-80"
-                unoptimized
-              />
-            ) : (
-              <div className="w-64 h-64 md:w-80 md:h-80 flex items-center justify-center">
-                <Loader2 className="w-12 h-12 text-yellow-400 animate-spin" />
-              </div>
-            )}
+      <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Column 1: Unified Smart QR Card */}
+        <div className="bg-slate-900/40 border border-emerald-500/20 hover:border-emerald-500/40 transition-all duration-300 rounded-2xl p-6 md:p-8 flex flex-col items-center justify-between text-center relative overflow-hidden group">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
+          
+          <div className="w-full">
+            <div className="flex justify-between items-center w-full mb-6">
+              <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] uppercase tracking-widest px-2.5 py-1 rounded font-bold">
+                Smart Connection QR
+              </span>
+              <Wifi className="text-emerald-400 w-5 h-5" />
+            </div>
 
-            <div className="absolute -top-3 -left-3 bg-yellow-400 text-black px-3 py-1 text-xs font-bold rounded-full">
-              SCAN ME
+            <h2 className="text-lg font-black text-white uppercase tracking-wider mb-2 text-left">
+              Unified Pairing
+            </h2>
+            <p className="text-xs text-slate-400 text-left mb-6 leading-relaxed">
+              Scan this single code. The mobile client will automatically try local WiFi first, then Cloud Tunnel.
+            </p>
+
+            {/* QR Container */}
+            <div className="relative p-3 bg-slate-950 border border-emerald-500/10 rounded-xl mb-6 flex items-center justify-center shadow-lg">
+              {unifiedQrCode ? (
+                <Image
+                  src={unifiedQrCode}
+                  alt="Unified pairing QR code"
+                  width={240}
+                  height={240}
+                  className="w-48 h-48 md:w-56 md:h-56 filter brightness-110"
+                  unoptimized
+                />
+              ) : (
+                <div className="w-48 h-48 md:w-56 md:h-56 flex items-center justify-center">
+                  <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="space-y-2 w-full">
-            <p className="text-sm text-slate-400">Hub Local IP Address</p>
-            <div className="text-2xl font-bold text-yellow-400 bg-yellow-400/10 px-4 py-2 rounded-lg border border-yellow-400/20">
-              {hubInfo?.ip || "Detecting..."}
-            </div>
-
-            {/* WebSocket bridge endpoint — shown below the IP */}
-            {hubInfo?.bridgeUrl && (
-              <div className="flex items-center justify-center gap-2 text-xs text-slate-400 bg-slate-800/50 px-3 py-2 rounded-lg border border-slate-700/50 mt-2">
-                <Wifi size={12} className="text-yellow-400 flex-shrink-0" />
-                <span className="font-mono truncate">{hubInfo.bridgeUrl}</span>
+          <div className="w-full space-y-4">
+            <div className="text-left bg-slate-950/60 p-3.5 rounded-lg border border-slate-800 text-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 text-[9px] uppercase font-bold">Local Host Link</span>
+                <span className="w-2 h-2 rounded-full bg-blue-500" />
               </div>
-            )}
-
-            <p className="text-xs text-slate-500 uppercase tracking-widest pt-2">
-              Scan with Noxis Mobile app to connect via WiFi
-            </p>
+              <p className="text-slate-300 font-mono text-[10px] break-all">{hubInfo?.bridgeUrl || "Detecting local port..."}</p>
+              
+              <div className="flex items-center justify-between pt-1 border-t border-slate-900">
+                <span className="text-slate-500 text-[9px] uppercase font-bold">Cloud Tunnel Route</span>
+                <span className={`w-2 h-2 rounded-full ${activeTunnel ? "bg-emerald-500" : "bg-red-500 animate-pulse"}`} />
+              </div>
+              <p className="text-slate-300 font-mono text-[10px] break-all">{activeTunnel || "Inactive (using local-only)"}</p>
+            </div>
           </div>
         </div>
 
-        {/* Right: Connected Devices Section */}
-        <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-8 space-y-6 self-start h-full">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <Smartphone className="w-5 h-5 text-yellow-400" />
-              Authorized Devices
-            </h2>
-            <span className="bg-slate-800 text-slate-400 px-3 py-1 rounded-full text-xs">
-              {connectedDevices.length} Active
-            </span>
+        {/* Column 2: Instruction Set & Connection Details */}
+        <div className="space-y-6">
+          <div className="p-6 bg-slate-900/40 border border-slate-800 rounded-2xl">
+            <p className="text-xs font-bold text-white uppercase tracking-wider mb-4">
+              How to establish connection
+            </p>
+            <ol className="text-xs text-slate-400 space-y-3 list-decimal list-inside leading-relaxed">
+              <li>
+                Open the <strong className="text-white">Noxis Mobile app</strong> or visit the client url.
+              </li>
+              <li>
+                Navigate to <strong className="text-white">Settings → Pairing</strong>.
+              </li>
+              <li>
+                Point the device camera at the green <strong className="text-emerald-400">Smart QR code</strong>.
+              </li>
+              <li>
+                The device will pair securely and auto-bond immediately.
+              </li>
+            </ol>
           </div>
 
-          <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-            {connectedDevices.length === 0 ? (
-              <div className="text-center py-12 text-slate-500 space-y-3">
-                <Monitor className="w-12 h-12 mx-auto opacity-20" />
-                <p>No devices paired yet</p>
+          {hubInfo && (
+            <div className="p-6 bg-slate-900/40 border border-slate-800 rounded-2xl">
+              <p className="text-xs font-bold text-white uppercase tracking-wider mb-2">
+                Open browser app directly
+              </p>
+              <p className="text-[10px] text-slate-500 mb-3 leading-normal">
+                If the mobile package isn't installed, navigate here on the local WiFi network:
+              </p>
+              <div className="flex items-center justify-between bg-slate-950 p-3 rounded-lg border border-slate-800 font-mono">
+                <code className="text-xs text-blue-400 break-all select-all font-bold">
+                  {hubInfo.mobileUrl}
+                </code>
+                <LinkIcon size={14} className="text-blue-500 flex-shrink-0 ml-2" />
               </div>
-            ) : (
-              connectedDevices.map((device: PairingDevice) => (
-                <div
-                  key={device.nodeId}
-                  className="bg-slate-800/50 border border-slate-700/50 p-4 rounded-xl flex items-center justify-between hover:border-yellow-400/30 transition-colors"
-                >
-                  <div className="flex items-center gap-4">
-                    <div
-                      className={`w-3 h-3 rounded-full ${
-                        device.isActive
-                          ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]'
-                          : 'bg-red-500'
-                      }`}
-                    />
-                    <div>
-                      <div className="font-bold text-slate-100">
-                        {device.label || "Unnamed Device"}
-                      </div>
-                      <div className="text-xs text-slate-500 truncate w-40 uppercase">
-                        {device.nodeId}
+            </div>
+          )}
+
+          {!activeTunnel && (
+            <div className="p-6 bg-amber-500/5 border border-amber-500/10 rounded-2xl">
+              <p className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2">
+                Cloud Tunnel Inactive
+              </p>
+              <p className="text-[10px] text-slate-500 leading-relaxed">
+                Mixed Content restrictions prevent HTTPS pages from reaching local WebSocket IPs. 
+                Configure a Cloudflare Tunnel under config settings to enable seamless remote WAN pairing.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Column 3: Active Device Terminal */}
+        <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 md:p-8 flex flex-col justify-between text-left relative overflow-hidden group">
+          <div className="w-full">
+            <div className="flex justify-between items-center w-full mb-6">
+              <span className="bg-slate-800 text-slate-400 border border-slate-700 text-[9px] uppercase tracking-widest px-2.5 py-1 rounded font-bold">
+                Option 3: Active Links
+              </span>
+              <Smartphone className="text-slate-400 w-5 h-5" />
+            </div>
+
+            <h2 className="text-lg font-black text-white uppercase tracking-wider mb-2">
+              Connected Devices ({connectedDevices.length})
+            </h2>
+            <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+              List of active tablets, terminals, and mobile devices connected to this local hub.
+            </p>
+
+            {/* Devices list */}
+            <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+              {connectedDevices.length === 0 ? (
+                <div className="text-center py-12 text-slate-600 border border-dashed border-slate-800/80 rounded-xl space-y-2 bg-slate-950/20">
+                  <Monitor className="w-8 h-8 mx-auto opacity-30" />
+                  <p className="text-[10px] uppercase font-bold tracking-wider">No active connections</p>
+                </div>
+              ) : (
+                connectedDevices.map((device: PairingDevice) => (
+                  <div
+                    key={device.device_id}
+                    className="bg-slate-950 border border-slate-850 p-3.5 rounded-xl flex items-center justify-between hover:border-emerald-500/20 transition-all duration-200"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" />
+                      <div>
+                        <div className="font-bold text-slate-200 text-xs truncate max-w-[130px]">
+                          {device.device_label || "Active Client"}
+                        </div>
+                        <div className="text-[8px] text-slate-600 font-mono uppercase tracking-tighter truncate max-w-[130px]">
+                          {device.device_id}
+                        </div>
                       </div>
                     </div>
+                    <div className="text-right">
+                      <span className="text-[8px] bg-slate-900 border border-slate-850 px-2 py-0.5 rounded text-slate-500 font-bold uppercase">
+                        {device.last_seen
+                          ? `Seen ${new Date(device.last_seen).toLocaleTimeString()}`
+                          : "Connected"}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-xs text-slate-400">Last Seen</div>
-                    <div className="text-xs font-medium text-slate-300 italic">Just now</div>
-                  </div>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
           </div>
 
-          <div className="pt-4 border-t border-slate-800 text-xs text-slate-500 leading-relaxed space-y-1">
-            <p>Ensure your mobile device is on the same WiFi network as the Hub.</p>
-            <p className="text-slate-600">
-              Mobile: WebSocket bridge (ws://) on port {hubInfo?.bridgePort ?? 3000}
-              {" · "}Desktop: NSP/TCP on port 9000
-            </p>
+          <div className="pt-6 border-t border-slate-900 mt-6 space-y-3">
+            <div className="flex items-start gap-2 bg-slate-950/40 p-3 rounded-lg border border-slate-900 text-[10px] text-slate-500 leading-normal">
+              <Info size={14} className="text-emerald-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p>Host: <span className="text-slate-400 font-bold">{hubInfo?.hostname}</span></p>
+                <p className="mt-1">Version: <span className="text-slate-400 font-bold">v{hubInfo?.version}</span></p>
+              </div>
+            </div>
           </div>
         </div>
-
       </div>
     </div>
   );

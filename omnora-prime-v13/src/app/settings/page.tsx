@@ -38,6 +38,7 @@ import { useThemeStore } from "@/stores/themeStore";
 import { useToast } from "@/hooks/useToast";
 import { useTierStore } from "@/stores/tierStore";
 import { saveLicenseToLocal } from "../(onboarding)/license/actions";
+import { getRegionConfig } from "@/lib/industry/regionConfigs";
 import { humanizeError } from '@/lib/utils/errors';
 
 interface HubInfo {
@@ -71,13 +72,14 @@ const PRESET_AVATARS = [
 
 const TABS = [
   { id: 'profile', label: 'Business Profile', icon: Building2 },
-  { id: 'regional', label: 'Regional Settings', icon: Globe },
+  { id: 'regional', label: 'Regional Settings', icon: Globe, href: '/settings/localization' },
   { id: 'appearance', label: 'Appearance', icon: Activity },
   { id: 'subscription', label: 'Subscription', icon: Shield },
   { id: 'network', label: 'TCP / Network', icon: Network },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'security', label: 'Security', icon: Lock },
   { id: 'staff', label: 'Staff & Users', icon: Users, href: '/settings/users' },
+  { id: 'branches', label: 'Factory Branches', icon: Building2, href: '/settings/branches' },
   { id: 'hardware', label: 'Hardware Integrations', icon: Zap },
   { id: 'data', label: 'Data Management', icon: Database },
   { id: 'backup', label: 'Backup & Restore', icon: Download, href: '/settings/backup' },
@@ -633,13 +635,18 @@ export default function SettingsPage() {
                           Owner WhatsApp
                           <span className="text-[9px] text-[#25D366] font-black normal-case">(daily summaries)</span>
                         </label>
-                        <input
-                          type="tel"
-                          value={(profile as any)?.owner_phone || ''}
-                          onChange={(e) => profile && setProfile({ ...profile, owner_phone: e.target.value } as any)}
-                          placeholder="e.g. 03001234567 or +923001234567"
-                          className="w-full bg-zinc-900 border border-zinc-800 rounded-sm px-4 py-3 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400 transition-all duration-200 text-white"
-                        />
+                        {(() => {
+                          const callingCode = getRegionConfig(profile?.country_code).callingCode;
+                          return (
+                            <input
+                              type="tel"
+                              value={(profile as any)?.owner_phone || ''}
+                              onChange={(e) => profile && setProfile({ ...profile, owner_phone: e.target.value } as any)}
+                              placeholder={`e.g. ${callingCode}3001234567`}
+                              className="w-full bg-zinc-900 border border-zinc-800 rounded-sm px-4 py-3 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400 transition-all duration-200 text-white"
+                            />
+                          );
+                        })()}
                         <p className="text-[10px] text-gray-650 font-medium">Used when you press &quot;Send Daily Summary&quot; on Dashboard &amp; Reports.</p>
                       </div>
                       <div className="space-y-2">

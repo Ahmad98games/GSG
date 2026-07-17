@@ -17,6 +17,7 @@ import { createClient } from "@/lib/supabase/client";
 import { sendWhatsAppAlert } from "@/lib/whatsapp/alertEngine";
 import { formatCurrency } from "@/lib/currency/currencyEngine";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
+import { scoreParty, CreditScore } from '@/lib/credit/scoreParty';
 
 import { useParams, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -299,6 +300,17 @@ export default function PartyDetailPage() {
     enabled: !!party
   });
 
+  const { data: creditScore } = useQuery({
+    queryKey: ['credit-score', partyId],
+    queryFn: () => scoreParty(
+      partyId,
+      profile!.id,
+      profile?.currency || 'PKR'
+    ),
+    enabled: !!partyId && !!profile?.id,
+    staleTime: 30 * 60 * 1000,
+  });
+
   // Portal link generation
   const generatePortalLink = async () => {
     if (!businessId) return;
@@ -557,8 +569,90 @@ export default function PartyDetailPage() {
                     </button>
                  </div>
               </div>
-              <PartyPortalSection partyId={partyId} />
-           </aside>
+
+               {/* Credit Score Display Widget */}
+               {creditScore && (
+                 <div className="p-8 bg-[#1A1D21] border border-white/5 flex flex-col">
+                   <div className="flex items-center justify-between mb-4">
+                     <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 font-mono">
+                       Credit Score
+                     </p>
+                     <div
+                       className="text-4xl font-mono font-black"
+                       style={{ color: creditScore.color }}
+                     >
+                       {creditScore.score}
+                     </div>
+                   </div>
+
+                   {/* Score bar */}
+                   <div className="h-2 bg-white/8 rounded-full mb-3 overflow-hidden">
+                     <div
+                       className="h-full rounded-full transition-all duration-700"
+                       style={{
+                         width: `${creditScore.score}%`,
+                         backgroundColor: creditScore.color,
+                       }}
+                     />
+                   </div>
+
+                   <div className="flex items-center justify-between mb-4">
+                     <span
+                       className="text-xs font-bold"
+                       style={{ color: creditScore.color }}
+                     >
+                       Grade {creditScore.grade} — {creditScore.label}
+                     </span>
+                     <span className="text-[9px] text-gray-500 font-mono">
+                       Updated {new Date(creditScore.generatedAt).toLocaleDateString('en-PK')}
+                     </span>
+                   </div>
+
+                   {/* Recommendation */}
+                   <p className="text-xs text-slate-400 leading-relaxed mb-4 p-4 bg-white/[0.02] border border-white/5 rounded-sm">
+                     {creditScore.recommendation}
+                   </p>
+
+                   {/* Factors */}
+                   <div className="space-y-2 mb-4">
+                     {creditScore.factors.map((f, i) => (
+                       <div key={i} className="flex items-center justify-between text-[11px] border-b border-white/[0.02] pb-1.5 last:border-0">
+                         <div className="flex items-center gap-2">
+                           <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                             f.impact === 'positive'
+                               ? 'bg-emerald-500'
+                               : f.impact === 'negative'
+                               ? 'bg-red-500'
+                               : 'bg-gray-600'
+                           }`} />
+                           <span className="text-slate-400">{f.name}</span>
+                         </div>
+                         <span className={`font-semibold font-mono ${
+                           f.points > 0
+                             ? 'text-emerald-400'
+                             : f.points < 0
+                             ? 'text-red-400'
+                             : 'text-gray-600'
+                         }`}>
+                           {f.points > 0 ? `+${f.points}` : f.points}
+                         </span>
+                       </div>
+                     ))}
+                   </div>
+
+                   {creditScore.maxCreditSuggested > 0 && (
+                     <div className="mt-2 pt-4 border-t border-white/5">
+                       <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Suggested Credit Limit</p>
+                       <p className="text-sm font-mono font-bold text-white mt-0.5">
+                         {fmt(creditScore.maxCreditSuggested)}
+                       </p>
+                     </div>
+                   )}
+                 </div>
+               )}
+
+               <PartyPortalSection partyId={partyId} />
+            </aside>
 
            {/* RIGHT PANEL (2/3) */}
            <div className="flex-1 min-w-0">

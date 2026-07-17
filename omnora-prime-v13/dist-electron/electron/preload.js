@@ -45,7 +45,29 @@ electron_1.contextBridge.exposeInMainWorld('electronAPI', {
             electron_1.ipcRenderer.removeListener(channel, subscription);
             bridgeListeners.delete(callback);
         }
-    }
+    },
+    // Update control
+    checkForUpdates: () => electron_1.ipcRenderer.invoke('check-for-updates'),
+    downloadUpdate: () => electron_1.ipcRenderer.invoke('download-update'),
+    installUpdate: () => electron_1.ipcRenderer.invoke('install-update'),
+    getUpdateStatus: () => electron_1.ipcRenderer.invoke('get-update-status'),
+    setUpdateChannel: (channel) => electron_1.ipcRenderer.invoke('set-update-channel', channel),
+    // Listen for update events
+    onUpdateStatus: (callback) => {
+        const listener = (_, data) => callback(data);
+        electron_1.ipcRenderer.on('update-status', listener);
+        return () => {
+            electron_1.ipcRenderer.removeListener('update-status', listener);
+        };
+    },
+    getTunnelUrl: () => electron_1.ipcRenderer.invoke('get-tunnel-url'),
+    onTunnelReady: (callback) => {
+        const listener = (_, data) => callback(data);
+        electron_1.ipcRenderer.on('tunnel-ready', listener);
+        return () => {
+            electron_1.ipcRenderer.removeListener('tunnel-ready', listener);
+        };
+    },
 });
 electron_1.contextBridge.exposeInMainWorld('electronWindow', {
     minimize: () => electron_1.ipcRenderer.send('window-minimize'),

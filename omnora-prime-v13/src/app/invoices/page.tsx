@@ -71,6 +71,27 @@ export default function InvoiceListPage() {
     enabled: !!businessId && (debouncedSearch.length >= 2 || debouncedSearch.length === 0)
   });
 
+  React.useEffect(() => {
+    if (!invoices || !profile) return;
+    const todayStr = new Date().toISOString().split('T')[0];
+    invoices.forEach((inv: any) => {
+      const isOverdue = (inv.status === 'posted' || inv.status === 'issued' || inv.status === 'overdue') && inv.due_date && inv.due_date < todayStr;
+      if (isOverdue && inv.balance_due > 0) {
+        const key = `notified_overdue_${inv.id}`;
+        if (!sessionStorage.getItem(key)) {
+          import('@/stores/notificationStore').then(({ notify }) => {
+            notify.warning(
+              'Payment Overdue',
+              `${inv.party?.name || 'Customer'} has ${profile?.currency || 'PKR'} ${inv.balance_due} overdue for Invoice ${inv.invoice_no}`,
+              `/parties/${inv.party_id}`
+            );
+          });
+          sessionStorage.setItem(key, 'true');
+        }
+      }
+    });
+  }, [invoices, profile]);
+
   const parentRef = useRef<HTMLDivElement>(null);
   const items = invoices || [];
   const rowVirtualizer = useVirtualizer({

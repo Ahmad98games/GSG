@@ -75,6 +75,17 @@ export default function WhatsAppSettingsPage() {
     }
   }, [profile]);
 
+  if (tier === "lite") {
+    return (
+      <div className="min-h-screen bg-[#0A0A0B] text-slate-200 p-8 flex items-center justify-center">
+        <FeatureLock 
+          title="WhatsApp Automations & Alerts" 
+          description="Send automated daily business reports, wage slips, and balance notices directly via Meta Cloud API. Upgrade to Pro or Elite to unlock."
+          requiredTier="pro"
+        />
+      </div>
+    );
+  }
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -123,12 +134,8 @@ export default function WhatsAppSettingsPage() {
     }
   };
 
-  
-
   return (
     <div className="min-h-screen bg-[#0A0A0B] text-slate-200 font-inter flex">
-      
-      
       <main className={cn( "flex-1 transition-all duration-300 min-h-screen flex flex-col")}>
         <header className="h-16 border-b border-white/5 flex items-center px-8 bg-[#0A0A0B]/80 backdrop-blur-md sticky top-0 z-40">
           <div className="flex items-center text-[10px] uppercase tracking-[0.2em] text-gray-500 font-medium">
@@ -137,10 +144,17 @@ export default function WhatsAppSettingsPage() {
             <span className="text-white">WhatsApp Integration</span>
           </div>
           <div className="ml-auto">
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#C5A059]/10 border border-[#C5A059]/20 text-[#C5A059] text-[9px] uppercase tracking-[0.2em] font-black">
-              <ShieldCheck size={10} />
-              <span>Elite Tier Verified</span>
-            </div>
+            {tier === "elite" ? (
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#C5A059]/10 border border-[#C5A059]/20 text-[#C5A059] text-[9px] uppercase tracking-[0.2em] font-black">
+                <ShieldCheck size={10} />
+                <span>Elite Tier Verified</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[9px] uppercase tracking-[0.2em] font-black">
+                <ShieldCheck size={10} />
+                <span>Pro Tier Verified</span>
+              </div>
+            )}
           </div>
         </header>
 

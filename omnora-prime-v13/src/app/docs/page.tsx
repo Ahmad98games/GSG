@@ -515,8 +515,8 @@ export default function DocsPage() {
                       </div>
                       <div>
                         <span className="text-[9px] text-[#00E5FF] font-bold uppercase tracking-widest block mb-1">Enterprise Email Support</span>
-                        <a href="mailto:omnorainfo28@gmail.com" className="text-xs font-mono font-bold text-[#00E5FF] hover:underline">
-                          omnorainfo28@gmail.com
+                        <a href="mailto:[EMAIL_ADDRESS]" className="text-xs font-mono font-bold text-[#00E5FF] hover:underline">
+                        [EMAIL_ADDRESS]
                         </a>
                       </div>
                     </div>

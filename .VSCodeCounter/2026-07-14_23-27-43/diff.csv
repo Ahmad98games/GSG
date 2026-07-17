@@ -1,0 +1,47 @@
+"filename", "language", "TypeScript", "TypeScript JSX", "MS SQL", "comment", "blank", "total"
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\(hub)\clients\portals\PortalManagementClient.tsx", "TypeScript JSX", 0, 41, 0, 0, 2, 43
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\[adminPath]\dashboard\page.tsx", "TypeScript JSX", 0, -12, 0, -4, -6, -22
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\[adminPath]\licenses\page.tsx", "TypeScript JSX", 0, -12, 0, -1, -6, -19
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\[adminPath]\payments\page.tsx", "TypeScript JSX", 0, -12, 0, -1, -6, -19
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\[adminPath]\tenants\TenantsDashboard.tsx", "TypeScript JSX", 0, 341, 0, 7, 27, 375
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\[adminPath]\tenants\page.tsx", "TypeScript JSX", 0, 1, 0, 0, 0, 1
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\api\admin\logout\route.ts", "TypeScript", -7, 0, 0, 0, -2, -9
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\api\admin\tenants\route.ts", "TypeScript", 111, 0, 0, 7, 25, 143
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\artisans\page.tsx", "TypeScript JSX", 0, -3, 0, 0, -2, -5
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\audit\page.tsx", "TypeScript JSX", 0, 188, 0, 22, 20, 230
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\batches\page.tsx", "TypeScript JSX", 0, -3, 0, 0, -2, -5
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\dealers\page.tsx", "TypeScript JSX", 0, -3, 0, 0, -2, -5
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\foresight\page.tsx", "TypeScript JSX", 0, 328, 0, 11, 24, 363
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\fulfillment\page.tsx", "TypeScript JSX", 0, -3, 0, 0, -2, -5
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\inventory\page.tsx", "TypeScript JSX", 0, 54, 0, 0, 0, 54
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\invoices\[id]\page.tsx", "TypeScript JSX", 0, 139, 0, -4, 5, 140
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\invoices\page.tsx", "TypeScript JSX", 0, 20, 0, 0, 1, 21
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\karigars\page.tsx", "TypeScript JSX", 0, 128, 0, 0, 6, 134
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\ledger\page.tsx", "TypeScript JSX", 0, -3, 0, 0, -1, -4
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\parties\page.tsx", "TypeScript JSX", 0, 46, 0, 0, 3, 49
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\sales\page.tsx", "TypeScript JSX", 0, -3, 0, 0, -1, -4
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\settings\localization\page.tsx", "TypeScript JSX", 0, 176, 0, 4, 13, 193
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\settings\users\page.tsx", "TypeScript JSX", 0, 18, 0, 0, 2, 20
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\test-supabase\page.tsx", "TypeScript JSX", 0, -3, 0, 0, -2, -5
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\workflows\page.tsx", "TypeScript JSX", 0, 623, 0, 8, 27, 658
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\workforce\page.tsx", "TypeScript JSX", 0, -3, 0, 0, -1, -4
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\components\shell\AppShell.tsx", "TypeScript JSX", 0, 22, 0, 0, 3, 25
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\components\shell\CloudSyncIndicator.tsx", "TypeScript JSX", 0, -3, 0, 1, 2, 0
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\components\shell\GlobalTopBar.tsx", "TypeScript JSX", 0, -60, 0, -1, 1, -60
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\components\shell\IndustrialSidebar.tsx", "TypeScript JSX", 0, 13, 0, 0, 0, 13
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\components\shell\NotificationBell.tsx", "TypeScript JSX", 0, 166, 0, 3, 11, 180
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\components\shell\OfflineIndicator.tsx", "TypeScript JSX", 0, 5, 0, 0, 0, 5
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\hooks\useIndustryConfig.ts", "TypeScript", 88, 0, 0, 2, 7, 97
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\hooks\useLicenseValidation.ts", "TypeScript", 9, 0, 0, 2, 2, 13
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\hooks\useOptimisticMutation.ts", "TypeScript", 98, 0, 0, 16, 25, 139
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\lib\audit\logAction.ts", "TypeScript", 64, 0, 0, -1, 4, 67
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\lib\foresight\patternEngine.ts", "TypeScript", 350, 0, 0, 6, 51, 407
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\lib\foresight\predictionEngine.ts", "TypeScript", 296, 0, 0, 12, 28, 336
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\lib\sync\offlineQueue.ts", "TypeScript", 132, 0, 0, 7, 23, 162
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\lib\workflows\engine.ts", "TypeScript", 188, 0, 0, 7, 22, 217
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\stores\notificationStore.ts", "TypeScript", 69, 0, 0, 0, 5, 74
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\stores\undoStore.ts", "TypeScript", 38, 0, 0, 0, 6, 44
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\supabase\migrations\053_enhanced_audit_logs.sql", "MS SQL", 0, 0, 19, 4, 4, 27
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\supabase\migrations\054_workflow_automation.sql", "MS SQL", 0, 0, 45, 4, 8, 57
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\supabase\migrations\055_noxis_foresight.sql", "MS SQL", 0, 0, 55, 2, 7, 64
+"Total", "-", 1436, 2186, 119, 113, 331, 4185

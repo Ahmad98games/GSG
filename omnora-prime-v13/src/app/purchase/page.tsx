@@ -18,10 +18,12 @@ import { humanizeError } from '@/lib/utils/errors';
 
 import { useSidebarState } from "@/hooks/useSidebarState";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import IndustrialEmptyState from "@/components/ui/IndustrialEmptyState";
 
 export default function PurchaseOrdersPage() {
+  const router = useRouter();
   const { t, fmt, fmtDate, currency } = usePersona();
   const { isCollapsed } = useSidebarState();
   const { data: pos, isLoading, error, refetch } = usePurchaseOrders();
@@ -55,47 +57,10 @@ export default function PurchaseOrdersPage() {
     };
   }, [pos]);
 
-  if (isLoading) return (
-    <div className="p-6 bg-onyx">
-      <div className="flex justify-between mb-4">
-        <Skeleton className="h-8 w-32" />
-        <Skeleton className="h-9 w-28" />
-      </div>
-      <TableSkeleton rows={8} cols={6} />
-    </div>
-  );
-
-  if (error) return (
-    <div className="min-h-screen bg-onyx flex items-center justify-center p-8">
-      <ErrorState
-        message="Could not load purchase orders registry"
-        detail={(error as Error).message}
-        onRetry={refetch}
-      />
-    </div>
-  );
-
-  if (!pos || pos.length === 0) return (
-    <div className="min-h-screen bg-onyx text-slate-200 p-6 flex flex-col justify-center">
-      <div className="flex justify-between mb-4">
-        <Skeleton className="h-8 w-32" />
-        <Skeleton className="h-9 w-28" />
-      </div>
-      <EmptyState
-        icon="🚚"
-        title="No purchase orders"
-        description="Create a purchase order to track supplier deliveries"
-        action={{ label: 'New order', href: '/purchase/new' }}
-      />
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-onyx text-slate-200 font-inter">
-      
-      
-      <main className={` transition-all duration-300 min-h-screen flex flex-col`}>
-        <header className="h-20 border-b border-white/5 flex items-center px-8 bg-[#1A1D21]/50 backdrop-blur-md sticky top-24 z-40">
+      <main className="transition-all duration-300 min-h-screen flex flex-col">
+        <header className="h-20 border-b border-white/5 flex items-center px-8 bg-[#1A1D21]/50 backdrop-blur-md sticky top-0 z-40">
            <div className="flex items-center space-x-3">
               <div className="p-2 bg-[#60A5FA]/10 text-[#60A5FA] rounded-sm">
                  <ShoppingBag size={18} />
@@ -112,7 +77,7 @@ export default function PurchaseOrdersPage() {
                  <input 
                    type="text" 
                    placeholder="Search PO # or Supplier..."
-                   className="bg-white/5 border border-white/10 text-[10px] text-white pl-10 pr-4 py-1.5 focus:border-electric-blue outline-none transition-all w-64"
+                   className="bg-white/5 border border-white/10 text-[10px] text-white pl-10 pr-4 py-1.5 focus:border-electric-blue outline-none transition-all w-64 animate-all"
                    value={searchTerm}
                    onChange={(e) => setSearchTerm(e.target.value)}
                  />
@@ -132,61 +97,68 @@ export default function PurchaseOrdersPage() {
            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <SummaryCard 
                 label="Open Orders" 
-                value={summary.open.toString()} 
+                value={isLoading ? "..." : summary.open.toString()} 
                 sub="Active Procurement"
                 icon={Clock}
                 color="blue"
               />
               <SummaryCard 
                 label="Pending Receipt" 
-                value={summary.pending.toString()} 
+                value={isLoading ? "..." : summary.pending.toString()} 
                 sub="Awaiting Delivery"
                 icon={Truck}
                 color="amber"
               />
               <SummaryCard 
                 label="Monthly Value" 
-                value={fmt(summary.monthValue)} 
+                value={isLoading ? "..." : fmt(summary.monthValue)} 
                 sub="Last 30 Days"
                 icon={TrendingUp}
                 color="emerald"
               />
            </div>
 
-           {/* PO Table */}
+           {/* PO Table Container */}
            <div className="bg-surface border border-white/5 overflow-hidden">
-              <table className="w-full text-left">
-                 <thead className="bg-[#1A1D21] border-b border-white/10">
-                    <tr>
-                       <th className="px-6 py-4 table-header">PO Details</th>
-                       <th className="px-6 py-4 table-header">Supplier</th>
-                       <th className="px-6 py-4 table-header text-center">Dates</th>
-                       <th className="px-6 py-4 table-header text-right">Total Value</th>
-                       <th className="px-6 py-4 table-header text-center">Status</th>
-                       <th className="px-6 py-4 table-header text-right">Actions</th>
-                    </tr>
-                 </thead>
-                 <tbody className="divide-y divide-white/[0.02]">
-                    {isLoading ? (
+              {isLoading ? (
+                <div className="p-8">
+                  <TableSkeleton rows={6} cols={6} />
+                </div>
+              ) : error ? (
+                <div className="p-12 flex flex-col items-center justify-center">
+                  <ErrorState
+                    message="Could not load purchase orders registry"
+                    detail={(error as Error).message}
+                    onRetry={refetch}
+                  />
+                </div>
+              ) : filteredPos.length === 0 ? (
+                <div className="p-12">
+                  <IndustrialEmptyState 
+                    title="No Purchase Orders"
+                    description="Start your procurement cycle by creating a new Purchase Order for your suppliers."
+                    icon="data"
+                  />
+                </div>
+              ) : (
+                <table className="w-full text-left">
+                   <thead className="bg-[#1A1D21] border-b border-white/10">
                       <tr>
-                        <td colSpan={6} className="py-20 text-center text-[10px] uppercase tracking-[0.4em] text-gray-600 animate-pulse">Synchronizing Procurement Registry...</td>
+                         <th className="px-6 py-4 table-header">PO Details</th>
+                         <th className="px-6 py-4 table-header">Supplier</th>
+                         <th className="px-6 py-4 table-header text-center">Dates</th>
+                         <th className="px-6 py-4 table-header text-right">Total Value</th>
+                         <th className="px-6 py-4 table-header text-center">Status</th>
+                         <th className="px-6 py-4 table-header text-right">Actions</th>
                       </tr>
-                    ) : filteredPos.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="py-20">
-                          <IndustrialEmptyState 
-                            title="No Purchase Orders"
-                            description="Start your procurement cycle by creating a new Purchase Order for your suppliers."
-                            icon="data"
-                          />
-                        </td>
-                      </tr>
-                    ) : filteredPos.map((po: any) => (
-                      <tr 
-                        key={po.id} 
-                        className="h-14 hover:bg-white/[0.01] transition-all group cursor-pointer border-b border-white/5"
-                        onClick={() => window.location.href = `/purchase/${po.id}`}
-                      >
+                   </thead>
+                   <tbody className="divide-y divide-white/[0.02]">
+                      {filteredPos.map((po: any) => (
+                        <tr 
+                          key={po.id} 
+                          className="h-14 hover:bg-white/[0.01] transition-all group cursor-pointer border-b border-white/5"
+                          onClick={() => router.push(`/purchase/${po.id}`)}
+                        >
                          <td className="px-6 py-4">
                             <div className="flex flex-col">
                                <span className="text-white text-xs font-bold uppercase tracking-tight">{po.po_number}</span>
@@ -256,6 +228,7 @@ export default function PurchaseOrdersPage() {
                     ))}
                  </tbody>
               </table>
+              )}
            </div>
         </div>
       </main>

@@ -18,12 +18,13 @@ import {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useBranchStore, Branch, NewBranch } from '@/stores/branchStore';
+import { useBranchStore, Branch } from '@/stores/branchStore';
 import { useLicense } from '@/hooks/useLicense';
 import { usePersona } from '@/hooks/usePersona';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
 import { cn } from '@/lib/utils';
 import IndustrialEmptyState from '@/components/ui/IndustrialEmptyState';
+import FeatureLock from '@/components/ui/FeatureLock';
 
 // Zod Schema for Branch Validation
 const branchSchema = z.object({
@@ -50,12 +51,17 @@ export default function BranchesPage() {
   const [confirmingAction, setConfirmingAction] = useState<{ type: 'suspend' | 'archive', branch: Branch } | null>(null);
   const [confirmationInput, setConfirmationInput] = useState('');
 
-  // Elite Tier Security Guard
-  useEffect(() => {
-    if (!isLicenseLoading && tier && tier !== 'elite') {
-      router.push('/settings');
-    }
-  }, [tier, isLicenseLoading, router]);
+  if (!isLicenseLoading && tier !== 'elite') {
+    return (
+      <div className="min-h-screen bg-onyx flex items-center justify-center p-8">
+        <FeatureLock 
+          title="Multi-Branch Management" 
+          description="Consolidate ledgers, track cross-branch inventory transfers, and coordinate staff across multiple physical factories. Upgrade to Elite to unlock."
+          requiredTier="elite"
+        />
+      </div>
+    );
+  }
 
   useEffect(() => {
     if (profile?.id) {

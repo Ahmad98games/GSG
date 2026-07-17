@@ -24,6 +24,8 @@ let mainWindow: BrowserWindow | null = null;
 let splashWindow: BrowserWindow | null = null;
 let nextServer: ChildProcess | UtilityProcess | null = null;
 let visionProcess: ChildProcess | null = null;
+let tunnelProcess: ChildProcess | null = null;
+let tunnelUrl: string | null = null;
 let sessionTimeoutTimer: NodeJS.Timeout | null = null;
 let warningTimer: NodeJS.Timeout | null = null;
 let memoryMonitorInterval: NodeJS.Timeout | null = null;
@@ -40,14 +42,16 @@ log.transports.file.level = 'info'
 log.transports.file.maxSize = 5 * 1024 * 1024
 autoUpdater.logger = log
 
-autoUpdater.setFeedURL({
-  provider: 'github',
-  owner: 'omnoralabs',
-  repo: 'noxis-releases',
-  private: false
-})
+// Update channel — can be changed per license tier (Pro/Elite get beta channel)
+autoUpdater.channel = 'stable'
+autoUpdater.autoDownload = false
+// We download manually so we can show progress to the user
+autoUpdater.allowPrerelease = false
 
-const CHECK_INTERVAL = 4 * 60 * 60 * 1000
+// Track update state for IPC
+let updateAvailable = false
+let updateDownloaded = false
+let downloadProgress = 0
 
 // ─────────────────────────────────────────────
 // 1. LOGGER
@@ -62,6 +66,137 @@ function startupLog(msg: string): void {
     fs.appendFileSync(logPath, `[${new Date().toISOString()}] ${msg}\n`);
   } catch { /* userData not ready yet */ }
   log.info(msg);
+}
+
+function startCloudflaredTunnel(): void {
+  const cloudflaredPath = path.join(
+    process.env['ProgramFiles'] || 'C:\\Program Files',
+    'Cloudflare',
+    'cloudflared.exe'
+  );
+
+  if (!fs.existsSync(cloudflaredPath)) {
+    startupLog('[Tunnel] cloudflared not installed — skipping');
+    return;
+  }
+
+  startupLog('[Tunnel] Starting Cloudflare tunnel...');
+
+  tunnelProcess = spawn(
+    cloudflaredPath,
+    ['tunnel', 'run'],
+    {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }
+  );
+
+  tunnelProcess.stdout?.on('data', (data: Buffer) => {
+    const output = data.toString();
+    startupLog(`[Tunnel] ${output.trim()}`);
+
+    const urlMatch = output.match(
+      /https:\/\/[a-z0-9-]+\.trycloudflare\.com/
+    ) || output.match(
+      /https:\/\/[a-z0-9-]+\.cfargotunnel\.com/
+    );
+
+    if (urlMatch && !tunnelUrl) {
+      tunnelUrl = urlMatch[0];
+      startupLog(`[Tunnel] URL: ${tunnelUrl}`);
+      process.env.CLOUDFLARE_TUNNEL_URL = tunnelUrl.replace('https://', '');
+      mainWindow?.webContents.send(
+        'tunnel-ready',
+        { url: tunnelUrl }
+      );
+    }
+  });
+
+  tunnelProcess.stderr?.on('data', (data: Buffer) => {
+    const output = data.toString();
+    startupLog(`[Tunnel ERR] ${output.trim()}`);
+
+    const urlMatch = output.match(
+      /https:\/\/[a-z0-9-]+\.trycloudflare\.com/
+    ) || output.match(
+      /https:\/\/[a-z0-9-]+\.cfargotunnel\.com/
+    );
+
+    if (urlMatch && !tunnelUrl) {
+      tunnelUrl = urlMatch[0];
+      startupLog(`[Tunnel] URL: ${tunnelUrl}`);
+      process.env.CLOUDFLARE_TUNNEL_URL = tunnelUrl.replace('https://', '');
+      mainWindow?.webContents.send(
+        'tunnel-ready',
+        { url: tunnelUrl }
+      );
+    }
+  });
+
+  tunnelProcess.on('exit', (code) => {
+    startupLog(`[Tunnel] Exited with code ${code}`);
+    tunnelUrl = null;
+    tunnelProcess = null;
+  });
+}
+
+function startQuickTunnel(): void {
+  const cloudflaredPath = path.join(
+    process.env['ProgramFiles'] || 'C:\\Program Files',
+    'Cloudflare',
+    'cloudflared.exe'
+  );
+
+  if (!fs.existsSync(cloudflaredPath)) return;
+
+  startupLog('[QuickTunnel] Starting temporary tunnel...');
+
+  tunnelProcess = spawn(
+    cloudflaredPath,
+    [
+      'tunnel',
+      '--url',
+      `http://127.0.0.1:${PORT}`,
+    ],
+    { stdio: ['ignore', 'pipe', 'pipe'] }
+  );
+
+  tunnelProcess.stdout?.on('data', (data: Buffer) => {
+    const output = data.toString();
+    const urlMatch = output.match(
+      /https:\/\/[a-z0-9-]+\.trycloudflare\.com/
+    );
+    if (urlMatch && !tunnelUrl) {
+      tunnelUrl = urlMatch[0];
+      startupLog(`[QuickTunnel] URL: ${tunnelUrl}`);
+      process.env.CLOUDFLARE_TUNNEL_URL = tunnelUrl.replace('https://', '');
+      mainWindow?.webContents.send(
+        'tunnel-ready',
+        { url: tunnelUrl }
+      );
+    }
+  });
+
+  tunnelProcess.stderr?.on('data', (data: Buffer) => {
+    const output = data.toString();
+    const urlMatch = output.match(
+      /https:\/\/[a-z0-9-]+\.trycloudflare\.com/
+    );
+    if (urlMatch && !tunnelUrl) {
+      tunnelUrl = urlMatch[0];
+      startupLog(`[QuickTunnel] URL: ${tunnelUrl}`);
+      process.env.CLOUDFLARE_TUNNEL_URL = tunnelUrl.replace('https://', '');
+      mainWindow?.webContents.send(
+        'tunnel-ready',
+        { url: tunnelUrl }
+      );
+    }
+  });
+
+  tunnelProcess.on('exit', (code) => {
+    startupLog(`[QuickTunnel] Exited with code ${code}`);
+    tunnelUrl = null;
+    tunnelProcess = null;
+  });
 }
 
 // ─────────────────────────────────────────────
@@ -169,6 +304,13 @@ function killProcess(child: ChildProcess | UtilityProcess | null, name: string):
   return new Promise((resolve) => {
     if (!child) { resolve(); return; }
     startupLog(`[Cleanup] Terminating ${name} (PID: ${child.pid || 'N/A'})...`);
+    
+    // Safety timeout: resolve after 2.5 seconds no matter what to prevent app hangs
+    const safetyTimeout = setTimeout(() => {
+      startupLog(`[Cleanup] Safety timeout reached for ${name}, forcing resolve`);
+      resolve();
+    }, 2500);
+
     try {
       try {
         child.kill();
@@ -178,14 +320,17 @@ function killProcess(child: ChildProcess | UtilityProcess | null, name: string):
 
       if (process.platform === 'win32' && child.pid) {
         exec(`taskkill /pid ${child.pid} /T /F`, (err) => {
+          clearTimeout(safetyTimeout);
           if (err) startupLog(`[Cleanup ERR] Failed to taskkill ${name}: ${err.message}`);
           else startupLog(`[Cleanup] Successfully taskkilled ${name}`);
           resolve();
         });
       } else {
+        clearTimeout(safetyTimeout);
         resolve();
       }
     } catch (e: any) {
+      clearTimeout(safetyTimeout);
       startupLog(`[Cleanup ERR] Error killing ${name}: ${e.message}`);
       resolve();
     }
@@ -433,31 +578,104 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   // 6. AUTO UPDATER
   // ─────────────────────────────────────────────
   function setupAutoUpdater(win: BrowserWindow): void {
+    // ── AUTO-UPDATER EVENT HANDLERS ──
+
+    autoUpdater.on('checking-for-update', () => {
+      startupLog('[Update] Checking for update...');
+      win.webContents.send(
+        'update-status',
+        {
+          status: 'checking',
+          message: 'Checking for updates...',
+        }
+      );
+    });
+
+    autoUpdater.on('update-available', (info) => {
+      startupLog(`[Update] Update available: v${info.version}`);
+      updateAvailable = true;
+
+      win.webContents.send(
+        'update-status',
+        {
+          status: 'available',
+          version: info.version,
+          releaseDate: info.releaseDate,
+          releaseName: info.releaseName || `Version ${info.version}`,
+          releaseNotes: info.releaseNotes || '',
+        }
+      );
+    });
+
+    autoUpdater.on('update-not-available', () => {
+      startupLog('[Update] Up to date');
+      win.webContents.send(
+        'update-status',
+        {
+          status: 'up-to-date',
+          message: 'You are on the latest version.',
+        }
+      );
+    });
+
+    autoUpdater.on('download-progress', (progress) => {
+      downloadProgress = progress.percent;
+      startupLog(`[Update] Download: ${progress.percent.toFixed(1)}%`);
+      win.webContents.send(
+        'update-status',
+        {
+          status: 'downloading',
+          percent: progress.percent,
+          transferred: progress.transferred,
+          total: progress.total,
+          bytesPerSecond: progress.bytesPerSecond,
+        }
+      );
+    });
+
+    autoUpdater.on('update-downloaded', (info) => {
+      startupLog(`[Update] Downloaded: v${info.version}`);
+      updateDownloaded = true;
+
+      win.webContents.send(
+        'update-status',
+        {
+          status: 'ready',
+          version: info.version,
+        }
+      );
+    });
+
+    autoUpdater.on('error', (err) => {
+      startupLog(`[Update] Error: ${err.message}`);
+      win.webContents.send(
+        'update-status',
+        {
+          status: 'error',
+          message: err.message.includes('net::')
+            ? 'No internet connection. Update check skipped.'
+            : `Update error: ${err.message}`,
+        }
+      );
+    });
+
     if (isDev) return;
 
-    autoUpdater.on('checking-for-update', () => startupLog('[Update] Checking...'));
-    autoUpdater.on('update-available', (info) => {
-      startupLog(`[Update] Available: ${info.version}`);
-      win.webContents.send('update-available', info);
-    });
-    autoUpdater.on('update-not-available', () => startupLog('[Update] Up to date'));
-    autoUpdater.on('download-progress', (p) => {
-      startupLog(`[Update] Download: ${Math.round(p.percent)}%`);
-      win.webContents.send('update-progress', p);
-    });
-    autoUpdater.on('update-downloaded', (info) => {
-      startupLog(`[Update] Downloaded: ${info.version}`);
-      win.webContents.send('update-downloaded', info);
-    });
-    autoUpdater.on('error', (err) => startupLog(`[Update] Error: ${err.message}`));
+    // Initial check — 5 seconds after launch
+    setTimeout(async () => {
+      try {
+        await autoUpdater.checkForUpdates();
+      } catch { /* non-fatal */ }
+    }, 5000);
 
-    setTimeout(() => {
-      autoUpdater.checkForUpdates().catch(e => startupLog(`[Update] Check failed: ${e}`));
-    }, 30000);
-
-    setInterval(() => {
-      autoUpdater.checkForUpdates().catch(e => startupLog(`[Update] Check failed: ${e}`));
-    }, CHECK_INTERVAL);
+    // Periodic check — every 4 hours
+    setInterval(async () => {
+      if (!updateDownloaded) {
+        try {
+          await autoUpdater.checkForUpdates();
+        } catch { /* non-fatal */ }
+      }
+    }, 4 * 60 * 60 * 1000);
   }
 
   // ─────────────────────────────────────────────
@@ -529,16 +747,67 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   // ─────────────────────────────────────────────
   // 8. TITLE BAR IPC
   // ─────────────────────────────────────────────
-  ipcMain.on('window-minimize', () => BrowserWindow.getFocusedWindow()?.minimize());
+  ipcMain.on('window-minimize', () => mainWindow?.minimize());
   ipcMain.on('window-maximize', () => {
-    const win = BrowserWindow.getFocusedWindow();
-    if (win?.isMaximized()) win.unmaximize(); else win?.maximize();
+    if (mainWindow?.isMaximized()) mainWindow.unmaximize(); else mainWindow?.maximize();
   });
-  ipcMain.on('window-close', () => BrowserWindow.getFocusedWindow()?.close());
-  ipcMain.handle('window-is-maximized', () => BrowserWindow.getFocusedWindow()?.isMaximized() ?? false);
-  ipcMain.handle('check-for-updates', async () => autoUpdater.checkForUpdates());
-  ipcMain.handle('install-update', () => autoUpdater.quitAndInstall(false, true));
+  ipcMain.on('window-close', () => mainWindow?.close());
+  ipcMain.handle('window-is-maximized', () => mainWindow?.isMaximized() ?? false);
+  ipcMain.handle('check-for-updates', async () => {
+    try {
+      // Don't check in development
+      if (!app.isPackaged) {
+        return {
+          status: 'dev',
+          message: 'Auto-update disabled in development'
+        };
+      }
+      await autoUpdater.checkForUpdates();
+      return { status: 'checking' };
+    } catch (err: any) {
+      return {
+        status: 'error',
+        message: err.message
+      };
+    }
+  });
+
+  ipcMain.handle('download-update', async () => {
+    if (!updateAvailable) return;
+    try {
+      await autoUpdater.downloadUpdate();
+    } catch (err: any) {
+      startupLog(`[Update] Download failed: ${err.message}`);
+    }
+  });
+
+  ipcMain.handle('install-update', () => {
+    if (!updateDownloaded) return;
+    // Let app finish current operations then quit and install
+    setImmediate(() => {
+      autoUpdater.quitAndInstall(
+        false, // don't run installer silently
+        true   // restart after install
+      );
+    });
+  });
+
+  ipcMain.handle('get-update-status', () => ({
+    updateAvailable,
+    updateDownloaded,
+    downloadProgress,
+    currentVersion: app.getVersion(),
+  }));
+
+  ipcMain.handle('set-update-channel', (_, channel: 'stable' | 'beta') => {
+    autoUpdater.channel = channel;
+    startupLog(`[Update] Channel changed to: ${channel}`);
+  });
   ipcMain.handle('get-bridge-status', () => lastBridgeStatus);
+  ipcMain.handle('get-tunnel-url', () => ({
+    url: tunnelUrl,
+    ready: !!tunnelUrl,
+  }));
 
   ipcMain.handle('sync-tier', (_, data: { tier: string, expiresAt: string | null }) => {
     startupLog(`[Tier] Sync: ${data.tier} (Expires: ${data.expiresAt || 'Never'})`);
@@ -558,6 +827,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   // ─────────────────────────────────────────────
   ipcMain.handle('compress-images', async (_, files: { data: string, quality?: number, name: string }[]) => {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const sharp = require('sharp');
       const results = [];
       for (const file of files) {
@@ -695,7 +965,14 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
           }).then(({ response }) => {
             if (response === 1) {
               app.relaunch()
-              app.exit(0)
+              Promise.all([
+                killProcess(visionProcess, 'Vision Engine'),
+                killProcess(nextServer, 'Next.js Server'),
+              ]).then(() => {
+                app.exit(0)
+              }).catch(() => {
+                app.exit(0)
+              })
             }
           })
         }
@@ -817,7 +1094,16 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             `WhatsApp: +92 326 4742678`
           )
         } catch {}
-        setTimeout(() => app.exit(1), 200)
+        
+        // Clean up child processes before exiting on crash
+        Promise.all([
+          killProcess(visionProcess, 'Vision Engine'),
+          killProcess(nextServer, 'Next.js Server'),
+        ]).then(() => {
+          app.exit(1)
+        }).catch(() => {
+          app.exit(1)
+        })
       });
 
       process.on('unhandledRejection', (reason) => {
@@ -1115,12 +1401,30 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     // Run these AFTER window is shown, not before.
     // This prevents blocking the UI thread at startup.
     if (mainWindow) {
-      // Delay non-critical setup to keep UI responsive
       setTimeout(() => {
         if (mainWindow && !mainWindow.isDestroyed()) {
           setupAutoUpdater(mainWindow);
         }
       }, 5000);
+
+      setTimeout(() => {
+        if (app.isPackaged) {
+          if (process.env.CLOUDFLARE_TUNNEL_URL) {
+            startupLog('[Tunnel] Custom CLOUDFLARE_TUNNEL_URL defined — skipping local daemon spawn');
+            return;
+          }
+          const configPath = path.join(
+            process.env.USERPROFILE || process.env.HOME || '',
+            '.cloudflared',
+            'config.yml'
+          );
+          if (fs.existsSync(configPath)) {
+            startCloudflaredTunnel();
+          } else {
+            startQuickTunnel();
+          }
+        }
+      }, 6000);
 
       setTimeout(() => {
         startMemoryMonitor();
@@ -1149,7 +1453,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
   // Cleanup on quit
   app.on('before-quit', (event) => {
-    if (nextServer || visionProcess) {
+    if (nextServer || visionProcess || tunnelProcess) {
       event.preventDefault();
 
       startupLog('[Electron] Shutting down...');
@@ -1165,9 +1469,11 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       Promise.all([
         killProcess(visionProcess, 'Vision Engine'),
         killProcess(nextServer, 'Next.js Server'),
+        tunnelProcess ? killProcess(tunnelProcess, 'Cloudflare Tunnel') : Promise.resolve(),
       ]).then(() => {
         visionProcess = null;
         nextServer = null;
+        tunnelProcess = null;
         startupLog('[Electron] Shutdown complete ✓');
         app.quit();
       });

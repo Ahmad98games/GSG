@@ -82,11 +82,31 @@ export default function UsersPage() {
         .eq('business_id', profile!.id)
       if (error) throw error
     },
-    onSuccess: () => {
+    onSuccess: (_, userId) => {
       queryClient.invalidateQueries({
         queryKey: ['sub-users', profile?.id]
       })
-      toast.success('Removed', 'Team member removed successfully')
+
+      const targetUser = (users as any[]).find((u: any) => u.id === userId);
+      if (targetUser) {
+        import('@/stores/undoStore').then(({ useUndoStore }) => {
+          useUndoStore.getState().pushAction({
+            description: `Removed team member ${targetUser.name}`,
+            undo: async () => {
+              const supabaseClient = createClient();
+              await supabaseClient
+                .from('sub_users')
+                .update({ is_active: true })
+                .eq('id', userId);
+              queryClient.invalidateQueries({
+                queryKey: ['sub-users', profile?.id]
+              });
+            }
+          });
+        });
+      }
+
+      toast.success('Removed', 'Team member removed successfully. Press Ctrl+Z to undo')
     },
   })
 

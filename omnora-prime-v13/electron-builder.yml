@@ -121,7 +121,7 @@ nsis:
   deleteAppDataOnUninstall: false
   license: build/license.txt
   warningsAsErrors: false
-  differentialPackage: false
+  differentialPackage: true
   displayLanguageSelector: false
   multiLanguageInstaller: false
   runAfterFinish: true
@@ -141,10 +141,9 @@ linux:
   category: Office
 
 publish:
-  provider: github
-  owner: omnoralabs
-  repo: noxis-releases
-  private: false
+  provider: generic
+  url: https://pub-9293149a463a4eb5b1db3df28d613e59.r2.dev/updates/stable
+  channel: stable
 
 # Rebuild native modules for the correct
 # Electron Node.js ABI version

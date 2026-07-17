@@ -25,10 +25,12 @@ export default function LicensePage() {
       if (stored) {
         try {
           const license = JSON.parse(stored)
-          if (license.valid) {
+          if (license.valid || license.key) {
             // Check trial expiry
-            if (license.is_trial && license.expires_at) {
-              const expired = new Date(license.expires_at) < new Date()
+            const isTrial = license.isTrialActive || license.is_trial
+            const expiresAt = license.expiresAt || license.expires_at
+            if (isTrial && expiresAt) {
+              const expired = new Date(expiresAt) < new Date()
               if (expired) {
                 localStorage.removeItem('noxis_license')
                 setError('Your 10-day trial has expired. Contact support to purchase a key.')
@@ -73,6 +75,7 @@ export default function LicensePage() {
           if (res.ok && data.success) {
             localStorage.setItem('noxis_license', JSON.stringify({
               ...data.license,
+              valid: true,
               activatedAt: Date.now(),
               activated_locally_at: new Date().toISOString(),
               cacheExpires: Date.now() + 24 * 60 * 60 * 1000,
@@ -183,6 +186,7 @@ export default function LicensePage() {
       // Step 3: Persistence
       localStorage.setItem('noxis_license', JSON.stringify({
         ...data.license,
+        valid: true,
         activatedAt: Date.now(),
         activated_locally_at: new Date().toISOString(),
         cacheExpires: Date.now() + 24 * 60 * 60 * 1000,

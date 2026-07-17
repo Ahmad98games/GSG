@@ -185,13 +185,16 @@ function LogProductionForm({ onSuccess }: { onSuccess: () => void }) {
   const { data: karigars = [] } = useQuery({
     queryKey: ['quick_karigars', karigarSearch],
     queryFn: async () => {
-      if (karigarSearch.length < 2) return [];
-      const { data } = await supabase
+      let query = supabase
         .from('karigars')
         .select('id, name')
-        .eq('business_id', businessId)
-        .ilike('name', `%${karigarSearch}%`)
-        .limit(5);
+        .eq('business_id', businessId);
+      
+      if (karigarSearch.trim()) {
+        query = query.ilike('name', `%${karigarSearch}%`);
+      }
+      
+      const { data } = await query.limit(5);
       return data || [];
     }
   });
@@ -235,7 +238,7 @@ function LogProductionForm({ onSuccess }: { onSuccess: () => void }) {
               value={karigarSearch}
               onChange={(e) => setKarigarSearch(e.target.value)}
               className="w-full bg-black/40 border border-white/10 px-9 py-2 text-xs text-white outline-none focus:border-blue-500/50"
-              placeholder="Type 2+ chars..."
+              placeholder="Search Karigar..."
             />
             {karigars.length > 0 && (
               <div className="absolute top-full left-0 right-0 bg-[#1A1D21] border border-white/10 z-10">
@@ -317,13 +320,16 @@ function MarkAttendanceForm({ onSuccess }: { onSuccess: () => void }) {
   const { data: karigars = [] } = useQuery({
     queryKey: ['quick_karigars_attendance', karigarSearch],
     queryFn: async () => {
-      if (karigarSearch.length < 2) return [];
-      const { data } = await supabase
+      let query = supabase
         .from('karigars')
         .select('id, name')
-        .eq('business_id', businessId)
-        .ilike('name', `%${karigarSearch}%`)
-        .limit(5);
+        .eq('business_id', businessId);
+      
+      if (karigarSearch.trim()) {
+        query = query.ilike('name', `%${karigarSearch}%`);
+      }
+      
+      const { data } = await query.limit(5);
       return data || [];
     }
   });
@@ -441,13 +447,16 @@ function RecordPaymentForm({ onSuccess }: { onSuccess: () => void }) {
   const { data: parties = [] } = useQuery({
     queryKey: ['quick_parties_payment', partySearch],
     queryFn: async () => {
-      if (partySearch.length < 2) return [];
-      const { data } = await supabase
+      let query = supabase
         .from('parties')
         .select('id, name')
-        .eq('business_id', businessId)
-        .ilike('name', `%${partySearch}%`)
-        .limit(5);
+        .eq('business_id', businessId);
+      
+      if (partySearch.trim()) {
+        query = query.ilike('name', `%${partySearch}%`);
+      }
+      
+      const { data } = await query.limit(5);
       return data || [];
     }
   });
@@ -625,13 +634,16 @@ function AdjustStockForm({ onSuccess }: { onSuccess: () => void }) {
   const { data: skus = [] } = useQuery({
     queryKey: ['quick_skus_adjustment', skuSearch],
     queryFn: async () => {
-      if (skuSearch.length < 2) return [];
-      const { data } = await supabase
+      let query = supabase
         .from('skus')
         .select('id, name, qty_on_hand, sku_code')
-        .eq('business_id', businessId)
-        .or(`name.ilike.%${skuSearch}%,sku_code.ilike.%${skuSearch}%`)
-        .limit(5);
+        .eq('business_id', businessId);
+      
+      if (skuSearch.trim()) {
+        query = query.or(`name.ilike.%${skuSearch}%,sku_code.ilike.%${skuSearch}%`);
+      }
+      
+      const { data } = await query.limit(5);
       return data || [];
     }
   });
@@ -766,13 +778,16 @@ function GiveAdvanceForm({ onSuccess }: { onSuccess: () => void }) {
   const { data: karigars = [] } = useQuery({
     queryKey: ['quick_karigars_advance', karigarSearch],
     queryFn: async () => {
-      if (karigarSearch.length < 2) return [];
-      const { data } = await supabase
+      let query = supabase
         .from('karigars')
         .select('id, name')
-        .eq('business_id', businessId)
-        .ilike('name', `%${karigarSearch}%`)
-        .limit(5);
+        .eq('business_id', businessId);
+      
+      if (karigarSearch.trim()) {
+        query = query.ilike('name', `%${karigarSearch}%`);
+      }
+      
+      const { data } = await query.limit(5);
       return data || [];
     }
   });

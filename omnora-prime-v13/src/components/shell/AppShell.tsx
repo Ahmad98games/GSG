@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import QuickActions from "@/components/shell/QuickActions";
 import ActionTrail from "@/components/ui/ActionTrail";
 import GlobalSearch from "@/components/shell/GlobalSearch";
+import { CommandPalette } from '@/components/shell/CommandPalette';
 import KeyboardShortcuts from "@/components/shell/KeyboardShortcuts";
 import { ToastContainer } from "@/components/ui/Toast";
 
@@ -117,6 +118,31 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     queueMicrotask(() => {
       setMounted(true);
     });
+  }, []);
+
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        const activeEl = document.activeElement;
+        if (
+          activeEl &&
+          (activeEl.tagName === 'INPUT' ||
+            activeEl.tagName === 'TEXTAREA' ||
+            activeEl.hasAttribute('contenteditable') ||
+            (activeEl as HTMLElement).isContentEditable)
+        ) {
+          return;
+        }
+
+        e.preventDefault();
+        import('@/stores/undoStore').then(({ useUndoStore }) => {
+          useUndoStore.getState().popAndUndo();
+        });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
 
@@ -323,6 +349,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <QuickActions />
       <ActionTrail />
       <GlobalSearch />
+      <CommandPalette />
       <KeyboardShortcuts />
       <ThemePicker hideTrigger={true} />
       <SentinelAssistant />

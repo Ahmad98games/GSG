@@ -1,239 +1,360 @@
-import { createClient }
-  from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 
-export interface IntelligenceInsight {
-  type: string
+export interface BusinessInsight {
+  id: string
+  type: 'opportunity' | 'warning' | 'critical' | 'positive'
+  category: 'cash_flow' | 'inventory' | 'production' | 'receivables' | 'payroll' | 'customers'
   title: string
-  summary: string
-  value?: number
-  unit?: string
-  trend?: 'up' | 'down' | 'stable'
-  trendPercent?: number
-  benchmark?: number
-  benchmarkLabel?: string
-  action?: string
-  urgency: 'info' | 'warning' | 'critical'
+  detail: string
+  metric: string
+  action: string
+  actionRoute?: string
+  urgency: 1 | 2 | 3 // 1=high, 2=medium, 3=low
+  generatedAt: string
 }
+
+export type IntelligenceInsight = BusinessInsight
 
 export async function generateInsights(
-  profile: {
-    id: string
-    industry: string
-    city: string
-    country_code: string
-    currency: string
+  businessIdOrConfig: string | { id: string; currency?: string; [key: string]: any },
+  currency: string = 'PKR'
+): Promise<BusinessInsight[]> {
+  let businessId: string
+  let activeCurrency = currency
+
+  if (typeof businessIdOrConfig === 'string') {
+    businessId = businessIdOrConfig
+  } else {
+    businessId = businessIdOrConfig.id
+    activeCurrency = businessIdOrConfig.currency || currency
   }
-): Promise<IntelligenceInsight[]> {
+
   const supabase = createClient()
-  const insights: IntelligenceInsight[] = []
-  
-  const lastWeek = getWeekBucket(-7)
-  const fourWeeksAgo = getWeekBucket(-28)
-  
-  // 1. Price trend for your industry
-  const { data: priceSignals } = await supabase
-    .from('industry_signals')
-    .select('metric_value, metric_value_usd, week_bucket, currency')
-    .eq('signal_type', 'sku_price')
-    .eq('industry', profile.industry)
-    .eq('country_code', profile.country_code)
-    .gte('week_bucket', fourWeeksAgo)
-    .order('week_bucket', { ascending: false })
-  
-  if (priceSignals && priceSignals.length >= 2) {
-    const recent = priceSignals
-      .filter((s: any) => s.week_bucket >= lastWeek)
-    const older = priceSignals
-      .filter((s: any) => s.week_bucket < lastWeek)
-    
-    if (recent.length && older.length) {
-      const recentAvg = avg(
-        recent.map((s: any) => Number(s.metric_value_usd) || 0)
-      )
-      const olderAvg = avg(
-        older.map((s: any) => Number(s.metric_value_usd) || 0)
-      )
-      const changePct = ((recentAvg - olderAvg)
-        / (olderAvg || 1)) * 100
-      
-      if (Math.abs(changePct) > 5) {
-        insights.push({
-          type: 'price_trend',
-          title: changePct > 0
-            ? 'Input costs rising in your industry'
-            : 'Input costs falling in your industry',
-          summary: `${profile.industry.replace('_', ' ')} material prices are ${changePct > 0 ? 'up' : 'down'} ${Math.abs(changePct).toFixed(1)}% vs last month across factories in ${profile.country_code}.`,
-          trend: changePct > 0 ? 'up' : 'down',
-          trendPercent: Math.abs(changePct),
-          urgency: Math.abs(changePct) > 15
-            ? 'warning' : 'info',
-          action: changePct > 0
-            ? 'Consider buying more stock now before prices rise further.'
-            : 'Good time to restock at lower prices.',
-        })
-      }
-    }
-  }
-  
-  // 2. Wage rate comparison
-  const { data: wageSignals } = await supabase
-    .from('industry_signals')
-    .select('metric_value, metric_name')
-    .eq('signal_type', 'wage_rate')
-    .eq('industry', profile.industry)
-    .eq('country_code', profile.country_code)
-    .gte('week_bucket', fourWeeksAgo)
-  
-  if (wageSignals && wageSignals.length >= 3) {
-    const pieceRates = wageSignals
-      .filter((s: any) => s.metric_name && s.metric_name.includes('piece_rate'))
-      .map((s: any) => Number(s.metric_value))
-    
-    if (pieceRates.length) {
-      const marketAvg = avg(pieceRates)
-      insights.push({
-        type: 'wage_benchmark',
-        title: 'Market wage rate in your industry',
-        summary: `Average piece rate in your industry is ${profile.currency} ${marketAvg.toFixed(0)}/piece based on ${pieceRates.length} factories.`,
-        value: marketAvg,
-        unit: `${profile.currency}/piece`,
-        benchmarkLabel: 'Market average',
-        urgency: 'info',
-      })
-    }
-  }
-  
-  return insights
-}
+  const insights: BusinessInsight[] = []
+  const now = new Date()
+  const fmt = (n: number) =>
+    `${activeCurrency} ${n.toLocaleString('en-PK')}`
 
-function avg(nums: number[]): number {
-  if (!nums.length) return 0
-  return nums.reduce((a, b) => a + b, 0)
-    / nums.length
-}
+  const today = now.toISOString().split('T')[0]
+  const thirtyDaysAgo = new Date(
+    now.getTime() - 30 * 86400000
+  ).toISOString().split('T')[0]
+  const sixtyDaysAgo = new Date(
+    now.getTime() - 60 * 86400000
+  ).toISOString().split('T')[0]
+  const monthStart = `${today.slice(0, 7)}-01`
 
-function getWeekBucket(daysOffset: number): string {
-  const d = new Date()
-  d.setDate(d.getDate() + daysOffset)
-  const day = d.getDay()
-  const diff = d.getDate() - day
-    + (day === 0 ? -6 : 1)
-  const monday = new Date(d.setDate(diff))
-  return monday.toISOString().split('T')[0]
-}
+  // Run all queries in parallel
+  const [
+    invoicesRes,
+    prevInvoicesRes,
+    receivablesRes,
+    stockRes,
+    productionRes,
+    prevProductionRes,
+    karigarRes,
+    attendanceRes,
+    payrollRes,
+    expiryRes,
+  ] = await Promise.allSettled([
+    // This month invoices
+    supabase.from('invoices')
+      .select('total_amount, subtotal, created_at, status')
+      .eq('business_id', businessId)
+      .eq('status', 'posted')
+      .gte('created_at', monthStart),
 
-export async function generateSelfInsights(
-  businessId: string,
-  profile: any
-): Promise<any[]> {
-  const supabase = createClient()
-  const insights: any[] = []
+    // Last month invoices (for trend)
+    supabase.from('invoices')
+      .select('total_amount, subtotal')
+      .eq('business_id', businessId)
+      .eq('status', 'posted')
+      .gte('created_at', sixtyDaysAgo)
+      .lt('created_at', thirtyDaysAgo),
 
-  try {
-    // Low stock items
-    const { data: lowStock } = await supabase
-      .from('skus')
-      .select('id, name, qty_on_hand, reorder_level')
+    // Outstanding receivables
+    supabase.from('invoices')
+      .select('balance_due, due_date, party_id')
+      .eq('business_id', businessId)
+      .gt('balance_due', 0),
+
+    // Inventory with reorder levels
+    supabase.from('skus')
+      .select('name, qty_on_hand, reorder_level, cost_price, unit')
+      .eq('business_id', businessId)
+      .eq('is_active', true),
+
+    // This month production
+    supabase.from('karigar_production_logs')
+      .select('qty_produced, piece_rate_used, quality_grade, karigar_id')
+      .eq('business_id', businessId)
+      .gte('created_at', thirtyDaysAgo),
+
+    // Last month production
+    supabase.from('karigar_production_logs')
+      .select('qty_produced')
+      .eq('business_id', businessId)
+      .gte('created_at', sixtyDaysAgo)
+      .lt('created_at', thirtyDaysAgo),
+
+    // Active karigars
+    supabase.from('karigars')
+      .select('id, name, current_advance, wage_type')
+      .eq('business_id', businessId)
+      .eq('status', 'active'),
+
+    // Today attendance
+    supabase.from('attendance_logs')
+      .select('status')
+      .eq('business_id', businessId)
+      .eq('log_date', today),
+
+    // This month payroll
+    supabase.from('payroll_runs')
+      .select('total_gross, total_net')
+      .eq('business_id', businessId)
+      .gte('period_start', monthStart),
+
+    // Expiring items
+    supabase.from('skus')
+      .select('name, expiry_date, qty_on_hand')
       .eq('business_id', businessId)
       .eq('is_active', true)
-      .gt('reorder_level', 0)
-      .limit(5)
-
-    const actualLowStock = (lowStock || [])
-      .filter((s: any) =>
-        s.qty_on_hand <= s.reorder_level * 1.5
+      .not('expiry_date', 'is', null)
+      .lte('expiry_date',
+        new Date(now.getTime() + 30 * 86400000)
+          .toISOString().split('T')[0]
       )
+      .gt('qty_on_hand', 0),
+  ])
 
-    if (actualLowStock.length > 0) {
+  const invoices = invoicesRes.status === 'fulfilled'
+    ? invoicesRes.value.data || [] : []
+  const prevInvoices = prevInvoicesRes.status === 'fulfilled'
+    ? prevInvoicesRes.value.data || [] : []
+  const receivables = receivablesRes.status === 'fulfilled'
+    ? receivablesRes.value.data || [] : []
+  const stock = stockRes.status === 'fulfilled'
+    ? stockRes.value.data || [] : []
+  const production = productionRes.status === 'fulfilled'
+    ? productionRes.value.data || [] : []
+  const prevProduction = prevProductionRes.status === 'fulfilled'
+    ? prevProductionRes.value.data || [] : []
+  const karigars = karigarRes.status === 'fulfilled'
+    ? karigarRes.value.data || [] : []
+  const attendance = attendanceRes.status === 'fulfilled'
+    ? attendanceRes.value.data || [] : []
+  const expiring = expiryRes.status === 'fulfilled'
+    ? expiryRes.value.data || [] : []
+
+  // ── INSIGHT 1: Revenue trend ──
+  const thisMonthRevenue = invoices
+    .reduce((s: number, i: any) => s + (i.subtotal || 0), 0)
+  const lastMonthRevenue = prevInvoices
+    .reduce((s: number, i: any) => s + (i.subtotal || 0), 0)
+
+  if (lastMonthRevenue > 0) {
+    const growth = ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100
+
+    if (growth >= 20) {
       insights.push({
-        type: 'low_stock',
-        title: `${actualLowStock.length} item${actualLowStock.length > 1 ? 's' : ''} running low`,
-        summary: `${actualLowStock.map((s: any) => s.name).join(', ')} ${actualLowStock.length > 1 ? 'are' : 'is'} below reorder level.`,
-        urgency: 'warning',
-        action: 'Create purchase order',
-        action_route: '/purchase/new',
-        action_label: 'Order Now',
+        id: 'revenue-growth',
+        type: 'positive',
+        category: 'cash_flow',
+        title: `Revenue up ${growth.toFixed(0)}% this month`,
+        detail: `You made ${fmt(thisMonthRevenue)} this month vs ${fmt(lastMonthRevenue)} last month. Strong growth.`,
+        metric: `+${growth.toFixed(0)}%`,
+        action: 'View detailed P&L report',
+        actionRoute: '/reports',
+        urgency: 3,
+        generatedAt: now.toISOString(),
+      })
+    } else if (growth <= -15) {
+      insights.push({
+        id: 'revenue-decline',
+        type: 'warning',
+        category: 'cash_flow',
+        title: `Revenue down ${Math.abs(growth).toFixed(0)}% from last month`,
+        detail: `${fmt(thisMonthRevenue)} this month vs ${fmt(lastMonthRevenue)} last month. Investigate the cause.`,
+        metric: `${growth.toFixed(0)}%`,
+        action: 'Review invoices for gaps',
+        actionRoute: '/invoices',
+        urgency: 1,
+        generatedAt: now.toISOString(),
       })
     }
-
-    // Overdue invoices
-    const today = new Date().toISOString()
-      .split('T')[0]
-    const { count: overdueCount } =
-      await supabase
-        .from('invoices')
-        .select('id', {
-          count: 'exact', head: true
-        })
-        .eq('business_id', businessId)
-        .eq('status', 'posted')
-        .lt('due_date', today)
-
-    if (overdueCount && overdueCount > 0) {
-      insights.push({
-        type: 'overdue_invoices',
-        title: `${overdueCount} overdue invoice${overdueCount > 1 ? 's' : ''}`,
-        summary: `${overdueCount} customer${overdueCount > 1 ? 's have' : ' has'} unpaid invoices past the due date.`,
-        urgency: overdueCount > 3
-          ? 'critical' : 'warning',
-        action: 'Follow up with customers',
-        action_route: '/invoices',
-        action_label: 'View Invoices',
-      })
-    }
-
-    // Promises due today
-    const { count: promisesDue } =
-      await supabase
-        .from('payment_promises')
-        .select('id', {
-          count: 'exact', head: true
-        })
-        .eq('business_id', businessId)
-        .in('status', ['pending', 'due_today'])
-        .lte('promise_date', today)
-
-    if (promisesDue && promisesDue > 0) {
-      insights.push({
-        type: 'promises_due',
-        title: `${promisesDue} payment promise${promisesDue > 1 ? 's' : ''} due`,
-        summary: `${promisesDue} customer${promisesDue > 1 ? 's' : ''} committed to paying today or earlier.`,
-        urgency: 'high',
-        action: 'Send reminders',
-        action_route: '/promises',
-        action_label: 'View Promises',
-      })
-    }
-
-    // No invoices this week
-    const weekAgo = new Date(
-      Date.now() - 7 * 24 * 60 * 60 * 1000
-    ).toISOString()
-
-    const { count: weekInvoices } =
-      await supabase
-        .from('invoices')
-        .select('id', {
-          count: 'exact', head: true
-        })
-        .eq('business_id', businessId)
-        .gte('created_at', weekAgo)
-
-    if (weekInvoices === 0) {
-      insights.push({
-        type: 'no_invoices',
-        title: 'No invoices this week',
-        summary: 'No invoices posted in 7 days. Are sales going unrecorded?',
-        urgency: 'info',
-        action: 'Create an invoice',
-        action_route: '/invoices/new',
-        action_label: 'New Invoice',
-      })
-    }
-
-  } catch (err) {
-    console.error('[Intelligence] Self-insights error:', err)
   }
 
-  return insights
+  // ── INSIGHT 2: Overdue receivables ──
+  const overdueItems = receivables.filter(
+    (i: any) => i.due_date && new Date(i.due_date) < now
+  )
+  const overdueTotal = overdueItems
+    .reduce((s: number, i: any) => s + (i.balance_due || 0), 0)
+  const totalReceivable = receivables
+    .reduce((s: number, i: any) => s + (i.balance_due || 0), 0)
+
+  if (overdueTotal > 0) {
+    const overduePercent =
+      totalReceivable > 0
+        ? (overdueTotal / totalReceivable * 100)
+        : 0
+
+    insights.push({
+      id: 'overdue-receivables',
+      type: overduePercent > 40 ? 'critical' : 'warning',
+      category: 'receivables',
+      title: `${fmt(overdueTotal)} overdue from ${overdueItems.length} customers`,
+      detail: `${overduePercent.toFixed(0)}% of your receivables are past due date. Send reminders now to protect cash flow.`,
+      metric: fmt(overdueTotal),
+      action: 'Send WhatsApp reminders',
+      actionRoute: '/parties',
+      urgency: overduePercent > 40 ? 1 : 2,
+      generatedAt: now.toISOString(),
+    })
+  }
+
+  // ── INSIGHT 3: Stock alerts ──
+  const criticalStock = stock.filter(
+    (s: any) => s.reorder_level > 0 &&
+      s.qty_on_hand <= s.reorder_level
+  )
+
+  if (criticalStock.length > 0) {
+    insights.push({
+      id: 'critical-stock',
+      type: criticalStock.some((s: any) => s.qty_on_hand <= 0) ? 'critical' : 'warning',
+      category: 'inventory',
+      title: `${criticalStock.length} items need restocking`,
+      detail: `${criticalStock.map((s: any) => s.name).slice(0, 3).join(', ')}${criticalStock.length > 3 ? ` and ${criticalStock.length - 3} more` : ''} are at or below reorder level.`,
+      metric: `${criticalStock.length} items`,
+      action: 'Create purchase order',
+      actionRoute: '/purchase',
+      urgency: criticalStock.some((s: any) => s.qty_on_hand <= 0) ? 1 : 2,
+      generatedAt: now.toISOString(),
+    })
+  }
+
+  // ── INSIGHT 4: Production efficiency ──
+  const thisMonthUnits = production
+    .reduce((s: number, p: any) => s + (p.qty_produced || 0), 0)
+  const lastMonthUnits = prevProduction
+    .reduce((s: number, p: any) => s + (p.qty_produced || 0), 0)
+  const rejectedPct = production.length > 0
+    ? (production.filter((p: any) => p.quality_grade === 'rejected' || p.quality_grade === 'C').length / production.length) * 100
+    : 0
+
+  if (rejectedPct > 10) {
+    insights.push({
+      id: 'high-rejection-rate',
+      type: 'warning',
+      category: 'production',
+      title: `${rejectedPct.toFixed(0)}% rejection rate this month`,
+      detail: `${rejectedPct.toFixed(1)}% of logged production is graded "Rejected" or "C". Industry standard is under 5%. Review karigar quality.`,
+      metric: `${rejectedPct.toFixed(0)}% rejected`,
+      action: 'View production report',
+      actionRoute: '/reports',
+      urgency: rejectedPct > 20 ? 1 : 2,
+      generatedAt: now.toISOString(),
+    })
+  }
+
+  if (lastMonthUnits > 0 && thisMonthUnits > 0) {
+    const productionGrowth = ((thisMonthUnits - lastMonthUnits) / lastMonthUnits) * 105
+    if (productionGrowth >= 15) {
+      insights.push({
+        id: 'production-growth',
+        type: 'positive',
+        category: 'production',
+        title: `Production up ${productionGrowth.toFixed(0)}% this month`,
+        detail: `${thisMonthUnits.toLocaleString()} units this month vs ${lastMonthUnits.toLocaleString()} last month. Your karigars are performing well.`,
+        metric: `+${productionGrowth.toFixed(0)}%`,
+        action: 'View top performers',
+        actionRoute: '/karigars',
+        urgency: 3,
+        generatedAt: now.toISOString(),
+      })
+    }
+  }
+
+  // ── INSIGHT 5: Attendance alert ──
+  const presentCount = attendance.filter(
+    (a: any) => a.status === 'present'
+  ).length
+  const totalKarigars = karigars.length
+  const attendanceRate = totalKarigars > 0
+    ? (presentCount / totalKarigars) * 100
+    : 100
+
+  if (attendanceRate < 70 && totalKarigars > 3) {
+    insights.push({
+      id: 'low-attendance',
+      type: 'warning',
+      category: 'payroll',
+      title: `Only ${attendanceRate.toFixed(0)}% attendance today`,
+      detail: `${presentCount} of ${totalKarigars} karigars are present. Low attendance will impact production output and delivery deadlines.`,
+      metric: `${attendanceRate.toFixed(0)}% present`,
+      action: 'Mark attendance',
+      actionRoute: '/karigars',
+      urgency: 2,
+      generatedAt: now.toISOString(),
+    })
+  }
+
+  // ── INSIGHT 6: High peshgi balance ──
+  const totalPeshgi = karigars.reduce(
+    (s: number, k: any) => s + (k.current_advance || 0), 0
+  )
+  const highPeshgiKarigars = karigars.filter(
+    (k: any) => (k.current_advance || 0) > 5000
+  )
+
+  if (highPeshgiKarigars.length > 0) {
+    insights.push({
+      id: 'high-peshgi',
+      type: 'warning',
+      category: 'payroll',
+      title: `${fmt(totalPeshgi)} in outstanding advances`,
+      detail: `${highPeshgiKarigars.length} karigar${highPeshgiKarigars.length > 1 ? 's have' : ' has'} advances over PKR 5,000. Ensure deductions are planned in next payroll.`,
+      metric: fmt(totalPeshgi),
+      action: 'Review payroll plan',
+      actionRoute: '/payroll',
+      urgency: 2,
+      generatedAt: now.toISOString(),
+    })
+  }
+
+  // ── INSIGHT 7: Expiry alerts ──
+  if (expiring.length > 0) {
+    const expiredNow = expiring.filter(
+      (e: any) => new Date(e.expiry_date) < now
+    )
+    insights.push({
+      id: 'expiry-alert',
+      type: expiredNow.length > 0 ? 'critical' : 'warning',
+      category: 'inventory',
+      title: `${expiring.length} item${expiring.length > 1 ? 's' : ''} expiring within 30 days`,
+      detail: expiredNow.length > 0
+        ? `${expiredNow.length} item${expiredNow.length > 1 ? 's have' : ' has'} already expired and should be removed from inventory immediately.`
+        : `${expiring.map((e: any) => e.name).slice(0, 3).join(', ')} will expire soon. Take action before stock becomes unsellable.`,
+      metric: `${expiring.length} items`,
+      action: 'View expiry alerts',
+      actionRoute: '/inventory/expiry',
+      urgency: expiredNow.length > 0 ? 1 : 2,
+      generatedAt: now.toISOString(),
+    })
+  }
+
+  // Sort by urgency then type
+  return insights.sort((a, b) => {
+    if (a.urgency !== b.urgency)
+      return a.urgency - b.urgency
+    const typeOrder = {
+      critical: 0,
+      warning: 1,
+      opportunity: 2,
+      positive: 3
+    }
+    return typeOrder[a.type] - typeOrder[b.type]
+  })
 }

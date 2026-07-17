@@ -18,16 +18,24 @@ export function useNoxisLocale() {
 
       if (profile.preferred_locale === locale) return;
 
-      const { error } = await supabase
-        .from('business_profiles')
-        .update({ preferred_locale: locale })
-        .eq('id', profile.id);
+      // Update locally first
+      fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'local_config',
+          data: { preferred_locale: locale }
+        })
+      }).catch(e => console.error('Failed to save preferred locale locally:', e));
 
-      if (error) {
-        // Only log if it is a real error, not null profile
-        if (error.code !== 'PGRST116') {
-          console.error('Failed to sync locale:', error.message);
-        }
+      // Try updating Supabase (ignore trial lock / connection errors for locale sync)
+      try {
+        await supabase
+          .from('business_profiles')
+          .update({ preferred_locale: locale })
+          .eq('id', profile.id);
+      } catch (err) {
+        console.warn('Failed to sync locale to cloud:', err);
       }
       
       if (profile) {
@@ -46,8 +54,21 @@ export function useNoxisLocale() {
     // 3. Update the global language store — this also applies dir/lang/font to the DOM immediately
     const { setLanguage } = useLanguageStore.getState();
     setLanguage(newLocale as any);
-    // 4. Refresh page to apply server-side locale changes (middleware will handle the rest)
-    window.location.reload();
+
+    // Save to local SQLite configuration immediately before reload
+    fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'local_config',
+        data: { preferred_locale: newLocale }
+      })
+    })
+      .catch(e => console.error('Failed to save preferred locale locally:', e))
+      .finally(() => {
+        // 4. Refresh page to apply server-side locale changes
+        window.location.reload();
+      });
   };
 
   return {

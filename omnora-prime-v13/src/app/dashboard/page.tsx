@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { useQuery } from '@tanstack/react-query'
 import { createClient, enableAutoRefresh } from '@/lib/supabase/client'
 import { 
   Users, 
@@ -21,6 +23,8 @@ import {
   Lock
 } from 'lucide-react'
 import { useIndustryConfig } from '@/hooks/useIndustryConfig'
+import { useBusinessProfile } from '@/hooks/useBusinessProfile'
+import { generateInsights } from '@/lib/intelligence/engine'
 import { IndustryWidget } from '@/components/dashboard/IndustryWidget'
 import { DataHealthCard } from '@/components/dashboard/DataHealthCard'
 
@@ -68,6 +72,21 @@ interface DashboardData {
 export default function OwnerDashboard() {
   const router = useRouter()
   const supabase = createClient()
+  const { profile } = useBusinessProfile()
+  
+  const { data: topInsights = [] } = useQuery({
+    queryKey: ['top-insights', profile?.id],
+    queryFn: async () => {
+      const all = await generateInsights(
+        profile!.id,
+        profile?.currency || 'PKR'
+      )
+      return all.slice(0, 2)
+    },
+    enabled: !!profile?.id,
+    staleTime: 10 * 60 * 1000,
+  })
+
   const isElectron = typeof window !== 'undefined' && (
     !!(window as any).electronWindow || 
     !!(window as any).electron ||
@@ -439,6 +458,39 @@ export default function OwnerDashboard() {
                       sub="Replenish stock units to avoid floor bottlenecks."
                     />
                   )}
+                </div>
+              )}
+
+              {/* Business Intelligence Preview Widget */}
+              {topInsights.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 my-4">
+                  {topInsights.map(insight => (
+                    <Link
+                      key={insight.id}
+                      href="/intelligence"
+                      className={`block p-4 rounded-sm border transition-colors hover:opacity-90 ${
+                        insight.type === 'critical'
+                          ? 'border-red-500/25 bg-red-500/8'
+                          : insight.type === 'warning'
+                          ? 'border-amber-500/20 bg-amber-500/8'
+                          : insight.type === 'positive'
+                          ? 'border-emerald-500/20 bg-emerald-500/8'
+                          : 'border-blue-500/20 bg-blue-500/8'
+                      }`}
+                    >
+                      <p className={`text-xs font-bold ${
+                        insight.type === 'critical' ? 'text-red-400'
+                          : insight.type === 'warning' ? 'text-amber-400'
+                          : insight.type === 'positive' ? 'text-emerald-400'
+                          : 'text-blue-400'
+                      }`}>
+                        {insight.title}
+                      </p>
+                      <p className="text-[10px] text-gray-500 mt-1 leading-normal">
+                        {insight.detail.slice(0, 80)}...
+                      </p>
+                    </Link>
+                  ))}
                 </div>
               )}
 

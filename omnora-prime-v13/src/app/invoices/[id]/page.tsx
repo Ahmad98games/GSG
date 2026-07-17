@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useOptimisticMutation } from "@/hooks/useOptimisticMutation";
 import { 
   Download, MessageCircle, 
   Trash2, Copy, Printer, CheckCircle2,
@@ -42,6 +43,7 @@ interface Party {
 
 interface Invoice {
   id: string;
+  business_id: string;
   invoice_no: string;
   issue_date: string;
   due_date: string | null;
@@ -52,7 +54,7 @@ interface Invoice {
   total: number;
   paid_amount: number;
   balance_due: number;
-  status: 'paid' | 'overdue' | 'amber';
+  status: 'paid' | 'overdue' | 'amber' | 'draft' | 'voided' | 'posted';
   party_id: string;
   party?: Party;
 }
@@ -117,6 +119,7 @@ const Badge = ({ children, variant = "default" }: BadgeProps) => {
 
 export default function InvoiceDetailPage() {
   const params = useParams();
+  const invoiceId = params.id as string;
   const router = useRouter();
   const { fmt, businessId } = usePersona();
   const { profile } = useBusinessProfile();
@@ -131,6 +134,118 @@ export default function InvoiceDetailPage() {
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [paymentNote, setPaymentNote] = useState('');
   const [recordingPayment, setRecordingPayment] = useState(false);
+
+  const { mutate: updateInvoiceStatus } = useOptimisticMutation<any, any>({
+    queryKey: ['invoice', invoiceId],
+    optimisticUpdate: (current, variables) => {
+      if (!current || !current.length) return current;
+      return [{
+        ...current[0],
+        status: variables.status,
+        voided_at: variables.status === 'voided' ? new Date().toISOString() : current[0].voided_at
+      }];
+    },
+    mutationFn: async (variables) => {
+      const { error } = await supabase
+        .from('invoices')
+        .update({
+          status: variables.status,
+          voided_at: variables.status === 'voided' ? new Date().toISOString() : null,
+        })
+        .eq('id', invoiceId)
+        .eq('business_id', profile?.id);
+      if (error) throw error;
+    },
+    successMessage: 'Invoice updated',
+    invalidateKeys: [
+      ['invoices', profile?.id],
+      ['dashboard'],
+      ['reports'],
+    ],
+  });
+
+  const { mutate: mutateRecordPayment } = useOptimisticMutation<any, any>({
+    queryKey: ['invoice', invoiceId],
+    optimisticUpdate: (current, variables) => {
+      if (!current || !current.length) return current;
+      const inv = current[0];
+      const newPaidAmount = (inv.paid_amount || 0) + variables.amount;
+      const newBalanceDue = Math.max(0, (inv.total || 0) - newPaidAmount);
+      return [{
+        ...inv,
+        paid_amount: newPaidAmount,
+        balance_due: newBalanceDue,
+        status: newBalanceDue <= 0.01 ? 'paid' : 'posted',
+      }];
+    },
+    mutationFn: async (variables) => {
+      if (!profile) throw new Error('Business profile not loaded');
+      const { error: payError } = await supabase
+        .from('payments')
+        .insert({
+          business_id: profile.id,
+          invoice_id: invoiceId,
+          party_id: variables.partyId,
+          amount: variables.amount,
+          payment_method: variables.paymentMethod,
+          payment_date: variables.paymentDate,
+          notes: variables.notes || null,
+          received_by: 'Hub',
+        });
+      if (payError) throw payError;
+
+      const { error: invError } = await supabase
+        .from('invoices')
+        .update({
+          paid_amount: variables.newPaidAmount,
+          balance_due: variables.newBalanceDue,
+          status: variables.isFullyPaid ? 'paid' : 'posted',
+        })
+        .eq('id', invoiceId);
+      if (invError) throw invError;
+
+      const { error: ledgerError } = await supabase
+        .from('ledger_entries')
+        .insert({
+          business_id: profile.id,
+          invoice_id: invoiceId,
+          party_id: variables.partyId,
+          entry_date: variables.paymentDate,
+          debit_amount: 0,
+          credit_amount: variables.amount,
+          debit_account: null,
+          credit_account: 'accounts_receivable',
+          account_code: '1100',
+          description: `Payment received — INV ${variables.invoiceNo}`,
+          voucher_type: 'payment',
+          posted_by: profile.id,
+        });
+      if (ledgerError) throw ledgerError;
+
+      try {
+        const { data: partyRow } = await supabase
+          .from('parties')
+          .select('current_balance')
+          .eq('id', variables.partyId)
+          .single();
+        if (partyRow) {
+          await supabase
+            .from('parties')
+            .update({ current_balance: (partyRow.current_balance || 0) - variables.amount })
+            .eq('id', variables.partyId);
+        }
+      } catch (balanceErr) {
+        console.warn('Party balance update failed — ledger is source of truth', balanceErr);
+      }
+    },
+    successMessage: 'Payment recorded',
+    invalidateKeys: [
+      ['invoices', profile?.id],
+      ['invoice_payments', invoiceId],
+      ['parties', profile?.id],
+      ['reports', profile?.id],
+    ],
+  });
 
   // ── Record Payment handler ──
   const handleRecordPayment = async () => {
@@ -153,85 +268,40 @@ export default function InvoiceDetailPage() {
       const newBalanceDue = (invoice.total || 0) - newPaidAmount;
       const isFullyPaid = newBalanceDue <= 0.01;
 
-      // 1. Insert payment record
-      const { error: payError } = await supabase
-        .from('payments')
-        .insert({
-          business_id: profile.id,
+      await mutateRecordPayment({
+        table: 'payments',
+        operation: 'insert',
+        data: {
+          business_id: profile?.id,
           invoice_id: invoice.id,
           party_id: invoice.party_id,
           amount,
           payment_method: paymentMethod,
           payment_date: paymentDate,
           notes: paymentNote || null,
-          received_by: 'Hub',
-        });
-      if (payError) throw payError;
+          received_by: 'Hub'
+        },
+        amount,
+        partyId: invoice.party_id,
+        paymentMethod,
+        paymentDate,
+        notes: paymentNote,
+        invoiceNo: invoice.invoice_no,
+        newPaidAmount,
+        newBalanceDue,
+        isFullyPaid
+      });
 
-      // 2. Update invoice paid_amount + balance_due + status
-      const { error: invError } = await supabase
-        .from('invoices')
-        .update({
-          paid_amount: newPaidAmount,
-          balance_due: newBalanceDue,
-          status: isFullyPaid ? 'paid' : 'posted',
-        })
-        .eq('id', invoice.id);
-      if (invError) throw invError;
-
-      // 3. Ledger credit entry (keeps Aging Report accurate)
-      const { error: ledgerError } = await supabase
-        .from('ledger_entries')
-        .insert({
-          business_id: profile.id,
-          invoice_id: invoice.id,
-          party_id: invoice.party_id,
-          entry_date: paymentDate,
-          debit_amount: 0,
-          credit_amount: amount,
-          debit_account: null,
-          credit_account: 'accounts_receivable',
-          account_code: '1100',
-          description: `Payment received — INV ${invoice.invoice_no}`,
-          voucher_type: 'payment',
-          posted_by: profile.id,
-        });
-      if (ledgerError) throw ledgerError;
-
-      // 4. Decrement party balance (non-fatal — ledger is source of truth)
-      try {
-        const { data: partyRow } = await supabase
-          .from('parties')
-          .select('current_balance')
-          .eq('id', invoice.party_id)
-          .single();
-        if (partyRow) {
-          await supabase
-            .from('parties')
-            .update({ current_balance: (partyRow.current_balance || 0) - amount })
-            .eq('id', invoice.party_id);
-        }
-      } catch (balanceErr) {
-        console.warn('Party balance update failed — ledger is source of truth', balanceErr);
-      }
-
-      // 5. Refresh queries
-      await queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] });
-      await queryClient.invalidateQueries({ queryKey: ['invoice_payments', invoiceId] });
-
-      toast.success(`Payment of ${fmt(amount)} recorded`);
       setShowPaymentModal(false);
       setPaymentAmount('');
       setPaymentNote('');
       setPaymentDate(new Date().toISOString().split('T')[0]);
     } catch (err: any) {
-      toast.error(`Payment failed: ${humanizeError(err, 'record payment')}`);
+      // Ignored or logged
     } finally {
       setRecordingPayment(false);
     }
   };
-  
-  const invoiceId = params.id as string;
 
   // Queries
   const { data: invoice, isLoading: invoiceLoading } = useQuery<Invoice>({
@@ -803,26 +873,97 @@ export default function InvoiceDetailPage() {
                         </div>
                         <ChevronRight size={14} className="text-gray-700 group-hover:translate-x-1 transition-transform" />
                      </button>
-                     <button
-                       onClick={async () => {
-                         if (!confirm('Void this invoice? This cannot be undone.')) return;
-                         
-                         const { error } = await supabase
-                           .from('invoices')
-                           .update({
-                             status: 'voided',
-                             voided_at: new Date().toISOString(),
-                           })
-                           .eq('id', invoice.id)
-                           .eq('business_id', profile?.id);
+                     {invoice.status === 'draft' && (
+                        <button
+                          onClick={async () => {
+                            if (!confirm('Are you sure you want to permanently delete this draft invoice?')) return;
+                            
+                            try {
+                              const backupInvoice = { ...invoice };
+                              const backupItems = [...(items || [])];
+                              
+                              const { error } = await supabase
+                                .from('invoices')
+                                .delete()
+                                .eq('id', invoice.id);
+                                
+                              if (!error) {
+                                import('@/stores/undoStore').then(({ useUndoStore }) => {
+                                  useUndoStore.getState().pushAction({
+                                    description: `Deleted Invoice ${backupInvoice.invoice_no}`,
+                                    undo: async () => {
+                                      const supabaseClient = createClient();
+                                      const { data: newInv, error: invErr } = await supabaseClient
+                                        .from('invoices')
+                                        .insert({
+                                          id: backupInvoice.id,
+                                          business_id: backupInvoice.business_id,
+                                          party_id: backupInvoice.party_id,
+                                          invoice_no: backupInvoice.invoice_no,
+                                          status: backupInvoice.status,
+                                          issue_date: backupInvoice.issue_date,
+                                          due_date: backupInvoice.due_date,
+                                          subtotal: backupInvoice.subtotal,
+                                          discount_pct: (backupInvoice as any).discount_pct || 0,
+                                          discount_amount: backupInvoice.discount_amount,
+                                          tax_pct: backupInvoice.tax_pct,
+                                          tax_amount: backupInvoice.tax_amount,
+                                          total: backupInvoice.total,
+                                          notes: (backupInvoice as any).notes || null,
+                                        })
+                                        .select()
+                                        .single();
+                                        
+                                      if (!invErr && newInv && backupItems.length > 0) {
+                                        await supabaseClient.from('invoice_items').insert(
+                                          backupItems.map((item: any) => ({
+                                            invoice_id: newInv.id,
+                                            sku_id: item.sku_id || null,
+                                            description: item.description,
+                                            qty: item.qty,
+                                            unit: item.unit,
+                                            unit_price: item.unit_price,
+                                          }))
+                                        );
+                                      }
+                                    }
+                                  });
+                                });
 
-                         if (!error) {
-                           toast.success('Invoice voided');
-                           window.location.reload();
-                         } else {
-                           toast.error('Void invoice failed', humanizeError(error, 'void invoice'));
-                         }
-                       }}
+                                toast.success('Invoice deleted', { message: 'Press Ctrl+Z to undo' });
+                                router.push('/invoices');
+                              } else {
+                                toast.error('Delete invoice failed', humanizeError(error, 'delete invoice'));
+                              }
+                            } catch (err) {
+                              toast.error('Delete invoice failed', humanizeError(err, 'delete invoice'));
+                            }
+                          }}
+                          className="w-full flex items-center justify-between p-4 bg-red-950/20 hover:bg-red-950/30 border border-red-500/20 transition-all group"
+                        >
+                           <div className="flex items-center space-x-3">
+                              <Trash2 size={14} className="text-red-400" />
+                              <span className="text-[10px] uppercase font-black tracking-widest text-red-400">Delete Draft</span>
+                           </div>
+                           <ChevronRight size={14} className="text-red-500 group-hover:translate-x-1 transition-transform" />
+                        </button>
+                      )}
+                     <button
+                        onClick={async () => {
+                          if (!confirm('Void this invoice? This cannot be undone.')) return;
+                          
+                          await updateInvoiceStatus({
+                            table: 'invoices',
+                            operation: 'update',
+                            matchColumn: 'id',
+                            matchValue: invoice.id,
+                            data: {
+                              status: 'voided',
+                              voided_at: new Date().toISOString(),
+                            },
+                            status: 'voided'
+                          });
+                        }}
                        className="w-full flex items-center justify-between p-4 bg-red-500/5 hover:bg-red-500/10 border border-red-500/10 transition-all group"
                      >
                         <div className="flex items-center space-x-3">

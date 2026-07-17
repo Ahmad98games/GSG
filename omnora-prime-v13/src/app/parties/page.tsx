@@ -28,6 +28,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import * as XLSX from 'xlsx';
 import { useToast } from "@/hooks/useToast";
 import { SharePortalButton } from "@/components/parties/SharePortalButton";
+import { humanizeError } from "@/lib/utils/errors";
 
 interface Party {
   id: string;
@@ -100,6 +101,39 @@ export default function PartiesPage() {
       setSuccessToast(`${party.name} is now ${!party.is_blocked ? 'blocked' : 'unblocked'}`);
     } catch (err: any) {
       alert(`Failed to update party status: ${err.message}`);
+    }
+  };
+
+  const handleDeleteParty = async (party: Party) => {
+    if (!confirm(`Are you sure you want to delete ${party.name}?`)) return;
+    try {
+      const backupParty = { ...party };
+      const { error } = await supabase
+        .from('parties')
+        .delete()
+        .eq('id', party.id);
+        
+      if (!error) {
+        import('@/stores/undoStore').then(({ useUndoStore }) => {
+          useUndoStore.getState().pushAction({
+            description: `Deleted Party ${backupParty.name}`,
+            undo: async () => {
+              const supabaseClient = createClient();
+              await supabaseClient
+                .from('parties')
+                .insert(backupParty);
+              queryClient.invalidateQueries({ queryKey: ['parties_registry'] });
+            }
+          });
+        });
+        
+        toast.success(`${party.name} deleted`, { message: 'Press Ctrl+Z to undo' });
+        queryClient.invalidateQueries({ queryKey: ['parties_registry'] });
+      } else {
+        toast.error('Failed to delete party', humanizeError(error, 'delete party'));
+      }
+    } catch (err) {
+      toast.error('Failed to delete party', humanizeError(err, 'delete party'));
     }
   };
 
@@ -348,16 +382,17 @@ export default function PartiesPage() {
                     >
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {chunkedRows[virtualRow.index].map((party: Party) => (
-                          <PartyCard 
-                            key={party.id} 
-                            party={party} 
-                            fmt={fmt} 
-                            onView={() => router.push(`/parties/${party.id}`)}
-                            openMenu={openMenu}
-                            setOpenMenu={setOpenMenu}
-                            onToggleBlock={() => handleToggleBlock(party)}
-                            onEdit={() => router.push(`/parties/${party.id}/edit`)}
-                          />
+                           <PartyCard 
+                             key={party.id} 
+                             party={party} 
+                             fmt={fmt} 
+                             onView={() => router.push(`/parties/${party.id}`)}
+                             openMenu={openMenu}
+                             setOpenMenu={setOpenMenu}
+                             onToggleBlock={() => handleToggleBlock(party)}
+                             onEdit={() => router.push(`/parties/${party.id}/edit`)}
+                             onDelete={() => handleDeleteParty(party)}
+                           />
                         ))}
                       </div>
                     </div>
@@ -398,7 +433,8 @@ const PartyCard = React.memo(function PartyCard({
   openMenu,
   setOpenMenu,
   onToggleBlock,
-  onEdit
+  onEdit,
+  onDelete
 }: { 
   party: Party, 
   fmt: (n: number) => string, 
@@ -406,7 +442,8 @@ const PartyCard = React.memo(function PartyCard({
   openMenu: string | null,
   setOpenMenu: (id: string | null) => void,
   onToggleBlock: () => void,
-  onEdit: () => void
+  onEdit: () => void,
+  onDelete: () => void
 }) {
   const balance = Number(party.current_balance);
   const isOwed = balance > 0;
@@ -489,17 +526,30 @@ const PartyCard = React.memo(function PartyCard({
                    >
                      Edit Party
                    </button>
-                   <button 
-                     type="button"
-                     onClick={(e) => {
-                       e.stopPropagation();
-                       onToggleBlock();
-                       setOpenMenu(null);
-                     }}
-                     className="w-full text-left px-4 py-2 hover:bg-white/5 text-red-400 hover:text-red-300 hover:bg-red-500/5 transition-colors font-bold"
-                   >
-                     {party.is_blocked ? "Unblock Account" : "Block Account"}
-                   </button>
+                    <button 
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleBlock();
+                        setOpenMenu(null);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-white/5 text-red-400 hover:text-red-300 hover:bg-red-500/5 transition-colors font-bold"
+                    >
+                      {party.is_blocked ? "Unblock Account" : "Block Account"}
+                    </button>
+                    {Number(party.current_balance || 0) === 0 && (
+                      <button 
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete();
+                          setOpenMenu(null);
+                        }}
+                        className="w-full text-left px-4 py-2 hover:bg-white/5 text-red-500 hover:text-red-400 hover:bg-red-500/5 transition-colors font-bold"
+                      >
+                        Delete Party
+                      </button>
+                    )}
                  </div>
                )}
              </div>

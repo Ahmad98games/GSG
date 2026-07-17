@@ -17,6 +17,7 @@ import { Decimal } from "decimal.js";
 import { cn } from "@/lib/utils";
 import { openWhatsApp, WA_TEMPLATES } from "@/lib/utils/whatsapp";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
+import { useBranchStore } from "@/stores/branchStore";
 import { MessageCircle } from "lucide-react";
 import { format } from "date-fns";
 import { Skeleton, KpiCardSkeleton } from "@/components/ui/Skeleton";
@@ -26,6 +27,7 @@ export default function ReportsHubPage() {
   const { taxLabel, fmt, businessId } = usePersona();
   const { profile } = useBusinessProfile();
   const supabase = createClient();
+  const { currentBranchId, currentBranchName } = useBranchStore();
 
   const handleSendSummaryToOwner = () => {
     const phone = profile?.owner_phone || (profile as any)?.phone;
@@ -61,15 +63,21 @@ export default function ReportsHubPage() {
 
   // Live Data Fetches
   const { data: plData, error: plError, refetch: refetchPl, isPending: plPending } = useQuery({
-    queryKey: ['report-summary-pl', businessId],
+    queryKey: ['report-summary-pl', businessId, currentBranchId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('ledger_entries')
         .select('amount, entry_type, accounts!inner(type)')
         .eq('business_id', businessId)
         .eq('status', 'posted')
         .gte('posted_at', startOfMonth)
         .lte('posted_at', endOfMonth + 'T23:59:59.999Z');
+
+      if (currentBranchId) {
+        query = query.eq('branch_id', currentBranchId);
+      }
+
+      const { data, error } = await query;
       // Gracefully handle missing accounts table (new business)
       if (error && error.code !== 'PGRST116' && !error.message?.includes('accounts')) {
         throw error;
@@ -102,13 +110,19 @@ export default function ReportsHubPage() {
   });
 
   const { data: tbData, isPending: tbPending } = useQuery({
-    queryKey: ['report-summary-tb', businessId],
+    queryKey: ['report-summary-tb', businessId, currentBranchId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('ledger_entries')
         .select('amount, entry_type')
         .eq('business_id', businessId)
         .eq('status', 'posted');
+
+      if (currentBranchId) {
+        query = query.eq('branch_id', currentBranchId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
 
       let totalDebits = new Decimal(0);
@@ -135,13 +149,19 @@ export default function ReportsHubPage() {
   });
 
   const { data: bsData, error: bsError, refetch: refetchBs, isPending: bsPending } = useQuery({
-    queryKey: ['report-summary-bs', businessId],
+    queryKey: ['report-summary-bs', businessId, currentBranchId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('ledger_entries')
         .select('amount, entry_type, accounts!inner(type, account_code)')
         .eq('business_id', businessId)
         .eq('status', 'posted');
+
+      if (currentBranchId) {
+        query = query.eq('branch_id', currentBranchId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
 
       let totalAssets = new Decimal(0);
@@ -168,14 +188,20 @@ export default function ReportsHubPage() {
   });
 
   const { data: receivablesData, error: recError, refetch: refetchRec, isPending: recPending } = useQuery({
-    queryKey: ['report-summary-receivables', businessId],
+    queryKey: ['report-summary-receivables', businessId, currentBranchId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('ledger_entries')
         .select('amount, entry_type, accounts!inner(account_code)')
         .eq('business_id', businessId)
         .eq('status', 'posted')
         .eq('accounts.account_code', '1100');
+
+      if (currentBranchId) {
+        query = query.eq('branch_id', currentBranchId);
+      }
+
+      const { data, error } = await query;
       // Gracefully handle missing accounts (new business with no chart of accounts)
       if (error && error.code !== 'PGRST116' && !error.message?.includes('accounts')) {
         throw error;
@@ -211,13 +237,19 @@ export default function ReportsHubPage() {
   });
 
   const { data: ledgerData } = useQuery({
-    queryKey: ['report-summary-ledger', businessId],
+    queryKey: ['report-summary-ledger', businessId, currentBranchId],
     queryFn: async () => {
-      const { count, error } = await supabase
+      let query = supabase
         .from('ledger_entries')
         .select('*', { count: 'exact', head: true })
         .eq('business_id', businessId)
         .gte('posted_at', startOfMonth);
+
+      if (currentBranchId) {
+        query = query.eq('branch_id', currentBranchId);
+      }
+
+      const { count, error } = await query;
       if (error) throw error;
       return count || 0;
     },
@@ -225,12 +257,18 @@ export default function ReportsHubPage() {
   });
 
   const { data: stockData } = useQuery({
-    queryKey: ['report-summary-stock', businessId],
+    queryKey: ['report-summary-stock', businessId, currentBranchId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('skus')
         .select('qty_on_hand, cost_price')
         .eq('business_id', businessId);
+
+      if (currentBranchId) {
+        query = query.eq('branch_id', currentBranchId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data.reduce((acc: Decimal, sku: any) => acc.plus(new Decimal(sku.qty_on_hand || 0).times(sku.cost_price || 0)), new Decimal(0));
     },
@@ -238,15 +276,20 @@ export default function ReportsHubPage() {
   });
 
   const { data: payrollData } = useQuery({
-    queryKey: ['report-summary-payroll', businessId],
+    queryKey: ['report-summary-payroll', businessId, currentBranchId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('payroll_periods')
         .select('total_payroll')
         .eq('business_id', businessId)
         .gte('period_start', startOfMonth)
-        .lte('period_end', endOfMonth)
-        .single();
+        .lte('period_end', endOfMonth);
+
+      if (currentBranchId) {
+        query = query.eq('branch_id', currentBranchId);
+      }
+
+      const { data, error } = await query.single();
       if (error && error.code !== 'PGRST116') throw error;
       return new Decimal(data?.total_payroll || 0);
     },
@@ -405,10 +448,21 @@ export default function ReportsHubPage() {
 
       <main className="max-w-[1600px] mx-auto space-y-6">
         <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight text-white">
-              Intelligence Hub
-            </h1>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-semibold tracking-tight text-white">
+                Intelligence Hub
+              </h1>
+              {currentBranchId ? (
+                <span className="text-[10px] bg-[#60A5FA]/10 text-[#60A5FA] border border-[#60A5FA]/20 px-2 py-0.5 rounded-sm font-bold">
+                  {currentBranchName}
+                </span>
+              ) : (
+                <span className="text-[10px] bg-white/5 text-gray-550 border border-white/8 px-2 py-0.5 rounded-sm font-bold font-mono">
+                  ALL BRANCHES CONSOLIDATED
+                </span>
+              )}
+            </div>
             <p className="text-xs text-gray-500 mt-0.5">
               Real-time Financial & Operational Analytics
             </p>

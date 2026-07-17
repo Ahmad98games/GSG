@@ -116,7 +116,7 @@ export function FeedbackModal({
           insertError.code === 'PGRST205' ||
           insertError.message?.includes('schema cache')
         ) {
-          setError('Feedback system not configured. Contact: +92 333 435 5475')
+          setError('Feedback system not configured. Contact: +92 326 4742678')
           console.error('feedback table missing:', insertError)
           return
         }

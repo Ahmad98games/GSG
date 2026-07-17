@@ -62,8 +62,8 @@ export default function DevicesPage() {
 
   useEffect(() => {
     load();
-    // Auto-refresh every 15s to show heartbeat updates
-    const interval = setInterval(load, 15_000);
+    // Auto-refresh every 5 minutes to check heartbeat updates without draining resources.
+    const interval = setInterval(load, 300000);
     return () => clearInterval(interval);
   }, [load]);
 

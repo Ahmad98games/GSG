@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useAnimation } from "framer-motion";
 
 export function useRowHighlight(value: unknown) {
   const controls = useAnimation();
   const prevValue = useRef(value);
-  const [isFirstRender, setIsFirstRender] = useState(true);
+  const isFirstRender = useRef(true);
 
   useEffect(() => {
-    if (isFirstRender) {
-      setIsFirstRender(false);
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
       return;
     }
 
@@ -21,7 +21,7 @@ export function useRowHighlight(value: unknown) {
       });
       prevValue.current = value;
     }
-  }, [value, controls, isFirstRender]);
+  }, [value, controls]);
 
   return controls;
 }
