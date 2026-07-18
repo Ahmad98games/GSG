@@ -14,12 +14,12 @@ import { deriveDbKey } from '../src/lib/security/dbKeyManager'
 // 0. GLOBAL REFERENCES
 // ─────────────────────────────────────────────
 try {
-  fs.writeFileSync('C:\\Users\\omnora\\OneDrive\\Desktop\\new_system\\omnora-prime-v13\\debug-startup.txt', `Start execution: packaged=${app.isPackaged}\n`);
-} catch (e: any) {
-  try {
-    fs.writeFileSync(path.join(app.getPath('userData'), 'debug-startup.txt'), `Start execution: error=${e.message}\n`);
-  } catch {}
-}
+  // Write to userData if packaged, or to cwd if dev — never use a hardcoded path
+  const debugPath = app.isPackaged
+    ? path.join(app.getPath('userData'), 'debug-startup.txt')
+    : path.join(process.cwd(), 'debug-startup.txt');
+  fs.writeFileSync(debugPath, `Start execution: packaged=${app.isPackaged}\n`);
+} catch {}
 let mainWindow: BrowserWindow | null = null;
 let splashWindow: BrowserWindow | null = null;
 let nextServer: ChildProcess | UtilityProcess | null = null;

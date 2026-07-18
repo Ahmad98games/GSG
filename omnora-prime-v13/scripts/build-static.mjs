@@ -10,6 +10,32 @@ let hiddenDirs = [];
 
 let buildFailed = false;
 
+// ── Restore hidden dirs on any exit (Ctrl-C, SIGTERM, crash) ─────────────────
+function restoreHiddenDirs() {
+  if (hiddenDirs.length === 0) return;
+  console.log('[Build] Restoring hidden directories (signal/exit handler)...');
+  for (const dir of hiddenDirs) {
+    try {
+      const source = path.join(tempPath, dir);
+      const dest = path.join(appPath, dir);
+      if (fs.existsSync(source)) {
+        robustRmSync(dest);
+        fs.cpSync(source, dest, { recursive: true });
+        robustRmSync(source);
+      }
+    } catch (e) {
+      console.error(`[Build] Failed to restore ${dir}:`, e.message);
+    }
+  }
+  hiddenDirs = [];
+  robustRmSync(tempPath);
+}
+
+process.on('SIGINT',  () => { restoreHiddenDirs(); process.exit(130); });
+process.on('SIGTERM', () => { restoreHiddenDirs(); process.exit(143); });
+process.on('exit',    () => { restoreHiddenDirs(); });
+
+
 function robustRmSync(targetPath) {
   let attempts = 10;
   while (attempts > 0) {
@@ -69,22 +95,9 @@ try {
   console.error('[Build] Compilation failed:', err.message);
   buildFailed = true;
 } finally {
-  // Restore all hidden directories
-  if (hiddenDirs.length > 0) {
-    console.log('[Build] Restoring all hidden directories...');
-    for (const dir of hiddenDirs) {
-      const source = path.join(tempPath, dir);
-      const dest = path.join(appPath, dir);
-      if (fs.existsSync(source)) {
-        robustRmSync(dest);
-        fs.cpSync(source, dest, { recursive: true });
-        robustRmSync(source);
-      }
-    }
-  }
-
-  // Clean up temp directory
-  robustRmSync(tempPath);
+  // Restore is handled by process.on('exit') handler above.
+  // Call explicitly here in case the exit handler runs too late.
+  restoreHiddenDirs();
 }
 
 if (buildFailed) {

@@ -181,6 +181,7 @@ export default function PricingClient() {
               { label: "10 AI Document Scans Per Day", included: true },
               { label: "1GB Local Secure Storage", included: true },
               { label: "Manual WhatsApp Sharing", included: true },
+              { label: "1 Noxis Mobile Device (Coming Soon)", included: true },
             ]}
             cta="Deploy Lite"
             onPurchase={handlePurchase}
@@ -205,6 +206,7 @@ export default function PricingClient() {
               { label: "Scheduled WhatsApp Summaries", included: true },
               { label: "Up to 5 Synchronized Staff Users", included: true },
               { label: "5GB Local Secure Storage", included: true },
+              { label: "4 Noxis Mobile Devices (Coming Soon)", included: true },
             ]}
             cta="Deploy Pro"
             onPurchase={handlePurchase}
@@ -228,6 +230,7 @@ export default function PricingClient() {
               { label: "Industrial Safety Analytics", included: true },
               { label: "10GB Local Secure Storage", included: true },
               { label: "Priority Engineering Support Matrix", included: true },
+              { label: "15 Noxis Mobile Devices (Coming Soon)", included: true, highlight: true },
             ]}
             cta="Request Elite"
             onPurchase={handlePurchase}
