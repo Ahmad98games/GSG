@@ -17,6 +17,7 @@ import { useRouter } from 'next/navigation';
 import InvoiceSelector from "@/components/ui/InvoiceSelector";
 import { humanizeError } from '@/lib/utils/errors';
 import { Skeleton } from "@/components/ui/Skeleton";
+import { generateDeliveryChallan } from '@/lib/dispatch/generateChallan';
 
 // --- Types ---
 interface DispatchOrder {
@@ -624,6 +625,34 @@ function DispatchNote({ order, onBack, profile }: { order: DispatchOrder, onBack
              <p className="text-[8px] font-black uppercase text-gray-400 tracking-widest">Noxis Industrial Cloud Fulfillment • Transaction Verifiable via Hub Node</p>
              <button onClick={onBack} className="print:hidden px-8 py-2 bg-black text-white text-[10px] font-bold uppercase tracking-widest hover:bg-gray-800 transition-all">Back to Dashboard</button>
              <button onClick={() => window.print()} className="print:hidden ml-4 px-8 py-2 border border-black text-black text-[10px] font-bold uppercase tracking-widest hover:bg-gray-50 transition-all">Execute Print</button>
+             <button
+                onClick={() => generateDeliveryChallan({
+                  businessName: profile?.business_name || 'Noxis Hub',
+                  businessAddress: profile?.address || undefined,
+                  businessPhone: profile?.phone || undefined,
+                  challanNumber: order.invoice_no,
+                  challanDate: new Date(order.issue_date).toLocaleDateString('en-PK'),
+                  dispatchOrder: {
+                    id: order.id,
+                    vehicle_number: order.metadata.vehicle_info,
+                    driver_name: order.metadata.driver_name,
+                    delivery_address: order.party.address,
+                  },
+                  party: {
+                    name: order.party.name,
+                    address: order.party.address,
+                  },
+                  items: order.items.map(item => ({
+                    name: item.description,
+                    quantity: item.qty,
+                    unit: item.unit,
+                  })),
+                  currency: (profile as any)?.currency || 'PKR',
+                })}
+                className="print:hidden ml-4 px-8 py-2 bg-blue-600 text-white text-[10px] font-bold uppercase tracking-widest hover:bg-blue-700 transition-all"
+              >
+                📄 Print Challan PDF
+              </button>
           </div>
        </div>
 

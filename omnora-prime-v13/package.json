@@ -78,6 +78,7 @@
     "heic-convert": "^2.1.0",
     "jsbarcode": "^3.12.3",
     "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "jszip": "^3.10.1",
     "lucide-react": "^1.17.0",
     "mammoth": "^1.12.0",
@@ -96,6 +97,7 @@
     "react-dropzone": "^15.0.0",
     "react-hook-form": "^7.51.0",
     "react-joyride": "^3.1.0",
+    "react-qr-code": "^2.2.0",
     "react-zxing": "^1.1.3",
     "recharts": "^3.8.1",
     "serve-static": "^2.2.1",
@@ -142,36 +144,5 @@
     "typescript": "^5",
     "vite": "^8.1.4",
     "vitest": "^4.1.10"
-  },
-  "build": {
-    "appId": "com.omnora.noxishub",
-    "productName": "Noxis Hub",
-    "npmRebuild": false,
-    "directories": {
-      "output": "dist"
-    },
-    "files": [
-      "dist-electron/**/*",
-      "out/**/*",
-      "package.json"
-    ],
-    "extraResources": [
-      {
-        "from": ".next/standalone",
-        "to": "standalone",
-        "filter": [
-          "**/*"
-        ]
-      }
-    ],
-    "asar": true,
-    "asarUnpack": [
-      "**/standalone/**/*",
-      "**/node_modules/better-sqlite3/**/*",
-      "**/node_modules/better-sqlite3-multiple-ciphers/**/*"
-    ],
-    "win": {
-      "target": "nsis"
-    }
   }
 }

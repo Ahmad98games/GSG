@@ -1277,9 +1277,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       } catch (e: any) {
         startupLog(`[FATAL] Cannot read server file: ${e.message}`);
       }
+      const standaloneDir = path.join(resourcesPath, 'standalone');
+      const standaloneNodeModules = path.join(standaloneDir, 'node_modules');
       startupLog(`[Electron] NODE_PATH will be: ${[
         sqlitePath,
-        path.join(resourcesPath, '.next', 'standalone', 'node_modules'),
+        standaloneNodeModules,
+        standaloneDir,
       ].join(path.delimiter)}`);
 
       // ── FIX D: Dedicated stderr file written synchronously ──
@@ -1318,12 +1321,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
           // the native sqlite binding
           NODE_PATH: [
             sqlitePath,
-            path.join(resourcesPath, 'app.asar', 'node_modules'),
-            path.join(resourcesPath, 'app.asar.unpacked', 'node_modules'),
             path.join(resourcesPath, 'standalone', 'node_modules'),
             path.join(resourcesPath, 'standalone'),
-            path.join(resourcesPath, '.next', 'standalone', 'node_modules'),
-            path.join(resourcesPath, '.next', 'standalone'),
+            path.join(resourcesPath, 'app.asar.unpacked', 'node_modules'),
           ].join(path.delimiter),
 
           // Native module path override

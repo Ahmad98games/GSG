@@ -7,7 +7,7 @@ import {
   Download, MessageCircle, 
   Trash2, Copy, Printer, CheckCircle2,
   AlertTriangle, History,
-  ArrowLeft, ChevronRight
+  ArrowLeft, ChevronRight, RotateCcw
 } from "lucide-react";
 import { usePersona } from "@/hooks/usePersona";
 import { createClient } from "@/lib/supabase/client";
@@ -972,6 +972,57 @@ export default function InvoiceDetailPage() {
                         </div>
                         <span className="text-[8px] font-black text-red-500/50 uppercase tracking-widest group-hover:text-red-500 transition-colors">Confirm Void</span>
                      </button>
+                      {['posted', 'overdue', 'amber', 'paid'].includes(invoice.status) && (
+                        <button
+                          onClick={async () => {
+                            if (!confirm('Issue a Credit Note against this invoice? This creates a negative draft invoice for the full amount.')) return;
+                            const creditNo = `CN-${invoice.invoice_no}`;
+                            const { data: cn, error: cnErr } = await supabase
+                              .from('invoices')
+                              .insert({
+                                business_id: (invoice as any).business_id || businessId,
+                                party_id: invoice.party_id,
+                                invoice_no: creditNo,
+                                status: 'draft',
+                                issue_date: new Date().toISOString().split('T')[0],
+                                due_date: invoice.due_date,
+                                subtotal: -invoice.subtotal,
+                                discount_amount: -invoice.discount_amount,
+                                tax_pct: invoice.tax_pct,
+                                tax_amount: -invoice.tax_amount,
+                                total: -invoice.total,
+                                notes: `Credit Note against ${invoice.invoice_no}`,
+                              })
+                              .select()
+                              .single();
+                            if (cnErr) {
+                              toast.error('Credit note failed', humanizeError(cnErr, 'create credit note'));
+                              return;
+                            }
+                            if (cn && items && items.length > 0) {
+                              await supabase.from('invoice_items').insert(
+                                items.map((item: any) => ({
+                                  invoice_id: cn.id,
+                                  sku_id: item.sku_id || null,
+                                  description: `[RETURN] ${item.description}`,
+                                  qty: -item.qty,
+                                  unit: item.unit,
+                                  unit_price: item.unit_price,
+                                }))
+                              );
+                            }
+                            toast.success('Credit note created', { message: `Draft ${creditNo} ready to review.` });
+                            if (cn) router.push(`/invoices/${cn.id}`);
+                          }}
+                          className="w-full flex items-center justify-between p-4 bg-purple-500/5 hover:bg-purple-500/10 border border-purple-500/10 transition-all group"
+                        >
+                          <div className="flex items-center space-x-3">
+                            <RotateCcw size={14} className="text-purple-400" />
+                            <span className="text-[10px] uppercase font-black tracking-widest text-purple-400">Issue Credit Note / Return</span>
+                          </div>
+                          <ChevronRight size={14} className="text-purple-500/40 group-hover:translate-x-1 transition-transform" />
+                        </button>
+                      )}
                   </div>
 
                  <div className="space-y-4 pt-8 border-t border-white/5">

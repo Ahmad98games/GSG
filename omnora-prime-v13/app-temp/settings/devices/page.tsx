@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import QRCode from 'react-qr-code';
 import {
   Smartphone, Wifi, WifiOff, Trash2, RefreshCw,
-  ShieldCheck, AlertTriangle, Clock
+  ShieldCheck, AlertTriangle, Clock, QrCode, Globe
 } from 'lucide-react';
 
 interface PairedDevice {
@@ -33,6 +34,8 @@ export default function DevicesPage() {
   const [loading, setLoading] = useState(true);
   const [revoking, setRevoking] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [localUrl, setLocalUrl] = useState<string>('');
+  const [tunnelUrl, setTunnelUrl] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -96,6 +99,28 @@ export default function DevicesPage() {
       l => l.deviceId === d.deviceId || l.deviceId === d.nodeId
     );
     return { ...d, live };
+  });
+
+  // Detect local Hub URL and tunnel URL
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const url = `${window.location.protocol}//${window.location.host}`;
+      setLocalUrl(url);
+    }
+    // Fetch tunnel status
+    fetch('/api/hub/tunnel-status')
+      .then(r => r.json())
+      .then(d => { if (d.tunnelUrl) setTunnelUrl(d.tunnelUrl); })
+      .catch(() => {});
+  }, []);
+
+  const qrPayload = JSON.stringify({
+    v: 1,
+    type: 'noxis-hub-pairing',
+    endpoints: [
+      ...(tunnelUrl ? [{ type: 'tunnel', url: tunnelUrl }] : []),
+      ...(localUrl ? [{ type: 'local', url: localUrl }] : []),
+    ],
   });
 
   const formatTime = (iso: string | null) => {
@@ -211,6 +236,66 @@ export default function DevicesPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Pairing QR Code */}
+      <div className="mb-8 p-5 bg-[#0F1114] border border-white/[0.08] rounded-sm">
+        <div className="flex items-center gap-2 mb-4">
+          <QrCode size={14} className="text-[#60A5FA]" />
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Mobile Pairing QR</p>
+          {tunnelUrl && (
+            <span className="flex items-center gap-1 text-[9px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded font-bold ml-auto">
+              <Globe size={8} /> Tunnel Active
+            </span>
+          )}
+        </div>
+        <div className="flex flex-col sm:flex-row gap-6 items-start">
+          {/* QR */}
+          <div className="flex-shrink-0 p-3 bg-white rounded-sm">
+            {localUrl && (
+              <QRCode
+                value={qrPayload}
+                size={140}
+                bgColor="#FFFFFF"
+                fgColor="#0A0C0F"
+                level="M"
+              />
+            )}
+          </div>
+          {/* Instructions */}
+          <div className="flex-1 space-y-3">
+            <div>
+              <p className="text-xs font-semibold text-white mb-1">How to pair your phone</p>
+              <ol className="space-y-1.5 text-[11px] text-gray-500 list-none">
+                <li><span className="text-[#60A5FA] font-bold mr-1">1.</span>Open the Noxis Mobile app on your Android phone</li>
+                <li><span className="text-[#60A5FA] font-bold mr-1">2.</span>Make sure your phone is on the same WiFi as this PC</li>
+                <li><span className="text-[#60A5FA] font-bold mr-1">3.</span>Tap <strong className="text-white">Scan QR</strong> and point your camera at this code</li>
+                <li><span className="text-[#60A5FA] font-bold mr-1">4.</span>The phone will auto-connect. Your device will appear below.</li>
+              </ol>
+            </div>
+            <div className="space-y-1">
+              {localUrl && (
+                <div className="flex items-center gap-2">
+                  <Wifi size={10} className="text-[#60A5FA] flex-shrink-0" />
+                  <span className="text-[10px] font-mono text-gray-600 truncate">{localUrl}</span>
+                  <span className="text-[9px] text-[#60A5FA] bg-[#60A5FA]/10 px-1.5 py-0.5 rounded font-bold flex-shrink-0">WiFi</span>
+                </div>
+              )}
+              {tunnelUrl && (
+                <div className="flex items-center gap-2">
+                  <Globe size={10} className="text-emerald-400 flex-shrink-0" />
+                  <span className="text-[10px] font-mono text-gray-600 truncate">{tunnelUrl}</span>
+                  <span className="text-[9px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded font-bold flex-shrink-0">Tunnel</span>
+                </div>
+              )}
+              {!tunnelUrl && (
+                <p className="text-[9px] text-gray-700 mt-1">
+                  💡 Set <code className="text-gray-600">CLOUDFLARE_TUNNEL_URL</code> in .env.local to enable remote access via tunnel.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Device list */}
       {allDevices.length === 0 ? (

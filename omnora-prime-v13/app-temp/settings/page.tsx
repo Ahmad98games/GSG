@@ -24,7 +24,8 @@ import {
   Info,
   Globe,
   Users,
-  X
+  X,
+  DollarSign,
 } from "lucide-react";
 
 import { useSidebarState } from "@/hooks/useSidebarState";
@@ -80,6 +81,7 @@ const TABS = [
   { id: 'security', label: 'Security', icon: Lock },
   { id: 'staff', label: 'Staff & Users', icon: Users, href: '/settings/users' },
   { id: 'branches', label: 'Factory Branches', icon: Building2, href: '/settings/branches' },
+  { id: 'opening-balances', label: 'Opening Balances', icon: DollarSign, href: '/settings/opening-balances' },
   { id: 'hardware', label: 'Hardware Integrations', icon: Zap },
   { id: 'data', label: 'Data Management', icon: Database },
   { id: 'backup', label: 'Backup & Restore', icon: Download, href: '/settings/backup' },

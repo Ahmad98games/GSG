@@ -3,8 +3,11 @@ const path = require('path')
 
 const REQUIRED_FILES = [
   '.next/standalone/server.js',
+  '.next/standalone/server-with-bridge.js',
   '.next/standalone/package.json',
   '.next/standalone/node_modules/next/headers.js',
+  '.next/standalone/.next/static',
+  'server-with-bridge.js',
   'build/icon.ico',
 ]
 

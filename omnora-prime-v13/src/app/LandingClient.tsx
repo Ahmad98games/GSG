@@ -231,6 +231,16 @@ export default function LandingClient() {
                     {link.label}
                   </Link>
                 ))}
+                <a
+                  href="#mobile"
+                  className="flex items-center gap-1.5 text-[10px] text-[#94A3B8] hover:text-[#60A5FA] font-bold tracking-[0.18em] uppercase transition-colors"
+                >
+                  <Smartphone size={12} />
+                  Mobile
+                  <span className="text-[8px] font-bold bg-[#60A5FA]/15 text-[#60A5FA] px-1.5 py-0.5 rounded uppercase tracking-wider">
+                    Soon
+                  </span>
+                </a>
               </div>
 
               <div className="hidden lg:flex items-center gap-4">
@@ -279,6 +289,14 @@ export default function LandingClient() {
                         {link.label}
                       </Link>
                     ))}
+                    <a
+                      href="#mobile"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-1.5 text-xs font-bold tracking-widest uppercase text-[#60A5FA] hover:text-blue-300"
+                    >
+                      📱 Mobile
+                      <span className="text-[8px] bg-[#60A5FA]/15 px-1.5 py-0.5 rounded">SOON</span>
+                    </a>
                     <Link
                       href="/dashboard"
                       onClick={() => setMobileMenuOpen(false)}
@@ -663,6 +681,230 @@ export default function LandingClient() {
             </RevealStagger>
           </section>
 
+          {/* ═══ MOBILE HUB SECTION ═══ */}
+          <section id="mobile" className="py-24 px-4 sm:px-6 relative overflow-hidden border-t border-white/[0.04]">
+            {/* Subtle blue glow background */}
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#60A5FA]/[0.03] to-transparent pointer-events-none" />
+
+            <div className="max-w-7xl mx-auto relative">
+              {/* Header */}
+              <Reveal variant="up" className="text-center mb-16">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#60A5FA]/10 border border-[#60A5FA]/20 text-[#60A5FA] text-[10px] font-bold uppercase tracking-widest mb-6">
+                  <div className="w-2 h-2 rounded-full bg-[#60A5FA] animate-pulse" />
+                  Coming Soon
+                </div>
+                <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-4 uppercase">
+                  Noxis Mobile Hub
+                </h2>
+                <p className="text-base text-gray-500 max-w-2xl mx-auto leading-relaxed">
+                  Your factory floor, in your pocket. Works over local WiFi — no internet required.
+                  Pairs with the PC Hub in under 60 seconds.
+                </p>
+              </Reveal>
+
+              {/* Phone mockup + features */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start mb-20">
+                {/* Left: Phone mockup */}
+                <div className="relative mx-auto flex justify-center">
+                  <div className="relative w-64 h-[520px] bg-[#0A0C0F] rounded-[3rem] border-2 border-white/10 shadow-2xl overflow-hidden">
+                    {/* Status bar */}
+                    <div className="absolute top-0 left-0 right-0 h-12 bg-[#0A0C0F] flex items-center justify-between px-6 pt-2">
+                      <span className="text-[10px] text-gray-600 font-mono">9:41</span>
+                      <div className="w-20 h-4 bg-black rounded-full" />
+                      <div className="flex gap-1 items-center">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[9px] text-emerald-400 font-bold">Live</span>
+                      </div>
+                    </div>
+
+                    {/* Screen */}
+                    <div className="absolute top-12 left-0 right-0 bottom-0 bg-[#060708] p-4 overflow-hidden">
+                      {/* Hub status */}
+                      <div className="flex items-center justify-between py-2 mb-4 border-b border-white/[0.06]">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className="text-[10px] text-emerald-400 font-semibold">Hub Online</span>
+                        </div>
+                        <span className="text-[9px] font-bold text-[#C5A059] bg-[#C5A059]/10 px-1.5 py-0.5 rounded">PRO</span>
+                      </div>
+
+                      {/* KPI grid */}
+                      <div className="grid grid-cols-2 gap-2 mb-4">
+                        {([['Present', '47/52', '#10B981'], ['Units Today', '1,840', '#60A5FA'], ['Pending', '3 orders', '#F59E0B'], ['Alerts', '0', '#374151']] as const).map(([label, value, color]) => (
+                          <div key={label} className="bg-[#0F1114] rounded-xl p-3 border border-white/[0.06]">
+                            <p className="text-[9px] text-gray-600 mb-1">{label}</p>
+                            <p className="text-sm font-bold font-mono" style={{ color }}>{value}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Quick actions */}
+                      <div className="grid grid-cols-3 gap-2 mb-4">
+                        {([['✓', 'Attend', '#10B981'], ['⚡', 'Log', '#60A5FA'], ['⊞', 'Scan', '#F59E0B']] as const).map(([icon, label, color]) => (
+                          <div key={label} className="bg-[#0F1114] rounded-xl p-3 border border-white/[0.06] flex flex-col items-center gap-1.5">
+                            <span className="text-lg" style={{ color }}>{icon}</span>
+                            <span className="text-[9px] text-gray-500 font-medium">{label}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Live event */}
+                      <div className="bg-emerald-500/[0.08] border border-emerald-500/20 rounded-xl p-3">
+                        <p className="text-[9px] text-emerald-400 font-semibold">✓ Muhammad Akram marked Present</p>
+                        <p className="text-[8px] text-gray-700 mt-0.5">Just now · synced to Hub</p>
+                      </div>
+                    </div>
+
+                    {/* Tab bar */}
+                    <div className="absolute bottom-0 left-0 right-0 h-14 bg-[#0A0C0F] border-t border-white/[0.06] flex items-center justify-around px-2">
+                      {(['⊞', '👷', '⚡', '✓', '≡'] as const).map((icon, i) => (
+                        <div key={i} className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg ${i === 0 ? 'bg-[#60A5FA]/15' : ''}`}>
+                          <span className={`text-sm ${i === 0 ? 'text-[#60A5FA]' : 'text-gray-700'}`}>{icon}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Phone glow */}
+                  <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-48 h-16 bg-[#60A5FA]/15 rounded-full blur-3xl" />
+                </div>
+
+                {/* Right: Features */}
+                <RevealStagger className="space-y-6">
+                  {/* Available now */}
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-emerald-400 mb-4 flex items-center gap-2">
+                      <span className="w-4 h-px bg-emerald-400/50" />
+                      Available with PC Hub today
+                    </p>
+                    <div className="space-y-3">
+                      {[
+                        { icon: '📡', title: 'Instant WiFi Pairing', desc: 'Scan QR from PC Hub. Connected in 60 seconds. No app store required.' },
+                        { icon: '✓', title: 'Attendance Marking', desc: 'Mark Present / Absent / Half for every karigar. Updates PC instantly.' },
+                        { icon: '⚡', title: 'Production Logging', desc: 'Log units, grade, and earnings. Live calculation before you save.' },
+                        { icon: '💰', title: 'Peshgi Advances', desc: 'Give advances from the floor. Balance updates on PC in real time.' },
+                      ].map(item => (
+                        <RevealItem key={item.title}>
+                          <div className="flex items-start gap-3 p-4 bg-[#0F1114] border border-white/[0.08] rounded-xl hover:border-emerald-500/20 transition-colors">
+                            <span className="text-xl flex-shrink-0 mt-0.5">{item.icon}</span>
+                            <div>
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <p className="text-sm font-semibold text-white">{item.title}</p>
+                                <span className="text-[9px] bg-emerald-500/15 text-emerald-400 px-1.5 py-0.5 rounded font-bold">LIVE</span>
+                              </div>
+                              <p className="text-xs text-gray-500 leading-relaxed">{item.desc}</p>
+                            </div>
+                          </div>
+                        </RevealItem>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Coming soon */}
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#60A5FA] mb-4 flex items-center gap-2">
+                      <span className="w-4 h-px bg-[#60A5FA]/50" />
+                      Coming in Noxis Mobile v1.0
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {[
+                        { icon: '📦', title: 'Barcode Scanner', desc: 'Scan items to look up stock, receive goods, or dispatch.' },
+                        { icon: '📊', title: 'Live Reports', desc: 'Revenue, payroll summary, and outstanding balances on your phone.' },
+                        { icon: '🧠', title: 'Foresight Alerts', desc: 'Critical predictions pushed to your phone before problems happen.' },
+                        { icon: '🔔', title: 'Smart Notifications', desc: 'Payment overdue, stock running low, zone breach alerts.' },
+                        { icon: '🌐', title: 'Works Anywhere', desc: 'Cloudflare tunnel means you connect from home, Dubai, or anywhere.' },
+                        { icon: '🇵🇰', title: 'Urdu Interface', desc: 'Complete Urdu translation for supervisors and floor staff.' },
+                      ].map(item => (
+                        <RevealItem key={item.title}>
+                          <div className="flex items-start gap-3 p-4 bg-[#0F1114] border border-white/[0.06] rounded-xl opacity-75 hover:opacity-100 hover:border-[#60A5FA]/20 transition-all">
+                            <span className="text-lg flex-shrink-0 mt-0.5">{item.icon}</span>
+                            <div>
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <p className="text-sm font-semibold text-white">{item.title}</p>
+                                <span className="text-[9px] bg-[#60A5FA]/10 text-[#60A5FA] px-1.5 py-0.5 rounded font-bold border border-[#60A5FA]/20">SOON</span>
+                              </div>
+                              <p className="text-xs text-gray-600 leading-relaxed">{item.desc}</p>
+                            </div>
+                          </div>
+                        </RevealItem>
+                      ))}
+                    </div>
+                  </div>
+                </RevealStagger>
+              </div>
+
+              {/* Early access signup */}
+              <Reveal variant="up">
+                <div className="max-w-xl mx-auto text-center p-8 bg-[#0F1114] border border-[#60A5FA]/20 rounded-2xl">
+                  <div className="w-12 h-12 rounded-full bg-[#60A5FA]/10 border border-[#60A5FA]/20 flex items-center justify-center mx-auto mb-4 text-2xl">📱</div>
+                  <h3 className="text-xl font-bold text-white mb-2">Get early access to Noxis Mobile</h3>
+                  <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+                    We are releasing Noxis Mobile to PC Hub customers first.
+                    Tell us what you need most — your feedback shapes the release.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <input
+                      type="tel"
+                      placeholder="Your WhatsApp number (e.g. 0326...)"
+                      className="flex-1 bg-[#161A1F] border border-white/[0.08] text-white text-sm px-4 py-3 rounded-xl outline-none focus:border-[#60A5FA]/40 placeholder:text-gray-700"
+                    />
+                    <a
+                      href="https://wa.me/923264742678?text=I%20want%20early%20access%20to%20Noxis%20Mobile%20Hub"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="sm:flex-shrink-0 px-6 py-3 bg-[#60A5FA] text-black font-bold text-sm rounded-xl hover:bg-blue-400 transition-colors whitespace-nowrap text-center"
+                    >
+                      Get Early Access
+                    </a>
+                  </div>
+                  <p className="text-[10px] text-gray-700 mt-3">WhatsApp us directly — we respond within 2 hours.</p>
+                </div>
+              </Reveal>
+
+              {/* Connection diagram */}
+              <Reveal variant="up" className="mt-16 text-center">
+                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-gray-600 mb-8">How it connects</p>
+                <div className="flex items-center justify-center gap-4 flex-wrap">
+                  {[
+                    { icon: '🖥', label: 'Noxis PC Hub', sub: 'Windows PC', borderColor: 'border-white/10' },
+                  ].map(n => (
+                    <div key={n.label} className="flex flex-col items-center gap-2">
+                      <div className={`w-16 h-16 bg-[#0F1114] border ${n.borderColor} rounded-2xl flex items-center justify-center text-2xl`}>{n.icon}</div>
+                      <p className="text-xs text-gray-500 font-semibold">{n.label}</p>
+                      <p className="text-[10px] text-gray-700">{n.sub}</p>
+                    </div>
+                  ))}
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-px bg-[#60A5FA]/40" />
+                      <span className="px-2 py-1 bg-[#60A5FA]/10 border border-[#60A5FA]/20 rounded text-[9px] text-[#60A5FA] font-bold">WiFi</span>
+                      <div className="w-8 h-px bg-[#60A5FA]/40" />
+                    </div>
+                    <p className="text-[9px] text-gray-700">Same network</p>
+                  </div>
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="w-16 h-16 bg-[#0F1114] border border-[#60A5FA]/30 rounded-2xl flex items-center justify-center text-2xl">📱</div>
+                    <p className="text-xs text-[#60A5FA] font-semibold">Noxis Mobile</p>
+                    <p className="text-[10px] text-gray-700">Android · Coming Soon</p>
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-px bg-emerald-500/40" />
+                      <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded text-[9px] text-emerald-400 font-bold">Cloud</span>
+                      <div className="w-8 h-px bg-emerald-500/40" />
+                    </div>
+                    <p className="text-[9px] text-gray-700">When online</p>
+                  </div>
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="w-16 h-16 bg-[#0F1114] border border-emerald-500/20 rounded-2xl flex items-center justify-center text-2xl">☁️</div>
+                    <p className="text-xs text-emerald-400 font-semibold">Secure Cloud</p>
+                    <p className="text-[10px] text-gray-700">Backup &amp; sync</p>
+                  </div>
+                </div>
+              </Reveal>
+            </div>
+          </section>
+
           {/* Comparison Matrix */}
           <section className="py-24 px-4 sm:px-6 border-t border-white/[0.04] bg-[#070708]/50">
             <Reveal variant="up" className="max-w-7xl mx-auto space-y-12">
@@ -750,8 +992,10 @@ export default function LandingClient() {
                 </div>
               </div>
               <div className="flex flex-wrap justify-center gap-6 sm:gap-8 text-[10px] font-bold uppercase tracking-widest text-gray-500">
-                {[{ label: 'Download', href: '/download' }, { label: 'Pricing', href: '/pricing' }, { label: 'Reviews', href: '/reviews' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }, { label: 'Privacy', href: '/privacy' }, { label: 'Terms', href: '/terms' }, { label: 'Refund', href: '/refund' }, { label: 'About', href: '/about' }].map((l) => (
-                  <Link key={l.href} href={l.href} className="hover:text-white transition-colors">{l.label}</Link>
+                {[{ label: 'Download', href: '/download' }, { label: 'Mobile', href: '#mobile' }, { label: 'Pricing', href: '/pricing' }, { label: 'Reviews', href: '/reviews' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }, { label: 'Privacy', href: '/privacy' }, { label: 'Terms', href: '/terms' }, { label: 'Refund', href: '/refund' }, { label: 'About', href: '/about' }].map((l) => (
+                  l.href.startsWith('#')
+                    ? <a key={l.href} href={l.href} className="hover:text-[#60A5FA] transition-colors text-[#60A5FA]/60">{l.label}</a>
+                    : <Link key={l.href} href={l.href} className="hover:text-white transition-colors">{l.label}</Link>
                 ))}
               </div>
               <p className="text-center md:text-right text-xs text-gray-600">© 2026 Noxis Hub · Engineered in Pakistan</p>

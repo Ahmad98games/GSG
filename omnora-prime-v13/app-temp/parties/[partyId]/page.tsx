@@ -25,6 +25,7 @@ import Decimal from "decimal.js";
 import { FeatureGate } from "@/components/ui/FeatureGate";
 import { SharePortalButton } from "@/components/parties/SharePortalButton";
 import { PartyPortalSection } from "@/components/parties/PartyPortalSection";
+import { generatePartyStatement } from '@/lib/parties/generateStatement';
 
 // --- Types ---
 
@@ -347,6 +348,72 @@ export default function PartyDetailPage() {
     sendWhatsAppAlert(party.phone || '', msg);
   };
 
+  const handleGenerateStatement = async () => {
+    if (!party || !profile) return;
+
+    const [invoicesRes, paymentsRes] = await Promise.all([
+      supabase.from('invoices')
+        .select('*')
+        .eq('business_id', profile.id)
+        .eq('party_id', party.id)
+        .eq('status', 'posted')
+        .order('created_at'),
+      supabase.from('payments')
+        .select('*')
+        .eq('business_id', profile.id)
+        .eq('party_id', party.id)
+        .order('payment_date'),
+    ]);
+
+    let balance = 0;
+    const transactions: any[] = [];
+
+    const allEvents = [
+      ...(invoicesRes.data || []).map((i: any) => ({
+        date: i.created_at.split('T')[0],
+        type: 'invoice' as const,
+        reference: i.invoice_no || i.invoice_number || '',
+        description: `Invoice ${i.invoice_no || i.invoice_number || ''}`,
+        debit: i.total || i.total_amount || 0,
+        credit: 0,
+        sortDate: i.created_at,
+      })),
+      ...(paymentsRes.data || []).map((p: any) => ({
+        date: p.payment_date,
+        type: 'payment' as const,
+        reference: `PMT-${p.id.slice(0, 6).toUpperCase()}`,
+        description: `Payment received${p.method ? ' — ' + p.method : ''}`,
+        debit: 0,
+        credit: p.amount,
+        sortDate: p.payment_date,
+      })),
+    ].sort((a, b) => a.sortDate.localeCompare(b.sortDate));
+
+    for (const event of allEvents) {
+      balance += event.debit - event.credit;
+      transactions.push({ ...event, balance });
+    }
+
+    generatePartyStatement({
+      businessName: profile.business_name,
+      businessPhone: profile.phone || undefined,
+      asOfDate: new Date().toLocaleDateString('en-PK'),
+      period: {
+        from: transactions[0]?.date || new Date().toISOString().split('T')[0],
+        to: new Date().toISOString().split('T')[0],
+      },
+      party: {
+        name: party.name,
+        phone: party.phone || undefined,
+        address: party.address || undefined,
+      },
+      transactions,
+      openingBalance: 0,
+      closingBalance: balance,
+      currency: (profile as any).currency || 'PKR',
+    });
+  };
+
   // Logic
   const creditUtilization = useMemo(() => {
     if (!party?.credit_limit || party.credit_limit === 0) return 0;
@@ -445,6 +512,13 @@ export default function PartyDetailPage() {
                      </button>
                   </>
                )}
+               <button
+                  onClick={handleGenerateStatement}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-white/10 text-gray-400 hover:border-white/20 hover:text-white transition-colors"
+               >
+                  <FileText size={12} />
+                  Statement PDF
+               </button>
                <SharePortalButton
                   partyId={party.id}
                   partyName={party.name}

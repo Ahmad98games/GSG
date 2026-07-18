@@ -1053,8 +1053,8 @@ function AttendanceModal({ karigar, onClose, onSuccess, onMark }: { karigar: Kar
           </div>
           <form onSubmit={handleSubmit(onSubmit)} className="p-8 space-y-6">
              <div className="space-y-2">
-                <Label>Log Date</Label>
-                <Input type="date" {...register("date")} />
+                <Label>Log Date <span className="text-[10px] text-gray-500">(past dates allowed)</span></Label>
+                <Input type="date" max={new Date().toISOString().split('T')[0]} {...register("date")} />
              </div>
              <div className="space-y-2">
                 <Label>Shift Status</Label>
@@ -1064,6 +1064,15 @@ function AttendanceModal({ karigar, onClose, onSuccess, onMark }: { karigar: Kar
                    <option value="absent">Absent</option>
                    <option value="leave">On Leave</option>
                 </select>
+             </div>
+             <div className="space-y-2">
+                <Label>Notes <span className="text-[10px] text-gray-500">(optional)</span></Label>
+                <textarea
+                  {...register("notes")}
+                  rows={2}
+                  placeholder="e.g. Doctor leave, emergency absence..."
+                  className="w-full bg-onyx border border-white/10 p-3 text-xs text-white outline-none resize-none placeholder:text-gray-600"
+                />
              </div>
              <button type="submit" disabled={isSubmitting} className="w-full py-4 bg-emerald text-onyx text-[10px] font-black uppercase tracking-widest shadow-lg">
                 {isSubmitting ? "Logging..." : "Commit Attendance"}
