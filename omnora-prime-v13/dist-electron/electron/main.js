@@ -47,6 +47,8 @@ const electron_updater_1 = require("electron-updater");
 const electron_log_1 = __importDefault(require("electron-log"));
 const os_1 = require("os");
 const dbKeyManager_1 = require("../src/lib/security/dbKeyManager");
+const onvifService_1 = require("./services/onvifService");
+const mediamtxService_1 = require("./services/mediamtxService");
 // ─────────────────────────────────────────────
 // 0. GLOBAL REFERENCES
 // ─────────────────────────────────────────────
@@ -1269,6 +1271,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 setTimeout(() => {
                     spawnVisionEngine();
                 }, 8000);
+                // ── STEP 5: Register CCTV / ONVIF IPC handlers ──
+                // Registered after window is created so startupLog is fully available
+                (0, onvifService_1.registerOnvifHandlers)(startupLog);
+                (0, mediamtxService_1.registerMediamtxHandlers)(startupLog);
             }
         }
         catch (fatalErr) {
@@ -1303,6 +1309,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 killProcess(nextServer, 'Next.js Server'),
                 tunnelProcess ? killProcess(tunnelProcess, 'Cloudflare Tunnel') : Promise.resolve(),
             ]).then(() => {
+                (0, mediamtxService_1.stopMediamtx)();
                 visionProcess = null;
                 nextServer = null;
                 tunnelProcess = null;

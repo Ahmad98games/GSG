@@ -109,3 +109,46 @@ contextBridge.exposeInMainWorld('electronWindow', {
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
   installUpdate: () => ipcRenderer.invoke('install-update')
 });
+
+// ── CCTV / Camera Management API ──────────────────────────────────────────
+contextBridge.exposeInMainWorld('cctv', {
+  // Discover cameras on the local network (ONVIF WS-Discovery + TCP scan)
+  discover: () =>
+    ipcRenderer.invoke('cctv:discover'),
+
+  // Fetch full camera details via ONVIF after user provides credentials
+  getDetails: (params: {
+    ip: string; port: number; username: string; password: string;
+  }) => ipcRenderer.invoke('cctv:getDetails', params),
+
+  // Encrypt password before saving to database (never store plaintext)
+  encryptPassword: (password: string) =>
+    ipcRenderer.invoke('cctv:encryptPassword', password),
+
+  // Quick connectivity test (returns boolean)
+  testConnection: (params: {
+    ip: string; port: number; username: string; passwordEncrypted: string;
+  }) => ipcRenderer.invoke('cctv:testConnection', params),
+
+  // Grab a still image snapshot from a camera
+  getSnapshot: (params: {
+    ip: string; port: number; username: string; passwordEncrypted: string;
+  }) => ipcRenderer.invoke('cctv:getSnapshot', params),
+
+  // Start mediamtx WebRTC streams for the active camera list
+  startStreams: (cameras: Array<{
+    id: string; name: string; rtspUrl: string;
+  }>) => ipcRenderer.invoke('cctv:startStreams', cameras),
+
+  // Get the WebRTC URL for a specific camera
+  getWebRtcUrl: (cameraId: string) =>
+    ipcRenderer.invoke('cctv:getWebRtcUrl', cameraId),
+
+  // Stop all mediamtx streams
+  stopStreams: () =>
+    ipcRenderer.invoke('cctv:stopStreams'),
+
+  // Check if mediamtx is currently running
+  isStreamingActive: () =>
+    ipcRenderer.invoke('cctv:isStreamingActive'),
+});

@@ -82,6 +82,14 @@ extraResources:
     filter:
       - "**/*"
 
+  # mediamtx WebRTC/RTSP proxy binary
+  # Used to convert RTSP camera streams to WebRTC for in-app viewing
+  # Only the .exe is included — config is generated at runtime
+  - from: "resources/mediamtx"
+    to: "mediamtx"
+    filter:
+      - "mediamtx.exe"
+
   # Environment file
   - from: ".env.local"
     to: ".env"

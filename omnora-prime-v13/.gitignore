@@ -74,3 +74,8 @@ GoogleService-Info.plist
 /winCodeSign/
 /*.txt
 /server-with-bridge.js
+
+# mediamtx binary (downloaded via scripts/download-mediamtx.ps1)
+resources/mediamtx/mediamtx.exe
+resources/mediamtx/*.zip
+

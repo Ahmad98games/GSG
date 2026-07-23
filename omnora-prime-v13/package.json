@@ -85,6 +85,7 @@
     "next": "16.2.4",
     "next-intl": "^4.11.2",
     "node-cron": "^3.0.3",
+    "node-onvif": "^0.1.7",
     "papaparse": "^5.5.3",
     "pdf-lib": "^1.17.1",
     "pg": "^8.21.0",

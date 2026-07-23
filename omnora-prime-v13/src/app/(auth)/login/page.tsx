@@ -1,25 +1,58 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { ShieldCheck, Lock, Mail, ArrowRight } from "lucide-react";
+import { ShieldCheck, Lock, Mail, ArrowRight, WifiOff, RefreshCw } from "lucide-react";
 import { humanizeError } from "@/lib/utils/errors";
+
+function isNetworkError(err: any): boolean {
+  const msg: string = err?.message || String(err);
+  return (
+    msg.includes("Failed to fetch") ||
+    msg.includes("NetworkError") ||
+    msg.includes("net::ERR") ||
+    msg.includes("ECONNREFUSED") ||
+    msg.includes("fetch failed") ||
+    msg.includes("Offline") ||
+    msg.includes("Load failed")
+  );
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isOfflineError, setIsOfflineError] = useState(false);
+  const [hasCachedSession, setHasCachedSession] = useState(false);
   const supabase = createClient();
   const router = useRouter();
+
+  // Check if a cached session exists so we can offer offline login
+  useEffect(() => {
+    try {
+      const keys = Object.keys(localStorage);
+      const sessionKey = keys.find(k => k.includes("supabase") && k.includes("session"));
+      if (sessionKey) {
+        const raw = localStorage.getItem(sessionKey);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.access_token || parsed?.session?.access_token) {
+            setHasCachedSession(true);
+          }
+        }
+      }
+    } catch {}
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+    setIsOfflineError(false);
 
     try {
       const { error: loginError } = await supabase.auth.signInWithPassword({
@@ -30,20 +63,40 @@ export default function LoginPage() {
       if (loginError) throw loginError;
       router.push("/");
     } catch (err: any) {
-      setError(humanizeError(err, "login"));
+      if (isNetworkError(err)) {
+        setIsOfflineError(true);
+        setError(
+          "Cannot reach the authentication server. Check your internet connection — or continue using the cached session if you've logged in before."
+        );
+      } else {
+        setError(humanizeError(err, "login"));
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDemoLogin = async () => {
-    setEmail("admin@noxis.app");
-    setPassword("noxis2026");
+  // Attempt to restore an existing cached session without re-authenticating
+  const handleContinueOffline = async () => {
+    setIsLoading(true);
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data?.session) {
+        router.push("/");
+      } else {
+        setError("No valid cached session found. Please connect to the internet and log in once first.");
+        setIsOfflineError(false);
+      }
+    } catch {
+      setError("Could not restore session. Please connect to the internet.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-onyx flex items-center justify-center p-6 font-inter">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="max-w-md w-full"
@@ -58,13 +111,13 @@ export default function LoginPage() {
 
         <div className="bg-surface p-8 border border-white/5 relative overflow-hidden group">
           <div className="absolute top-0 left-0 w-1 h-full bg-electric-blue opacity-50 group-hover:opacity-100 transition-opacity" />
-          
+
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-1.5">
               <label className="block text-[10px] uppercase tracking-widest text-gray-500 font-medium">Terminal ID / Email</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
-                <input 
+                <input
                   type="email"
                   required
                   value={email}
@@ -79,7 +132,7 @@ export default function LoginPage() {
               <label className="block text-[10px] uppercase tracking-widest text-gray-500 font-medium">Access Key / Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
-                <input 
+                <input
                   type="password"
                   required
                   value={password}
@@ -90,34 +143,68 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {error && (
-              <div className="p-3 bg-critical-red/10 border border-critical-red/20 text-critical-red text-[11px] font-medium animate-shake">
-                {error}
-              </div>
-            )}
+            <AnimatePresence>
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className={`p-3 border text-[11px] font-medium ${
+                    isOfflineError
+                      ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
+                      : "bg-critical-red/10 border-critical-red/20 text-critical-red animate-shake"
+                  }`}
+                >
+                  {isOfflineError && <WifiOff className="inline w-3 h-3 mr-1.5 mb-0.5" />}
+                  {error}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-            <button 
+            <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-4 bg-electric-blue hover:bg-blue-600 text-white font-bold transition-all flex items-center justify-center group"
+              className="w-full py-4 bg-electric-blue hover:bg-blue-600 text-white font-bold transition-all flex items-center justify-center group disabled:opacity-60"
             >
-              {isLoading ? "Authenticating..." : "Establish Secure Session"}
-              {!isLoading && <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />}
+              {isLoading ? (
+                <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Authenticating...</>
+              ) : (
+                <>Establish Secure Session <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" /></>
+              )}
             </button>
           </form>
+
+          {/* Offline cached-session recovery */}
+          {isOfflineError && hasCachedSession && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4"
+            >
+              <button
+                onClick={handleContinueOffline}
+                disabled={isLoading}
+                className="w-full py-3 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[12px] font-bold uppercase tracking-widest hover:bg-amber-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <WifiOff className="w-3.5 h-3.5" />
+                Continue with Cached Session (Offline)
+              </button>
+              <p className="text-[9px] text-gray-600 text-center mt-1.5">
+                Uses your last authenticated session. Data will sync when back online.
+              </p>
+            </motion.div>
+          )}
 
           <div className="mt-8 pt-8 border-t border-white/5">
             <p className="text-center text-[11px] text-gray-500 mb-4">
               Authorized Personnel Only. All access is audited.
             </p>
-            <div className="space-y-3">
-              <Link 
-                href="/signup"
-                className="block w-full py-3 bg-white/5 border border-white/10 text-center text-[11px] text-white font-bold uppercase tracking-widest hover:bg-white/10 transition-all"
-              >
-                Create New Hub Account
-              </Link>
-            </div>
+            <Link
+              href="/signup"
+              className="block w-full py-3 bg-white/5 border border-white/10 text-center text-[11px] text-white font-bold uppercase tracking-widest hover:bg-white/10 transition-all"
+            >
+              Create New Hub Account
+            </Link>
           </div>
         </div>
       </motion.div>
@@ -151,4 +238,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

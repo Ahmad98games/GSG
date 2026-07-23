@@ -9,6 +9,8 @@ import { autoUpdater } from 'electron-updater'
 import log from 'electron-log'
 import { release } from 'os'
 import { deriveDbKey } from '../src/lib/security/dbKeyManager'
+import { registerOnvifHandlers } from './services/onvifService'
+import { registerMediamtxHandlers, stopMediamtx } from './services/mediamtxService'
 
 // ─────────────────────────────────────────────
 // 0. GLOBAL REFERENCES
@@ -1433,6 +1435,11 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       setTimeout(() => {
         spawnVisionEngine();
       }, 8000);
+
+      // ── STEP 5: Register CCTV / ONVIF IPC handlers ──
+      // Registered after window is created so startupLog is fully available
+      registerOnvifHandlers(startupLog);
+      registerMediamtxHandlers(startupLog);
     }
     } catch (fatalErr: any) {
       startupLog(
@@ -1471,6 +1478,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         killProcess(nextServer, 'Next.js Server'),
         tunnelProcess ? killProcess(tunnelProcess, 'Cloudflare Tunnel') : Promise.resolve(),
       ]).then(() => {
+        stopMediamtx();
         visionProcess = null;
         nextServer = null;
         tunnelProcess = null;
