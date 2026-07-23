@@ -150,7 +150,7 @@ function ApiPlatformContent() {
             API Platform Management
           </h1>
           <p className="text-gray-500 text-xs mt-1 uppercase font-bold tracking-wider">
-            Provision secure credentials to link third-party ERP, web-mandi, or logistics tools directly.
+            Setting up secure Login details to link third-party ERP, web-mandi, or logistics tools directly.
           </p>
         </div>
 

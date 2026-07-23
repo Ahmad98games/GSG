@@ -131,7 +131,7 @@ export default function OwnerLogin() {
         {/* Extra notice */}
         <div className="flex items-center justify-center space-x-2 text-[10px] text-slate-600 font-medium">
           <Shield className="w-3.5 h-3.5 text-slate-600" />
-          <span>Same credentials as your desktop Noxis Hub app</span>
+          <span>Same Username and password as your desktop Noxis Hub app</span>
         </div>
       </div>
 

@@ -511,7 +511,7 @@ export default function KarigarDetailPage() {
                     <div>
                       <h4 className="text-xs font-bold text-white">Labor Marketplace Registry</h4>
                       <p className="text-[10px] text-gray-500 leading-relaxed mt-0.5">
-                        Mark this worker as "Open to Work" to showcase their verified credentials to other factories seeking talent.
+                        Mark this worker as "Open to Work" to showcase their verified profile to other factories seeking talent.
                       </p>
                     </div>
                     <button

@@ -242,7 +242,7 @@ export default function LicensePage() {
               Noxis <span className="text-cyan-400">License Auth</span>
             </h1>
             <p className="text-xs text-slate-500 font-medium">
-              Enter your account credentials to authorize this node.
+              Enter your account Login details to authorize this node.
             </p>
           </div>
         </div>

@@ -715,7 +715,7 @@ function ChartOfAccounts({ accounts, entries, loading, onAdd }: { accounts: Acco
               <p className="text-xxs font-semibold tracking-wide-md uppercase text-gray-500 mt-1">Global Financial Backbone</p>
           </div>
           <button onClick={onAdd} className="px-6 py-2.5 bg-electric-blue text-onyx text-[10px] uppercase font-black tracking-widest hover:brightness-110 shadow-lg transition-all">
-             Initialize New Account
+             Setting Up your New Account
           </button>
        </div>
 
