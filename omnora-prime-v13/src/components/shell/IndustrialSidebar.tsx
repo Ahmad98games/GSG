@@ -208,7 +208,7 @@ export default React.memo(function IndustrialSidebar() {
     // Industry-specific nav items
     {
       label: 'Expiry Alerts',
-      href: '/inventory/expiry',
+      href: industry.key === 'medical' ? '/expiry' : '/inventory/expiry',
       icon: AlertTriangle,
       always: features.expiryManagement,
     },
@@ -226,7 +226,7 @@ export default React.memo(function IndustrialSidebar() {
     },
     {
       label: 'Batch Recall',
-      href: '/inventory/batches',
+      href: industry.key === 'medical' ? '/expiry?status=recalled' : '/production/batches',
       icon: AlertOctagon,
       always: features.batchTracking,
     },

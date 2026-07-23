@@ -411,6 +411,38 @@ export default async function RootLayout({
                       text: 'Noxis Mobile Hub is the Android companion app for Noxis Hub. Factory supervisors use it to mark attendance, log production, and give peshgi advances from their phone. It connects to the PC Hub over local WiFi and works offline.',
                     },
                   },
+                  {
+                    '@type': 'Question',
+                    name: 'Can Noxis Hub manage multiple factory branches?',
+                    acceptedAnswer: {
+                      '@type': 'Answer',
+                      text: 'Yes. Noxis Hub supports multiple factory locations in Pakistan and across Pakistan and UAE. Each location runs its own PC Hub with local data, and all branches sync to a shared cloud account. The owner sees consolidated reports while branch managers see only their location.',
+                    },
+                  },
+                  {
+                    '@type': 'Question',
+                    name: 'Is Noxis Hub better than SAP for Pakistani factories?',
+                    acceptedAnswer: {
+                      '@type': 'Answer',
+                      text: 'For mid-sized Pakistani factories (10-5000 workers), Noxis Hub is a better fit than SAP because it works offline, costs 95% less, is installed in one day, and includes Pakistan-specific features like karigar management, peshgi tracking, and WhatsApp billing that SAP does not have. For multi-national corporations with 50+ legal entities, SAP remains the appropriate choice.',
+                    },
+                  },
+                  {
+                    '@type': 'Question',
+                    name: 'Does Noxis Hub integrate with e-commerce platforms?',
+                    acceptedAnswer: {
+                      '@type': 'Answer',
+                      text: 'Noxis Hub is built for manufacturing and factory operations, not e-commerce. It does not integrate with Shopify, Amazon, or similar platforms. For businesses that need both factory management and e-commerce, Noxis Hub handles the factory side while a separate e-commerce platform handles online sales.',
+                    },
+                  },
+                  {
+                    '@type': 'Question',
+                    name: 'What technology does Noxis Hub use?',
+                    acceptedAnswer: {
+                      '@type': 'Answer',
+                      text: 'Noxis Hub uses Next.js and React for the interface, Electron for Windows deployment, SQLite with SQLCipher encryption for local data storage, Supabase PostgreSQL for cloud backup and sync, React Native for the mobile companion app, and Cloudflare for hosting and remote access tunneling.',
+                    },
+                  },
                 ],
               },
 

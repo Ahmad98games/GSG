@@ -187,7 +187,7 @@ async function fetchCameraDetails(
 
     await device.init();
 
-    const state = device.getCurrentState();
+    const state = device.getInformation();
     const profiles = await device.getProfileList().catch(() => []);
 
     // Detect manufacturer
@@ -240,7 +240,7 @@ async function fetchCameraDetails(
         resolutionSub: subStream?.resolution || null,
         rtspUrlMain: mainStream?.url || null,
         rtspUrlSub: subStream?.url || null,
-        supportsPtz: !!state?.PTZ?.XAddr,
+        supportsPtz: !!device.services.ptz,
         supportsAudio: profiles.some((p: any) => p.AudioEncoderConfiguration),
         supportsHumanDetection,
         supportsVehicleDetection,

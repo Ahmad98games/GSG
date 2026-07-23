@@ -51,7 +51,6 @@ export async function seedChartOfAccounts(
   const rows = DEFAULT_CHART_OF_ACCOUNTS.map(acc => ({
     ...acc,
     business_id: businessId,
-    balance: 0,
     is_active: true,
   }));
 

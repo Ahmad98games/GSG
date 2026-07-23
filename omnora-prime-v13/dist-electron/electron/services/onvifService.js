@@ -181,7 +181,7 @@ async function fetchCameraDetails(ip, port, username, password) {
             pass: password,
         });
         await device.init();
-        const state = device.getCurrentState();
+        const state = device.getInformation();
         const profiles = await device.getProfileList().catch(() => []);
         // Detect manufacturer
         let manufacturer = 'other';
@@ -232,7 +232,7 @@ async function fetchCameraDetails(ip, port, username, password) {
                 resolutionSub: subStream?.resolution || null,
                 rtspUrlMain: mainStream?.url || null,
                 rtspUrlSub: subStream?.url || null,
-                supportsPtz: !!state?.PTZ?.XAddr,
+                supportsPtz: !!device.services.ptz,
                 supportsAudio: profiles.some((p) => p.AudioEncoderConfiguration),
                 supportsHumanDetection,
                 supportsVehicleDetection,

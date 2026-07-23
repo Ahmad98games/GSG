@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import React from 'react';
 // src/app/(medical)/expiry/page.tsx
 import { 
@@ -40,6 +40,17 @@ export default function ExpiryMonitorPage() {
   const { isCollapsed } = useSidebarState();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("expiring_soon");
+
+  // Synchronize statusFilter with query parameter on load
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const statusParam = params.get('status');
+      if (statusParam && ['all', 'expiring_soon', 'expired', 'recalled'].includes(statusParam)) {
+        setStatusFilter(statusParam);
+      }
+    }
+  }, []);
   
   const { 
     data, 

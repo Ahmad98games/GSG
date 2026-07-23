@@ -29,7 +29,7 @@ export async function GET() {
           background: 'rgba(96,165,250,0.08)',
           borderRadius: '50%',
           filter: 'blur(80px)',
-        }} as="div" />
+        }} />
 
         {/* Logo box */}
         <div style={{
@@ -42,7 +42,7 @@ export async function GET() {
           alignItems: 'center',
           justifyContent: 'center',
           marginBottom: 32,
-        }} as="div">
+        }}>
           <span style={{
             fontSize: 48,
             fontWeight: 900,
@@ -58,7 +58,7 @@ export async function GET() {
           letterSpacing: -2,
           marginBottom: 16,
           textAlign: 'center',
-        }} as="div">
+        }}>
           Noxis Hub
         </div>
 
@@ -70,7 +70,7 @@ export async function GET() {
           maxWidth: 800,
           lineHeight: 1.4,
           marginBottom: 40,
-        }} as="div">
+        }}>
           Factory Management Software for Pakistan & UAE
         </div>
 
@@ -81,7 +81,7 @@ export async function GET() {
           flexWrap: 'wrap',
           justifyContent: 'center',
           maxWidth: 900,
-        }} as="div">
+        }}>
           {[
             'Karigar Management',
             'Offline-First',
@@ -97,7 +97,7 @@ export async function GET() {
               fontSize: 16,
               color: '#60A5FA',
               fontWeight: 600,
-            }} as="div">
+            }}>
               {tag}
             </div>
           ))}
@@ -110,7 +110,7 @@ export async function GET() {
           fontSize: 18,
           color: '#374151',
           letterSpacing: 2,
-        }} as="div">
+        }}>
           noxishub.app
         </div>
       </div>
