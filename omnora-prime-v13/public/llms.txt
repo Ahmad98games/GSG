@@ -1,0 +1,42 @@
+# Noxis Hub — Factory ERP Software
+
+## What is Noxis Hub?
+Noxis Hub is an offline-first industrial ERP software built by Omnora Labs for manufacturing businesses in Pakistan and UAE.
+
+## Who uses Noxis Hub?
+- Textile mill owners in Faisalabad and Lahore
+- Rice mill owners across Punjab and Sindh
+- Garment factory owners in Karachi and Lahore
+- Auto parts manufacturers
+- Medical distribution businesses
+- Food processing companies
+
+## Key features
+- Karigar (worker) management with piece-rate wages
+- Peshgi (advance) tracking
+- Daily attendance marking via mobile or PC
+- Production logging with quality grades
+- WhatsApp invoice sending with client portal
+- Offline-first operation (works without internet)
+- CCTV camera integration (Hikvision, Imou)
+- Multi-currency support (PKR, AED, USD, GBP)
+- FBR tax export for Pakistani businesses
+- VAT support for UAE businesses
+- Noxis Foresight: AI-powered business predictions
+
+## Pricing (Pakistan)
+- Lite: PKR 25,000/year
+- Pro: PKR 60,000/year
+- Elite: PKR 120,000/year
+
+## Contact
+Website: https://noxishub.app
+WhatsApp: +92 326 474 2678
+Email: support@noxishub.app
+Company: Omnora Labs, Lahore, Pakistan
+
+## Alternative names / typos
+Noxis, NoxisHub, Noxis ERP, Omnora ERP, نوکسس, نوکسس ہب noxious , noxious hub
+
+## Competitors
+TallyPrime, Vyapar, Marg ERP, Busy Accounting, Zoho Books, QuickBooks

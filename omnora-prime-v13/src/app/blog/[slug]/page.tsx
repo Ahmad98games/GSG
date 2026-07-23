@@ -1,244 +1,229 @@
-import React from 'react';
+import { allPosts } from '../posts';
+import Script from 'next/script';
 import Link from 'next/link';
-import Image from 'next/image';
-import { getBlogPosts, getBlogPostBySlug } from '@/lib/blog-utils';
+import { Calendar, User, ArrowLeft, Send } from 'lucide-react';
 import { notFound } from 'next/navigation';
-import { Calendar, ChevronLeft, BookOpen, Clock, Share2, Link2, Camera, ArrowLeft } from 'lucide-react';
-
-type Props = {
-  params: Promise<{ slug: string }>
-};
 
 export async function generateStaticParams() {
-  const posts = getBlogPosts();
-  return posts.map((post) => ({
+  return allPosts.map(post => ({
     slug: post.slug,
   }));
 }
 
-export async function generateMetadata({ params }: Props) {
-  const resolvedParams = await params;
-  const post = getBlogPostBySlug(resolvedParams.slug);
-  if (!post) return { title: 'Post Not Found' };
+export async function generateMetadata({ params }: { params: { slug: string } }) {
+  const post = allPosts.find(p => p.slug === params.slug);
+  if (!post) return {};
 
   return {
-    title: `${post.title} | Noxis Blog`,
+    title: `${post.title} — Noxis Hub Blog`,
     description: post.description,
     keywords: post.keywords,
     openGraph: {
       title: post.title,
       description: post.description,
+      url: `https://noxishub.app/blog/${post.slug}`,
       type: 'article',
-      publishedTime: post.date,
-      url: `https://noxishub.app/blog/${resolvedParams.slug}`,
-    }
+      publishedTime: post.publishedAt,
+      modifiedTime: post.updatedAt,
+      authors: [post.author],
+    },
+    alternates: {
+      canonical: `/blog/${post.slug}`,
+    },
   };
 }
 
-function renderInlineBold(text: string) {
-  const parts = text.split('**');
-  if (parts.length < 3) return text;
-
-  return parts.map((part, i) => {
-    if (i % 2 === 1) {
-      return <strong key={i} className="text-white font-black">{part}</strong>;
-    }
-    return part;
-  });
-}
-
-function renderMarkdown(content: string) {
-  const lines = content.split('\n');
-  const elements: React.ReactNode[] = [];
-  let listItems: React.ReactNode[] = [];
-  let insideList = false;
-
-  const flushList = (key: string) => {
-    if (insideList && listItems.length > 0) {
-      elements.push(
-        <ul key={`list-${key}`} className="list-disc pl-6 mb-8 space-y-3 text-slate-300 font-medium">
-          {listItems}
-        </ul>
-      );
-      listItems = [];
-      insideList = false;
-    }
-  };
-
-  lines.forEach((line, index) => {
-    const trimmed = line.trim();
-    if (!trimmed) {
-      flushList(`empty-${index}`);
-      return;
-    }
-
-    if (trimmed.startsWith('# ')) {
-      flushList(`h1-${index}`);
-      return;
-    }
-
-    if (trimmed.startsWith('## ')) {
-      flushList(`h2-${index}`);
-      elements.push(
-        <h2 key={`h2-${index}`} className="text-2xl md:text-3xl font-black text-white tracking-tight mt-12 mb-6 border-b border-white/[0.04] pb-2 uppercase">
-          {trimmed.slice(3)}
-        </h2>
-      );
-    } else if (trimmed.startsWith('### ')) {
-      flushList(`h3-${index}`);
-      elements.push(
-        <h3 key={`h3-${index}`} className="text-lg md:text-xl font-bold text-white tracking-tight mt-8 mb-4 uppercase text-[#C5A059]">
-          {trimmed.slice(4)}
-        </h3>
-      );
-    }
-    else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-      insideList = true;
-      listItems.push(
-        <li key={`li-${index}`} className="leading-relaxed text-slate-300 text-sm sm:text-base">
-          {renderInlineBold(trimmed.slice(2))}
-        </li>
-      );
-    }
-    else {
-      flushList(`p-${index}`);
-      elements.push(
-        <p key={`p-${index}`} className="text-sm sm:text-base text-slate-400 leading-relaxed font-medium mb-6">
-          {renderInlineBold(trimmed)}
-        </p>
-      );
-    }
-  });
-
-  flushList('final');
-  return elements;
-}
-
-export default async function BlogPostPage({ params }: Props) {
-  const resolvedParams = await params;
-  const post = getBlogPostBySlug(resolvedParams.slug);
-
+export default function BlogPostPage({ params }: { params: { slug: string } }) {
+  const post = allPosts.find(p => p.slug === params.slug);
   if (!post) {
     notFound();
   }
 
-  const wordCount = post.content.split(/\s+/).length;
-  const readingTime = Math.max(1, Math.round(wordCount / 200));
+  // Related posts: any other posts in the same category or just list 2 other posts
+  const relatedPosts = allPosts
+    .filter(p => p.slug !== post.slug)
+    .slice(0, 2);
+
+  // Markdown rendering simulation
+  const paragraphs = post.content.split('\n\n').filter(Boolean);
+
+  const whatsappShareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(
+    `Check out this article: "${post.title}" at https://noxishub.app/blog/${post.slug}`
+  )}`;
 
   return (
-    <div className="bg-[#040608] min-h-screen text-[#94A3B8] font-sans selection:bg-[#C5A059]/30 selection:text-white pb-32 relative overflow-hidden">
-      
-      {/* Background glow */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-[#C5A059]/[0.02] rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-[#00E5FF]/[0.01] rounded-full blur-[120px]" />
-      </div>
+    <>
+      {/* Blog Article Schema */}
+      <Script
+        id="blog-post-schema"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'BlogPosting',
+            headline: post.title,
+            description: post.description,
+            datePublished: post.publishedAt,
+            dateModified: post.updatedAt,
+            author: {
+              '@type': 'Organization',
+              name: post.author,
+              url: 'https://noxishub.app',
+            },
+            publisher: {
+              '@type': 'Organization',
+              name: 'Omnora Labs',
+              logo: {
+                '@type': 'ImageObject',
+                url: 'https://noxishub.app/logo.png',
+              },
+            },
+            mainEntityOfPage: {
+              '@type': 'WebPage',
+              '@id': `https://noxishub.app/blog/${post.slug}`,
+            },
+          })
+        }}
+      />
 
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#040608]/85 backdrop-blur-xl border-b border-white/[0.04] py-4">
-        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
-          <Link href="/" className="flex items-center space-x-3 group cursor-pointer">
-            <div className="w-8 h-8 flex items-center justify-center bg-white/5 group-hover:bg-[#C5A059]/10 border border-white/10 group-hover:border-[#C5A059]/30 rounded-sm transition-all shadow-2xl">
-              <img
-                src="/logos/noxis.png"
-                alt="Noxis Logo"
-                width={20}
-                height={20}
-                className="object-contain"
-              />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-white font-extrabold tracking-wider leading-none text-sm">NOXIS</span>
-              <span className="text-[8px] text-gray-500 font-mono tracking-widest uppercase mt-0.5">Core Knowledge Base</span>
-            </div>
+      <main className="min-h-screen bg-[#060708] text-white pt-28 pb-20 px-6">
+        <article className="max-w-3xl mx-auto">
+          {/* Back button */}
+          <Link
+            href="/blog"
+            className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[#60A5FA] hover:text-blue-400 transition-colors mb-8"
+          >
+            <ArrowLeft size={10} /> Back to Blog
           </Link>
 
-          <div className="flex items-center space-x-12 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-            <Link href="/blog" className="hover:text-white transition-colors flex items-center space-x-2">
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>All Articles</span>
-            </Link>
-          </div>
-        </div>
-      </nav>
+          {/* Category */}
+          <span className="text-[8px] font-bold uppercase tracking-widest text-[#60A5FA] bg-[#60A5FA]/10 border border-[#60A5FA]/20 px-2.5 py-1 rounded-full mb-4 inline-block">
+            {post.category}
+          </span>
 
-      {/* Main Post Shell */}
-      <main className="max-w-4xl mx-auto px-6 pt-36 relative z-10">
-        <Link href="/blog" className="inline-flex items-center space-x-2 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white transition-colors mb-8">
-          <ChevronLeft className="w-4 h-4" />
-          <span>Back to Blog</span>
-        </Link>
-
-        {/* Metadata Header */}
-        <header className="mb-12 border-b border-white/[0.04] pb-10">
-          <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight leading-tight mb-6 uppercase">
+          <h1 className="text-3xl md:text-5xl font-black tracking-tight leading-tight text-white mb-6 uppercase tracking-wide">
             {post.title}
           </h1>
 
-          <div className="flex flex-wrap gap-6 text-xs font-mono text-slate-500 font-bold uppercase tracking-wider">
-            <div className="flex items-center space-x-2">
-              <Calendar className="w-4 h-4 text-[#C5A059]" />
-              <span>Published: {post.date}</span>
+          {/* Meta */}
+          <div className="flex items-center gap-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-8 pb-4 border-b border-white/[0.04]">
+            <span className="flex items-center gap-1">
+              <Calendar size={10} />
+              Published: {post.publishedAt}
+            </span>
+            <span className="flex items-center gap-1">
+              <User size={10} />
+              Author: {post.author}
+            </span>
+          </div>
+
+          {/* Article Body */}
+          <div className="text-gray-300 text-sm leading-relaxed space-y-5 font-normal tracking-wide select-text">
+            {paragraphs.map((p, i) => {
+              const trimmed = p.trim();
+              if (trimmed.startsWith('# ')) {
+                return null; // Skip main h1 since we already rendered it
+              }
+              if (trimmed.startsWith('## ')) {
+                return (
+                  <h2 key={i} className="text-lg font-black text-white pt-4 uppercase tracking-wider">
+                    {trimmed.replace('## ', '')}
+                  </h2>
+                );
+              }
+              if (trimmed.startsWith('### ')) {
+                return (
+                  <h3 key={i} className="text-sm font-bold text-white pt-2 uppercase tracking-wide">
+                    {trimmed.replace('### ', '')}
+                  </h3>
+                );
+              }
+              if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
+                const listItems = trimmed
+                  .split(/\n[\*\-]\s+/)
+                  .map(li => li.replace(/^[\*\-]\s+/, '').trim());
+
+                return (
+                  <ul key={i} className="list-disc list-inside pl-4 space-y-1.5 text-gray-400">
+                    {listItems.map((item, idx) => (
+                      <li key={idx} className="leading-relaxed">
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                );
+              }
+
+              // Normal text: format **bold** inside
+              const formattedText = trimmed.split('**').map((part, idx) => {
+                if (idx % 2 === 1) {
+                  return <strong key={idx} className="text-white font-bold">{part}</strong>;
+                }
+                return part;
+              });
+
+              return (
+                <p key={i} className="leading-relaxed">
+                  {formattedText}
+                </p>
+              );
+            })}
+          </div>
+
+          {/* Share Action */}
+          <div className="flex items-center justify-between gap-4 mt-12 p-5 bg-[#0F1114] border border-white/5 rounded-sm">
+            <div>
+              <p className="text-[10px] font-bold text-white uppercase tracking-wider">Share this article</p>
+              <p className="text-[9px] text-gray-500 mt-0.5 leading-normal">Help other factory owners optimize their payroll and loom operations.</p>
             </div>
-            <div className="flex items-center space-x-2">
-              <Clock className="w-4 h-4 text-[#C5A059]" />
-              <span>{readingTime} Min Read</span>
+            <a
+              href={whatsappShareUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-4 py-2 bg-[#25D366] text-black text-[10px] font-bold uppercase tracking-widest rounded-sm hover:brightness-110 transition-all shadow-md shadow-green-500/10"
+            >
+              <Send size={10} /> Share WhatsApp
+            </a>
+          </div>
+
+          {/* Related Articles */}
+          <div className="mt-16 pt-8 border-t border-white/6">
+            <h3 className="text-xs font-black uppercase tracking-widest text-gray-500 mb-6">Related Articles</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {relatedPosts.map(p => (
+                <Link
+                  key={p.slug}
+                  href={`/blog/${p.slug}`}
+                  className="p-5 bg-[#0F1114]/40 hover:bg-[#0F1114] border border-white/5 hover:border-white/10 rounded-sm transition-all group"
+                >
+                  <span className="text-[8px] font-bold uppercase text-[#60A5FA] bg-[#60A5FA]/10 px-2 py-0.5 rounded-full inline-block mb-3">
+                    {p.category}
+                  </span>
+                  <h4 className="text-xs font-bold text-white group-hover:text-[#60A5FA] transition-colors leading-snug uppercase tracking-wide">
+                    {p.title}
+                  </h4>
+                </Link>
+              ))}
             </div>
           </div>
-        </header>
 
-        {/* Dynamic Parsed Article Body */}
-        <article className="prose prose-invert max-w-none text-[#94A3B8]">
-          {renderMarkdown(post.content)}
+          {/* Bottom CTA Card */}
+          <div className="mt-16 p-8 bg-[#0F1114] border border-white/8 rounded-sm text-center relative overflow-hidden">
+            <div className="absolute inset-0 bg-[#60A5FA]/2 blur-[80px] pointer-events-none" />
+            <h3 className="text-lg font-black text-white mb-2 uppercase tracking-wide">Modernize Your Factory Management</h3>
+            <p className="text-xs text-gray-500 mb-6 max-w-lg mx-auto leading-relaxed">
+              We install Noxis Hub locally on your factory system, configure it for your industry, and train your floor managers. Works 100% offline.
+            </p>
+            <Link
+              href="https://wa.me/923264742678?text=I+saw+your+blog+and+want+a+demo+of+Noxis+Hub"
+              target="_blank"
+              className="inline-flex items-center gap-1.5 px-6 py-3 bg-[#60A5FA] text-black font-bold text-xs uppercase tracking-widest hover:bg-blue-400 transition-colors shadow-lg shadow-blue-500/10 rounded-sm"
+            >
+              💬 Request WhatsApp Demo
+            </Link>
+          </div>
         </article>
-
-        {/* Bottom Call to Action */}
-        <div className="mt-20 p-8 sm:p-10 bg-[#0A0D10] border border-white/[0.04] rounded-sm flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="space-y-2">
-            <h3 className="text-lg font-black text-white uppercase tracking-widest">Ready to modernize your operations?</h3>
-            <p className="text-xs sm:text-sm text-slate-400 font-medium max-w-lg">Get 3 days of fully unlocked Elite tier access to testing tools for staff, ledgers, inventory, and AI CCTV monitoring.</p>
-          </div>
-          <Link href="/download" className="bg-[#C5A059] text-[#040608] px-8 py-4 font-black uppercase tracking-widest text-xs hover:brightness-110 shadow-[0_0_20px_rgba(197,160,89,0.15)] transition-all shrink-0">
-            Download 3-Day Trial
-          </Link>
-        </div>
-
-        {/* Footer */}
-        <footer className="mt-20 border-t border-white/[0.04] pt-12">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-8 text-[10px] font-bold text-white/40">
-            <div className="flex items-center space-x-2 uppercase tracking-widest">
-              <Link href="/" className="flex items-center space-x-2">
-                <Image
-                  src="/logos/noxis.png"
-                  alt="Noxis Logo"
-                  width={24}
-                  height={24}
-                  className="object-contain"
-                />
-                <span>NOXIS</span>
-              </Link>
-              <span className="text-gray-600 font-mono font-medium">© {new Date().getFullYear()} All rights reserved.</span>
-            </div>
-
-            <div className="flex flex-col md:flex-row items-center gap-6">
-              <Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
-              <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
-              <div className="flex items-center space-x-6">
-                <a href="https://www.facebook.com/profile.php?fb_profile_edit_entry_point=%7B%22click_point%22%3A%22edit_profile_button%22%2C%22feature%22%3A%22profile_header%22%7D&id=61575141243708&sk=about" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors"><Share2 size={14} /></a>
-                <a href="https://www.linkedin.com/in/ahmad-mahboob-764101407/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors"><Link2 size={14} /></a>
-                <a href="https://www.instagram.com/i.am_ahmad_mahboob/?__pwa=1" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors"><Camera size={14} /></a>
-              </div>
-            </div>
-          </div>
-        </footer>
       </main>
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@700&display=swap');
-        .font-sans { font-family: 'Outfit', sans-serif; }
-        .font-mono { font-family: 'JetBrains+Mono', monospace; }
-        body { background-color: #040608; }
-      `}} />
-    </div>
+    </>
   );
 }

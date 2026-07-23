@@ -15,48 +15,103 @@ import { GlobalErrorBoundary } from "@/components/ui/GlobalErrorBoundary";
 import Script from "next/script";
 import ElectronMotionWrapper from "@/components/providers/ElectronMotionWrapper";
 
-export const metadata = {
-  title: 'Noxis — Industrial ERP for Factories',
-  description: 'Factory management software that works offline. Inventory, payroll, CCTV, invoicing. For textile, pharma, rice mills and 40+ industries. Available in Urdu and English.',
-  keywords: [
-    'factory ERP Pakistan',
-    'industrial ERP software',
-    'textile management software Pakistan',
-    'karigar management software',
-    'factory software Urdu',
-    'offline ERP Pakistan',
-    'inventory management Pakistan',
-    'CCTV factory software',
-    'kapra factory software',
-    'dawapharma software',
-    'rice mill software Pakistan',
-    'ERP software Lahore',
-    'ERP software Karachi',
-    'small business ERP Pakistan',
-    'factory payroll software'
-  ],
-  openGraph: {
-    title: 'Noxis — Industrial ERP for Factories',
-    description: 'Works offline. Speaks Urdu. Built for Pakistani and global factories.',
-    url: 'https://noxishub.app',
-    siteName: 'Noxis',
-    type: 'website',
-    images: [{
-      url: 'https://noxishub.app/og-image.png',
-      width: 1200,
-      height: 630,
-      alt: 'Noxis Industrial ERP Dashboard',
-    }],
+export const metadata: Metadata = {
+  title: {
+    default: 'Noxis Hub — Factory ERP Software for Pakistan & UAE | Offline-First',
+    template: '%s | Noxis Hub',
   },
+  description: 'Noxis Hub is the #1 factory management software for textile mills, rice mills, garment factories, and manufacturing businesses in Pakistan and UAE. Works offline. Karigar management, piece-rate payroll, WhatsApp billing, CCTV integration. Starting PKR 2,500/year.',
+  keywords: [
+    // Primary — what factory owners search
+    'factory management software Pakistan',
+    'ERP software Pakistan',
+    'karigar management software',
+    'textile mill software Pakistan',
+    'rice mill software Pakistan',
+    'garment factory software',
+    'manufacturing software Pakistan',
+    'piece rate payroll software',
+    'attendance software factory',
+
+    // Urdu transliteration (huge opportunity)
+    'karkhana management software',
+    'karigar software',
+    'peshgi software',
+    'haazri software',
+
+    // UAE market
+    'factory software UAE',
+    'manufacturing ERP Dubai',
+    'industrial software UAE',
+
+    // Competitor comparison
+    'TallyPrime alternative Pakistan',
+    'Vyapar alternative',
+    'Marg ERP alternative',
+
+    // Feature-specific
+    'offline ERP software',
+    'WhatsApp invoice software',
+    'CCTV ERP integration',
+    'barcode inventory Pakistan',
+    'payroll software factory Pakistan',
+  ],
+
+  authors: [{ name: 'Omnora Labs' }],
+  creator: 'Omnora Labs',
+  publisher: 'Omnora Labs',
+
+  // Canonical URL
+  metadataBase: new URL('https://noxishub.app'),
+  alternates: {
+    canonical: '/',
+  },
+
+  // Open Graph (Facebook, WhatsApp previews)
+  openGraph: {
+    type: 'website',
+    locale: 'en_PK',
+    url: 'https://noxishub.app',
+    siteName: 'Noxis Hub',
+    title: 'Noxis Hub — Factory ERP Software for Pakistan & UAE',
+    description: 'Manage karigars, attendance, production, payroll, and invoices in one offline-first system. Works without internet. WhatsApp billing built in.',
+    images: [
+      {
+        url: '/og',
+        width: 1200,
+        height: 630,
+        alt: 'Noxis Hub — Factory Management Software Pakistan',
+      },
+    ],
+  },
+
+  // Twitter/X Card
   twitter: {
     card: 'summary_large_image',
-    title: 'Noxis — Industrial ERP for Factories',
-    description: 'Works offline. Speaks Urdu. Built for Pakistani factories.',
-    images: ['https://noxishub.app/og-image.png'],
+    title: 'Noxis Hub — Factory ERP Software Pakistan',
+    description: 'Offline-first factory management. Karigars, payroll, CCTV, WhatsApp billing. PKR 2,500/year.',
+    images: ['/og'],
+    creator: '@omnoralabs',
   },
-  alternates: {
-    canonical: 'https://noxishub.app',
+
+  // Robots — tell Google to index everything
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
   },
+
+  // Verification
+  verification: {
+    google: 'google-site-verification-noxis-2026',
+  },
+
   icons: {
     icon: '/favicon.ico',
     apple: '/favicon.ico',
@@ -176,6 +231,223 @@ export default async function RootLayout({
           </AuditProvider>
         </ClientI18nProvider>
         </ElectronMotionWrapper>
+        <Script
+          id="structured-data"
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify([
+              // Software Application schema
+              {
+                '@context': 'https://schema.org',
+                '@type': 'SoftwareApplication',
+                name: 'Noxis Hub',
+                alternateName: [
+                  'Noxis',
+                  'Noxis ERP',
+                  'Noxis Factory Software',
+                  'نوکسس ہب',
+                ],
+                description: 'Offline-first factory management ERP for textile mills, rice mills, garment factories, and manufacturing businesses in Pakistan and UAE. Features karigar management, piece-rate payroll, attendance tracking, WhatsApp billing, inventory management, and CCTV integration.',
+                applicationCategory: 'BusinessApplication',
+                operatingSystem: 'Windows 8.1, Windows 10, Windows 11',
+                url: 'https://noxishub.app',
+                downloadUrl: 'https://noxishub.app/download',
+                screenshot: 'https://noxishub.app/og',
+                featureList: [
+                  'Karigar (Worker) Management',
+                  'Piece-Rate Payroll Calculation',
+                  'Peshgi (Advance) Tracking',
+                  'Daily Attendance Marking',
+                  'Production Logging',
+                  'WhatsApp Invoice Sending',
+                  'Client Portal with Token-Based Access',
+                  'Offline-First with Cloud Sync',
+                  'Inventory Management with Barcode',
+                  'CCTV Camera Integration',
+                  'Multi-Industry Support',
+                  'Multi-Currency (PKR, AED, USD, GBP)',
+                  'GST and VAT Calculation',
+                  'FBR Tax Export',
+                  'Double-Entry Accounting',
+                  'Expiry Date Tracking',
+                  'Batch Number Management',
+                  'Mobile Companion App',
+                  'Foresight Business Predictions',
+                  'Workflow Automation Builder',
+                ],
+                offers: {
+                  '@type': 'AggregateOffer',
+                  priceCurrency: 'PKR',
+                  lowPrice: '25000',
+                  highPrice: '120000',
+                  offerCount: 3,
+                  offers: [
+                    {
+                      '@type': 'Offer',
+                      name: 'Lite Plan',
+                      price: '25000',
+                      priceCurrency: 'PKR',
+                      description: 'Up to 5 devices, 2 cameras, core factory management',
+                    },
+                    {
+                      '@type': 'Offer',
+                      name: 'Pro Plan',
+                      price: '60000',
+                      priceCurrency: 'PKR',
+                      description: 'Up to 15 devices, 4 cameras, advanced reports and intelligence',
+                    },
+                    {
+                      '@type': 'Offer',
+                      name: 'Elite Plan',
+                      price: '120000',
+                      priceCurrency: 'PKR',
+                      description: 'Up to 50 devices, 6 cameras, full enterprise features',
+                    },
+                  ],
+                },
+                author: {
+                  '@type': 'Organization',
+                  name: 'Omnora Labs',
+                  url: 'https://noxishub.app',
+                  contactPoint: {
+                    '@type': 'ContactPoint',
+                    telephone: '+92-326-474-2678',
+                    contactType: 'customer service',
+                    availableLanguage: ['English', 'Urdu'],
+                  },
+                },
+                inLanguage: ['en', 'ur'],
+                countryOfOrigin: 'PK',
+                availableInCountry: ['PK', 'AE', 'SA', 'BD', 'GB', 'US'],
+              },
+
+              // Organization schema
+              {
+                '@context': 'https://schema.org',
+                '@type': 'Organization',
+                name: 'Omnora Labs',
+                alternateName: 'Noxis Hub',
+                url: 'https://noxishub.app',
+                logo: 'https://noxishub.app/logo.png',
+                contactPoint: {
+                  '@type': 'ContactPoint',
+                  telephone: '+92-326-474-2678',
+                  contactType: 'sales',
+                  availableLanguage: ['English', 'Urdu'],
+                },
+                sameAs: [
+                  'https://www.youtube.com/@Pak_the_gamerz',
+                ],
+              },
+
+              // FAQ schema — this appears in
+              // Google search results as expandable
+              // questions
+              {
+                '@context': 'https://schema.org',
+                '@type': 'FAQPage',
+                mainEntity: [
+                  {
+                    '@type': 'Question',
+                    name: 'What is Noxis Hub?',
+                    acceptedAnswer: {
+                      '@type': 'Answer',
+                      text: 'Noxis Hub is an offline-first factory management ERP software built for manufacturing businesses in Pakistan and UAE. It manages karigars, attendance, piece-rate payroll, inventory, invoicing, and WhatsApp billing in one system.',
+                    },
+                  },
+                  {
+                    '@type': 'Question',
+                    name: 'Does Noxis Hub work without internet?',
+                    acceptedAnswer: {
+                      '@type': 'Answer',
+                      text: 'Yes. Noxis Hub stores all data locally on your factory PC and syncs to the cloud when internet is available. All core features work completely offline.',
+                    },
+                  },
+                  {
+                    '@type': 'Question',
+                    name: 'What is the price of Noxis Hub?',
+                    acceptedAnswer: {
+                      '@type': 'Answer',
+                      text: 'Noxis Hub starts at PKR 25,000 per year for the Lite plan. Pro is PKR 60,000 per year. Elite is PKR 120,000 per year. All plans include installation support.',
+                    },
+                  },
+                  {
+                    '@type': 'Question',
+                    name: 'Does Noxis Hub support karigar management?',
+                    acceptedAnswer: {
+                      '@type': 'Answer',
+                      text: 'Yes. Noxis Hub has built-in karigar management with attendance tracking, piece-rate wage calculation, peshgi advance tracking, production logging with quality grades, and automatic payroll generation.',
+                    },
+                  },
+                  {
+                    '@type': 'Question',
+                    name: 'Is Noxis Hub suitable for rice mills?',
+                    acceptedAnswer: {
+                      '@type': 'Answer',
+                      text: 'Yes. Noxis Hub has a dedicated rice mill mode that changes all terminology to match rice mill operations — Mazdoor instead of Karigar, paddy and rice inventory tracking, yield calculation, and seasonal reporting.',
+                    },
+                  },
+                  {
+                    '@type': 'Question',
+                    name: 'What is the difference between Noxis Hub and TallyPrime?',
+                    acceptedAnswer: {
+                      '@type': 'Answer',
+                      text: 'Noxis Hub includes karigar management, piece-rate payroll, mobile companion app, WhatsApp billing, and CCTV integration that TallyPrime does not have. TallyPrime has faster keyboard-based entry for accountants. Noxis Hub is designed for factory owners and floor supervisors, not accountants.',
+                    },
+                  },
+                  {
+                    '@type': 'Question',
+                    name: 'Does Noxis Hub work in UAE?',
+                    acceptedAnswer: {
+                      '@type': 'Answer',
+                      text: 'Yes. Noxis Hub supports UAE operations with AED currency, VAT 5% tax calculation, Arabic date formats, and UAE phone number formatting. It is used by Pakistani business owners in Dubai, Sharjah, and Abu Dhabi.',
+                    },
+                  },
+                  {
+                    '@type': 'Question',
+                    name: 'What is Noxis Mobile Hub?',
+                    acceptedAnswer: {
+                      '@type': 'Answer',
+                      text: 'Noxis Mobile Hub is the Android companion app for Noxis Hub. Factory supervisors use it to mark attendance, log production, and give peshgi advances from their phone. It connects to the PC Hub over local WiFi and works offline.',
+                    },
+                  },
+                ],
+              },
+
+              // BreadcrumbList for navigation
+              {
+                '@context': 'https://schema.org',
+                '@type': 'BreadcrumbList',
+                itemListElement: [
+                  {
+                    '@type': 'ListItem',
+                    position: 1,
+                    name: 'Home',
+                    item: 'https://noxishub.app',
+                  },
+                  {
+                    '@type': 'ListItem',
+                    position: 2,
+                    name: 'Features',
+                    item: 'https://noxishub.app/features',
+                  },
+                  {
+                    '@type': 'ListItem',
+                    position: 3,
+                    name: 'Pricing',
+                    item: 'https://noxishub.app/pricing',
+                  },
+                  {
+                    '@type': 'ListItem',
+                    position: 4,
+                    name: 'Download',
+                    item: 'https://noxishub.app/download',
+                  },
+                ],
+              },
+            ])
+          }}
+        />
       </body>
     </html>
   );
