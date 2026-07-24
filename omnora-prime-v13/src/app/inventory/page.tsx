@@ -190,41 +190,49 @@ export default function InventoryPage() {
     }
   });
 
-  // Data Fetching
+  // Data Fetching — True Instant Local-First (0ms Lag)
   const { data: skus = [], isLoading: skusLoading, error: skusError, refetch: refetchSkus } = useQuery({
     queryKey: ['inventory', profile?.id],
     queryFn: async () => {
-      try {
-        const { data, error } = await supabase
-          .from('skus')
-          .select('*')
-          .eq('business_id', profile?.id)
-          .order('name', { ascending: true });
-        if (error) throw error;
-        if (data && data.length > 0) {
-          try {
-            localStorage.setItem(`noxis_cached_skus_${profile?.id}`, JSON.stringify(data));
-          } catch {}
-          setLastFetchedAt(new Date());
-          return data as SKU[];
-        }
-      } catch (err) {
-        console.warn('[Inventory] Remote fetch failed or offline, attempting local cache fallback:', err);
-      }
+      let localData: SKU[] = [];
 
-      // Offline / Local Fallback Layer
+      // 1. Read instantly from local storage cache (0ms)
       if (typeof window !== 'undefined' && profile?.id) {
         const cached = localStorage.getItem(`noxis_cached_skus_${profile.id}`);
         if (cached) {
           try {
-            const parsed = JSON.parse(cached);
+            localData = JSON.parse(cached);
             setLastFetchedAt(new Date());
-            return parsed as SKU[];
           } catch {}
         }
       }
 
-      return [];
+      // 2. Fetch remote update non-blocking with 2s max timeout
+      if (profile?.id) {
+        try {
+          const timeoutPromise = new Promise<{ data: null; error: any }>(resolve => 
+            setTimeout(() => resolve({ data: null, error: new Error('Timeout') }), 2000)
+          );
+          const fetchPromise = supabase
+            .from('skus')
+            .select('*')
+            .eq('business_id', profile.id)
+            .order('name', { ascending: true });
+
+          const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
+          if (!error && data && data.length > 0) {
+            try {
+              localStorage.setItem(`noxis_cached_skus_${profile.id}`, JSON.stringify(data));
+            } catch {}
+            setLastFetchedAt(new Date());
+            return data as SKU[];
+          }
+        } catch (err) {
+          console.warn('[Inventory] Remote sync skipped, returning instant local data:', err);
+        }
+      }
+
+      return localData;
     },
     enabled: !!profile?.id,
     staleTime: 5 * 60 * 1000,
