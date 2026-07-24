@@ -29,6 +29,7 @@ interface BusinessProfile {
   business_name: string | null;
   address: string | null;
   phone: string | null;
+  logo_url?: string | null;
   tier?: string;
   currency?: string;
   country_code?: string;

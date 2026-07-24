@@ -65,14 +65,14 @@ export default function PieceRateGridPage() {
 
       if (karigarRes.error) throw karigarRes.error
 
-      const attendanceMap = new Map(
-        (attendanceRes.data || []).map(a => [a.karigar_id, { id: a.id, status: a.status }])
+      const attendanceMap = new Map<string, { id: string; status: string }>(
+        (attendanceRes.data || []).map((a: any) => [a.karigar_id, { id: a.id, status: a.status }])
       )
-      const productionMap = new Map(
-        (productionRes.data || []).map(p => [p.karigar_id, p])
+      const productionMap = new Map<string, any>(
+        (productionRes.data || []).map((p: any) => [p.karigar_id, p])
       )
 
-      return (karigarRes.data || []).map(k => {
+      return (karigarRes.data || []).map((k: any) => {
         const att = attendanceMap.get(k.id)
         const prod = productionMap.get(k.id)
 
