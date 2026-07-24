@@ -47,7 +47,11 @@ export default function LicensePage() {
 
       // 2. Check if user is logged in -> attempt auto-detect
       try {
-        const { data: { user } } = await supabase.auth.getUser()
+        const authRes: any = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise(r => setTimeout(() => r({ data: { session: null } }), 1500))
+        ])
+        const user = authRes?.data?.session?.user || null
         if (user?.email) {
           setEmail(user.email)
           // Try silent auto detect

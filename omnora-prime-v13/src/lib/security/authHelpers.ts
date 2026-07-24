@@ -3,7 +3,11 @@ import { createClient } from '@/lib/supabase/server'
 export async function verifyUserSession() {
   try {
     const supabase = await createClient()
-    const { data: { user }, error } = await supabase.auth.getUser()
+    const authPromise = supabase.auth.getUser()
+    const timeoutPromise = new Promise<{ data: { user: null }; error: any }>(resolve =>
+      setTimeout(() => resolve({ data: { user: null }, error: new Error('Auth timeout') }), 2000)
+    )
+    const { data: { user }, error } = await Promise.race([authPromise, timeoutPromise])
     if (error || !user) {
       return null
     }

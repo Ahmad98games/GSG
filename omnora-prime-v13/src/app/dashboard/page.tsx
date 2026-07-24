@@ -122,17 +122,21 @@ export default function OwnerDashboard() {
       let activeProfile = profile
       let user = null
       
-      if (!isOffline) {
+      if (!isOffline && !activeProfile) {
         try {
-          const { data } = await supabase.auth.getUser()
-          user = data?.user || null
+          const authRes: any = await Promise.race([
+            supabase.auth.getSession(),
+            new Promise(r => setTimeout(() => r({ data: { session: null } }), 1500))
+          ])
+          const session = authRes?.data?.session || null
+          user = session?.user || null
           
           if (user) {
             const { data: prof } = await supabase
               .from('business_profiles')
               .select('*')
               .eq('user_id', user.id)
-              .single()
+              .maybeSingle()
             if (prof) {
               activeProfile = prof
             }
