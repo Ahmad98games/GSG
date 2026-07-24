@@ -1020,8 +1020,21 @@ export default function POSPage() {
             <div className="p-6">
               {/* Business header */}
               <div className="text-center mb-4 pb-4 border-b border-gray-200">
+                {(lastSale.profile?.logo_url || profile?.logo_url) ? (
+                  <div className="flex justify-center mb-3">
+                    <img 
+                      src={lastSale.profile?.logo_url || profile?.logo_url} 
+                      alt="Business Logo" 
+                      className="h-16 w-auto max-w-[180px] object-contain" 
+                    />
+                  </div>
+                ) : (
+                  <div className="w-14 h-14 bg-black text-white font-black text-xl rounded-full flex items-center justify-center mx-auto mb-3 uppercase">
+                    {(lastSale.profile?.business_name || profile?.business_name || 'N').slice(0, 2)}
+                  </div>
+                )}
                 <p className="font-black text-lg uppercase tracking-wide">
-                  {lastSale.profile?.business_name}
+                  {lastSale.profile?.business_name || profile?.business_name}
                 </p>
                 {lastSale.profile?.phone && (
                   <p className="text-sm text-gray-600">

@@ -571,9 +571,21 @@ export default function InvoiceDetailPage() {
                  {/* Header */}
                  <div className="flex justify-between items-start mb-16">
                     <div className="space-y-4">
-                       <div className="w-16 h-16 bg-black flex items-center justify-center">
-                          <span className="text-white font-black text-2xl">NX</span>
-                       </div>
+                        {(business?.logo_url || profile?.logo_url) ? (
+                          <div className="h-16 w-auto max-w-[200px] flex items-center">
+                            <img 
+                              src={business?.logo_url || profile?.logo_url || ''} 
+                              alt="Business Logo" 
+                              className="h-16 w-auto max-w-[200px] object-contain" 
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-16 h-16 bg-black flex items-center justify-center rounded-sm">
+                             <span className="text-white font-black text-2xl">
+                                {(business?.business_name || profile?.business_name || 'N').slice(0, 2).toUpperCase()}
+                             </span>
+                          </div>
+                        )}
                        <div>
                           <h2 className="text-xl font-black uppercase tracking-tighter">{business?.business_name || 'Noxis Hub'}</h2>
                           <p className="text-[10px] text-gray-500 font-medium max-w-[200px] leading-tight mt-1">

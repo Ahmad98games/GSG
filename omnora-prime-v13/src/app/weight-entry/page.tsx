@@ -353,6 +353,9 @@ export default function WeightEntryDashboard() {
       {/* ═══ PRINT RECEIPT SKELETON (only shown during window.print()) ═══ */}
       <div className="hidden print:block font-mono text-black p-4 text-xs w-[80mm]">
         <div className="text-center border-b border-dashed border-black pb-2 mb-2">
+          {profile?.logo_url && (
+            <img src={profile.logo_url} alt="Logo" className="h-10 w-auto max-w-[120px] mx-auto mb-1.5 object-contain" />
+          )}
           <h2 className="text-sm font-black uppercase tracking-widest">{profile?.business_name || 'Noxis Mill'}</h2>
           <p className="text-[9px] text-gray-700">{profile?.city || 'Pakistan'}</p>
           <p className="text-[9px] uppercase font-bold mt-1">Weighbridge Receipt</p>

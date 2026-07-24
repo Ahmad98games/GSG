@@ -441,8 +441,8 @@ export default function InvoiceGenerator() {
                   <div className="space-y-4">
                     <div className="flex items-center space-x-4">
                       {profile?.logo_url ? (
-                        <div className="w-16 h-16 relative grayscale print:grayscale-0">
-                          <img src={profile.logo_url} alt={profile.business_name || 'Logo'} className="object-contain" />
+                        <div className="w-16 h-16 relative flex items-center justify-center">
+                          <img src={profile.logo_url} alt={profile.business_name || 'Logo'} className="max-h-16 w-auto object-contain" />
                         </div>
                       ) : (
                         <div className="w-16 h-16 bg-black flex items-center justify-center rounded-sm">
