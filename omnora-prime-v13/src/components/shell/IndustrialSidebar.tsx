@@ -124,113 +124,131 @@ export default React.memo(function IndustrialSidebar() {
     return () => window.removeEventListener('keydown', handleGlobalKey);
   }, []);
 
-  const CORE_ITEMS = useMemo(() => [
-    {
-      label: nav.dashboard,
-      href: '/dashboard',
-      icon: LayoutDashboard,
-      always: true,
-    },
-    {
-      label: nav.inventory,
-      href: '/inventory',
-      icon: Package,
-      always: true,
-    },
-    {
-      label: nav.workers,
-      href: '/karigars',
-      icon: Users,
-      always: true,
-    },
-    {
-      label: nav.production,
-      href: '/production',
-      icon: Zap,
-      // Hide production tab for pure
-      // wholesale businesses
-      always: industry.key !== 'general',
-    },
-    {
-      label: nav.invoices,
-      href: '/invoices',
-      icon: FileText,
-      always: true,
-    },
-    {
-      label: nav.parties,
-      href: '/parties',
-      icon: Building2,
-      always: true,
-    },
-    {
-      label: nav.ledger,
-      href: '/khata',
-      icon: BookOpen,
-      always: true,
-    },
-    {
-      label: nav.payroll,
-      href: '/payroll',
-      icon: Wallet,
-      always: true,
-    },
-    {
-      label: nav.dispatch,
-      href: '/dispatch',
-      icon: Truck,
-      always: true,
-    },
-    {
-      label: nav.purchase,
-      href: '/purchase',
-      icon: ShoppingCart,
-      always: true,
-    },
-    {
-      label: nav.reports,
-      href: '/reports',
-      icon: BarChart3,
-      always: true,
-    },
-    {
-      label: 'Workflows',
-      href: '/workflows',
-      icon: Zap,
-      always: true,
-    },
-    {
-      label: 'Foresight',
-      href: '/foresight',
-      icon: Brain,
-      always: true,
-    },
-    // Industry-specific nav items
-    {
-      label: 'Expiry Alerts',
-      href: industry.key === 'medical' ? '/expiry' : '/inventory/expiry',
-      icon: AlertTriangle,
-      always: features.expiryManagement,
-    },
-    {
-      label: 'Yield Tracking',
-      href: '/production/yield',
-      icon: TrendingUp,
-      always: features.yieldTracking,
-    },
-    {
-      label: 'Cold Chain Log',
-      href: '/cold-chain',
-      icon: Thermometer,
-      always: features.coldChainLogging,
-    },
-    {
-      label: 'Batch Recall',
-      href: industry.key === 'medical' ? '/expiry?status=recalled' : '/production/batches',
-      icon: AlertOctagon,
-      always: features.batchTracking,
-    },
-  ], [nav, features, industry.key]);
+  const CORE_ITEMS = useMemo(() => {
+    const items = [];
+    if (industry.key === 'medical' || industry.key === 'general') {
+      items.push({
+        label: 'POS Counter',
+        href: '/pos',
+        icon: ShoppingCart,
+        always: true,
+      });
+    }
+    if (industry.key === 'rice' || industry.key === 'food') {
+      items.push({
+        label: 'Weight Entry',
+        href: '/weight-entry',
+        icon: Calculator,
+        always: true,
+      });
+    }
+    items.push(
+      {
+        label: nav.dashboard,
+        href: '/dashboard',
+        icon: LayoutDashboard,
+        always: true,
+      },
+      {
+        label: nav.inventory,
+        href: '/inventory',
+        icon: Package,
+        always: true,
+      },
+      {
+        label: nav.workers,
+        href: '/karigars',
+        icon: Users,
+        always: true,
+      },
+      {
+        label: nav.production,
+        href: (industry.key === 'textile' || industry.key === 'garment') ? '/production/grid' : '/production',
+        icon: Zap,
+        always: industry.key !== 'general',
+      },
+      {
+        label: nav.invoices,
+        href: '/invoices',
+        icon: FileText,
+        always: true,
+      },
+      {
+        label: nav.parties,
+        href: '/parties',
+        icon: Building2,
+        always: true,
+      },
+      {
+        label: nav.ledger,
+        href: '/khata',
+        icon: BookOpen,
+        always: true,
+      },
+      {
+        label: nav.payroll,
+        href: '/payroll',
+        icon: Wallet,
+        always: true,
+      },
+      {
+        label: nav.dispatch,
+        href: '/dispatch',
+        icon: Truck,
+        always: true,
+      },
+      {
+        label: nav.purchase,
+        href: '/purchase',
+        icon: ShoppingCart,
+        always: true,
+      },
+      {
+        label: nav.reports,
+        href: '/reports',
+        icon: BarChart3,
+        always: true,
+      },
+      {
+        label: 'Workflows',
+        href: '/workflows',
+        icon: Zap,
+        always: true,
+      },
+      {
+        label: 'Foresight',
+        href: '/foresight',
+        icon: Brain,
+        always: true,
+      },
+      // Industry-specific nav items
+      {
+        label: 'Expiry Alerts',
+        href: industry.key === 'medical' ? '/expiry' : '/inventory/expiry',
+        icon: AlertTriangle,
+        always: features.expiryManagement,
+      },
+      {
+        label: 'Yield Tracking',
+        href: '/production/yield',
+        icon: TrendingUp,
+        always: features.yieldTracking,
+      },
+      {
+        label: 'Cold Chain Log',
+        href: '/cold-chain',
+        icon: Thermometer,
+        always: features.coldChainLogging,
+      },
+      {
+        label: 'Batch Recall',
+        href: industry.key === 'medical' ? '/expiry?status=recalled' : '/production/batches',
+        icon: AlertOctagon,
+        always: features.batchTracking,
+      }
+    );
+    return items;
+  }, [nav, features, industry.key]);
 
   const UTILITY_ITEMS = useMemo(() => [
     {

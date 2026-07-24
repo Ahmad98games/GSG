@@ -79,6 +79,12 @@ interface SKU {
   expiry_date: string | null;
   manufacture_date: string | null;
   requires_batch_tracking: boolean;
+  // Auto Parts fields
+  oem_number?: string | null;
+  compatible_vehicles?: string | null;
+  commission_rate?: number | null;
+  oem_part_number?: string | null;
+  compatible_models?: string | null;
 }
 
 const columnHelper = createColumnHelper<SKU>();
@@ -101,6 +107,10 @@ const skuSchema = z.object({
   manufacture_date: z.string().optional(),
   expiry_date: z.string().optional(),
   requires_batch_tracking: z.boolean().optional(),
+  // Auto parts
+  oem_number: z.string().optional(),
+  compatible_vehicles: z.string().optional(),
+  commission_rate: z.coerce.number().min(0, "Commission rate cannot be negative").optional(),
 });
 
 type SKUFormValues = z.infer<typeof skuSchema>;
@@ -119,10 +129,12 @@ type AdjustStockValues = z.infer<typeof adjustStockSchema>;
 export default function InventoryPage() {
   const { profile } = useBusinessProfile();
   const { t, fmt, term } = usePersona();
+  const { industry, features } = useIndustryConfig();
   const toast = useToast();
 
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const isAutoPartsMode = industry.key === 'auto';
 
   // State
   const [searchTerm, setSearchTerm] = useState("");
@@ -425,8 +437,10 @@ export default function InventoryPage() {
 
   return (
     <div className="min-h-screen bg-[#121417] text-slate-200 p-6">
-      <main className="max-w-[1600px] mx-auto space-y-6">
-        <div className="flex items-center justify-between mb-6">
+      <div className={isAutoPartsMode ? "flex gap-6 max-w-[1800px] mx-auto" : "contents"}>
+        {isAutoPartsMode && <AutoPartsSearchSidebar skus={skus} />}
+        <main className={isAutoPartsMode ? "flex-1 min-w-0 space-y-6" : "max-w-[1600px] mx-auto space-y-6 w-full"}>
+          <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-lg font-semibold tracking-tight text-white">
               {term('inventory') || "Inventory Hub"}
@@ -648,8 +662,9 @@ export default function InventoryPage() {
                )}
             </div>
           </ScrollReveal3D>
-      </main>
-      
+        </main>
+      </div>
+
       {/* Modals */}
       <AnimatePresence>
         {isAddModalOpen && (
@@ -932,6 +947,9 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
       manufacture_date: skuToEdit.manufacture_date || "",
       expiry_date: skuToEdit.expiry_date || "",
       requires_batch_tracking: skuToEdit.requires_batch_tracking ?? false,
+      oem_number: skuToEdit.oem_number || skuToEdit.oem_part_number || "",
+      compatible_vehicles: skuToEdit.compatible_vehicles || skuToEdit.compatible_models || "",
+      commission_rate: skuToEdit.commission_rate ?? 0,
     } : {
       unit: "pcs",
       current_location: "warehouse",
@@ -943,6 +961,9 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
       manufacture_date: "",
       expiry_date: "",
       requires_batch_tracking: false,
+      oem_number: "",
+      compatible_vehicles: "",
+      commission_rate: 0,
     }
   });
 
@@ -1013,6 +1034,11 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
             manufacture_date: values.manufacture_date || null,
             expiry_date: values.expiry_date || null,
             requires_batch_tracking: values.requires_batch_tracking ?? false,
+            oem_number: values.oem_number || null,
+            compatible_vehicles: values.compatible_vehicles || null,
+            commission_rate: values.commission_rate ?? 0,
+            oem_part_number: values.oem_number || null,
+            compatible_models: values.compatible_vehicles || null,
           })
           .eq('id', skuToEdit.id);
 
@@ -1026,6 +1052,8 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
           .from('skus')
           .insert({
             ...values,
+            oem_part_number: values.oem_number || null,
+            compatible_models: values.compatible_vehicles || null,
             business_id: profile.id,
             qty_on_hand: 0, 
             qty_reserved: 0,
@@ -1122,6 +1150,22 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
                       <Label>Barcode (EAN/UPC)</Label>
                       <Input {...register("barcode")} placeholder="Scan or type barcode..." />
                    </div>
+                   {features.vinTracking && (
+                     <>
+                       <div className="space-y-2 col-span-2">
+                          <Label>OEM Part Number</Label>
+                          <Input {...register("oem_number")} placeholder="e.g. 90915-10001 / 23300-75120" />
+                       </div>
+                       <div className="space-y-2 col-span-2">
+                          <Label>Compatible Vehicles</Label>
+                          <Input {...register("compatible_vehicles")} placeholder="e.g. Toyota Corolla 2003-2008, Hilux 2TR-FE" />
+                       </div>
+                       <div className="space-y-2 col-span-2">
+                          <Label>Mechanic Commission Rate (%)</Label>
+                          <Input type="number" step="0.1" {...register("commission_rate")} placeholder="e.g. 5" />
+                       </div>
+                     </>
+                   )}
                 </div>
              </div>
 
@@ -1424,4 +1468,221 @@ async function handleCSVImport(
     }
   };
   reader.readAsText(file);
+}
+
+function AutoPartsSearchSidebar({ skus }: { skus: SKU[] }) {
+  const supabase = createClient();
+  const toast = useToast();
+  const [query, setQuery] = useState('');
+  const [selectedMechanic, setSelectedMechanic] = useState('');
+  const [mechanics, setMechanics] = useState<any[]>([]);
+
+  // Load mechanics
+  useEffect(() => {
+    const loadMechanics = async () => {
+      try {
+        const { data } = await supabase
+          .from('parties')
+          .select('id, name')
+          .in('party_type', ['mechanic', 'both']);
+        if (data && data.length > 0) {
+          setMechanics(data);
+        } else {
+          setMechanics([
+            { id: 'm1', name: 'Ali Raza (Senior Mechanic)' },
+            { id: 'm2', name: 'Yasir Mehmood (Tuning)' },
+            { id: 'm3', name: 'Muhammad Usman (Suspension)' },
+          ]);
+        }
+      } catch (e) {
+        setMechanics([
+          { id: 'm1', name: 'Ali Raza (Senior Mechanic)' },
+          { id: 'm2', name: 'Yasir Mehmood (Tuning)' },
+          { id: 'm3', name: 'Muhammad Usman (Suspension)' },
+        ]);
+      }
+    };
+    loadMechanics();
+  }, []);
+
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Autofocus input on load
+    inputRef.current?.focus();
+  }, []);
+
+  // Filter SKUs debounced/instantly
+  const results = useMemo(() => {
+    if (!query.trim()) return [];
+    const q = query.toLowerCase();
+    return skus.filter(s => 
+      s.name.toLowerCase().includes(q) ||
+      (s.sku_code || '').toLowerCase().includes(q) ||
+      (s.barcode || '').toLowerCase().includes(q) ||
+      (s.oem_number || '').toLowerCase().includes(q) ||
+      (s.oem_part_number || '').toLowerCase().includes(q)
+    ).slice(0, 15);
+  }, [query, skus]);
+
+  // Actions
+  const addToCart = (sku: SKU) => {
+    const savedCartStr = localStorage.getItem('noxis_pos_cart');
+    let cart: any[] = [];
+    if (savedCartStr) {
+      try { cart = JSON.parse(savedCartStr); } catch (e) {}
+    }
+
+    const price = sku.sale_price || 0;
+    const existingIndex = cart.findIndex((item: any) => item.skuId === sku.id);
+
+    const mech = mechanics.find(m => m.id === selectedMechanic);
+
+    if (existingIndex > -1) {
+      cart[existingIndex].quantity += 1;
+      cart[existingIndex].total = cart[existingIndex].quantity * cart[existingIndex].unitPrice;
+      if (mech) {
+        cart[existingIndex].mechanicId = mech.id;
+        cart[existingIndex].mechanicName = mech.name;
+        cart[existingIndex].commissionRate = sku.commission_rate ?? 0;
+      }
+    } else {
+      cart.push({
+        skuId: sku.id,
+        name: sku.name,
+        unit: sku.unit || 'pcs',
+        quantity: 1,
+        unitPrice: price,
+        discount: 0,
+        total: price,
+        stockAvailable: sku.qty_on_hand || 0,
+        mechanicId: mech?.id,
+        mechanicName: mech?.name,
+        commissionRate: sku.commission_rate ?? 0
+      });
+    }
+
+    localStorage.setItem('noxis_pos_cart', JSON.stringify(cart));
+    
+    if (mech) {
+      toast.success('Added to POS Cart', `${sku.name} added to cart. Assigned to mechanic ${mech.name} with commission.`);
+    } else {
+      toast.success('Added to POS Cart', `${sku.name} added to POS cart.`);
+    }
+  };
+
+  const showDetail = (sku: SKU) => {
+    toast.info('Part Specifications', `Name: ${sku.name}\nOEM: ${sku.oem_number || sku.oem_part_number || 'N/A'}\nFits: ${sku.compatible_vehicles || sku.compatible_models || 'N/A'}\nRetail: ${sku.sale_price}\nWholesale/Cost: ${sku.cost_price}`);
+  };
+
+  const logWorkOrder = async (sku: SKU) => {
+    const vehicle = prompt("Enter vehicle registration / details to log work order:");
+    if (!vehicle) return;
+
+    try {
+      const { error } = await supabase.from('dispatch_orders').insert({
+        status: 'pending',
+        vehicle_num: vehicle,
+        notes: `Work order logged for part: ${sku.name} (OEM: ${sku.oem_number || sku.oem_part_number || 'N/A'})`
+      });
+      if (error) throw error;
+      toast.success('Work Order Created', `Logged vehicle work order for ${vehicle}.`);
+    } catch (e: any) {
+      toast.error('Error Logging Work Order', e.message);
+    }
+  };
+
+  return (
+    <div className="w-[420px] shrink-0 bg-surface border border-white/5 p-6 rounded-sm flex flex-col h-[calc(100vh-120px)] sticky top-24">
+      <div className="flex items-center space-x-2 mb-4 border-b border-white/5 pb-3">
+        <Search className="text-electric-blue" size={18} />
+        <h2 className="text-sm font-bold text-white uppercase tracking-wider">Quick Parts Lookup</h2>
+      </div>
+
+      <div className="mb-4">
+        <label className="text-[9px] text-gray-500 uppercase font-black block mb-1">Assign Mechanic for Commission</label>
+        <select
+          value={selectedMechanic}
+          onChange={(e) => setSelectedMechanic(e.target.value)}
+          className="w-full bg-[#070809] border border-white/10 px-3 py-2 text-xs text-white outline-none rounded-sm"
+        >
+          <option value="">-- Select Mechanic --</option>
+          {mechanics.map(m => (
+            <option key={m.id} value={m.id}>{m.name}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="mb-6 relative">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Type part name, OEM, SKU, barcode..."
+          className="w-full bg-[#070809] border border-white/10 pl-4 pr-10 py-3 text-xs text-white rounded-sm outline-none focus:border-electric-blue"
+        />
+        {query && (
+          <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
+            <X size={14} />
+          </button>
+        )}
+      </div>
+
+      <div className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-hide">
+        {results.length === 0 ? (
+          <div className="h-full flex items-center justify-center text-center p-4">
+            <p className="text-[10px] text-gray-600 uppercase font-bold tracking-wider">
+              {query ? 'No matches found' : 'Start typing to search parts inventory...'}
+            </p>
+          </div>
+        ) : (
+          results.map(sku => {
+            const inStock = (sku.qty_on_hand || 0) > 0;
+            return (
+              <div key={sku.id} className="bg-[#070809]/40 border border-white/5 p-4 space-y-3 rounded-sm hover:border-white/10 transition-all">
+                <div>
+                  <h4 className="text-xs font-bold text-white leading-snug">{sku.name}</h4>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <span className="text-[9px] text-gray-500 font-mono">OEM: {sku.oem_number || sku.oem_part_number || 'N/A'}</span>
+                    <span className={`text-[8px] font-black px-1 py-0.5 rounded-sm ${inStock ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
+                      {inStock ? `${sku.qty_on_hand} IN` : 'OUT'}
+                    </span>
+                  </div>
+                  {(sku.compatible_vehicles || sku.compatible_models) && (
+                    <p className="text-[9px] text-slate-400 mt-2 bg-white/[0.02] border border-white/5 p-1.5 font-sans leading-normal">
+                      <span className="font-bold text-[8px] uppercase tracking-wider text-sandstone-gold block mb-0.5">Compatible:</span>
+                      {sku.compatible_vehicles || sku.compatible_models}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between border-t border-white/5 pt-2 text-[10px] font-mono">
+                  <div>
+                    <span className="text-gray-500">Retail:</span>{' '}
+                    <span className="text-emerald-400 font-bold">PKR {sku.sale_price}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Wholesale:</span>{' '}
+                    <span className="text-sandstone-gold font-bold">PKR {sku.cost_price}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-1.5 pt-1 text-[8px] font-black uppercase tracking-wider">
+                  <button type="button" onClick={() => addToCart(sku)} className="bg-electric-blue hover:brightness-110 text-onyx py-2 rounded-sm font-bold transition-all text-center">
+                    + POS Cart
+                  </button>
+                  <button type="button" onClick={() => showDetail(sku)} className="bg-white/5 hover:bg-white/10 text-white py-2 border border-white/10 rounded-sm font-bold transition-all text-center">
+                    Specs
+                  </button>
+                  <button type="button" onClick={() => logWorkOrder(sku)} className="bg-white/5 hover:bg-white/10 text-white py-2 border border-white/10 rounded-sm font-bold transition-all text-center">
+                    + Vehicle
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
 }

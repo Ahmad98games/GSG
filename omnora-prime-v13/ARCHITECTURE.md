@@ -31,7 +31,7 @@ Noxis Hub is an offline-first industrial ERP for manufacturing businesses in Pak
           │ Internet (when available)
           ▼
 ┌─────────────────────┐    ┌──────────────────┐
-│   Supabase Cloud    │    │  Cloudflare       │
+│   Supabase Cloud    │    │  Cloudflare      │
 │                     │    │                  │
 │  PostgreSQL DB      │    │  Pages (website) │
 │  Auth (JWT)         │    │  R2 (file store) │

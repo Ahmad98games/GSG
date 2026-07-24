@@ -23,6 +23,7 @@ import {
   Lock
 } from 'lucide-react'
 import { useIndustryConfig } from '@/hooks/useIndustryConfig'
+import { getIndustryConfig } from '@/lib/industry/configs'
 import { useBusinessProfile } from '@/hooks/useBusinessProfile'
 import { generateInsights } from '@/lib/intelligence/engine'
 import { IndustryWidget } from '@/components/dashboard/IndustryWidget'
@@ -73,6 +74,20 @@ export default function OwnerDashboard() {
   const router = useRouter()
   const supabase = createClient()
   const { profile } = useBusinessProfile()
+
+  useEffect(() => {
+    const industryKey = profile?.industry_key || profile?.industry_type || (profile as any)?.industry
+    if (!industryKey) return
+
+    const hasVisitedBefore = sessionStorage.getItem('noxis_session_started')
+    if (!hasVisitedBefore) {
+      sessionStorage.setItem('noxis_session_started', 'true')
+      const config = getIndustryConfig(industryKey)
+      if (config.defaultLandingRoute && config.defaultLandingRoute !== '/dashboard') {
+        router.replace(config.defaultLandingRoute)
+      }
+    }
+  }, [profile])
   
   const { data: topInsights = [] } = useQuery({
     queryKey: ['top-insights', profile?.id],
@@ -100,26 +115,71 @@ export default function OwnerDashboard() {
 
   const loadDashboard = useCallback(async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/dashboard/login')
+      setLoading(true)
+      
+      const isOffline = typeof window !== 'undefined' && !navigator.onLine
+      
+      let activeProfile = profile
+      let user = null
+      
+      if (!isOffline) {
+        try {
+          const { data } = await supabase.auth.getUser()
+          user = data?.user || null
+          
+          if (user) {
+            const { data: prof } = await supabase
+              .from('business_profiles')
+              .select('*')
+              .eq('user_id', user.id)
+              .single()
+            if (prof) {
+              activeProfile = prof
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to connect to Supabase Auth:', e)
+        }
+      }
+      
+      if (!activeProfile) {
+        if (typeof window !== 'undefined') {
+          const cachedProfileStr = localStorage.getItem('noxis-business-profile') || localStorage.getItem('noxis_avatar')
+          if (cachedProfileStr) {
+            try {
+              activeProfile = JSON.parse(cachedProfileStr)
+            } catch (e) {}
+          }
+        }
+      }
+      
+      if (!activeProfile) {
+        if (!isOffline) {
+          router.push('/dashboard/login')
+        }
         return
       }
 
-      const { data: profile } = await supabase
-        .from('business_profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .single()
-
-      if (!profile) {
-        router.push('/dashboard/login')
-        return
+      // Session redirect to default route (e.g. POS for pharma/general)
+      if (typeof window !== 'undefined' && activeProfile) {
+        const hasRedirected = sessionStorage.getItem('hasRedirectedPosThisSession')
+        if (!hasRedirected) {
+          const config = getIndustryConfig(activeProfile.industry_key || activeProfile.industry_type || (activeProfile as any).industry)
+          if (config && config.defaultLandingRoute && config.defaultLandingRoute !== '/dashboard') {
+            sessionStorage.setItem('hasRedirectedPosThisSession', 'true')
+            router.replace(config.defaultLandingRoute)
+            return;
+          }
+        }
       }
 
-      const biz = profile.id
+      const biz = activeProfile.id
       const today = new Date().toISOString().split('T')[0]
       const monthStart = new Date(today.slice(0, 7) + '-01').toISOString()
+
+      if (isOffline) {
+        throw new Error('Offline mode')
+      }
 
       // Parallel fetch
       const [
@@ -142,7 +202,7 @@ export default function OwnerDashboard() {
         supabase.from('attendance_logs')
           .select('id', { count: 'exact', head: true })
           .eq('business_id', biz)
-          .eq('attendance_date', today)
+          .eq('log_date', today)
           .eq('status', 'present'),
 
         // Total active karigars
@@ -217,11 +277,11 @@ export default function OwnerDashboard() {
         // Recent attendance summary
         supabase.from('attendance_logs')
           .select(`
-            karigar_id, status, attendance_date,
+            karigar_id, status, log_date,
             karigar:karigars(name)
           `)
           .eq('business_id', biz)
-          .eq('attendance_date', today)
+          .eq('log_date', today)
           .limit(10),
 
         // Top karigars by production this month
@@ -273,12 +333,12 @@ export default function OwnerDashboard() {
         if (count) expiringCount = count
       }
 
-      setData({
-        businessName: profile.business_name || 'My Factory',
-        industry: profile.industry || 'textile',
-        city: profile.city || '',
-        tier: profile.tier || 'lite',
-        currency: profile.currency || 'PKR',
+      const dashboardData: DashboardData = {
+        businessName: activeProfile.business_name || 'My Factory',
+        industry: activeProfile.industry_key || activeProfile.industry_type || (activeProfile as any).industry || 'textile',
+        city: activeProfile.city || '',
+        tier: activeProfile.tier || 'lite',
+        currency: activeProfile.currency || 'PKR',
 
         presentToday: attendanceToday.status === 'fulfilled' ? attendanceToday.value.count || 0 : 0,
         totalKarigars: karigarsRes.status === 'fulfilled' ? karigarsRes.value.count || 0 : 0,
@@ -308,15 +368,55 @@ export default function OwnerDashboard() {
         recentAttendance: recentAttendanceRes.status === 'fulfilled' ? recentAttendanceRes.value.data || [] : [],
         topKarigars: topKarigarsRes.status === 'fulfilled' ? topKarigarsRes.value.data || [] : [],
         promises: promisesRes.status === 'fulfilled' ? promisesRes.value.data || [] : [],
-      })
+      }
 
+      setData(dashboardData)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('noxis_dashboard_cache', JSON.stringify(dashboardData))
+      }
       setLastUpdated(new Date())
     } catch (err) {
-      console.error('Dashboard load error:', err)
+      console.error('Dashboard load error, loading fallback cache:', err)
+      if (typeof window !== 'undefined') {
+        const cached = localStorage.getItem('noxis_dashboard_cache')
+        if (cached) {
+          try {
+            setData(JSON.parse(cached))
+          } catch (e) {}
+        } else {
+          // If no cache, populate with initial empty skeleton
+          setData({
+            businessName: profile?.business_name || 'My Factory',
+            industry: profile?.industry_key || profile?.industry_type || (profile as any)?.industry || 'textile',
+            city: profile?.city || '',
+            tier: profile?.tier || 'lite',
+            currency: profile?.currency || 'PKR',
+            presentToday: 0,
+            totalKarigars: 0,
+            absentToday: 0,
+            revenueThisMonth: 0,
+            invoiceCount: 0,
+            pendingReceivables: 0,
+            overdueCount: 0,
+            stockValue: 0,
+            lowStockCount: 0,
+            pendingDispatch: 0,
+            pendingPurchases: 0,
+            totalPayrollThisMonth: 0,
+            totalPeshgiOutstanding: 0,
+            expiringCount: 0,
+            avgYield: 68.2,
+            recentInvoices: [],
+            recentAttendance: [],
+            topKarigars: [],
+            promises: []
+          })
+        }
+      }
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [profile])
 
   useEffect(() => {
     enableAutoRefresh()

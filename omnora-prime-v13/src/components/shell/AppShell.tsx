@@ -203,6 +203,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     !pathname ||
     pathname === "/" || 
     pathname === "/index.html" || 
+    pathname === "/pos" ||
     pathname.startsWith("/login") || 
     pathname.startsWith("/signup") || 
     pathname.startsWith("/license") || 

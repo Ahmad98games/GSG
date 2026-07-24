@@ -12,6 +12,7 @@ export interface IndustryConfig {
   displayName: string
   emoji: string
   description: string
+  defaultLandingRoute: string
 
   // ── Terminology ──
   // What each concept is called in this industry
@@ -89,6 +90,7 @@ const textile: IndustryConfig = {
   displayName: 'Textile Mill',
   emoji: '🧵',
   description: 'Fabric production, karigar piece-rate wages, peshgi advances',
+  defaultLandingRoute: '/production/grid',
   accentColor: '#60A5FA',
   accentColorDim: 'rgba(96,165,250,0.1)',
   terms: {
@@ -151,6 +153,7 @@ const rice: IndustryConfig = {
   displayName: 'Rice Mill',
   emoji: '🌾',
   description: 'Paddy milling, yield tracking, weight-based inventory',
+  defaultLandingRoute: '/dashboard',
   accentColor: '#C5A059',
   accentColorDim: 'rgba(197,160,89,0.1)',
   terms: {
@@ -213,6 +216,7 @@ const medical: IndustryConfig = {
   displayName: 'Medical / Pharmacy',
   emoji: '💊',
   description: 'Medicine inventory, expiry tracking, prescription dispensing',
+  defaultLandingRoute: '/pos',
   accentColor: '#10B981',
   accentColorDim: 'rgba(16,185,129,0.1)',
   terms: {
@@ -275,6 +279,7 @@ const auto: IndustryConfig = {
   displayName: 'Auto Parts',
   emoji: '🔧',
   description: 'Parts inventory, work orders, vehicle service tracking',
+  defaultLandingRoute: '/pos',
   accentColor: '#F59E0B',
   accentColorDim: 'rgba(245,158,11,0.1)',
   terms: {
@@ -337,6 +342,7 @@ const garment: IndustryConfig = {
   displayName: 'Garment Factory',
   emoji: '👔',
   description: 'Stitching, size/color variants, piece-rate workers',
+  defaultLandingRoute: '/production/grid',
   accentColor: '#8B5CF6',
   accentColorDim: 'rgba(139,92,246,0.1)',
   terms: {
@@ -399,6 +405,7 @@ const food: IndustryConfig = {
   displayName: 'Food Processing',
   emoji: '🏭',
   description: 'Shelf life tracking, weight-based stock, FIFO management',
+  defaultLandingRoute: '/dashboard',
   accentColor: '#EF4444',
   accentColorDim: 'rgba(239,68,68,0.1)',
   terms: {
@@ -461,6 +468,7 @@ const general: IndustryConfig = {
   displayName: 'General / Wholesale',
   emoji: '🏪',
   description: 'General trading, wholesale, retail operations',
+  defaultLandingRoute: '/pos',
   accentColor: '#60A5FA',
   accentColorDim: 'rgba(96,165,250,0.1)',
   terms: {

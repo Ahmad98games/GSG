@@ -663,6 +663,69 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     });
     electron_1.ipcMain.on('window-close', () => mainWindow?.close());
     electron_1.ipcMain.handle('window-is-maximized', () => mainWindow?.isMaximized() ?? false);
+    // Serial port for weighbridge
+    electron_1.ipcMain.handle('fetchScaleWeight', async () => {
+        try {
+            // Most Pakistani weighbridges output
+            // a simple string like "0044.50 KG"
+            // via RS232/COM port
+            // Check which COM port is available
+            const { SerialPort } = require('serialport');
+            const ports = await SerialPort.list();
+            const weightPort = ports.find((p) => p.manufacturer?.includes('Prolific') ||
+                p.path?.includes('COM'));
+            if (!weightPort) {
+                return { success: false,
+                    reason: 'No weighbridge detected' };
+            }
+            const port = new SerialPort({
+                path: weightPort.path,
+                baudRate: 9600,
+            });
+            return new Promise((resolve) => {
+                let data = '';
+                const timeout = setTimeout(() => {
+                    try {
+                        port.close();
+                    }
+                    catch { }
+                    resolve({ success: false,
+                        reason: 'Weighbridge timeout' });
+                }, 3000);
+                port.on('data', (chunk) => {
+                    data += chunk.toString();
+                    const match = data.match(/(\d+\.?\d*)\s*(KG|kg|Kg)/);
+                    if (match) {
+                        clearTimeout(timeout);
+                        try {
+                            port.close();
+                        }
+                        catch { }
+                        resolve({
+                            success: true,
+                            weight: parseFloat(match[1]),
+                            unit: 'KG',
+                        });
+                    }
+                });
+                port.on('error', (err) => {
+                    clearTimeout(timeout);
+                    try {
+                        port.close();
+                    }
+                    catch { }
+                    resolve({
+                        success: false,
+                        reason: err.message || 'Port error'
+                    });
+                });
+            });
+        }
+        catch {
+            return { success: false,
+                reason: 'SerialPort not available' };
+        }
+    });
     electron_1.ipcMain.handle('check-for-updates', async () => {
         try {
             // Don't check in development

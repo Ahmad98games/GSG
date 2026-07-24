@@ -69,6 +69,9 @@ export const skuCache = sqliteTable('sku_cache', {
   branchId: sqliteText('branch_id'),
   lastSyncedAt: sqliteText('last_synced_at').notNull().default(sql`(datetime('now'))`),
   barcode: sqliteText('barcode'),
+  oemNumber: sqliteText('oem_number'),
+  compatibleVehicles: sqliteText('compatible_vehicles'),
+  commissionRate: sqliteText('commission_rate').default('0'),
 }, (table) => ({
   skuCodeIdx: uniqueIndex('idx_sku_cache_code').on(table.skuCode),
   barcodeIdx: index('idx_sku_cache_barcode').on(table.barcode),

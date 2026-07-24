@@ -32,6 +32,7 @@ const bridgeListeners = new Map();
 // Data Sovereignty API — lets the renderer ask where data lives on disk
 electron_1.contextBridge.exposeInMainWorld('electronAPI', {
     getAppDataPath: () => electron_1.ipcRenderer.invoke('get-app-data-path'),
+    fetchScaleWeight: () => electron_1.ipcRenderer.invoke('fetchScaleWeight'),
     setConfig: (key, value) => electron_1.ipcRenderer.invoke('set-config', key, value),
     getBridgeStatus: () => electron_1.ipcRenderer.invoke('get-bridge-status'),
     on: (channel, callback) => {
