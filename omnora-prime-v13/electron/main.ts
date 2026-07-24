@@ -295,9 +295,9 @@ app.commandLine.appendSwitch(
   'HardwareMediaKeyHandling,MediaSessionService'
 )
 
-// V8 heap space flags to prevent OOMs on low-RAM machines:
-app.commandLine.appendSwitch('--max-old-space-size', '512')
-app.commandLine.appendSwitch('--js-flags', '--max-old-space-size=512')
+// V8 heap space flags to prevent memory pressure freezes after prolonged use:
+app.commandLine.appendSwitch('--max-old-space-size', '4096')
+app.commandLine.appendSwitch('--js-flags', '--max-old-space-size=4096')
 
 startupLog('════════════ NOXIS STARTUP ════════════');
 startupLog(`Platform: ${process.platform} | Arch: ${process.arch} | isDev: ${isDev}`);

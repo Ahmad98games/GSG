@@ -13,8 +13,8 @@ export function CloudSyncIndicator() {
 
     // Listen to storage events (if modified in other tabs)
     window.addEventListener('storage', check)
-    // Check local queue count every 1 second
-    const interval = setInterval(check, 1000)
+    // Check local queue count every 15 seconds
+    const interval = setInterval(check, 15000)
 
     return () => {
       window.removeEventListener('storage', check)

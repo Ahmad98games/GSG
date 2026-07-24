@@ -158,7 +158,7 @@ export default React.memo(function GlobalTopBar() {
       setLocalQueueCount(getQueuedCount())
     }
     check()
-    const interval = setInterval(check, 1000)
+    const interval = setInterval(check, 15000)
     return () => clearInterval(interval)
   }, [])
 
