@@ -194,14 +194,37 @@ export default function InventoryPage() {
   const { data: skus = [], isLoading: skusLoading, error: skusError, refetch: refetchSkus } = useQuery({
     queryKey: ['inventory', profile?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('skus')
-        .select('*')
-        .eq('business_id', profile?.id)
-        .order('name', { ascending: true });
-      if (error) throw error;
-      setLastFetchedAt(new Date());
-      return data as SKU[];
+      try {
+        const { data, error } = await supabase
+          .from('skus')
+          .select('*')
+          .eq('business_id', profile?.id)
+          .order('name', { ascending: true });
+        if (error) throw error;
+        if (data && data.length > 0) {
+          try {
+            localStorage.setItem(`noxis_cached_skus_${profile?.id}`, JSON.stringify(data));
+          } catch {}
+          setLastFetchedAt(new Date());
+          return data as SKU[];
+        }
+      } catch (err) {
+        console.warn('[Inventory] Remote fetch failed or offline, attempting local cache fallback:', err);
+      }
+
+      // Offline / Local Fallback Layer
+      if (typeof window !== 'undefined' && profile?.id) {
+        const cached = localStorage.getItem(`noxis_cached_skus_${profile.id}`);
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            setLastFetchedAt(new Date());
+            return parsed as SKU[];
+          } catch {}
+        }
+      }
+
+      return [];
     },
     enabled: !!profile?.id,
     staleTime: 5 * 60 * 1000,

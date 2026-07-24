@@ -35,11 +35,18 @@ export function createClient() {
         return Promise.reject(new TypeError('Failed to fetch (Offline)'));
       }
       const controller = new AbortController()
-      const id = setTimeout(() => controller.abort(), 8000) // 8 second timeout
+      const id = setTimeout(() => controller.abort(), 8000)
       return fetch(url, {
         ...options,
         signal: controller.signal,
-      }).finally(() => clearTimeout(id))
+      })
+        .catch(err => {
+          if (err?.name === 'AbortError') {
+            throw new TypeError('Network timeout (Offline)');
+          }
+          throw err;
+        })
+        .finally(() => clearTimeout(id))
     };
 
     _client = createBrowserClient(
