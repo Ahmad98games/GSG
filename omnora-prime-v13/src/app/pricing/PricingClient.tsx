@@ -18,18 +18,26 @@ const FAQS = [
 ];
 
 import PublicNavbar from "@/components/shell/PublicNavbar";
+import HWIDActivationModal from "@/components/pricing/HWIDActivationModal";
 
 export default function PricingClient() {
   const { profile } = useBusinessProfile();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
   const [displayCurrency, setDisplayCurrency] = useState<'LOCAL' | 'USD'>('LOCAL');
 
-  // Checkout Modal State
+  // Checkout & HWID Modal State
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
+  const [hwidModalOpen, setHwidModalOpen] = useState(false);
+  const [selectedTierForHwid, setSelectedTierForHwid] = useState('lite');
   const [selectedPlan, setSelectedPlan] = useState<{ tier: string; price: string } | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'nayapay' | 'jazzcash' | 'easypaisa'>('nayapay');
   const [copied, setCopied] = useState(false);
   const [txId, setTxId] = useState('');
+
+  const handleActivateHwid = (tier: string) => {
+    setSelectedTierForHwid(tier);
+    setHwidModalOpen(true);
+  };
 
   const region = profile?.region || 'south_asian';
   const localCurrency = (profile?.currency || 'PKR') as any;
@@ -214,83 +222,108 @@ export default function PricingClient() {
           whileInView="visible"
           viewport={{ once: true, margin: "-50px" }}
           variants={staggerContainer}
-          className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12"
         >
+          {/* Free Forever */}
           <PricingCard 
-            tier="Lite"
+            tier="Free Forever"
             region={region}
             displayCurrency={displayCurrency}
             localCurrency={localCurrency}
-            pricePKR={billingCycle === 'monthly' ? 2500 : 25000}
-            priceUSD={billingCycle === 'monthly' ? 15 : 150}
-            sub="Best for small retail setups & single-desk shops."
+            pricePKR={0}
+            priceUSD={0}
+            sub="Capped at 200 SKUs, 1 PC, POS Unlocked forever."
             features={[
-              { label: "Double-entry Khata (Ledger)", included: true },
-              { label: "Inventory & Stock Tracking", included: true },
-              { label: "Dynamic Invoice Generation", included: true },
-              { label: "Up to 2 Paired Mesh Devices", included: true },
-              { label: "2 CCTV Auto-Discovery Channels", included: true, highlight: true },
-              { label: "Smart Event-Based Recording", included: true },
-              { label: "10 AI Document Scans Per Day", included: true },
-              { label: "1GB Local Secure Storage", included: true },
-              { label: "Manual WhatsApp Sharing", included: true },
-              { label: "1 Noxis Mobile Device (Coming Soon)", included: true },
+              { label: "100% POS Counter Unlocked", included: true, highlight: true },
+              { label: "Capped at 200 Inventory SKUs", included: true },
+              { label: "Up to 50 Party Accounts", included: true },
+              { label: "1 Local Workstation PC", included: true },
+              { label: "Full PDF/CSV Ledger Export", included: true },
+              { label: "Zero Data Deletion Guarantee", included: true },
             ]}
-            cta="Deploy Lite"
-            onPurchase={handlePurchase}
+            cta="Download Free Version"
+            onPurchase={() => window.location.href = '/download'}
             variant={fadeInUp}
           />
 
+          {/* Lite Tier */}
           <PricingCard 
-            tier="Pro"
+            tier="Lite Tier"
+            region={region}
+            displayCurrency={displayCurrency}
+            localCurrency={localCurrency}
+            pricePKR={25000}
+            priceUSD={150}
+            period="yr"
+            sub="5 PCs, 5 Mobile, Local WiFi Backup."
+            features={[
+              { label: "Up to 5 Workstation PCs", included: true, highlight: true },
+              { label: "5 Mobile Companion Pairings", included: true },
+              { label: "Local WiFi Database Backup", included: true },
+              { label: "Unlimited Inventory SKUs", included: true },
+              { label: "Double-Entry Khata Ledger", included: true },
+              { label: "Dynamic PDF Invoice Printing", included: true },
+            ]}
+            cta="Activate Tier"
+            onPurchase={() => handleActivateHwid('lite')}
+            variant={fadeInUp}
+          />
+
+          {/* Pro Tier */}
+          <PricingCard 
+            tier="Pro Tier"
             popular
             region={region}
             displayCurrency={displayCurrency}
             localCurrency={localCurrency}
-            pricePKR={billingCycle === 'monthly' ? 6500 : 65000}
-            priceUSD={billingCycle === 'monthly' ? 40 : 400}
-            sub="Optimized for growing stockrooms & localized warehouses."
+            pricePKR={60000}
+            priceUSD={360}
+            period="yr"
+            sub="15 PCs, 15 Mobile, Auto Cloud Sync, Karigar Payroll, CCTV."
             features={[
-              { label: "All Lite Infrastructure Features", included: true, highlight: true },
-              { label: "Up to 5 Paired Mesh Devices", included: true },
-              { label: "4 CCTV Auto-Discovery Channels", included: true, highlight: true },
-              { label: "Local Human Detection AI Alerts", included: true },
-              { label: "Unlimited Document Scans", included: true },
-              { label: "Scheduled WhatsApp Summaries", included: true },
-              { label: "Up to 5 Synchronized Staff Users", included: true },
-              { label: "5GB Local Secure Storage", included: true },
-              { label: "4 Noxis Mobile Devices (Coming Soon)", included: true },
+              { label: "Up to 15 Workstation PCs", included: true, highlight: true },
+              { label: "15 Mobile Companion Pairings", included: true },
+              { label: "Automatic Cloud Mirroring", included: true },
+              { label: "Karigar Piece-Rate Payroll", included: true, highlight: true },
+              { label: "CCTV ONVIF AI Alerts Feed", included: true, highlight: true },
+              { label: "WhatsApp Automated Receipts", included: true },
             ]}
-            cta="Deploy Pro"
-            onPurchase={handlePurchase}
+            cta="Activate Tier"
+            onPurchase={() => handleActivateHwid('pro')}
             variant={fadeInUp}
           />
 
+          {/* Elite Tier */}
           <PricingCard 
-            tier="Elite"
+            tier="Elite Tier"
             region={region}
             displayCurrency={displayCurrency}
             localCurrency={localCurrency}
-            pricePKR={billingCycle === 'monthly' ? 14000 : 140000}
-            priceUSD={billingCycle === 'monthly' ? 85 : 850}
-            sub="Engineered for industrial multi-grid factory floors."
+            pricePKR={120000}
+            priceUSD={720}
+            period="yr"
+            sub="50 PCs, 50 Mobile, Multi-Branch, Priority API."
             features={[
-              { label: "All Pro Infrastructure Features", included: true, highlight: true },
-              { label: "Up to 10 Paired Mesh Devices", included: true },
-              { label: "6 CCTV Auto-Discovery Channels", included: true, highlight: true },
-              { label: "Advanced Noxis Foresight Dashboard", included: true },
-              { label: "Up to 25 Synchronized Staff Users", included: true },
-              { label: "Industrial Safety Analytics", included: true },
-              { label: "10GB Local Secure Storage", included: true },
-              { label: "Priority Engineering Support Matrix", included: true },
-              { label: "15 Noxis Mobile Devices (Coming Soon)", included: true, highlight: true },
+              { label: "Up to 50 Workstation PCs", included: true, highlight: true },
+              { label: "50 Mobile Companion Pairings", included: true },
+              { label: "Multi-Branch Operations Engine", included: true, highlight: true },
+              { label: "Priority REST API Webhooks", included: true },
+              { label: "24/7 Priority Support Matrix", included: true },
+              { label: "Custom Domain Client Portal", included: true },
             ]}
-            cta="Request Elite"
-            onPurchase={handlePurchase}
+            cta="Activate Tier"
+            onPurchase={() => handleActivateHwid('elite')}
             primary
             variant={fadeInUp}
           />
         </motion.div>
+
+        {/* HWID Activation Modal */}
+        <HWIDActivationModal 
+          isOpen={hwidModalOpen}
+          onClose={() => setHwidModalOpen(false)}
+          initialTier={selectedTierForHwid}
+        />
 
         {/* Checkout Modal */}
         <AnimatePresence>
@@ -568,7 +601,7 @@ export default function PricingClient() {
 }
  
 function PricingCard({ 
-  tier, pricePKR, priceUSD, sub, features, cta, onPurchase, 
+  tier, pricePKR, priceUSD, period = 'yr', sub, features, cta, onPurchase, 
   popular, primary, region, displayCurrency, localCurrency, variant 
 }: any) {
   
@@ -585,29 +618,29 @@ function PricingCard({
     <motion.div 
       variants={variant}
       className={cn(
-        "relative flex flex-col p-8 sm:p-10 border transition-all duration-300 rounded-sm",
+        "relative flex flex-col p-6 border transition-all duration-300 rounded-sm",
         popular 
-          ? "bg-[#121417] border-blue-500 shadow-[0_20px_50px_rgba(96,165,250,0.1)] lg:scale-105 z-10" 
+          ? "bg-[#121417] border-blue-500 shadow-[0_20px_50px_rgba(96,165,250,0.1)] z-10" 
           : "bg-[#0F1113] border-white/5 hover:border-white/10"
       )}
     >
       {popular && (
-        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-blue-500 text-black text-[9px] font-black uppercase tracking-[0.3em] px-6 py-2.5 whitespace-nowrap rounded-sm">
+        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-blue-500 text-black text-[9px] font-black uppercase tracking-[0.3em] px-4 py-1.5 whitespace-nowrap rounded-sm">
           Industrial Standard
         </div>
       )}
 
-      <div className="mb-8">
-        <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-2">{tier}</h3>
+      <div className="mb-6">
+        <h3 className="text-xl font-black text-white uppercase italic tracking-tighter mb-2">{tier}</h3>
         <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest leading-relaxed h-8">{sub}</p>
       </div>
 
-      <div className="mb-8">
+      <div className="mb-6">
         <div className="flex items-baseline gap-1">
-          <span className="text-3xl sm:text-4xl font-mono font-black text-white tracking-tighter">{displayPrice.split(' ')[1]}</span>
-          <span className="text-[9px] font-bold text-gray-500 uppercase">{displayPrice.split(' ')[0]} / Mo</span>
+          <span className="text-2xl sm:text-3xl font-mono font-black text-white tracking-tighter">{displayPrice.split(' ')[1]}</span>
+          <span className="text-[9px] font-bold text-gray-500 uppercase">{displayPrice.split(' ')[0]} / {period.toUpperCase()}</span>
         </div>
-        {(isSA || !useUSD) && (
+        {pricePKR > 0 && (isSA || !useUSD) && (
           <p className="text-[8px] text-gray-600 font-bold uppercase mt-1.5 italic">≈ {formatCurrency(priceUSD, 'USD')}</p>
         )}
       </div>

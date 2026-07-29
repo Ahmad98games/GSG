@@ -151,8 +151,19 @@ export default function PartiesPage() {
       return data;
     },
     enabled: !!businessId,
-    staleTime: 10 * 60 * 1000,
+    staleTime: 1000,
   });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).electronAPI?.onPartyUpdated) {
+      const unsubscribe = (window as any).electronAPI.onPartyUpdated(() => {
+        queryClient.invalidateQueries({ queryKey: ['parties_registry'] })
+        queryClient.invalidateQueries({ queryKey: ['parties'] })
+        refetchParties()
+      })
+      return () => { if (typeof unsubscribe === 'function') unsubscribe(); }
+    }
+  }, [refetchParties, queryClient])
 
   const debouncedSearch = useDebounce(searchTerm, 300);
 

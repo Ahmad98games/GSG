@@ -1,6 +1,6 @@
-'use client'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useBusinessProfile } from '@/hooks/useBusinessProfile'
 import { humanizeError } from '@/lib/utils/errors'
@@ -9,6 +9,7 @@ export default function EditPartyPage() {
   const { partyId } = useParams()
   const router = useRouter()
   const supabase = createClient()
+  const queryClient = useQueryClient()
   const { profile } = useBusinessProfile()
   const [party, setParty] = useState<any>(null)
   const [form, setForm] = useState({
@@ -68,20 +69,19 @@ export default function EditPartyPage() {
     }
     setSaving(true)
     setError('')
+    const updatedPayload = {
+      name: form.name.trim(),
+      party_type: form.party_type,
+      phone: form.phone.trim() || null,
+      email: form.email.trim() || null,
+      address: form.address.trim() || null,
+      credit_limit: form.credit_limit ? parseFloat(form.credit_limit) : null,
+      credit_days: parseInt(form.credit_days) || 0,
+    }
+
     const { error: err } = await supabase
       .from('parties')
-      .update({
-        name: form.name.trim(),
-        party_type: form.party_type,
-        phone: form.phone.trim() || null,
-        email: form.email.trim() || null,
-        address: form.address.trim() || null,
-        credit_limit: form.credit_limit
-          ? parseFloat(form.credit_limit) : null,
-        credit_days: parseInt(
-          form.credit_days
-        ) || 0,
-      })
+      .update(updatedPayload)
       .eq('id', partyId as string)
       .eq('business_id', profile.id)
 
@@ -89,6 +89,16 @@ export default function EditPartyPage() {
       console.error('PARTY UPDATE ERROR:', err)
       setError(humanizeError(err, 'party update'))
     } else {
+      // 1. Invalidate React Query Caches
+      queryClient.invalidateQueries({ queryKey: ['parties'] })
+      queryClient.invalidateQueries({ queryKey: ['parties_registry'] })
+      queryClient.invalidateQueries({ queryKey: ['party', partyId] })
+
+      // 2. Broadcast via Electron API if available
+      if (typeof window !== 'undefined' && (window as any).electronAPI?.party?.notifyUpdate) {
+        (window as any).electronAPI.party.notifyUpdate({ partyId, ...updatedPayload })
+      }
+
       router.push(`/parties/${partyId}`)
     }
     setSaving(false)

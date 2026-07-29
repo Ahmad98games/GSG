@@ -572,18 +572,18 @@ export default function InvoiceDetailPage() {
                  {/* Header */}
                  <div className="flex justify-between items-start mb-16">
                     <div className="space-y-4">
-                        {(business?.logo_url || profile?.logo_url) ? (
-                          <div className="h-16 w-auto max-w-[200px] flex items-center">
+                        {(business?.logo_url || profile?.logo_url || (business as any)?.avatar_url || profile?.avatar_url) ? (
+                          <div className="h-16 w-auto max-w-[200px] flex items-center mb-4">
                             <img 
-                              src={business?.logo_url || profile?.logo_url || ''} 
-                              alt="Business Logo" 
-                              className="h-16 w-auto max-w-[200px] object-contain" 
+                              src={business?.logo_url || profile?.logo_url || (business as any)?.avatar_url || profile?.avatar_url || ''} 
+                              alt={business?.business_name || profile?.business_name || "Company Logo"} 
+                              className="max-h-16 max-w-[200px] object-contain" 
                             />
                           </div>
                         ) : (
-                          <div className="w-16 h-16 bg-black flex items-center justify-center rounded-sm">
-                             <span className="text-white font-black text-2xl">
-                                {(business?.business_name || profile?.business_name || 'N').slice(0, 2).toUpperCase()}
+                          <div className="w-16 h-16 bg-black text-white flex items-center justify-center rounded-sm mb-4">
+                             <span className="font-black text-2xl tracking-tighter">
+                                {(business?.business_name || profile?.business_name || 'Noxis').slice(0, 2).toUpperCase()}
                              </span>
                           </div>
                         )}

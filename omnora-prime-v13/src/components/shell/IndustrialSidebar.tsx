@@ -372,8 +372,12 @@ export default React.memo(function IndustrialSidebar() {
             className="flex items-center space-x-3 overflow-hidden group hover:opacity-80 transition-opacity"
           >
             <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center bg-noxis-overlay group-hover:bg-electric-blue/20 rounded-sm transition-colors relative overflow-hidden">
-              {profile?.logo_url ? (
-                <Image src={profile.logo_url} alt={profile.business_name || 'Business Logo'} fill className="object-contain p-1" />
+              {(profile?.logo_url || profile?.avatar_url) ? (
+                <img 
+                  src={profile.logo_url || profile.avatar_url} 
+                  alt={profile.business_name || 'Business Logo'} 
+                  className="w-full h-full object-contain p-0.5 rounded-sm" 
+                />
               ) : (
                 <Image src="/logos/noxis.png" alt="Noxis Logo" width={20} height={20} className="object-contain" />
               )}
