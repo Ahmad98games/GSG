@@ -26,18 +26,19 @@ export default function DocsPage() {
   const [activeSection, setActiveSection] = useState('install')
 
   const sections = [
-    { id: 'install', icon: <Terminal size={14} />, title: '1. Platform Installation' },
-    { id: 'license', icon: <KeyRound size={14} />, title: '2. Cryptographic Activation' },
-    { id: 'sqlite', icon: <Database size={14} />, title: '3. Local SQLite Architecture' },
-    { id: 'mobile', icon: <Smartphone size={14} />, title: '4. Local WiFi Phone Pairing' },
-    { id: 'inventory', icon: <Layers size={14} />, title: '5. Barcode & Inventory Config' },
-    { id: 'invoices', icon: <FileText size={14} />, title: '6. Ledger & Invoicing Setup' },
-    { id: 'data-safety', icon: <ShieldCheck size={14} />, title: '7. Data Safety Protocol' },
-    { id: 'quickentry', icon: <Zap size={14} />, title: '8. Floor Quick Entry Console' },
-    { id: 'troubleshoot', icon: <HelpCircle size={14} />, title: '9. Regional Troubleshooting' },
-    { id: 'intelligence', icon: <Sparkles size={14} />, title: '10. Predictive Intelligence' },
-    { id: 'finance', icon: <Banknote size={14} />, title: '11. Credit Scoring & Peshgi' },
-    { id: 'api-worker', icon: <KeyRound size={14} />, title: '12. Digital Worker IDs & APIs' }
+    { id: 'install', icon: <Terminal size={14} />, title: '1. Platform Installation & Auto-Start' },
+    { id: 'trial', icon: <Zap size={14} />, title: '2. 14-Day Anti-Tamper Trial & Freemium' },
+    { id: 'license', icon: <KeyRound size={14} />, title: '3. RSA-2048 & HWID Security' },
+    { id: 'sqlite', icon: <Database size={14} />, title: '4. Local SQLite & Boot Delta Sync' },
+    { id: 'mobile', icon: <Smartphone size={14} />, title: '5. Mobile Pairing & RBAC Matrix' },
+    { id: 'pos', icon: <Zap size={14} />, title: '6. POS & Weighbridge Integration' },
+    { id: 'inventory', icon: <Layers size={14} />, title: '7. Inventory & Barcode Config' },
+    { id: 'invoices', icon: <FileText size={14} />, title: '8. Invoices & Double-Entry Khata' },
+    { id: 'karigar', icon: <Banknote size={14} />, title: '9. Karigar Production & Payroll' },
+    { id: 'cctv', icon: <ShieldCheck size={14} />, title: '10. CCTV ONVIF & WebRTC Streams' },
+    { id: 'fault-recovery', icon: <HelpCircle size={14} />, title: '11. Power-Cut & Fault Recovery' },
+    { id: 'troubleshoot', icon: <Sparkles size={14} />, title: '12. Maintenance & Troubleshooting' },
+    { id: 'api', icon: <Terminal size={14} />, title: '13. API Reference & Data Sync' }
   ]
 
   useEffect(() => {
@@ -175,8 +176,7 @@ export default function DocsPage() {
                 Set up, pair, configure local databases, configure security networks, and manage your manufacturing workshop assets securely within ten minutes.
               </p>
             </motion.div>
-
-            {/* 1. INSTALLATION */}
+               {/* 1. INSTALLATION */}
             <motion.section 
               id="install"
               initial={{ opacity: 0 }}
@@ -186,35 +186,79 @@ export default function DocsPage() {
             >
               <ScrollReveal3D className="space-y-6">
                 <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
-                  <span className="text-[#C5A059] font-mono text-base">01.</span> Platform Installation
+                  <span className="text-[#C5A059] font-mono text-base">01.</span> Platform Installation & Auto-Start Recovery
                 </h2>
                 <p className="text-sm text-slate-400 leading-relaxed font-medium pl-6 border-l border-white/[0.02]">
-                  The Noxis Hub is engineered as a highly optimized desktop application. Download and execute the binary directly to initialize the local node.
+                  Noxis Hub runs as an offline-first desktop application on Electron 41. It installs into your local Windows profile with zero cloud dependency.
                 </p>
                 
                 <div className="bg-[#0A0D10] border border-white/[0.04] p-6 rounded-sm space-y-4 ml-6">
                   <h4 className="text-xs font-bold uppercase tracking-widest text-white">Setup Checklist</h4>
                   <ol className="list-decimal list-inside space-y-2.5 text-xs text-slate-400 leading-relaxed">
-                    <li>Download the stable setup installer: <span className="font-mono text-white bg-white/5 px-2 py-0.5 rounded-sm">NoxisSetup.exe</span></li>
-                    <li>Double-click the setup file to trigger local installation script.</li>
-                    <li>If prompted with Windows Defender SmartScreen filters, click <strong className="text-white">"More Info"</strong> followed by <strong className="text-white">"Run Anyway"</strong>.</li>
-                    <li>Complete the installation wizard. Noxis Hub boots automatically on completion.</li>
+                    <li>Download the setup installer: <span className="font-mono text-white bg-white/5 px-2 py-0.5 rounded-sm">NoxisSetup-v13.exe</span></li>
+                    <li>Execute the file to install into <span className="font-mono text-slate-300">%LocalAppData%\\Programs\\noxis-hub</span>.</li>
+                    <li>Noxis registers itself in Windows Startup (<span className="font-mono text-emerald-400">openAtLogin: true</span>) automatically.</li>
+                    <li>Complete the initial setup wizard (Business profile, Admin PIN, and Hardware COM ports).</li>
                   </ol>
 
                   <div className="bg-[#00E5FF]/5 border border-[#00E5FF]/10 p-4 text-xs text-[#00E5FF] leading-relaxed rounded-sm space-y-2">
                     <div className="font-bold flex items-center gap-2">
                       <ShieldCheck size={14} />
-                      <span>CODE SIGNING NOTE</span>
+                      <span>OFFLINE FIRST GUARANTEE</span>
                     </div>
                     <p className="text-[11px] text-slate-400 leading-relaxed">
-                      Because Noxis Hub operates entirely localized and offline on standalone workstation environments, Windows Defender SmartScreen flags the executable as unrecognized simply due to the absence of active web certificate signing. This warning is safe to bypass.
+                      Noxis requires zero internet connectivity to operate your factory, workshop, or POS counters. All databases, CCTV feeds, and local mobile pairings operate on your internal network.
                     </p>
                   </div>
                 </div>
               </ScrollReveal3D>
             </motion.section>
 
-            {/* 2. CRYPTOGRAPHIC ACTIVATION */}
+            {/* 2. 14-DAY TRIAL & FREEMIUM */}
+            <motion.section 
+              id="trial"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true, margin: '-100px' }}
+              className="pt-12 border-t border-white/[0.05] scroll-mt-28"
+            >
+              <ScrollReveal3D className="space-y-6">
+                <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
+                  <span className="text-[#C5A059] font-mono text-base">02.</span> 14-Day Anti-Tamper Trial & Freemium Fallback
+                </h2>
+                <p className="text-sm text-slate-400 leading-relaxed font-medium pl-6 border-l border-white/[0.02]">
+                  Noxis includes a 3-time-source trial engine. When your trial ends, your system automatically transitions to Free Forever mode — zero data deletion.
+                </p>
+
+                <div className="bg-[#0A0D10] border border-white/[0.04] p-6 rounded-sm space-y-4 ml-6">
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-white">3-Time Source Anti-Tamper Engine</h4>
+                  <div className="p-4 bg-[#08090C] border border-white/5 text-[11px] leading-relaxed text-slate-400 rounded-sm font-mono space-y-1.5">
+                    <p className="text-[#00E5FF] font-bold">// Evaluation Logic: Maximum Age Wins</p>
+                    <p>1. NTP Source: <span className="text-white">time.cloudflare.com (UTC ms on first run)</span></p>
+                    <p>2. Monotonic Source: <span className="text-white">process.hrtime.bigint() (30s checkpoint interval)</span></p>
+                    <p>3. Filesystem Source: <span className="text-white">SQLite DB birthtime (fs.statSync)</span></p>
+                    <p className="text-emerald-400 font-bold mt-2">trialAge = Math.max(ntpAge, monoAge, fsAge)</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                    <div className="bg-white/5 p-3 rounded-sm border border-white/5 space-y-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Active (Days 1–14)</span>
+                      <p className="text-[11px] text-slate-400">All Pro/Elite features 100% unlocked. No credit card needed.</p>
+                    </div>
+                    <div className="bg-white/5 p-3 rounded-sm border border-white/5 space-y-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">Grace (Days 15–17)</span>
+                      <p className="text-[11px] text-slate-400">POS counter stays open. Cloud/CCTV/Multi-device locked.</p>
+                    </div>
+                    <div className="bg-white/5 p-3 rounded-sm border border-white/5 space-y-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400">Expired (Day 18+)</span>
+                      <p className="text-[11px] text-slate-400">Free Forever tier: POS open, 200 SKUs, 50 Parties, 0 data loss.</p>
+                    </div>
+                  </div>
+                </div>
+              </ScrollReveal3D>
+            </motion.section>
+
+            {/* 3. RSA-2048 & HWID SECURITY */}
             <motion.section 
               id="license"
               initial={{ opacity: 0 }}
@@ -224,27 +268,30 @@ export default function DocsPage() {
             >
               <ScrollReveal3D className="space-y-6">
                 <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
-                  <span className="text-[#C5A059] font-mono text-base">02.</span> Cryptographic License Activation
+                  <span className="text-[#C5A059] font-mono text-base">03.</span> RSA-2048 & Hardware Fingerprinting (HWID)
                 </h2>
                 <p className="text-sm text-slate-400 leading-relaxed font-medium pl-6 border-l border-white/[0.02]">
-                  To guarantee zero external tracking while retaining offline licensing control, activation takes place upon the initial application startup.
+                  Paid licenses are signed offline with an RSA-2048 private key and bound directly to your physical computer hardware.
                 </p>
 
                 <div className="bg-[#0A0D10] border border-white/[0.04] p-6 rounded-sm space-y-4 ml-6">
-                  <ol className="list-decimal list-inside space-y-2.5 text-xs text-slate-400 leading-relaxed">
-                    <li>Confirm that your workstation has active internet access for this licensing step only.</li>
-                    <li>Enter your acquired unique license key inside the primary entry terminal: <span className="font-mono text-white bg-white/5 px-2 py-0.5 rounded-sm">XXXX-XXXX-XXXX-XXXX</span></li>
-                    <li>Click the activation button. The local client syncs keys directly with verified registration servers.</li>
-                    <li>Upon completion, the application goes permanently offline. Your verified license states are saved in secure local blocks.</li>
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-white">License Format & Activation</h4>
+                  <div className="p-3 bg-[#08090C] border border-white/5 font-mono text-xs text-amber-400 rounded-sm">
+                    NOXIS-PRO.eyJ2ZXJzaW9uIjoyLCJ... .E-cJzoSJkLIMxY2LeE...
+                  </div>
+                  <ol className="list-decimal list-inside space-y-2 text-xs text-slate-400 leading-relaxed">
+                    <li>Go to <strong className="text-white">Settings → License & System</strong> and copy your local Hardware ID (HWID).</li>
+                    <li>Paste your key into the activation box and click <strong className="text-white">Activate License</strong>.</li>
+                    <li>Verification happens 100% offline via the embedded RSA-2048 public key.</li>
                   </ol>
-                  <div className="bg-red-500/5 border border-red-500/10 p-4 text-xs text-red-400 leading-relaxed rounded-sm">
-                    <strong>Retention Directive:</strong> Your unique cryptographic activation key also acts as the recovery key for your localized SQLite database block. Store it securely in a physical format.
+                  <div className="bg-red-500/5 border border-red-500/10 p-3 text-[11px] text-red-400 rounded-sm">
+                    <strong>Revocation Safeguard:</strong> If 3 consecutive HWID mismatches occur (e.g. moving disk to another PC), the system revokes active licensing and falls back to read-only backup mode.
                   </div>
                 </div>
               </ScrollReveal3D>
             </motion.section>
 
-            {/* 3. LOCAL SQLITE ARCHITECTURE */}
+            {/* 4. LOCAL SQLITE ARCHITECTURE */}
             <motion.section 
               id="sqlite"
               initial={{ opacity: 0 }}
@@ -254,29 +301,26 @@ export default function DocsPage() {
             >
               <ScrollReveal3D className="space-y-6">
                 <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
-                  <span className="text-[#C5A059] font-mono text-base">03.</span> Local SQLite Database & Sync
+                  <span className="text-[#C5A059] font-mono text-base">04.</span> Local SQLite Database & Boot Delta Sync
                 </h2>
                 <p className="text-sm text-slate-400 leading-relaxed font-medium pl-6 border-l border-white/[0.02]">
-                  Noxis Hub operates an offline-first data fabric. All active data logs are replicated between a highly optimized local database block and the cloud.
+                  Noxis stores all local data in SQLCipher 256-bit encrypted SQLite databases with Write-Ahead Logging (WAL) for sub-millisecond writes.
                 </p>
 
-                <div className="bg-[#0A0D10] border border-white/[0.04] p-6 rounded-sm space-y-4 font-mono text-xs ml-6">
-                  <h4 className="font-sans font-bold uppercase tracking-widest text-white text-[10px] mb-2">Technical Specifications</h4>
-                  <div className="p-4 bg-[#08090C] border border-white/5 text-slate-400 space-y-2 rounded-sm font-bold">
-                    <p className="text-[#00E5FF] font-mono font-bold"># SQLite Local Transaction Logging</p>
-                    <p>Database: <span className="text-white">SQLite Multiple-Ciphers v12.9</span></p>
-                    <p>Encryption: <span className="text-white">AES-256 Bit block ciphering</span></p>
-                    <p>Replicator Engine: <span className="text-white">Dynamic WAL-sync and transactional backlogs</span></p>
-                    <p className="text-slate-600 mt-2 font-sans font-medium text-[11px] uppercase tracking-wider">Reconciles automatically in the background when network changes are triggered.</p>
+                <div className="bg-[#0A0D10] border border-white/[0.04] p-6 rounded-sm space-y-4 ml-6">
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-white">Boot Delta Reconciliation Flow</h4>
+                  <div className="p-4 bg-[#08090C] border border-white/5 text-[11px] font-mono text-slate-400 rounded-sm space-y-2">
+                    <p className="text-[#00E5FF] font-bold"># Boot Reconciliation Chain</p>
+                    <p>1. Hub Boots → Reads <span className="text-white">last_sync_timestamp</span> from store</p>
+                    <p>2. Queries Cloud → Fetches rows where <span className="text-white">updated_at &gt; last_sync_timestamp</span></p>
+                    <p>3. Local Cache Replaced → React Query invalidated across core modules</p>
+                    <p>4. Realtime CDC Started → WebSocket pushes live updates going forward</p>
                   </div>
-                  <p className="font-sans text-[11px] text-slate-500 leading-relaxed font-medium">
-                    When internet connections are down, transactions are securely accumulated inside an offline log stack. On re-establishing external telemetry, the queue replicates blocks to the cloud via Supabase, resolving potential duplicate items dynamically.
-                  </p>
                 </div>
               </ScrollReveal3D>
             </motion.section>
 
-            {/* 4. LOCAL WIFI PHONE PAIRING */}
+            {/* 5. MOBILE PAIRING & RBAC */}
             <motion.section 
               id="mobile"
               initial={{ opacity: 0 }}
@@ -286,26 +330,103 @@ export default function DocsPage() {
             >
               <ScrollReveal3D className="space-y-6">
                 <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
-                  <span className="text-[#C5A059] font-mono text-base">04.</span> Local WiFi Pairing (Android Application)
+                  <span className="text-[#C5A059] font-mono text-base">05.</span> Local WiFi Mobile Pairing & RBAC Matrix
                 </h2>
                 <p className="text-sm text-slate-400 leading-relaxed font-medium pl-6 border-l border-white/[0.02]">
-                  The handheld Android companion app hooks directly into the PC server using localized networks, completely bypassing the cloud.
+                  The handheld mobile companion app pairs over your local WiFi network via WebSocket port 9001 with strict per-role permissions.
                 </p>
 
                 <div className="bg-[#0A0D10] border border-white/[0.04] p-6 rounded-sm space-y-4 ml-6">
-                  <ol className="list-decimal list-inside space-y-2.5 text-xs text-slate-400 leading-relaxed">
-                    <li>Ensure your workstation PC and the Android device are connected to the <strong className="text-white">same local WiFi router/access point</strong>.</li>
-                    <li>Download the companion Android APK directly from the download area.</li>
-                    <li>Perform the installation on the phone (allow installation from unknown local sources).</li>
-                    <li>On the PC Hub, navigate to the <strong className="text-white">Pairing Console</strong>. A local system pairing QR Code is rendered.</li>
-                    <li>Open the Android application and tap <strong className="text-white">"Scan Node QR"</strong>. Scan the QR code rendered on the PC.</li>
-                    <li>Handheld devices are successfully paired and can immediately submit attendance, payment entries, and inventory levels.</li>
-                  </ol>
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-white">Mobile Role Permissions Matrix</h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs text-slate-400 border-collapse">
+                      <thead>
+                        <tr className="border-b border-white/10 text-white font-bold text-[10px] uppercase tracking-wider">
+                          <th className="py-2 px-3">Role</th>
+                          <th className="py-2 px-3">Allowed Tables</th>
+                          <th className="py-2 px-3">Blocked Tables</th>
+                          <th className="py-2 px-3">Khata Write</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5 font-mono text-[11px]">
+                        <tr>
+                          <td className="py-2 px-3 text-emerald-400 font-bold">owner</td>
+                          <td className="py-2 px-3">All tables</td>
+                          <td className="py-2 px-3 text-slate-600">None</td>
+                          <td className="py-2 px-3 text-emerald-400 font-bold">YES</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 px-3 text-blue-400 font-bold">manager</td>
+                          <td className="py-2 px-3">Invoices, Khata, Production, Attendance, POs</td>
+                          <td className="py-2 px-3 text-slate-500">business_users</td>
+                          <td className="py-2 px-3 text-emerald-400 font-bold">YES</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 px-3 text-amber-400 font-bold">accountant</td>
+                          <td className="py-2 px-3">Invoices, Ledgers, Parties, Payments</td>
+                          <td className="py-2 px-3 text-slate-500">Attendance, Karigars</td>
+                          <td className="py-2 px-3 text-emerald-400 font-bold">YES</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 px-3 text-purple-400 font-bold">supervisor</td>
+                          <td className="py-2 px-3">Attendance, Production, Peshgi</td>
+                          <td className="py-2 px-3 text-slate-500">Ledgers, Invoices</td>
+                          <td className="py-2 px-3 text-red-400 font-bold">NO</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 px-3 text-slate-300 font-bold">cashier</td>
+                          <td className="py-2 px-3">Invoices, Items, Parties, Payments</td>
+                          <td className="py-2 px-3 text-slate-500">Ledgers, POs</td>
+                          <td className="py-2 px-3 text-red-400 font-bold">NO</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </ScrollReveal3D>
             </motion.section>
 
-            {/* 5. BARCODE & INVENTORY CONFIG */}
+            {/* 6. POS & WEIGHBRIDGE */}
+            <motion.section 
+              id="pos"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true, margin: '-100px' }}
+              className="pt-12 border-t border-white/[0.05] scroll-mt-28"
+            >
+              <ScrollReveal3D className="space-y-6">
+                <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
+                  <span className="text-[#C5A059] font-mono text-base">06.</span> Point of Sale (POS) & Weighbridge Integration
+                </h2>
+                <p className="text-sm text-slate-400 leading-relaxed font-medium pl-6 border-l border-white/[0.02]">
+                  High-speed checkout interface with RS232 weighbridge COM port reading, barcode scanning, split payments, and thermal printing.
+                </p>
+
+                <div className="bg-[#0A0D10] border border-white/[0.04] p-6 rounded-sm space-y-4 ml-6">
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-white">POS Keyboard Shortcuts & Operation</h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    <div className="bg-white/5 p-3 rounded-sm border border-white/5">
+                      <span className="font-mono text-amber-400 font-bold">F2</span>
+                      <p className="text-slate-400 text-[11px] mt-1">Search SKU / Barcode</p>
+                    </div>
+                    <div className="bg-white/5 p-3 rounded-sm border border-white/5">
+                      <span className="font-mono text-amber-400 font-bold">F4</span>
+                      <p className="text-slate-400 text-[11px] mt-1">Apply Line Discount</p>
+                    </div>
+                    <div className="bg-white/5 p-3 rounded-sm border border-white/5">
+                      <span className="font-mono text-amber-400 font-bold">F8</span>
+                      <p className="text-slate-400 text-[11px] mt-1">Pay & Print Receipt</p>
+                    </div>
+                    <div className="bg-white/5 p-3 rounded-sm border border-white/5">
+                      <span className="font-mono text-amber-400 font-bold">ESC</span>
+                      <p className="text-slate-400 text-[11px] mt-1">Cancel / Clear Cart</p>
+                    </div>
+                  </div>
+                </div>
+              </ScrollReveal3D>
+            </motion.section>
+
+            {/* 7. INVENTORY & BARCODING */}
             <motion.section 
               id="inventory"
               initial={{ opacity: 0 }}
@@ -315,26 +436,23 @@ export default function DocsPage() {
             >
               <ScrollReveal3D className="space-y-6">
                 <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
-                  <span className="text-[#C5A059] font-mono text-base">05.</span> Barcode Setup & Inventory Configurations
+                  <span className="text-[#C5A059] font-mono text-base">07.</span> Inventory, SKU Tracking & Barcodes
                 </h2>
                 <p className="text-sm text-slate-400 leading-relaxed font-medium pl-6 border-l border-white/[0.02]">
-                  Input and catalog raw fabric grades, chemical batches, or manufactured assets in high-speed scanning systems.
+                  Manage raw materials, fabric grades, finished goods, and chemical batches with barcode printing and reorder alerts.
                 </p>
 
                 <div className="bg-[#0A0D10] border border-white/[0.04] p-6 rounded-sm space-y-4 ml-6">
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Head to the main <strong className="text-white">Inventory Console</strong>. Under adding new product nodes, you can either auto-generate standard barcode keys or use physical barcode readers to scan code sequences directly into the system.
-                  </p>
                   <ul className="list-disc pl-5 space-y-2 text-xs text-slate-400 leading-relaxed">
-                    <li><strong className="text-white">Category Tags:</strong> Map units to raw materials, fabrics, or accessories.</li>
-                    <li><strong className="text-white">Reorder Safety Limits:</strong> Define safe thresholds that trigger automatic visual stock warnings.</li>
-                    <li><strong className="text-white">Piece Weights:</strong> Record baseline weights (kilograms or yards) to feed local mandi calculation engines.</li>
+                    <li><strong className="text-white">Auto Barcode Generation:</strong> Generates standard Code128 / QR codes for printable label sheets.</li>
+                    <li><strong className="text-white">Stock Warnings:</strong> Visual amber warnings when item quantity drops below safety reorder threshold.</li>
+                    <li><strong className="text-white">Batch & Expiry:</strong> Track perishable or batch-bound stock with automated expiration alerts.</li>
                   </ul>
                 </div>
               </ScrollReveal3D>
             </motion.section>
 
-            {/* 6. LEDGER & INVOICING SETUP */}
+            {/* 8. INVOICES & KHATA */}
             <motion.section 
               id="invoices"
               initial={{ opacity: 0 }}
@@ -344,36 +462,23 @@ export default function DocsPage() {
             >
               <ScrollReveal3D className="space-y-6">
                 <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
-                  <span className="text-[#C5A059] font-mono text-base">06.</span> Automatic Double-Entry Ledger & Invoices
+                  <span className="text-[#C5A059] font-mono text-base">08.</span> Invoicing & Double-Entry Khata Ledgers
                 </h2>
                 <p className="text-sm text-slate-400 leading-relaxed font-medium pl-6 border-l border-white/[0.02]">
-                  Create professional print invoices while double-entry khata ledgers keep balances reconciled in real-time.
+                  Create professional print invoices while automatic double-entry khata ledgers reconcile balances in real-time.
                 </p>
 
                 <div className="bg-[#0A0D10] border border-white/[0.04] p-6 rounded-sm space-y-4 ml-6">
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    Every bill issued automatically triggers debit/credit entries mapped to the designated customer accounts. In the event of offline states, these balances update locally and reflect inside printable PDFs instantly.
+                    Every invoice issued automatically posts debit and credit entries mapped to customer accounts, instantly updating receivable balances locally and reflecting inside printable PDFs.
                   </p>
-                  <div className="p-4 bg-[#08090C] border border-white/5 text-[11px] leading-relaxed text-slate-400 rounded-sm font-mono font-bold">
-                    <span className="text-[#00E5FF] block mb-2">// Automatic Khata Journal Sync Example:</span>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="font-bold text-white">DEBIT:</p>
-                        <p>Receivables Ledger — PKR 84,500</p>
-                      </div>
-                      <div>
-                        <p className="font-bold text-[#C5A059]">CREDIT:</p>
-                        <p>Fabric Stock Sales — PKR 84,500</p>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </ScrollReveal3D>
             </motion.section>
 
-            {/* Section 7: Data safety */}
+            {/* 9. KARIGAR PRODUCTION & PAYROLL */}
             <motion.section 
-              id="data-safety"
+              id="karigar"
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               viewport={{ once: true, margin: '-100px' }}
@@ -381,55 +486,24 @@ export default function DocsPage() {
             >
               <ScrollReveal3D className="space-y-6">
                 <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
-                  <span className="text-[#C5A059] font-mono text-base">07.</span> Your Data is Always Safe
+                  <span className="text-[#C5A059] font-mono text-base">09.</span> Karigar Production, Attendance & Payroll
                 </h2>
-                
                 <p className="text-sm text-slate-400 leading-relaxed font-medium pl-6 border-l border-white/[0.02]">
-                  Noxis stores your data in two places: locally on your PC and synced to Supabase cloud when internet is available. This means your data survives even if your PC fails.
+                  Track piece-rate production output, daily attendance logs, worker cash advances (Peshgi), and payout slips.
                 </p>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ml-6">
-                  {[
-                    {
-                      title: 'Local backup',
-                      desc: 'Settings → Backup → Download Backup. Creates an encrypted JSON file you can save anywhere.',
-                      icon: '💾',
-                    },
-                    {
-                      title: 'Cloud sync',
-                      desc: 'Your data automatically syncs to secure Supabase servers when internet is available.',
-                      icon: '☁️',
-                    },
-                    {
-                      title: 'Excel export',
-                      desc: 'Export any module (inventory, parties, invoices) to Excel with one click.',
-                      icon: '📊',
-                    },
-                    {
-                      title: 'Your data, your control',
-                      desc: 'You own your data. You can export it, back it up, or delete it anytime.',
-                      icon: '🔑',
-                    },
-                  ].map(item => (
-                    <div key={item.title} className="bg-[#0A0D10] border border-white/[0.04] p-5 rounded-sm">
-                      <span className="text-xl">
-                        {item.icon}
-                      </span>
-                      <p className="font-bold text-sm text-white mb-1.5 mt-2.5">
-                        {item.title}
-                      </p>
-                      <p className="text-slate-400 text-xs leading-relaxed">
-                        {item.desc}
-                      </p>
-                    </div>
-                  ))}
+
+                <div className="bg-[#0A0D10] border border-white/[0.04] p-6 rounded-sm space-y-4 ml-6 font-mono text-xs text-slate-400">
+                  <p className="text-emerald-400 font-bold">// Payout Formula</p>
+                  <p className="bg-[#08090C] p-3 border border-white/5 rounded-sm">
+                    Net Payout = (Completed Units × Piece Rate) + Overtime Allowance - Peshgi Deductions
+                  </p>
                 </div>
               </ScrollReveal3D>
             </motion.section>
 
-            {/* 8. FLOOR QUICK ENTRY CONSOLE */}
+            {/* 10. CCTV ONVIF */}
             <motion.section 
-              id="quickentry"
+              id="cctv"
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               viewport={{ once: true, margin: '-100px' }}
@@ -437,33 +511,39 @@ export default function DocsPage() {
             >
               <ScrollReveal3D className="space-y-6">
                 <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
-                  <span className="text-[#C5A059] font-mono text-base">08.</span> Floor Quick Entry Console
+                  <span className="text-[#C5A059] font-mono text-base">10.</span> CCTV ONVIF Discovery & WebRTC Streams
                 </h2>
                 <p className="text-sm text-slate-400 leading-relaxed font-medium pl-6 border-l border-white/[0.02]">
-                  Designed for high-speed touch screen monitors deployed right next to the workshop floor.
+                  Auto-discover IP cameras via ONVIF WS-Discovery and render ultra-low-latency streams powered by embedded MediaMTX engine.
+                </p>
+              </ScrollReveal3D>
+            </motion.section>
+
+            {/* 11. FAULT RECOVERY */}
+            <motion.section 
+              id="fault-recovery"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true, margin: '-100px' }}
+              className="pt-12 border-t border-white/[0.05] scroll-mt-28"
+            >
+              <ScrollReveal3D className="space-y-6">
+                <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
+                  <span className="text-[#C5A059] font-mono text-base">11.</span> Power-Cut & Fault Recovery Protocol
+                </h2>
+                <p className="text-sm text-slate-400 leading-relaxed font-medium pl-6 border-l border-white/[0.02]">
+                  Designed for industrial environments with frequent power outages. State is saved continuously.
                 </p>
 
-                <div className="bg-[#0A0D10] border border-white/[0.04] p-6 rounded-sm space-y-4 ml-6">
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    The Quick Entry Console provides large touch layouts, allowing supervisors to log production records, attendance parameters, or ledger receipts under 3 seconds.
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    {[
-                      { title: 'Production Tab', desc: 'Select karigar, enter pieces/weights, tag grades (A, B, C).' },
-                      { title: 'Payment Slip', desc: 'Accept customer peshgi, logs payments to JazzCash/EasyPaisa.' },
-                      { title: 'Attendance Slip', desc: 'Mark absences, present states, or perform bulk check-ins.' }
-                    ].map(tab => (
-                      <div key={tab.title} className="p-4 bg-white/[0.02] border border-white/5 rounded-sm">
-                        <h4 className="text-xs font-bold text-white mb-2">{tab.title}</h4>
-                        <p className="text-[10px] text-slate-500 leading-relaxed">{tab.desc}</p>
-                      </div>
-                    ))}
-                  </div>
+                <div className="bg-[#0A0D10] border border-white/[0.04] p-6 rounded-sm space-y-3 ml-6 text-xs text-slate-400">
+                  <p>1. <strong className="text-white">Auto Draft Save:</strong> All active entry forms save draft snapshots every 5 seconds.</p>
+                  <p>2. <strong className="text-white">Ungraceful Exit Detection:</strong> Boot sequence checks <span className="font-mono text-amber-400">exit_flag</span>. If power cut, displays recovery banner.</p>
+                  <p>3. <strong className="text-white">Windows Auto-Boot:</strong> Power restored → Windows boots → Noxis auto-opens → Session resumes.</p>
                 </div>
               </ScrollReveal3D>
             </motion.section>
 
-            {/* 9. REGIONAL TROUBLESHOOTING */}
+            {/* 12. TROUBLESHOOTING */}
             <motion.section 
               id="troubleshoot"
               initial={{ opacity: 0 }}
@@ -473,142 +553,14 @@ export default function DocsPage() {
             >
               <ScrollReveal3D className="space-y-6">
                 <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
-                  <span className="text-[#C5A059] font-mono text-base">09.</span> Troubleshooting & Diagnostics
+                  <span className="text-[#C5A059] font-mono text-base">12.</span> System Maintenance & Log Inspection
                 </h2>
-                <p className="text-sm text-slate-400 leading-relaxed font-medium pl-6 border-l border-white/[0.02]">
-                  Solutions to the most common local networking and system validation challenges.
-                </p>
-
-                <div className="space-y-4 ml-6">
-                  {[
-                    {
-                      q: 'Workstation activation fails continuously',
-                      a: 'Confirm that your device is actively connected to the internet during key verification. Ensure that characters are input exactly without spaces. If issues persist, verify that security filters or anti-virus apps are not blocking system background API connections.'
-                    },
-                    {
-                      q: 'Android paired terminal shows connecting endlessly',
-                      a: 'Diagnostics confirm this happens when the Hub workstation PC and phone are partitioned on separate routers or virtual subnets. Verify that both terminals show active connected states to the identical local router IP.'
-                    },
-                    {
-                      q: 'Local backup is not logging correctly',
-                      a: 'Go to Settings -> Database. Under the backup path, confirm that your mapped folder directory actually has valid write authorization from the OS system user.'
-                    }
-                  ].map(faq => (
-                    <div key={faq.q} className="bg-[#0A0D10] border border-white/[0.04] p-6 rounded-sm space-y-2">
-                      <h4 className="text-sm font-bold text-white">{faq.q}</h4>
-                      <p className="text-xs text-slate-400 leading-relaxed">{faq.a}</p>
-                    </div>
-                  ))}
-
-                  {/* Support Card */}
-                  <div className="bg-[#0A0D10] border border-white/[0.04] p-6 rounded-sm space-y-4">
-                    <h4 className="text-xs font-bold uppercase tracking-widest text-white">Need Regional Technical Support?</h4>
-                    <p className="text-[11px] text-slate-400 leading-relaxed">
-                      To meet the fast-paced nature of local mandi and regional textile mills, our technical teams provide immediate real-time solutions via direct WhatsApp or enterprise email logging.
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2 border-t border-white/[0.03]">
-                      <div>
-                        <span className="text-[9px] text-emerald-400 font-bold uppercase tracking-widest block mb-1">Direct Floor WhatsApp Support</span>
-                        <a href="https://wa.me/923264742678" target="_blank" rel="noopener noreferrer" className="text-xs font-mono font-bold text-emerald-400 hover:underline">
-                          +92 326 4742678
-                        </a>
-                      </div>
-                      <div>
-                        <span className="text-[9px] text-[#00E5FF] font-bold uppercase tracking-widest block mb-1">Enterprise Email Support</span>
-                        <a href="mailto:[EMAIL_ADDRESS]" className="text-xs font-mono font-bold text-[#00E5FF] hover:underline">
-                        [EMAIL_ADDRESS]
-                        </a>
-                      </div>
-                    </div>
-                  </div>
+                <div className="bg-[#0A0D10] border border-white/[0.04] p-6 rounded-sm space-y-3 ml-6 font-mono text-xs text-slate-400">
+                  <p className="text-white font-bold">// Diagnostic Log File Locations</p>
+                  <p>Startup Log: <span className="text-amber-400">%AppData%\\noxis-hub\\startup.log</span></p>
+                  <p>Server Errors: <span className="text-red-400">%AppData%\\noxis-hub\\server-stderr.log</span></p>
+                  <p>SQLite Data: <span className="text-emerald-400">%AppData%\\noxis-hub\\NOXIS-local.db</span></p>
                 </div>
-              </ScrollReveal3D>
-            </motion.section>
-
-            {/* 10. PREDICTIVE INTELLIGENCE */}
-            <motion.section 
-               id="intelligence"
-               initial={{ opacity: 0 }}
-               whileInView={{ opacity: 1 }}
-               viewport={{ once: true, margin: '-100px' }}
-               className="pt-12 border-t border-white/[0.05] scroll-mt-28"
-            >
-              <ScrollReveal3D className="space-y-6">
-                 <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
-                   <span className="text-[#C5A059] font-mono text-base">10.</span> Predictive Intelligence Telemetry
-                 </h2>
-                 <p className="text-sm text-slate-400 leading-relaxed font-medium pl-6 border-l border-white/[0.02]">
-                   The Predictive Intelligence telemetry engine processes dynamic regional signals to empower workshop owners with raw pricing power and profit-margin security.
-                 </p>
-
-                 <div className="bg-[#0A0D10] border border-white/[0.04] p-6 rounded-sm space-y-4 ml-6">
-                   <h4 className="text-xs font-bold uppercase tracking-widest text-white">Advanced Operations Guide</h4>
-                   <ul className="list-disc pl-5 space-y-2 text-xs text-slate-400 leading-relaxed">
-                     <li><strong className="text-white">Live Benchmark Tracking:</strong> Computes pieces-rate labor index and mandi output rates across target markets (Pakistan, UAE, Bangladesh, Turkey) using local telemetry.</li>
-                     <li><strong className="text-white">Active Reorder Predictions:</strong> Triggers preemptive inventory alerts 4 days prior to a stockout based on moving average usage.</li>
-                     <li><strong className="text-white">Margin Analysis & Churn Models:</strong> Performs customer churn assessments via Supabase stored RPC aggregators to highlight at-risk partnerships early.</li>
-                   </ul>
-                 </div>
-              </ScrollReveal3D>
-            </motion.section>
-
-            {/* 11. CREDIT SCORING & PESHGI */}
-            <motion.section 
-               id="finance"
-               initial={{ opacity: 0 }}
-               whileInView={{ opacity: 1 }}
-               viewport={{ once: true, margin: '-100px' }}
-               className="pt-12 border-t border-white/[0.05] scroll-mt-28"
-            >
-              <ScrollReveal3D className="space-y-6">
-                 <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
-                   <span className="text-[#C5A059] font-mono text-base">11.</span> Embedded Credit Scoring & Peshgi
-                 </h2>
-                 <p className="text-sm text-slate-400 leading-relaxed font-medium pl-6 border-l border-white/[0.02]">
-                   Modernize your workshop capital with integrated credit scoring formulas and secure payout structures paired directly with financial institutions.
-                 </p>
-
-                 <div className="bg-[#0A0D10] border border-white/[0.04] p-6 rounded-sm space-y-4 ml-6">
-                   <h4 className="text-xs font-bold uppercase tracking-widest text-white">Fintech Score Metric Calculations</h4>
-                   <div className="p-4 bg-[#08090C] border border-white/5 rounded-sm space-y-2 text-xs text-slate-400 font-mono font-bold">
-                     <p className="text-[#00E5FF] font-mono">// Embedded Credit Grading Rubric</p>
-                     <p>1. Noxis Ledger History (0-20 pts): Length of active ledger records.</p>
-                     <p>2. Transaction Volume (0-35 pts): Cumulative monthly revenue flows.</p>
-                     <p>3. Margin Stability (0-25 pts): Standard deviation of profit margins.</p>
-                     <p>4. Peshgi Leverage (0-20 pts): Advance-to-wage ratios under 30%.</p>
-                     <p className="text-slate-500 mt-2 font-sans font-medium text-[11px] uppercase tracking-wider">Total Grade Scale: <span className="text-[#A3E635]">A (80+ pts)</span> | <span className="text-[#00E5FF]">B (60-79 pts)</span> | <span className="text-[#C5A059]">C (40-59 pts)</span></p>
-                   </div>
-                   <p className="text-xs text-slate-400 leading-relaxed">
-                     Eligible factory owners with Grade A or B rankings gain automated access to direct credit programs and local partner payout channels (JazzCash, EasyPaisa).
-                   </p>
-                 </div>
-              </ScrollReveal3D>
-            </motion.section>
-
-            {/* 12. DIGITAL WORKER IDS & APIS */}
-            <motion.section 
-               id="api-worker"
-               initial={{ opacity: 0 }}
-               whileInView={{ opacity: 1 }}
-               viewport={{ once: true, margin: '-100px' }}
-               className="pt-12 border-t border-white/[0.05] scroll-mt-28"
-            >
-              <ScrollReveal3D className="space-y-6">
-                 <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
-                   <span className="text-[#C5A059] font-mono text-base">12.</span> Digital Worker Identities & Developer APIs
-                 </h2>
-                 <p className="text-sm text-slate-400 leading-relaxed font-medium pl-6 border-l border-white/[0.02]">
-                   Seamlessly bridge physical staff records with cryptographic digital certificates and coordinate inventory sync using open webhook protocols.
-                 </p>
-
-                 <div className="bg-[#0A0D10] border border-white/[0.04] p-6 rounded-sm space-y-4 ml-6">
-                   <h4 className="text-xs font-bold uppercase tracking-widest text-white">API Keys & Worker QR Setup</h4>
-                   <ol className="list-decimal list-inside space-y-2.5 text-xs text-slate-400 leading-relaxed">
-                     <li><strong className="text-white">API Platform:</strong> Create cryptographically generated API keys wrapped with read/write access controls.</li>
-                     <li><strong className="text-white">Webhooks:</strong> Hook custom endpoints to receive instant pushes on transaction logs or stock movements.</li>
-                     <li><strong className="text-white">Worker Profiles:</strong> Empower floor staff with public QR-enabled performance cards, displaying verified attendance and skill certifications.</li>
-                   </ol>
-                 </div>
               </ScrollReveal3D>
             </motion.section>
 

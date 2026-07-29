@@ -139,22 +139,37 @@ export default function PromisesPage() {
       return;
     }
 
+    const targetBizId = businessId || profile?.id;
+    if (!targetBizId) {
+      toast.error("Profile Error", "No active business profile found.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      let userId: string | null = null;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        userId = session?.user?.id || null;
+      } catch (e) {}
       
+      const payload: any = {
+        business_id: targetBizId,
+        party_id: selectedPartyId,
+        promised_amount: Number(promisedAmount),
+        promise_date: promiseDate,
+        notes: notes || null,
+        invoice_id: selectedInvoiceId || null,
+        status: "pending",
+      };
+
+      if (userId) {
+        payload.created_by = userId;
+      }
+
       const { error } = await supabase
         .from("payment_promises")
-        .insert({
-          business_id: businessId,
-          party_id: selectedPartyId,
-          promised_amount: Number(promisedAmount),
-          promise_date: promiseDate,
-          notes: notes || null,
-          invoice_id: selectedInvoiceId || null,
-          status: "pending",
-          created_by: user?.id || null
-        });
+        .insert(payload);
 
       if (error) throw error;
 

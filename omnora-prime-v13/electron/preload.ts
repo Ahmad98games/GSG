@@ -78,6 +78,101 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.removeListener('tunnel-ready', listener);
     };
   },
+  store: {
+    saveSession: (session: any) =>
+      ipcRenderer.invoke('store:saveSession', session),
+    getSession: () =>
+      ipcRenderer.invoke('store:getSession'),
+    clearSession: () =>
+      ipcRenderer.invoke('store:clearSession'),
+    savePinHash: (hash: string) =>
+      ipcRenderer.invoke('store:savePinHash', hash),
+    getPinHash: () =>
+      ipcRenderer.invoke('store:getPinHash'),
+    disableAppLock: () =>
+      ipcRenderer.invoke('store:disableAppLock'),
+    isAppLockEnabled: () =>
+      ipcRenderer.invoke('store:isAppLockEnabled'),
+    getLockTimeout: () =>
+      ipcRenderer.invoke('store:getLockTimeout'),
+    setLockTimeout: (m: number) =>
+      ipcRenderer.invoke('store:setLockTimeout', m),
+    saveLastRoute: (r: string) =>
+      ipcRenderer.invoke('store:saveLastRoute', r),
+    getLastRoute: () =>
+      ipcRenderer.invoke('store:getLastRoute'),
+    saveLastActive: () =>
+      ipcRenderer.invoke('store:saveLastActive'),
+    getLastActive: () =>
+      ipcRenderer.invoke('store:getLastActive'),
+    saveFormDraft: (k: string, d: any) =>
+      ipcRenderer.invoke('store:saveFormDraft', k, d),
+    getFormDraft: (k: string) =>
+      ipcRenderer.invoke('store:getFormDraft', k),
+    clearFormDraft: (k: string) =>
+      ipcRenderer.invoke('store:clearFormDraft', k),
+    saveScrollPosition: (r: string, p: number) =>
+      ipcRenderer.invoke('store:saveScrollPosition', r, p),
+    getScrollPosition: (r: string) =>
+      ipcRenderer.invoke('store:getScrollPosition', r),
+  },
+  autostart: {
+    get: () =>
+      ipcRenderer.invoke('autostart:get'),
+    set: (enabled: boolean) =>
+      ipcRenderer.invoke('autostart:set', enabled),
+  },
+  sync: {
+    getLastSyncAt: () =>
+      ipcRenderer.invoke('sync:getLastSyncAt'),
+    setLastSyncAt: (ts: number) =>
+      ipcRenderer.invoke('sync:setLastSyncAt', ts),
+  },
+  onBridgeEvent: (callback: (event: any, payload: any) => void) => {
+    ipcRenderer.on('bridge-event', callback)
+  },
+  removeBridgeEventListener: () => {
+    ipcRenderer.removeAllListeners('bridge-event')
+  },
+  app: {
+    wasAutoStarted: () =>
+      ipcRenderer.invoke('app:wasAutoStarted'),
+    onAutoStarted: (callback: (data: any) => void) => {
+      const listener = (_: any, data: any) => callback(data);
+      ipcRenderer.on('app:autostarted', listener);
+      return () => ipcRenderer.removeListener('app:autostarted', listener);
+    },
+  },
+
+  // ── Licensing & HWID ────────────────────────────────────────────────────────
+  license: {
+    getInfo: () =>
+      ipcRenderer.invoke('license:getInfo'),
+    activate: (keyString: string) =>
+      ipcRenderer.invoke('license:activate', keyString),
+    getHWID: () =>
+      ipcRenderer.invoke('license:getHWID'),
+  },
+
+  // ── Trial Engine ────────────────────────────────────────────────────────────
+  trial: {
+    getState: () =>
+      ipcRenderer.invoke('trial:getState'),
+  },
+
+  // ── Khata real-time updates from bridge ─────────────────────────────────────
+  onKhataUpdated: (callback: (data: { partyId: string; newBalance: number }) => void) => {
+    const listener = (_: any, data: any) => callback(data);
+    ipcRenderer.on('ipc:khata-updated', listener);
+    return () => ipcRenderer.removeListener('ipc:khata-updated', listener);
+  },
+
+  // ── Power-cut recovery signal ───────────────────────────────────────────────
+  onPowerCutDetected: (callback: (data: { lastRoute: string; message: string }) => void) => {
+    const listener = (_: any, data: any) => callback(data);
+    ipcRenderer.on('ipc:power-cut-detected', listener);
+    return () => ipcRenderer.removeListener('ipc:power-cut-detected', listener);
+  },
 });
 
 contextBridge.exposeInMainWorld('electronWindow', {

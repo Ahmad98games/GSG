@@ -126,14 +126,12 @@ export default React.memo(function IndustrialSidebar() {
 
   const CORE_ITEMS = useMemo(() => {
     const items = [];
-    if (industry.key === 'medical' || industry.key === 'general') {
-      items.push({
-        label: 'POS Counter',
-        href: '/pos',
-        icon: ShoppingCart,
-        always: true,
-      });
-    }
+    items.push({
+      label: 'POS Counter',
+      href: '/pos',
+      icon: ShoppingCart,
+      always: true,
+    });
     if (industry.key === 'rice' || industry.key === 'food') {
       items.push({
         label: 'Weight Entry',

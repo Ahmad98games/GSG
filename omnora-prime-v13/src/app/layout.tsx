@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ClientI18nProvider } from '@/components/providers/ClientI18nProvider';
+import { AuthProvider } from '@/providers/AuthProvider';
 import enMessages from '@/messages/en.json';
 import "./globals.css";
 
@@ -14,6 +15,8 @@ import AskNoxis from "@/components/knowledge/AskNoxis";
 import { GlobalErrorBoundary } from "@/components/ui/GlobalErrorBoundary";
 import Script from "next/script";
 import ElectronMotionWrapper from "@/components/providers/ElectronMotionWrapper";
+import { SyncProvider } from '@/providers/SyncProvider';
+import { MobileSyncListener } from '@/components/shell/MobileSyncListener';
 
 export const metadata: Metadata = {
   title: {
@@ -215,20 +218,25 @@ export default async function RootLayout({
         />
         <ElectronMotionWrapper>
         <ClientI18nProvider initialLocale={locale} initialMessages={messages}>
-          <AuditProvider>
-            <QueryProvider>
-              <IndustryProvider>
-                <LicenseInitializer />
-                <ThemeInitializer />
-                <GlobalErrorBoundary>
-                  <AppShell>
-                    {children}
-                    <AskNoxis />
-                  </AppShell>
-                </GlobalErrorBoundary>
-              </IndustryProvider>
-            </QueryProvider>
-          </AuditProvider>
+          <AuthProvider>
+            <SyncProvider>
+              <AuditProvider>
+                <QueryProvider>
+                  <IndustryProvider>
+                    <LicenseInitializer />
+                    <ThemeInitializer />
+                    <GlobalErrorBoundary>
+                      <AppShell>
+                        {children}
+                        <AskNoxis />
+                        <MobileSyncListener />
+                      </AppShell>
+                    </GlobalErrorBoundary>
+                  </IndustryProvider>
+                </QueryProvider>
+              </AuditProvider>
+            </SyncProvider>
+          </AuthProvider>
         </ClientI18nProvider>
         </ElectronMotionWrapper>
         <Script

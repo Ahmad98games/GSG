@@ -16,6 +16,8 @@ import {
   IndustrialMath
 } from '@/lib/finance/IndustrialMath'
 import { useToast } from '@/hooks/useToast'
+import { useFormDraft } from '@/hooks/useFormDraft'
+import { DraftRecoveryBanner } from '@/components/DraftRecoveryBanner'
 import {
   Search, Plus, Minus, Trash2,
   Printer, ShoppingCart, AlertTriangle,
@@ -106,6 +108,8 @@ export default function POSPage() {
 
   // ── STATE ──
   const [cart, setCart] = useState<CartItem[]>([])
+  const DRAFT_KEY = 'pos-cart'
+  const { getDraft, clearDraft } = useFormDraft(DRAFT_KEY, cart)
   const [search, setSearch] = useState('')
   const [searchResults, setSearchResults] =
     useState<QuickSearchResult[]>([])
@@ -484,6 +488,7 @@ export default function POSPage() {
         // Reset state and clear cart
         setCart([])
         try { localStorage.removeItem('noxis_pos_cart') } catch {}
+        await clearDraft()
         setSelectedParty(null)
         setPartySearch('')
         setDiscount(0)
@@ -537,6 +542,11 @@ export default function POSPage() {
             </a>
           </div>
         </div>
+        <DraftRecoveryBanner
+          draftKey={DRAFT_KEY}
+          onRecover={(data) => setCart(data)}
+          onDiscard={() => {}}
+        />
 
         {/* SEARCH BAR — full width, always focused */}
         <div className="px-4 py-3 border-b border-white/6 flex-shrink-0">

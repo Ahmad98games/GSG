@@ -29,6 +29,8 @@ import { generateInsights } from '@/lib/intelligence/engine'
 import { IndustryWidget } from '@/components/dashboard/IndustryWidget'
 import { DataHealthCard } from '@/components/dashboard/DataHealthCard'
 
+import { AutoStartRecoveryBanner } from '@/components/shell/AutoStartRecoveryBanner'
+
 interface DashboardData {
   businessName: string
   industry: string
@@ -73,21 +75,14 @@ interface DashboardData {
 export default function OwnerDashboard() {
   const router = useRouter()
   const supabase = createClient()
-  const { profile } = useBusinessProfile()
+  const { profile, isLoaded } = useBusinessProfile()
 
   useEffect(() => {
-    const industryKey = profile?.industry_key || profile?.industry_type || (profile as any)?.industry
-    if (!industryKey) return
-
-    const hasVisitedBefore = sessionStorage.getItem('noxis_session_started')
-    if (!hasVisitedBefore) {
+    if (typeof window !== 'undefined') {
       sessionStorage.setItem('noxis_session_started', 'true')
-      const config = getIndustryConfig(industryKey)
-      if (config.defaultLandingRoute && config.defaultLandingRoute !== '/dashboard') {
-        router.replace(config.defaultLandingRoute)
-      }
+      sessionStorage.setItem('hasRedirectedPosThisSession', 'true')
     }
-  }, [profile])
+  }, [])
   
   const { data: topInsights = [] } = useQuery({
     queryKey: ['top-insights', profile?.id],
@@ -115,7 +110,10 @@ export default function OwnerDashboard() {
 
   const loadDashboard = useCallback(async () => {
     try {
-      setLoading(true)
+      setData(prev => {
+        if (!prev) setLoading(true)
+        return prev
+      })
       
       const isOffline = typeof window !== 'undefined' && !navigator.onLine
       
@@ -157,24 +155,15 @@ export default function OwnerDashboard() {
         }
       }
       
-      if (!activeProfile) {
+      if (!activeProfile && isLoaded) {
         if (!isOffline) {
           router.push('/dashboard/login')
         }
         return
       }
 
-      // Session redirect to default route (e.g. POS for pharma/general)
-      if (typeof window !== 'undefined' && activeProfile) {
-        const hasRedirected = sessionStorage.getItem('hasRedirectedPosThisSession')
-        if (!hasRedirected) {
-          const config = getIndustryConfig(activeProfile.industry_key || activeProfile.industry_type || (activeProfile as any).industry)
-          if (config && config.defaultLandingRoute && config.defaultLandingRoute !== '/dashboard') {
-            sessionStorage.setItem('hasRedirectedPosThisSession', 'true')
-            router.replace(config.defaultLandingRoute)
-            return;
-          }
-        }
+      if (!activeProfile) {
+        return
       }
 
       const biz = activeProfile.id
@@ -185,157 +174,23 @@ export default function OwnerDashboard() {
         throw new Error('Offline mode')
       }
 
-      // Parallel fetch
-      const [
-        attendanceToday,
-        karigarsRes,
-        invoicesMonth,
-        receivables,
-        stockRes,
-        lowStockRes,
-        dispatchRes,
-        purchaseRes,
-        payrollRes,
-        peshgiRes,
-        recentInvoicesRes,
-        recentAttendanceRes,
-        topKarigarsRes,
-        promisesRes,
-      ] = await Promise.allSettled([
-        // Today attendance present
-        supabase.from('attendance_logs')
-          .select('id', { count: 'exact', head: true })
-          .eq('business_id', biz)
-          .eq('log_date', today)
-          .eq('status', 'present'),
+      // Single consolidated server API fetch
+      const res = await fetch(`/api/dashboard/kpis?biz=${biz}`)
+      if (!res.ok) {
+        throw new Error(`Server returned status ${res.status}`)
+      }
+      const raw = await res.json()
 
-        // Total active karigars
-        supabase.from('karigars')
-          .select('id, name, peshgi_balance', { count: 'exact' })
-          .eq('business_id', biz)
-          .eq('status', 'active'),
-
-        // This month invoices
-        supabase.from('invoices')
-          .select('total_amount, subtotal, status')
-          .eq('business_id', biz)
-          .eq('status', 'posted')
-          .gte('created_at', monthStart),
-
-        // Outstanding receivables
-        supabase.from('invoices')
-          .select('total_amount, due_date, created_at')
-          .eq('business_id', biz)
-          .eq('status', 'posted')
-          .gt('balance_due', 0),
-
-        // Stock value
-        supabase.from('skus')
-          .select('qty_on_hand, cost_price')
-          .eq('business_id', biz)
-          .eq('is_active', true),
-
-        // Low stock count
-        supabase.from('skus')
-          .select('id', { count: 'exact', head: true })
-          .eq('business_id', biz)
-          .eq('is_active', true)
-          .filter('qty_on_hand', 'lte', 'reorder_level'),
-
-        // Pending dispatch
-        supabase.from('dispatch_orders')
-          .select('id', { count: 'exact', head: true })
-          .eq('business_id', biz)
-          .in('status', ['pending', 'packed']),
-
-        // Pending purchases
-        supabase.from('purchase_orders')
-          .select('id', { count: 'exact', head: true })
-          .eq('business_id', biz)
-          .in('status', ['draft', 'sent']),
-
-        // This month payroll total
-        supabase.from('payroll_runs')
-          .select('total_net')
-          .eq('business_id', biz)
-          .gte('period_start', monthStart),
-
-        // Total peshgi outstanding
-        supabase.from('karigars')
-          .select('peshgi_balance')
-          .eq('business_id', biz)
-          .eq('status', 'active')
-          .gt('peshgi_balance', 0),
-
-        // Recent 5 invoices
-        supabase.from('invoices')
-          .select(`
-            id, invoice_number, total_amount,
-            status, created_at,
-            party:parties(name)
-          `)
-          .eq('business_id', biz)
-          .order('created_at', { ascending: false })
-          .limit(5),
-
-        // Recent attendance summary
-        supabase.from('attendance_logs')
-          .select(`
-            karigar_id, status, log_date,
-            karigar:karigars(name)
-          `)
-          .eq('business_id', biz)
-          .eq('log_date', today)
-          .limit(10),
-
-        // Top karigars by production this month
-        supabase.from('karigar_production_logs')
-          .select(`
-            karigar_id, units_produced, earnings,
-            karigar:karigars(name, karigar_code)
-          `)
-          .eq('business_id', biz)
-          .gte('log_date', monthStart)
-          .order('earnings', { ascending: false })
-          .limit(5),
-
-        // Active payment promises
-        supabase.from('payment_promises')
-          .select(`
-            id, amount, promise_date, status,
-            party:parties(name)
-          `)
-          .eq('business_id', biz)
-          .eq('status', 'pending')
-          .order('promise_date', { ascending: true })
-          .limit(5),
-      ])
-
-      const invoices = invoicesMonth.status === 'fulfilled' ? invoicesMonth.value.data || [] : []
-      const receivablesData = receivables.status === 'fulfilled' ? receivables.value.data || [] : []
-      const stock = stockRes.status === 'fulfilled' ? stockRes.value.data || [] : []
-      const payrolls = payrollRes.status === 'fulfilled' ? payrollRes.value.data || [] : []
-      const peshgi = peshgiRes.status === 'fulfilled' ? peshgiRes.value.data || [] : []
+      const invoices = raw.invoicesMonth || []
+      const receivablesData = raw.receivables || []
+      const stock = raw.stock || []
+      const payrolls = raw.payroll || []
+      const peshgi = raw.peshgi || []
 
       const now = new Date()
       const overdueInvoices = receivablesData.filter(
         (inv: any) => inv.due_date && new Date(inv.due_date) < now
       )
-
-      let expiringCount = 0
-      if (features.expiryManagement) {
-        const thirtyDays = new Date()
-        thirtyDays.setDate(thirtyDays.getDate() + 30)
-        const { count } = await supabase
-          .from('skus')
-          .select('id', { count: 'exact', head: true })
-          .eq('business_id', biz)
-          .eq('is_active', true)
-          .not('expiry_date', 'is', null)
-          .lte('expiry_date', thirtyDays.toISOString().split('T')[0])
-          .gt('qty_on_hand', 0)
-        if (count) expiringCount = count
-      }
 
       const dashboardData: DashboardData = {
         businessName: activeProfile.business_name || 'My Factory',
@@ -344,12 +199,9 @@ export default function OwnerDashboard() {
         tier: activeProfile.tier || 'lite',
         currency: activeProfile.currency || 'PKR',
 
-        presentToday: attendanceToday.status === 'fulfilled' ? attendanceToday.value.count || 0 : 0,
-        totalKarigars: karigarsRes.status === 'fulfilled' ? karigarsRes.value.count || 0 : 0,
-        absentToday: Math.max(0,
-          (karigarsRes.status === 'fulfilled' ? karigarsRes.value.count || 0 : 0) -
-          (attendanceToday.status === 'fulfilled' ? attendanceToday.value.count || 0 : 0)
-        ),
+        presentToday: raw.attendanceToday || 0,
+        totalKarigars: raw.totalKarigars || 0,
+        absentToday: Math.max(0, (raw.totalKarigars || 0) - (raw.attendanceToday || 0)),
 
         revenueThisMonth: invoices.reduce((s: number, i: any) => s + (i.subtotal || 0), 0),
         invoiceCount: invoices.length,
@@ -357,21 +209,21 @@ export default function OwnerDashboard() {
         overdueCount: overdueInvoices.length,
 
         stockValue: stock.reduce((s: number, i: any) => s + ((i.qty_on_hand || 0) * (i.cost_price || 0)), 0),
-        lowStockCount: lowStockRes.status === 'fulfilled' ? lowStockRes.value.count || 0 : 0,
+        lowStockCount: raw.lowStockCount || 0,
 
-        pendingDispatch: dispatchRes.status === 'fulfilled' ? dispatchRes.value.count || 0 : 0,
-        pendingPurchases: purchaseRes.status === 'fulfilled' ? purchaseRes.value.count || 0 : 0,
+        pendingDispatch: raw.dispatchCount || 0,
+        pendingPurchases: raw.purchaseCount || 0,
 
         totalPayrollThisMonth: payrolls.reduce((s: number, p: any) => s + (p.total_net || 0), 0),
         totalPeshgiOutstanding: peshgi.reduce((s: number, k: any) => s + (k.peshgi_balance || 0), 0),
 
-        expiringCount,
+        expiringCount: raw.expiringCount || 0,
         avgYield: 68.2,
 
-        recentInvoices: recentInvoicesRes.status === 'fulfilled' ? recentInvoicesRes.value.data || [] : [],
-        recentAttendance: recentAttendanceRes.status === 'fulfilled' ? recentAttendanceRes.value.data || [] : [],
-        topKarigars: topKarigarsRes.status === 'fulfilled' ? topKarigarsRes.value.data || [] : [],
-        promises: promisesRes.status === 'fulfilled' ? promisesRes.value.data || [] : [],
+        recentInvoices: raw.recentInvoices || [],
+        recentAttendance: raw.recentAttendance || [],
+        topKarigars: raw.topKarigars || [],
+        promises: raw.promises || [],
       }
 
       setData(dashboardData)
@@ -420,7 +272,7 @@ export default function OwnerDashboard() {
     } finally {
       setLoading(false)
     }
-  }, [profile])
+  }, [profile, isLoaded])
 
   useEffect(() => {
     enableAutoRefresh()
@@ -501,6 +353,8 @@ export default function OwnerDashboard() {
 
       {/* ═══ MAIN LAYOUT ═══ */}
       <div className={`max-w-4xl mx-auto px-6 ${isElectron ? "pt-8" : "pt-24"}`}>
+        
+        <AutoStartRecoveryBanner />
         
         {/* Status Line */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4 text-[10px] font-mono font-bold uppercase tracking-widest text-slate-650 border-b border-white/[0.03] pb-4">

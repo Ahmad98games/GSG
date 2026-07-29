@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { ShieldCheck, Lock, Mail, ArrowRight, WifiOff, RefreshCw } from "lucide-react";
 import { humanizeError } from "@/lib/utils/errors";
+import { text } from "stream/consumers";
 
 function isNetworkError(err: any): boolean {
   const msg: string = err?.message || String(err);
@@ -105,8 +106,9 @@ export default function LoginPage() {
           <div className="w-16 h-16 bg-electric-blue/10 rounded-sm flex items-center justify-center mx-auto mb-6 border border-electric-blue/20">
             <ShieldCheck className="w-8 h-8 text-electric-blue" />
           </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight mb-2">NOXIS</h1>
+          <h1 className="text-3xl font-bold text-white tracking-tight mb-2"> NOXIS HUB</h1>
           <p className="text-gray-500 uppercase tracking-[0.2em] text-[10px] font-bold">Secure Industrial Gateway</p>
+          <p className="text-gray-500 uppercase tracking-[0.2em] text-[8px] font-bold">Please Note: Internet Is required for Authentication and at some place. </p>
         </div>
 
         <div className="bg-surface p-8 border border-white/5 relative overflow-hidden group">
@@ -114,7 +116,7 @@ export default function LoginPage() {
 
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-1.5">
-              <label className="block text-[10px] uppercase tracking-widest text-gray-500 font-medium">Terminal ID / Email</label>
+              <label className="block text-[10px] uppercase tracking-widest text-gray-500 font-medium">Your Terminal ID / Email</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
                 <input
@@ -129,7 +131,7 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-[10px] uppercase tracking-widest text-gray-500 font-medium">Access Key / Password</label>
+              <label className="block text-[10px] uppercase tracking-widest text-gray-500 font-medium">Your Access Key / Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
                 <input

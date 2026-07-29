@@ -53,6 +53,14 @@ export function CommandPalette() {
       action: () => router.push('/dashboard'),
     },
     {
+      id: 'nav-pos',
+      label: 'Go to POS Counter',
+      category: 'Navigation',
+      keywords: ['pos', 'point of sale', 'counter', 'checkout', 'billing', 'cashier', 'sale'],
+      icon: '🛒',
+      action: () => router.push('/pos'),
+    },
+    {
       id: 'nav-invoices',
       label: `Go to ${t.invoices}`,
       category: 'Navigation',

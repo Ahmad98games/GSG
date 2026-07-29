@@ -213,7 +213,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/privacy") ||
     pathname.startsWith("/terms") ||
     pathname.startsWith("/refund") ||
-    pathname.startsWith("/file-morph") ||
     pathname.startsWith("/about") ||
     pathname.startsWith("/reviews") ||
     pathname.startsWith("/docs") ||
@@ -235,7 +234,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname.toLowerCase().startsWith("/privacy") ||
     pathname.toLowerCase().startsWith("/terms") ||
     pathname.toLowerCase().startsWith("/refund") ||
-    pathname.toLowerCase().startsWith("/file-morph") ||
     pathname.toLowerCase().startsWith("/about") ||
     pathname.toLowerCase().startsWith("/reviews") ||
     pathname.toLowerCase().startsWith("/docs") ||

@@ -49,6 +49,14 @@ const os_1 = require("os");
 const dbKeyManager_1 = require("../src/lib/security/dbKeyManager");
 const onvifService_1 = require("./services/onvifService");
 const mediamtxService_1 = require("./services/mediamtxService");
+// ── Licensing & Security ──────────────────────────────────────────────────────
+const hwid_1 = require("./services/hwid");
+const trialEngine_1 = require("./services/trialEngine");
+const licenseVerifier_1 = require("./services/licenseVerifier");
+const tierEngine_1 = require("./services/tierEngine");
+const rbacEngine_1 = require("./bridge/rbacEngine");
+// ── Store ─────────────────────────────────────────────────────────────────────
+const store_1 = require("./store");
 // ─────────────────────────────────────────────
 // 0. GLOBAL REFERENCES
 // ─────────────────────────────────────────────
@@ -69,9 +77,11 @@ let tunnelUrl = null;
 let sessionTimeoutTimer = null;
 let warningTimer = null;
 let memoryMonitorInterval = null;
+let trialHeartbeatInterval = null;
 let PORT = Number(process.env.PORT || 3000);
 let isReadOnly = false;
 let lastBridgeStatus = { connected: 0, paired: 0, pairedDevices: [] };
+let wasPowerCut = false;
 const isDev = !electron_1.app.isPackaged;
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 const WARNING_LEAD_MS = 60 * 1000;
@@ -100,6 +110,45 @@ function startupLog(msg) {
     }
     catch { /* userData not ready yet */ }
     electron_log_1.default.info(msg);
+}
+// ── AUTO-START MANAGEMENT ──
+function applyAutoStart(enabled) {
+    try {
+        electron_1.app.setLoginItemSettings({
+            openAtLogin: enabled,
+            openAsHidden: false,
+            ...(process.platform === 'win32' && {
+                path: process.execPath,
+                args: ['--autostart'],
+            }),
+        });
+        startupLog(`[AutoStart] ${enabled
+            ? 'Registered — opens on Windows boot'
+            : 'Unregistered'}`);
+    }
+    catch (err) {
+        startupLog(`[AutoStart] Failed: ${err.message}`);
+    }
+}
+function getAutoStartStatus() {
+    const stored = (0, store_1.getAutoStartEnabled)();
+    let registeredWithOS = false;
+    try {
+        const settings = electron_1.app.getLoginItemSettings({
+            ...(process.platform === 'win32' && {
+                path: process.execPath,
+                args: ['--autostart'],
+            }),
+        });
+        registeredWithOS = settings.openAtLogin;
+    }
+    catch {
+        registeredWithOS = false;
+    }
+    return {
+        enabled: stored,
+        registeredWithOS,
+    };
 }
 function startCloudflaredTunnel() {
     const cloudflaredPath = path.join(process.env['ProgramFiles'] || 'C:\\Program Files', 'Cloudflare', 'cloudflared.exe');
@@ -256,9 +305,9 @@ if (process.platform === 'win32') {
 // On older GPUs/drivers, disable hardware acceleration entirely or features
 // to prevent black screen issues
 electron_1.app.commandLine.appendSwitch('disable-features', 'HardwareMediaKeyHandling,MediaSessionService');
-// V8 heap space flags to prevent OOMs on low-RAM machines:
-electron_1.app.commandLine.appendSwitch('--max-old-space-size', '512');
-electron_1.app.commandLine.appendSwitch('--js-flags', '--max-old-space-size=512');
+// V8 heap space flags to prevent memory pressure freezes after prolonged use:
+electron_1.app.commandLine.appendSwitch('--max-old-space-size', '4096');
+electron_1.app.commandLine.appendSwitch('--js-flags', '--max-old-space-size=4096');
 startupLog('════════════ NOXIS STARTUP ════════════');
 startupLog(`Platform: ${process.platform} | Arch: ${process.arch} | isDev: ${isDev}`);
 function killProcess(child, name) {
@@ -781,10 +830,11 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         ready: !!tunnelUrl,
     }));
     electron_1.ipcMain.handle('sync-tier', (_, data) => {
-        startupLog(`[Tier] Sync: ${data.tier} (Expires: ${data.expiresAt || 'Never'})`);
-        if (data.expiresAt && new Date() > new Date(data.expiresAt)) {
-            isReadOnly = true;
-            startupLog('[Security] License expired — Read-Only mode');
+        // Legacy renderer call — now validated against tierEngine, not trusted blindly
+        startupLog(`[Tier] Sync request: ${data.tier}`);
+        const tierInfo = (0, tierEngine_1.getActiveTierInfo)();
+        if (tierInfo.name === 'free_forever') {
+            isReadOnly = false; // free forever still works — just capped
             mainWindow?.webContents.send('license-expired');
             if (visionProcess) {
                 killProcess(visionProcess, 'Vision Engine');
@@ -794,8 +844,208 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         else {
             isReadOnly = false;
         }
-        return { success: true, isReadOnly };
+        return { success: true, isReadOnly, tier: tierInfo.name };
     });
+    // ─────────────────────────────────────────────
+    // LICENSE & TRIAL IPC HANDLERS
+    // ─────────────────────────────────────────────
+    // Returns current tier info + HWID + trial state for the Settings page
+    electron_1.ipcMain.handle('license:getInfo', () => {
+        const tierInfo = (0, tierEngine_1.getActiveTierInfo)();
+        const trialState = (0, trialEngine_1.getTrialState)();
+        const license = (0, licenseVerifier_1.getActiveLicensePayload)();
+        return {
+            tier: tierInfo.name,
+            caps: tierInfo.caps,
+            features: tierInfo.features,
+            maxDevices: tierInfo.maxDevices,
+            maxBranches: tierInfo.maxBranches,
+            maxCameras: tierInfo.maxCameras,
+            trialStatus: trialState.status,
+            trialDaysLeft: trialState.daysLeft,
+            graceDaysLeft: trialState.graceDaysLeft,
+            hwid: (0, hwid_1.generateHWID)(),
+            licenseActive: !!license,
+            businessId: license?.businessId || '',
+            expiresAt: license?.expiresAt || 0,
+        };
+    });
+    // Activates a license key string. Validates offline via RSA-2048.
+    electron_1.ipcMain.handle('license:activate', (_, keyString) => {
+        const result = (0, licenseVerifier_1.verifyLicense)(keyString);
+        if (result.valid) {
+            (0, licenseVerifier_1.persistLicense)(result.payload);
+            startupLog(`[License] Activated: ${result.payload.tier} tier for ${result.payload.businessId}`);
+            return { success: true, tier: result.payload.tier };
+        }
+        startupLog(`[License] Activation failed: ${result.error}`);
+        return { success: false, error: result.error };
+    });
+    // Returns the current HWID for display in Settings (user copies this to send for key generation)
+    electron_1.ipcMain.handle('license:getHWID', () => {
+        return (0, hwid_1.getCachedHWIDOrGenerate)();
+    });
+    // Returns full trial state
+    electron_1.ipcMain.handle('trial:getState', () => {
+        return (0, trialEngine_1.getTrialState)();
+    });
+    // ─────────────────────────────────────────────
+    // WEBSOCKET BRIDGE SERVER (Mobile RBAC)
+    // Runs inline in main process for direct SQLite
+    // and license engine access.
+    // ─────────────────────────────────────────────
+    function startWsBridgeServer() {
+        let WebSocketServer;
+        try {
+            // ws may be available in node_modules of standalone build
+            const wsModule = require('ws');
+            WebSocketServer = wsModule.Server || wsModule.WebSocketServer;
+        }
+        catch {
+            startupLog('[Bridge] ws module not available — bridge server skipped');
+            return;
+        }
+        const WS_PORT = 9001;
+        const wss = new WebSocketServer({ port: WS_PORT });
+        const connectedClients = new Map();
+        startupLog(`[Bridge] WebSocket bridge server listening on port ${WS_PORT}`);
+        wss.on('connection', (ws) => {
+            ws.on('message', async (raw) => {
+                let msg;
+                try {
+                    msg = JSON.parse(raw.toString());
+                }
+                catch {
+                    ws.send(JSON.stringify({ type: 'ERROR', error: 'INVALID_JSON' }));
+                    return;
+                }
+                // ── PAIR_REQUEST ──
+                if (msg.type === 'PAIR_REQUEST') {
+                    const { deviceId, businessId: reqBusinessId } = msg;
+                    // Check tier allows mobile pairing
+                    if (!(0, tierEngine_1.canUse)(tierEngine_1.FEATURES.MOBILE_PAIRING)) {
+                        ws.send(JSON.stringify({ type: 'PAIR_REJECTED', reason: 'PAIRING_NOT_AVAILABLE' }));
+                        return;
+                    }
+                    // Check device limit
+                    const currentConnected = connectedClients.size;
+                    if (!(0, tierEngine_1.isWithinDeviceLimit)(currentConnected)) {
+                        ws.send(JSON.stringify({ type: 'PAIR_REJECTED', reason: 'DEVICE_LIMIT_REACHED' }));
+                        startupLog(`[Bridge] Device limit reached — rejected ${deviceId}`);
+                        return;
+                    }
+                    // Look up role from SQLite business_users table
+                    let roleStr = 'cashier';
+                    try {
+                        const db = global.__noxisDb;
+                        if (db) {
+                            const row = db.prepare(`SELECT role FROM business_users WHERE device_id = ? LIMIT 1`).get(deviceId);
+                            if (row?.role)
+                                roleStr = row.role;
+                        }
+                    }
+                    catch (e) {
+                        startupLog(`[Bridge] Role lookup failed: ${e.message}`);
+                    }
+                    const role = (0, rbacEngine_1.normalizeRole)(roleStr);
+                    const tierInfo = (0, tierEngine_1.getActiveTierInfo)();
+                    connectedClients.set(ws, { deviceId, role, pairedAt: Date.now() });
+                    const ack = (0, rbacEngine_1.buildHubAck)(role, tierInfo.name, tierInfo.maxDevices);
+                    ws.send(JSON.stringify(ack));
+                    startupLog(`[Bridge] Paired: ${deviceId} as ${role}`);
+                    // Notify renderer of updated device count
+                    const pairedList = Array.from(connectedClients.values()).map(c => ({
+                        deviceId: c.deviceId,
+                        role: c.role,
+                    }));
+                    lastBridgeStatus = {
+                        connected: connectedClients.size,
+                        paired: connectedClients.size,
+                        pairedDevices: pairedList,
+                    };
+                    mainWindow?.webContents.send('bridge-event', {
+                        event: 'DEVICE_COUNT_CHANGED',
+                        data: lastBridgeStatus,
+                    });
+                    return;
+                }
+                // ── KHATA_ENTRY ──
+                if (msg.type === 'KHATA_ENTRY') {
+                    const client = connectedClients.get(ws);
+                    if (!client) {
+                        ws.send(JSON.stringify({ type: 'ERROR', error: 'NOT_PAIRED' }));
+                        return;
+                    }
+                    if (!(0, rbacEngine_1.canWriteKhata)(client.role)) {
+                        ws.send(JSON.stringify({ type: 'ERROR', error: 'KHATA_WRITE_DENIED' }));
+                        startupLog(`[Bridge] Khata write denied for role ${client.role}`);
+                        return;
+                    }
+                    const { partyId, debit, credit, amount, entryDate, businessId: entryBusinessId, note } = msg;
+                    try {
+                        const db = global.__noxisDb;
+                        if (!db)
+                            throw new Error('DB not initialised');
+                        const stmt = db.prepare(`
+              INSERT INTO ledger_entries
+                (business_id, party_id, debit, credit, amount, entry_date, note, created_by, created_by_role, created_at)
+              VALUES
+                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `);
+                        stmt.run(entryBusinessId, partyId, debit ? 1 : 0, credit ? 1 : 0, amount, entryDate || new Date().toISOString().split('T')[0], note || '', client.deviceId, client.role, new Date().toISOString());
+                        // Calculate new balance for this party
+                        const balRow = db.prepare(`
+              SELECT
+                COALESCE(SUM(CASE WHEN debit=1 THEN amount ELSE 0 END),0) -
+                COALESCE(SUM(CASE WHEN credit=1 THEN amount ELSE 0 END),0) AS balance
+              FROM ledger_entries
+              WHERE party_id = ?
+            `).get(partyId);
+                        const newBalance = balRow?.balance ?? 0;
+                        // Notify renderer
+                        mainWindow?.webContents.send('ipc:khata-updated', { partyId, newBalance });
+                        ws.send(JSON.stringify({ type: 'KHATA_ACK', partyId, newBalance }));
+                        startupLog(`[Bridge] Khata entry written by ${client.deviceId}: ${amount}`);
+                        // TODO: enqueue for Supabase cloud sync worker
+                        // cloudSyncQueue.enqueue({ table: 'ledger_entries', ... })
+                    }
+                    catch (e) {
+                        startupLog(`[Bridge] Khata write error: ${e.message}`);
+                        ws.send(JSON.stringify({ type: 'ERROR', error: 'KHATA_WRITE_FAILED', detail: e.message }));
+                    }
+                    return;
+                }
+                // Unknown message type
+                ws.send(JSON.stringify({ type: 'ERROR', error: 'UNKNOWN_MESSAGE_TYPE' }));
+            });
+            ws.on('close', () => {
+                const client = connectedClients.get(ws);
+                if (client) {
+                    startupLog(`[Bridge] Device disconnected: ${client.deviceId}`);
+                    connectedClients.delete(ws);
+                    const pairedList = Array.from(connectedClients.values()).map(c => ({
+                        deviceId: c.deviceId,
+                        role: c.role,
+                    }));
+                    lastBridgeStatus = {
+                        connected: connectedClients.size,
+                        paired: connectedClients.size,
+                        pairedDevices: pairedList,
+                    };
+                    mainWindow?.webContents.send('bridge-event', {
+                        event: 'DEVICE_COUNT_CHANGED',
+                        data: lastBridgeStatus,
+                    });
+                }
+            });
+            ws.on('error', (err) => {
+                startupLog(`[Bridge] WS error: ${err.message}`);
+            });
+        });
+        wss.on('error', (err) => {
+            startupLog(`[Bridge] Server error: ${err.message}`);
+        });
+    }
     // ─────────────────────────────────────────────
     // FILE MORPH IPC
     // ─────────────────────────────────────────────
@@ -842,6 +1092,93 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         }
     });
     electron_1.ipcMain.handle('get-app-data-path', () => electron_1.app.getPath('userData'));
+    // ── AUTH PERSISTENCE ──
+    electron_1.ipcMain.handle('store:saveSession', (_, session) => {
+        (0, store_1.saveSession)(session);
+        return { ok: true };
+    });
+    electron_1.ipcMain.handle('store:getSession', () => {
+        return (0, store_1.getSession)();
+    });
+    electron_1.ipcMain.handle('store:clearSession', () => {
+        (0, store_1.clearSession)();
+        return { ok: true };
+    });
+    // ── APP LOCK ──
+    electron_1.ipcMain.handle('store:savePinHash', (_, pinHash) => {
+        (0, store_1.savePinHash)(pinHash);
+        (0, store_1.setAppLockEnabled)(true);
+        return { ok: true };
+    });
+    electron_1.ipcMain.handle('store:getPinHash', () => {
+        return (0, store_1.getPinHash)();
+    });
+    electron_1.ipcMain.handle('store:disableAppLock', () => {
+        (0, store_1.savePinHash)('');
+        (0, store_1.setAppLockEnabled)(false);
+        return { ok: true };
+    });
+    electron_1.ipcMain.handle('store:isAppLockEnabled', () => (0, store_1.isAppLockEnabled)());
+    electron_1.ipcMain.handle('store:getLockTimeout', () => (0, store_1.getLockTimeout)());
+    electron_1.ipcMain.handle('store:setLockTimeout', (_, minutes) => {
+        (0, store_1.setLockTimeout)(minutes);
+        return { ok: true };
+    });
+    // ── SESSION RESUME ──
+    electron_1.ipcMain.handle('store:saveLastRoute', (_, route) => {
+        (0, store_1.saveLastRoute)(route);
+        return { ok: true };
+    });
+    electron_1.ipcMain.handle('store:getLastRoute', () => (0, store_1.getLastRoute)());
+    electron_1.ipcMain.handle('store:saveLastActive', () => {
+        (0, store_1.saveLastActive)();
+        return { ok: true };
+    });
+    electron_1.ipcMain.handle('store:getLastActive', () => (0, store_1.getLastActive)());
+    electron_1.ipcMain.handle('store:saveFormDraft', (_, key, data) => {
+        (0, store_1.saveFormDraft)(key, data);
+        return { ok: true };
+    });
+    electron_1.ipcMain.handle('store:getFormDraft', (_, key) => (0, store_1.getFormDraft)(key));
+    electron_1.ipcMain.handle('store:clearFormDraft', (_, key) => {
+        (0, store_1.clearFormDraft)(key);
+        return { ok: true };
+    });
+    electron_1.ipcMain.handle('store:saveScrollPosition', (_, route, pos) => {
+        (0, store_1.saveScrollPosition)(route, pos);
+        return { ok: true };
+    });
+    electron_1.ipcMain.handle('store:getScrollPosition', (_, route) => (0, store_1.getScrollPosition)(route));
+    electron_1.ipcMain.handle('autostart:get', () => {
+        try {
+            return electron_1.app.getLoginItemSettings().openAtLogin;
+        }
+        catch {
+            return false;
+        }
+    });
+    electron_1.ipcMain.handle('autostart:set', (_, enabled) => {
+        try {
+            electron_1.app.setLoginItemSettings({
+                openAtLogin: enabled,
+                openAsHidden: false,
+            });
+            return { ok: true };
+        }
+        catch (err) {
+            return { ok: false, error: err.message };
+        }
+    });
+    electron_1.ipcMain.handle('sync:getLastSyncAt', () => {
+        return (0, store_1.getLastSyncAt)();
+    });
+    electron_1.ipcMain.handle('sync:setLastSyncAt', (_, ts) => {
+        (0, store_1.setLastSyncAt)(ts);
+        return { ok: true };
+    });
+    electron_1.ipcMain.handle('app:wasAutoStarted', () => {
+        return process.argv.includes('--autostart');
+    });
     // ─────────────────────────────────────────────
     // 9. MAIN WINDOW CREATION
     // Splash is already visible. Main window
@@ -903,6 +1240,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         mainWindow.webContents.on('did-finish-load', () => {
             startupLog('[Electron] Page loaded successfully ✓');
             loadRetries = 0;
+            const wasAutoStarted = process.argv.includes('--autostart');
+            if (wasAutoStarted) {
+                mainWindow?.webContents.send('app:autostarted', { timestamp: Date.now() });
+            }
         });
         mainWindow.webContents.on('unresponsive', () => {
             startupLog('[FREEZE] Renderer unresponsive');
@@ -1008,6 +1349,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             loadEnvFile(path.join(process.resourcesPath, '.env'));
             loadEnvFile(path.join(path.dirname(electron_1.app.getPath('exe')), '.env'));
             loadEnvFile(path.join(electron_1.app.getPath('userData'), '.env'));
+            // Auto-start check has been moved to after mainWindow creation
             startupLog(`[ENV] SUPABASE_URL: ${!!process.env.NEXT_PUBLIC_SUPABASE_URL}`);
             startupLog(`[ENV] SERVICE_ROLE: ${!!process.env.SUPABASE_SERVICE_ROLE_KEY}`);
             const missing = ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
@@ -1021,6 +1363,37 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             if (process.env.SENTRY_DSN) {
                 Sentry.init({ dsn: process.env.SENTRY_DSN });
             }
+            // ── POWER-CUT EXIT RECOVERY ──────────────────────────────────────
+            // Check if the previous session was terminated ungracefully
+            const previousExitFlag = (0, store_1.getExitFlag)();
+            wasPowerCut = previousExitFlag === 'running';
+            if (wasPowerCut) {
+                startupLog('[PowerCut] Ungraceful exit detected — will trigger recovery banner');
+            }
+            // Mark this session as running immediately
+            (0, store_1.setExitFlag)('running');
+            // ── HWID VERIFICATION ────────────────────────────────────────────
+            const hwidResult = (0, hwid_1.verifyHWID)();
+            if (!hwidResult.ok) {
+                startupLog(`[HWID] Mismatch (count: ${hwidResult.mismatchCount})`);
+                if (hwidResult.revoked) {
+                    startupLog('[HWID] 3 consecutive mismatches — revoking license');
+                    (0, licenseVerifier_1.revokeLicense)();
+                    mainWindow?.webContents.send('license-expired');
+                }
+            }
+            else {
+                startupLog(`[HWID] Verified ✓`);
+            }
+            // ── TRIAL ENGINE INIT ────────────────────────────────────────────
+            const dbPath = path.join(electron_1.app.getPath('userData'), 'NOXIS-local.db');
+            await (0, trialEngine_1.initTrialEngine)(dbPath);
+            const trialState = (0, trialEngine_1.getTrialState)();
+            startupLog(`[Trial] Status: ${trialState.status} | DaysLeft: ${trialState.daysLeft}`);
+            // ── TRIAL HEARTBEAT (30s monotonic checkpoint) ───────────────────
+            trialHeartbeatInterval = setInterval(() => {
+                (0, trialEngine_1.checkpointMonotonicElapsed)();
+            }, 30000);
             process.on('uncaughtException', (error) => {
                 startupLog(`[CRITICAL] ${error.message}`);
                 if (error.stack)
@@ -1304,6 +1677,14 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             // Splash stays visible while this loads.
             // ready-to-show event handles the transition.
             await createMainWindow();
+            if (electron_1.app.isPackaged) {
+                const autoStartOn = (0, store_1.getAutoStartEnabled)();
+                applyAutoStart(autoStartOn);
+            }
+            const wasAutoStarted = process.argv.includes('--autostart');
+            if (wasAutoStarted) {
+                startupLog('[AutoStart] Launched via Windows startup');
+            }
             // ── STEP 4: Setup non-blocking features ──
             // Run these AFTER window is shown, not before.
             // This prevents blocking the UI thread at startup.
@@ -1338,6 +1719,21 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 // Registered after window is created so startupLog is fully available
                 (0, onvifService_1.registerOnvifHandlers)(startupLog);
                 (0, mediamtxService_1.registerMediamtxHandlers)(startupLog);
+                // ── STEP 6: Start WebSocket bridge server ──
+                startWsBridgeServer();
+                // ── STEP 7: Send power-cut recovery signal to renderer ──
+                if (wasPowerCut) {
+                    setTimeout(() => {
+                        if (mainWindow && !mainWindow.isDestroyed()) {
+                            const lastRoute = (0, store_1.getLastRoute)();
+                            mainWindow.webContents.send('ipc:power-cut-detected', {
+                                lastRoute,
+                                message: 'Noxis detected an ungraceful shutdown. Your unsaved work may be recoverable.',
+                            });
+                            startupLog(`[PowerCut] Recovery signal sent to renderer. Last route: ${lastRoute}`);
+                        }
+                    }, 2000); // give renderer time to fully mount
+                }
             }
         }
         catch (fatalErr) {
@@ -1355,6 +1751,14 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     electron_1.app.on('window-all-closed', () => electron_1.app.quit());
     // Cleanup on quit
     electron_1.app.on('before-quit', (event) => {
+        // ── Graceful exit: stop trial heartbeat, checkpoint, mark clean ──
+        if (trialHeartbeatInterval) {
+            clearInterval(trialHeartbeatInterval);
+            trialHeartbeatInterval = null;
+        }
+        (0, trialEngine_1.checkpointMonotonicElapsed)();
+        (0, store_1.setExitFlag)('clean');
+        startupLog('[Electron] Exit flag set to clean ✓');
         if (nextServer || visionProcess || tunnelProcess) {
             event.preventDefault();
             startupLog('[Electron] Shutting down...');

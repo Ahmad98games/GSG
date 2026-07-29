@@ -96,16 +96,23 @@ export default function PricingClient() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-16 pt-8"
+          className="text-center mb-12 pt-8"
         >
+          <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 px-4 py-1.5 rounded-full mb-6">
+            <ShieldCheck size={14} className="text-blue-400" />
+            <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">
+              100% Local-First Architecture · Anti-Tamper Licensing
+            </span>
+          </div>
+
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-tighter mb-4 italic uppercase">
             Noxis<span className="text-blue-400">Hub</span> Pricing
           </h1>
-          <p className="text-gray-500 uppercase tracking-[0.3em] text-[9px] sm:text-[10px] font-black">
-            Industrial Scalability. Predictable Growth.
+          <p className="text-gray-500 uppercase tracking-[0.3em] text-[9px] sm:text-[10px] font-black max-w-xl mx-auto">
+            Industrial Scalability. Predictable Growth. Zero Cloud Lock-In.
           </p>
           
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mt-10">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mt-8">
             {/* Billing Toggle */}
             <div className="bg-[#121417] p-1.5 rounded-sm border border-white/5 flex w-fit">
               <button 
@@ -154,6 +161,49 @@ export default function PricingClient() {
             )}
           </div>
         </motion.div>
+
+        {/* ═══ 14-DAY TRIAL & FREEMIUM GUARANTEE BANNER ═══ */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="mb-12 bg-gradient-to-r from-[#0E131F] via-[#121826] to-[#0E131F] border border-blue-500/20 p-8 rounded-sm shadow-2xl relative overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
+            <div className="lg:col-span-8 space-y-3">
+              <div className="flex items-center gap-2">
+                <Zap size={16} className="text-amber-400" />
+                <span className="text-xs font-black uppercase tracking-widest text-amber-400">
+                  14-Day Anti-Tamper Trial + Free Forever Fallback
+                </span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight">
+                Try Every Feature Unlocked. <span className="text-blue-400">Zero Risk. Zero Lock-Out.</span>
+              </h2>
+              <p className="text-xs text-slate-400 leading-relaxed max-w-2xl">
+                Noxis Hub initialises with an anti-tamper 14-day trial powered by 3 independent time sources (NTP, Monotonic process runtime, and SQLite DB birthtime). When your trial finishes, your system automatically transitions to <strong className="text-white">Free Forever</strong> mode — POS checkout stays 100% unlocked with 200 SKU & 50 Party caps. <strong className="text-emerald-400">Zero data deletion, guaranteed.</strong>
+              </p>
+            </div>
+            <div className="lg:col-span-4 flex flex-col sm:flex-row lg:flex-col gap-3 justify-center">
+              <div className="bg-white/5 border border-white/10 p-4 rounded-sm space-y-1">
+                <div className="flex items-center justify-between text-[11px] font-bold text-white uppercase tracking-wider">
+                  <span>14-Day Full Access Trial</span>
+                  <span className="text-emerald-400">100% Unlocked</span>
+                </div>
+                <p className="text-[10px] text-slate-400">POS, Inventory, Invoices, Khata, CCTV, AI Vision, Mobile Pairing</p>
+              </div>
+              <div className="bg-white/5 border border-white/10 p-4 rounded-sm space-y-1">
+                <div className="flex items-center justify-between text-[11px] font-bold text-white uppercase tracking-wider">
+                  <span>Post-Trial Transition</span>
+                  <span className="text-blue-400">Free Forever Tier</span>
+                </div>
+                <p className="text-[10px] text-slate-400">POS Checkout Open Forever · 200 SKUs · 50 Parties · Full PDF/CSV Export</p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
 
         {/* Pricing Cards Grid */}
         <motion.div 

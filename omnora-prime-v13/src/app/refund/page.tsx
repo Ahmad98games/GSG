@@ -63,7 +63,7 @@ function RefundContent() {
             <ul className="space-y-2 text-sm">
               <li className="flex justify-between border-b border-white/[0.02] pb-2">
                 <span>Primary WhatsApp Support:</span>
-                <a href="https://wa.me/923334355475" className="text-[#C5A059] font-bold hover:underline">+92 333 435 5475</a>
+                <a href="https://wa.me/923264742678" className="text-[#C5A059] font-bold hover:underline">+92 333 435 5475</a>
               </li>
               <li className="flex justify-between">
                 <span>Secondary WhatsApp Support:</span>

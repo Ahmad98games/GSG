@@ -1,202 +1,142 @@
-import { createClient } from '@supabase/supabase-js'
+/**
+ * Noxis RSA-2048 License Key Generator (Omnora Labs internal tool)
+ *
+ * Usage:
+ *   npx ts-node --compiler-options '{"module":"commonjs"}' scripts/generate-license.ts \
+ *     --tier pro \
+ *     --hwid <target_hwid> \
+ *     --business-id <uuid> \
+ *     --days 365 \
+ *     --max-devices 10
+ *
+ * Output: NOXIS-PRO-<BASE64URL_PAYLOAD>-<BASE64URL_SIGNATURE>
+ *
+ * KEEP THIS FILE SECURE — the private key must never be committed to a public repo.
+ * The private key is the matching key to the public key embedded in licenseVerifier.ts.
+ */
+
 import * as crypto from 'crypto'
-import dotenv from 'dotenv'
-import path from 'path'
+import * as path from 'path'
+import * as fs from 'fs'
 
-// Load environment variables
-dotenv.config({ path: '.env.local' })
+// ── Embedded Private Key ──────────────────────────────────────────────────────
+// Generated 2026-07-29 for Noxis Hub licensing.
+// This script must NEVER be shipped with the application binary.
+const NOXIS_PRIVATE_KEY = `-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCR0zncdBztxIFn
+9Z/zOGkcuiw5oWtQJPyVFSFW6QFznY1dPRtCZ9CsPVVbIQWeoyYqEi4Px0exKyvW
+h0CYx9fm6yrI1osV2PfXOtfCwwAgswfikmaWhF8svPQKUrUKun52RHBIt63W3HcI
+HKy+HkxDyEEpHXxUzY6e751e8Lh8J4lW8zETN9FdvOLdq+9307ZONqc/2cl6514v
+jjpetyPrNtcMakGBQBi4XI0rj9mki46PaAjuE40X/sEV2spZFUOV/nyI7Hd1KEE8
+zipSBInoNe5bp10LewPSFSPqw7vPBIuOO1xr7pckWWQX5UhE+Yf2dkDiDlt95NZa
+L5Ge2o97AgMBAAECggEAQknaOiAgTGdxCfCKqtYgVho9Y19A+Jgvp5eI5ciay9M5
+gUJ3Y0rs/XcOF5RdyRzSCvrjrHGC4gNFdMpb73ec6hBKDS0V4bMVCuZpUVQyeSrZ
+MUIq105KM3yblRu+x6c6OIno3u18XTkv9OSQFAaS1ZcxI78PFz+wDwjOqWtU+b6R
+hof+ofZZ94Hkne1snPrz5TGMGblNpxRWdmHNqzgDL/Z3C+ovz6x7dZZTVgPxcEt3
+M32dnRYTvC0JG6BCGW7SYOzJmTU8/+PIjKYwlfSMhgA+BxFPbDxflPozOCdLW1UC
+9fFlhsnx3E3iHn+Py1zZNfNi+4p5aQjF8yrFMYk86QKBgQDF0dwS/YU1GLWTVqTL
+J5X7P0ApuV2QUZL9P+wGcGK+n07tcwHq9uHidaahVw4j0X/yNSduEeCaU9c+bYhU
+yJsc3L8NeWJaM7Vf+dbi3sHffE+/dKRvZ2xKk2MMORI2syLFLCo4UFTUbFsjiqTq
+Baq1eylCrq5amZ4wA8lY2+xJ2QKBgQC8tpyl3BTWl4gcYy5+TzAbg6Tmqul7EjkU
+Ale7D5VO9YXdm9H5jmZh/6b7m7rfJF3WdYukk8DtuE1cP9ydzuxukoR4YUGuf6j4
+LPCb3xfv2loco7Utq+41hNnrb9T0DYHDIG82ujUKRnbEIBaHxQO9X+EleuvRNFgw
+NZOEVJebcwKBgFAhcScUIMhgSPT07O4KC/vpJCGCn77c/FCvevkkvyr+NyeCJa26
+8ccc5zGFpQmnTE+dbmpsvXFmMtNr5QSK+iIX3SAlIkztkzPcbUoa96eCoH8qTY1+
+9GPFDiMeXx1fNN9vw25qQ+KEPerIt4LAZuT6jb0gKyox/dzvO7lN5IoJAoGBAIX6
+H7yhQyoW6ss8nwWNstnV3HznWlvF1EAgaaikp5wnM6LhvXEvaACrQCHhrgo+B2D6
+kumE/LPI5SNZM4fWIIVgACx23+rDN3L6dNg0ywm+O7uZfkeuiK/2YcCE5Otfq4Cc
+xlhUWtOwsyEKpvQ9KyqHp5C0dDdSskmHv/NzGy+BAoGAK/ipDZpRMGHzq1k6VdBk
+zGdgu9IT2oyogy9axMmISM9zczC4si+NzCcacpbOQT0qa6CVilNa88rtm9gNAZC2
+cUmM3g7R/6voB4HcaoCCsghrglujQDSrzjqeY432UfeLLbnWUQaSFIVM5a/6eb6s
+hDdU60GuhSFG6dhp2FRcCvM=
+-----END PRIVATE KEY-----`
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://dummy.supabase.co',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || 'dummy'
-)
+// ── B64URL helpers ────────────────────────────────────────────────────────────
 
-function generateKey(tier: string): string {
-  const prefix = tier.toUpperCase().slice(0, 4)
-  const random = crypto.randomBytes(12)
-    .toString('hex').toUpperCase()
-  // Format: ELIT-XXXX-XXXX-XXXX
-  const parts = random.match(/.{1,4}/g) || []
-  return `${prefix}-${parts.slice(0, 3).join('-')}`
+function b64urlEncode(buf: Buffer): string {
+  return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
 }
 
-async function createTrialLicense(params: {
-  customerName: string
-  customerEmail: string
-  notes?: string
-}) {
-  const key = generateKey('TRIAL')
-  
-  console.log(`Connecting to remote database to insert trial key for: ${params.customerName}...`)
-  
-  const { data, error } = await supabase
-    .from('licenses')
-    .insert({
-      license_key: key,
-      tier: 'elite',          // Trial = Elite features
-      max_devices: 50,        // Larger limit for trial testing
-      customer_name: params.customerName,
-      customer_email: params.customerEmail,
-      expires_at: null,       // Set on first activation
-      is_trial: true,         // Mark as trial
-      notes: params.notes || '10-day trial',
-      amount_paid: 0,
-      currency: 'PKR',
-    })
-    .select()
-    .single()
-  
-  if (error) {
-    console.warn('\n⚠️ [Database Fallback] Failed to record license in remote database:', error.message)
-    console.warn('Simulating offline trial license creation for local verification...')
-    
-    console.log('='.repeat(50))
-    console.log('TRIAL LICENSE KEY GENERATED (MOCK/OFFLINE)')
-    console.log('='.repeat(50))
-    console.log('Key:      ', key)
-    console.log('Tier:     ', 'ELITE')
-    console.log('Devices:  ', 50)
-    console.log('Customer: ', params.customerName)
-    console.log('Email:    ', params.customerEmail)
-    console.log('Expires:  ', 'NULL (Starts on activation)')
-    console.log('is_trial: ', true)
-    console.log('='.repeat(50))
-    console.log('Send this key to the customer.')
-    console.log('They enter it on first launch.')
-    console.log('='.repeat(50))
-    return
+// ── Arg parser ────────────────────────────────────────────────────────────────
+
+function getArg(flag: string, fallback = ''): string {
+  const idx = process.argv.indexOf(flag)
+  return idx !== -1 && process.argv[idx + 1] ? process.argv[idx + 1] : fallback
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+
+function main() {
+  const tier        = getArg('--tier', 'pro') as 'lite' | 'pro' | 'elite'
+  const hwid        = getArg('--hwid')
+  const businessId  = getArg('--business-id', crypto.randomUUID())
+  const days        = parseInt(getArg('--days', '365'), 10)
+  const maxDevices  = parseInt(getArg('--max-devices', '10'), 10)
+  const maxBranches = parseInt(getArg('--max-branches', '3'), 10)
+  const maxCameras  = parseInt(getArg('--max-cameras', '4'), 10)
+  const lifetime    = process.argv.includes('--lifetime')
+
+  if (!hwid) {
+    console.error('ERROR: --hwid is required.')
+    console.error('Get it from the Settings page: electronAPI.license.getHWID()')
+    process.exit(1)
   }
-  
-  console.log('='.repeat(50))
-  console.log('TRIAL LICENSE KEY GENERATED (SUCCESS)')
-  console.log('='.repeat(50))
-  console.log('Key:      ', data.license_key)
-  console.log('Tier:     ', data.tier.toUpperCase())
-  console.log('Devices:  ', data.max_devices)
-  console.log('Customer: ', data.customer_name)
-  console.log('Email:    ', data.customer_email)
-  console.log('Expires:  ', data.expires_at ? new Date(data.expires_at).toLocaleDateString() : 'NULL (Starts on activation)')
-  console.log('is_trial: ', data.is_trial)
-  console.log('='.repeat(50))
-  console.log('Send this key to the customer.')
-  console.log('They enter it on first launch.')
-  console.log('='.repeat(50))
-}
 
-async function createLicense(params: {
-  tier: 'lite' | 'pro' | 'elite'
-  customerName: string
-  customerEmail: string
-  customerPhone?: string
-  paymentReference?: string
-  amountPaid?: number
-  currency?: string
-  notes?: string
-}) {
-  const key = generateKey(params.tier)
-  const maxDevices = {
-    lite: 5, pro: 15, elite: 50
-  }[params.tier]
-  
-  const expiresAt = new Date()
-  expiresAt.setFullYear(expiresAt.getFullYear() + 1)
-  
-  const { data, error } = await supabase
-    .from('licenses')
-    .insert({
-      license_key: key,
-      tier: params.tier,
-      max_devices: maxDevices,
-      customer_name: params.customerName,
-      customer_email: params.customerEmail,
-      customer_phone: params.customerPhone,
-      payment_reference: params.paymentReference,
-      amount_paid: params.amountPaid,
-      currency: params.currency || 'PKR',
-      notes: params.notes,
-      expires_at: expiresAt.toISOString(),
-      is_trial: false
-    })
-    .select()
-    .single()
-  
-  if (error) {
-    console.warn('\n⚠️ [Database Fallback] Failed to record license in remote database:', error.message)
-    console.warn('Simulating offline regular license creation for local verification...')
-    
-    console.log('='.repeat(50))
-    console.log('LICENSE KEY GENERATED (MOCK/OFFLINE)')
-    console.log('='.repeat(50))
-    console.log('Key:      ', key)
-    console.log('Tier:     ', params.tier.toUpperCase())
-    console.log('Devices:  ', maxDevices)
-    console.log('Customer: ', params.customerName)
-    console.log('Email:    ', params.customerEmail)
-    console.log('Expires:  ', expiresAt.toLocaleDateString())
-    console.log('='.repeat(50))
-    return
+  const validTiers = ['lite', 'pro', 'elite']
+  if (!validTiers.includes(tier)) {
+    console.error(`ERROR: --tier must be one of: ${validTiers.join(', ')}`)
+    process.exit(1)
   }
-  
-  console.log('='.repeat(50))
-  console.log('LICENSE KEY GENERATED')
-  console.log('='.repeat(50))
-  console.log('Key:      ', data.license_key)
-  console.log('Tier:     ', data.tier.toUpperCase())
-  console.log('Devices:  ', data.max_devices)
-  console.log('Customer: ', data.customer_name)
-  console.log('Email:    ', data.customer_email)
-  console.log('Expires:  ', new Date(data.expires_at).toLocaleDateString())
-  console.log('='.repeat(50))
-  console.log('Send this key to the customer.')
-  console.log('They enter it on first launch.')
-  console.log('='.repeat(50))
-}
 
-// Argument Parser for CLI
-const args = process.argv.slice(2)
-const isTrial = args.includes('--trial')
+  const issuedAt  = Date.now()
+  const expiresAt = lifetime ? 0 : issuedAt + days * 24 * 60 * 60 * 1000
 
-const getArgValue = (flag: string): string | undefined => {
-  const index = args.indexOf(flag)
-  return index !== -1 && index + 1 < args.length ? args[index + 1] : undefined
-}
-
-const name = getArgValue('--name') || getArgValue('-n')
-const email = getArgValue('--email') || getArgValue('-e')
-const notes = getArgValue('--notes')
-
-// Auto-run when executed directly via Node/ts-node
-if (name && email) {
-  if (isTrial) {
-    createTrialLicense({ customerName: name, customerEmail: email, notes })
-  } else {
-    const tierArg = getArgValue('--tier') || 'pro'
-    const tier = (['lite', 'pro', 'elite'].includes(tierArg) ? tierArg : 'pro') as 'lite' | 'pro' | 'elite'
-    createLicense({
-      tier,
-      customerName: name,
-      customerEmail: email,
-      notes
-    })
+  const TIER_FEATURES: Record<string, string[]> = {
+    lite:  ['pos','inventory','invoices','recurring_invoices','parties','khata','cloud_sync','mobile_pairing','reports_basic','purchase_orders','audit_log'],
+    pro:   ['pos','inventory','invoices','recurring_invoices','parties','khata','cloud_sync','mobile_pairing','mobile_multi_device','cctv','reports_basic','reports_advanced','branches','payroll','purchase_orders','audit_log'],
+    elite: ['pos','inventory','invoices','recurring_invoices','parties','khata','cloud_sync','mobile_pairing','mobile_multi_device','cctv','cctv_multi_cam','foresight_ai','reports_basic','reports_advanced','branches','multi_branch','payroll','purchase_orders','audit_log','beta_updates'],
   }
-} else {
-  // If run directly without custom args, execute default placeholder logic
-  if (isTrial) {
-    createTrialLicense({
-      customerName: 'Tester 1',
-      customerEmail: 'test1@noxis.test',
-      notes: 'Standard 10-day test trial key'
-    })
-  } else {
-    createLicense({
-      tier: 'pro',
-      customerName: 'Al-Hamid Textiles',
-      customerEmail: 'alhamid@example.com',
-      customerPhone: '0300-1234567',
-      paymentReference: 'JC-20240510-001',
-      amountPaid: 6500,
-      currency: 'PKR',
-      notes: 'First customer — textile factory Lahore'
-    })
+
+  const payloadObj = {
+    version: 2,
+    tier,
+    hwid,
+    businessId,
+    issuedAt,
+    expiresAt,
+    maxDevices,
+    maxBranches,
+    maxCameras,
+    features: TIER_FEATURES[tier] || [],
   }
+
+  const payloadJson = JSON.stringify(payloadObj)
+  const payloadB64  = b64urlEncode(Buffer.from(payloadJson, 'utf8'))
+
+  // Sign the BASE64URL payload string
+  const signer = crypto.createSign('SHA256')
+  signer.update(payloadB64, 'utf8')
+  const sigBuf = signer.sign(NOXIS_PRIVATE_KEY)
+  const sigB64 = b64urlEncode(sigBuf)
+
+  const licenseKey = `NOXIS-${tier.toUpperCase()}.${payloadB64}.${sigB64}`
+
+  console.log('\n+--------------------------------------+')
+  console.log('|    NOXIS LICENSE KEY GENERATED       |')
+  console.log('+--------------------------------------+\n')
+  console.log(`Tier:        ${tier.toUpperCase()}`)
+  console.log(`Business ID: ${businessId}`)
+  console.log(`HWID:        ${hwid}`)
+  console.log(`Issued:      ${new Date(issuedAt).toISOString()}`)
+  console.log(`Expires:     ${expiresAt === 0 ? 'LIFETIME' : new Date(expiresAt).toISOString()}`)
+  console.log(`Max Devices: ${maxDevices}`)
+  console.log(`\nLICENSE KEY:\n`)
+  console.log(licenseKey)
+  console.log()
+
+  const outPath = path.join(process.cwd(), `noxis-license-${tier}-${Date.now()}.txt`)
+  fs.writeFileSync(outPath, `${licenseKey}\n`, 'utf8')
+  console.log(`Saved to: ${outPath}`)
 }
+
+main()

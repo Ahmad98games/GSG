@@ -11,6 +11,8 @@ import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/useToast";
 import { humanizeError } from '@/lib/utils/errors';
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { DraftRecoveryBanner } from "@/components/DraftRecoveryBanner";
 
 interface LineItem { description: string; qty: number; rate: number; }
 
@@ -26,6 +28,19 @@ export default function NewRecurringInvoicePage() {
   const [endDate, setEndDate] = useState("");
   const [autoPost, setAutoPost] = useState(false);
   const [lineItems, setLineItems] = useState<LineItem[]>([{ description: "", qty: 1, rate: 0 }]);
+
+  const DRAFT_KEY = 'recurring-invoice-new';
+  const draftData = { partyId, frequency, startDate, endDate, autoPost, lineItems };
+  const { clearDraft } = useFormDraft(DRAFT_KEY, draftData);
+
+  const recoverDraft = (draft: any) => {
+    if (draft.partyId) setPartyId(draft.partyId);
+    if (draft.frequency) setFrequency(draft.frequency);
+    if (draft.startDate) setStartDate(draft.startDate);
+    if (draft.endDate) setEndDate(draft.endDate);
+    if (typeof draft.autoPost === 'boolean') setAutoPost(draft.autoPost);
+    if (draft.lineItems?.length) setLineItems(draft.lineItems);
+  };
 
   const { data: parties } = useQuery({
     queryKey: ['parties_list', businessId],
@@ -62,7 +77,11 @@ export default function NewRecurringInvoicePage() {
       });
       if (error) throw error;
     },
-    onSuccess: () => { toast.success('Recurring invoice template saved'); router.push('/invoices/recurring'); },
+    onSuccess: () => {
+      clearDraft();
+      toast.success('Recurring invoice template saved');
+      router.push('/invoices/recurring');
+    },
     onError: (err: any) => toast.error(humanizeError(err, 'save recurring invoice')),
   });
 
@@ -73,6 +92,12 @@ export default function NewRecurringInvoicePage() {
           <button onClick={() => router.back()} className="text-gray-500 hover:text-white transition-colors"><ArrowLeft size={16} /></button>
           <div><h1 className="text-lg font-semibold tracking-tight text-white">New Recurring Invoice</h1><p className="text-xs text-gray-500 mt-0.5">Set up an automated billing template</p></div>
         </div>
+
+        <DraftRecoveryBanner
+          draftKey={DRAFT_KEY}
+          onRecover={recoverDraft}
+          onDiscard={() => {}}
+        />
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-[#1A1D21] border border-white/5 p-8 space-y-8">
           {/* Customer */}

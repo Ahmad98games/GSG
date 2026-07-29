@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import AboutPage from "./about";
 
 export const metadata = {
@@ -15,5 +15,9 @@ export const metadata = {
 };
 
 export default function Page() {
-  return <AboutPage />;
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#030406]" />}>
+      <AboutPage />
+    </Suspense>
+  );
 }

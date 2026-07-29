@@ -16,6 +16,8 @@ export const queryClientOptions = {
       staleTime: 10 * 60 * 1000,
       // Keep in cache for 30 minutes
       gcTime: 30 * 60 * 1000,
+      // Keep previous data during background revalidations to avoid layout flashes
+      placeholderData: (prev: any) => prev,
       // Only retry once on failure, with a 2s delay
       retry: 1,
       retryDelay: 2000,

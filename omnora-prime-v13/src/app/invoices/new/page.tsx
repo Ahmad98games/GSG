@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import React from 'react';
 import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
+import { useFormDraft } from '@/hooks/useFormDraft';
+import { DraftRecoveryBanner } from '@/components/DraftRecoveryBanner';
 import { FeedbackModal } from '@/components/ui/FeedbackModal';
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -100,6 +102,8 @@ export default function NewInvoicePage() {
 
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
   const watchValues = watch();
+  const DRAFT_KEY = 'invoice-new';
+  const { getDraft, clearDraft } = useFormDraft(DRAFT_KEY, watchValues);
   const watchItems = watch("items") || [];
   const watchDiscountPct = watch("discount_pct") || 0;
   const watchTaxPct = watch("tax_pct") || 0;
@@ -495,6 +499,8 @@ export default function NewInvoicePage() {
         }
       }
 
+      await clearDraft();
+
       // Check invoice count
       const { count } = await supabase
         .from('invoices')
@@ -538,6 +544,11 @@ export default function NewInvoicePage() {
       
       
       <main className={cn( "flex-1 flex flex-col transition-all duration-300 overflow-hidden")}>
+        <DraftRecoveryBanner
+          draftKey={DRAFT_KEY}
+          onRecover={(data) => reset(data)}
+          onDiscard={() => {}}
+        />
         {/* Header Bar */}
         <header className="h-14 border-b border-white/5 flex items-center px-6 bg-[#1A1D21]/80 backdrop-blur-xl z-40 shrink-0">
           <div className="flex items-center space-x-3">

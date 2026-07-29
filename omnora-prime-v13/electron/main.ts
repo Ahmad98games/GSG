@@ -11,6 +11,39 @@ import { release } from 'os'
 import { deriveDbKey } from '../src/lib/security/dbKeyManager'
 import { registerOnvifHandlers } from './services/onvifService'
 import { registerMediamtxHandlers, stopMediamtx } from './services/mediamtxService'
+// ── Licensing & Security ──────────────────────────────────────────────────────
+import { verifyHWID, generateHWID, getCachedHWIDOrGenerate } from './services/hwid'
+import { initTrialEngine, checkpointMonotonicElapsed, getTrialState } from './services/trialEngine'
+import { verifyLicense, getActiveLicensePayload, persistLicense, revokeLicense } from './services/licenseVerifier'
+import { canUse, getActiveTierInfo, isWithinDeviceLimit, FEATURES } from './services/tierEngine'
+import { buildHubAck, normalizeRole, canWriteKhata, type MobileRole } from './bridge/rbacEngine'
+// ── Store ─────────────────────────────────────────────────────────────────────
+import store, {
+  saveSession,
+  clearSession,
+  getSession,
+  savePinHash,
+  getPinHash,
+  isAppLockEnabled,
+  setAppLockEnabled,
+  getLockTimeout,
+  setLockTimeout,
+  saveLastRoute,
+  getLastRoute,
+  saveLastActive,
+  getLastActive,
+  saveFormDraft,
+  getFormDraft,
+  clearFormDraft,
+  saveScrollPosition,
+  getScrollPosition,
+  getLastSyncAt,
+  setLastSyncAt,
+  getAutoStartEnabled,
+  setAutoStartEnabled,
+  getExitFlag,
+  setExitFlag,
+} from './store'
 
 // ─────────────────────────────────────────────
 // 0. GLOBAL REFERENCES
@@ -31,9 +64,11 @@ let tunnelUrl: string | null = null;
 let sessionTimeoutTimer: NodeJS.Timeout | null = null;
 let warningTimer: NodeJS.Timeout | null = null;
 let memoryMonitorInterval: NodeJS.Timeout | null = null;
+let trialHeartbeatInterval: NodeJS.Timeout | null = null;
 let PORT = Number(process.env.PORT || 3000);
 let isReadOnly = false;
 let lastBridgeStatus = { connected: 0, paired: 0, pairedDevices: [] as any[] };
+let wasPowerCut = false;
 
 const isDev = !app.isPackaged;
 
@@ -68,6 +103,50 @@ function startupLog(msg: string): void {
     fs.appendFileSync(logPath, `[${new Date().toISOString()}] ${msg}\n`);
   } catch { /* userData not ready yet */ }
   log.info(msg);
+}
+
+// ── AUTO-START MANAGEMENT ──
+function applyAutoStart(enabled: boolean): void {
+  try {
+    app.setLoginItemSettings({
+      openAtLogin: enabled,
+      openAsHidden: false,
+      ...(process.platform === 'win32' && {
+        path: process.execPath,
+        args: ['--autostart'],
+      }),
+    })
+
+    startupLog(
+      `[AutoStart] ${enabled
+        ? 'Registered — opens on Windows boot'
+        : 'Unregistered'}`
+    )
+  } catch (err: any) {
+    startupLog(`[AutoStart] Failed: ${err.message}`)
+  }
+}
+
+function getAutoStartStatus(): { enabled: boolean; registeredWithOS: boolean } {
+  const stored = getAutoStartEnabled()
+  let registeredWithOS = false
+
+  try {
+    const settings = app.getLoginItemSettings({
+      ...(process.platform === 'win32' && {
+        path: process.execPath,
+        args: ['--autostart'],
+      }),
+    })
+    registeredWithOS = settings.openAtLogin
+  } catch {
+    registeredWithOS = false
+  }
+
+  return {
+    enabled: stored,
+    registeredWithOS,
+  }
 }
 
 function startCloudflaredTunnel(): void {
@@ -876,17 +955,258 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   }));
 
   ipcMain.handle('sync-tier', (_, data: { tier: string, expiresAt: string | null }) => {
-    startupLog(`[Tier] Sync: ${data.tier} (Expires: ${data.expiresAt || 'Never'})`);
-    if (data.expiresAt && new Date() > new Date(data.expiresAt)) {
-      isReadOnly = true;
-      startupLog('[Security] License expired — Read-Only mode');
+    // Legacy renderer call — now validated against tierEngine, not trusted blindly
+    startupLog(`[Tier] Sync request: ${data.tier}`);
+    const tierInfo = getActiveTierInfo();
+    if (tierInfo.name === 'free_forever') {
+      isReadOnly = false; // free forever still works — just capped
       mainWindow?.webContents.send('license-expired');
       if (visionProcess) { killProcess(visionProcess, 'Vision Engine'); visionProcess = null; }
     } else {
       isReadOnly = false;
     }
-    return { success: true, isReadOnly };
+    return { success: true, isReadOnly, tier: tierInfo.name };
   });
+
+  // ─────────────────────────────────────────────
+  // LICENSE & TRIAL IPC HANDLERS
+  // ─────────────────────────────────────────────
+
+  // Returns current tier info + HWID + trial state for the Settings page
+  ipcMain.handle('license:getInfo', () => {
+    const tierInfo   = getActiveTierInfo();
+    const trialState = getTrialState();
+    const license    = getActiveLicensePayload();
+    return {
+      tier:         tierInfo.name,
+      caps:         tierInfo.caps,
+      features:     tierInfo.features,
+      maxDevices:   tierInfo.maxDevices,
+      maxBranches:  tierInfo.maxBranches,
+      maxCameras:   tierInfo.maxCameras,
+      trialStatus:  trialState.status,
+      trialDaysLeft: trialState.daysLeft,
+      graceDaysLeft: trialState.graceDaysLeft,
+      hwid:         generateHWID(),
+      licenseActive: !!license,
+      businessId:   license?.businessId || '',
+      expiresAt:    license?.expiresAt  || 0,
+    };
+  });
+
+  // Activates a license key string. Validates offline via RSA-2048.
+  ipcMain.handle('license:activate', (_, keyString: string) => {
+    const result = verifyLicense(keyString);
+    if (result.valid) {
+      persistLicense(result.payload);
+      startupLog(`[License] Activated: ${result.payload.tier} tier for ${result.payload.businessId}`);
+      return { success: true, tier: result.payload.tier };
+    }
+    startupLog(`[License] Activation failed: ${result.error}`);
+    return { success: false, error: result.error };
+  });
+
+  // Returns the current HWID for display in Settings (user copies this to send for key generation)
+  ipcMain.handle('license:getHWID', () => {
+    return getCachedHWIDOrGenerate();
+  });
+
+  // Returns full trial state
+  ipcMain.handle('trial:getState', () => {
+    return getTrialState();
+  });
+
+  // ─────────────────────────────────────────────
+  // WEBSOCKET BRIDGE SERVER (Mobile RBAC)
+  // Runs inline in main process for direct SQLite
+  // and license engine access.
+  // ─────────────────────────────────────────────
+  function startWsBridgeServer(): void {
+    let WebSocketServer: any;
+    try {
+      // ws may be available in node_modules of standalone build
+      const wsModule = require('ws');
+      WebSocketServer = wsModule.Server || wsModule.WebSocketServer;
+    } catch {
+      startupLog('[Bridge] ws module not available — bridge server skipped');
+      return;
+    }
+
+    const WS_PORT = 9001;
+    const wss = new WebSocketServer({ port: WS_PORT });
+    const connectedClients = new Map<any, { deviceId: string; role: MobileRole; pairedAt: number }>();
+
+    startupLog(`[Bridge] WebSocket bridge server listening on port ${WS_PORT}`);
+
+    wss.on('connection', (ws: any) => {
+      ws.on('message', async (raw: Buffer) => {
+        let msg: any;
+        try {
+          msg = JSON.parse(raw.toString());
+        } catch {
+          ws.send(JSON.stringify({ type: 'ERROR', error: 'INVALID_JSON' }));
+          return;
+        }
+
+        // ── PAIR_REQUEST ──
+        if (msg.type === 'PAIR_REQUEST') {
+          const { deviceId, businessId: reqBusinessId } = msg;
+
+          // Check tier allows mobile pairing
+          if (!canUse(FEATURES.MOBILE_PAIRING)) {
+            ws.send(JSON.stringify({ type: 'PAIR_REJECTED', reason: 'PAIRING_NOT_AVAILABLE' }));
+            return;
+          }
+
+          // Check device limit
+          const currentConnected = connectedClients.size;
+          if (!isWithinDeviceLimit(currentConnected)) {
+            ws.send(JSON.stringify({ type: 'PAIR_REJECTED', reason: 'DEVICE_LIMIT_REACHED' }));
+            startupLog(`[Bridge] Device limit reached — rejected ${deviceId}`);
+            return;
+          }
+
+          // Look up role from SQLite business_users table
+          let roleStr = 'cashier';
+          try {
+            const db = (global as any).__noxisDb;
+            if (db) {
+              const row = db.prepare(
+                `SELECT role FROM business_users WHERE device_id = ? LIMIT 1`
+              ).get(deviceId);
+              if (row?.role) roleStr = row.role;
+            }
+          } catch (e: any) {
+            startupLog(`[Bridge] Role lookup failed: ${e.message}`);
+          }
+
+          const role = normalizeRole(roleStr);
+          const tierInfo = getActiveTierInfo();
+
+          connectedClients.set(ws, { deviceId, role, pairedAt: Date.now() });
+
+          const ack = buildHubAck(role, tierInfo.name, tierInfo.maxDevices);
+          ws.send(JSON.stringify(ack));
+          startupLog(`[Bridge] Paired: ${deviceId} as ${role}`);
+
+          // Notify renderer of updated device count
+          const pairedList = Array.from(connectedClients.values()).map(c => ({
+            deviceId: c.deviceId,
+            role: c.role,
+          }));
+          lastBridgeStatus = {
+            connected: connectedClients.size,
+            paired: connectedClients.size,
+            pairedDevices: pairedList,
+          };
+          mainWindow?.webContents.send('bridge-event', {
+            event: 'DEVICE_COUNT_CHANGED',
+            data: lastBridgeStatus,
+          });
+          return;
+        }
+
+        // ── KHATA_ENTRY ──
+        if (msg.type === 'KHATA_ENTRY') {
+          const client = connectedClients.get(ws);
+          if (!client) {
+            ws.send(JSON.stringify({ type: 'ERROR', error: 'NOT_PAIRED' }));
+            return;
+          }
+
+          if (!canWriteKhata(client.role)) {
+            ws.send(JSON.stringify({ type: 'ERROR', error: 'KHATA_WRITE_DENIED' }));
+            startupLog(`[Bridge] Khata write denied for role ${client.role}`);
+            return;
+          }
+
+          const { partyId, debit, credit, amount, entryDate, businessId: entryBusinessId, note } = msg;
+
+          try {
+            const db = (global as any).__noxisDb;
+            if (!db) throw new Error('DB not initialised');
+
+            const stmt = db.prepare(`
+              INSERT INTO ledger_entries
+                (business_id, party_id, debit, credit, amount, entry_date, note, created_by, created_by_role, created_at)
+              VALUES
+                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `);
+
+            stmt.run(
+              entryBusinessId,
+              partyId,
+              debit  ? 1 : 0,
+              credit ? 1 : 0,
+              amount,
+              entryDate || new Date().toISOString().split('T')[0],
+              note || '',
+              client.deviceId,
+              client.role,
+              new Date().toISOString()
+            );
+
+            // Calculate new balance for this party
+            const balRow = db.prepare(`
+              SELECT
+                COALESCE(SUM(CASE WHEN debit=1 THEN amount ELSE 0 END),0) -
+                COALESCE(SUM(CASE WHEN credit=1 THEN amount ELSE 0 END),0) AS balance
+              FROM ledger_entries
+              WHERE party_id = ?
+            `).get(partyId) as { balance: number } | undefined;
+
+            const newBalance = balRow?.balance ?? 0;
+
+            // Notify renderer
+            mainWindow?.webContents.send('ipc:khata-updated', { partyId, newBalance });
+
+            ws.send(JSON.stringify({ type: 'KHATA_ACK', partyId, newBalance }));
+            startupLog(`[Bridge] Khata entry written by ${client.deviceId}: ${amount}`);
+
+            // TODO: enqueue for Supabase cloud sync worker
+            // cloudSyncQueue.enqueue({ table: 'ledger_entries', ... })
+
+          } catch (e: any) {
+            startupLog(`[Bridge] Khata write error: ${e.message}`);
+            ws.send(JSON.stringify({ type: 'ERROR', error: 'KHATA_WRITE_FAILED', detail: e.message }));
+          }
+          return;
+        }
+
+        // Unknown message type
+        ws.send(JSON.stringify({ type: 'ERROR', error: 'UNKNOWN_MESSAGE_TYPE' }));
+      });
+
+      ws.on('close', () => {
+        const client = connectedClients.get(ws);
+        if (client) {
+          startupLog(`[Bridge] Device disconnected: ${client.deviceId}`);
+          connectedClients.delete(ws);
+          const pairedList = Array.from(connectedClients.values()).map(c => ({
+            deviceId: c.deviceId,
+            role: c.role,
+          }));
+          lastBridgeStatus = {
+            connected: connectedClients.size,
+            paired: connectedClients.size,
+            pairedDevices: pairedList,
+          };
+          mainWindow?.webContents.send('bridge-event', {
+            event: 'DEVICE_COUNT_CHANGED',
+            data: lastBridgeStatus,
+          });
+        }
+      });
+
+      ws.on('error', (err: Error) => {
+        startupLog(`[Bridge] WS error: ${err.message}`);
+      });
+    });
+
+    wss.on('error', (err: Error) => {
+      startupLog(`[Bridge] Server error: ${err.message}`);
+    });
+  }
 
   // ─────────────────────────────────────────────
   // FILE MORPH IPC
@@ -934,6 +1254,114 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   });
 
   ipcMain.handle('get-app-data-path', () => app.getPath('userData'));
+
+  // ── AUTH PERSISTENCE ──
+  ipcMain.handle('store:saveSession', (_, session) => {
+    saveSession(session)
+    return { ok: true }
+  })
+
+  ipcMain.handle('store:getSession', () => {
+    return getSession()
+  })
+
+  ipcMain.handle('store:clearSession', () => {
+    clearSession()
+    return { ok: true }
+  })
+
+  // ── APP LOCK ──
+  ipcMain.handle('store:savePinHash', (_, pinHash: string) => {
+    savePinHash(pinHash)
+    setAppLockEnabled(true)
+    return { ok: true }
+  })
+
+  ipcMain.handle('store:getPinHash', () => {
+    return getPinHash()
+  })
+
+  ipcMain.handle('store:disableAppLock', () => {
+    savePinHash('')
+    setAppLockEnabled(false)
+    return { ok: true }
+  })
+
+  ipcMain.handle('store:isAppLockEnabled', () => isAppLockEnabled())
+
+  ipcMain.handle('store:getLockTimeout', () => getLockTimeout())
+
+  ipcMain.handle('store:setLockTimeout', (_, minutes: number) => {
+    setLockTimeout(minutes)
+    return { ok: true }
+  })
+
+  // ── SESSION RESUME ──
+  ipcMain.handle('store:saveLastRoute', (_, route: string) => {
+    saveLastRoute(route)
+    return { ok: true }
+  })
+
+  ipcMain.handle('store:getLastRoute', () => getLastRoute())
+
+  ipcMain.handle('store:saveLastActive', () => {
+    saveLastActive()
+    return { ok: true }
+  })
+
+  ipcMain.handle('store:getLastActive', () => getLastActive())
+
+  ipcMain.handle('store:saveFormDraft', (_, key: string, data: any) => {
+    saveFormDraft(key, data)
+    return { ok: true }
+  })
+
+  ipcMain.handle('store:getFormDraft', (_, key: string) => getFormDraft(key))
+
+  ipcMain.handle('store:clearFormDraft', (_, key: string) => {
+    clearFormDraft(key)
+    return { ok: true }
+  })
+
+  ipcMain.handle('store:saveScrollPosition', (_, route: string, pos: number) => {
+    saveScrollPosition(route, pos)
+    return { ok: true }
+  })
+
+  ipcMain.handle('store:getScrollPosition', (_, route: string) => getScrollPosition(route))
+
+  ipcMain.handle('autostart:get', () => {
+    try {
+      return app.getLoginItemSettings().openAtLogin
+    } catch {
+      return false
+    }
+  })
+
+  ipcMain.handle('autostart:set', (_, enabled: boolean) => {
+    try {
+      app.setLoginItemSettings({
+        openAtLogin: enabled,
+        openAsHidden: false,
+      })
+      return { ok: true }
+    } catch (err: any) {
+      return { ok: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('sync:getLastSyncAt', () => {
+    return getLastSyncAt()
+  })
+
+  ipcMain.handle('sync:setLastSyncAt', (_, ts: number) => {
+    setLastSyncAt(ts)
+    return { ok: true }
+  })
+
+  ipcMain.handle('app:wasAutoStarted', () => {
+    return process.argv.includes('--autostart')
+  })
 
   // ─────────────────────────────────────────────
   // 9. MAIN WINDOW CREATION
@@ -1002,6 +1430,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     mainWindow.webContents.on('did-finish-load', () => {
       startupLog('[Electron] Page loaded successfully ✓');
       loadRetries = 0;
+      const wasAutoStarted = process.argv.includes('--autostart')
+      if (wasAutoStarted) {
+        mainWindow?.webContents.send('app:autostarted', { timestamp: Date.now() })
+      }
     });
 
     mainWindow.webContents.on('unresponsive', () => {
@@ -1127,6 +1559,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       loadEnvFile(path.join(path.dirname(app.getPath('exe')), '.env'));
       loadEnvFile(path.join(app.getPath('userData'), '.env'));
 
+      // Auto-start check has been moved to after mainWindow creation
+
       startupLog(`[ENV] SUPABASE_URL: ${!!process.env.NEXT_PUBLIC_SUPABASE_URL}`);
       startupLog(`[ENV] SERVICE_ROLE: ${!!process.env.SUPABASE_SERVICE_ROLE_KEY}`);
 
@@ -1146,6 +1580,40 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       if (process.env.SENTRY_DSN) {
         Sentry.init({ dsn: process.env.SENTRY_DSN });
       }
+
+      // ── POWER-CUT EXIT RECOVERY ──────────────────────────────────────
+      // Check if the previous session was terminated ungracefully
+      const previousExitFlag = getExitFlag();
+      wasPowerCut = previousExitFlag === 'running';
+      if (wasPowerCut) {
+        startupLog('[PowerCut] Ungraceful exit detected — will trigger recovery banner');
+      }
+      // Mark this session as running immediately
+      setExitFlag('running');
+
+      // ── HWID VERIFICATION ────────────────────────────────────────────
+      const hwidResult = verifyHWID();
+      if (!hwidResult.ok) {
+        startupLog(`[HWID] Mismatch (count: ${hwidResult.mismatchCount})`);
+        if (hwidResult.revoked) {
+          startupLog('[HWID] 3 consecutive mismatches — revoking license');
+          revokeLicense();
+          mainWindow?.webContents.send('license-expired');
+        }
+      } else {
+        startupLog(`[HWID] Verified ✓`);
+      }
+
+      // ── TRIAL ENGINE INIT ────────────────────────────────────────────
+      const dbPath = path.join(app.getPath('userData'), 'NOXIS-local.db');
+      await initTrialEngine(dbPath);
+      const trialState = getTrialState();
+      startupLog(`[Trial] Status: ${trialState.status} | DaysLeft: ${trialState.daysLeft}`);
+
+      // ── TRIAL HEARTBEAT (30s monotonic checkpoint) ───────────────────
+      trialHeartbeatInterval = setInterval(() => {
+        checkpointMonotonicElapsed();
+      }, 30000);
 
       process.on('uncaughtException', (error) => {
         startupLog(
@@ -1463,6 +1931,16 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     // ready-to-show event handles the transition.
     await createMainWindow();
 
+    if (app.isPackaged) {
+      const autoStartOn = getAutoStartEnabled()
+      applyAutoStart(autoStartOn)
+    }
+
+    const wasAutoStarted = process.argv.includes('--autostart')
+    if (wasAutoStarted) {
+      startupLog('[AutoStart] Launched via Windows startup')
+    }
+
     // ── STEP 4: Setup non-blocking features ──
     // Run these AFTER window is shown, not before.
     // This prevents blocking the UI thread at startup.
@@ -1504,6 +1982,23 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       // Registered after window is created so startupLog is fully available
       registerOnvifHandlers(startupLog);
       registerMediamtxHandlers(startupLog);
+
+      // ── STEP 6: Start WebSocket bridge server ──
+      startWsBridgeServer();
+
+      // ── STEP 7: Send power-cut recovery signal to renderer ──
+      if (wasPowerCut) {
+        setTimeout(() => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            const lastRoute = getLastRoute();
+            mainWindow.webContents.send('ipc:power-cut-detected', {
+              lastRoute,
+              message: 'Noxis detected an ungraceful shutdown. Your unsaved work may be recoverable.',
+            });
+            startupLog(`[PowerCut] Recovery signal sent to renderer. Last route: ${lastRoute}`);
+          }
+        }, 2000); // give renderer time to fully mount
+      }
     }
     } catch (fatalErr: any) {
       startupLog(
@@ -1524,6 +2019,15 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
   // Cleanup on quit
   app.on('before-quit', (event) => {
+    // ── Graceful exit: stop trial heartbeat, checkpoint, mark clean ──
+    if (trialHeartbeatInterval) {
+      clearInterval(trialHeartbeatInterval);
+      trialHeartbeatInterval = null;
+    }
+    checkpointMonotonicElapsed();
+    setExitFlag('clean');
+    startupLog('[Electron] Exit flag set to clean ✓');
+
     if (nextServer || visionProcess || tunnelProcess) {
       event.preventDefault();
 

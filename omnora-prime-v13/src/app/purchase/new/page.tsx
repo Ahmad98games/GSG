@@ -14,6 +14,8 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Decimal } from "decimal.js";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { DraftRecoveryBanner } from "@/components/DraftRecoveryBanner";
 
 interface POLineItem {
   sku_id: string;
@@ -43,8 +45,19 @@ export default function NewPurchaseOrder() {
   const [skuSearchResults, setSkuSearchResults] = useState<any[]>([]);
   const [skuSearchQuery, setSkuSearchQuery] = useState("");
 
-  const activeScorecard = useMemo(() => 
-    scorecards?.find((s: any) => s.supplier_id === selectedSupplierId), 
+  const DRAFT_KEY = 'purchase-new-po';
+  const draftData = { selectedSupplierId, expectedBy, items, notes };
+  const { clearDraft } = useFormDraft(DRAFT_KEY, draftData);
+
+  const recoverDraft = (draft: any) => {
+    if (draft.selectedSupplierId) setSelectedSupplierId(draft.selectedSupplierId);
+    if (draft.expectedBy) setExpectedBy(draft.expectedBy);
+    if (draft.items?.length) setItems(draft.items);
+    if (draft.notes) setNotes(draft.notes);
+  };
+
+  const activeScorecard = useMemo(() =>
+    scorecards?.find((s: any) => s.supplier_id === selectedSupplierId),
   [scorecards, selectedSupplierId]);
 
   // Pre-fill from suggestions if present
@@ -169,6 +182,7 @@ export default function NewPurchaseOrder() {
 
     createPO.mutate(payload, {
       onSuccess: () => {
+        clearDraft();
         alert("Purchase Order created successfully");
         router.push("/purchase");
       },
@@ -180,6 +194,13 @@ export default function NewPurchaseOrder() {
 
   return (
     <div className="p-8 max-w-[1400px] mx-auto">
+      <div className="mb-6">
+        <DraftRecoveryBanner
+          draftKey={DRAFT_KEY}
+          onRecover={recoverDraft}
+          onDiscard={() => {}}
+        />
+      </div>
       <header className="flex items-center justify-between mb-8">
         <div className="flex items-center space-x-4">
           <div className="p-3 bg-electric-blue/10 rounded-sm">

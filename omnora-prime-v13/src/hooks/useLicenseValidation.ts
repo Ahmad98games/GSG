@@ -44,6 +44,7 @@ export function useLicenseValidation() {
       normalizedPath.startsWith("/docs") ||
       normalizedPath.startsWith("/blog") ||
       normalizedPath.startsWith("/admin") ||
+      normalizedPath.startsWith("/dashboard") ||
       normalizedPath === "/dashboard/login"
 
     if (isPublicPath) {

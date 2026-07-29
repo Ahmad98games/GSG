@@ -124,3 +124,50 @@ export function SidebarItemSkeleton() {
     </div>
   )
 }
+
+export function SkeletonRow({
+  cols = 4,
+  height = 'h-10',
+}: {
+  cols?: number
+  height?: string
+}) {
+  return (
+    <div className={`flex gap-3 px-4 py-3 border-b border-white/4 ${height}`}>
+      {Array.from({ length: cols }).map((_, i) => (
+        <div
+          key={i}
+          className={`rounded flex-1 bg-white/5 animate-pulse ${
+            i === 0 ? 'max-w-32' : i === cols - 1 ? 'max-w-24' : ''
+          }`}
+        />
+      ))}
+    </div>
+  )
+}
+
+export function SkeletonCard() {
+  return (
+    <div className="p-5 bg-[#0F1114] border border-white/8 rounded-sm animate-pulse">
+      <div className="h-3 bg-white/8 rounded w-1/3 mb-3" />
+      <div className="h-8 bg-white/8 rounded w-2/3 mb-2" />
+      <div className="h-3 bg-white/8 rounded w-1/2" />
+    </div>
+  )
+}
+
+export function SkeletonTable({
+  rows = 8,
+  cols = 4,
+}: {
+  rows?: number
+  cols?: number
+}) {
+  return (
+    <div>
+      {Array.from({ length: rows }).map((_, i) => (
+        <SkeletonRow key={i} cols={cols} />
+      ))}
+    </div>
+  )
+}

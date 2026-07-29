@@ -1,138 +1,62 @@
 'use client'
+import { useMutation, useQueryClient, UseMutationOptions } from '@tanstack/react-query'
 
-import { useState, useCallback } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
-import { useToast } from '@/hooks/useToast'
-import { notify } from '@/stores/notificationStore'
-import { queueFailedOperation } from '@/lib/sync/offlineQueue'
-import { createClient } from '@/lib/supabase/client'
-
-export interface OptimisticMutationOptions<TData, TVariables> {
-  // The query keys whose cache to update optimistically
+interface OptimisticMutationOptions<TData, TError, TVariables, TContext> 
+  extends Omit<UseMutationOptions<TData, TError, TVariables, TContext>, 'onMutate' | 'onError' | 'onSettled'> {
   queryKey: unknown[]
-
-  // Transform variables into the optimistic update — what to show immediately
-  optimisticUpdate: (
-    current: TData[],
-    variables: TVariables
-  ) => TData[]
-
-  // The actual async operation
-  mutationFn: (variables: TVariables) => Promise<void>
-
-  // After success, invalidate these queries to get fresh server data
-  invalidateKeys?: unknown[][]
-
-  // Success message
+  optimisticUpdate?: (oldData: any, variables: TVariables) => any
+  updateFn?: (oldData: any, variables: TVariables) => any
   successMessage?: string
-
-  // Error message
   errorMessage?: string
-
-  // Whether to add to undo stack
   undoDescription?: string
-
-  // How to reverse the operation
-  undoFn?: (variables: TVariables) => Promise<void>
+  undoFn?: (oldData: any, variables: TVariables) => any
+  invalidateKeys?: unknown[][]
 }
 
-export function useOptimisticMutation<
-  TData extends { id: string },
-  TVariables
->({
-  queryKey,
-  optimisticUpdate,
-  mutationFn,
-  invalidateKeys = [],
-  successMessage,
-  errorMessage,
-  undoDescription,
-  undoFn,
-}: OptimisticMutationOptions<TData, TVariables>) {
+export function useOptimisticMutation<TData = any, TError = any, TVariables = any, TContext = any>(
+  options: OptimisticMutationOptions<TData, TError, TVariables, TContext>
+) {
   const queryClient = useQueryClient()
-  const toast = useToast()
+  const { queryKey, optimisticUpdate, updateFn, mutationFn, ...rest } = options
+  const activeUpdateFn = optimisticUpdate || updateFn
 
-  const mutate = useCallback(async (
-    variables: TVariables,
-    options?: {
-      onSuccess?: () => void
-      onError?: (err: Error) => void
-    }
-  ) => {
-    // Snapshot current cache state so we can roll back on failure
-    const previousData = queryClient.getQueryData<any>(queryKey)
+  const mutation = useMutation({
+    mutationFn,
+    ...rest,
+    onMutate: async (variables: TVariables) => {
+      // Cancel any outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey })
 
-    // Apply optimistic update to cache immediately
-    queryClient.setQueryData<any>(
-      queryKey,
-      (old: any) => {
-        if (Array.isArray(old)) {
-          return optimisticUpdate(old, variables)
-        }
-        const updatedArray = optimisticUpdate(old ? [old] : [], variables)
-        return updatedArray[0] || old
+      // Snapshot the previous value
+      const previousData = queryClient.getQueryData(queryKey)
+
+      // Optimistically update to the new value
+      if (activeUpdateFn) {
+        queryClient.setQueryData(queryKey, (old: any) => activeUpdateFn(old, variables))
       }
-    )
 
-    // Attempt the actual operation in the background
-    try {
-      await mutationFn(variables)
-
-      // Success — invalidate to get real server data
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey }),
-        ...invalidateKeys.map(key =>
+      // Return a context object with the snapshotted value
+      return { previousData } as any
+    },
+    onError: (err: TError, variables: TVariables, context: any) => {
+      // Revert back to the snapshotted value if the mutation fails
+      if (context?.previousData !== undefined) {
+        queryClient.setQueryData(queryKey, context.previousData)
+      }
+    },
+    onSettled: () => {
+      // Always invalidate/refetch after error or success to sync with server
+      queryClient.invalidateQueries({ queryKey })
+      if (options.invalidateKeys) {
+        options.invalidateKeys.forEach(key => {
           queryClient.invalidateQueries({ queryKey: key })
-        ),
-      ])
-
-      if (successMessage) {
-        toast.success(successMessage)
-      }
-
-      // Register undo if provided
-      if (undoDescription && undoFn) {
-        const { pushAction } = await import(
-          '@/stores/undoStore'
-        ).then(m => m.useUndoStore.getState())
-
-        pushAction({
-          description: undoDescription,
-          undo: () => undoFn(variables),
         })
       }
+    },
+  })
 
-      options?.onSuccess?.()
-
-    } catch (err: any) {
-      // FAILURE — roll back the optimistic update
-      queryClient.setQueryData(queryKey, previousData)
-
-      // Queue for retry when connection returns
-      await queueFailedOperation({
-        queryKey,
-        variables,
-        mutationFn,
-        successMessage,
-      })
-
-      const message = errorMessage || 'Could not save. Will retry when online.'
-      toast.error('Sync Queued', message)
-
-      // Add to notification center
-      notify.warning(
-        'Action queued for sync',
-        'Your change was saved locally and will sync when connection returns.'
-      )
-
-      options?.onError?.(err)
-    }
-  }, [
-    queryClient, queryKey,
-    optimisticUpdate, mutationFn,
-    invalidateKeys, successMessage,
-    errorMessage, undoDescription, undoFn,
-  ])
-
-  return { mutate }
+  return {
+    ...mutation,
+    mutate: mutation.mutateAsync,
+  } as any
 }

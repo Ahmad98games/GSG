@@ -69,6 +69,70 @@ electron_1.contextBridge.exposeInMainWorld('electronAPI', {
             electron_1.ipcRenderer.removeListener('tunnel-ready', listener);
         };
     },
+    store: {
+        saveSession: (session) => electron_1.ipcRenderer.invoke('store:saveSession', session),
+        getSession: () => electron_1.ipcRenderer.invoke('store:getSession'),
+        clearSession: () => electron_1.ipcRenderer.invoke('store:clearSession'),
+        savePinHash: (hash) => electron_1.ipcRenderer.invoke('store:savePinHash', hash),
+        getPinHash: () => electron_1.ipcRenderer.invoke('store:getPinHash'),
+        disableAppLock: () => electron_1.ipcRenderer.invoke('store:disableAppLock'),
+        isAppLockEnabled: () => electron_1.ipcRenderer.invoke('store:isAppLockEnabled'),
+        getLockTimeout: () => electron_1.ipcRenderer.invoke('store:getLockTimeout'),
+        setLockTimeout: (m) => electron_1.ipcRenderer.invoke('store:setLockTimeout', m),
+        saveLastRoute: (r) => electron_1.ipcRenderer.invoke('store:saveLastRoute', r),
+        getLastRoute: () => electron_1.ipcRenderer.invoke('store:getLastRoute'),
+        saveLastActive: () => electron_1.ipcRenderer.invoke('store:saveLastActive'),
+        getLastActive: () => electron_1.ipcRenderer.invoke('store:getLastActive'),
+        saveFormDraft: (k, d) => electron_1.ipcRenderer.invoke('store:saveFormDraft', k, d),
+        getFormDraft: (k) => electron_1.ipcRenderer.invoke('store:getFormDraft', k),
+        clearFormDraft: (k) => electron_1.ipcRenderer.invoke('store:clearFormDraft', k),
+        saveScrollPosition: (r, p) => electron_1.ipcRenderer.invoke('store:saveScrollPosition', r, p),
+        getScrollPosition: (r) => electron_1.ipcRenderer.invoke('store:getScrollPosition', r),
+    },
+    autostart: {
+        get: () => electron_1.ipcRenderer.invoke('autostart:get'),
+        set: (enabled) => electron_1.ipcRenderer.invoke('autostart:set', enabled),
+    },
+    sync: {
+        getLastSyncAt: () => electron_1.ipcRenderer.invoke('sync:getLastSyncAt'),
+        setLastSyncAt: (ts) => electron_1.ipcRenderer.invoke('sync:setLastSyncAt', ts),
+    },
+    onBridgeEvent: (callback) => {
+        electron_1.ipcRenderer.on('bridge-event', callback);
+    },
+    removeBridgeEventListener: () => {
+        electron_1.ipcRenderer.removeAllListeners('bridge-event');
+    },
+    app: {
+        wasAutoStarted: () => electron_1.ipcRenderer.invoke('app:wasAutoStarted'),
+        onAutoStarted: (callback) => {
+            const listener = (_, data) => callback(data);
+            electron_1.ipcRenderer.on('app:autostarted', listener);
+            return () => electron_1.ipcRenderer.removeListener('app:autostarted', listener);
+        },
+    },
+    // ── Licensing & HWID ────────────────────────────────────────────────────────
+    license: {
+        getInfo: () => electron_1.ipcRenderer.invoke('license:getInfo'),
+        activate: (keyString) => electron_1.ipcRenderer.invoke('license:activate', keyString),
+        getHWID: () => electron_1.ipcRenderer.invoke('license:getHWID'),
+    },
+    // ── Trial Engine ────────────────────────────────────────────────────────────
+    trial: {
+        getState: () => electron_1.ipcRenderer.invoke('trial:getState'),
+    },
+    // ── Khata real-time updates from bridge ─────────────────────────────────────
+    onKhataUpdated: (callback) => {
+        const listener = (_, data) => callback(data);
+        electron_1.ipcRenderer.on('ipc:khata-updated', listener);
+        return () => electron_1.ipcRenderer.removeListener('ipc:khata-updated', listener);
+    },
+    // ── Power-cut recovery signal ───────────────────────────────────────────────
+    onPowerCutDetected: (callback) => {
+        const listener = (_, data) => callback(data);
+        electron_1.ipcRenderer.on('ipc:power-cut-detected', listener);
+        return () => electron_1.ipcRenderer.removeListener('ipc:power-cut-detected', listener);
+    },
 });
 electron_1.contextBridge.exposeInMainWorld('electronWindow', {
     minimize: () => electron_1.ipcRenderer.send('window-minimize'),

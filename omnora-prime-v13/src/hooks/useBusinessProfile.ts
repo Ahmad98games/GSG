@@ -150,6 +150,7 @@ export const useBusinessProfile = () => {
 
   return {
     profile,
+    isLoaded,
     setProfile,
     role: profile?.role,
     industryType: profile?.industry_type,

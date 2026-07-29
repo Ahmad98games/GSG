@@ -26,6 +26,7 @@ import {
   Users,
   X,
   DollarSign,
+  Monitor,
 } from "lucide-react";
 
 import { useSidebarState } from "@/hooks/useSidebarState";
@@ -72,6 +73,7 @@ const PRESET_AVATARS = [
 ];
 
 const TABS = [
+  { id: 'general', label: 'General', icon: Monitor, href: '/settings/general' },
   { id: 'profile', label: 'Business Profile', icon: Building2 },
   { id: 'regional', label: 'Regional Settings', icon: Globe, href: '/settings/localization' },
   { id: 'appearance', label: 'Appearance', icon: Activity },
@@ -115,6 +117,7 @@ export default function SettingsPage() {
   const [pendingLicenseData, setPendingLicenseData] = useState<any>(null);
   const [showDowngradeCaution, setShowDowngradeCaution] = useState(false);
   const [cloudSyncEnabled, setCloudSyncEnabled] = useState(true);
+  const [autoStartEnabled, setAutoStartEnabled] = useState(false);
 
   
 
@@ -140,6 +143,12 @@ export default function SettingsPage() {
     // Read cloud sync preference from localStorage
     const storedSync = localStorage.getItem('noxis_cloud_sync');
     setCloudSyncEnabled(storedSync !== 'false');
+
+    if (typeof window !== 'undefined' && (window as any).electronAPI?.autostart) {
+      (window as any).electronAPI.autostart.get().then((val: any) => {
+        setAutoStartEnabled(val && typeof val === 'object' ? val.enabled : !!val);
+      });
+    }
   }, []);
 
   const toggleCloudSync = (enabled: boolean) => {
@@ -151,6 +160,17 @@ export default function SettingsPage() {
         ? 'Your data will sync to the cloud for backup and multi-device access.'
         : 'Data stays on this PC only — no cloud sync until re-enabled.'
     );
+  };
+ 
+  const handleToggleAutoStart = async (val: boolean) => {
+    if (typeof window !== 'undefined' && (window as any).electronAPI?.autostart) {
+      await (window as any).electronAPI.autostart.set(val);
+      setAutoStartEnabled(val);
+      toastSuccess(
+        val ? 'Auto-start enabled' : 'Auto-start disabled',
+        val ? 'Noxis will now open when Windows starts.' : 'Noxis will no longer open when Windows starts.'
+      );
+    }
   };
 
   const handleLicenseInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1331,6 +1351,26 @@ export default function SettingsPage() {
                             className="text-xs text-[#60A5FA] hover:text-blue-300 transition-colors bg-[#60A5FA]/10 border border-[#60A5FA]/20 px-3 py-1.5 rounded-sm uppercase tracking-wider font-bold"
                           >
                             Replay product tour
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="p-6 bg-white/5 border border-white/10 rounded-2xl space-y-4">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <h3 className="text-white font-bold text-sm">Start on Boot</h3>
+                            <p className="text-slate-500 text-xs mt-0.5">Automatically open Noxis Hub when Windows starts</p>
+                          </div>
+                          <button
+                            onClick={() => handleToggleAutoStart(!autoStartEnabled)}
+                            className={`w-11 h-6 rounded-full transition-colors flex-shrink-0 relative ${
+                              autoStartEnabled ? 'bg-[#60A5FA]' : 'bg-white/15'
+                            }`}
+                            aria-label={autoStartEnabled ? 'Disable auto-start' : 'Enable auto-start'}
+                          >
+                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${
+                              autoStartEnabled ? 'left-6' : 'left-1'
+                            }`} />
                           </button>
                         </div>
                       </div>
