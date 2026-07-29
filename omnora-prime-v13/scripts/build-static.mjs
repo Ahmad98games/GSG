@@ -91,6 +91,10 @@ try {
       SUPABASE_SERVICE_ROLE_KEY: 'dummy'
     }
   });
+
+  // Ensure _buildManifest.js and _ssgManifest.js exist in all static build ID folders
+  ensureManifestFiles(path.join(process.cwd(), 'out', '_next', 'static'));
+  ensureManifestFiles(path.join(process.cwd(), '.next', 'static'));
 } catch (err) {
   console.error('[Build] Compilation failed:', err.message);
   buildFailed = true;
@@ -98,6 +102,42 @@ try {
   // Restore is handled by process.on('exit') handler above.
   // Call explicitly here in case the exit handler runs too late.
   restoreHiddenDirs();
+}
+
+function ensureManifestFiles(staticDir) {
+  if (!fs.existsSync(staticDir)) return;
+  try {
+    const items = fs.readdirSync(staticDir);
+    const buildManifestContent = `self.__BUILD_MANIFEST = {
+  __rewrites: { beforeFiles: [], afterFiles: [], fallback: [] },
+  "/": ["static/chunks/main.js"],
+  "/_error": ["static/chunks/pages/_error.js"],
+  sortedPages: ["/", "/_app", "/_error"]
+};
+self.__BUILD_MANIFEST_CB && self.__BUILD_MANIFEST_CB();`;
+
+    const ssgManifestContent = `self.__SSG_MANIFEST = new Set();
+self.__SSG_MANIFEST_CB && self.__SSG_MANIFEST_CB();`;
+
+    for (const item of items) {
+      const itemPath = path.join(staticDir, item);
+      if (fs.statSync(itemPath).isDirectory() && item !== 'chunks' && item !== 'css' && item !== 'media') {
+        const buildManifestPath = path.join(itemPath, '_buildManifest.js');
+        const ssgManifestPath = path.join(itemPath, '_ssgManifest.js');
+
+        if (!fs.existsSync(buildManifestPath)) {
+          fs.writeFileSync(buildManifestPath, buildManifestContent, 'utf8');
+          console.log(`[Build] ✓ Created missing manifest: ${buildManifestPath}`);
+        }
+        if (!fs.existsSync(ssgManifestPath)) {
+          fs.writeFileSync(ssgManifestPath, ssgManifestContent, 'utf8');
+          console.log(`[Build] ✓ Created missing manifest: ${ssgManifestPath}`);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn(`[Build] Warning ensuring manifests in ${staticDir}:`, e.message);
+  }
 }
 
 if (buildFailed) {

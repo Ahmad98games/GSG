@@ -133,6 +133,11 @@ try {
   });
 
   console.log('\n[Electron Build] ✓ Next.js compilation complete');
+
+  // Ensure _buildManifest.js and _ssgManifest.js exist in all static build ID folders
+  ensureManifestFiles(path.join(ROOT, '.next', 'static'));
+  ensureManifestFiles(path.join(STANDALONE, '.next', 'static'));
+
   prepareStandaloneBundle();
 
 } catch (err) {
@@ -146,4 +151,40 @@ if (buildFailed) {
   console.error('[Electron Build]   npm run electron:build');
   console.error('[Electron Build] ══════════════════════════════════════════\n');
   process.exit(1);
+}
+
+function ensureManifestFiles(staticDir) {
+  if (!fs.existsSync(staticDir)) return;
+  try {
+    const items = fs.readdirSync(staticDir);
+    const buildManifestContent = `self.__BUILD_MANIFEST = {
+  __rewrites: { beforeFiles: [], afterFiles: [], fallback: [] },
+  "/": ["static/chunks/main.js"],
+  "/_error": ["static/chunks/pages/_error.js"],
+  sortedPages: ["/", "/_app", "/_error"]
+};
+self.__BUILD_MANIFEST_CB && self.__BUILD_MANIFEST_CB();`;
+
+    const ssgManifestContent = `self.__SSG_MANIFEST = new Set();
+self.__SSG_MANIFEST_CB && self.__SSG_MANIFEST_CB();`;
+
+    for (const item of items) {
+      const itemPath = path.join(staticDir, item);
+      if (fs.statSync(itemPath).isDirectory() && item !== 'chunks' && item !== 'css' && item !== 'media') {
+        const buildManifestPath = path.join(itemPath, '_buildManifest.js');
+        const ssgManifestPath = path.join(itemPath, '_ssgManifest.js');
+
+        if (!fs.existsSync(buildManifestPath)) {
+          fs.writeFileSync(buildManifestPath, buildManifestContent, 'utf8');
+          console.log(`[Electron Build] ✓ Created missing manifest: ${buildManifestPath}`);
+        }
+        if (!fs.existsSync(ssgManifestPath)) {
+          fs.writeFileSync(ssgManifestPath, ssgManifestContent, 'utf8');
+          console.log(`[Electron Build] ✓ Created missing manifest: ${ssgManifestPath}`);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn(`[Electron Build] Warning ensuring manifests in ${staticDir}:`, e.message);
+  }
 }
