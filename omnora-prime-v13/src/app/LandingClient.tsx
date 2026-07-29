@@ -76,20 +76,21 @@ export default function LandingClient() {
     setMounted(true)
     async function handleAuthRedirect() {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session) {
-          const { data: profile } = await supabase
-            .from('business_profiles').select('id, onboarding_done')
-            .eq('user_id', session.user.id).single()
-          router.push(profile?.onboarding_done ? '/dashboard' : '/setup')
-        } else {
-          const isElectron = window.navigator.userAgent.toLowerCase().includes('electron')
-          if (isElectron) {
-            router.push('/login')
+        const isElectron = typeof window !== 'undefined' && window.navigator.userAgent.toLowerCase().includes('electron')
+        if (isElectron) {
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session) {
+            const { data: profile } = await supabase
+              .from('business_profiles').select('id, onboarding_done')
+              .eq('user_id', session.user.id).single()
+            router.push(profile?.onboarding_done ? '/dashboard' : '/setup')
+            return
           } else {
-            setChecking(false)
+            router.push('/login')
+            return
           }
         }
+        setChecking(false)
       } catch {
         setChecking(false)
       }

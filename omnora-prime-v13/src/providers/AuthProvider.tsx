@@ -52,11 +52,28 @@ export function AuthProvider({
   // ── BOOT: Check persisted session ──
   useEffect(() => {
     const boot = async () => {
-      const publicRoutes = ['/login', '/signup']
-      if (publicRoutes.some(r => pathname?.startsWith(r))) {
-        setLoading(false)
-        return
+      const isPublicRoute = (path: string | null) => {
+        if (!path) return true
+        if (path === '/' || path === '/index.html') return true
+        const publicPrefixes = [
+          '/login',
+          '/signup',
+          '/pricing',
+          '/docs',
+          '/about',
+          '/reviews',
+          '/blog',
+          '/download',
+          '/privacy',
+          '/terms',
+          '/refund',
+          '/file-morph',
+          '/admin'
+        ]
+        return publicPrefixes.some(prefix => path.toLowerCase().startsWith(prefix))
       }
+
+      const publicPage = isPublicRoute(pathname)
 
       if (isElectron) {
         const stored = await (window as any).electronAPI.store.getSession()
@@ -103,7 +120,7 @@ export function AuthProvider({
       }
 
       setLoading(false)
-      if (!publicRoutes.some(r => pathname?.startsWith(r))) {
+      if (!publicPage) {
         router.replace('/login')
       }
     }
