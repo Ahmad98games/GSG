@@ -28,6 +28,7 @@ import {
   RevealItem,
   SignatureMarquee
 } from '@/components/landing/LandingMotion'
+import PublicNavbar from '@/components/shell/PublicNavbar'
 
 type CockpitTab = 'dashboard' | 'wages' | 'sqlite' | 'khata' | 'cctv'
 
@@ -216,113 +217,7 @@ export default function LandingClient() {
 
         <div className="relative z-10">
           {/* Header Navigation */}
-          <motion.nav
-            initial={{ y: -20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.6 }}
-            className="fixed top-0 inset-x-0 z-50 border-b border-white/[0.04] bg-[#08090A]/85 backdrop-blur-2xl"
-          >
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 h-[76px] flex items-center justify-between gap-4">
-              <NavBrand />
-
-              <div className="hidden lg:flex items-center gap-10">
-                {[{ label: 'Pricing', href: '/pricing' }, { label: 'Reviews', href: '/reviews' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }, { label: 'About', href: '/about' }].map((link) => (
-                  <Link key={link.href} href={link.href} className="text-[10px] text-[#94A3B8] hover:text-[#E8D5B5] font-bold tracking-[0.18em] uppercase transition-colors">
-                    {link.label}
-                  </Link>
-                ))}
-                <a
-                  href="#mobile"
-                  className="flex items-center gap-1.5 text-[10px] text-[#94A3B8] hover:text-[#60A5FA] font-bold tracking-[0.18em] uppercase transition-colors"
-                >
-                  <Smartphone size={12} />
-                  Mobile
-                  <span className="text-[8px] font-bold bg-[#60A5FA]/15 text-[#60A5FA] px-1.5 py-0.5 rounded uppercase tracking-wider">
-                    Soon
-                  </span>
-                </a>
-              </div>
-
-              <div className="hidden lg:flex items-center gap-4">
-                <Link
-                  href="/dashboard"
-                  style={{
-                    background: 'rgba(197,160,89,0.05)',
-                    border: '1px solid rgba(197,160,89,0.15)',
-                    color: CHAMPAGNE,
-                    padding: '8px 16px',
-                    borderRadius: 4,
-                    fontSize: 11,
-                    fontWeight: 800,
-                    textDecoration: 'none',
-                  }}
-                  className="inline-flex items-center text-[10px] font-bold tracking-[0.15em] uppercase hover:bg-[#C5A059]/10 transition-all font-mono"
-                >
-                  Owner Login →
-                </Link>
-                <Link
-                  href="/download"
-                  className="inline-flex items-center text-[10px] font-bold tracking-[0.2em] uppercase px-6 py-2.5 rounded-sm transition-all"
-                  style={{ background: CHAMPAGNE, color: OBSIDIAN, boxShadow: `0 0 30px ${CHAMPAGNE}33` }}
-                >
-                  Download Trial
-                </Link>
-              </div>
-
-              <button type="button" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="lg:hidden p-2 text-white/70 hover:text-white" aria-label="Menu">
-                {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-              </button>
-            </div>
-
-            <AnimatePresence>
-              {mobileMenuOpen && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="lg:hidden border-t border-white/[0.04] bg-[#08080A]/95 backdrop-blur-xl overflow-hidden"
-                >
-                  <div className="px-6 py-6 flex flex-col gap-5">
-                    <BrandLogo size="nav" />
-                    {[{ label: 'Pricing', href: '/pricing' }, { label: 'Reviews', href: '/reviews' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }, { label: 'About', href: '/about' }].map((link) => (
-                      <Link key={link.href} href={link.href} onClick={() => setMobileMenuOpen(false)} className="text-xs font-bold tracking-widest uppercase text-[#94A3B8] hover:text-white">
-                        {link.label}
-                      </Link>
-                    ))}
-                    <a
-                      href="#mobile"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center gap-1.5 text-xs font-bold tracking-widest uppercase text-[#60A5FA] hover:text-blue-300"
-                    >
-                      📱 Mobile
-                      <span className="text-[8px] bg-[#60A5FA]/15 px-1.5 py-0.5 rounded">SOON</span>
-                    </a>
-                    <Link
-                      href="/dashboard"
-                      onClick={() => setMobileMenuOpen(false)}
-                      style={{
-                        background: 'rgba(197,160,89,0.05)',
-                        border: '1px solid rgba(197,160,89,0.15)',
-                        color: CHAMPAGNE,
-                        padding: '10px 16px',
-                        borderRadius: 4,
-                        fontSize: 11,
-                        fontWeight: 800,
-                        textDecoration: 'none',
-                        textAlign: 'center',
-                      }}
-                      className="text-[10px] font-bold tracking-widest uppercase font-mono"
-                    >
-                      Owner Login →
-                    </Link>
-                    <Link href="/download" onClick={() => setMobileMenuOpen(false)} className="text-center text-[10px] font-bold tracking-widest uppercase py-3 rounded-sm" style={{ background: CHAMPAGNE, color: OBSIDIAN }}>
-                      Download Trial
-                    </Link>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.nav>
+          <PublicNavbar />
 
           {/* Hero Section */}
           <section className="pt-32 pb-16 lg:pt-48 lg:pb-28 px-4 sm:px-6 max-w-7xl mx-auto">

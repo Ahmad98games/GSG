@@ -1,5 +1,7 @@
 'use client'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import PublicNavbar from '@/components/shell/PublicNavbar'
 import { Download, Check, AlertCircle, Loader } from 'lucide-react'
 
 const SUPABASE_URL =
@@ -90,20 +92,7 @@ export default function DownloadPage() {
       text-white">
 
       {/* Nav */}
-      <nav className="border-b border-white/[0.06]
-        px-6 h-14 flex items-center justify-between
-        bg-[#070809]">
-        <a href="/"
-          className="font-black text-sm
-            tracking-widest uppercase">
-          NOXIS
-        </a>
-        <a href="/pricing"
-          className="text-xs text-gray-500
-            hover:text-white transition-colors">
-          Pricing →
-        </a>
-      </nav>
+      <PublicNavbar />
 
       <div className="max-w-lg mx-auto px-6
         py-16">

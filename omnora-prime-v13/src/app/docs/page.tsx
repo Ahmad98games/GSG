@@ -22,6 +22,8 @@ import {
 } from 'lucide-react'
 import Footer from "@/components/shell/Footer"
 
+import PublicNavbar from '@/components/shell/PublicNavbar'
+
 export default function DocsPage() {
   const [activeSection, setActiveSection] = useState('install')
 
@@ -70,30 +72,7 @@ export default function DocsPage() {
       </div>
 
       {/* ═══ HEADER NAVIGATION ═══ */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#040608]/85 backdrop-blur-xl border-b border-white/[0.04] py-4">
-        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
-          <Link href="/" className="flex items-center space-x-3 group cursor-pointer">
-            <div className="w-8 h-8 flex items-center justify-center bg-white/5 group-hover:bg-[#C5A059]/10 border border-white/10 group-hover:border-[#C5A059]/30 rounded-sm transition-all shadow-2xl">
-              <img
-                src="/logos/noxis.png"
-                alt="Noxis Logo"
-                width={20}
-                height={20}
-                className="object-contain"
-              />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-white font-extrabold tracking-wider leading-none text-sm">NOXIS</span>
-              <span className="text-[8px] text-gray-500 font-mono tracking-widest uppercase mt-0.5">Core Documentation</span>
-            </div>
-          </Link>
-
-          <Link href="/" className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white flex items-center space-x-2 transition-colors">
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back Home</span>
-          </Link>
-        </div>
-      </nav>
+      <PublicNavbar />
 
       {/* ═══ DOCS LAYOUT ═══ */}
       <div className="max-w-7xl mx-auto px-6 pt-32">

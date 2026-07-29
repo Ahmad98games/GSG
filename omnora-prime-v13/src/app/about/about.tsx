@@ -11,6 +11,7 @@ import {
   Network, Eye, Calendar, ChevronDown, ChevronUp, FileText, CheckCircle2
 } from "lucide-react";
 import { SectionReveal, FloatingOrb, GlowCard } from "@/components/ui/AnimatedComponents";
+import PublicNavbar from '@/components/shell/PublicNavbar'
 
 const BUILD_DATE = new Date().toLocaleDateString('en-US', { 
   year: 'numeric', 
@@ -40,81 +41,7 @@ export default function AboutPage() {
       </div>
 
       {/* Top Header Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-[#030406]/85 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-6 h-[76px] flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 cursor-pointer group">
-            <div className="w-9 h-9 rounded-sm bg-white/5 border border-white/10 flex items-center justify-center group-hover:border-sandstone-gold/50 group-hover:bg-sandstone-gold/10 transition-colors">
-              <Image 
-                src="/logos/noxis.png" 
-                alt="Noxis" 
-                width={22} 
-                height={22} 
-                className="object-contain"
-                priority
-              />
-            </div>
-            <span className="font-extrabold text-lg tracking-wider text-white group-hover:text-[#E8D5B5] transition-colors">NOXIS</span>
-          </Link>
-
-          <div className="hidden md:flex items-center gap-8">
-            {[
-              { label: 'Pricing', href: '/pricing' }, 
-              { label: 'Reviews', href: '/reviews' }, 
-              { label: 'Blog', href: '/blog' }, 
-              { label: 'Docs', href: '/docs' },
-              { label: 'About', href: '/about' }
-            ].map((link) => (
-              <Link 
-                key={link.href} 
-                href={link.href} 
-                className="text-xs font-bold tracking-[0.15em] uppercase text-gray-400 hover:text-white transition-colors relative group"
-              >
-                {link.label}
-              </Link>
-            ))}
-            <Link
-              href="/download"
-              className="text-xs font-bold tracking-widest uppercase text-black bg-sandstone-gold hover:bg-[#D4B77A] px-6 py-2.5 rounded-sm transition-all shadow-[0_0_20px_rgba(197,160,89,0.15)]"
-            >
-              Download
-            </Link>
-          </div>
-
-          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-gray-400 hover:text-white transition-colors">
-            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
-        </div>
-
-        {mobileMenuOpen && (
-          <div className="md:hidden border-b border-white/[0.06] bg-[#030406]">
-            <div className="px-6 py-8 flex flex-col gap-6">
-              {[
-                { label: 'Pricing', href: '/pricing' }, 
-                { label: 'Reviews', href: '/reviews' }, 
-                { label: 'Blog', href: '/blog' }, 
-                { label: 'Docs', href: '/docs' },
-                { label: 'About', href: '/about' }
-              ].map((link) => (
-                <Link 
-                  key={link.href} 
-                  href={link.href} 
-                  onClick={() => setMobileMenuOpen(false)} 
-                  className="text-lg text-gray-300 hover:text-white font-semibold transition-colors"
-                >
-                  {link.label}
-                </Link>
-              ))}
-              <Link 
-                href="/download" 
-                onClick={() => setMobileMenuOpen(false)} 
-                className="block text-center font-bold text-sm tracking-widest uppercase text-black bg-sandstone-gold hover:bg-[#D4B77A] py-3.5 rounded-sm"
-              >
-                Free Trial Download
-              </Link>
-            </div>
-          </div>
-        )}
-      </nav>
+      <PublicNavbar />
 
       {/* Main Content Area */}
       <main className="relative z-10 flex-1 pt-36 pb-28 px-6 max-w-6xl mx-auto w-full flex flex-col space-y-32">

@@ -17,6 +17,8 @@ const FAQS = [
   { q: "Is my data safe?", a: "Your financial and industrial data is stored natively on your own hard drive, never on our servers. We maintain a zero-access posture to your private logs, payroll, and stock parameters." }
 ];
 
+import PublicNavbar from "@/components/shell/PublicNavbar";
+
 export default function PricingClient() {
   const { profile } = useBusinessProfile();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
@@ -82,6 +84,7 @@ export default function PricingClient() {
 
   return (
     <div className="bg-[#0A0C0E] min-h-screen text-gray-400 font-inter selection:bg-blue-500 selection:text-black pt-24 pb-20 overflow-x-hidden relative">
+      <PublicNavbar />
       
       {/* Background Orbs */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
