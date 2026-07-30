@@ -68,7 +68,9 @@ export function AuthProvider({
           '/terms',
           '/refund',
           '/file-morph',
-          '/admin'
+          '/admin',
+          '/dashboard/login',
+          '/portal'
         ]
         return publicPrefixes.some(prefix => path.toLowerCase().startsWith(prefix))
       }
