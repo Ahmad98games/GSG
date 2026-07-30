@@ -555,6 +555,7 @@ const SidebarItem = React.memo(function SidebarItem({ href, icon: Icon, label: r
   const content = (
     <Link
       href={href}
+      prefetch={true}
       className={cn(
         "flex items-center py-2.5 my-1.5 rounded-sm px-3 transition-all duration-200 group relative border-l-[3px]",
         isActive 

@@ -61,6 +61,7 @@ export default function PublicNavbar() {
                 <Link
                   key={link.href}
                   href={link.href}
+                  prefetch={true}
                   className={`text-xs font-bold uppercase tracking-[0.16em] transition-all relative py-1 ${
                     active
                       ? 'text-white font-black'
