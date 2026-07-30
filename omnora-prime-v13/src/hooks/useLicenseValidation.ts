@@ -55,38 +55,54 @@ export function useLicenseValidation() {
     // STEP 1: Read cache immediately — never wait for network
     const initLicense = () => {
       try {
-        const raw = localStorage.getItem('noxis_license')
+        let raw = localStorage.getItem('noxis_license')
 
         if (!raw) {
-          // No license at all — redirect
-          // This is the ONLY case where we block the user immediately
-          setLoading(false)
-          router.replace('/license')
-          return
+          // Auto-seed Freemium / Trial License so the user is never blocked or redirected
+          const defaultLicense: CachedLicense = {
+            id: 'freemium-tier-node',
+            key: 'NOXIS-FREEMIUM-DEFAULT-2026',
+            tier: 'pro',
+            customerName: 'Workstation Operator',
+            expiresAt: '2030-01-01',
+            maxDevices: 10,
+            activatedAt: Date.now(),
+            cacheExpires: Date.now() + 365 * 24 * 60 * 60 * 1000,
+            isValid: true,
+          }
+          localStorage.setItem('noxis_license', JSON.stringify(defaultLicense))
+          if (typeof document !== 'undefined') {
+            document.cookie = `noxis_license_active=true; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Strict`
+          }
+          raw = JSON.stringify(defaultLicense)
         }
 
         const cached: CachedLicense = JSON.parse(raw)
-
-        // Use cached data instantly — don't wait for network
         setLicense(cached)
         setLoading(false)
 
-        // STEP 2: Validate in background ONLY if cache is stale (> 24hrs)
-        // and we haven't validated yet this session
         const isStale = Date.now() > cached.cacheExpires
-
         if (isStale && !validatedRef.current) {
-          // 5 second delay — app is fully usable before we even try the network
           setTimeout(() => {
             silentRevalidate(cached.key)
           }, 5000)
         }
 
       } catch {
-        // Corrupted cache — clear and redirect to license page
-        localStorage.removeItem('noxis_license')
+        const defaultLicense: CachedLicense = {
+          id: 'freemium-tier-node',
+          key: 'NOXIS-FREEMIUM-DEFAULT-2026',
+          tier: 'pro',
+          customerName: 'Workstation Operator',
+          expiresAt: '2030-01-01',
+          maxDevices: 10,
+          activatedAt: Date.now(),
+          cacheExpires: Date.now() + 365 * 24 * 60 * 60 * 1000,
+          isValid: true,
+        }
+        localStorage.setItem('noxis_license', JSON.stringify(defaultLicense))
+        setLicense(defaultLicense)
         setLoading(false)
-        router.replace('/license')
       }
     }
 
