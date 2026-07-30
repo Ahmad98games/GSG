@@ -181,30 +181,25 @@ export function AuthProvider({
     router.replace('/login')
   }, [isElectron, supabase, router])
 
-  // ── LISTEN for auth changes ──
+  // ── LISTEN for background cloud auth changes ──
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (event: any, session: any) => {
         if (event === 'TOKEN_REFRESHED' && session && isElectron) {
-          await (window as any).electronAPI.store.saveSession({
-            accessToken: session.access_token,
-            refreshToken: session.refresh_token,
-            expiresAt: session.expires_at || 0,
-            email: session.user?.email || '',
-            userId: session.user?.id || '',
-          })
+          try {
+            await (window as any).electronAPI?.store?.saveSession({
+              accessToken: session.access_token,
+              refreshToken: session.refresh_token,
+              expiresAt: session.expires_at || 0,
+              email: session.user?.email || '',
+              userId: session.user?.id || '',
+            })
+          } catch {}
         }
-        if (event === 'SIGNED_OUT') {
-          if (typeof window !== 'undefined') {
-            const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
-            const hasLocalSession = localStorage.getItem('noxis_session_started') === 'true' || !!localStorage.getItem('noxis-business-profile');
-            if (isOffline || hasLocalSession) {
-              console.log('[AuthProvider] Suppressed SIGNED_OUT network drop event. Keeping local workstation active.');
-              return;
-            }
-          }
-          setUser(null)
+        if (event === 'SIGNED_IN' && session?.user) {
+          setUser(session.user)
         }
+        // Background cloud SIGNED_OUT events are ignored — local workstation session remains primary!
       }
     )
 

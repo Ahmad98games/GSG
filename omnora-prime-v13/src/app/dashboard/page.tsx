@@ -27,6 +27,7 @@ import { getIndustryConfig } from '@/lib/industry/configs'
 import { useBusinessProfile } from '@/hooks/useBusinessProfile'
 import { generateInsights } from '@/lib/intelligence/engine'
 import { IndustryWidget } from '@/components/dashboard/IndustryWidget'
+import { useAuth } from '@/providers/AuthProvider'
 import { DataHealthCard } from '@/components/dashboard/DataHealthCard'
 
 import { AutoStartRecoveryBanner } from '@/components/shell/AutoStartRecoveryBanner'
@@ -293,8 +294,10 @@ export default function OwnerDashboard() {
         : n.toLocaleString()
     }`
 
+  const { signOut } = useAuth()
+
   const handleLogout = async () => {
-    await supabase.auth.signOut()
+    await signOut()
     router.push('/dashboard/login')
   }
 
