@@ -32,7 +32,7 @@ export default function PublicNavbar() {
         <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between gap-4">
           
           {/* Logo & Brand */}
-          <Link href="/" prefetch={true} className="flex items-center gap-3 group cursor-pointer">
+          <Link href="/" prefetch={false} className="flex items-center gap-3 group cursor-pointer">
             <div className="w-10 h-10 rounded-md bg-black/60 border border-[#08EBF6]/40 flex items-center justify-center group-hover:border-[#08EBF6] group-hover:shadow-[0_0_20px_rgba(8,235,246,0.4)] transition-all">
               <Image
                 src="/logos/noxis.png"
@@ -61,7 +61,7 @@ export default function PublicNavbar() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  prefetch={true}
+                  prefetch={false}
                   className={`text-xs font-bold uppercase tracking-[0.16em] transition-all relative py-1.5 ${
                     active
                       ? 'text-[#08EBF6] font-black'
@@ -84,14 +84,14 @@ export default function PublicNavbar() {
           <div className="hidden lg:flex items-center gap-4">
             <Link
               href="/login"
-              prefetch={true}
+              prefetch={false}
               className="text-xs font-bold uppercase tracking-wider text-white hover:text-[#08EBF6] px-4 py-2.5 rounded-md border border-white/15 hover:border-[#08EBF6]/50 bg-white/5 hover:bg-[#08EBF6]/10 transition-all"
             >
               Sign In
             </Link>
             <Link
               href="/download"
-              prefetch={true}
+              prefetch={false}
               className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-black bg-gradient-to-r from-[#08EBF6] via-[#FFFFFF] to-[#5FA5FA] px-5 py-2.5 rounded-md hover:brightness-110 transition-all shadow-[0_0_25px_rgba(8,235,246,0.35)]"
             >
               <Download size={15} />
@@ -130,7 +130,7 @@ export default function PublicNavbar() {
                   <Link
                     key={link.href}
                     href={link.href}
-                    prefetch={true}
+                    prefetch={false}
                     onClick={() => setMobileMenuOpen(false)}
                     className={`flex items-center justify-between p-3.5 rounded-md border text-sm font-bold uppercase tracking-wider transition-all ${
                       active
@@ -148,7 +148,7 @@ export default function PublicNavbar() {
             <div className="space-y-3 pt-8 pb-4 border-t border-white/10">
               <Link
                 href="/download"
-                prefetch={true}
+                prefetch={false}
                 onClick={() => setMobileMenuOpen(false)}
                 className="w-full flex items-center justify-center gap-2 text-xs font-black uppercase tracking-wider text-black bg-gradient-to-r from-[#08EBF6] to-[#5FA5FA] py-3.5 rounded-md shadow-[0_0_20px_rgba(8,235,246,0.3)]"
               >
@@ -157,7 +157,7 @@ export default function PublicNavbar() {
               </Link>
               <Link
                 href="/login"
-                prefetch={true}
+                prefetch={false}
                 onClick={() => setMobileMenuOpen(false)}
                 className="w-full flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider text-white bg-white/5 border border-white/15 py-3 rounded-md"
               >

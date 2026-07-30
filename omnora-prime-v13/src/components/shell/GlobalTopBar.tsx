@@ -282,7 +282,7 @@ export default React.memo(function GlobalTopBar() {
           <CloudSyncIndicator />
 
           {updateReady && (
-            <Link href="/settings/updates">
+            <Link href="/settings/updates" prefetch={false}>
               <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold animate-pulse hover:bg-emerald-500/25 transition-colors cursor-pointer ml-3">
                 <Zap size={10} />
                 v{updateVersion} ready
@@ -417,6 +417,7 @@ export default React.memo(function GlobalTopBar() {
                     
                     <Link 
                       href="/settings"
+                      prefetch={false}
                       onClick={() => setIsProfileOpen(false)}
                       className="flex items-center w-full px-4 py-2 text-[10px] font-bold text-noxis-text-muted hover:text-noxis-text hover:bg-noxis-overlay transition-colors uppercase tracking-wider"
                     >
