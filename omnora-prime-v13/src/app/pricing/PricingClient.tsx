@@ -618,42 +618,42 @@ function PricingCard({
     <motion.div 
       variants={variant}
       className={cn(
-        "relative flex flex-col p-6 border transition-all duration-300 rounded-sm",
+        "relative flex flex-col p-6 border transition-all duration-300 rounded-md",
         popular 
-          ? "bg-[#121417] border-blue-500 shadow-[0_20px_50px_rgba(96,165,250,0.1)] z-10" 
-          : "bg-[#0F1113] border-white/5 hover:border-white/10"
+          ? "bg-[#0B0F17] border-[#08EBF6] shadow-[0_0_30px_rgba(8,235,246,0.2)] z-10" 
+          : "bg-[#030712] border-white/10 hover:border-[#08EBF6]/40"
       )}
     >
       {popular && (
-        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-blue-500 text-black text-[9px] font-black uppercase tracking-[0.3em] px-4 py-1.5 whitespace-nowrap rounded-sm">
+        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#08EBF6] text-black text-[9px] font-black uppercase tracking-[0.25em] px-4 py-1 whitespace-nowrap rounded-md shadow-[0_0_12px_#08EBF6]">
           Industrial Standard
         </div>
       )}
 
       <div className="mb-6">
-        <h3 className="text-xl font-black text-white uppercase italic tracking-tighter mb-2">{tier}</h3>
-        <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest leading-relaxed h-8">{sub}</p>
+        <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">{tier}</h3>
+        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed h-8">{sub}</p>
       </div>
 
       <div className="mb-6">
         <div className="flex items-baseline gap-1">
-          <span className="text-2xl sm:text-3xl font-mono font-black text-white tracking-tighter">{displayPrice.split(' ')[1]}</span>
-          <span className="text-[9px] font-bold text-gray-500 uppercase">{displayPrice.split(' ')[0]} / {period.toUpperCase()}</span>
+          <span className="text-2xl sm:text-3xl font-mono font-black text-white tracking-tight">{displayPrice.split(' ')[1]}</span>
+          <span className="text-[9px] font-bold text-[#5FA5FA] uppercase">{displayPrice.split(' ')[0]} / {period.toUpperCase()}</span>
         </div>
         {pricePKR > 0 && (isSA || !useUSD) && (
-          <p className="text-[8px] text-gray-600 font-bold uppercase mt-1.5 italic">≈ {formatCurrency(priceUSD, 'USD')}</p>
+          <p className="text-[8px] text-slate-500 font-bold uppercase mt-1.5 italic">≈ {formatCurrency(priceUSD, 'USD')}</p>
         )}
       </div>
 
       <div className="flex-1 space-y-3.5 mb-10">
         {features.map((f: any, i: number) => (
-          <div key={i} className={cn("flex items-start space-x-3 text-[11px]", f.included ? "text-gray-400" : "text-gray-700")}>
+          <div key={i} className={cn("flex items-start space-x-3 text-[11px]", f.included ? "text-slate-300" : "text-slate-600")}>
             {f.included ? (
-              <Check size={14} className={f.highlight ? "text-blue-400 shrink-0" : "text-emerald-500 shrink-0"} />
+              <Check size={14} className={f.highlight ? "text-[#08EBF6] shrink-0 font-bold" : "text-emerald-400 shrink-0"} />
             ) : (
-              <X size={14} className="text-gray-800 shrink-0" />
+              <X size={14} className="text-slate-700 shrink-0" />
             )}
-            <span className={cn(f.highlight && "text-white font-black uppercase tracking-tighter")}>{f.label}</span>
+            <span className={cn(f.highlight && "text-white font-black uppercase tracking-tight")}>{f.label}</span>
           </div>
         ))}
       </div>
@@ -661,12 +661,12 @@ function PricingCard({
       <button 
         onClick={() => onPurchase(tier, displayPrice)}
         className={cn(
-          "block w-full py-4 text-center text-[10px] font-black uppercase tracking-[0.2em] transition-all rounded-sm cursor-pointer",
+          "block w-full py-3.5 text-center text-[10px] font-black uppercase tracking-[0.2em] transition-all rounded-md cursor-pointer",
           primary 
-            ? "bg-[#C5A059] text-black hover:brightness-110 active:scale-95" 
+            ? "bg-gradient-to-r from-[#08EBF6] to-[#5FA5FA] text-black hover:brightness-110 active:scale-95 shadow-[0_0_20px_rgba(8,235,246,0.3)]" 
             : popular 
-              ? "bg-blue-500 text-black hover:brightness-110 active:scale-95 shadow-lg shadow-blue-500/20" 
-              : "bg-white/5 text-white hover:bg-white/10 active:scale-95"
+              ? "bg-[#08EBF6] text-black hover:brightness-110 active:scale-95 shadow-[0_0_20px_rgba(8,235,246,0.35)]" 
+              : "bg-white/10 text-white hover:bg-white/20 hover:text-[#08EBF6] border border-white/10 active:scale-95"
         )}
       >
         {cta}

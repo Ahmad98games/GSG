@@ -63,12 +63,12 @@ export default function DocsPage() {
   }, [])
 
   return (
-    <div className="bg-[#040608] text-[#94A3B8] font-sans min-h-screen selection:bg-[#C5A059]/30 selection:text-white pb-32 relative overflow-hidden">
+    <div className="bg-[#030712] text-slate-300 font-sans min-h-screen selection:bg-[#08EBF6]/30 selection:text-white pb-32 relative overflow-hidden">
       
       {/* Background Gradients */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-[#C5A059]/[0.02] rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-[#00E5FF]/[0.01] rounded-full blur-[120px]" />
+        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-[#08EBF6]/[0.04] rounded-full blur-[140px]" />
+        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-[#5FA5FA]/[0.04] rounded-full blur-[140px]" />
       </div>
 
       {/* ═══ HEADER NAVIGATION ═══ */}
@@ -80,12 +80,12 @@ export default function DocsPage() {
           
           {/* Left Sidebar Navigation - sticky */}
           <div className="lg:col-span-4 lg:sticky lg:top-32 h-fit space-y-6 z-10">
-            <div className="bg-[#0A0D10] border border-white/[0.04] p-6 rounded-sm space-y-4">
+            <div className="bg-[#0B0F17] border border-[#08EBF6]/30 p-6 rounded-md space-y-4 shadow-[0_0_25px_rgba(8,235,246,0.08)]">
               <div className="flex items-center gap-2">
-                <BookOpen size={16} className="text-[#C5A059]" />
+                <BookOpen size={16} className="text-[#08EBF6]" />
                 <h3 className="text-xs font-black uppercase tracking-widest text-white">System Guidebook</h3>
               </div>
-              <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
+              <p className="text-[11px] text-slate-400 leading-relaxed font-medium">
                 Detailed setup guidelines for local node operators and industrial workshop managers.
               </p>
               

@@ -25,18 +25,18 @@ export default function AboutPage() {
   const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30 });
 
   return (
-    <div className="bg-[#030406] text-white font-sans min-h-screen selection:bg-sandstone-gold/30 selection:text-white overflow-x-hidden relative flex flex-col justify-between">
+    <div className="bg-[#030712] text-white font-sans min-h-screen selection:bg-[#08EBF6]/30 selection:text-white overflow-x-hidden relative flex flex-col justify-between">
       
       {/* Scroll Progress Indicator */}
       <motion.div
-        className="fixed top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-sandstone-gold via-[#00E5FF] to-sandstone-gold z-[100] origin-left"
+        className="fixed top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#5FA5FA] via-[#08EBF6] to-[#FFFFFF] z-[100] origin-left shadow-[0_0_10px_#08EBF6]"
         style={{ scaleX }}
       />
 
       {/* Floating Decorative Orbs */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <FloatingOrb color="rgba(197,160,89,0.05)" size={700} x="10%" y="15%" delay={0} blur={140} />
-        <FloatingOrb color="rgba(0,229,255,0.03)" size={600} x="85%" y="60%" delay={3} blur={130} />
+        <FloatingOrb color="rgba(8,235,246,0.06)" size={700} x="10%" y="15%" delay={0} blur={140} />
+        <FloatingOrb color="rgba(95,165,250,0.04)" size={600} x="85%" y="60%" delay={3} blur={130} />
         <FloatingOrb color="rgba(255,255,255,0.01)" size={500} x="50%" y="80%" delay={1} blur={120} />
       </div>
 
@@ -48,16 +48,16 @@ export default function AboutPage() {
         
         {/* Section 1: Hero Identity */}
         <SectionReveal className="text-center flex flex-col items-center space-y-6">
-          <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 border border-[#C5A059]/20 bg-[#C5A059]/5 mb-2">
-            <Sparkles size={12} className="text-sandstone-gold animate-pulse" />
-            <span className="text-[9px] font-bold tracking-[0.25em] uppercase text-sandstone-gold">
+          <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 border border-[#08EBF6]/30 bg-[#08EBF6]/10 mb-2 shadow-[0_0_15px_rgba(8,235,246,0.15)]">
+            <Sparkles size={12} className="text-[#08EBF6] animate-pulse" />
+            <span className="text-[9px] font-black tracking-[0.25em] uppercase text-[#08EBF6]">
               Industrial Automation Manifest
             </span>
           </div>
           <h1 className="text-4xl sm:text-7xl font-black tracking-tight text-white leading-none uppercase max-w-4xl">
-            THE INDUSTRIAL OPERATING <span className="text-transparent bg-clip-text bg-gradient-to-r from-sandstone-gold via-white to-[#00E5FF]">SYSTEM</span>
+            THE INDUSTRIAL OPERATING <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#08EBF6] via-[#FFFFFF] to-[#5FA5FA]">SYSTEM</span>
           </h1>
-          <p className="text-[#94A3B8] text-sm sm:text-base leading-relaxed max-w-2xl mx-auto font-medium">
+          <p className="text-slate-300 text-sm sm:text-base leading-relaxed max-w-2xl mx-auto font-medium">
             Noxis Hub is a localized, local-first industrial ERP engineered by Omnora Labs to orchestrate piece-rate karigar payroll, real-time inventories, local mesh networks, and edge CCTV vision grids on physical floor environments.
           </p>
           <div className="text-[10px] text-gray-500 font-mono tracking-widest uppercase flex items-center gap-3">
