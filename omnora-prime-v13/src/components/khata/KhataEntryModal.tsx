@@ -1,24 +1,29 @@
-"use client";
+'use client';
 
-import React, { useMemo, useState } from 'react';
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { motion, AnimatePresence } from "framer-motion";
-import { X, ArrowRightLeft, ShieldAlert, Search, User, Check } from "lucide-react";
-import { Decimal } from "decimal.js";
-import { cn } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/client";
-import { useBusinessProfile } from "@/hooks/useBusinessProfile";
-import { usePersona } from "@/hooks/usePersona";
+import React, { useMemo, useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  X, ArrowRightLeft, ShieldAlert, Search, User, Check, Plus,
+  CreditCard, Calendar, FileText, Paperclip, AlertCircle, ArrowDownLeft, ArrowUpRight
+} from 'lucide-react';
+import { Decimal } from 'decimal.js';
+import { cn } from '@/lib/utils';
+import { createClient } from '@/lib/supabase/client';
+import { useBusinessProfile } from '@/hooks/useBusinessProfile';
+import { usePersona } from '@/hooks/usePersona';
+import { AddPartyModal } from './AddPartyModal';
 
-// Simple payment record form validation
 const transactionSchema = z.object({
-  date: z.string().min(1, "Date is required"),
-  description: z.string().min(1, "Description is required").max(200),
+  date: z.string().min(1, 'Date & time required'),
+  description: z.string().min(1, 'Description / memo is required').max(250),
   party_id: z.string().optional(),
   type: z.enum(['money_in', 'money_out', 'receivable', 'payable']),
-  amount: z.coerce.number().positive("Amount must be greater than 0"),
+  amount: z.coerce.number().positive('Amount must be greater than 0'),
+  payment_mode: z.enum(['Cash', 'Bank Transfer / Raast', 'Cheque', 'Online']).default('Cash'),
+  reference_no: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -30,467 +35,402 @@ interface KhataEntryModalProps {
   onSuccess: (msg: string) => void;
   accounts: any[];
   parties: any[];
+  editingEntry?: any;
 }
 
-export function KhataEntryModal({ isOpen, onClose, onSuccess, accounts, parties: initialParties }: KhataEntryModalProps) {
+export function KhataEntryModal({
+  isOpen,
+  onClose,
+  onSuccess,
+  accounts,
+  parties: initialParties = [],
+  editingEntry = null,
+}: KhataEntryModalProps) {
   const { profile } = useBusinessProfile();
   const { businessId, fmt } = usePersona();
   const supabase = createClient();
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showFullJournal, setShowFullJournal] = useState(false);
-
-  // Party Search Autocomplete States
-  const [partySearch, setPartySearch] = useState("");
-  const [partyResults, setPartyResults] = useState<any[]>([]);
+  const [isAddPartyOpen, setIsAddPartyOpen] = useState(false);
+  const [partiesList, setPartiesList] = useState<any[]>(initialParties);
   const [selectedParty, setSelectedParty] = useState<any>(null);
-  const [isSearchingParties, setIsSearchingParties] = useState(false);
+  const [partySearch, setPartySearch] = useState('');
+  const [showPartyDropdown, setShowPartyDropdown] = useState(false);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
 
-  // Core accounts lookups from accounts prop
-  const cashAcc = useMemo(() => accounts.find(a => a.account_code === '1001'), [accounts]);
-  const arAcc = useMemo(() => accounts.find(a => a.account_code === '1100'), [accounts]);
-  const apAcc = useMemo(() => accounts.find(a => a.account_code === '2001'), [accounts]);
-  const salesAcc = useMemo(() => accounts.find(a => a.account_code === '4001'), [accounts]);
-  const expenseAcc = useMemo(() => accounts.find(a => a.account_code === '5800') || accounts.find(a => a.type === 'expense'), [accounts]);
+  useEffect(() => {
+    setPartiesList(initialParties);
+  }, [initialParties]);
 
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<TransactionFormValues>({
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    reset,
+    formState: { errors },
+  } = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionSchema),
     defaultValues: {
-      date: new Date().toISOString().split('T')[0],
+      date: new Date().toISOString().slice(0, 16), // YYYY-MM-DDTHH:mm
       type: 'money_in',
       amount: 0,
-      description: "",
-      notes: ""
-    }
+      payment_mode: 'Cash',
+      description: '',
+      reference_no: '',
+      notes: '',
+    },
   });
 
-  const watchType = watch("type");
-  const watchAmount = watch("amount");
-  const watchPartyId = watch("party_id");
+  const watchType = watch('type');
+  const watchAmount = watch('amount');
+  const watchPaymentMode = watch('payment_mode');
 
-  // Dynamically calculate preview journal entries for transparency / verification
-  const previewLines = useMemo(() => {
-    const amount = Number(watchAmount) || 0;
-    if (amount <= 0) return [];
+  // Filter parties by search
+  const filteredParties = useMemo(() => {
+    if (!partySearch.trim()) return partiesList;
+    return partiesList.filter(p =>
+      p.name?.toLowerCase().includes(partySearch.toLowerCase()) ||
+      p.phone?.includes(partySearch)
+    );
+  }, [partiesList, partySearch]);
 
-    const cashName = cashAcc?.name || 'Cash in Hand';
-    const arName = arAcc?.name || 'Accounts Receivable';
-    const apName = apAcc?.name || 'Accounts Payable';
-    const salesName = salesAcc?.name || 'Sales Revenue';
-    const expenseName = expenseAcc?.name || 'Miscellaneous Expense';
+  // Selected party live balance badge details
+  const partyBalanceDetails = useMemo(() => {
+    if (!selectedParty) return null;
+    const bal = Number(selectedParty.current_balance || 0);
+    const creditLimit = Number(selectedParty.credit_limit || 100000);
+    const isReceivable = bal >= 0;
+    const absBal = Math.abs(bal);
+    const isExceeded = absBal > creditLimit;
 
-    if (watchType === 'money_in') {
-      return [
-        { account: cashName, debit: amount, credit: 0 },
-        { account: selectedParty ? arName : salesName, debit: 0, credit: amount }
-      ];
-    } else if (watchType === 'money_out') {
-      return [
-        { account: selectedParty ? apName : expenseName, debit: amount, credit: 0 },
-        { account: cashName, debit: 0, credit: amount }
-      ];
-    } else if (watchType === 'receivable') {
-      return [
-        { account: arName, debit: amount, credit: 0 },
-        { account: salesName, debit: 0, credit: amount }
-      ];
-    } else if (watchType === 'payable') {
-      return [
-        { account: expenseName, debit: amount, credit: 0 },
-        { account: apName, debit: 0, credit: amount }
-      ];
-    }
-    return [];
-  }, [watchType, watchAmount, selectedParty, cashAcc, arAcc, apAcc, salesAcc, expenseAcc]);
+    return {
+      balanceText: isReceivable
+        ? `PKR ${absBal.toLocaleString()} (Jama / Receivable)`
+        : `PKR ${absBal.toLocaleString()} (Naam / Payable)`,
+      isReceivable,
+      isExceeded,
+      status: isExceeded ? 'Credit Exceeded!' : bal === 0 ? 'Clear' : 'Active',
+    };
+  }, [selectedParty]);
 
-  const handlePartySearch = async (search: string) => {
-    setPartySearch(search);
-    if (search.length < 2) {
-      setPartyResults([]);
-      return;
-    }
-
-    setIsSearchingParties(true);
-    try {
-      const { data } = await supabase
-        .from('parties')
-        .select('id, name, party_type')
-        .eq('business_id', businessId)
-        .ilike('name', `%${search}%`)
-        .limit(8);
-
-      const results = [
-        ...(data || []),
-        { id: 'manual', name: `+ Add "${search}"` }
-      ];
-      setPartyResults(results);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsSearchingParties(false);
-    }
-  };
-
-  const handleSelectParty = async (party: any) => {
-    if (party.id === 'manual') {
-      const name = partySearch;
-      try {
-        const { data: newParty, error } = await supabase
-          .from('parties')
-          .insert({
-            business_id: businessId,
-            name: name,
-            party_type: 'customer',
-            current_balance: 0,
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        setSelectedParty(newParty);
-        setValue("party_id", newParty.id);
-        setPartySearch("");
-        setPartyResults([]);
-      } catch (err: any) {
-        alert(`Failed to add party: ${err.message}`);
-      }
-    } else {
-      setSelectedParty(party);
-      setValue("party_id", party.id);
-      setPartySearch("");
-      setPartyResults([]);
-    }
-  };
-
-  const handleClearParty = () => {
-    setSelectedParty(null);
-    setValue("party_id", undefined);
-    setPartySearch("");
-  };
+  if (!isOpen) return null;
 
   const onSubmit = async (values: TransactionFormValues) => {
     setIsSubmitting(true);
     try {
-      const cashAccountId = cashAcc?.id;
-      const arAccountId = arAcc?.id;
-      const apAccountId = apAcc?.id;
-      const salesAccountId = salesAcc?.id;
-      const expenseAccountId = expenseAcc?.id;
+      const txRef = editingEntry?.tx_ref || `TX-${Date.now().toString(36).toUpperCase()}`;
+      const amount = Number(values.amount);
 
-      if (!cashAccountId || !arAccountId || !apAccountId || !salesAccountId || !expenseAccountId) {
-        throw new Error("Core system accounts are missing in your Chart of Accounts. Make sure you have CASH (1001), Accounts Receivable (1100), Accounts Payable (2001), Sales (4001), and Expense (5800) accounts created.");
-      }
-
-      let debitAccId = '';
-      let creditAccId = '';
+      let debitAccCode = '1001'; // Cash in hand
+      let creditAccCode = '4001'; // Sales revenue
 
       if (values.type === 'money_in') {
-        debitAccId = cashAccountId;
-        creditAccId = values.party_id ? arAccountId : salesAccountId;
+        debitAccCode = values.payment_mode === 'Cash' ? '1001' : '1002'; // Cash or Bank
+        creditAccCode = '1100'; // Accounts Receivable
       } else if (values.type === 'money_out') {
-        debitAccId = values.party_id ? apAccountId : expenseAccountId;
-        creditAccId = cashAccountId;
+        debitAccCode = '2001'; // Accounts Payable
+        creditAccCode = values.payment_mode === 'Cash' ? '1001' : '1002';
       } else if (values.type === 'receivable') {
-        if (!values.party_id) throw new Error("A Party selection is required to register a Receivable transaction.");
-        debitAccId = arAccountId;
-        creditAccId = salesAccountId;
+        debitAccCode = '1100'; // AR
+        creditAccCode = '4001'; // Sales Revenue
       } else if (values.type === 'payable') {
-        if (!values.party_id) throw new Error("A Party selection is required to register a Payable transaction.");
-        debitAccId = expenseAccountId;
-        creditAccId = apAccountId;
+        debitAccCode = '5800'; // Expense
+        creditAccCode = '2001'; // AP
       }
 
-      const tx_ref = `JV-${Date.now().toString().slice(-6)}`;
-      const entries = [
-        {
-          business_id: businessId,
-          tx_ref,
-          account_id: debitAccId,
-          party_id: values.party_id || null,
-          amount: values.amount,
-          entry_type: 'debit',
-          description: values.description,
-          posted_at: new Date(values.date).toISOString(),
-          status: 'posted'
-        },
-        {
-          business_id: businessId,
-          tx_ref,
-          account_id: creditAccId,
-          party_id: values.party_id || null,
-          amount: values.amount,
-          entry_type: 'credit',
-          description: values.description,
-          posted_at: new Date(values.date).toISOString(),
-          status: 'posted'
-        }
-      ];
+      const debitAcc = accounts.find(a => a.account_code === debitAccCode) || accounts[0];
+      const creditAcc = accounts.find(a => a.account_code === creditAccCode) || accounts[1];
 
-      // 1. Post entries to ledger
-      const { error: ledgerError } = await supabase.from('ledger_entries').insert(entries);
-      if (ledgerError) throw ledgerError;
+      // Prepare double-entry ledger rows
+      const debitEntry = {
+        business_id: profile?.id || businessId,
+        tx_ref: txRef,
+        entry_type: 'debit',
+        account_id: debitAcc?.id || accounts[0]?.id,
+        party_id: selectedParty?.id || null,
+        amount: amount,
+        description: `${values.description} [${values.payment_mode}${values.reference_no ? ' Ref:' + values.reference_no : ''}]`,
+        posted_at: new Date(values.date).toISOString(),
+        status: 'posted',
+      };
 
-      // 2. Adjust party balance in the database
-      if (values.party_id) {
-        let netChange = new Decimal(0);
-        if (values.type === 'money_in') {
-          netChange = netChange.minus(new Decimal(values.amount));
-        } else if (values.type === 'money_out') {
-          netChange = netChange.plus(new Decimal(values.amount));
-        } else if (values.type === 'receivable') {
-          netChange = netChange.plus(new Decimal(values.amount));
-        } else if (values.type === 'payable') {
-          netChange = netChange.minus(new Decimal(values.amount));
-        }
+      const creditEntry = {
+        business_id: profile?.id || businessId,
+        tx_ref: txRef,
+        entry_type: 'credit',
+        account_id: creditAcc?.id || accounts[1]?.id,
+        party_id: selectedParty?.id || null,
+        amount: amount,
+        description: `${values.description} [${values.payment_mode}${values.reference_no ? ' Ref:' + values.reference_no : ''}]`,
+        posted_at: new Date(values.date).toISOString(),
+        status: 'posted',
+      };
 
-        const { data: partyData, error: partyFetchError } = await supabase
+      // Insert ledger entries
+      const { error: ledgerErr } = await supabase
+        .from('ledger_entries')
+        .insert([debitEntry, creditEntry]);
+
+      if (ledgerErr) throw ledgerErr;
+
+      // Update party current_balance
+      if (selectedParty) {
+        let delta = 0;
+        if (values.type === 'money_in') delta = -amount; // customer paid us -> receivable decreases
+        else if (values.type === 'money_out') delta = amount; // we paid supplier -> payable decreases
+        else if (values.type === 'receivable') delta = amount; // udhaar added -> receivable increases
+        else if (values.type === 'payable') delta = -amount; // bill added -> payable increases
+
+        const newBal = Number(selectedParty.current_balance || 0) + delta;
+        await supabase
           .from('parties')
-          .select('current_balance')
-          .eq('id', values.party_id)
-          .single();
-
-        if (partyFetchError) throw partyFetchError;
-
-        const newBalance = new Decimal(partyData.current_balance || 0).plus(netChange);
-
-        const { error: partyUpdateError } = await supabase
-          .from('parties')
-          .update({ current_balance: newBalance.toNumber() })
-          .eq('id', values.party_id);
-
-        if (partyUpdateError) throw partyUpdateError;
+          .update({ current_balance: newBal })
+          .eq('id', selectedParty.id);
       }
 
-      onSuccess(`Successfully posted transaction ${tx_ref}`);
+      reset();
+      onSuccess(`Transaction ${txRef} posted successfully!`);
       onClose();
     } catch (err: any) {
-      console.error("Post error:", err);
-      alert(`Transaction posting failed: ${err.message}`);
+      alert(`Error posting entry: ${err.message}`);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[100] flex justify-end bg-black/60 backdrop-blur-sm">
-          <motion.div 
-            initial={{ x: "100%" }} 
-            animate={{ x: 0 }} 
-            exit={{ x: "100%" }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="w-full max-w-[600px] bg-[#1A1D21] border-l border-white/5 h-full flex flex-col shadow-2xl"
-          >
-            {/* Header */}
-            <div className="p-6 border-b border-white/5 flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="p-3 bg-electric-blue/10 text-electric-blue">
-                  <ArrowRightLeft size={20} />
-                </div>
-                <div>
-                  <h2 className="text-lg font-black text-white uppercase tracking-tighter">Record Transaction</h2>
-                </div>
+    <>
+      <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.95, opacity: 0 }}
+          className="max-w-2xl w-full bg-[#0B0F17] border border-[#08EBF6]/30 rounded-2xl shadow-[0_0_50px_rgba(8,235,246,0.15)] overflow-hidden"
+        >
+          {/* Header */}
+          <div className="p-6 bg-[#030712] border-b border-white/10 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 rounded-xl bg-[#08EBF6]/10 text-[#08EBF6]">
+                <ArrowRightLeft size={20} />
               </div>
-              <button onClick={onClose} className="p-2 text-gray-500 hover:text-white transition-colors">
-                <X size={20} />
-              </button>
+              <div>
+                <h3 className="text-base font-black text-white uppercase tracking-tight">
+                  {editingEntry ? 'Edit Khata Transaction' : 'Post Dual-Entry Khata Transaction'}
+                </h3>
+                <p className="text-xs text-slate-400 font-medium">100% Local-First Ledger & Udhaar Book</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
+              <X size={20} />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-5 max-h-[85vh] overflow-y-auto">
+            {/* 1. Transaction Type Segmented Selector */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Transaction Type *</label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  ['money_in', 'Money In (Vasooli)', 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'],
+                  ['money_out', 'Money Out (Adayagi)', 'bg-red-500/20 text-red-400 border-red-500/40'],
+                  ['receivable', 'Receivable (Udhaar)', 'bg-amber-500/20 text-amber-400 border-amber-500/40'],
+                  ['payable', 'Payable (Bill/Expense)', 'bg-purple-500/20 text-purple-400 border-purple-500/40'],
+                ].map(([val, label, activeStyle]) => {
+                  const active = watchType === val;
+                  return (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setValue('type', val as any)}
+                      className={`p-3 rounded-xl border text-xs font-black uppercase tracking-tight transition-all cursor-pointer ${
+                        active ? activeStyle : 'bg-[#030712] border-white/10 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
-              {/* Type Selection (Grid buttons) */}
-              <div className="space-y-2">
-                <label className="text-[10px] uppercase font-black text-gray-500 tracking-widest block">Transaction Type</label>
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { key: 'money_in', label: 'Money In', desc: 'Received Payment' },
-                    { key: 'money_out', label: 'Money Out', desc: 'Sent Payment' },
-                    { key: 'receivable', label: 'Receivable', desc: 'Invoice / Owed to Us' },
-                    { key: 'payable', label: 'Payable', desc: 'Bill / Owed to Supplier' }
-                  ].map((btn) => (
-                    <button
-                      key={btn.key}
-                      type="button"
-                      onClick={() => setValue("type", btn.key as any)}
-                      className={cn(
-                        "p-4 border rounded-sm transition-all text-left flex flex-col justify-between h-20",
-                        watchType === btn.key 
-                          ? "bg-electric-blue/10 border-electric-blue text-white shadow-lg" 
-                          : "bg-[#0F1113]/50 border-white/5 text-gray-400 hover:border-white/10"
-                      )}
-                    >
-                      <span className="text-xs font-black uppercase tracking-wider block">{btn.label}</span>
-                      <span className="text-[9px] text-gray-500 block">{btn.desc}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Amount Large Input */}
-              <div className="space-y-2">
-                <label className="text-[10px] uppercase font-black text-gray-500 tracking-widest block">Amount</label>
-                <div className="relative">
-                  <span className="absolute left-6 top-1/2 -translate-y-1/2 text-sm font-mono text-gray-500">PKR</span>
-                  <input 
-                    type="number" 
-                    step="0.01" 
-                    {...register("amount")} 
-                    className="w-full bg-[#0F1113] border border-white/10 p-6 pl-16 text-3xl font-bold font-mono text-sandstone-gold focus:border-electric-blue outline-none text-right" 
-                    placeholder="0.00" 
-                  />
-                </div>
-                {errors.amount && <p className="text-[10px] text-red-500 font-bold uppercase">{errors.amount.message}</p>}
-              </div>
-
-              {/* Date & Description */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] uppercase font-black text-gray-500 tracking-widest block">Date</label>
-                  <input 
-                    type="date" 
-                    {...register("date")} 
-                    className="w-full bg-[#0F1113] border border-white/10 p-4 text-xs text-white focus:border-electric-blue outline-none" 
-                  />
-                  {errors.date && <p className="text-[10px] text-red-500 font-bold uppercase">{errors.date.message}</p>}
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] uppercase font-black text-gray-500 tracking-widest block">Transaction Details</label>
-                  <input 
-                    {...register("description")} 
-                    placeholder="What is this for?" 
-                    className="w-full bg-[#0F1113] border border-white/10 p-4 text-xs text-white focus:border-electric-blue outline-none" 
-                  />
-                  {errors.description && <p className="text-[10px] text-red-500 font-bold uppercase">{errors.description.message}</p>}
-                </div>
-              </div>
-
-              {/* Party Autocomplete Search */}
-              <div className="space-y-2 relative">
-                <label className="text-[10px] uppercase font-black text-gray-500 tracking-widest block">Linked Party (Optional)</label>
-                {selectedParty ? (
-                  <div className="flex items-center justify-between bg-white/5 border border-white/10 p-4 rounded-sm">
-                    <div className="flex items-center space-x-3">
-                      <User size={16} className="text-electric-blue" />
-                      <span className="text-xs font-bold text-white uppercase">{selectedParty.name}</span>
-                    </div>
-                    <button type="button" onClick={handleClearParty} className="text-gray-500 hover:text-white transition-colors">
-                      <X size={16} />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="relative">
-                    <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
-                    <input
-                      type="text"
-                      value={partySearch}
-                      onChange={(e) => handlePartySearch(e.target.value)}
-                      placeholder="Type name to search parties..."
-                      className="w-full bg-[#0F1113] border border-white/10 pl-12 pr-4 py-4 text-xs text-white outline-none focus:border-electric-blue"
-                    />
-                    {isSearchingParties && (
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-gray-500">Searching...</span>
-                    )}
-
-                    {partyResults.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 bg-[#1A1D21] border border-white/10 z-[200] mt-1 shadow-2xl rounded-sm divide-y divide-white/5">
-                        {partyResults.map((option) => (
-                          <button
-                            key={option.id}
-                            type="button"
-                            onClick={() => handleSelectParty(option)}
-                            className="w-full px-4 py-3 text-left text-xs text-gray-400 hover:bg-white/5 hover:text-white transition-colors flex items-center justify-between"
-                          >
-                            <span>{option.name}</span>
-                            {option.id !== 'manual' && <Check size={12} className="opacity-40" />}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Notes */}
-              <div className="space-y-2">
-                <label className="text-[10px] uppercase font-black text-gray-500 tracking-widest block">Internal Notes (Optional)</label>
-                <textarea 
-                  {...register("notes")} 
-                  rows={2} 
-                  placeholder="Memo, payment details, cheque number, etc." 
-                  className="w-full bg-[#0F1113] border border-white/10 p-4 text-xs text-white focus:border-electric-blue outline-none resize-none" 
-                />
-              </div>
-
-              {/* Accounting Notice */}
-              <div className="p-4 bg-amber-500/5 border border-amber-500/10 space-y-2">
-                <div className="flex items-center space-x-2 text-amber-500">
-                  <ShieldAlert size={14} />
-                  <span className="text-[9px] font-black uppercase tracking-widest">Important Notice</span>
-                </div>
-                <p className="text-[9px] text-gray-500 leading-relaxed uppercase">
-                  This entry will update the party balance and cannot be deleted. A reversal entry will be needed to correct mistakes.
-                </p>
-              </div>
-
-              {/* Advanced Link to expand full journal preview */}
-              <div className="pt-2 text-center">
+            {/* 2. Linked Party Search & Live Balance Badge */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Linked Party Account</label>
                 <button
                   type="button"
-                  onClick={() => setShowFullJournal(!showFullJournal)}
-                  className="text-[10px] font-bold text-gray-600 hover:text-white uppercase tracking-widest transition-colors"
+                  onClick={() => setIsAddPartyOpen(true)}
+                  className="text-[10px] font-black text-[#08EBF6] hover:underline flex items-center gap-1 cursor-pointer"
                 >
-                  {showFullJournal ? "Hide journal details" : "Show full journal entry"}
+                  <Plus size={12} /> + Add New Party
                 </button>
               </div>
 
-              {/* Advanced journal view details */}
-              <AnimatePresence>
-                {showFullJournal && previewLines.length > 0 && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="border border-white/5 bg-[#0F1113]/50 p-4 rounded-sm space-y-3 overflow-hidden"
-                  >
-                    <h4 className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Ledger Preview</h4>
+              <div className="relative">
+                <div
+                  onClick={() => setShowPartyDropdown(!showPartyDropdown)}
+                  className="w-full bg-[#030712] border border-white/15 p-3 rounded-xl flex items-center justify-between text-xs cursor-pointer hover:border-[#08EBF6]/50"
+                >
+                  <span className={selectedParty ? 'text-white font-bold' : 'text-slate-500'}>
+                    {selectedParty ? `${selectedParty.name} (${selectedParty.phone || 'No Phone'})` : 'Select Linked Party...'}
+                  </span>
+                  <User size={16} className="text-[#08EBF6]" />
+                </div>
+
+                {showPartyDropdown && (
+                  <div className="absolute top-full left-0 right-0 mt-1 z-30 bg-[#0B0F17] border border-[#08EBF6]/40 rounded-xl p-2 shadow-2xl space-y-2 max-h-56 overflow-y-auto">
+                    <div className="relative">
+                      <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
+                      <input
+                        type="text"
+                        value={partySearch}
+                        onChange={e => setPartySearch(e.target.value)}
+                        placeholder="Search party by name or phone..."
+                        className="w-full bg-[#030712] border border-white/15 p-2 pl-9 text-xs text-white rounded-lg outline-none"
+                      />
+                    </div>
+
                     <div className="space-y-1">
-                      {previewLines.map((line, idx) => (
-                        <div key={idx} className="flex justify-between text-xs font-mono py-1 border-b border-white/[0.02]">
-                          <span className="text-gray-400 max-w-[200px] truncate">{line.account}</span>
-                          <span className="text-sandstone-gold">
-                            {line.debit > 0 ? `DR: ${fmt(line.debit)}` : `CR: ${fmt(line.credit)}`}
+                      <div
+                        onClick={() => { setSelectedParty(null); setValue('party_id', ''); setShowPartyDropdown(false); }}
+                        className="p-2 hover:bg-white/5 rounded-lg text-xs font-bold text-slate-400 cursor-pointer"
+                      >
+                        None (General Cash Account)
+                      </div>
+                      {filteredParties.map(p => (
+                        <div
+                          key={p.id}
+                          onClick={() => {
+                            setSelectedParty(p);
+                            setValue('party_id', p.id);
+                            setShowPartyDropdown(false);
+                          }}
+                          className="p-2 hover:bg-[#08EBF6]/10 rounded-lg text-xs flex items-center justify-between cursor-pointer"
+                        >
+                          <span className="font-bold text-white">{p.name}</span>
+                          <span className="text-[10px] font-mono text-slate-400">
+                            PKR {Math.abs(p.current_balance || 0).toLocaleString()}
                           </span>
                         </div>
                       ))}
                     </div>
-                  </motion.div>
+                  </div>
                 )}
-              </AnimatePresence>
-            </form>
+              </div>
 
-            {/* Footer buttons */}
-            <div className="p-6 bg-[#0F1113] border-t border-white/5 flex items-center justify-between">
-              <button 
-                type="button" 
-                onClick={onClose} 
-                className="px-6 py-4 border border-white/10 text-[10px] uppercase font-bold text-gray-500 hover:text-white hover:bg-white/5 transition-all"
+              {/* Party Live Balance Badge */}
+              {partyBalanceDetails && (
+                <div className="p-3 bg-black/40 border border-white/10 rounded-xl flex items-center justify-between text-xs">
+                  <div>
+                    <span className="text-[10px] font-black uppercase text-slate-400 block">Party Net Balance</span>
+                    <span className={`font-black ${partyBalanceDetails.isReceivable ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      {partyBalanceDetails.balanceText}
+                    </span>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
+                    partyBalanceDetails.isExceeded ? 'bg-red-500/20 text-red-400 border border-red-500/40' : 'bg-emerald-500/10 text-emerald-400'
+                  }`}>
+                    {partyBalanceDetails.status}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* 3. Big Amount Input & Date Time */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Transaction Amount (PKR) *</label>
+                <input
+                  type="number"
+                  step="any"
+                  {...register('amount')}
+                  placeholder="e.g. 50000"
+                  className="w-full bg-[#030712] border border-[#08EBF6]/40 p-3 text-lg font-black font-mono text-[#08EBF6] rounded-xl outline-none focus:shadow-[0_0_15px_rgba(8,235,246,0.3)]"
+                />
+                {errors.amount && <p className="text-[9px] text-red-400 font-bold">{errors.amount.message}</p>}
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Date & Time *</label>
+                <input
+                  type="datetime-local"
+                  {...register('date')}
+                  className="w-full bg-[#030712] border border-white/15 p-3 text-xs text-white rounded-xl outline-none focus:border-[#08EBF6]"
+                />
+              </div>
+            </div>
+
+            {/* 4. Payment Mode & Conditional Cheque / Ref No */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Payment Mode</label>
+                <select
+                  {...register('payment_mode')}
+                  className="w-full bg-[#030712] border border-white/15 p-3 text-xs text-white rounded-xl outline-none focus:border-[#08EBF6]"
+                >
+                  <option value="Cash">Cash in Hand</option>
+                  <option value="Bank Transfer / Raast">Bank Transfer / Raast</option>
+                  <option value="Cheque">Cheque</option>
+                  <option value="Online">Online Gateway</option>
+                </select>
+              </div>
+
+              {watchPaymentMode !== 'Cash' && (
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Cheque / Reference No</label>
+                  <input
+                    type="text"
+                    {...register('reference_no')}
+                    placeholder="e.g. CHQ-98231 / RAAST-102938"
+                    className="w-full bg-[#030712] border border-white/15 p-3 text-xs text-white rounded-xl outline-none focus:border-[#08EBF6]"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* 5. Description Memo */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Transaction Details / Memo *</label>
+              <textarea
+                rows={2}
+                {...register('description')}
+                placeholder="e.g. Purana khata payment received, Bill #102 against 500 suits delivery"
+                className="w-full bg-[#030712] border border-white/15 p-3 text-xs text-white rounded-xl outline-none focus:border-[#08EBF6]"
+              />
+              {errors.description && <p className="text-[9px] text-red-400 font-bold">{errors.description.message}</p>}
+            </div>
+
+            {/* Submit Action */}
+            <div className="pt-3 flex gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-1/3 py-3.5 bg-white/5 border border-white/10 text-xs font-bold text-slate-300 rounded-xl hover:bg-white/10"
               >
                 Cancel
               </button>
-              <button 
-                type="button" 
-                onClick={handleSubmit(onSubmit)} 
-                disabled={isSubmitting || Number(watchAmount) <= 0} 
-                className="px-8 py-4 bg-electric-blue text-onyx text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:brightness-110 active:scale-95 transition-all disabled:opacity-30"
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-2/3 py-3.5 bg-gradient-to-r from-[#08EBF6] via-[#FFFFFF] to-[#5FA5FA] text-black font-black uppercase tracking-widest text-xs rounded-xl shadow-[0_0_25px_rgba(8,235,246,0.35)] hover:brightness-110 disabled:opacity-50 cursor-pointer"
               >
-                {isSubmitting ? "Processing..." : "Confirm Transaction"}
+                {isSubmitting ? 'Posting Ledger Entry...' : 'Post Khata Transaction'}
               </button>
             </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+          </form>
+        </motion.div>
+      </div>
+
+      <AddPartyModal
+        isOpen={isAddPartyOpen}
+        onClose={() => setIsAddPartyOpen(false)}
+        onSuccess={newParty => {
+          setPartiesList(prev => [...prev, newParty]);
+          setSelectedParty(newParty);
+          setValue('party_id', newParty.id);
+        }}
+      />
+    </>
   );
 }
