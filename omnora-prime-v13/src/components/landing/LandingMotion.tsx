@@ -16,10 +16,10 @@ import { springs, stagger, fadeUp } from '@/lib/animations'
 
 const inViewOpts = { once: true, margin: '-80px' as const }
 
-export const CHAMPAGNE = '#C5A059'
-export const CHAMPAGNE_LIGHT = '#E8D5B5'
-export const CYAN_ACCENT = '#00E5FF'
-export const OBSIDIAN = '#08090A'
+export const CHAMPAGNE = '#08EBF6'
+export const CHAMPAGNE_LIGHT = '#5FA5FA'
+export const CYAN_ACCENT = '#08EBF6'
+export const OBSIDIAN = '#030712'
 
 const easeLuxury = [0.16, 1, 0.3, 1] as const
 

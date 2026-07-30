@@ -109,28 +109,28 @@ export default function PricingClient() {
           transition={{ duration: 0.6 }}
           className="text-center mb-12 pt-8"
         >
-          <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 px-4 py-1.5 rounded-full mb-6">
-            <ShieldCheck size={14} className="text-blue-400" />
-            <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">
+          <div className="inline-flex items-center gap-2 bg-[#08EBF6]/10 border border-[#08EBF6]/30 px-4 py-1.5 rounded-full mb-6 shadow-[0_0_15px_rgba(8,235,246,0.15)]">
+            <ShieldCheck size={14} className="text-[#08EBF6]" />
+            <span className="text-[10px] font-black text-[#08EBF6] uppercase tracking-widest">
               100% Local-First Architecture · Anti-Tamper Licensing
             </span>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-tighter mb-4 italic uppercase">
-            Noxis<span className="text-blue-400">Hub</span> Pricing
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-tighter mb-4 uppercase">
+            Noxis<span className="text-[#08EBF6]">Hub</span> Pricing
           </h1>
-          <p className="text-gray-500 uppercase tracking-[0.3em] text-[9px] sm:text-[10px] font-black max-w-xl mx-auto">
+          <p className="text-[#5FA5FA] uppercase tracking-[0.3em] text-[9px] sm:text-[10px] font-black max-w-xl mx-auto">
             Industrial Scalability. Predictable Growth. Zero Cloud Lock-In.
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mt-8">
             {/* Billing Toggle */}
-            <div className="bg-[#121417] p-1.5 rounded-sm border border-white/5 flex w-fit">
+            <div className="bg-[#030712] p-1.5 rounded-md border border-[#08EBF6]/30 flex w-fit shadow-2xl">
               <button 
                 onClick={() => setBillingCycle('monthly')}
                 className={cn(
-                  "px-6 sm:px-8 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all rounded-sm",
-                  billingCycle === 'monthly' ? 'bg-blue-500 text-black shadow-2xl' : 'text-gray-500 hover:text-gray-300'
+                  "px-6 sm:px-8 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all rounded-md",
+                  billingCycle === 'monthly' ? 'bg-[#08EBF6] text-black shadow-[0_0_15px_rgba(8,235,246,0.4)]' : 'text-slate-400 hover:text-white'
                 )}
               >
                 Monthly
@@ -138,12 +138,12 @@ export default function PricingClient() {
               <button 
                 onClick={() => setBillingCycle('annual')}
                 className={cn(
-                  "px-6 sm:px-8 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all relative rounded-sm",
-                  billingCycle === 'annual' ? 'bg-blue-500 text-black shadow-2xl' : 'text-gray-500 hover:text-gray-300'
+                  "px-6 sm:px-8 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all relative rounded-md",
+                  billingCycle === 'annual' ? 'bg-[#08EBF6] text-black shadow-[0_0_15px_rgba(8,235,246,0.4)]' : 'text-slate-400 hover:text-white'
                 )}
               >
                 Annual
-                <span className="absolute -top-4 -right-4 bg-emerald-500 text-[8px] px-2 py-0.5 rounded-sm text-black font-black">SAVE 20%</span>
+                <span className="absolute -top-3.5 -right-3.5 bg-[#5FA5FA] text-[8px] px-2 py-0.5 rounded-md text-black font-black uppercase shadow-md">SAVE 20%</span>
               </button>
             </div>
 

@@ -195,13 +195,12 @@ export default function OwnerDashboard() {
         (inv: any) => inv.due_date && new Date(inv.due_date) < now
       )
 
-      const prof = (activeProfile as any) || {}
       const dashboardData: DashboardData = {
-        businessName: prof.business_name || 'My Factory',
-        industry: prof.industry_key || prof.industry_type || prof.industry || 'textile',
-        city: prof.city || '',
-        tier: prof.tier || 'lite',
-        currency: prof.currency || 'PKR',
+        businessName: (activeProfile as any)?.business_name || 'My Factory',
+        industry: (activeProfile as any)?.industry_key || (activeProfile as any)?.industry_type || (activeProfile as any)?.industry || 'textile',
+        city: (activeProfile as any)?.city || '',
+        tier: (activeProfile as any)?.tier || 'lite',
+        currency: (activeProfile as any)?.currency || 'PKR',
 
         presentToday: raw.attendanceToday || 0,
         totalKarigars: raw.totalKarigars || 0,
