@@ -55,10 +55,9 @@ export function fetchNTPTime(): Promise<number> {
   return new Promise((resolve) => {
     const timeout = setTimeout(() => {
       resolve(Date.now())
-    }, 4000)
+    }, 800)
 
     const req = https.get('https://time.cloudflare.com', (res) => {
-      // Cloudflare returns Date header in HTTP response
       const dateHeader = res.headers['date']
       clearTimeout(timeout)
 
@@ -70,7 +69,6 @@ export function fetchNTPTime(): Promise<number> {
         }
       }
 
-      // Drain response
       res.resume()
       resolve(Date.now())
     })
@@ -80,7 +78,7 @@ export function fetchNTPTime(): Promise<number> {
       resolve(Date.now())
     })
 
-    req.setTimeout(4000, () => {
+    req.setTimeout(800, () => {
       req.destroy()
       clearTimeout(timeout)
       resolve(Date.now())
@@ -125,7 +123,6 @@ function getFsBirthtimeAge(): number {
   if (!dbFilePath) return 0
   try {
     const stat = fs.statSync(dbFilePath)
-    // birthtime is when the file was first created
     const birthMs = stat.birthtimeMs || stat.ctimeMs
     return Math.max(0, Date.now() - birthMs)
   } catch {
@@ -137,16 +134,18 @@ function getFsBirthtimeAge(): number {
 
 /**
  * Must be called once on app boot (after store is ready).
- * Fetches NTP time on first run and sets monoSessionStart.
+ * Non-blocking NTP resolution to guarantee instant startup.
  */
-export async function initTrialEngine(dbPath: string): Promise<void> {
+export function initTrialEngine(dbPath: string): void {
   setDbPath(dbPath)
   monoSessionStart = Date.now()
 
-  // Source 1: NTP — only on first ever run
   if (getTrialNtpStart() === 0) {
-    const ntpTime = await fetchNTPTime()
-    setTrialNtpStart(ntpTime)
+    fetchNTPTime().then(ntpTime => {
+      setTrialNtpStart(ntpTime)
+    }).catch(() => {
+      setTrialNtpStart(Date.now())
+    })
   }
 }
 

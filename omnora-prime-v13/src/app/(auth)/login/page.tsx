@@ -57,11 +57,10 @@ export default function LoginPage() {
 
     try {
       if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
-        const { error: loginError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (loginError) console.warn('Supabase online auth bypassed, establishing local session:', loginError.message)
+        await Promise.race([
+          supabase.auth.signInWithPassword({ email, password }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Offline Timeout')), 500))
+        ])
       }
     } catch (e) {}
 
@@ -136,7 +135,9 @@ export default function LoginPage() {
           </div>
           <h1 className="text-3xl font-bold text-white tracking-tight mb-2"> NOXIS HUB</h1>
           <p className="text-gray-500 uppercase tracking-[0.2em] text-[10px] font-bold">Secure Industrial Gateway</p>
-          <p className="text-gray-500 uppercase tracking-[0.2em] text-[8px] font-bold">Please Note: Internet Is required for Authentication and at some place. </p>
+          <p className="text-[#08EBF6] uppercase tracking-[0.15em] text-[9px] font-mono mt-1 font-bold">
+            100% Offline-First Workstation Engine — Zero Internet Required
+          </p>
         </div>
 
         <div className="bg-surface p-8 border border-white/5 relative overflow-hidden group">
@@ -152,7 +153,7 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="industrial-input pl-10"
+                  className="industrial-input pl-10 text-white bg-black/50"
                   placeholder="yourname123@gmail.com"
                 />
               </div>
@@ -167,7 +168,7 @@ export default function LoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="industrial-input pl-10"
+                  className="industrial-input pl-10 text-white bg-black/50"
                   placeholder="••••••••"
                 />
               </div>
@@ -193,11 +194,10 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={isLoading}
-              className="w-full py-4 bg-electric-blue hover:bg-blue-600 text-white font-bold transition-all flex items-center justify-center group disabled:opacity-60"
+              className="w-full py-4 bg-gradient-to-r from-[#08EBF6] to-[#5FA5FA] text-black font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center group shadow-[0_0_20px_rgba(8,235,246,0.3)] hover:brightness-110 active:scale-95 cursor-pointer"
             >
               {isLoading ? (
-                <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Authenticating...</>
+                <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Establishing Session...</>
               ) : (
                 <>Establish Secure Session <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" /></>
               )}

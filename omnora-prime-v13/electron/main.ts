@@ -1604,15 +1604,16 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         startupLog(`[HWID] Verified ✓`);
       }
 
-      // ── TRIAL ENGINE INIT ────────────────────────────────────────────
+      // ── TRIAL ENGINE INIT (Non-blocking local first) ─────────────────
       const dbPath = path.join(app.getPath('userData'), 'NOXIS-local.db');
-      await initTrialEngine(dbPath);
+      initTrialEngine(dbPath);
       const trialState = getTrialState();
       startupLog(`[Trial] Status: ${trialState.status} | DaysLeft: ${trialState.daysLeft}`);
 
       // ── TRIAL HEARTBEAT (30s monotonic checkpoint) ───────────────────
       trialHeartbeatInterval = setInterval(() => {
         checkpointMonotonicElapsed();
+        
       }, 30000);
 
       process.on('uncaughtException', (error) => {

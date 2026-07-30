@@ -77,51 +77,7 @@ export function AuthProvider({
 
       const publicPage = isPublicRoute(pathname)
 
-      if (isElectron) {
-        const stored = await (window as any).electronAPI.store.getSession()
-
-        if (stored && !stored.isExpired) {
-          const { data, error } = await supabase.auth.setSession({
-            access_token: stored.accessToken,
-            refresh_token: stored.refreshToken,
-          })
-
-          if (!error && data.user) {
-            setUser(data.user)
-            setLoading(false)
-            return
-          }
-        }
-
-        if (stored?.isExpired && stored.refreshToken) {
-          const { data, error } = await supabase.auth.refreshSession({
-            refresh_token: stored.refreshToken,
-          })
-
-          if (!error && data.session) {
-            await (window as any).electronAPI.store.saveSession({
-              accessToken: data.session.access_token,
-              refreshToken: data.session.refresh_token,
-              expiresAt: data.session.expires_at || 0,
-              email: data.user?.email || '',
-              userId: data.user?.id || '',
-            })
-
-            setUser(data.user)
-            setLoading(false)
-            return
-          }
-        }
-      } else {
-        const { data } = await supabase.auth.getSession()
-        if (data.session?.user) {
-          setUser(data.session.user)
-          setLoading(false)
-          return
-        }
-      }
-
-      // Check Local Offline Master Session fallback
+      // FAST-PATH: If local master workstation session exists, resolve immediately in <1ms!
       if (typeof window !== 'undefined') {
         const hasLocal = localStorage.getItem('noxis_session_started') === 'true' || !!localStorage.getItem('noxis-business-profile')
         if (hasLocal) {
@@ -129,12 +85,46 @@ export function AuthProvider({
           const profile = profileRaw ? JSON.parse(profileRaw) : {}
           setUser({
             id: profile.id || 'local-admin-biz',
-            email: 'admin@noxishub.app',
+            email: profile.email || 'admin@noxishub.app',
             user_metadata: { name: profile.owner_name || 'Factory Admin' }
           })
           setLoading(false)
           return
         }
+      }
+
+      if (isElectron) {
+        const stored = await (window as any).electronAPI.store.getSession()
+
+        if (stored && !stored.isExpired) {
+          try {
+            const { data, error } = await Promise.race([
+              supabase.auth.setSession({
+                access_token: stored.accessToken,
+                refresh_token: stored.refreshToken,
+              }),
+              new Promise<any>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 500))
+            ])
+
+            if (!error && data?.user) {
+              setUser(data.user)
+              setLoading(false)
+              return
+            }
+          } catch {}
+        }
+      } else {
+        try {
+          const { data } = await Promise.race([
+            supabase.auth.getSession(),
+            new Promise<any>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 500))
+          ])
+          if (data?.session?.user) {
+            setUser(data.session.user)
+            setLoading(false)
+            return
+          }
+        } catch {}
       }
 
       setLoading(false)

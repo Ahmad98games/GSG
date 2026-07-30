@@ -35,7 +35,8 @@ export function createClient() {
         return Promise.reject(new TypeError('Failed to fetch (Offline)'));
       }
       const controller = new AbortController()
-      const id = setTimeout(() => controller.abort(), 8000)
+      // Strict 1.2s timeout for local-first zero-lag responsiveness
+      const id = setTimeout(() => controller.abort(), 1200)
       return fetch(url, {
         ...options,
         signal: controller.signal,
