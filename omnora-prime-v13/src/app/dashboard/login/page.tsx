@@ -145,14 +145,10 @@ export default function OwnerLogin() {
 
           <button
             onClick={handleLogin}
-            disabled={loading}
-            className={`w-full py-3.5 rounded-sm font-black text-xs uppercase tracking-widest transition-all ${
-              loading 
-                ? 'bg-[#C5A059]/50 text-black/55 cursor-not-allowed' 
-                : 'bg-[#C5A059] text-[#040608] hover:brightness-110 shadow-[0_0_20px_rgba(197,160,89,0.15)] cursor-pointer'
-            }`}
+            disabled={false}
+            className="w-full py-3.5 rounded-sm font-black text-xs uppercase tracking-widest transition-all bg-[#C5A059] text-[#040608] hover:brightness-110 shadow-[0_0_20px_rgba(197,160,89,0.15)] cursor-pointer"
           >
-            {loading ? 'Authenticating...' : 'Sign In'}
+            {loading ? 'Establishing Workstation Session...' : 'Sign In'}
           </button>
         </div>
 

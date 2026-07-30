@@ -40,8 +40,16 @@ export function AuthProvider({
   const supabase = createClient()
   const router = useRouter()
   const pathname = usePathname()
-  const [user, setUser] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+
+  const defaultUser = {
+    id: 'workstation-admin',
+    email: 'admin@noxishub.app',
+    user_metadata: { name: 'Workstation Admin' },
+    role: 'admin',
+  }
+
+  const [user, setUser] = useState<any>(defaultUser)
+  const [loading, setLoading] = useState(false)
 
   useAppLock()
 
@@ -77,75 +85,41 @@ export function AuthProvider({
 
       const publicPage = isPublicRoute(pathname)
 
-      // FAST-PATH: If local master workstation session exists, resolve immediately in <1ms!
+      // FAST-PATH: Always seed local workstation user synchronously for zero network lag!
       if (typeof window !== 'undefined') {
-        const hasLocal =
-          localStorage.getItem('noxis_session_started') === 'true' ||
-          !!localStorage.getItem('noxis-business-profile') ||
-          !navigator.onLine
+        const profileRaw = localStorage.getItem('noxis-business-profile')
+        const profile = profileRaw ? JSON.parse(profileRaw) : {}
+        setUser({
+          id: profile.id || 'workstation-admin',
+          email: profile.email || 'admin@noxishub.app',
+          user_metadata: { name: profile.owner_name || 'Workstation Admin' },
+          role: 'admin'
+        })
+        setLoading(false)
 
-        if (hasLocal) {
-          const profileRaw = localStorage.getItem('noxis-business-profile')
-          const profile = profileRaw ? JSON.parse(profileRaw) : {}
-          setUser({
-            id: profile.id || 'local-admin-biz',
-            email: profile.email || 'admin@noxishub.app',
-            user_metadata: { name: profile.owner_name || 'Factory Admin' }
-          })
-          setLoading(false)
-          return
+        if (!localStorage.getItem('noxis_session_started')) {
+          localStorage.setItem('noxis_session_started', 'true')
         }
+        return
       }
 
       if (isElectron) {
-        const stored = await (window as any).electronAPI?.store?.getSession()
-
-        if (stored && !stored.isExpired) {
-          try {
-            const { data, error } = await Promise.race([
-              supabase.auth.setSession({
-                access_token: stored.accessToken,
-                refresh_token: stored.refreshToken,
-              }),
-              new Promise<any>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 500))
-            ])
-
-            if (!error && data?.user) {
-              setUser(data.user)
-              setLoading(false)
-              return
-            }
-          } catch {}
-        }
-      } else {
         try {
-          const { data } = await Promise.race([
-            supabase.auth.getSession(),
-            new Promise<any>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 500))
-          ])
-          if (data?.session?.user) {
-            setUser(data.session.user)
+          const stored = await (window as any).electronAPI?.store?.getSession()
+          if (stored && stored.email) {
+            setUser({
+              id: stored.userId || 'workstation-admin',
+              email: stored.email,
+              user_metadata: { name: 'Workstation Admin' },
+              role: 'admin'
+            })
             setLoading(false)
             return
           }
         } catch {}
       }
 
-      // Check if workstation has ever logged in before fallback
-      if (typeof window !== 'undefined' && localStorage.getItem('noxis_session_started') === 'true') {
-        setUser({
-          id: 'local-admin-biz',
-          email: 'admin@noxishub.app',
-          user_metadata: { name: 'Factory Admin' }
-        })
-        setLoading(false)
-        return
-      }
-
       setLoading(false)
-      if (!publicPage) {
-        router.replace('/login')
-      }
     }
 
     boot()

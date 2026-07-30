@@ -151,6 +151,7 @@ export default function LoginPage() {
                 <input
                   type="email"
                   required
+                  disabled={false}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="industrial-input pl-10 text-white bg-black/50"
@@ -166,6 +167,7 @@ export default function LoginPage() {
                 <input
                   type="password"
                   required
+                  disabled={false}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="industrial-input pl-10 text-white bg-black/50"
