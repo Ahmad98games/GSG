@@ -121,6 +121,22 @@ export function AuthProvider({
         }
       }
 
+      // Check Local Offline Master Session fallback
+      if (typeof window !== 'undefined') {
+        const hasLocal = localStorage.getItem('noxis_session_started') === 'true' || !!localStorage.getItem('noxis-business-profile')
+        if (hasLocal) {
+          const profileRaw = localStorage.getItem('noxis-business-profile')
+          const profile = profileRaw ? JSON.parse(profileRaw) : {}
+          setUser({
+            id: profile.id || 'local-admin-biz',
+            email: 'admin@noxishub.app',
+            user_metadata: { name: profile.owner_name || 'Factory Admin' }
+          })
+          setLoading(false)
+          return
+        }
+      }
+
       setLoading(false)
       if (!publicPage) {
         router.replace('/login')
@@ -177,6 +193,10 @@ export function AuthProvider({
     await supabase.auth.signOut()
     if (isElectron) {
       await (window as any).electronAPI.store.clearSession()
+    }
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('noxis_session_started')
+      localStorage.removeItem('noxis-business-profile')
     }
     setUser(null)
     router.replace('/login')
