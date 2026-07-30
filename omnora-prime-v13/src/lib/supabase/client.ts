@@ -70,10 +70,18 @@ export function createClient() {
       }
     )
 
-    // Add session expiry listener
+    // Add session expiry listener (Guarded against offline network drops)
     _client.auth.onAuthStateChange(async (event: string, session: any) => {
       if (event === 'SIGNED_OUT') {
-        console.warn('[Security] Session expired or user signed out.');
+        if (typeof window !== 'undefined') {
+          const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+          const hasLocalSession = localStorage.getItem('noxis_session_started') === 'true' || !!localStorage.getItem('noxis-business-profile');
+          if (isOffline || hasLocalSession) {
+            console.log('[Security] Suppressed network-drop logout event. Keeping local workstation session active.');
+            return;
+          }
+        }
+        console.warn('[Security] Explicit user sign out.');
         resetAllStores();
         window.location.href = window.location.pathname.startsWith('/dashboard')
           ? '/dashboard/login'

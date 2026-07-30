@@ -1385,9 +1385,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             else {
                 startupLog(`[HWID] Verified ✓`);
             }
-            // ── TRIAL ENGINE INIT ────────────────────────────────────────────
+            // ── TRIAL ENGINE INIT (Non-blocking local first) ─────────────────
             const dbPath = path.join(electron_1.app.getPath('userData'), 'NOXIS-local.db');
-            await (0, trialEngine_1.initTrialEngine)(dbPath);
+            (0, trialEngine_1.initTrialEngine)(dbPath);
             const trialState = (0, trialEngine_1.getTrialState)();
             startupLog(`[Trial] Status: ${trialState.status} | DaysLeft: ${trialState.daysLeft}`);
             // ── TRIAL HEARTBEAT (30s monotonic checkpoint) ───────────────────

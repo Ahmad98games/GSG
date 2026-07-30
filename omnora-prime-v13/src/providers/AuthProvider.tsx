@@ -79,7 +79,11 @@ export function AuthProvider({
 
       // FAST-PATH: If local master workstation session exists, resolve immediately in <1ms!
       if (typeof window !== 'undefined') {
-        const hasLocal = localStorage.getItem('noxis_session_started') === 'true' || !!localStorage.getItem('noxis-business-profile')
+        const hasLocal =
+          localStorage.getItem('noxis_session_started') === 'true' ||
+          !!localStorage.getItem('noxis-business-profile') ||
+          !navigator.onLine
+
         if (hasLocal) {
           const profileRaw = localStorage.getItem('noxis-business-profile')
           const profile = profileRaw ? JSON.parse(profileRaw) : {}
@@ -94,7 +98,7 @@ export function AuthProvider({
       }
 
       if (isElectron) {
-        const stored = await (window as any).electronAPI.store.getSession()
+        const stored = await (window as any).electronAPI?.store?.getSession()
 
         if (stored && !stored.isExpired) {
           try {
@@ -125,6 +129,17 @@ export function AuthProvider({
             return
           }
         } catch {}
+      }
+
+      // Check if workstation has ever logged in before fallback
+      if (typeof window !== 'undefined' && localStorage.getItem('noxis_session_started') === 'true') {
+        setUser({
+          id: 'local-admin-biz',
+          email: 'admin@noxishub.app',
+          user_metadata: { name: 'Factory Admin' }
+        })
+        setLoading(false)
+        return
       }
 
       setLoading(false)
@@ -206,6 +221,14 @@ export function AuthProvider({
           })
         }
         if (event === 'SIGNED_OUT') {
+          if (typeof window !== 'undefined') {
+            const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+            const hasLocalSession = localStorage.getItem('noxis_session_started') === 'true' || !!localStorage.getItem('noxis-business-profile');
+            if (isOffline || hasLocalSession) {
+              console.log('[AuthProvider] Suppressed SIGNED_OUT network drop event. Keeping local workstation active.');
+              return;
+            }
+          }
           setUser(null)
         }
       }

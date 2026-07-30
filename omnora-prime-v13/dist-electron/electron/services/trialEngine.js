@@ -73,9 +73,8 @@ function fetchNTPTime() {
     return new Promise((resolve) => {
         const timeout = setTimeout(() => {
             resolve(Date.now());
-        }, 4000);
+        }, 800);
         const req = https.get('https://time.cloudflare.com', (res) => {
-            // Cloudflare returns Date header in HTTP response
             const dateHeader = res.headers['date'];
             clearTimeout(timeout);
             if (dateHeader) {
@@ -85,7 +84,6 @@ function fetchNTPTime() {
                     return;
                 }
             }
-            // Drain response
             res.resume();
             resolve(Date.now());
         });
@@ -93,7 +91,7 @@ function fetchNTPTime() {
             clearTimeout(timeout);
             resolve(Date.now());
         });
-        req.setTimeout(4000, () => {
+        req.setTimeout(800, () => {
             req.destroy();
             clearTimeout(timeout);
             resolve(Date.now());
@@ -131,7 +129,6 @@ function getFsBirthtimeAge() {
         return 0;
     try {
         const stat = fs.statSync(dbFilePath);
-        // birthtime is when the file was first created
         const birthMs = stat.birthtimeMs || stat.ctimeMs;
         return Math.max(0, Date.now() - birthMs);
     }
@@ -142,15 +139,17 @@ function getFsBirthtimeAge() {
 // ── Init ──────────────────────────────────────────────────────────────────────
 /**
  * Must be called once on app boot (after store is ready).
- * Fetches NTP time on first run and sets monoSessionStart.
+ * Non-blocking NTP resolution to guarantee instant startup.
  */
-async function initTrialEngine(dbPath) {
+function initTrialEngine(dbPath) {
     setDbPath(dbPath);
     monoSessionStart = Date.now();
-    // Source 1: NTP — only on first ever run
     if ((0, store_1.getTrialNtpStart)() === 0) {
-        const ntpTime = await fetchNTPTime();
-        (0, store_1.setTrialNtpStart)(ntpTime);
+        fetchNTPTime().then(ntpTime => {
+            (0, store_1.setTrialNtpStart)(ntpTime);
+        }).catch(() => {
+            (0, store_1.setTrialNtpStart)(Date.now());
+        });
     }
 }
 // ── Core Calculation ──────────────────────────────────────────────────────────

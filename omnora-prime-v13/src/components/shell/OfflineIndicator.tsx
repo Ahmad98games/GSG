@@ -1,57 +1,59 @@
-'use client'
-import { useState, useEffect } from 'react'
+'use client';
+
+import { useState, useEffect } from 'react';
+import { WifiOff, Wifi } from 'lucide-react';
 
 export function OfflineIndicator() {
-  const [isOnline, setIsOnline] = useState(true)
-  const [wasOffline, setWasOffline] = useState(false)
-  const [showReconnected, setShowReconnected] = useState(false)
+  const [isOnline, setIsOnline] = useState(true);
+  const [wasOffline, setWasOffline] = useState(false);
+  const [showReconnected, setShowReconnected] = useState(false);
 
   useEffect(() => {
     const updateStatus = () => {
-      const online = navigator.onLine
+      const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
       if (!online) {
-        setWasOffline(true)
-        import('@/stores/notificationStore').then(({ notify }) => {
-          notify.error('Sync Failed', 'Could not connect to cloud. Data saved locally.')
-        })
+        setWasOffline(true);
       }
       if (online && wasOffline) {
-        setShowReconnected(true)
-        setTimeout(() => {
-          setShowReconnected(false)
-        }, 3000)
+        setShowReconnected(true);
+        const timer = setTimeout(() => {
+          setShowReconnected(false);
+        }, 3000);
+        return () => clearTimeout(timer);
       }
-      setIsOnline(online)
-    }
+      setIsOnline(online);
+    };
 
-    // Check immediately
-    updateStatus()
+    updateStatus();
 
-    window.addEventListener('online', updateStatus)
-    window.addEventListener('offline', updateStatus)
+    window.addEventListener('online', updateStatus);
+    window.addEventListener('offline', updateStatus);
     return () => {
-      window.removeEventListener('online', updateStatus)
-      window.removeEventListener('offline', updateStatus)
-    }
-  }, [wasOffline])
+      window.removeEventListener('online', updateStatus);
+      window.removeEventListener('offline', updateStatus);
+    };
+  }, [wasOffline]);
 
-  // Online and never been offline — show nothing
-  if (isOnline && !showReconnected) return null
+  if (isOnline && !showReconnected) return null;
 
   return (
-    <div className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-[99] flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-semibold shadow-2xl transition-all duration-300 ${
-      showReconnected
-        ? 'bg-emerald-500 text-black'
-        : 'bg-[#1a0a00] border border-amber-500/40 text-amber-400'
-    }`}>
-      <div className={`w-2 h-2 rounded-full ${
+    <div
+      className={`fixed bottom-4 right-6 z-[100] flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-2xl transition-all duration-300 pointer-events-none ${
         showReconnected
-          ? 'bg-black'
-          : 'bg-amber-500 animate-pulse'
-      }`} />
-      {showReconnected
-        ? '✓ Back online — syncing data'
-        : 'Offline — all changes saved locally'}
+          ? 'bg-emerald-500 text-black shadow-[0_0_15px_rgba(16,185,129,0.4)]'
+          : 'bg-[#0B0F17] border border-[#08EBF6]/40 text-[#08EBF6] shadow-[0_0_15px_rgba(8,235,246,0.25)]'
+      }`}
+    >
+      <div
+        className={`w-2 h-2 rounded-full ${
+          showReconnected ? 'bg-black' : 'bg-[#08EBF6] animate-pulse'
+        }`}
+      />
+      {showReconnected ? (
+        <span className="flex items-center gap-1.5"><Wifi size={13} /> Cloud Synced</span>
+      ) : (
+        <span className="flex items-center gap-1.5"><WifiOff size={13} /> Offline Mode (Local Workstation)</span>
+      )}
     </div>
-  )
+  );
 }
