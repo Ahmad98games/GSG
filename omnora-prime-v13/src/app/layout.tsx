@@ -448,7 +448,7 @@ export default async function RootLayout({
                     name: 'What technology does Noxis Hub use?',
                     acceptedAnswer: {
                       '@type': 'Answer',
-                      text: 'Noxis Hub uses Next.js and React for the interface, Electron for Windows deployment, SQLite with SQLCipher encryption for local data storage, Supabase PostgreSQL for cloud backup and sync, React Native for the mobile companion app, and Cloudflare for hosting and remote access tunneling.',
+                      text: 'Noxis Hub is engineered with modern Web rendering frameworks, on-device encrypted database technology, direct network protocol streaming, and secure edge cloud infrastructure for backup and remote access.',
                     },
                   },
                 ],

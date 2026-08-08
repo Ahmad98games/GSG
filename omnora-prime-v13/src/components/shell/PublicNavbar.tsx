@@ -1,6 +1,6 @@
 'use client'
+import { Nav } from '@/components/Nav'
 
-// Legacy navbar replaced by global Nav component in layout.tsx
 export default function PublicNavbar() {
-  return null
+  return <Nav />
 }
