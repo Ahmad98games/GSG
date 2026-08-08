@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { execSync } from 'child_process';
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-static';
 
 /**
  * GET /api/hub/tunnel-status

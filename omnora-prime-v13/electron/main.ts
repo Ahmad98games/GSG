@@ -17,6 +17,7 @@ import { initTrialEngine, checkpointMonotonicElapsed, getTrialState } from './se
 import { verifyLicense, getActiveLicensePayload, persistLicense, revokeLicense } from './services/licenseVerifier'
 import { canUse, getActiveTierInfo, isWithinDeviceLimit, FEATURES } from './services/tierEngine'
 import { buildHubAck, normalizeRole, canWriteKhata, type MobileRole } from './bridge/rbacEngine'
+import { deliverMessageToDevice, broadcastToAllDevices, getConnectedClientsMap } from '../src/lib/mobile-bridge/server'
 // ── Store ─────────────────────────────────────────────────────────────────────
 import store, {
   saveSession,
@@ -43,6 +44,8 @@ import store, {
   setAutoStartEnabled,
   getExitFlag,
   setExitFlag,
+  getLastSeenVersion,
+  setLastSeenVersion,
 } from './store'
 
 // ─────────────────────────────────────────────
@@ -954,6 +957,98 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     ready: !!tunnelUrl,
   }));
 
+  // ── MESSAGING HANDLERS ──
+  ipcMain.handle('messaging:send', async (_, {
+    businessId, text, recipientType,
+    recipientDeviceId, recipientRole,
+    priority,
+  }) => {
+    let data: any = null;
+    try {
+      const { createAdminClient } = require('../src/lib/supabase/admin');
+      const admin = createAdminClient();
+      if (admin) {
+        const { data: inserted } = await admin
+          .from('hub_messages')
+          .insert({
+            business_id: businessId,
+            sender_type: 'hub',
+            sender_name: 'PC Hub',
+            recipient_type: recipientType,
+            recipient_device_id: recipientDeviceId,
+            recipient_role: recipientRole,
+            message_text: text,
+            priority: priority || 'normal',
+          })
+          .select()
+          .single();
+        data = inserted;
+      }
+    } catch (err: any) {
+      startupLog(`[Messaging] DB Insert Error: ${err.message}`);
+    }
+
+    const messagePayload = {
+      id: data?.id || String(Date.now()),
+      text,
+      senderName: 'PC Hub',
+      priority: priority || 'normal',
+      createdAt: data?.created_at || new Date().toISOString(),
+    };
+
+    if (recipientType === 'all') {
+      broadcastToAllDevices(messagePayload);
+    } else if (recipientType === 'device' && recipientDeviceId) {
+      deliverMessageToDevice(recipientDeviceId, messagePayload);
+    } else if (recipientType === 'role' && recipientRole) {
+      const clientsMap = getConnectedClientsMap();
+      clientsMap.forEach((device) => {
+        if (device.deviceRole === recipientRole && device.deviceId) {
+          deliverMessageToDevice(device.deviceId, messagePayload);
+        }
+      });
+    }
+
+    return { success: true, message: data };
+  });
+
+  ipcMain.handle('messaging:getHistory', async (_, { businessId, limit = 50 }) => {
+    try {
+      const { createAdminClient } = require('../src/lib/supabase/admin');
+      const admin = createAdminClient();
+      if (!admin) return [];
+      const { data } = await admin
+        .from('hub_messages')
+        .select('*')
+        .eq('business_id', businessId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      return data || [];
+    } catch {
+      return [];
+    }
+  });
+
+  ipcMain.handle('messaging:renameDevice', async (_, { deviceId, newLabel, deviceRole }) => {
+    try {
+      const { createAdminClient } = require('../src/lib/supabase/admin');
+      const admin = createAdminClient();
+      if (!admin) return null;
+      const { data } = await admin
+        .from('authorized_devices')
+        .update({
+          device_label: newLabel,
+          device_role: deviceRole,
+        })
+        .eq('device_id', deviceId)
+        .select()
+        .single();
+      return data;
+    } catch {
+      return null;
+    }
+  });
+
   ipcMain.handle('sync-tier', (_, data: { tier: string, expiresAt: string | null }) => {
     // Legacy renderer call — now validated against tierEngine, not trusted blindly
     startupLog(`[Tier] Sync request: ${data.tier}`);
@@ -1215,7 +1310,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const sharp = require('sharp');
-      const results = [];
+      const results: any[] = [];
       for (const file of files) {
         const buffer = Buffer.from(file.data, 'base64');
         const compressed = await sharp(buffer).jpeg({ quality: file.quality || 75, progressive: true }).toBuffer();
@@ -1236,7 +1331,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   ipcMain.handle('convert-heic', async (_, files: { data: string, quality?: number, name: string }[]) => {
     try {
       const heicConvert = require('heic-convert');
-      const results = [];
+      const results: any[] = [];
       for (const file of files) {
         const buffer = Buffer.from(file.data, 'base64');
         const output = await heicConvert({ buffer, format: 'JPEG', quality: (file.quality || 90) / 100 });
@@ -1413,7 +1508,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         loadRetries++;
         startupLog(`[Electron] Retrying load (${loadRetries}/5)...`);
         setTimeout(() => {
-          mainWindow?.loadURL(`http://127.0.0.1:${PORT}`)
+          mainWindow?.loadURL(`http://127.0.0.1:${PORT}/dashboard`)
             .catch(e => startupLog(`[Electron] Retry error: ${e.message}`));
         }, 2000);
       } else {
@@ -1518,14 +1613,15 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     mainWindow.on('unmaximize', () => mainWindow?.webContents.send('maximize-changed', false));
     mainWindow.on('closed',     () => { mainWindow = null; });
 
-    const url = `http://127.0.0.1:${PORT}`;
+    const serverUrl = `http://127.0.0.1:${PORT}`;
+    const targetUrl = `http://127.0.0.1:${PORT}/dashboard`;
 
     try {
       startupLog('[Electron] Waiting for Next.js server...');
-      await waitForServer(url, 90000, 300);
-      startupLog('[Electron] Server ready — loading main window');
+      await waitForServer(serverUrl, 90000, 300);
+      startupLog('[Electron] Server ready — loading software main window');
 
-      await mainWindow.loadURL(url);
+      await mainWindow.loadURL(targetUrl);
 
       if (isDev) {
         mainWindow.webContents.openDevTools();
@@ -1749,9 +1845,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       if (!fs.existsSync(serverPath)) {
         startupLog('[FATAL] Neither server-with-bridge.js nor server.js found')
         destroySplash();
+        const msg = app.isPackaged
+          ? `Server not found at:\n${serverPath}\n\nPlease reinstall Noxis Hub.`
+          : `Standalone server bundle not assembled yet.\n\nPlease run:\nnode scripts/build-electron.mjs\nor npm run electron:build`;
         dialog.showErrorBox(
-          'Installation Error',
-          `Server not found at:\n${serverPath}\n\nPlease reinstall Noxis.`
+          app.isPackaged ? 'Installation Error' : 'Development Build Required',
+          msg
         )
         app.quit()
         return
@@ -1946,6 +2045,21 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     // Run these AFTER window is shown, not before.
     // This prevents blocking the UI thread at startup.
     if (mainWindow) {
+      const storedVersion = getLastSeenVersion()
+      const currentVersion = app.getVersion()
+
+      if (storedVersion !== currentVersion) {
+        mainWindow.webContents.on('did-finish-load', () => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('app:new-version', {
+              previous: storedVersion,
+              current: currentVersion,
+            })
+            setLastSeenVersion(currentVersion)
+          }
+        })
+      }
+
       setTimeout(() => {
         if (mainWindow && !mainWindow.isDestroyed()) {
           setupAutoUpdater(mainWindow);

@@ -133,7 +133,7 @@ export default function AboutPage() {
               <SchematicNode 
                 title="Android Edge Nodes" 
                 subtitle="Weaver Mobile Apps" 
-                details="Expo SDK 51 / React Native" 
+                details="Noxis Mobile Companion" 
                 desc="Supervisors log piece-rate operations directly on the floor. Runs without cellular networks or outside links."
                 icon={Smartphone}
                 color="border-[#00E5FF]/20 text-[#00E5FF] bg-[#00E5FF]/5"
@@ -150,7 +150,7 @@ export default function AboutPage() {
               <SchematicNode 
                 title="PC Master Node" 
                 subtitle="Office Workstation Server" 
-                details="Next.js 16 / Electron Engine" 
+                details="Noxis Core Runtime Engine" 
                 desc="Orchestrates operations, computes piece-rate payouts, displays local Sentinel CCTV overlays, and issues local alerts."
                 icon={Cpu}
                 color="border-[#C5A059]/20 text-sandstone-gold bg-[#C5A059]/5"
@@ -173,9 +173,9 @@ export default function AboutPage() {
                   <Database size={18} />
                 </div>
                 <div className="space-y-1">
-                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">Isolated SQLite Node (100% Local DB)</h4>
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">Isolated Local Node (100% Local DB)</h4>
                   <p className="text-[11px] text-gray-400 leading-relaxed">
-                    Primary operational transactions (ledger sheets, wages, worker attendance, and local CCTV parameters) are committed directly to your hard drive partition at <code className="text-gray-300 font-mono text-[10px]">Noxis-Local.db</code>. Securely locked.
+                    Primary operational transactions (ledger sheets, wages, worker attendance, and local CCTV parameters) are committed directly to your hard drive partition. Securely locked.
                   </p>
                 </div>
               </div>
@@ -185,7 +185,7 @@ export default function AboutPage() {
                   <Database size={18} />
                 </div>
                 <div className="space-y-1">
-                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">Encrypted Supabase Syncer (Cloud Backup)</h4>
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">Encrypted Cloud Syncer (Cloud Backup)</h4>
                   <p className="text-[11px] text-gray-400 leading-relaxed">
                     Provides remote dashboard access, worldwide reporting, and automatic offsite backups. Syncing operates in the background and can be deactivated with a single toggle in settings to sandbox the workstation.
                   </p>
@@ -289,12 +289,12 @@ export default function AboutPage() {
                 </tr>
               </thead>
               <tbody>
-                <SpecRow param="Local Storage Database" detail="SQLite sandboxed, 4MB starter schema, index-optimized" tech="Drizzle ORM / node-sqlite3" />
+                <SpecRow param="Local Storage Database" detail="Local database sandboxed, starter schema, index-optimized" tech="Internal database engine" />
                 <SpecRow param="Mesh Communication" detail="WebSockets over localized LAN, TCP protocol pipes" tech="Node.js ws / TCP sockets" />
                 <SpecRow param="Intrusion Vision Frame Rate" detail="0.12ms inference, smart polygons, intrusion alerts" tech="OpenCV / TensorFlow.js WASM" />
-                <SpecRow param="Desktop Container Wrapper" detail="Hardware hooks, isolated runtime, local SQLite locks" tech="Electron / Next.js app wrapper" />
-                <SpecRow param="Urdu Localization Engine" detail="Nastaliq web font fallback rendering, localized JSON" tech="Next.js ClientI18nProvider" />
-                <SpecRow param="Remote Cloud Synchronizer" detail="AES-256 transit SSL, user-triggered background syncs" tech="Supabase clients / JS Auth" />
+                <SpecRow param="Desktop Container Wrapper" detail="Hardware hooks, isolated runtime, local database locks" tech="Noxis Native Runtime wrapper" />
+                <SpecRow param="Urdu Localization Engine" detail="Nastaliq web font fallback rendering, localized JSON" tech="Noxis ClientI18nProvider" />
+                <SpecRow param="Remote Cloud Synchronizer" detail="AES-256 transit SSL, user-triggered background syncs" tech="Noxis Cloud Sync engine" />
               </tbody>
             </table>
           </div>
@@ -310,15 +310,15 @@ export default function AboutPage() {
           <div className="space-y-4">
             <FaqItem 
               question="Does Noxis require an internet connection to function?"
-              answer="No. Noxis is built on a strict Local-First Architecture. Your piece-rate calculations, worker ledgers, inventory records, and CCTV surveillance alerts run completely on your local workstation's hardware. An internet connection is only required if you choose to sync your database to the Supabase cloud for remote reporting or offsite backups."
+              answer="No. Noxis is built on a strict Local-First Architecture. Your piece-rate calculations, worker ledgers, inventory records, and CCTV surveillance alerts run completely on your local workstation's hardware. An internet connection is only required if you choose to sync your database to our enterprise cloud backend for remote reporting or offsite backups."
             />
             <FaqItem 
               question="How do supervisors connect their mobile phones to the master workstation offline?"
               answer="The master workstation runs a local WebSocket server within your office. Supervisors connect their Android phones to the factory's local Wi-Fi router. Even without internet, the mobile apps communicate directly with the local workstation to log attendance, yardage, and inventory scans."
             />
             <FaqItem 
-              question="What is the difference between the local SQLite database and Supabase?"
-              answer="SQLite is your primary local database located on your office PC. It is fast, isolated, and safe. Supabase is a secure cloud database. When you activate cloud synchronization, Noxis encrypts and pushes changes from your local SQLite database to Supabase, enabling remote viewing of dashboards from anywhere in the world."
+              question="What is the difference between the local database and cloud backup?"
+              answer="Your local database is located on your office PC. It is fast, isolated, and safe. Our cloud backend is a secure cloud database. When you activate cloud synchronization, Noxis encrypts and pushes changes from your local database to cloud storage, enabling remote viewing of dashboards from anywhere in the world."
             />
             <FaqItem 
               question="How does Sentinel AI CCTV protect my factory floor data privacy?"

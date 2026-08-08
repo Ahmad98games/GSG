@@ -54,6 +54,7 @@ const isStaticExport =
   process.env.CLOUDFLARE_DEPLOY === 'true';
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
   output: isStaticExport ? 'export' : 'standalone',
   images: {
     unoptimized: true,
@@ -153,6 +154,7 @@ const nextConfig: NextConfig = {
       {
         source: '/:path*',
         headers: [
+          { key: 'X-Powered-By', value: 'Noxis Engine' },
           { key: 'X-DNS-Prefetch-Control', value: 'off' },
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },

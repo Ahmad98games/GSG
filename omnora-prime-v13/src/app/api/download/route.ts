@@ -1,5 +1,5 @@
 // app/api/download/route.ts
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-static';
 
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";

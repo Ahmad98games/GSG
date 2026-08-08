@@ -179,11 +179,15 @@ export default function OwnerDashboard() {
       }
 
       // Single consolidated server API fetch
-      const res = await fetch(`/api/dashboard/kpis?biz=${biz}`)
-      if (!res.ok) {
-        throw new Error(`Server returned status ${res.status}`)
+      let raw: any = {}
+      try {
+        const res = await fetch(`/api/dashboard/kpis?biz=${biz}`)
+        if (res.ok) {
+          raw = await res.json()
+        }
+      } catch (e) {
+        console.warn('Dashboard KPI fetch error, using local state defaults:', e)
       }
-      const raw = await res.json()
 
       const invoices = raw.invoicesMonth || []
       const receivablesData = raw.receivables || []

@@ -173,6 +173,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('ipc:power-cut-detected', listener);
     return () => ipcRenderer.removeListener('ipc:power-cut-detected', listener);
   },
+
+  // ── Mobile Hub Messaging API ────────────────────────────────────────────────
+  messaging: {
+    send: (payload: any) =>
+      ipcRenderer.invoke('messaging:send', payload),
+    getHistory: (payload: any) =>
+      ipcRenderer.invoke('messaging:getHistory', payload),
+    renameDevice: (payload: any) =>
+      ipcRenderer.invoke('messaging:renameDevice', payload),
+    onNewMessage: (cb: (msg: any) => void) =>
+      ipcRenderer.on('messaging:new-message', (_, msg) => cb(msg)),
+    removeMessageListener: () =>
+      ipcRenderer.removeAllListeners('messaging:new-message'),
+  },
 });
 
 contextBridge.exposeInMainWorld('electronWindow', {

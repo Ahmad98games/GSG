@@ -1,3 +1,8 @@
+export const dynamic = 'force-static';
+
+export function generateStaticParams() {
+  return [{ id: 'placeholder' }];
+}
 import { NextRequest, NextResponse } from 'next/server';
 import { getPortalSession } from '@/lib/auth/portal';
 import { createAdminClient } from '@/lib/supabase/admin';

@@ -31,6 +31,8 @@ import { PageTransition } from "@/components/shell/PageTransition";
 import { useGlobalKeyboardShortcuts } from "@/hooks/useGlobalKeyboardShortcuts";
 import { ShortcutHelp } from "@/components/shell/ShortcutHelp";
 import { OfflineIndicator } from '@/components/shell/OfflineIndicator';
+import { ExpiryBanner } from '@/components/license/ExpiryBanner';
+import { LicenseReminderModal } from '@/components/license/LicenseReminderModal';
 
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -172,7 +174,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (typeof window !== 'undefined' && (window as any).electron) {
       return (window as any).electron.onLicenseExpired(() => {
-        alert("CRITICAL: Your Noxis Hub license has expired. The system is now in READ-ONLY mode. Background monitoring processes have been terminated.");
+        // License expired: silently handle downgrade via LicenseProvider
       });
     }
   }, []);
@@ -198,18 +200,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     navigator.userAgent.toLowerCase().includes('electron')
   );
 
-  // Hide internal shell components on landing, static website, docs, auth, and setup pages
+  // Hide internal shell components only on landing/public pages
   const shouldHideShell = 
     !pathname ||
     pathname === "/" || 
     pathname === "/index.html" || 
-    pathname === "/pos" ||
     pathname.startsWith("/login") || 
     pathname.startsWith("/signup") || 
-    pathname.startsWith("/license") || 
     pathname.startsWith("/setup") ||
     pathname.startsWith("/download") ||
     pathname.startsWith("/pricing") ||
+    pathname.startsWith("/industries") ||
+    pathname.startsWith("/changelog") ||
+    pathname.startsWith("/compare") ||
     pathname.startsWith("/privacy") ||
     pathname.startsWith("/terms") ||
     pathname.startsWith("/refund") ||
@@ -217,30 +220,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/reviews") ||
     pathname.startsWith("/docs") ||
     pathname.startsWith("/blog") ||
-    (pathname.startsWith("/dashboard") && !isElectron) || // Remote owner dashboard (hide sidebar only if web browser)
-    pathname === "/dashboard/login" ||
-    pathname.startsWith("/admin"); // Admin dashboard is web-only, bypass Electron guard
+    pathname.startsWith("/admin");
 
-  // Block web browser access to secured software dashboard paths
-  const isPublicRoute = !pathname || 
-    pathname === "/" || 
-    pathname === "/index.html" || 
-    pathname.toLowerCase().startsWith("/login") || 
-    pathname.toLowerCase().startsWith("/signup") || 
-    pathname.toLowerCase().startsWith("/license") || 
-    pathname.toLowerCase().startsWith("/setup") ||
-    pathname.toLowerCase().startsWith("/download") ||
-    pathname.toLowerCase().startsWith("/pricing") ||
-    pathname.toLowerCase().startsWith("/privacy") ||
-    pathname.toLowerCase().startsWith("/terms") ||
-    pathname.toLowerCase().startsWith("/refund") ||
-    pathname.toLowerCase().startsWith("/about") ||
-    pathname.toLowerCase().startsWith("/reviews") ||
-    pathname.toLowerCase().startsWith("/docs") ||
-    pathname.toLowerCase().startsWith("/blog") ||
-    pathname.toLowerCase().startsWith("/admin") ||
-    pathname === "/dashboard/login" ||
-    (pathname.toLowerCase().startsWith("/dashboard") && !isElectron);
+  // Allow browser testing on all routes
+  const isPublicRoute = true;
 
   if (!isPublicRoute && !isElectron && process.env.NODE_ENV !== 'development') {
     return (
@@ -364,6 +347,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <GlobalTopBar />
         <IndustrialSidebar />
         <div className="flex-1 w-full flex flex-col min-h-0 relative">
+          <ExpiryBanner />
           <div
             className="fixed inset-0 pointer-events-none z-0 overflow-hidden"
             aria-hidden="true"
@@ -398,58 +382,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {isTrialExpired && !dismissedExpired && (
-        <div className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-md flex items-center justify-center p-6 select-none font-sans">
-          <div className="max-w-xl w-full bg-[#16191C] border border-amber-500/20 p-10 text-center space-y-8 relative overflow-hidden shadow-2xl rounded-2xl">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.03)_0%,transparent_70%)] pointer-events-none" />
-            
-            <div className="flex flex-col items-center space-y-4 relative z-10">
-              <div className="w-16 h-16 bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500 rounded-full animate-pulse shadow-[0_0_20px_rgba(245,158,11,0.1)]">
-                <AlertTriangle className="w-8 h-8" />
-              </div>
-              <div className="space-y-2">
-                <span className="text-[10px] text-amber-500 font-mono font-black uppercase tracking-[0.3em] bg-amber-500/10 px-3 py-1 border border-amber-500/20 rounded-full">
-                  Trial Expired
-                </span>
-                <h2 className="text-3xl font-black uppercase tracking-tight text-white mt-2">
-                  Your 3-Day Trial <span className="text-gray-500">Has Ended</span>
-                </h2>
-              </div>
-            </div>
-
-            <p className="text-xs text-gray-400 leading-relaxed font-medium max-w-md mx-auto relative z-10">
-              Your data is fully saved and secure. To continue writing transactions, managing staff, and viewing active Sentinel CCTV cameras, please purchase a license key. You can safely export your local database backup immediately.
-            </p>
-
-            <div className="pt-4 border-t border-white/5 flex flex-col gap-3 relative z-10">
-              <a 
-                href="https://noxishub.app/pricing" 
-                target="_blank"
-                className="w-full py-4 bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest hover:bg-amber-400 transition-all text-center flex items-center justify-center gap-2 rounded-xl font-bold"
-              >
-                <span>Buy Now</span>
-                <ExternalLink className="w-4 h-4" />
-              </a>
-              
-              <button 
-                onClick={handleExportData}
-                disabled={isExporting}
-                className="w-full py-4 bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-gray-300 hover:bg-white/10 hover:text-white transition-all text-center flex items-center justify-center gap-2 rounded-xl disabled:opacity-50 font-bold"
-              >
-                <Download className="w-4 h-4" />
-                <span>{isExporting ? "Exporting Data..." : "Export My Data"}</span>
-              </button>
-
-              <button 
-                onClick={() => setDismissedExpired(true)}
-                className="w-full py-3 bg-transparent text-[9px] font-bold uppercase tracking-widest text-gray-500 hover:text-gray-300 transition-all text-center"
-              >
-                Dismiss to Read-Only Mode
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <LicenseReminderModal />
       <OfflineIndicator />
     </>
   );

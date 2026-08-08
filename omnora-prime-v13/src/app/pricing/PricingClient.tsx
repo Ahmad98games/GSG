@@ -193,7 +193,7 @@ export default function PricingClient() {
                 Try Every Feature Unlocked. <span className="text-blue-400">Zero Risk. Zero Lock-Out.</span>
               </h2>
               <p className="text-xs text-slate-400 leading-relaxed max-w-2xl">
-                Noxis Hub initialises with an anti-tamper 14-day trial powered by 3 independent time sources (NTP, Monotonic process runtime, and SQLite DB birthtime). When your trial finishes, your system automatically transitions to <strong className="text-white">Free Forever</strong> mode — POS checkout stays 100% unlocked with 200 SKU & 50 Party caps. <strong className="text-emerald-400">Zero data deletion, guaranteed.</strong>
+                Noxis Hub initialises with an anti-tamper 14-day trial powered by 3 independent time sources (NTP, Monotonic process runtime, and local database birthtime). When your trial finishes, your system automatically transitions to <strong className="text-white">Free Forever</strong> mode — POS checkout stays 100% unlocked with 200 SKU & 50 Party caps. <strong className="text-emerald-400">Zero data deletion, guaranteed.</strong>
               </p>
             </div>
             <div className="lg:col-span-4 flex flex-col sm:flex-row lg:flex-col gap-3 justify-center">
@@ -285,7 +285,7 @@ export default function PricingClient() {
               { label: "15 Mobile Companion Pairings", included: true },
               { label: "Automatic Cloud Mirroring", included: true },
               { label: "Karigar Piece-Rate Payroll", included: true, highlight: true },
-              { label: "CCTV ONVIF AI Alerts Feed", included: true, highlight: true },
+              { label: "CCTV universal camera compatibility AI Alerts Feed", included: true, highlight: true },
               { label: "WhatsApp Automated Receipts", included: true },
             ]}
             cta="Activate Tier"

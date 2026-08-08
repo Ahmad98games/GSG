@@ -1,7 +1,7 @@
 // src/app/api/staff/invite/route.ts
 // API endpoint to invite staff members
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-static';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';

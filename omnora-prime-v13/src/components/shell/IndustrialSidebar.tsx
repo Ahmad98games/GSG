@@ -47,6 +47,7 @@ import {
   AlertOctagon,
   Video,
   MessageSquare,
+  MessageCircle,
   Smartphone,
   Brain
 } from "lucide-react";
@@ -54,6 +55,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { usePersona } from "@/hooks/usePersona";
 import { useStaff } from "@/hooks/useStaff";
+import { useTranslation } from "@/hooks/useTranslation";
 import { useIndustryConfig } from '@/hooks/useIndustryConfig';
 import { hasModulePermission } from "@/lib/auth/permissions";
 import { cn } from "@/lib/utils";
@@ -97,6 +99,7 @@ export default React.memo(function IndustrialSidebar() {
   const queryClient = useQueryClient();
   const toast = useToast();
   const { isCollapsed, toggle } = useSidebarState();
+  const { t } = useTranslation();
   const { hasModule, term, workerTermPlural, isLoading: isPersonaLoading, t: personaT, businessId } = usePersona();
   const { profile } = useBusinessProfile();
   const { role, isLoading: isRoleLoading } = useStaff(businessId);
@@ -178,7 +181,7 @@ export default React.memo(function IndustrialSidebar() {
         always: true,
       },
       {
-        label: nav.ledger,
+        label: 'Khata Ledger',
         href: '/khata',
         icon: BookOpen,
         always: true,
@@ -258,7 +261,7 @@ export default React.memo(function IndustrialSidebar() {
     {
       label: 'Messaging',
       href: '/messaging',
-      icon: MessageSquare,
+      icon: MessageCircle,
       always: true,
     },
     {
@@ -422,55 +425,47 @@ export default React.memo(function IndustrialSidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto custom-scrollbar py-4 px-2">
-          {isLoading ? (
-            <div className="space-y-4 px-2">
-              {[1, 2, 3, 4, 5].map(i => (
-                <div key={i} className="h-10 bg-noxis-overlay animate-pulse rounded-sm" />
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-6">
-              <div>
-                {!isCollapsed && (
-                  <div className="px-3 mb-2 text-[9px] font-black uppercase tracking-widest text-slate-500">
-                    Core ERP
-                  </div>
-                )}
-                <div className="space-y-1">
-                  {visibleCoreItems.map((item) => (
-                    <SidebarItem 
-                      key={item.href}
-                      href={item.href}
-                      icon={item.icon}
-                      label={item.label}
-                      isCollapsed={isCollapsed}
-                      isActive={pathname.startsWith(item.href)}
-                    />
-                  ))}
+          <div className="space-y-6">
+            <div>
+              {!isCollapsed && (
+                <div className="px-3 mb-2 text-[9px] font-black uppercase tracking-widest text-slate-500">
+                  Core ERP
                 </div>
+              )}
+              <div className="space-y-1">
+                {visibleCoreItems.map((item) => (
+                  <SidebarItem 
+                    key={item.href}
+                    href={item.href}
+                    icon={item.icon}
+                    label={item.label}
+                    isCollapsed={isCollapsed}
+                    isActive={pathname.startsWith(item.href)}
+                  />
+                ))}
               </div>
+            </div>
 
-              <div>
-                {!isCollapsed && (
-                  <div className="px-3 mb-2 text-[9px] font-black uppercase tracking-widest text-slate-500">
-                    Utilities & Setup
-                  </div>
-                )}
-                <div className="space-y-1">
-                  {visibleUtilityItems.map((item) => (
-                    <SidebarItem 
-                      key={item.href}
-                      href={item.href}
-                      icon={item.icon}
-                      label={item.label}
-                      isCollapsed={isCollapsed}
-                      isActive={pathname.startsWith(item.href)}
-                    />
-                  ))}
+            <div>
+              {!isCollapsed && (
+                <div className="px-3 mb-2 text-[9px] font-black uppercase tracking-widest text-slate-500">
+                  Utilities & Setup
                 </div>
+              )}
+              <div className="space-y-1">
+                {visibleUtilityItems.map((item) => (
+                  <SidebarItem 
+                    key={item.href}
+                    href={item.href}
+                    icon={item.icon}
+                    label={item.label}
+                    isCollapsed={isCollapsed}
+                    isActive={pathname.startsWith(item.href)}
+                  />
+                ))}
               </div>
             </div>
-          )}
+          </div>
         </nav>
 
         <div className="p-4 border-t border-noxis-border bg-noxis-overlay/10">
@@ -499,14 +494,13 @@ export default React.memo(function IndustrialSidebar() {
             onClick={async () => {
               try {
                 resetAllStores();
-                await supabase.auth.signOut();
-                localStorage.removeItem('noxis-business-profile');
-                localStorage.removeItem('noxis-bridge-status');
-                localStorage.removeItem('NOXIS-profile-cache');
+                await supabase.auth.signOut().catch(() => {});
+                localStorage.clear();
+                document.cookie = 'noxis_license_active=; path=/; max-age=0; SameSite=Strict';
                 queryClient.clear();
-                router.push('/license');
+                window.location.href = '/login';
               } catch (err) {
-                toast.error('Could not sign out. Please try again.');
+                window.location.href = '/login';
               }
             }}
             className={cn(
@@ -515,7 +509,7 @@ export default React.memo(function IndustrialSidebar() {
             )}
           >
             <LogOut className="w-4 h-4 flex-shrink-0 text-noxis-text-muted group-hover:text-noxis-text" />
-            {!isCollapsed && <span className="ml-3 text-[10px] font-black uppercase tracking-widest">Log Out</span>}
+            {!isCollapsed && <span className="ml-3 text-[10px] font-black uppercase tracking-widest">{t('Log Out')}</span>}
           </button>
         </div>
 
@@ -528,7 +522,7 @@ export default React.memo(function IndustrialSidebar() {
             {isCollapsed ? <ChevronRight size={16} /> : (
               <div className="flex items-center space-x-2 text-[10px] font-black uppercase tracking-widest">
                 <ChevronRight size={14} className="rotate-180" />
-                <span>Collapse Menu</span>
+                <span>{t('Collapse Menu')}</span>
               </div>
             )}
           </button>
@@ -551,11 +545,12 @@ const SidebarItem = React.memo(function SidebarItem({ href, icon: Icon, label: r
   isActive?: boolean;
   badge?: string;
 }) {
-  const label = rawLabel ? (rawLabel.charAt(0).toUpperCase() + rawLabel.slice(1)) : '';
+  const { t, isUrdu } = useTranslation();
+  const label = t(rawLabel) || rawLabel || '';
   const content = (
     <Link
       href={href}
-      prefetch={false}
+      prefetch={true}
       className={cn(
         "flex items-center py-2.5 my-1.5 rounded-sm px-3 transition-all duration-200 group relative border-l-[3px]",
         isActive 

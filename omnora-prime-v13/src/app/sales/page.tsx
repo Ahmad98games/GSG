@@ -11,7 +11,7 @@ import {
   ChevronRight, X, CheckCircle2, DollarSign,
   TrendingUp, Activity, Inbox, ArrowUpRight,
   MessageCircle, BarChart3, Briefcase, Plus,
-  Sparkles, ShieldAlert, Award
+  Sparkles, ShieldAlert, Award, UserCheck
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -116,6 +116,26 @@ export default function SalesPage() {
     setShowAddLead(false);
     setNewLead({ name: "", company: "", phone: "", value: "", stage: "inquiry", notes: "" });
     toast.success("Lead registered in sales pipeline ✓");
+  };
+
+  const convertLeadToParty = async (lead: Lead) => {
+    try {
+      const { error } = await supabase
+        .from('parties')
+        .insert({
+          business_id: businessId,
+          name: lead.name,
+          party_type: 'customer',
+          phone: lead.phone,
+          notes: `Converted from Sales Pipeline lead (Value: ${lead.value})`
+        });
+
+      if (error) throw error;
+      toast.success(`${lead.name} converted into active Khata Customer! ✓`);
+      refetchCustomers();
+    } catch (err: any) {
+      toast.error(`Conversion failed: ${err.message}`);
+    }
   };
 
   const handleAddCustomer = async (e: React.FormEvent) => {
@@ -291,7 +311,18 @@ export default function SalesPage() {
                         )}
 
                         <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                          <span className="text-[8px] font-mono text-gray-650">Added {new Date(lead.created_at).toLocaleDateString()}</span>
+                          {lead.stage === 'won' ? (
+                            <button
+                              onClick={() => convertLeadToParty(lead)}
+                              className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[8px] font-black uppercase tracking-wider rounded-sm flex items-center gap-1 hover:brightness-110"
+                            >
+                              <UserCheck size={10} />
+                              <span>Convert to Party</span>
+                            </button>
+                          ) : (
+                            <span className="text-[8px] font-mono text-gray-650">Added {new Date(lead.created_at).toLocaleDateString()}</span>
+                          )}
+
                           <select
                             value={lead.stage}
                             onChange={e => updateLeadStage(lead.id, e.target.value as Lead['stage'])}

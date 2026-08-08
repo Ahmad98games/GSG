@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm';
 import { disconnectDevice } from '@/lib/mobile-bridge/server';
 import { verifyUserSession } from '@/lib/security/authHelpers';
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-static';
 
 /**
  * POST /api/hub/devices/revoke

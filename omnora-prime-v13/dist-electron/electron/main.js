@@ -55,6 +55,7 @@ const trialEngine_1 = require("./services/trialEngine");
 const licenseVerifier_1 = require("./services/licenseVerifier");
 const tierEngine_1 = require("./services/tierEngine");
 const rbacEngine_1 = require("./bridge/rbacEngine");
+const server_1 = require("../src/lib/mobile-bridge/server");
 // ── Store ─────────────────────────────────────────────────────────────────────
 const store_1 = require("./store");
 // ─────────────────────────────────────────────
@@ -829,6 +830,95 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         url: tunnelUrl,
         ready: !!tunnelUrl,
     }));
+    // ── MESSAGING HANDLERS ──
+    electron_1.ipcMain.handle('messaging:send', async (_, { businessId, text, recipientType, recipientDeviceId, recipientRole, priority, }) => {
+        let data = null;
+        try {
+            const { createAdminClient } = require('../src/lib/supabase/admin');
+            const admin = createAdminClient();
+            if (admin) {
+                const { data: inserted } = await admin
+                    .from('hub_messages')
+                    .insert({
+                    business_id: businessId,
+                    sender_type: 'hub',
+                    sender_name: 'PC Hub',
+                    recipient_type: recipientType,
+                    recipient_device_id: recipientDeviceId,
+                    recipient_role: recipientRole,
+                    message_text: text,
+                    priority: priority || 'normal',
+                })
+                    .select()
+                    .single();
+                data = inserted;
+            }
+        }
+        catch (err) {
+            startupLog(`[Messaging] DB Insert Error: ${err.message}`);
+        }
+        const messagePayload = {
+            id: data?.id || String(Date.now()),
+            text,
+            senderName: 'PC Hub',
+            priority: priority || 'normal',
+            createdAt: data?.created_at || new Date().toISOString(),
+        };
+        if (recipientType === 'all') {
+            (0, server_1.broadcastToAllDevices)(messagePayload);
+        }
+        else if (recipientType === 'device' && recipientDeviceId) {
+            (0, server_1.deliverMessageToDevice)(recipientDeviceId, messagePayload);
+        }
+        else if (recipientType === 'role' && recipientRole) {
+            const clientsMap = (0, server_1.getConnectedClientsMap)();
+            clientsMap.forEach((device) => {
+                if (device.deviceRole === recipientRole && device.deviceId) {
+                    (0, server_1.deliverMessageToDevice)(device.deviceId, messagePayload);
+                }
+            });
+        }
+        return { success: true, message: data };
+    });
+    electron_1.ipcMain.handle('messaging:getHistory', async (_, { businessId, limit = 50 }) => {
+        try {
+            const { createAdminClient } = require('../src/lib/supabase/admin');
+            const admin = createAdminClient();
+            if (!admin)
+                return [];
+            const { data } = await admin
+                .from('hub_messages')
+                .select('*')
+                .eq('business_id', businessId)
+                .order('created_at', { ascending: false })
+                .limit(limit);
+            return data || [];
+        }
+        catch {
+            return [];
+        }
+    });
+    electron_1.ipcMain.handle('messaging:renameDevice', async (_, { deviceId, newLabel, deviceRole }) => {
+        try {
+            const { createAdminClient } = require('../src/lib/supabase/admin');
+            const admin = createAdminClient();
+            if (!admin)
+                return null;
+            const { data } = await admin
+                .from('authorized_devices')
+                .update({
+                device_label: newLabel,
+                device_role: deviceRole,
+            })
+                .eq('device_id', deviceId)
+                .select()
+                .single();
+            return data;
+        }
+        catch {
+            return null;
+        }
+    });
     electron_1.ipcMain.handle('sync-tier', (_, data) => {
         // Legacy renderer call — now validated against tierEngine, not trusted blindly
         startupLog(`[Tier] Sync request: ${data.tier}`);
@@ -1226,7 +1316,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 loadRetries++;
                 startupLog(`[Electron] Retrying load (${loadRetries}/5)...`);
                 setTimeout(() => {
-                    mainWindow?.loadURL(`http://127.0.0.1:${PORT}`)
+                    mainWindow?.loadURL(`http://127.0.0.1:${PORT}/dashboard`)
                         .catch(e => startupLog(`[Electron] Retry error: ${e.message}`));
                 }, 2000);
             }
@@ -1314,12 +1404,13 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         mainWindow.on('maximize', () => mainWindow?.webContents.send('maximize-changed', true));
         mainWindow.on('unmaximize', () => mainWindow?.webContents.send('maximize-changed', false));
         mainWindow.on('closed', () => { mainWindow = null; });
-        const url = `http://127.0.0.1:${PORT}`;
+        const serverUrl = `http://127.0.0.1:${PORT}`;
+        const targetUrl = `http://127.0.0.1:${PORT}/dashboard`;
         try {
             startupLog('[Electron] Waiting for Next.js server...');
-            await waitForServer(url, 90000, 300);
-            startupLog('[Electron] Server ready — loading main window');
-            await mainWindow.loadURL(url);
+            await waitForServer(serverUrl, 90000, 300);
+            startupLog('[Electron] Server ready — loading software main window');
+            await mainWindow.loadURL(targetUrl);
             if (isDev) {
                 mainWindow.webContents.openDevTools();
             }
@@ -1520,7 +1611,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             if (!fs.existsSync(serverPath)) {
                 startupLog('[FATAL] Neither server-with-bridge.js nor server.js found');
                 destroySplash();
-                electron_1.dialog.showErrorBox('Installation Error', `Server not found at:\n${serverPath}\n\nPlease reinstall Noxis.`);
+                const msg = electron_1.app.isPackaged
+                    ? `Server not found at:\n${serverPath}\n\nPlease reinstall Noxis Hub.`
+                    : `Standalone server bundle not assembled yet.\n\nPlease run:\nnode scripts/build-electron.mjs\nor npm run electron:build`;
+                electron_1.dialog.showErrorBox(electron_1.app.isPackaged ? 'Installation Error' : 'Development Build Required', msg);
                 electron_1.app.quit();
                 return;
             }
@@ -1689,6 +1783,19 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             // Run these AFTER window is shown, not before.
             // This prevents blocking the UI thread at startup.
             if (mainWindow) {
+                const storedVersion = (0, store_1.getLastSeenVersion)();
+                const currentVersion = electron_1.app.getVersion();
+                if (storedVersion !== currentVersion) {
+                    mainWindow.webContents.on('did-finish-load', () => {
+                        if (mainWindow && !mainWindow.isDestroyed()) {
+                            mainWindow.webContents.send('app:new-version', {
+                                previous: storedVersion,
+                                current: currentVersion,
+                            });
+                            (0, store_1.setLastSeenVersion)(currentVersion);
+                        }
+                    });
+                }
                 setTimeout(() => {
                     if (mainWindow && !mainWindow.isDestroyed()) {
                         setupAutoUpdater(mainWindow);

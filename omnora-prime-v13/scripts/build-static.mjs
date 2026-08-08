@@ -5,7 +5,7 @@ import path from 'path';
 const appPath = path.join(process.cwd(), 'src/app');
 const tempPath = path.join(process.cwd(), 'app-temp');
 
-const PUBLIC_DIRECTORIES = ['download', 'pricing', 'privacy', 'docs', 'blog', 'reviews', 'file-morph', 'terms', 'refund', 'about', 'dashboard'];
+const PUBLIC_DIRECTORIES = ['download', 'pricing', 'privacy', 'docs', 'blog', 'reviews', 'file-morph', 'terms', 'refund', 'about', 'dashboard', 'industries', 'changelog', 'compare'];
 let hiddenDirs = [];
 
 let buildFailed = false;
@@ -62,19 +62,16 @@ try {
   robustRmSync(tempPath);
   fs.mkdirSync(tempPath);
 
-  // Find all directories inside src/app that should be hidden
-  const files = fs.readdirSync(appPath);
-  for (const file of files) {
-    const fullPath = path.join(appPath, file);
-    const stat = fs.statSync(fullPath);
-
-    if (stat.isDirectory()) {
-      if (!PUBLIC_DIRECTORIES.includes(file)) {
-        console.log(`[Build] Temporarily hiding directory: ${file}`);
-        const dest = path.join(tempPath, file);
-        fs.cpSync(fullPath, dest, { recursive: true });
-        robustRmSync(fullPath);
-        hiddenDirs.push(file);
+  // Move non-public directories to tempPath during static export
+  const allEntries = fs.readdirSync(appPath);
+  for (const entry of allEntries) {
+    const entryPath = path.join(appPath, entry);
+    if (fs.statSync(entryPath).isDirectory()) {
+      if (!PUBLIC_DIRECTORIES.includes(entry) && entry !== 'api' && entry !== 'og') {
+        const dest = path.join(tempPath, entry);
+        fs.cpSync(entryPath, dest, { recursive: true });
+        robustRmSync(entryPath);
+        hiddenDirs.push(entry);
       }
     }
   }

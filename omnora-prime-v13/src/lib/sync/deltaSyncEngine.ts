@@ -5,7 +5,8 @@ import { queryClient } from '@/lib/queryClient'
 const SYNC_TABLES = [
   {
     table: 'attendance_logs',
-    orderBy: 'created_at',
+    orderBy: 'posted_at',
+    fallbackOrderBy: 'log_date',
     queryKeys: ['attendance', 'dashboard'],
   },
   {
@@ -16,6 +17,7 @@ const SYNC_TABLES = [
   {
     table: 'peshgi_transactions',
     orderBy: 'given_date',
+    fallbackOrderBy: 'created_at',
     queryKeys: ['karigars', 'dashboard'],
   },
   {
@@ -26,11 +28,13 @@ const SYNC_TABLES = [
   {
     table: 'payments',
     orderBy: 'payment_date',
+    fallbackOrderBy: 'created_at',
     queryKeys: ['payments', 'dashboard'],
   },
   {
     table: 'scan_history',
     orderBy: 'scanned_at',
+    fallbackOrderBy: 'created_at',
     queryKeys: ['inventory'],
   },
 ] as const
@@ -63,18 +67,45 @@ export async function runDeltaSync(
     // Run all table syncs in parallel
     await Promise.allSettled(
       SYNC_TABLES.map(async (tableConfig) => {
-        const { data, error } = await supabase
+        let timeColumn = tableConfig.orderBy
+
+        // Try primary query with proper tableConfig.orderBy column
+        let { data, error } = await supabase
           .from(tableConfig.table)
           .select('*')
           .eq('business_id', businessId)
-          .gt('created_at', lastSyncIso)
-          .order(tableConfig.orderBy, {
-            ascending: true,
-          })
-          .limit(1000) // Safety cap
+          .gt(timeColumn, lastSyncIso)
+          .order(timeColumn, { ascending: true })
+          .limit(1000)
+
+        const fallbackCol = (tableConfig as any).fallbackOrderBy
+        if (error && fallbackCol && error.message?.includes('does not exist')) {
+          timeColumn = fallbackCol
+          const retry = await supabase
+            .from(tableConfig.table)
+            .select('*')
+            .eq('business_id', businessId)
+            .gt(timeColumn, lastSyncIso)
+            .order(timeColumn, { ascending: true })
+            .limit(1000)
+          
+          data = retry.data
+          error = retry.error
+        }
 
         if (error) {
-          console.error(`[DeltaSync] ${tableConfig.table}:`, error.message)
+          // If table or column does not exist in remote Supabase schema cache, log info/warn and skip gracefully
+          const isMissingSchema = 
+            error.code === 'PGRST205' ||
+            error.message?.includes('schema cache') ||
+            error.message?.includes('Could not find the table') ||
+            error.message?.includes('does not exist')
+
+          if (isMissingSchema) {
+            console.warn(`[DeltaSync] Skipping '${tableConfig.table}' (${error.message})`)
+          } else {
+            console.error(`[DeltaSync] ${tableConfig.table}:`, error.message)
+          }
           return
         }
 
@@ -103,16 +134,20 @@ export async function runDeltaSync(
       await (window as any).electronAPI.sync.setLastSyncAt(newSyncAt)
     }
 
-    // Log sync to Supabase for multi-device sync coordination
-    await supabase.from('hub_sync_log')
-      .insert({
-        business_id: businessId,
-        device_id: 'hub-pc',
-        last_sync_at: new Date(newSyncAt).toISOString(),
-        tables_synced: tablesWithNewData,
-        rows_pulled: totalRowsPulled,
-        sync_duration_ms: durationMs,
-      })
+    // Log sync to Supabase for multi-device sync coordination (safely catch if table missing)
+    try {
+      await supabase.from('hub_sync_log')
+        .insert({
+          business_id: businessId,
+          device_id: 'hub-pc',
+          last_sync_at: new Date(newSyncAt).toISOString(),
+          tables_synced: tablesWithNewData,
+          rows_pulled: totalRowsPulled,
+          sync_duration_ms: durationMs,
+        })
+    } catch (e) {
+      // Ignore if hub_sync_log is local-only
+    }
 
     console.log(`[DeltaSync] Complete: ${totalRowsPulled} rows in ${durationMs}ms`)
 

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { drainSyncQueue, getSyncQueueStats } from '@/lib/sync/cloudSyncWorker'
 import { verifyUserSession } from '@/lib/security/authHelpers'
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-static';
 
 export async function POST() {
   const auth = await verifyUserSession();

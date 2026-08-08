@@ -74,6 +74,8 @@ exports.setLicensePayload = setLicensePayload;
 exports.clearLicensePayload = clearLicensePayload;
 exports.getExitFlag = getExitFlag;
 exports.setExitFlag = setExitFlag;
+exports.getLastSeenVersion = getLastSeenVersion;
+exports.setLastSeenVersion = setLastSeenVersion;
 const electron_store_1 = __importDefault(require("electron-store"));
 const crypto = __importStar(require("crypto"));
 const os = __importStar(require("os"));
@@ -294,4 +296,10 @@ function getExitFlag() {
 }
 function setExitFlag(flag) {
     store.set('exit_flag', flag);
+}
+function getLastSeenVersion() {
+    return store.get('lastSeenVersion') || '0.0.0';
+}
+function setLastSeenVersion(ver) {
+    store.set('lastSeenVersion', ver);
 }

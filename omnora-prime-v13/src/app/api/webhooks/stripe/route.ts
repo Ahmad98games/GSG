@@ -4,7 +4,7 @@ import { confirmPaymentAndPostLedger } from '@/lib/actions/clientPortal';
 import { logger } from '@/lib/logger';
 import { checkRateLimit } from '@/lib/security/rateLimiter';
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-static';
 
 export const maxDuration = 10;
 

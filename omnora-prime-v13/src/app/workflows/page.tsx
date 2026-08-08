@@ -282,7 +282,7 @@ export default function WorkflowsPage() {
           </p>
           <button
             onClick={() => setShowBuilder(true)}
-            className="px-4 py-2.5 bg-electric-blue text-onyx text-xs font-black uppercase tracking-widest hover:brightness-110"
+            className="px-4 py-2.5 bg-electric-blue text-onyx text-xs font-black uppercase tracking-widest hover:brightness-10"
           >
             Create First Workflow
           </button>

@@ -151,6 +151,10 @@ export function getQueuedCount(): number {
   }
 }
 
+export async function pushOfflineOperation(op: any): Promise<void> {
+  return queueFailedOperation({ queryKey: [], variables: op, mutationFn: () => {} })
+}
+
 // Auto-drain when connection returns
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {

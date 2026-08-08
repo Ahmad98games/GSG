@@ -22,13 +22,14 @@ import { cn } from "@/lib/utils";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Skeleton, KpiCardSkeleton, CardGridSkeleton } from "@/components/ui/Skeleton";
-import { ErrorState, EmptyState, FieldError } from "@/components/ui/StateViews";
+import { KpiCardSkeleton, CardGridSkeleton } from "@/components/ui/Skeleton";
+import { ErrorState, EmptyState } from "@/components/ui/StateViews";
 import { useDebounce } from "@/hooks/useDebounce";
 import * as XLSX from 'xlsx';
 import { useToast } from "@/hooks/useToast";
 import { SharePortalButton } from "@/components/parties/SharePortalButton";
 import { humanizeError } from "@/lib/utils/errors";
+import { AddPartyModal } from '@/components/parties/AddPartyModal';
 
 interface Party {
   id: string;
@@ -51,32 +52,11 @@ interface Stats {
   blocked: number;
 }
 
-const partySchema = z.object({
-  name: z.string().min(2, "Name too short"),
-  party_type: z.enum(['customer', 'supplier', 'both']),
-  phone: z.string().optional().refine(val => {
-    if (!val) return true;
-    const digits = val.replace(/[^0-9]/g, '');
-    return digits.length >= 10;
-  }, "Enter a valid phone number"),
-  email: z.string().optional().refine(val => {
-    if (!val) return true;
-    return val.includes('@');
-  }, "Enter a valid email address"),
-  address: z.string().optional(),
-  credit_limit: z.coerce.number().min(0).default(0),
-  credit_days: z.coerce.number().min(0).default(0),
-  notes: z.string().optional(),
-});
-
-type PartyFormValues = z.infer<typeof partySchema>;
-
 export default function PartiesPage() {
   const { businessId, fmt, term } = usePersona();
   const supabase = createClient();
   const queryClient = useQueryClient();
   const toast = useToast();
-  
 
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -268,18 +248,15 @@ export default function PartiesPage() {
         description="Add your first business contact"
         action={{ label: 'Add party', onClick: () => setIsModalOpen(true) }}
       />
-      <AnimatePresence>
-        {isModalOpen && <AddPartyModal onClose={() => setIsModalOpen(false)} onSuccess={(msg: string) => { setSuccessToast(msg); queryClient.invalidateQueries({ queryKey: ['parties_registry'] }); setIsModalOpen(false); }} />}
-      </AnimatePresence>
+      <AddPartyModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={(party: any) => { setSuccessToast(`Party ${party?.name || ''} created successfully`); queryClient.invalidateQueries({ queryKey: ['parties_registry'] }); setIsModalOpen(false); }} />
     </div>
   );
 
   return (
     <div className="min-h-screen bg-[#0F1113] text-slate-200">
       
-      
       <main className="transition-all duration-300">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6 p-8">
           <div>
             <h1 className="text-lg font-semibold tracking-tight text-white uppercase italic">
               {term('parties')} Registry
@@ -414,9 +391,7 @@ export default function PartiesPage() {
         </div>
       </main>
 
-      <AnimatePresence>
-        {isModalOpen && <AddPartyModal onClose={() => setIsModalOpen(false)} onSuccess={(msg: string) => { setSuccessToast(msg); queryClient.invalidateQueries({ queryKey: ['parties_registry'] }); setIsModalOpen(false); }} />}
-      </AnimatePresence>
+      <AddPartyModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={(party: any) => { setSuccessToast(`Party ${party?.name || ''} created successfully`); queryClient.invalidateQueries({ queryKey: ['parties_registry'] }); setIsModalOpen(false); }} />
 
       <AnimatePresence>
         {successToast && (
@@ -435,7 +410,6 @@ export default function PartiesPage() {
     </div>
   );
 }
-
 
 const PartyCard = React.memo(function PartyCard({ 
   party, 
@@ -610,135 +584,3 @@ const PartyCard = React.memo(function PartyCard({
     </motion.div>
   );
 });
-
-function AddPartyModal({ onClose, onSuccess }: { onClose: () => void, onSuccess: (m: string) => void }) {
-  const { businessId } = usePersona();
-  const supabase = createClient();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [onClose]);
-
-  const { register, handleSubmit, formState: { errors } } = useForm<PartyFormValues>({
-    resolver: zodResolver(partySchema),
-    mode: "onChange",
-    defaultValues: { party_type: 'customer', credit_limit: 0, credit_days: 0 }
-  });
-
-  const onSubmit = async (values: PartyFormValues) => {
-    setIsSubmitting(true);
-    try {
-      const { error } = await supabase
-        .from('parties')
-        .insert({
-          ...values,
-          business_id: businessId,
-          current_balance: 0,
-          is_blocked: false
-        });
-      
-      if (error) throw error;
-      onSuccess(`Party ${values.name} successfully onboarded.`);
-    } catch (err: any) {
-      alert(`Onboarding failed: ${err.message}`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-[100] flex justify-end bg-black/60 backdrop-blur-sm">
-       <motion.div 
-         initial={{ x: "100%" }} 
-         animate={{ x: 0 }} 
-         exit={{ x: "100%" }}
-         className="w-full max-w-xl bg-[#1A1D21] border-l border-white/5 h-full flex flex-col shadow-2xl"
-       >
-          <div className="p-8 border-b border-white/5 flex items-center justify-between">
-             <div className="flex items-center space-x-3">
-                <div className="p-3 bg-[#0070F3]/10 text-[#0070F3]">
-                   <UserPlus size={24} />
-                </div>
-                <div>
-                   <h2 className="text-xl font-black text-white uppercase tracking-tighter">Onboard New Party</h2>
-                   <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Global Identity Registry v1.0</p>
-                </div>
-             </div>
-             <button onClick={onClose} className="p-2 text-gray-500 hover:text-white transition-colors"><X size={24} /></button>
-          </div>
-
-          <form onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto p-8 space-y-8">
-             <div className="grid grid-cols-2 gap-6">
-                <div className="col-span-2 space-y-2">
-                   <label className="text-[10px] uppercase font-black text-gray-600">Legal Name</label>
-                    <input {...register("name")} className="w-full bg-[#0F1113] border border-white/10 p-4 text-sm text-white focus:border-[#0070F3] outline-none" placeholder="e.g. Acme Industrial Ltd" />
-                    <FieldError message={errors.name?.message} />
-                </div>
-
-                <div className="space-y-2">
-                   <label className="text-[10px] uppercase font-black text-gray-600">Party Classification</label>
-                   <select {...register("party_type")} className="w-full bg-[#0F1113] border border-white/10 p-4 text-sm text-white outline-none">
-                      <option value="customer">Customer</option>
-                      <option value="supplier">Supplier</option>
-                      <option value="both">Both (Multi-Entity)</option>
-                   </select>
-                </div>
-
-                 <div className="space-y-2">
-                    <label className="text-[10px] uppercase font-black text-gray-600">Contact Number</label>
-                    <input {...register("phone")} className="w-full bg-[#0F1113] border border-white/10 p-4 text-sm text-white outline-none" placeholder="+92 300 0000000" />
-                    <FieldError message={errors.phone?.message} />
-                 </div>
-
-                 <div className="space-y-2 col-span-2">
-                    <label className="text-[10px] uppercase font-black text-gray-600">Email Address</label>
-                    <input {...register("email")} className="w-full bg-[#0F1113] border border-white/10 p-4 text-sm text-white outline-none" placeholder="e.g. billing@acme.com" />
-                    <FieldError message={errors.email?.message} />
-                 </div>
-
-                <div className="col-span-2 space-y-2">
-                   <label className="text-[10px] uppercase font-black text-gray-600">Physical Address</label>
-                   <textarea {...register("address")} rows={2} className="w-full bg-[#0F1113] border border-white/10 p-4 text-sm text-white outline-none" placeholder="Primary operational facility address..." />
-                </div>
-
-                <div className="space-y-2">
-                   <label className="text-[10px] uppercase font-black text-gray-600">Credit Limit (PKR)</label>
-                   <input type="number" {...register("credit_limit")} className="w-full bg-[#0F1113] border border-white/10 p-4 text-sm text-white font-mono outline-none" placeholder="0.00" />
-                </div>
-
-                <div className="space-y-2">
-                   <label className="text-[10px] uppercase font-black text-gray-600">Credit Terms (Days)</label>
-                   <input type="number" {...register("credit_days")} className="w-full bg-[#0F1113] border border-white/10 p-4 text-sm text-white font-mono outline-none" placeholder="30" />
-                </div>
-             </div>
-
-             <div className="p-6 bg-amber-500/5 border border-amber-500/10 space-y-3">
-                <div className="flex items-center space-x-2 text-amber-500">
-                   <ShieldAlert size={16} />
-                   <span className="text-[10px] font-black uppercase tracking-widest">System Protocol</span>
-                </div>
-                <p className="text-[9px] text-gray-500 leading-relaxed uppercase">
-                   Onboarding a party automatically creates a sub-ledger context. Credit limit breaches will trigger automatic transactional blocking for this entity.
-                </p>
-             </div>
-          </form>
-
-          <div className="p-8 bg-[#0F1113] border-t border-white/5 flex items-center space-x-4">
-             <button onClick={onClose} className="flex-1 py-4 text-[10px] uppercase font-black text-gray-500 hover:text-white transition-colors">Discard Draft</button>
-             <button 
-               onClick={handleSubmit(onSubmit)} 
-               disabled={isSubmitting}
-               className="flex-[2] py-4 bg-[#0070F3] text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl hover:brightness-110 disabled:opacity-50"
-             >
-                {isSubmitting ? "Syncing..." : "Onboard Party to Registry"}
-             </button>
-          </div>
-       </motion.div>
-    </div>
-  );
-}

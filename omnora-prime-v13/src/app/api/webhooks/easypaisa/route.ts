@@ -5,7 +5,7 @@ import { confirmPaymentAndPostLedger } from '@/lib/actions/clientPortal';
 import { logger } from '@/lib/logger';
 import { checkRateLimit } from '@/lib/security/rateLimiter';
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-static';
 
 // Body size limit enforced via middleware — 
 // App Router does not use config.api.bodyParser

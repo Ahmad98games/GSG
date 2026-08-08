@@ -321,3 +321,12 @@ export function getExitFlag(): string {
 export function setExitFlag(flag: 'running' | 'clean'): void {
   store.set('exit_flag', flag)
 }
+
+export function getLastSeenVersion(): string {
+  return store.get('lastSeenVersion') || '0.0.0'
+}
+
+export function setLastSeenVersion(ver: string): void {
+  store.set('lastSeenVersion', ver)
+}
+

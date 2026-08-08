@@ -18,10 +18,10 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { Server } from 'http';
 import { randomUUID } from 'crypto';
-import { db } from '@/lib/db/client';
-import * as schema from '@/lib/db/schema';
+import { db } from '../db/client';
+import * as schema from '../db/schema';
 import { eq, and, sql } from 'drizzle-orm';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient } from '../supabase/admin';
 
 let adminClient: any = null;
 function getAdmin() {
@@ -44,6 +44,7 @@ interface BridgeClient {
   ws: WebSocket;
   deviceId: string | null;
   deviceLabel: string | null;
+  deviceRole?: string | null;
   businessId: string | null;
   paired: boolean;
   connectedAt: Date;
@@ -716,6 +717,65 @@ async function handleMessage(
       break;
     }
 
+    case 'MSG_SEND': {
+      const { text, priority, messageId } = msg as any;
+      if (!client.paired || !client.businessId) break;
+
+      const admin = getAdmin();
+      let newMsg: any = null;
+      if (admin) {
+        try {
+          const { data } = await admin
+            .from('hub_messages')
+            .insert({
+              business_id: client.businessId,
+              sender_type: 'device',
+              sender_device_id: client.deviceId,
+              sender_name: client.deviceLabel || 'Mobile Device',
+              recipient_type: 'hub',
+              message_text: text,
+              priority: priority || 'normal',
+            })
+            .select()
+            .single();
+          newMsg = data;
+        } catch (err: any) {
+          console.error('[Bridge] Failed to save MSG_SEND:', err.message);
+        }
+      }
+
+      send(ws, {
+        type: 'MSG_ACK',
+        messageId,
+        serverMessageId: newMsg?.id,
+      });
+
+      if (newMsg) {
+        broadcastToHubRenderer('messaging:new-message', newMsg);
+      }
+      break;
+    }
+
+    case 'MSG_READ': {
+      const { messageId } = msg as any;
+      if (!client.paired || !client.deviceId) break;
+
+      const admin = getAdmin();
+      if (admin && messageId) {
+        try {
+          await admin
+            .from('hub_messages')
+            .update({
+              read_by: sql`array_append(read_by, ${client.deviceId})`
+            })
+            .eq('id', messageId);
+        } catch (err: any) {
+          console.error('[Bridge] Failed to mark MSG_READ:', err.message);
+        }
+      }
+      break;
+    }
+
     default: {
       console.warn(`[Bridge] Unhandled type: ${String(msg.type)} from ${client.deviceLabel}`);
       break;
@@ -787,3 +847,36 @@ export function disconnectDevice(deviceId: string): boolean {
   });
   return found;
 }
+
+export function deliverMessageToDevice(
+  deviceId: string,
+  message: {
+    id: string;
+    text: string;
+    senderName: string;
+    priority: string;
+    createdAt: string;
+  }
+): void {
+  clients.forEach((device) => {
+    if (device.deviceId === deviceId || deviceId === 'all') {
+      if (device.ws.readyState === WebSocket.OPEN) {
+        send(device.ws, {
+          type: 'MSG_INCOMING',
+          message,
+        });
+      }
+    }
+  });
+}
+
+export function broadcastToAllDevices(
+  message: any
+): void {
+  deliverMessageToDevice('all', message);
+}
+
+export function getConnectedClientsMap(): Map<string, BridgeClient> {
+  return clients;
+}
+

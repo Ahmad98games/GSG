@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/admin/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 
+export const dynamic = 'force-static';
+
 function getClientIp(req: NextRequest): string {
   return (
     req.headers.get('cf-connecting-ip') ||

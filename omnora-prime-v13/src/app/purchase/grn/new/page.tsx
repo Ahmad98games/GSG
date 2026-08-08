@@ -8,7 +8,8 @@ import { usePurchaseOrder, useProcessGRN, useSuppliers } from "@/hooks/usePurcha
 import { 
   PackageCheck, Truck, ClipboardCheck, 
   AlertTriangle, Save, ArrowLeft,
-  ChevronRight, Info, User, CheckCircle2
+  ChevronRight, Info, User, CheckCircle2,
+  FileMinus
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -46,6 +47,7 @@ export default function NewGRNPage() {
   const [grnNumber, setGrnNumber] = useState("");
   const [items, setItems] = useState<GRNLineItem[]>([]);
   const [step, setStep] = useState<'receive' | 'inspect'>('receive');
+  const [autoDebitNote, setAutoDebitNote] = useState<boolean>(true);
 
   useEffect(() => {
     if (po) {
@@ -67,6 +69,8 @@ export default function NewGRNPage() {
     }
   }, [po]);
 
+  const totalRejectedCost = items.reduce((sum, item) => sum + (item.qty_rejected * item.unit_cost), 0);
+
   const handleProcess = async () => {
     if (!selectedSupplierId) {
       alert("Please select a supplier");
@@ -84,12 +88,17 @@ export default function NewGRNPage() {
       po_id: poId || null,
       supplier_id: selectedSupplierId,
       grn_number: grnNumber || `GRN-${Date.now().toString().slice(-6)}`,
-      items
+      items,
+      generate_debit_note: totalRejectedCost > 0 && autoDebitNote
     };
 
     processGRN.mutate(payload, {
       onSuccess: () => {
-        alert("Stock received and ledger updated successfully.");
+        alert(
+          totalRejectedCost > 0 && autoDebitNote
+            ? `GRN processed successfully. Debit Note for PKR ${totalRejectedCost.toLocaleString()} generated for Supplier Khata.`
+            : "Stock received and inventory ledger updated successfully."
+        );
         router.push("/purchase");
       },
       onError: (err: any) => {
@@ -101,7 +110,7 @@ export default function NewGRNPage() {
   if (poLoading) return <div className="p-8 text-gray-500 uppercase tracking-widest text-[10px]">Loading Procurement Data...</div>;
 
   return (
-    <div className="p-8 max-w-[1200px] mx-auto min-h-screen bg-onyx text-slate-200">
+    <div className="p-8 max-w-[1200px] mx-auto min-h-screen bg-onyx text-slate-200 font-sans">
       <header className="flex items-center justify-between mb-8">
         <div className="flex items-center space-x-4">
           <div className="p-3 bg-emerald/10 rounded-sm text-emerald">
@@ -269,18 +278,30 @@ export default function NewGRNPage() {
             </table>
           </section>
 
-          {step === 'inspect' && (
-             <div className="mt-8 p-6 bg-sandstone-gold/5 border border-sandstone-gold/20 rounded-sm">
-                <div className="flex items-start space-x-3">
-                  <Info className="text-sandstone-gold mt-0.5" size={16} />
-                  <div>
-                    <h4 className="text-[10px] font-bold text-white uppercase mb-1">Impact of Inspection</h4>
-                    <p className="text-[10px] text-gray-500 leading-relaxed uppercase">
-                      Accepted quantities will be added to your live inventory ledger. Rejected quantities will be flagged in the **Supplier Scorecard** and will not affect stock levels.
-                    </p>
-                  </div>
+          {step === 'inspect' && totalRejectedCost > 0 && (
+            <div className="mt-6 p-6 bg-red-500/10 border border-red-500/30 rounded-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 text-red-400">
+                  <FileMinus size={20} />
+                  <h4 className="text-sm font-black uppercase tracking-wider">Discrepancy Detected — Auto Debit Note</h4>
                 </div>
+                <span className="text-sm font-mono font-bold text-red-400">
+                  Value: PKR {totalRejectedCost.toLocaleString()}
+                </span>
               </div>
+              <p className="text-xs text-slate-300">
+                {items.filter(i => i.qty_rejected > 0).length} line items have rejected quantities. Noxis will generate an official Supplier Debit Note to deduct this amount from the supplier's running Khata balance.
+              </p>
+              <label className="flex items-center gap-2 text-xs text-white font-bold cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={autoDebitNote}
+                  onChange={e => setAutoDebitNote(e.target.checked)}
+                  className="rounded border-white/20 text-[#08EBF6]"
+                />
+                <span>Automatically post Debit Note to Supplier Khata upon submission</span>
+              </label>
+            </div>
           )}
         </div>
       </div>

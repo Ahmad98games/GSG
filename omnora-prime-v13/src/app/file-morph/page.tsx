@@ -2,8 +2,10 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lock, ShieldCheck, FileText, Cpu, Sparkles } from "lucide-react";
+import { Lock, ShieldCheck, FileText, Cpu, Database } from "lucide-react";
 import { DocumentConverter } from "./DocumentConverter";
+import { DataMigrationStudio } from "./DataMigrationStudio";
+import { useTranslation } from "@/hooks/useTranslation";
 
 const PrivacyBadge = () => (
   <div className="flex items-center space-x-1.5 px-3 py-1 bg-[#08EBF6]/10 border border-[#08EBF6]/30 rounded-full shadow-[0_0_12px_rgba(8,235,246,0.2)]">
@@ -15,11 +17,13 @@ const PrivacyBadge = () => (
 );
 
 export default function FileMorphPage() {
-  const [activeSection, setActiveSection] = useState<'suite' | 'info'>('suite');
+  const { t } = useTranslation();
+  const [activeSection, setActiveSection] = useState<'migration' | 'suite' | 'info'>('migration');
 
   const SECTIONS = [
-    { id: 'suite' as const, label: 'Document & Image Suite', icon: <FileText size={15} /> },
-    { id: 'info' as const, label: 'Engine Architecture & Privacy', icon: <Cpu size={15} /> },
+    { id: 'migration' as const, label: t('Data Migration & Importer'), icon: <Database size={15} /> },
+    { id: 'suite' as const, label: t('Document & Image Suite'), icon: <FileText size={15} /> },
+    { id: 'info' as const, label: t('Engine Architecture & Privacy'), icon: <Cpu size={15} /> },
   ];
 
   return (
@@ -29,11 +33,11 @@ export default function FileMorphPage() {
         <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4 border-b border-white/10 pb-6">
           <div className="space-y-2">
             <div className="flex items-center space-x-3">
-              <h1 className="text-3xl font-black tracking-tight text-white uppercase">File Morph Studio</h1>
+              <h1 className="text-3xl font-black tracking-tight text-white uppercase">{t('File Morph & Data Studio')}</h1>
               <PrivacyBadge />
             </div>
             <p className="text-xs text-slate-400 font-medium">
-              Enterprise Document Processing & Image Manipulation Suite — 100% Local Browser Engine without Cloud APIs or Internet Dependency.
+              Enterprise Data Migration (Tally, QuickBooks, Excel) & Document Suite — 100% Local Browser Engine without Cloud Dependency.
             </p>
           </div>
         </div>
@@ -58,7 +62,19 @@ export default function FileMorphPage() {
 
         {/* Section View switcher */}
         <AnimatePresence mode="wait">
-          {activeSection === 'suite' ? (
+          {activeSection === 'migration' && (
+            <motion.div
+              key="migration"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              <DataMigrationStudio />
+            </motion.div>
+          )}
+
+          {activeSection === 'suite' && (
             <motion.div
               key="suite"
               initial={{ opacity: 0, y: 10 }}
@@ -68,7 +84,9 @@ export default function FileMorphPage() {
             >
               <DocumentConverter />
             </motion.div>
-          ) : (
+          )}
+
+          {activeSection === 'info' && (
             <motion.div
               key="info"
               initial={{ opacity: 0, y: 10 }}
@@ -80,32 +98,11 @@ export default function FileMorphPage() {
               <div className="space-y-2">
                 <h3 className="text-lg font-black text-white uppercase tracking-tight flex items-center gap-2">
                   <ShieldCheck size={20} className="text-[#08EBF6]" />
-                  Zero-Cloud Security & Privacy Guarantee
+                  {t('Zero-Cloud Security & Privacy Guarantee')}
                 </h3>
                 <p className="text-xs text-slate-400 leading-relaxed max-w-3xl">
-                  Noxis Hub processes all PDF files, Word documents, and high-resolution images directly inside your workstation's local JS/WebAssembly memory sandbox. No file buffers or metadata are ever transmitted across external cloud servers.
+                  Noxis Hub processes all Tally ledger imports, Excel price list mappings, and PDF files directly inside your workstation's local memory sandbox.
                 </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
-                <div className="p-5 bg-black/40 border border-white/10 rounded-xl space-y-2">
-                  <span className="text-xs font-black text-[#08EBF6] uppercase tracking-wider">🔒 PDF Security Engine</span>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    AES-128 / 256-bit encryption with User & Owner passwords, granular permission flags (printing, copying, modifying), and instant password decryption.
-                  </p>
-                </div>
-                <div className="p-5 bg-black/40 border border-white/10 rounded-xl space-y-2">
-                  <span className="text-xs font-black text-[#5FA5FA] uppercase tracking-wider">🛠️ PDF Manipulation Engine</span>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Merge, split page ranges ("1-3, 5, 8-10"), rotate pages (90°, 180°, 270°), compress object streams up to 80%, and blackout sensitive text coordinates.
-                  </p>
-                </div>
-                <div className="p-5 bg-black/40 border border-white/10 rounded-xl space-y-2">
-                  <span className="text-xs font-black text-[#FFFFFF] uppercase tracking-wider">🖼️ Local Image & EXIF Engine</span>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Pixel & percentage aspect-ratio scaling, format conversion (PNG, JPG, WebP, BMP, ICO), edge-detection background removal, and EXIF metadata stripping.
-                  </p>
-                </div>
               </div>
             </motion.div>
           )}

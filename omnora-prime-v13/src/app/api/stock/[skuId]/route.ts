@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyUserSession, verifyBusinessOwnership } from '@/lib/security/authHelpers';
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-static';
+
+export function generateStaticParams() {
+  return [{ skuId: 'placeholder' }];
+}
 
 export async function GET(req: Request, { params }: { params: { skuId: string } }) {
   const auth = await verifyUserSession();

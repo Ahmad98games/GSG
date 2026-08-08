@@ -47,7 +47,7 @@ function PrivacyContent() {
               { label: "Worker / Karigar Records", detail: "Names, attendance logs, production output (piece rate), wage calculations, and payroll runs. No biometric data is collected." },
               { label: "Inventory & Stock", detail: "SKU names, quantities, movement logs, and supplier/party records." },
               { label: "Device Information", detail: "Non-personally-identifiable device fingerprint data (platform, timezone, language) collected during license activation for multi-device enforcement. No hardware serial numbers or MAC addresses are stored." },
-              { label: "Account Credentials", detail: "Email address and hashed authentication token managed by Supabase Auth. Noxis Hub never stores plain-text passwords." },
+              { label: "Account Credentials", detail: "Email address and hashed authentication token managed by our secure identity system. Noxis Hub never stores plain-text passwords." },
             ].map((item) => (
               <li key={item.label} className="flex gap-3">
                 <span className="text-[#C5A059] mt-1">▸</span>
@@ -74,16 +74,16 @@ function PrivacyContent() {
             <div className="bg-white/[0.02] border border-white/[0.04] rounded p-4 space-y-2">
               <p className="text-white font-bold text-xs uppercase tracking-widest">Local Storage (Primary)</p>
               <p>
-                All business data — invoices, karigars, inventory, ledgers — is stored on your own device in a locally encrypted <strong className="text-white">SQLite database secured with SQLCipher</strong>. The encryption key is derived from a machine-specific identifier, meaning the database cannot be opened on a different device even if the file is copied.
+                All business data — invoices, karigars, inventory, ledgers — is stored on your own device in a local encrypted database. The encryption key is derived from a machine-specific identifier, meaning the database cannot be opened on a different device even if the file is copied.
               </p>
               <p className="text-slate-500 text-xs">Location: Windows AppData folder on your PC. You own and control this file completely.</p>
             </div>
             <div className="bg-white/[0.02] border border-white/[0.04] rounded p-4 space-y-2">
               <p className="text-white font-bold text-xs uppercase tracking-widest">Cloud Backup (Secondary)</p>
               <p>
-                A copy of your data is synced to <strong className="text-white">Supabase</strong> (hosted on AWS) for cross-device access and disaster recovery. All data in Supabase is protected by <strong className="text-white">Row Level Security (RLS)</strong> — a database-level policy that makes it technically impossible for one business's data to be read by any other account, including Omnora Labs staff.
+                A copy of your data is synced to <strong className="text-white">our enterprise cloud backend</strong> for cross-device access and disaster recovery. All data in our cloud infrastructure is protected by database-level security policies — a database-level policy that makes it technically impossible for one business's data to be read by any other account, including Omnora Labs staff.
               </p>
-              <p className="text-slate-500 text-xs">All data in transit uses HTTPS/TLS encryption. Data at rest uses AES-256 encryption on Supabase infrastructure.</p>
+              <p className="text-slate-500 text-xs">All data in transit uses HTTPS/TLS encryption. Data at rest uses 256-bit encryption on enterprise cloud infrastructure.</p>
             </div>
           </div>
         </div>
@@ -102,7 +102,7 @@ function PrivacyContent() {
             {[
               { who: "You (Account Owner)", access: "Full read and write access to all your business data." },
               { who: "Your Staff (Sub-Users)", access: "Access limited by the role you assign: Manager, Operator, Viewer, or Accountant. Each role has explicit permission gates — for example, a Viewer cannot modify invoices." },
-              { who: "Omnora Labs", access: "No access to your business records. Our Supabase RLS policies are enforced at the database engine level and cannot be bypassed by application code. In the event of a technical support request that requires database inspection, we will always ask for your explicit written consent first." },
+              { who: "Omnora Labs", access: "No access to your business records. Our database security policies are enforced at the database engine level and cannot be bypassed by application code. In the event of a technical support request that requires database inspection, we will always ask for your explicit written consent first." },
               { who: "Third Parties", access: "We do not sell, rent, or share your data with any third party for commercial purposes. Data is only shared with sub-processors listed in Section 6 for the purpose of providing the service." },
             ].map((item) => (
               <li key={item.who} className="flex gap-3">
@@ -133,14 +133,14 @@ function PrivacyContent() {
               <span className="text-[#C5A059] font-bold font-mono text-xs mt-1">02</span>
               <div>
                 <p className="text-white font-bold text-sm">Cloud Data</p>
-                <p>To request deletion of your cloud data from Supabase, email <a href="mailto:support@noxis.app" className="text-[#C5A059] hover:underline">support@noxis.app</a> from your registered account email with the subject line <strong className="text-white">"Data Deletion Request"</strong>. We will permanently delete all your records from our cloud database <strong className="text-white">within 30 days</strong> and confirm via email when complete.</p>
+                <p>To request deletion of your cloud data from our enterprise cloud backend, email <a href="mailto:support@noxis.app" className="text-[#C5A059] hover:underline">support@noxis.app</a> from your registered account email with the subject line <strong className="text-white">"Data Deletion Request"</strong>. We will permanently delete all your records from our cloud database <strong className="text-white">within 30 days</strong> and confirm via email when complete.</p>
               </div>
             </div>
             <div className="flex gap-3">
               <span className="text-[#C5A059] font-bold font-mono text-xs mt-1">03</span>
               <div>
                 <p className="text-white font-bold text-sm">Backup Retention</p>
-                <p>Supabase maintains encrypted point-in-time backups for 7 days. After your deletion request is processed, your data will be fully purged from all backup snapshots within 30 days.</p>
+                <p>Our cloud backend maintains encrypted point-in-time backups for 7 days. After your deletion request is processed, your data will be fully purged from all backup snapshots within 30 days.</p>
               </div>
             </div>
           </div>
@@ -156,7 +156,7 @@ function PrivacyContent() {
           <p>Noxis Hub uses a minimal, functional-only cookie policy. We do not use advertising cookies, tracking pixels, or behavioral analytics.</p>
           <div className="space-y-3">
             {[
-              { name: "Supabase Auth Session", type: "HttpOnly Cookie", purpose: "Maintains your authenticated session. Expires when you log out or after 7 days of inactivity.", essential: true },
+              { name: "Cloud Auth Session", type: "HttpOnly Cookie", purpose: "Maintains your authenticated session. Expires when you log out or after 7 days of inactivity.", essential: true },
               { name: "NOXIS_LOCALE", type: "Cookie", purpose: "Stores your selected language preference (e.g. Urdu, Arabic, English) across sessions.", essential: true },
               { name: "noxis-locale", type: "localStorage", purpose: "Client-side language preference backup for instant rendering.", essential: true },
               { name: "noxis_license", type: "localStorage", purpose: "Cached license data to allow offline operation without re-validating against the server every session.", essential: true },
@@ -184,9 +184,8 @@ function PrivacyContent() {
           <p>We use the following sub-processors to deliver Noxis Hub. Each is bound by their own privacy policies and data processing agreements:</p>
           <div className="space-y-3">
             {[
-              { name: "Supabase", role: "Database & Authentication", data: "Business profile, encrypted business records, auth tokens", location: "AWS us-east-1", link: "https://supabase.com/privacy" },
-              { name: "Cloudflare", role: "Website hosting, CDN, DNS", data: "Website traffic metadata (no business data)", location: "Global CDN", link: "https://www.cloudflare.com/privacy" },
-              { name: "GitHub", role: "Source code hosting & release distribution", data: "Installer binaries only — no user data", location: "USA", link: "https://docs.github.com/privacy" },
+              { name: "Enterprise Cloud Provider", role: "Database & Authentication", data: "Business profile, encrypted business records, auth tokens", location: "servers in enterprise-grade data centers with SOC 2 compliance", link: "/privacy" },
+              { name: "Global CDN Provider", role: "our global content delivery network", data: "Website traffic metadata (no business data)", location: "our global content delivery network", link: "/privacy" },
             ].map((sp) => (
               <div key={sp.name} className="bg-white/[0.02] border border-white/[0.03] rounded p-4 space-y-1">
                 <div className="flex items-center justify-between">

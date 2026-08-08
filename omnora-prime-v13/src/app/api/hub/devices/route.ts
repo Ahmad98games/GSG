@@ -4,7 +4,7 @@ import * as schema from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { verifyUserSession } from '@/lib/security/authHelpers';
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-static';
 
 /**
  * GET /api/hub/devices

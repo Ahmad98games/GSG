@@ -3,7 +3,7 @@ import { startHubServer } from '@/server/server';
 import { logger } from '@/lib/logger';
 import { verifyUserSession } from '@/lib/security/authHelpers';
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-static';
 
 let isStarted = false;
 

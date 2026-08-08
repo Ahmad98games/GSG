@@ -152,21 +152,9 @@ export function useLicenseValidation() {
 
       if (res.status === 403) {
         const data = await res.json()
-        // Must be EXPLICIT deactivation not just any 403
         if (data.code === 'DEACTIVATED' || data.code === 'EXPIRED') {
-          localStorage.setItem(
-            'noxis_license_error',
-            data.error
-          )
-          localStorage.removeItem('noxis_license')
-          // 30 second grace period so user can save their work
-          toast.error(
-            'License Invalid',
-            data.error + ' You have 30 seconds to save your work.'
-          )
-          setTimeout(() => {
-            router.replace('/license?expired=true')
-          }, 30000)
+          // Do not force navigation or show a blocking toast — downgrade tier silently
+          localStorage.setItem('noxis_license_error', data.error)
         }
         return
       }

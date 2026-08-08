@@ -5,7 +5,7 @@ import { eq, or, and } from 'drizzle-orm';
 import { NspBroadcaster } from '@/server/NspBroadcaster';
 import { verifyUserSession } from '@/lib/security/authHelpers';
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-static';
 
 export async function GET(req: Request) {
   const auth = await verifyUserSession();

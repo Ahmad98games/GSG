@@ -1,3 +1,4 @@
+export const dynamic = 'force-static';
 import { NextRequest, NextResponse } from 'next/server'
 import { generateToken } from '@/lib/admin/auth'
 import { consumeNonce } from '@/lib/security/nonce'

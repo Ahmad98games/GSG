@@ -19,10 +19,17 @@ export interface BusinessProfile {
   city?: string;
   country: string;
   currency: string;
+  base_currency?: string;
+  tax_system?: string;
   tax_label?: string;
   tax_name?: string;
   tax_rate?: number;
   tax_number?: string;
+  trn_number?: string;
+  vat_number?: string;
+  secondary_currencies?: string;
+  stamp_image?: string;
+  signature_image?: string;
   logo_url?: string;
   visual_theme?: string;
   onboarding_done: boolean;

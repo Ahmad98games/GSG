@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { sql } from 'drizzle-orm';
 import { verifyUserSession } from '@/lib/security/authHelpers';
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-static';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

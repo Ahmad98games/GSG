@@ -1,353 +1,554 @@
-"use client";
+'use client'
 
-import { useEffect, useState, useRef, useMemo } from 'react';
-import { motion } from "framer-motion";
-import { 
-  Send, 
-  MessageCircle, 
-  Search,
-  Check,
-  CheckCheck,
-  Mic,
-  Image as ImageIcon,
-  MoreVertical,
-  ArrowLeft
-} from "lucide-react";
-import { createClient } from "@supabase/supabase-js";
-import { cn } from "@/lib/utils";
-import { formatDistanceToNow } from 'date-fns';
-import EmptyState from "@/components/ui/EmptyState";
-import { useCallback } from 'react';
+import {
+  useState, useEffect, useCallback,
+  useRef,
+} from 'react'
+import {
+  Send, Smartphone, Users, Wifi,
+  WifiOff, Edit2, Check, Crown,
+  MessageCircle, AlertTriangle,
+  Bell, BellOff, Clock,
+} from 'lucide-react'
+import { useBusinessProfile } from '@/hooks/useBusinessProfile'
+import { useLicense } from '@/hooks/useLicense'
+import { UpgradeGate } from '@/components/license/UpgradeGate'
 
-// Supabase Client for Realtime
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+interface Device {
+  id: string
+  device_id: string
+  device_label: string
+  device_role: string
+  last_seen: string
+  is_online: boolean
+  unread_count: number
+}
 
 interface Message {
-  messageId: string;
-  fromNodeId: string;
-  toNodeId: string;
-  payload: string;
-  mediaType: 'text' | 'voice' | 'image';
-  status: 'queued' | 'delivered' | 'read' | 'failed';
-  queuedAt: string;
-  deliveredAt?: string;
-  readAt?: string;
-  encryptedPayload?: Uint8Array | number[];
+  id: string
+  sender_type: 'hub' | 'device'
+  sender_device_id: string | null
+  sender_name: string
+  recipient_type: string
+  recipient_device_id: string | null
+  message_text: string
+  message_type: string
+  priority: 'normal' | 'urgent'
+  read_by: string[]
+  created_at: string
 }
 
-interface Conversation {
-  nodeId: string;
-  lastMessage: Message;
-  unreadCount: number;
-}
+const DEVICE_ROLES = [
+  { value: 'general',    label: 'General' },
+  { value: 'supervisor', label: 'Supervisor' },
+  { value: 'cashier',    label: 'Cashier' },
+  { value: 'security',   label: 'Security Guard' },
+  { value: 'driver',     label: 'Driver' },
+  { value: 'accountant', label: 'Accountant' },
+  { value: 'manager',    label: 'Manager' },
+]
 
 export default function MessagingPage() {
-  const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [inputText, setInputText] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const { profile } = useBusinessProfile()
+  const { tier, can } = useLicense()
 
-  // 1. Fetch Conversations & Messages
+  const [devices, setDevices] = useState<Device[]>([])
+  const [messages, setMessages] = useState<Message[]>([])
+  const [selectedRecipient, setSelectedRecipient] = useState<'all' | string>('all')
+  const [messageText, setMessageText] = useState('')
+  const [priority, setPriority] = useState<'normal' | 'urgent'>('normal')
+  const [sending, setSending] = useState(false)
+  const [editingDevice, setEditingDevice] = useState<string | null>(null)
+  const [editLabel, setEditLabel] = useState('')
+  const [editRole, setEditRole] = useState('')
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Load connected devices
   useEffect(() => {
-    async function fetchData() {
-      const res = await fetch('/api/messaging');
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        // Group by node_id for conversation list
-        const groups = data.reduce((acc: Record<string, Conversation>, msg: Message) => {
-          const nodeId = msg.fromNodeId === 'hub' ? msg.toNodeId : msg.fromNodeId;
-          if (!acc[nodeId]) {
-            acc[nodeId] = {
-              nodeId,
-              lastMessage: msg,
-              unreadCount: msg.status !== 'read' && msg.fromNodeId !== 'hub' ? 1 : 0
-            };
-          } else {
-            if (new Date(msg.queuedAt) > new Date(acc[nodeId].lastMessage.queuedAt)) {
-              acc[nodeId].lastMessage = msg;
-            }
-            if (msg.status !== 'read' && msg.fromNodeId !== 'hub') {
-              acc[nodeId].unreadCount++;
-            }
-          }
-          return acc;
-        }, {});
-        setConversations(Object.values(groups));
+    if (!profile?.id) return
+
+    const loadDevices = async () => {
+      const data = await (window as any).electronAPI?.getBridgeStatus?.();
+      if (data?.pairedDevices) {
+        setDevices(data.pairedDevices.map((d: any) => ({
+          id: d.deviceId || String(Math.random()),
+          device_id: d.deviceId || '',
+          device_label: d.deviceLabel || 'Mobile Device',
+          device_role: 'general',
+          last_seen: d.lastHeartbeat || new Date().toISOString(),
+          is_online: true,
+          unread_count: 0,
+        })))
       }
     }
-    fetchData();
-  }, []);
 
+    loadDevices()
+    const interval = setInterval(loadDevices, 10000)
+    return () => clearInterval(interval)
+  }, [profile?.id])
+
+  // Load message history
   useEffect(() => {
-    if (activeNodeId) {
-      async function fetchChat() {
-        const res = await fetch(`/api/messaging?nodeId=${activeNodeId}`);
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          setMessages(data.map((m: Message) => ({
-            ...m,
-            payload: m.encryptedPayload ? Buffer.from(m.encryptedPayload as number[]).toString() : (m.payload || '')
-          })));
-        }
-      }
-      fetchChat();
-    }
-  }, [activeNodeId]);
+    if (!profile?.id) return
 
-  const handleIncomingMessage = useCallback((newMsg: Message) => {
-    if (newMsg.fromNodeId === activeNodeId || newMsg.toNodeId === activeNodeId) {
-      setMessages(prev => {
-        // Prevent duplicates between Cloud and Local relays
-        if (prev.some(m => m.messageId === newMsg.messageId)) return prev;
-        return [...prev, newMsg];
-      });
-    }
-    // Update conversation list
-    setConversations(prev => {
-      const nodeId = newMsg.fromNodeId === 'hub' ? newMsg.toNodeId : newMsg.fromNodeId;
-      const existing = prev.find(c => c.nodeId === nodeId);
-      if (existing) {
-        return prev.map(c => c.nodeId === nodeId ? { ...c, lastMessage: newMsg, unreadCount: c.unreadCount + 1 } : c);
-      } else {
-        return [...prev, { nodeId, lastMessage: newMsg, unreadCount: 1 }];
-      }
-    });
-  }, [activeNodeId]);
-
-  // 2. Realtime Subscription (Cloud & Local LAN)
-  useEffect(() => {
-    // A. Supabase (Cloud Relay)
-    const channel = supabase
-      .channel('mesh_messages')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mesh_messages' }, (payload) => {
-        const newMsg = payload.new as Message;
-        handleIncomingMessage(newMsg);
+    const load = async () => {
+      const data = await (window as any).electronAPI?.messaging?.getHistory({
+        businessId: profile.id,
+        limit: 100,
       })
-      .subscribe();
+      setMessages(data || [])
+    }
 
-    // B. Local SSE (Offline LAN Relay)
-    const eventSource = new EventSource('/api/messaging/events');
-    eventSource.addEventListener('new_message', (e: MessageEvent) => {
-      const newMsg = JSON.parse(e.data);
-      handleIncomingMessage(newMsg);
-    });
+    load()
+  }, [profile?.id])
+
+  // Listen for new incoming messages
+  useEffect(() => {
+    if (!(window as any).electronAPI?.messaging) return
+
+    (window as any).electronAPI.messaging.onNewMessage((msg: Message) => {
+      setMessages(prev => [msg, ...prev])
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      }, 100)
+    })
 
     return () => {
-      supabase.removeChannel(channel);
-      eventSource.close();
-    };
-  }, [handleIncomingMessage]);
-
-  // 3. Auto-scroll
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      (window as any).electronAPI.messaging.removeMessageListener()
     }
-  }, [messages]);
+  }, [])
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputText.trim() || !activeNodeId) return;
+  const sendMessage = useCallback(async () => {
+    if (!messageText.trim() || !profile?.id) return
 
-    const body = {
-      toNodeId: activeNodeId,
-      text: inputText.trim(),
-      mediaType: 'text'
-    };
-
+    setSending(true)
     try {
-      const res = await fetch('/api/messaging', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      const data = await res.json();
-      setMessages(prev => [...prev, { ...data, payload: inputText.trim() }]);
-      setInputText("");
-    } catch (err) {
-      console.error("Failed to send message", err);
-    }
-  };
+      await (window as any).electronAPI?.messaging?.send({
+        businessId: profile.id,
+        text: messageText.trim(),
+        recipientType: selectedRecipient === 'all' ? 'all' : 'device',
+        recipientDeviceId: selectedRecipient !== 'all' ? selectedRecipient : null,
+        priority,
+      })
 
-  const filteredConversations = useMemo(() => {
-    return conversations.filter(c => c.nodeId.toLowerCase().includes(searchQuery.toLowerCase()));
-  }, [conversations, searchQuery]);
+      setMessageText('')
+      setPriority('normal')
+    } finally {
+      setSending(false)
+    }
+  }, [messageText, selectedRecipient, priority, profile?.id])
+
+  const saveDeviceLabel = useCallback(
+    async (deviceId: string) => {
+      if (!editLabel.trim()) return
+
+      await (window as any).electronAPI?.messaging?.renameDevice({
+        deviceId,
+        newLabel: editLabel.trim(),
+        deviceRole: editRole,
+      })
+
+      setDevices(prev => prev.map(d =>
+        d.device_id === deviceId
+          ? {
+              ...d,
+              device_label: editLabel.trim(),
+              device_role: editRole,
+            }
+          : d
+      ))
+      setEditingDevice(null)
+    },
+    [editLabel, editRole]
+  )
+
+  // Filter messages for selected recipient
+  const filteredMessages = messages.filter(msg => {
+    if (selectedRecipient === 'all') return true
+    return msg.recipient_device_id === selectedRecipient || msg.sender_device_id === selectedRecipient
+  })
+
+  const onlineDevices = devices.filter(d => d.is_online)
+  const offlineDevices = devices.filter(d => !d.is_online)
 
   return (
-    <div className="flex h-screen bg-black text-slate-200 overflow-hidden font-inter">
-      
-      {/* Left Panel: Conversation List */}
-      <div className="w-[320px] border-r border-white/5 bg-[#0A0A0B] flex flex-col flex-shrink-0">
-        <div className="p-6 border-b border-white/5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-lg font-bold tracking-tight">Mesh Messenger</h1>
-            <div className="flex items-center gap-1.5 bg-emerald/10 px-2 py-0.5 rounded-full">
-              <div className="w-1.5 h-1.5 bg-emerald rounded-full animate-pulse" />
-              <span className="text-[10px] font-bold text-emerald">{conversations.length}</span>
-            </div>
-          </div>
-          
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-            <input 
-              type="text" 
-              placeholder="Search Mesh Nodes..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-electric-blue/50"
-            />
-          </div>
+    <div className="flex h-full overflow-hidden bg-[#030712] text-slate-200">
+      {/* ── LEFT PANEL: Devices ── */}
+      <div className="w-64 flex-shrink-0 border-r border-white/6 bg-[#0A0C0F] flex flex-col">
+        {/* Header */}
+        <div className="p-4 border-b border-white/6">
+          <h2 className="text-sm font-bold text-white mb-1">Messaging</h2>
+          <p className="text-[10px] text-gray-400">
+            {onlineDevices.length} online · {devices.length} paired
+          </p>
         </div>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
-          {filteredConversations.map((conv) => (
-            <button
-              key={conv.nodeId}
-              onClick={() => setActiveNodeId(conv.nodeId)}
-              className={cn(
-                "w-full p-4 flex items-center gap-3 transition-all hover:bg-white/5 border-l-2",
-                activeNodeId === conv.nodeId ? "bg-electric-blue/5 border-electric-blue" : "border-transparent"
-              )}
-            >
-              <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-sm font-bold uppercase text-slate-400 border border-white/5">
-                {conv.nodeId.substring(0, 2)}
+        {/* Recipient selector */}
+        <div className="p-3 space-y-1 overflow-y-auto flex-1 custom-scrollbar">
+          {/* Broadcast to all */}
+          <button
+            onClick={() => setSelectedRecipient('all')}
+            className={`w-full flex items-center gap-3 p-3 rounded-sm text-left transition-colors cursor-pointer ${
+              selectedRecipient === 'all'
+                ? 'bg-[#60A5FA]/10 border border-[#60A5FA]/20'
+                : 'hover:bg-white/4'
+            }`}
+          >
+            <div className="w-8 h-8 rounded-full bg-[#60A5FA]/15 flex items-center justify-center flex-shrink-0">
+              <Users size={14} className="text-[#60A5FA]" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-white truncate">All Devices</p>
+              <p className="text-[10px] text-gray-500">Broadcast to everyone</p>
+            </div>
+          </button>
+
+          {/* Online devices */}
+          {onlineDevices.length > 0 && (
+            <p className="text-[9px] font-bold uppercase tracking-widest text-gray-500 px-2 pt-3 pb-1">
+              Online
+            </p>
+          )}
+
+          {onlineDevices.map(device => (
+            <DeviceRow
+              key={device.device_id}
+              device={device}
+              isSelected={selectedRecipient === device.device_id}
+              isEditing={editingDevice === device.device_id}
+              editLabel={editLabel}
+              editRole={editRole}
+              onSelect={() => setSelectedRecipient(device.device_id)}
+              onEditStart={() => {
+                setEditingDevice(device.device_id)
+                setEditLabel(device.device_label)
+                setEditRole(device.device_role)
+              }}
+              onEditSave={() => saveDeviceLabel(device.device_id)}
+              onEditCancel={() => setEditingDevice(null)}
+              onLabelChange={setEditLabel}
+              onRoleChange={setEditRole}
+            />
+          ))}
+
+          {/* Offline devices */}
+          {offlineDevices.length > 0 && (
+            <p className="text-[9px] font-bold uppercase tracking-widest text-gray-500 px-2 pt-3 pb-1">
+              Offline
+            </p>
+          )}
+
+          {offlineDevices.map(device => (
+            <DeviceRow
+              key={device.device_id}
+              device={device}
+              isSelected={selectedRecipient === device.device_id}
+              isEditing={editingDevice === device.device_id}
+              editLabel={editLabel}
+              editRole={editRole}
+              onSelect={() => setSelectedRecipient(device.device_id)}
+              onEditStart={() => {
+                setEditingDevice(device.device_id)
+                setEditLabel(device.device_label)
+                setEditRole(device.device_role)
+              }}
+              onEditSave={() => saveDeviceLabel(device.device_id)}
+              onEditCancel={() => setEditingDevice(null)}
+              onLabelChange={setEditLabel}
+              onRoleChange={setEditRole}
+            />
+          ))}
+
+          {devices.length === 0 && (
+            <div className="text-center py-8">
+              <Smartphone size={24} className="text-gray-700 mx-auto mb-2" />
+              <p className="text-xs text-gray-500">No devices paired yet</p>
+              <p className="text-[10px] text-gray-600 mt-1">Go to Settings → Device Pairing</p>
+            </div>
+          )}
+        </div>
+
+        {/* Tier info at bottom */}
+        <div className="p-3 border-t border-white/6">
+          <p className="text-[9px] text-gray-500">
+            {devices.length} of{' '}
+            {tier === 'free' ? 1 : tier === 'lite' ? 5 : tier === 'pro' ? 15 : 50} devices paired
+          </p>
+        </div>
+      </div>
+
+      {/* ── RIGHT PANEL: Messages ── */}
+      <div className="flex-1 flex flex-col min-w-0 bg-[#060708]">
+        {/* Chat header */}
+        <div className="px-6 py-4 border-b border-white/6 flex items-center gap-3 bg-[#0A0C0F]">
+          {selectedRecipient === 'all' ? (
+            <>
+              <Users size={18} className="text-[#60A5FA]" />
+              <div>
+                <p className="text-sm font-bold text-white">All Devices</p>
+                <p className="text-[10px] text-gray-400">{onlineDevices.length} online</p>
               </div>
-              <div className="flex-1 text-left min-w-0">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono font-bold text-[#C5A059] uppercase tracking-widest">{conv.nodeId}</span>
-                  <span className="text-[9px] text-slate-500 italic">
-                    {formatDistanceToNow(new Date(conv.lastMessage.queuedAt), { addSuffix: true })}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400 truncate mt-0.5 opacity-80">
-                  {conv.lastMessage.fromNodeId === 'hub' ? 'You: ' : ''}
-                  {conv.lastMessage.payload || 'Attachment'}
+            </>
+          ) : (
+            <>
+              <div className="relative">
+                <Smartphone size={18} className="text-[#60A5FA]" />
+                {devices.find(d => d.device_id === selectedRecipient)?.is_online ? (
+                  <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#10B981] border border-[#060708]" />
+                ) : (
+                  <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-gray-700 border border-[#060708]" />
+                )}
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white">
+                  {devices.find(d => d.device_id === selectedRecipient)?.device_label || 'Unknown Device'}
+                </p>
+                <p className="text-[10px] text-gray-400">
+                  {devices.find(d => d.device_id === selectedRecipient)?.is_online
+                    ? 'Online now'
+                    : 'Offline — message will deliver when connected'}
                 </p>
               </div>
-              {conv.unreadCount > 0 && (
-                <div className="w-5 h-5 rounded-full bg-electric-blue text-onyx text-[10px] font-bold flex items-center justify-center">
-                  {conv.unreadCount}
-                </div>
+            </>
+          )}
+        </div>
+
+        {/* Messages list */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-3 custom-scrollbar">
+          {filteredMessages.length === 0 && (
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <MessageCircle size={32} className="text-gray-700 mb-3" />
+              <p className="text-sm font-bold text-gray-500">No messages yet</p>
+              <p className="text-xs text-gray-600 mt-1">Send a message to your connected devices</p>
+            </div>
+          )}
+
+          {[...filteredMessages].reverse().map(msg => (
+            <MessageBubble key={msg.id} message={msg} isFromHub={msg.sender_type === 'hub'} />
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Message composer */}
+        <div className="p-4 border-t border-white/6 bg-[#0A0C0F]">
+          {/* Priority toggle */}
+          <div className="flex items-center gap-2 mb-3">
+            <button
+              onClick={() => setPriority(p => (p === 'normal' ? 'urgent' : 'normal'))}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-xs font-bold transition-colors cursor-pointer ${
+                priority === 'urgent'
+                  ? 'bg-red-500/15 text-red-400 border border-red-500/25'
+                  : 'bg-white/5 text-gray-400 border border-white/8 hover:border-white/15'
+              }`}
+            >
+              {priority === 'urgent' ? (
+                <>
+                  <Bell size={11} /> Urgent
+                </>
+              ) : (
+                <>
+                  <BellOff size={11} /> Normal
+                </>
               )}
             </button>
-          ))}
-            <EmptyState 
-               icon={MessageCircle}
-               title="No active threads"
-               body="Messages between mesh nodes will appear here once communication is established."
+
+            <span className="text-[10px] text-gray-400">
+              {selectedRecipient === 'all'
+                ? `Broadcast to all ${devices.length} devices`
+                : `Direct to ${
+                    devices.find(d => d.device_id === selectedRecipient)?.device_label || 'device'
+                  }`}
+            </span>
+          </div>
+
+          {/* Input row */}
+          <div className="flex gap-3">
+            <textarea
+              value={messageText}
+              onChange={e => setMessageText(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  sendMessage()
+                }
+              }}
+              placeholder={
+                selectedRecipient === 'all'
+                  ? 'Broadcast a message to all devices...'
+                  : 'Send a message...'
+              }
+              rows={2}
+              className="flex-1 bg-[#161A1F] border border-white/8 text-white text-sm px-4 py-3 resize-none outline-none rounded-sm focus:border-[#60A5FA]/40 placeholder:text-gray-600"
             />
+            <button
+              onClick={sendMessage}
+              disabled={!messageText.trim() || sending}
+              className="px-5 bg-[#60A5FA] text-black font-bold rounded-sm hover:bg-blue-400 disabled:opacity-40 transition-colors flex items-center gap-2 flex-shrink-0 cursor-pointer"
+            >
+              <Send size={15} />
+              {sending ? 'Sending...' : 'Send'}
+            </button>
+          </div>
+
+          <p className="text-[10px] text-gray-600 mt-2">
+            Enter to send · Shift+Enter for new line
+          </p>
         </div>
       </div>
+    </div>
+  )
+}
 
-      {/* Right Panel: Chat Thread */}
-      <div className="flex-1 flex flex-col bg-onyx">
-        {activeNodeId ? (
-          <>
-            <header className="h-16 border-b border-white/5 flex items-center justify-between px-8 bg-surface/30 backdrop-blur-md z-10">
-              <div className="flex items-center gap-4">
-                <button 
-                  onClick={() => setActiveNodeId(null)} 
-                  className="md:hidden p-2 -ml-2 text-slate-400 hover:text-white"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                </button>
-                <div className="relative">
-                  <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-500">
-                    {activeNodeId.substring(0, 2)}
-                  </div>
-                  <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald rounded-full border-2 border-onyx" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-bold font-mono text-[#C5A059] uppercase tracking-widest">{activeNodeId}</h2>
-                  <p className="text-[10px] text-emerald font-bold tracking-widest uppercase">Node Online</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <button className="text-slate-500 hover:text-white transition-colors"><MoreVertical className="w-5 h-5" /></button>
-              </div>
-            </header>
+// ── SUB-COMPONENTS ──
 
-            <div ref={scrollRef} className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar bg-[radial-gradient(circle_at_center,rgba(0,0,0,0)_0%,rgba(0,0,0,0.4)_100%)]">
-              {messages.map((msg) => (
-                <motion.div
-                  key={msg.messageId}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={cn(
-                    "flex flex-col group",
-                    msg.fromNodeId === 'hub' ? "items-end" : "items-start"
-                  )}
-                >
-                  <div className={cn(
-                    "max-w-[70%] p-4 rounded-xl relative",
-                    msg.fromNodeId === 'hub' 
-                      ? "bg-electric-blue/10 border border-electric-blue/20 text-white rounded-tr-none" 
-                      : "bg-[#1A1D21] border border-white/5 text-slate-200 rounded-tl-none"
-                  )}>
-                    {msg.mediaType === 'voice' && (
-                      <div className="flex items-center gap-3 mb-2 text-electric-blue">
-                        <Mic className="w-4 h-4" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest">Voice Note</span>
-                      </div>
-                    )}
-                    <p className="text-sm leading-relaxed">{msg.payload}</p>
-                    
-                    <div className={cn(
-                      "flex items-center gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity",
-                      msg.fromNodeId === 'hub' ? "justify-end" : "justify-start"
-                    )}>
-                      <span className="text-[9px] text-slate-500 italic">
-                        {new Date(msg.queuedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                      {msg.fromNodeId === 'hub' && (
-                        msg.status === 'read' ? <CheckCheck className="w-3 h-3 text-electric-blue" /> : <Check className="w-3 h-3 text-slate-500" />
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+function DeviceRow({
+  device,
+  isSelected,
+  isEditing,
+  editLabel,
+  editRole,
+  onSelect,
+  onEditStart,
+  onEditSave,
+  onEditCancel,
+  onLabelChange,
+  onRoleChange,
+}: any) {
+  if (isEditing) {
+    return (
+      <div className="p-3 border border-[#60A5FA]/25 rounded-sm bg-[#60A5FA]/5">
+        <input
+          value={editLabel}
+          onChange={e => onLabelChange(e.target.value)}
+          placeholder="Device name"
+          autoFocus
+          className="w-full bg-[#0F1114] border border-white/8 text-white text-xs px-2 py-1.5 rounded-sm outline-none focus:border-[#60A5FA]/40 mb-2"
+          onKeyDown={e => {
+            if (e.key === 'Enter') onEditSave()
+            if (e.key === 'Escape') onEditCancel()
+          }}
+        />
+        <select
+          value={editRole}
+          onChange={e => onRoleChange(e.target.value)}
+          className="w-full bg-[#0F1114] border border-white/8 text-gray-400 text-xs px-2 py-1.5 rounded-sm outline-none mb-2"
+        >
+          {DEVICE_ROLES.map(r => (
+            <option key={r.value} value={r.value}>
+              {r.label}
+            </option>
+          ))}
+        </select>
+        <div className="flex gap-2">
+          <button
+            onClick={onEditSave}
+            className="flex-1 py-1 bg-[#60A5FA] text-black text-[10px] font-bold rounded-sm cursor-pointer"
+          >
+            Save
+          </button>
+          <button
+            onClick={onEditCancel}
+            className="flex-1 py-1 border border-white/8 text-gray-400 text-[10px] rounded-sm cursor-pointer"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    )
+  }
 
-            <div className="p-6 border-t border-white/5 bg-surface/50">
-              <form onSubmit={handleSend} className="max-w-4xl mx-auto flex gap-4">
-                <div className="flex-1 relative">
-                  <input
-                    type="text"
-                    value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    placeholder="Enter command or message..."
-                    maxLength={1000}
-                    className="w-full bg-black/50 border border-white/10 rounded-xl py-4 pl-4 pr-12 text-white focus:outline-none focus:border-electric-blue/50 transition-all placeholder:text-slate-600"
-                  />
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-3 text-slate-500">
-                    <button type="button" className="hover:text-white"><Mic className="w-4 h-4" /></button>
-                    <button type="button" className="hover:text-white"><ImageIcon className="w-4 h-4" /></button>
-                  </div>
-                </div>
-                <button
-                  type="submit"
-                  disabled={!inputText.trim()}
-                  className="bg-electric-blue text-onyx px-6 rounded-xl font-bold uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 shadow-[0_0_20px_rgba(45,185,255,0.2)]"
-                >
-                  <Send className="w-5 h-5" />
-                </button>
-              </form>
-            </div>
-          </>
-        ) : (
-          <EmptyState 
-            icon={MessageCircle}
-            title="Mesh Node Selector"
-            body="Select a communication node from the sidebar to begin an encrypted mesh session."
+  return (
+    <button
+      onClick={onSelect}
+      className={`w-full flex items-center gap-3 p-3 rounded-sm text-left transition-colors group cursor-pointer ${
+        isSelected
+          ? 'bg-[#60A5FA]/10 border border-[#60A5FA]/20'
+          : 'hover:bg-white/4'
+      }`}
+    >
+      {/* Online indicator */}
+      <div className="relative flex-shrink-0">
+        <div className="w-8 h-8 rounded-full bg-[#161A1F] border border-white/8 flex items-center justify-center">
+          <Smartphone
+            size={14}
+            className={device.is_online ? 'text-[#60A5FA]' : 'text-gray-600'}
           />
-        )}
+        </div>
+        <div
+          className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#0A0C0F] ${
+            device.is_online ? 'bg-[#10B981]' : 'bg-gray-700'
+          }`}
+        />
+      </div>
+
+      {/* Device info */}
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-semibold text-white truncate">{device.device_label}</p>
+        <p className="text-[10px] text-gray-400 capitalize">
+          {DEVICE_ROLES.find(r => r.value === device.device_role)?.label || device.device_role}
+          {device.unread_count > 0 && (
+            <span className="ml-1 bg-[#60A5FA] text-black text-[9px] font-bold px-1 rounded-sm">
+              {device.unread_count}
+            </span>
+          )}
+        </p>
+      </div>
+
+      {/* Edit button */}
+      <button
+        onClick={e => {
+          e.stopPropagation()
+          onEditStart()
+        }}
+        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-500 hover:text-gray-300 cursor-pointer"
+      >
+        <Edit2 size={11} />
+      </button>
+    </button>
+  )
+}
+
+function MessageBubble({
+  message,
+  isFromHub,
+}: {
+  message: Message
+  isFromHub: boolean
+}) {
+  const isUrgent = message.priority === 'urgent'
+  const time = new Date(message.created_at).toLocaleTimeString('en-PK', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+
+  return (
+    <div className={`flex ${isFromHub ? 'justify-end' : 'justify-start'}`}>
+      <div
+        className={`max-w-xs rounded-sm px-4 py-3 ${
+          isFromHub
+            ? isUrgent
+              ? 'bg-red-500/15 border border-red-500/25'
+              : 'bg-[#60A5FA]/15 border border-[#60A5FA]/20'
+            : 'bg-[#161A1F] border border-white/8'
+        }`}
+      >
+        {/* Sender label */}
+        <p
+          className={`text-[9px] font-bold uppercase tracking-wider mb-1.5 ${
+            isFromHub ? (isUrgent ? 'text-red-400' : 'text-[#60A5FA]') : 'text-gray-400'
+          }`}
+        >
+          {isUrgent && '🚨 '}
+          {message.sender_name}
+          {!isFromHub && message.recipient_type === 'hub' ? ' → PC Hub' : ''}
+        </p>
+
+        {/* Message text */}
+        <p className="text-sm text-white leading-relaxed">{message.message_text}</p>
+
+        {/* Timestamp */}
+        <p className="text-[9px] text-gray-400 mt-1.5 text-right">{time}</p>
       </div>
     </div>
-  );
+  )
 }
-  

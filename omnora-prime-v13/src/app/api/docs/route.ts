@@ -745,7 +745,7 @@ Internal machine-to-machine calls use \`x-internal-bypass-key\` header set to th
   },
 }
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-static';
 
 export async function GET() {
   return NextResponse.json(openApiSpec, {

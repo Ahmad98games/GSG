@@ -2,10 +2,12 @@
   "compilerOptions": {
     "target": "ESNext",
     "module": "CommonJS",
+    "moduleResolution": "node",
     "lib": ["ESNext", "DOM"],
     "outDir": "../dist-electron",
     "rootDir": "..",
     "strict": true,
+    "noImplicitAny": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "baseUrl": "..",

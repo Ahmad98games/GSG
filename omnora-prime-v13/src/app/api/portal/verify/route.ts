@@ -1,7 +1,7 @@
 // src/app/api/portal/verify/route.ts
 // API endpoint to verify a portal token and return read-only data
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-static';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';

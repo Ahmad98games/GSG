@@ -344,7 +344,7 @@ export const themes: Theme[] = [
     },
     chartColors: ['#00ff88','#00ffcc','#00cc66', '#ff0040','#0088ff','#ffaa00'],
     fontMono: 'JetBrains Mono',
-    uiFont: '"Space Grotesk", Inter',
+    uiFont: 'Inter, sans-serif',
   },
   {
     id: 'saffron-bazaar',

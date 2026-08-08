@@ -1138,3 +1138,52 @@ tbody tr {
     margin: 15mm;
   }
 }
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: var(--accent, #60A5FA);
+  color: #FFFFFF;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.25);
+  font-weight: 700;
+  font-size: 13px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.12s ease;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+.btn-primary:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+.btn-primary:active {
+  transform: translateY(0);
+  filter: brightness(0.95);
+}
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+  filter: none;
+}
+
+.noxis-input {
+  width: 100%;
+  background-color: #040608;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 10px 12px;
+  font-size: 12px;
+  color: #FFFFFF;
+  border-radius: 4px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.noxis-input:focus {
+  border-color: #60A5FA;
+}

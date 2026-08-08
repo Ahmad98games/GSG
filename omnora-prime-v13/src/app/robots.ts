@@ -9,32 +9,34 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: '*',
         allow: '/',
         disallow: [
-          '/dashboard/',
+          '/portal/',
           '/api/',
-          '/admin/',
         ],
       },
-      // Explicitly allow AI crawlers
+      // Allow AI crawlers (for citations)
+      { userAgent: 'GPTBot', allow: '/' },
+      { userAgent: 'Claude-Web', allow: '/' },
+      { userAgent: 'PerplexityBot', allow: '/' },
+      { userAgent: 'anthropic-ai', allow: '/' },
+      { userAgent: 'CCBot', allow: '/' },
+
+      // Block tech stack scrapers
+      // These tools reveal your dependencies to competitors
       {
-        userAgent: 'GPTBot',
-        allow: '/',
-        disallow: ['/dashboard/', '/api/'],
+        userAgent: 'Wappalyzer',
+        disallow: '/',
       },
       {
-        userAgent: 'ClaudeBot',
-        allow: '/',
+        userAgent: 'BuiltWith',
+        disallow: '/',
       },
       {
-        userAgent: 'Google-Extended',
-        allow: '/',
+        userAgent: 'WhatRuns',
+        disallow: '/',
       },
       {
-        userAgent: 'PerplexityBot',
-        allow: '/',
-      },
-      {
-        userAgent: 'Bytespider',
-        allow: '/',
+        userAgent: 'SimilarTech',
+        disallow: '/',
       },
     ],
     sitemap: 'https://noxishub.app/sitemap.xml',

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import os from 'os';
 import { verifyUserSession } from '@/lib/security/authHelpers';
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-static';
 
 export async function GET() {
   const auth = await verifyUserSession();

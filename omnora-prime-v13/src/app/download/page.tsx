@@ -96,7 +96,7 @@ export default function DownloadPage() {
 
   const trialFeatures = [
     { title: 'Full POS Counter & Thermal Printing', desc: 'Hardware integrated receipt printing & weighbridge COM scale support.', icon: CircleDollarSign },
-    { title: 'Unlimited Local SQLite Inventory', desc: 'Write-Ahead Logging (WAL) mode for 100% offline data durability.', icon: Layers },
+    { title: 'Unlimited Local Encrypted Inventory', desc: 'concurrent read-write engine for 100% offline data durability.', icon: Layers },
     { title: 'Karigar Attendance & Piece-Rate Payroll', desc: 'Automated wage calculation, Peshgi advance logs, and worker slips.', icon: Users },
     { title: 'Double-Entry Accounting & Khata Engine', desc: 'Automatic debit/credit journal entries, Party ledgers & PDF invoices.', icon: FileText },
     { title: '1 Mobile Companion Pairing (Local WiFi)', desc: 'Pair floor smartphones on your office WiFi without internet.', icon: Smartphone },
@@ -213,7 +213,7 @@ export default function DownloadPage() {
             <div className="bg-[#60A5FA]/10 border border-[#60A5FA]/20 p-4 rounded-sm flex items-center gap-3">
               <ShieldCheck size={18} className="text-[#60A5FA] flex-shrink-0" />
               <p className="text-[11px] text-[#60A5FA] leading-tight">
-                Runs 100% locally. SQLite database files stay on your hard drive with optional cloud sync.
+                Runs 100% locally. Encrypted local database files stay on your hard drive with optional cloud sync.
               </p>
             </div>
           </div>
