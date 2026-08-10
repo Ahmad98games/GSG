@@ -554,7 +554,7 @@ export default function LandingClient() {
           </section>
 
           {/* System Capabilities Section - Listing all 12 modules */}
-          <section className="py-24 px-4 sm:px-6 max-w-7xl mx-auto border-t border-white/[0.04]">
+          <section id="features" className="py-24 px-4 sm:px-6 max-w-7xl mx-auto border-t border-white/[0.04]">
             <div className="text-center mb-16 space-y-3">
               <p className="text-[10px] font-bold tracking-[0.3em] uppercase" style={{ color: CHAMPAGNE }}>Complete Capability Index</p>
               <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white uppercase">System Features & Documentation</h2>

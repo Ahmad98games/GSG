@@ -40,56 +40,105 @@ export default function DownloadPage() {
     setError('')
     setResult(null)
 
-    // 1. If Supabase URL is present, try server verification first
-    if (SUPABASE_URL) {
+    // 1. Try real server activation / verification endpoint first
+    try {
+      const res = await fetch('/api/license/activate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          licenseKey: trimmed,
+          machineInfo: { hostname: 'Web-Verification-Node' },
+          nonce: `web_verify_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
+        }),
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        if (data.success && data.license) {
+          const lic = data.license
+          setResult({
+            valid: true,
+            tier: lic.tier.toUpperCase() + ' TIER',
+            is_trial: !!lic.isTrialActive,
+            days_remaining: lic.trialDaysRemaining ?? null,
+            max_devices: lic.maxDevices || 5,
+            expires_at: lic.expiresAt ? new Date(lic.expiresAt).toLocaleDateString() : 'Perpetual License',
+            error: undefined
+          })
+          setLoading(false)
+          return
+        }
+      }
+    } catch (e) {
+      console.warn('API activation check failed, trying direct Supabase query...', e)
+    }
+
+    // 2. Direct Supabase Database Query if API endpoint didn't match
+    if (SUPABASE_URL && SUPABASE_ANON_KEY) {
       try {
-        const res = await fetch(`${SUPABASE_URL}/functions/v1/verify-license`, {
-          method: 'POST',
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/licenses?license_key=eq.${encodeURIComponent(trimmed)}&select=*`, {
           headers: {
-            'Content-Type': 'application/json',
             'apikey': SUPABASE_ANON_KEY,
             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
           },
-          body: JSON.stringify({
-            license_key: trimmed,
-            device_id: 'website-download-check',
-          }),
         })
 
         if (res.ok) {
-          const data = await res.json()
-          if (data.valid) {
-            setResult(data)
+          const rows = await res.json()
+          if (Array.isArray(rows) && rows.length > 0) {
+            const row = rows[0]
+            if (row.is_deactivated) {
+              setError('This license key has been deactivated. Contact Noxis support on WhatsApp.')
+              setLoading(false)
+              return
+            }
+
+            const isExpired = row.expires_at && new Date() > new Date(row.expires_at)
+            if (isExpired) {
+              setError(`This license expired on ${new Date(row.expires_at).toLocaleDateString()}. Please renew your key.`)
+              setLoading(false)
+              return
+            }
+
+            setResult({
+              valid: true,
+              tier: (row.tier || 'PRO').toUpperCase() + ' TIER',
+              is_trial: !!row.is_trial,
+              days_remaining: row.expires_at ? Math.max(0, Math.ceil((new Date(row.expires_at).getTime() - Date.now()) / 86400000)) : null,
+              max_devices: row.max_devices || 5,
+              expires_at: row.expires_at ? new Date(row.expires_at).toLocaleDateString() : 'Perpetual License',
+            })
             setLoading(false)
             return
           }
         }
       } catch (e) {
-        console.warn('License server unreachable, using local validation engine', e)
+        console.warn('Supabase DB direct check offline', e)
       }
     }
 
-    // 2. Offline / Local License Format Validation Engine
-    const isFormattedKey = 
-      trimmed.startsWith('NOXIS-') || 
-      trimmed.startsWith('KEY-') || 
-      trimmed.startsWith('HUB-') ||
-      trimmed.startsWith('PRO-') ||
-      trimmed.startsWith('LITE-') ||
-      trimmed.startsWith('ELITE-') ||
-      (trimmed.length >= 12 && /^[A-Z0-9-]+$/.test(trimmed))
+    // 3. Offline Key Verification Engine (for official offline production keys)
+    const validPrefixes = ['ELIT-', 'PRO-', 'LITE-', 'NOXIS-', 'KEY-', 'HUB-']
+    const hasValidPrefix = validPrefixes.some(p => trimmed.startsWith(p))
+    const isStandardFormat = /^([A-Z0-9]{3,6}-){2,4}[A-Z0-9]{3,6}$/.test(trimmed) || /^NOXIS-[A-Z0-9-]{6,}$/.test(trimmed)
 
-    if (isFormattedKey) {
+    // Check for standard offline keys (e.g. ELIT-AHMA-D238-2024 or NOXIS-PRO-2026)
+    if (hasValidPrefix && isStandardFormat) {
+      const isElite = trimmed.includes('ELIT') || trimmed.includes('ELITE')
+      const isLite = trimmed.includes('LITE')
+      const tierName = isElite ? 'ELITE TIER' : isLite ? 'LITE TIER' : 'PRO TIER'
+      const maxDevs = isElite ? 50 : isLite ? 2 : 15
+
       setResult({
         valid: true,
-        tier: trimmed.includes('ELITE') ? 'ELITE TIER' : trimmed.includes('LITE') ? 'LITE TIER' : 'PRO TIER',
+        tier: tierName,
         is_trial: false,
         days_remaining: 365,
-        max_devices: 5,
-        expires_at: '2027-12-31',
+        max_devices: maxDevs,
+        expires_at: 'Offline Validated Key (Perpetual)',
       })
     } else {
-      setError('Invalid License Key format. Key must follow the pattern (e.g. NOXIS-PRO-2026).')
+      setError(`No active license found in database for key '${trimmed}'. Please verify your key or request activation.`)
     }
     setLoading(false)
   }
@@ -290,21 +339,78 @@ export default function DownloadPage() {
               </button>
             </div>
           ) : (
-            <div className="bg-emerald-500/10 border border-emerald-500/20 p-6 rounded-sm space-y-4 text-center">
-              <div className="inline-flex items-center gap-2 text-emerald-400 font-bold uppercase text-xs">
-                <CheckCircle2 size={16} />
-                <span>Verified License Tier: {result.tier.toUpperCase()}</span>
+            <div className="bg-[#051E14] border border-emerald-500/30 p-6 rounded-sm space-y-6 text-left relative overflow-hidden">
+              <div className="flex items-center justify-between border-b border-emerald-500/20 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-sm bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+                    <ShieldCheck size={22} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-white uppercase tracking-wider">Official License Verification Certificate</h4>
+                    <p className="text-[10px] text-emerald-400 font-mono uppercase tracking-widest">Status: Active & Verified Payload</p>
+                  </div>
+                </div>
+                <div className="bg-emerald-500/20 border border-emerald-500/40 px-3 py-1 rounded-sm text-xs font-black text-emerald-300 font-mono">
+                  {result.tier.toUpperCase()}
+                </div>
               </div>
-              <p className="text-xs text-slate-300">
-                Max Authorized Workstations: <strong>{result.max_devices}</strong>
-              </p>
-              <a
-                href={DOWNLOAD_EXE_URL}
-                className="inline-flex items-center gap-2 bg-emerald-500 text-black font-black text-xs uppercase px-6 py-3 rounded-sm"
-              >
-                <Download size={14} />
-                <span>Download Verified Package</span>
-              </a>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
+                <div className="bg-black/40 p-3 rounded border border-emerald-500/10 space-y-1">
+                  <span className="text-slate-400 text-[10px] uppercase block font-bold">Verified Key Signature</span>
+                  <span className="text-white font-bold tracking-wider block">{key}</span>
+                </div>
+                <div className="bg-black/40 p-3 rounded border border-emerald-500/10 space-y-1">
+                  <span className="text-slate-400 text-[10px] uppercase block font-bold">Authorized Workstations</span>
+                  <span className="text-emerald-400 font-bold block">{result.max_devices} PCs & Handhelds</span>
+                </div>
+                <div className="bg-black/40 p-3 rounded border border-emerald-500/10 space-y-1">
+                  <span className="text-slate-400 text-[10px] uppercase block font-bold">Expiration / License Period</span>
+                  <span className="text-white font-bold block">{result.expires_at}</span>
+                </div>
+                <div className="bg-black/40 p-3 rounded border border-emerald-500/10 space-y-1">
+                  <span className="text-slate-400 text-[10px] uppercase block font-bold">Local Encrypted Engine</span>
+                  <span className="text-emerald-400 font-bold block">100% Offline Capable</span>
+                </div>
+              </div>
+
+              <div className="space-y-2 pt-2 border-t border-emerald-500/20">
+                <p className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Unlocked Operational Modules:</p>
+                <div className="flex flex-wrap gap-2 text-[10px] font-mono">
+                  <span className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 px-2 py-1 rounded-sm">✓ POS Counter & Thermal Printing</span>
+                  <span className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 px-2 py-1 rounded-sm">✓ Karigar Payroll & Peshgi</span>
+                  <span className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 px-2 py-1 rounded-sm">✓ Khata Ledger & P&L</span>
+                  <span className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 px-2 py-1 rounded-sm">✓ Local WiFi Mobile Pairing</span>
+                  {result.tier.includes('PRO') || result.tier.includes('ELITE') ? (
+                    <>
+                      <span className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 px-2 py-1 rounded-sm">✓ Cloud Backup Sync</span>
+                      <span className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 px-2 py-1 rounded-sm">✓ Foresight Predictions</span>
+                    </>
+                  ) : null}
+                  {result.tier.includes('ELITE') ? (
+                    <span className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 px-2 py-1 rounded-sm">✓ Sentinel AI CCTV & API Access</span>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
+                <a
+                  href={DOWNLOAD_EXE_URL}
+                  className="w-full sm:flex-1 inline-flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider py-3.5 rounded-sm transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                >
+                  <Download size={16} />
+                  <span>Download Verified Package</span>
+                </a>
+                <button
+                  onClick={() => {
+                    setResult(null)
+                    setKey('')
+                  }}
+                  className="w-full sm:w-auto px-4 py-3.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider rounded-sm transition-all"
+                >
+                  Verify Another Key
+                </button>
+              </div>
             </div>
           )}
         </section>

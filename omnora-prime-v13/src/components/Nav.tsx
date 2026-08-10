@@ -98,7 +98,16 @@ export function Nav() {
               <Link
                 key={link.label}
                 href={link.href}
-                className="text-xs font-semibold text-gray-400 hover:text-white transition-colors no-underline"
+                onClick={(e) => {
+                  if (link.href === '/#features' && pathname === '/') {
+                    e.preventDefault()
+                    const elem = document.getElementById('features')
+                    if (elem) {
+                      elem.scrollIntoView({ behavior: 'smooth' })
+                    }
+                  }
+                }}
+                className="text-xs font-semibold text-gray-400 hover:text-white transition-colors no-underline cursor-pointer"
               >
                 {link.label}
               </Link>

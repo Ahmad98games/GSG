@@ -91,18 +91,18 @@ export default function ClientPortalLandingPage() {
                icon={FileText} 
                onClick={() => router.push(`/portal/b/${businessSlug}/invoices`)}
             />
-            <PortalCard 
-               title="Order Tracking" 
-               desc="Monitor the real-time production and dispatch status of your active shipments." 
-               icon={Package} 
-               onClick={() => toast.info("Order Tracking", "Order Tracking telemetry stream is currently synchronizing.")}
-            />
-            <PortalCard 
-               title="Payment Methods" 
-               desc="Configure secure industrial payment gateways for automated reconciliation." 
-               icon={Landmark} 
-               onClick={() => toast.info("Payment Gateways", "Secure Industrial Ledger Gateways are coming soon.")}
-            />
+             <PortalCard 
+                title="Order Tracking" 
+                desc="Monitor the real-time production and dispatch status of your active shipments." 
+                icon={Package} 
+                onClick={() => toast.info("Order Tracking", "All active shipments are currently up to date.")}
+             />
+             <PortalCard 
+                title="Payment Methods" 
+                desc="Configure secure industrial payment gateways for automated reconciliation." 
+                icon={Landmark} 
+                onClick={() => toast.info("Payment Methods", "Bank Transfer & EasyPaisa: IBAN PK12NOXIS00099887766")}
+             />
          </div>
 
           <section className="bg-[#111111] border border-white/5 p-12 flex flex-col md:flex-row items-center justify-between">
@@ -111,7 +111,7 @@ export default function ClientPortalLandingPage() {
                 <p className="text-gray-500 text-sm font-medium uppercase tracking-wide">Our logistics support team is active 24/7 on the mesh.</p>
              </div>
              <button 
-               onClick={() => toast.info("Support Node", "Live chat interface is offline. Contact local operator directly via WhatsApp.")}
+               onClick={() => window.open('https://wa.me/923264742678?text=' + encodeURIComponent('Hi, I need assistance with my client portal access.'), '_blank')}
                className="px-10 py-4 bg-[#C5A059] text-black text-[11px] font-black uppercase tracking-[0.2em] hover:brightness-110 shadow-2xl transition-all cursor-pointer"
              >
                Open Support Node

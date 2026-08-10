@@ -134,6 +134,8 @@ export default function KarigarsPage() {
   const [attendingKarigar, setAttendingKarigar] = useState<Karigar | null>(null);
   const [advancingKarigar, setAdvancingKarigar] = useState<Karigar | null>(null);
   const [logOutputKarigar, setLogOutputKarigar] = useState<Karigar | null>(null);
+  const [wageFilter, setWageFilter] = useState<'all' | 'piece_rate' | 'daily_wage' | 'monthly_salary'>('all');
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
 
@@ -520,10 +522,14 @@ export default function KarigarsPage() {
 
   const filteredKarigars = useMemo(
     () =>
-      karigars.filter((k) =>
-        k.name.toLowerCase().includes(debouncedSearch.toLowerCase())
-      ),
-    [karigars, debouncedSearch]
+      karigars.filter((k) => {
+        const matchesSearch =
+          k.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+          (k.karigar_code && k.karigar_code.toLowerCase().includes(debouncedSearch.toLowerCase()));
+        const matchesWage = wageFilter === 'all' || k.wage_type === wageFilter;
+        return matchesSearch && matchesWage;
+      }),
+    [karigars, debouncedSearch, wageFilter]
   );
 
   const table = useReactTable({
@@ -667,13 +673,42 @@ export default function KarigarsPage() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                  />
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 relative">
                   <button 
-                    onClick={() => toast.info('Coming soon', 'Filtering controls will be available in the next iteration.')}
-                    className="p-2 border border-white/5 text-gray-500 hover:text-white hover:bg-white/5"
+                    onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                    className={cn(
+                      "p-2 border transition-colors",
+                      wageFilter !== 'all' ? "border-electric-blue text-electric-blue bg-electric-blue/10" : "border-white/5 text-gray-500 hover:text-white hover:bg-white/5"
+                    )}
+                    title="Filter workers"
                   >
                     <Filter size={16} />
                   </button>
+                  {showFilterDropdown && (
+                    <div className="absolute right-0 top-10 z-50 w-48 bg-[#0F1115] border border-white/10 p-2 rounded-sm shadow-xl space-y-1">
+                      <p className="text-[9px] font-black uppercase text-gray-500 px-2 py-1">Filter by Wage Type</p>
+                      {[
+                        ['all', 'All Workers'],
+                        ['piece_rate', 'Piece Rate'],
+                        ['daily_wage', 'Daily Wage'],
+                        ['monthly_salary', 'Monthly Salary']
+                      ].map(([val, label]) => (
+                        <button
+                          key={val}
+                          onClick={() => {
+                            setWageFilter(val as any);
+                            setShowFilterDropdown(false);
+                          }}
+                          className={cn(
+                            "w-full text-left px-2 py-1.5 text-xs rounded-sm transition-colors",
+                            wageFilter === val ? "bg-electric-blue/20 text-electric-blue font-bold" : "text-gray-400 hover:bg-white/5 hover:text-white"
+                          )}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                  <button onClick={exportToExcel}
                    className="flex items-center gap-1.5
                      px-3 py-1.5 text-xs font-medium

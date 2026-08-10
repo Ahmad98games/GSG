@@ -21,7 +21,13 @@ const BUILD_DATE = new Date().toLocaleDateString('en-US', {
 
 export default function AboutPage() {
   const { isCollapsed } = useSidebarState();
-  
+  const [hwid, setHwid] = React.useState<string>('');
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).electronAPI?.license?.getHWID) {
+      (window as any).electronAPI.license.getHWID().then((id: string) => setHwid(id || ''));
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#080A0C] text-slate-200 font-inter flex overflow-x-hidden">
@@ -59,6 +65,14 @@ export default function AboutPage() {
               <p className="text-[9px] text-gray-600 font-mono uppercase tracking-widest">
                 Build: {BUILD_DATE}
               </p>
+              {hwid && (
+                <div className="pt-2">
+                  <span className="text-[9px] text-gray-500 uppercase font-bold tracking-widest block">Hardware ID (HWID)</span>
+                  <span className="text-[10px] text-electric-blue font-mono select-all bg-electric-blue/10 border border-electric-blue/20 px-3 py-1 rounded-md inline-block mt-1">
+                    {hwid}
+                  </span>
+                </div>
+              )}
             </div>
             <div className="w-16 h-px bg-white/10" />
           </section>

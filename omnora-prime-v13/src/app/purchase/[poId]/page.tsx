@@ -161,7 +161,7 @@ export default function PurchaseOrderDetailPage() {
                  <span>Print</span>
               </button>
               <button 
-                onClick={() => toast.info("Export Document", "This feature is coming soon")}
+                onClick={() => window.print()}
                 className="flex items-center space-x-2 bg-[#C5A059] hover:brightness-110 px-6 py-2 text-[10px] uppercase font-black tracking-widest text-black transition-all"
               >
                  <Download size={12} />
@@ -462,10 +462,10 @@ export default function PurchaseOrderDetailPage() {
                            <span>Cancel Order Manifesto</span>
                         </span>
                      </button>
-                     <button 
-                       onClick={() => toast.info("Audit History", "Audit history log stream is coming soon")}
-                       className="w-full flex items-center justify-between p-3 text-[9px] uppercase font-black tracking-widest text-gray-500 hover:text-white transition-all group"
-                     >
+                      <button 
+                        onClick={() => toast.info("Audit History", `Created: ${new Date(po.created_at).toLocaleString()} | Vendor: ${po.parties?.name || 'N/A'}`)}
+                        className="w-full flex items-center justify-between p-3 text-[9px] uppercase font-black tracking-widest text-gray-500 hover:text-white transition-all group"
+                      >
                         <span className="flex items-center space-x-2">
                            <History size={12} />
                            <span>View Audit History</span>

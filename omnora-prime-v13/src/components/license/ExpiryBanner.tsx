@@ -1,6 +1,6 @@
 'use client'
 import { useLicense } from '@/hooks/useLicense'
-import { Crown, ArrowRight, X } from 'lucide-react'
+import { Crown, X } from 'lucide-react'
 import { useState } from 'react'
 import Link from 'next/link'
 
@@ -67,12 +67,8 @@ export function ExpiryBanner() {
         <div className="flex items-center
           gap-2 flex-shrink-0">
           <Link
-            href="/settings/license?upgrade=true"
-            className="flex items-center gap-1.5
-              px-3 py-1.5 bg-amber-500
-              text-black text-xs font-bold
-              rounded-sm hover:bg-amber-400
-              transition-colors"
+            href="/settings"
+            className="inline-flex items-center gap-1 px-3 py-1 bg-amber-500 hover:bg-amber-400 text-black text-[10px] font-black uppercase tracking-wider rounded-sm transition-colors"
           >
             Renew {tierName}
           </Link>

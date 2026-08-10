@@ -424,7 +424,7 @@ function killProcess(child: ChildProcess | UtilityProcess | null, name: string):
 // ─────────────────────────────────────────────
 // 2. SINGLE INSTANCE LOCK
 // ─────────────────────────────────────────────
-const gotTheLock = app.requestSingleInstanceLock();
+const gotTheLock = app.isPackaged ? app.requestSingleInstanceLock() : true;
 
 if (!gotTheLock) {
   app.on('ready', () => {

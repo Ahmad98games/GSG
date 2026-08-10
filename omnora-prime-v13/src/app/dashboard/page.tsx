@@ -29,8 +29,8 @@ import { generateInsights } from '@/lib/intelligence/engine'
 import { IndustryWidget } from '@/components/dashboard/IndustryWidget'
 import { useAuth } from '@/providers/AuthProvider'
 import { DataHealthCard } from '@/components/dashboard/DataHealthCard'
-
 import { AutoStartRecoveryBanner } from '@/components/shell/AutoStartRecoveryBanner'
+import { CloudBackupNudge } from '@/components/license/CloudBackupNudge'
 
 interface DashboardData {
   businessName: string
@@ -314,7 +314,7 @@ export default function OwnerDashboard() {
   )
 
   return (
-    <div className="bg-[#040608] min-h-screen text-[#94A3B8] font-sans pb-32 selection:bg-[#C5A059]/30 selection:text-white relative overflow-hidden">
+    <div className="bg-[#040608] min-h-screen text-[#94A3B8] font-sans pb-32 selection:bg-[#C5A059]/30 selection:text-white relative overflow-hidden page-enter">
       
       {/* Background Gradients */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
@@ -362,9 +362,10 @@ export default function OwnerDashboard() {
       )}
 
       {/* ═══ MAIN LAYOUT ═══ */}
-      <div className={`max-w-4xl mx-auto px-6 ${isElectron ? "pt-8" : "pt-24"}`}>
+      <div className={`max-w-4xl mx-auto px-6 ${isElectron ? "pt-8" : "pt-24"} space-y-4`}>
         
         <AutoStartRecoveryBanner />
+        <CloudBackupNudge />
         
         {/* Status Line */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4 text-[10px] font-mono font-bold uppercase tracking-widest text-slate-650 border-b border-white/[0.03] pb-4">
@@ -784,15 +785,30 @@ export default function OwnerDashboard() {
 
 function LoadingScreen() {
   return (
-    <div className="min-h-screen bg-[#040608] flex flex-col items-center justify-center gap-6 relative overflow-hidden">
-      {/* Background Gradients */}
-      <div className="absolute top-1/3 left-1/3 w-[300px] h-[300px] bg-[#C5A059]/[0.015] rounded-full blur-[80px]" />
-      <div className="absolute bottom-1/3 right-1/3 w-[300px] h-[300px] bg-[#00E5FF]/[0.01] rounded-full blur-[80px]" />
-      
-      <div className="w-8 h-8 border-2 border-slate-700/50 border-t-[#C5A059] rounded-full animate-spin" />
-      <div className="flex flex-col items-center space-y-1 z-10">
-        <span className="text-[10px] font-bold text-[#C5A059] uppercase tracking-[0.2em]">Noxis Control</span>
-        <span className="text-slate-500 font-mono tracking-widest text-[9px] uppercase">Retrieving factory ledger logs...</span>
+    <div className="bg-[#040608] min-h-screen text-[#94A3B8] font-sans p-6 pt-24 max-w-4xl mx-auto space-y-8 animate-pulse">
+      {/* Header skeleton */}
+      <div className="flex items-center justify-between border-b border-white/[0.04] pb-4">
+        <div className="h-4 w-48 bg-white/5 rounded-sm" />
+        <div className="h-4 w-32 bg-white/5 rounded-sm" />
+      </div>
+      {/* KPI Cards Grid Skeleton */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        {[1, 2, 3, 4, 5, 6].map(i => (
+          <div key={i} className="bg-[#0A0D10] border border-white/[0.04] p-5 rounded-sm space-y-3">
+            <div className="h-3 w-24 bg-white/5 rounded-sm" />
+            <div className="h-8 w-32 bg-white/10 rounded-sm" />
+            <div className="h-3 w-20 bg-white/5 rounded-sm" />
+          </div>
+        ))}
+      </div>
+      {/* Feed Skeleton */}
+      <div className="space-y-3 pt-4">
+        <div className="h-3 w-36 bg-white/5 rounded-sm" />
+        <div className="bg-[#0A0D10] border border-white/[0.04] rounded-sm p-4 space-y-3">
+          <div className="h-4 w-full bg-white/5 rounded-sm" />
+          <div className="h-4 w-3/4 bg-white/5 rounded-sm" />
+          <div className="h-4 w-1/2 bg-white/5 rounded-sm" />
+        </div>
       </div>
     </div>
   )

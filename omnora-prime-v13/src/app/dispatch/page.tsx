@@ -249,8 +249,12 @@ export default function DispatchCenterPage() {
                     <option>Returned</option>
                  </select>
                   <button 
-                    onClick={() => toast.info("Filter", "Advanced logistical filtering is coming soon")}
+                    onClick={() => {
+                      const sel = document.querySelector('select') as HTMLSelectElement;
+                      if (sel) sel.focus();
+                    }}
                     className="p-2 border border-white/10 text-gray-500 hover:text-white transition-all"
+                    title="Focus status filter"
                   >
                      <Filter size={16} />
                   </button>

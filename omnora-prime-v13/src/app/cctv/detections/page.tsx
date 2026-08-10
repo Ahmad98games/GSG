@@ -47,6 +47,31 @@ export default function DetectionHistoryPage() {
     if (profile?.id) fetchEvents();
   }, [profile?.id, filterClass, supabase]);
 
+  const handleExportTimeline = () => {
+    if (!events || events.length === 0) {
+      toast.error("No detection events to export");
+      return;
+    }
+    const rows = [
+      ["Timestamp", "Camera", "Class", "Confidence"],
+      ...events.map((e: any) => [
+        new Date(e.created_at || Date.now()).toLocaleString(),
+        e.camera_name || 'Node 1',
+        e.detected_class || 'object',
+        `${Math.round((e.confidence || 0) * 100)}%`
+      ])
+    ];
+    const csvContent = "data:text/csv;charset=utf-8," + rows.map(r => r.map(c => `"${c}"`).join(",")).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `cctv_detections_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Timeline exported to CSV");
+  };
+
   return (
     <div className="p-8 space-y-8">
        {/* Header */}
@@ -68,8 +93,9 @@ export default function DetectionHistoryPage() {
             <option value="animal">Animal</option>
           </select>
           <button 
-            onClick={() => toast.info("Export Timeline", "Timeline spreadsheet export is coming soon")}
+            onClick={handleExportTimeline}
             className="bg-white/5 border border-white/10 text-white p-2 hover:bg-white/10 transition-all"
+            title="Export Timeline CSV"
           >
             <Download size={18} />
           </button>

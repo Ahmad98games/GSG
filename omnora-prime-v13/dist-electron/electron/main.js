@@ -355,7 +355,7 @@ function killProcess(child, name) {
 // ─────────────────────────────────────────────
 // 2. SINGLE INSTANCE LOCK
 // ─────────────────────────────────────────────
-const gotTheLock = electron_1.app.requestSingleInstanceLock();
+const gotTheLock = electron_1.app.isPackaged ? electron_1.app.requestSingleInstanceLock() : true;
 if (!gotTheLock) {
     electron_1.app.on('ready', () => {
         electron_1.dialog.showErrorBox('Noxis Hub Already Running', 'An instance of Noxis Hub is already active.\n\nCheck your system tray or Task Manager and close it first.');
