@@ -10,7 +10,7 @@ const PUBLIC_ROUTES = [
 
 const FOOTER_LINKS = {
   Product: [
-    { label: 'Features', href: '/#features' },
+    { label: 'Features', href: '/features' },
     { label: 'Pricing', href: '/pricing' },
     { label: 'Download', href: '/download' },
     { label: 'Changelog', href: '/changelog' },
