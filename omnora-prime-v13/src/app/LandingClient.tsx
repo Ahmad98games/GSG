@@ -81,13 +81,9 @@ export default function LandingClient() {
           !!(window as any).electronAPI ||
           !!(window as any).electron
         )
-        const hasLocalStoreSession = typeof window !== 'undefined' && (
-          !!localStorage.getItem('noxis_session') ||
-          !!localStorage.getItem('sb-access-token') ||
-          !!localStorage.getItem('noxis_license')
-        )
 
-        if (isElectron || hasLocalStoreSession) {
+        // Strict: Redirect to /dashboard ONLY inside Electron app frame
+        if (isElectron) {
           const { data: { session } } = await supabase.auth.getSession()
           if (session) {
             const { data: profile } = await supabase
@@ -100,6 +96,8 @@ export default function LandingClient() {
             return
           }
         }
+
+        // Web production build: ALWAYS display public website pages
         setChecking(false)
       } catch {
         setChecking(false)
