@@ -200,7 +200,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     navigator.userAgent.toLowerCase().includes('electron')
   );
 
-  // Hide internal shell components only on landing/public pages
+  // Hide internal shell components on public website pages
   const shouldHideShell = 
     !pathname ||
     pathname === "/" || 
@@ -208,6 +208,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/login") || 
     pathname.startsWith("/signup") || 
     pathname.startsWith("/setup") ||
+    pathname.startsWith("/features") ||
     pathname.startsWith("/download") ||
     pathname.startsWith("/pricing") ||
     pathname.startsWith("/industries") ||
@@ -220,6 +221,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/reviews") ||
     pathname.startsWith("/docs") ||
     pathname.startsWith("/blog") ||
+    pathname.startsWith("/who-is-it-for") ||
+    pathname.startsWith("/technology") ||
+    pathname.startsWith("/whats-new") ||
+    pathname.startsWith("/file-morph") ||
     pathname.startsWith("/admin");
 
   // Allow browser testing on all routes
