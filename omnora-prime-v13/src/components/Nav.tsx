@@ -5,13 +5,13 @@ import { usePathname } from 'next/navigation'
 import { Menu, X, Download, ChevronDown } from 'lucide-react'
 
 const PUBLIC_ROUTES = [
-  '/', '/pricing', '/industries', '/download', '/docs',
+  '/', '/features', '/pricing', '/industries', '/download', '/docs',
   '/changelog', '/blog', '/compare', '/terms', '/privacy',
   '/refund', '/who-is-it-for', '/technology', '/reviews',
 ]
 
 const NAV_LINKS = [
-  { label: 'Features', href: '/#features' },
+  { label: 'Features', href: '/features' },
   { label: 'Industries', href: '/industries' },
   { label: 'Pricing', href: '/pricing' },
   { label: 'Download', href: '/download' },
@@ -98,15 +98,6 @@ export function Nav() {
               <Link
                 key={link.label}
                 href={link.href}
-                onClick={(e) => {
-                  if (link.href === '/#features' && pathname === '/') {
-                    e.preventDefault()
-                    const elem = document.getElementById('features')
-                    if (elem) {
-                      elem.scrollIntoView({ behavior: 'smooth' })
-                    }
-                  }
-                }}
                 className="text-xs font-semibold text-gray-400 hover:text-white transition-colors no-underline cursor-pointer"
               >
                 {link.label}
