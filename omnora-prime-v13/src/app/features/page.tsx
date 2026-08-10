@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import PublicNavbar from '@/components/shell/PublicNavbar'
 import { 
@@ -10,11 +10,15 @@ import {
 } from 'lucide-react'
 
 export default function FeaturesPage() {
-  const isElectron = typeof window !== 'undefined' && (
-    window.navigator.userAgent.toLowerCase().includes('electron') ||
-    !!(window as any).electronAPI ||
-    !!(window as any).electron
-  )
+  const [isElectron, setIsElectron] = useState(false)
+
+  useEffect(() => {
+    setIsElectron(
+      window.navigator.userAgent.toLowerCase().includes('electron') ||
+      !!(window as any).electronAPI ||
+      !!(window as any).electron
+    )
+  }, [])
 
   const featureCategories = [
     {
