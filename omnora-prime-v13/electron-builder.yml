@@ -38,6 +38,8 @@ extraResources:
     to: "standalone"
     filter:
       - "**/*"
+      - "!dist/**/*"
+      - "!out/**/*"
 
   # Standalone node_modules (copied explicitly since electron-builder ignores nested node_modules)
   - from: ".next/standalone/node_modules"
