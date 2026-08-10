@@ -20,7 +20,9 @@ function applyDOMLocale(lang: LanguageCode): void {
   const isRTL = RTL_LANGS.includes(lang);
   document.documentElement.lang = lang;
   document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
-  document.body.dir = isRTL ? 'rtl' : 'ltr';
+  // NOTE: do NOT set document.body.dir — body inherits from <html dir>,
+  // and setting it separately causes a React hydration mismatch that breaks
+  // all Next.js client-side <Link> routing.
   document.documentElement.style.fontFamily = (lang === 'ur' || lang === 'ar')
     ? '"Noto Nastaliq Urdu", "Jameel Noori Nastaleeq", serif'
     : '"Inter", system-ui, sans-serif';
