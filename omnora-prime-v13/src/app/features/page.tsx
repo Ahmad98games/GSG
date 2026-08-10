@@ -10,6 +10,12 @@ import {
 } from 'lucide-react'
 
 export default function FeaturesPage() {
+  const isElectron = typeof window !== 'undefined' && (
+    window.navigator.userAgent.toLowerCase().includes('electron') ||
+    !!(window as any).electronAPI ||
+    !!(window as any).electron
+  )
+
   const featureCategories = [
     {
       id: 'pos',
@@ -26,7 +32,9 @@ export default function FeaturesPage() {
       icon: CircleDollarSign,
       color: 'text-amber-400',
       border: 'border-amber-500/20',
-      bg: 'bg-amber-500/10'
+      bg: 'bg-amber-500/10',
+      route: '/pos',
+      routeLabel: 'Open POS Counter'
     },
     {
       id: 'payroll',
@@ -43,7 +51,9 @@ export default function FeaturesPage() {
       icon: Users,
       color: 'text-blue-400',
       border: 'border-blue-500/20',
-      bg: 'bg-blue-500/10'
+      bg: 'bg-blue-500/10',
+      route: '/karigars',
+      routeLabel: 'Manage Karigars'
     },
     {
       id: 'accounting',
@@ -60,7 +70,9 @@ export default function FeaturesPage() {
       icon: FileText,
       color: 'text-emerald-400',
       border: 'border-emerald-500/20',
-      bg: 'bg-emerald-500/10'
+      bg: 'bg-emerald-500/10',
+      route: '/accounting/ledger',
+      routeLabel: 'View Khata Ledger'
     },
     {
       id: 'offline',
@@ -77,7 +89,9 @@ export default function FeaturesPage() {
       icon: Lock,
       color: 'text-purple-400',
       border: 'border-purple-500/20',
-      bg: 'bg-purple-500/10'
+      bg: 'bg-purple-500/10',
+      route: '/settings',
+      routeLabel: 'System Settings'
     },
     {
       id: 'cctv',
@@ -94,7 +108,9 @@ export default function FeaturesPage() {
       icon: ShieldAlert,
       color: 'text-red-400',
       border: 'border-red-500/20',
-      bg: 'bg-red-500/10'
+      bg: 'bg-red-500/10',
+      route: '/cctv',
+      routeLabel: 'Launch Sentinel CCTV'
     },
     {
       id: 'mobile',
@@ -111,7 +127,9 @@ export default function FeaturesPage() {
       icon: Smartphone,
       color: 'text-cyan-400',
       border: 'border-cyan-500/20',
-      bg: 'bg-cyan-500/10'
+      bg: 'bg-cyan-500/10',
+      route: '/settings/devices',
+      routeLabel: 'Pair Mobile Devices'
     }
   ]
 
@@ -130,13 +148,13 @@ export default function FeaturesPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-[#040608] text-slate-200 font-sans selection:bg-[#C5A059] selection:text-black pt-24 pb-20">
-      <PublicNavbar />
+    <div className="min-h-screen bg-[#040608] text-slate-200 font-sans selection:bg-[#C5A059] selection:text-black pt-12 pb-20">
+      {!isElectron && <PublicNavbar />}
 
       <div className="max-w-7xl mx-auto px-6 space-y-20">
         
         {/* ═══ HERO SECTION ═══ */}
-        <section className="text-center pt-8 space-y-6 max-w-4xl mx-auto">
+        <section className="text-center pt-4 space-y-6 max-w-4xl mx-auto">
           <div className="inline-flex items-center gap-2 bg-[#C5A059]/10 border border-[#C5A059]/25 px-4 py-1.5 rounded-full">
             <Sparkles size={14} className="text-[#C5A059]" />
             <span className="text-xs font-black text-[#C5A059] uppercase tracking-widest">
@@ -149,22 +167,32 @@ export default function FeaturesPage() {
           </h1>
 
           <p className="text-base sm:text-lg text-slate-400 font-medium max-w-2xl mx-auto leading-relaxed">
-            Explore every feature built into Noxis Hub — designed specifically for textile mills, factories, and industrial hubs.
+            Explore every module built into Noxis Hub — designed specifically for textile mills, factories, and industrial hubs.
           </p>
 
           <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              href="/download"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-gradient-to-r from-[#C5A059] via-[#E8D5B5] to-[#C5A059] text-black font-black text-sm uppercase tracking-wider px-8 py-4 rounded-sm hover:brightness-110 transition-all shadow-[0_0_30px_rgba(197,160,89,0.3)]"
-            >
-              <Download size={18} />
-              <span>Download Free 14-Day Trial</span>
-            </Link>
+            {isElectron ? (
+              <Link
+                href="/dashboard"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-gradient-to-r from-[#C5A059] via-[#E8D5B5] to-[#C5A059] text-black font-black text-sm uppercase tracking-wider px-8 py-4 rounded-sm hover:brightness-110 transition-all shadow-[0_0_30px_rgba(197,160,89,0.3)]"
+              >
+                <Cpu size={18} />
+                <span>Return to Dashboard</span>
+              </Link>
+            ) : (
+              <Link
+                href="/download"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-gradient-to-r from-[#C5A059] via-[#E8D5B5] to-[#C5A059] text-black font-black text-sm uppercase tracking-wider px-8 py-4 rounded-sm hover:brightness-110 transition-all shadow-[0_0_30px_rgba(197,160,89,0.3)]"
+              >
+                <Download size={18} />
+                <span>Download Free 14-Day Trial</span>
+              </Link>
+            )}
             <Link
               href="/pricing"
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider px-6 py-4 rounded-sm transition-all"
             >
-              <span>View Pricing Plans</span>
+              <span>View Tier Matrix</span>
               <ArrowRight size={14} />
             </Link>
           </div>
@@ -216,6 +244,18 @@ export default function FeaturesPage() {
                       </li>
                     ))}
                   </ul>
+
+                  {cat.route && (
+                    <div className="pt-4 border-t border-white/[0.04]">
+                      <Link
+                        href={cat.route}
+                        className="inline-flex items-center gap-2 text-xs font-bold text-[#C5A059] hover:text-white transition-colors uppercase tracking-wider"
+                      >
+                        <span>{cat.routeLabel}</span>
+                        <ArrowRight size={12} />
+                      </Link>
+                    </div>
+                  )}
                 </div>
               )
             })}

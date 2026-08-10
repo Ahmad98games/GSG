@@ -76,17 +76,27 @@ export default function LandingClient() {
     setMounted(true)
     async function handleAuthRedirect() {
       try {
-        const isElectron = typeof window !== 'undefined' && window.navigator.userAgent.toLowerCase().includes('electron')
-        if (isElectron) {
+        const isElectron = typeof window !== 'undefined' && (
+          window.navigator.userAgent.toLowerCase().includes('electron') ||
+          !!(window as any).electronAPI ||
+          !!(window as any).electron
+        )
+        const hasLocalStoreSession = typeof window !== 'undefined' && (
+          !!localStorage.getItem('noxis_session') ||
+          !!localStorage.getItem('sb-access-token') ||
+          !!localStorage.getItem('noxis_license')
+        )
+
+        if (isElectron || hasLocalStoreSession) {
           const { data: { session } } = await supabase.auth.getSession()
           if (session) {
             const { data: profile } = await supabase
               .from('business_profiles').select('id, onboarding_done')
               .eq('user_id', session.user.id).single()
-            router.push(profile?.onboarding_done ? '/dashboard' : '/setup')
+            router.replace(profile?.onboarding_done !== false ? '/dashboard' : '/setup')
             return
           } else {
-            router.push('/login')
+            router.replace('/dashboard')
             return
           }
         }
