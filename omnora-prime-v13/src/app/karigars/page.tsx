@@ -891,7 +891,7 @@ function RegisterKarigarModal({ grades, onClose, onSuccess }: { grades: Grade[],
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm<KarigarFormValues>({
     resolver: zodResolver(karigarSchema),
-    mode: "onChange",
+    mode: "onTouched",
     defaultValues: {
       joining_date: new Date().toISOString().split('T')[0],
       wage_type: 'piece_rate',
@@ -946,7 +946,9 @@ function RegisterKarigarModal({ grades, onClose, onSuccess }: { grades: Grade[],
     }
   };
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex justify-end bg-black/60 backdrop-blur-sm">
        <motion.div 
         initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
@@ -1036,7 +1038,8 @@ function RegisterKarigarModal({ grades, onClose, onSuccess }: { grades: Grade[],
              </button>
           </div>
        </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -1076,7 +1079,9 @@ function AttendanceModal({ karigar, onClose, onSuccess, onMark }: { karigar: Kar
     }
   };
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="max-w-md w-full bg-surface border border-white/10 shadow-2xl overflow-hidden">
           <div className="p-6 bg-onyx border-b border-white/5 flex items-center justify-between">
@@ -1114,7 +1119,8 @@ function AttendanceModal({ karigar, onClose, onSuccess, onMark }: { karigar: Kar
              </button>
           </form>
        </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -1156,7 +1162,9 @@ function AdvanceModal({ karigar, onClose, onSuccess }: { karigar: Karigar, onClo
     }
   };
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="max-w-md w-full bg-surface border border-white/10 shadow-2xl overflow-hidden">
           <div className="p-6 bg-onyx border-b border-white/5 flex items-center justify-between">
@@ -1203,7 +1211,8 @@ function AdvanceModal({ karigar, onClose, onSuccess }: { karigar: Karigar, onClo
              </div>
           </form>
        </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
