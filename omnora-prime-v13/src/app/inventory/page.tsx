@@ -962,7 +962,7 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<SKUFormValues>({
     resolver: zodResolver(skuSchema),
-    mode: "onChange",
+    mode: "onTouched",
     defaultValues: skuToEdit ? {
       sku_code: skuToEdit.sku_code,
       name: skuToEdit.name,
@@ -1113,16 +1113,18 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
         ).catch(() => {});
       }
 
-      // 2. Upload Image if provided
+      // 2. Upload image if selected
       if (selectedFile && skuId) {
-        const ext = selectedFile.name.split('.').pop();
-        const path = `${profile.id}/${skuId}.${ext}`;
+        const fileExt = selectedFile.name.split('.').pop();
+        const filePath = `${profile.id}/${skuId}.${fileExt}`;
         const { error: uploadError } = await supabase.storage
-          .from('sku-images')
-          .upload(path, selectedFile, { upsert: true });
+          .from('product-images')
+          .upload(filePath, selectedFile, { upsert: true });
 
         if (!uploadError) {
-          const { data: { publicUrl } } = supabase.storage.from('sku-images').getPublicUrl(path);
+          const { data: { publicUrl } } = supabase.storage
+            .from('product-images')
+            .getPublicUrl(filePath);
           await supabase.from('skus').update({ thumbnail_url: publicUrl }).eq('id', skuId);
         }
       }
@@ -1135,7 +1137,9 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
     }
   };
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex justify-end bg-black/60 backdrop-blur-sm">
        <motion.div 
         initial={{ x: "100%" }}
@@ -1327,7 +1331,8 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
              </button>
           </div>
        </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -1370,7 +1375,9 @@ function AdjustStockModal({ sku, onClose, onAdjust, onSuccess }: { sku: SKU, onC
     }
   };
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
        <motion.div 
         initial={{ scale: 0.95, opacity: 0 }}
@@ -1427,7 +1434,8 @@ function AdjustStockModal({ sku, onClose, onAdjust, onSuccess }: { sku: SKU, onC
              </button>
           </form>
        </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

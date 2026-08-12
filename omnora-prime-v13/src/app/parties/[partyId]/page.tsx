@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -981,7 +982,7 @@ export default function PartyDetailPage() {
       </main>
 
       {/* Record Payment Modal */}
-      {paymentModal && (
+      {paymentModal && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-[#0F1114] border border-white/10 rounded-sm shadow-2xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-white/8">
@@ -1081,7 +1082,8 @@ export default function PartyDetailPage() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

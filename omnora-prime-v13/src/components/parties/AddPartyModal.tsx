@@ -1,5 +1,6 @@
 'use client'
 import { useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { X, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useBusinessProfile } from '@/hooks/useBusinessProfile'
@@ -136,6 +137,7 @@ export function AddPartyModal({
   }
 
   if (!isOpen) return null
+  if (typeof document === 'undefined') return null
 
   const PARTY_TYPES = [
     {
@@ -155,7 +157,7 @@ export function AddPartyModal({
     },
   ]
 
-  return (
+  return createPortal(
     // Overlay
     <div
       className="fixed inset-0 z-50
@@ -495,6 +497,7 @@ export function AddPartyModal({
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
