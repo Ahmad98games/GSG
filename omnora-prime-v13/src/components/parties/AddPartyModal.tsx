@@ -85,7 +85,6 @@ export function AddPartyModal({
         email: email.trim() || null,
         address: address.trim() || null,
         opening_balance: balanceAmount,
-        balance_nature: balanceNature,
         current_balance: currentBalance,
         credit_limit: parseFloat(creditLimit) || 0,
         credit_terms_days: parseInt(creditTerms) || 0,
