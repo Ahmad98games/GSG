@@ -203,7 +203,6 @@ export default function InventoryPage() {
         if (cached) {
           try {
             localData = JSON.parse(cached);
-            setLastFetchedAt(new Date());
           } catch {}
         }
       }
@@ -225,7 +224,6 @@ export default function InventoryPage() {
             try {
               localStorage.setItem(`noxis_cached_skus_${profile.id}`, JSON.stringify(data));
             } catch {}
-            setLastFetchedAt(new Date());
             return data as SKU[];
           }
         } catch (err) {
@@ -961,7 +959,7 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<SKUFormValues>({
+  const { register, handleSubmit, setValue, getValues, watch, formState: { errors } } = useForm<SKUFormValues>({
     resolver: zodResolver(skuSchema),
     mode: "onTouched",
     defaultValues: skuToEdit ? {
@@ -1011,14 +1009,17 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
 
   const productName = watch("name");
 
-  // Auto-generate SKU Code
+  // Auto-generate SKU Code only if empty to prevent infinite re-render loops
   useEffect(() => {
     if (!skuToEdit && productName && productName.length >= 3) {
-      const prefix = productName.substring(0, 3).toUpperCase();
-      const random = Math.floor(1000 + Math.random() * 9000);
-      setValue("sku_code", `${prefix}-${random}`);
+      const currentCode = getValues("sku_code");
+      if (!currentCode) {
+        const prefix = productName.substring(0, 3).toUpperCase();
+        const random = Math.floor(1000 + Math.random() * 9000);
+        setValue("sku_code", `${prefix}-${random}`, { shouldValidate: true });
+      }
     }
-  }, [productName, setValue, skuToEdit]);
+  }, [productName, setValue, getValues, skuToEdit]);
 
   const onImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

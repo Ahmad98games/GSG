@@ -196,7 +196,6 @@ export default function KarigarsPage() {
         .eq('business_id', profile?.id)
         .order('name');
       if (error) throw error;
-      setLastFetchedAt(new Date());
       return data as Karigar[];
     },
     enabled: !!profile?.id,
