@@ -9,6 +9,7 @@ import {
 import { useBusinessProfile } from '@/hooks/useBusinessProfile'
 import { bootDeltaSync } from '@/lib/sync/deltaSyncEngine'
 import { startRealtimeCDC } from '@/lib/sync/realtimeCDC'
+import { queryClient } from '@/lib/queryClient'
 
 interface SyncState {
   lastSyncAt: number
@@ -40,6 +41,19 @@ export function SyncProvider({
     data: any
     receivedAt: number
   }>>([])
+
+  useEffect(() => {
+    // Every 30 minutes: remove unused queries from memory
+    const t = setInterval(() => {
+      queryClient.getQueryCache()
+        .getAll()
+        .filter(query => query.getObserversCount() === 0)
+        .forEach(query => {
+          queryClient.removeQueries({ queryKey: query.queryKey })
+        })
+    }, 30 * 60 * 1000)
+    return () => clearInterval(t)
+  }, [])
 
   useEffect(() => {
     if (!profile?.id) return

@@ -1,263 +1,631 @@
 'use client'
-import { useState } from 'react'
+import {
+  useState, useCallback, useEffect,
+  useRef, memo, Suspense,
+} from 'react'
 import { useRouter } from 'next/navigation'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import * as z from 'zod'
-import { useQueryClient } from '@tanstack/react-query'
-import { createClient } from '@/lib/supabase/client'
-import { useBusinessProfile } from '@/hooks/useBusinessProfile'
-import { useToast } from '@/hooks/useToast'
-import { useFormDraft } from '@/hooks/useFormDraft'
-import { DraftRecoveryBanner } from '@/components/DraftRecoveryBanner'
-import { ArrowLeft, Save, Package } from 'lucide-react'
+import { useToastStore } from '@/hooks/useToast'
+import {
+  Package, ChevronLeft, Save,
+  Barcode, Calendar, AlertTriangle,
+} from 'lucide-react'
 
-const skuSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters').max(200, 'Name must be under 200 characters'),
-  sku_code: z.string().min(1, 'SKU code is required'),
-  category: z.string().optional(),
-  unit: z.string().min(1, 'Unit is required'),
-  cost_price: z.coerce.number().min(0, 'Cost price cannot be negative'),
-  sale_price: z.coerce.number().min(0, 'Sale price cannot be negative'),
-  barcode: z.string().optional(),
-  requires_batch_tracking: z.boolean().default(false),
-  batch_number: z.string().optional(),
-  expiry_date: z.string().optional(),
-  manufacture_date: z.string().optional(),
-})
+const toast = Object.assign(
+  (msg: string, _opts?: any) => {
+    useToastStore.getState().addToast({ type: 'warning', title: msg })
+  },
+  {
+    success: (msg: string) => useToastStore.getState().addToast({ type: 'success', title: msg }),
+    error: (msg: string) => useToastStore.getState().addToast({ type: 'error', title: msg }),
+  }
+)
 
-type SKUFormValues = z.infer<typeof skuSchema>
+import { createClient }
+  from '@/lib/supabase/client'
+import { useBusinessProfile }
+  from '@/hooks/useBusinessProfile'
+import { useLicense } from '@/hooks/useLicense'
+import { useFormDraft }
+  from '@/hooks/useFormDraft'
+import { useActionGuard } from '@/hooks/useActionGuard'
 
-export default function NewSKUPage() {
+// CRITICAL: Define all static data
+// OUTSIDE the component so they never
+// cause re-renders
+const UNITS = [
+  'Meter', 'Kilogram', 'Gram',
+  'Liter', 'Piece', 'Box', 'Dozen',
+  'Maund', 'Quintal', 'Ton',
+  'Yard', 'Foot', 'Inch', 'Bag',
+  'Bundle', 'Roll', 'Sheet',
+] as const
+
+const CATEGORIES = [
+  'Raw Material', 'Finished Goods',
+  'Semi-Finished', 'Packaging',
+  'Spare Parts', 'Stationery',
+  'Electronics', 'Chemicals',
+  'Textiles', 'Food & Beverage',
+  'Medicine', 'Other',
+] as const
+
+const TAX_RATES = [
+  { label: 'No Tax', value: 0 },
+  { label: 'GST 5%', value: 5 },
+  { label: 'GST 8%', value: 8 },
+  { label: 'GST 12%', value: 12 },
+  { label: 'GST 17%', value: 17 },
+  { label: 'VAT 5% (UAE)', value: 5 },
+] as const
+
+// INITIAL STATE defined outside component
+// Prevents re-creation on every render
+const INITIAL_STATE = {
+  name: '',
+  skuCode: '',
+  barcode: '',
+  category: '',
+  unit: 'Piece',
+  costPrice: '',
+  salePrice: '',
+  openingStock: '',
+  reorderLevel: '',
+  expiryDate: '',
+  batchNumber: '',
+  taxRate: 0,
+  description: '',
+  isActive: true,
+}
+
+export default function NewInventoryPage() {
   const router = useRouter()
   const supabase = createClient()
-  const queryClient = useQueryClient()
   const { profile } = useBusinessProfile()
-  const toast = useToast()
+  const { atLimit } = useLicense()
 
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  // Single state object — batch updates
+  const [form, setForm] =
+    useState(INITIAL_STATE)
+  const [saving, setSaving] = useState(false)
 
-  const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<SKUFormValues>({
-    resolver: zodResolver(skuSchema) as any,
-    mode: 'onChange',
-    defaultValues: {
-      name: '',
-      sku_code: '',
-      category: '',
-      unit: 'pcs',
-      cost_price: 0,
-      sale_price: 0,
-      barcode: '',
-      requires_batch_tracking: false,
-      batch_number: '',
-      expiry_date: '',
-      manufacture_date: '',
-    },
-  })
+  // Ref for the name input — focus on mount
+  const nameRef = useRef<HTMLInputElement>(null)
 
-  const watchValues = watch()
-  const DRAFT_KEY = 'sku-new'
-  const { getDraft, clearDraft } = useFormDraft(DRAFT_KEY, watchValues)
+  // Form draft — async, non-blocking
+  const { saveDraft, clearDraft } =
+    useFormDraft('inventory-new')
 
-  const onSubmit = async (values: SKUFormValues) => {
-    if (!profile?.id) return
-    setIsSubmitting(true)
+  // Focus name field after mount
+  // useLayoutEffect causes paint delay
+  // setTimeout(0) defers until after render
+  useEffect(() => {
+    const t = setTimeout(() => {
+      nameRef.current?.focus()
+    }, 0)
+    return () => clearTimeout(t)
+  }, [])
 
-    try {
-      const payload = {
-        business_id: profile.id,
-        name: values.name,
-        sku_code: values.sku_code,
-        category: values.category || null,
-        unit: values.unit,
-        cost_price: values.cost_price,
-        sale_price: values.sale_price,
-        barcode: values.barcode || null,
-        requires_batch_tracking: values.requires_batch_tracking,
-        batch_number: values.requires_batch_tracking ? (values.batch_number || null) : null,
-        expiry_date: values.requires_batch_tracking ? (values.expiry_date || null) : null,
-        manufacture_date: values.requires_batch_tracking ? (values.manufacture_date || null) : null,
-        qty_on_hand: 0,
-        qty_reserved: 0,
-        reorder_level: 0,
-        is_active: true,
+  // Restore draft — async, deferred
+  // Does NOT block the initial render
+  useEffect(() => {
+    let cancelled = false
+    const restore = async () => {
+      try {
+        const draft = await (window as any)
+          .electronAPI?.store
+          ?.getDraft?.('inventory-new') || await (window as any)
+          .electronAPI?.store
+          ?.getFormDraft?.('inventory-new')
+        if (draft && !cancelled) {
+          setForm(prev => ({
+            ...prev, ...draft
+          }))
+        }
+      } catch {
+        // No draft — fine
+      }
+    }
+    // Defer 100ms so the UI renders first
+    const t = setTimeout(restore, 100)
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+    }
+  }, [])
+
+  // Auto-save draft every 5 seconds
+  // Non-blocking interval
+  useEffect(() => {
+    if (!form.name) return
+    const t = setInterval(() => {
+      saveDraft(form)
+    }, 5000)
+    return () => clearInterval(t)
+  }, [form, saveDraft])
+
+  // useCallback prevents child re-renders
+  // when parent updates
+  const updateField = useCallback(
+    (field: keyof typeof INITIAL_STATE) =>
+      (e: React.ChangeEvent<
+        HTMLInputElement |
+        HTMLSelectElement |
+        HTMLTextAreaElement
+      >) => {
+        const value = e.target.type === 'checkbox'
+          ? (e.target as HTMLInputElement).checked
+          : e.target.value
+        // Functional update — never stale
+        setForm(prev => ({
+          ...prev, [field]: value
+        }))
+      },
+    []
+  )
+
+  // Validate before save
+  const validate = useCallback((): string | null => {
+    if (!form.name.trim())
+      return 'Item name is required'
+    if (!form.unit)
+      return 'Unit is required'
+    if (form.costPrice &&
+      isNaN(parseFloat(form.costPrice)))
+      return 'Cost price must be a number'
+    if (form.salePrice &&
+      isNaN(parseFloat(form.salePrice)))
+      return 'Sale price must be a number'
+    if (form.salePrice && form.costPrice &&
+      parseFloat(form.salePrice) <
+      parseFloat(form.costPrice)) {
+      // Warning only — not blocking
+      toast('Sale price is below cost price',
+        { icon: '⚠️' })
+    }
+    return null
+  }, [form])
+
+  const { guard } = useActionGuard()
+
+  const handleSave = useCallback(() => {
+    guard(async () => {
+      const error = validate()
+      if (error) {
+        toast.error(error)
+        return
+      }
+      if (!profile?.id) {
+        toast.error('Business profile not loaded')
+        return
       }
 
-      const { error } = await supabase.from('skus').insert(payload)
-      if (error) throw error
+      // Free tier limit check
+      if (atLimit('max_skus' as any)) {
+        toast.error(
+          'Free plan limit: 200 items. ' +
+          'Upgrade to add more.'
+        )
+        return
+      }
 
-      await clearDraft()
-      toast.success('Product registered successfully')
-      queryClient.invalidateQueries({ queryKey: ['skus_catalog'] })
-      router.push('/inventory')
-    } catch (err: any) {
-      console.error(err)
-      toast.error('Failed to register SKU', err.message || 'Unknown error')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
+      setSaving(true)
+      try {
+        const payload = {
+          business_id: profile.id,
+          name: form.name.trim(),
+          sku_code: form.skuCode.trim() || null,
+          barcode: form.barcode.trim() || null,
+          category: form.category || null,
+          unit: form.unit,
+          cost_price:
+            parseFloat(form.costPrice) || 0,
+          sale_price:
+            parseFloat(form.salePrice) || 0,
+          qty_on_hand:
+            parseFloat(form.openingStock) || 0,
+          reorder_level:
+            parseFloat(form.reorderLevel) || 0,
+          expiry_date:
+            form.expiryDate || null,
+          batch_number:
+            form.batchNumber.trim() || null,
+          tax_rate: form.taxRate,
+          description:
+            form.description.trim() || null,
+          is_active: true,
+        }
+
+        const { data, error } = await supabase
+          .from('skus')
+          .insert(payload)
+          .select()
+          .single()
+
+        if (error) throw error
+
+        // Increment license SKU count
+        ;(window as any).electronAPI?.license
+          ?.incrementSku?.()
+
+        // Clear draft on success
+        clearDraft()
+
+        toast.success(
+          `${form.name.trim()} added to inventory`
+        )
+
+        // Brief delay so user sees success toast
+        setTimeout(() => {
+          router.push('/inventory')
+        }, 500)
+
+      } catch (err: any) {
+        toast.error(
+          err.message || 'Failed to save item'
+        )
+      } finally {
+        setSaving(false)
+      }
+    })
+  }, [form, profile, atLimit, validate, clearDraft, router, supabase, guard])
+
+  const handleCancel = useCallback(() => {
+    router.push('/inventory')
+  }, [router])
 
   return (
-    <div className="min-h-screen bg-[#0F1113] text-slate-200 p-6 flex flex-col">
-      <main className="max-w-xl mx-auto w-full flex-1 flex flex-col justify-center">
-        <DraftRecoveryBanner
-          draftKey={DRAFT_KEY}
-          onRecover={(data) => reset(data)}
-          onDiscard={() => {}}
-        />
+    <div className="flex flex-col h-full">
 
-        <div className="flex items-center gap-3 mb-6">
-          <button
-            onClick={() => router.push('/inventory')}
-            className="p-2 bg-white/5 border border-white/8 hover:bg-white/10 rounded-sm text-gray-400 hover:text-white transition-all"
-          >
-            <ArrowLeft size={16} />
-          </button>
+      {/* HEADER — no heavy logic */}
+      <div className="flex items-center
+        gap-4 px-6 py-4 border-b
+        border-white/6 bg-[#0A0C0F]
+        flex-shrink-0">
+        <button
+          onClick={handleCancel}
+          className="flex items-center gap-2
+            text-gray-500 hover:text-white
+            transition-colors text-sm"
+        >
+          <ChevronLeft size={16} />
+          Inventory
+        </button>
+        <div className="flex items-center
+          gap-3 flex-1">
+          <div className="w-8 h-8 rounded-lg
+            bg-[#F59E0B]/10 border
+            border-[#F59E0B]/20
+            flex items-center justify-center">
+            <Package size={15}
+              className="text-[#F59E0B]" />
+          </div>
           <div>
-            <h1 className="text-lg font-bold text-white flex items-center gap-2">
-              <Package size={18} className="text-[#C5A059]" /> Register Product (SKU)
+            <h1 className="text-sm font-bold
+              text-white">
+              New Inventory Item
             </h1>
-            <p className="text-xs text-gray-500">Add a new item to the inventory catalog</p>
+            <p className="text-[10px]
+              text-gray-600">
+              Fields marked * are required
+            </p>
           </div>
         </div>
-
-        <div className="bg-[#16191E] border border-white/8 p-6 rounded-sm space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1.5 font-bold">Product Name *</label>
-              <input
-                type="text"
-                {...register('name')}
-                placeholder="Product Name"
-                className="w-full bg-[#0F1114] border border-white/8 text-white text-xs px-3 py-2 outline-none focus:border-[#C5A059]/40"
-              />
-              {errors.name && <p className="text-[10px] text-red-400 mt-1">{errors.name.message as string}</p>}
-            </div>
-
-            <div>
-              <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1.5 font-bold">SKU Code *</label>
-              <input
-                type="text"
-                {...register('sku_code')}
-                placeholder="SKU Code"
-                className="w-full bg-[#0F1114] border border-white/8 text-white text-xs px-3 py-2 outline-none focus:border-[#C5A059]/40"
-              />
-              {errors.sku_code && <p className="text-[10px] text-red-400 mt-1">{errors.sku_code.message as string}</p>}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1.5 font-bold">Category</label>
-              <input
-                type="text"
-                {...register('category')}
-                placeholder="Category"
-                className="w-full bg-[#0F1114] border border-white/8 text-white text-xs px-3 py-2 outline-none focus:border-[#C5A059]/40"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1.5 font-bold">Unit *</label>
-              <input
-                type="text"
-                {...register('unit')}
-                placeholder="e.g. pcs, kg, meter"
-                className="w-full bg-[#0F1114] border border-white/8 text-white text-xs px-3 py-2 outline-none focus:border-[#C5A059]/40"
-              />
-              {errors.unit && <p className="text-[10px] text-red-400 mt-1">{errors.unit.message as string}</p>}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1.5 font-bold">Cost Price *</label>
-              <input
-                type="number"
-                {...register('cost_price')}
-                className="w-full bg-[#0F1114] border border-white/8 text-white text-xs px-3 py-2 outline-none focus:border-[#C5A059]/40"
-              />
-              {errors.cost_price && <p className="text-[10px] text-red-400 mt-1">{errors.cost_price.message as string}</p>}
-            </div>
-
-            <div>
-              <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1.5 font-bold">Sale Price *</label>
-              <input
-                type="number"
-                {...register('sale_price')}
-                className="w-full bg-[#0F1114] border border-white/8 text-white text-xs px-3 py-2 outline-none focus:border-[#C5A059]/40"
-              />
-              {errors.sale_price && <p className="text-[10px] text-red-400 mt-1">{errors.sale_price.message as string}</p>}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1.5 font-bold">Barcode</label>
-            <input
-              type="text"
-              {...register('barcode')}
-              placeholder="Scan or enter barcode"
-              className="w-full bg-[#0F1114] border border-white/8 text-white text-xs px-3 py-2 outline-none focus:border-[#C5A059]/40"
-            />
-          </div>
-
-          <div className="p-3 bg-[#0F1114] border border-white/8 rounded-sm">
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="requires_batch_tracking"
-                {...register('requires_batch_tracking')}
-                className="rounded bg-[#0F1114] border border-white/10 text-[#C5A059] focus:ring-0 focus:ring-offset-0"
-              />
-              <label htmlFor="requires_batch_tracking" className="text-xs text-gray-400 font-bold select-none cursor-pointer">
-                Requires Batch & Expiry Tracking (Medical/Pharmacy)
-              </label>
-            </div>
-
-            {watchValues.requires_batch_tracking && (
-              <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-white/5">
-                <div>
-                  <label className="block text-[9px] uppercase tracking-wider text-gray-500 mb-1">Batch #</label>
-                  <input
-                    type="text"
-                    {...register('batch_number')}
-                    className="w-full bg-[#16191E] border border-white/8 text-white text-[10px] px-2 py-1 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[9px] uppercase tracking-wider text-gray-500 mb-1">Expiry</label>
-                  <input
-                    type="date"
-                    {...register('expiry_date')}
-                    className="w-full bg-[#16191E] border border-white/8 text-white text-[10px] px-2 py-1 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[9px] uppercase tracking-wider text-gray-500 mb-1">Manufacture</label>
-                  <input
-                    type="date"
-                    {...register('manufacture_date')}
-                    className="w-full bg-[#16191E] border border-white/8 text-white text-[10px] px-2 py-1 outline-none"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
+        <div className="flex gap-3">
           <button
-            onClick={handleSubmit(onSubmit)}
-            disabled={isSubmitting}
-            className="w-full py-3 bg-[#C5A059] text-black font-black text-xs uppercase tracking-widest hover:bg-[#D4AF37] transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-4"
+            onClick={handleCancel}
+            className="px-4 py-2 border
+              border-white/8 text-gray-400
+              text-sm hover:border-white/15
+              hover:text-white transition-all"
           >
-            {isSubmitting ? 'Registering...' : (
-              <>
-                <Save size={14} /> Register Product
-              </>
-            )}
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving ||
+              !form.name.trim()}
+            className="flex items-center
+              gap-2 px-5 py-2 bg-[#60A5FA]
+              text-white font-bold text-sm
+              hover:brightness-110
+              disabled:opacity-40
+              transition-all"
+          >
+            <Save size={14} />
+            {saving ? 'Saving...' : 'Save Item'}
           </button>
         </div>
-      </main>
+      </div>
+
+      {/* FORM — scrollable */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-2xl mx-auto
+          p-6 space-y-6">
+
+          {/* SECTION 1 — Basic Info */}
+          <FormSection title="Basic Information">
+
+            {/* Item Name */}
+            <FormField
+              label="Item Name"
+              required>
+              <input
+                ref={nameRef}
+                value={form.name}
+                onChange={updateField('name')}
+                placeholder="Cotton Fabric 40s"
+                className="noxis-input"
+                maxLength={200}
+              />
+            </FormField>
+
+            {/* SKU Code + Barcode */}
+            <div className="grid grid-cols-2
+              gap-4">
+              <FormField label="SKU Code">
+                <input
+                  value={form.skuCode}
+                  onChange={updateField('skuCode')}
+                  placeholder="FAB-001"
+                  className="noxis-input"
+                />
+              </FormField>
+              <FormField label="Barcode">
+                <div className="relative">
+                  <input
+                    value={form.barcode}
+                    onChange={
+                      updateField('barcode')}
+                    placeholder="8901234567890"
+                    className="noxis-input pr-10"
+                  />
+                  <Barcode size={14}
+                    className="absolute right-3
+                      top-1/2 -translate-y-1/2
+                      text-gray-700" />
+                </div>
+              </FormField>
+            </div>
+
+            {/* Category + Unit */}
+            <div className="grid grid-cols-2
+              gap-4">
+              <FormField label="Category">
+                <select
+                  value={form.category}
+                  onChange={updateField('category')}
+                  className="noxis-input"
+                >
+                  <option value="">
+                    Select category
+                  </option>
+                  {CATEGORIES.map(c => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+              <FormField label="Unit" required>
+                <select
+                  value={form.unit}
+                  onChange={updateField('unit')}
+                  className="noxis-input"
+                >
+                  {UNITS.map(u => (
+                    <option key={u} value={u}>
+                      {u}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+            </div>
+
+          </FormSection>
+
+          {/* SECTION 2 — Pricing */}
+          <FormSection title="Pricing">
+
+            <div className="grid grid-cols-2
+              gap-4">
+              <FormField label="Cost Price (PKR)">
+                <input
+                  value={form.costPrice}
+                  onChange={updateField('costPrice')}
+                  placeholder="0"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="noxis-input"
+                />
+              </FormField>
+              <FormField label="Sale Price (PKR)">
+                <input
+                  value={form.salePrice}
+                  onChange={updateField('salePrice')}
+                  placeholder="0"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="noxis-input"
+                />
+              </FormField>
+            </div>
+
+            <FormField label="Tax Rate">
+              <select
+                value={form.taxRate}
+                onChange={updateField('taxRate')}
+                className="noxis-input"
+              >
+                {TAX_RATES.map(t => (
+                  <option
+                    key={t.value + t.label}
+                    value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+
+          </FormSection>
+
+          {/* SECTION 3 — Stock */}
+          <FormSection title="Stock">
+
+            <div className="grid grid-cols-2
+              gap-4">
+              <FormField label="Opening Stock">
+                <input
+                  value={form.openingStock}
+                  onChange={
+                    updateField('openingStock')}
+                  placeholder="0"
+                  type="number"
+                  min="0"
+                  className="noxis-input"
+                />
+              </FormField>
+              <FormField label="Reorder Level">
+                <input
+                  value={form.reorderLevel}
+                  onChange={
+                    updateField('reorderLevel')}
+                  placeholder="0"
+                  type="number"
+                  min="0"
+                  className="noxis-input"
+                />
+              </FormField>
+            </div>
+
+            <div className="grid grid-cols-2
+              gap-4">
+              <FormField label="Expiry Date">
+                <div className="relative">
+                  <input
+                    value={form.expiryDate}
+                    onChange={
+                      updateField('expiryDate')}
+                    type="date"
+                    className="noxis-input"
+                  />
+                </div>
+              </FormField>
+              <FormField label="Batch Number">
+                <input
+                  value={form.batchNumber}
+                  onChange={
+                    updateField('batchNumber')}
+                  placeholder="BATCH-2026-001"
+                  className="noxis-input"
+                />
+              </FormField>
+            </div>
+
+          </FormSection>
+
+          {/* SECTION 4 — Description */}
+          <FormSection title="Notes">
+            <FormField label="Description">
+              <textarea
+                value={form.description}
+                onChange={
+                  updateField('description')}
+                placeholder="Optional notes about this item..."
+                rows={3}
+                className="noxis-input resize-none"
+                maxLength={500}
+              />
+            </FormField>
+          </FormSection>
+
+          {/* Bottom save button for
+              long forms — convenience */}
+          <div className="flex gap-3
+            pb-8">
+            <button
+              onClick={handleSave}
+              disabled={saving ||
+                !form.name.trim()}
+              className="flex-1 py-3
+                bg-[#60A5FA] text-white
+                font-bold text-sm
+                hover:brightness-110
+                disabled:opacity-40
+                transition-all flex
+                items-center justify-center
+                gap-2"
+            >
+              <Save size={15} />
+              {saving
+                ? 'Saving...'
+                : 'Save Item to Inventory'}
+            </button>
+          </div>
+
+        </div>
+      </div>
     </div>
   )
 }
+
+// MEMOIZED sub-components
+// These never re-render unless
+// their own props change
+const FormSection = memo(function FormSection({
+  title,
+  children,
+}: {
+  title: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center
+        gap-3">
+        <p className="text-[10px] font-bold
+          uppercase tracking-widest
+          text-gray-500 whitespace-nowrap">
+          {title}
+        </p>
+        <div className="flex-1 h-px
+          bg-white/6" />
+      </div>
+      {children}
+    </div>
+  )
+})
+
+const FormField = memo(function FormField({
+  label,
+  required,
+  children,
+  hint,
+}: {
+  label: string
+  required?: boolean
+  children: React.ReactNode
+  hint?: string
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-[10px]
+        font-bold uppercase tracking-widest
+        text-gray-500 block">
+        {label}
+        {required && (
+          <span className="text-red-400 ml-1">
+            *
+          </span>
+        )}
+      </label>
+      {children}
+      {hint && (
+        <p className="text-[10px] text-gray-700">
+          {hint}
+        </p>
+      )}
+    </div>
+  )
+})

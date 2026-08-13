@@ -3,10 +3,27 @@ import { useBusinessProfileStore, BusinessProfile } from '@/store/BusinessProfil
 import { createClient } from '@/lib/supabase/client';
 import { getCurrencySymbol } from '@/lib/constants/currencies';
 
+const isUuid = (val: string | null | undefined): boolean => {
+  if (!val) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+};
+
+const DEFAULT_BIZ_ID = '00000000-0000-0000-0000-000000000000';
+
 export const useBusinessProfile = () => {
   const { profile, isLoaded, setProfile, setLoaded, setOffline } = useBusinessProfileStore();
   const supabase = createClient();
   const fetchAttempted = useRef(false);
+
+  // Sanitize cached profile if it contains invalid non-UUID string
+  useEffect(() => {
+    if (profile?.id && !isUuid(profile.id)) {
+      setProfile({
+        ...profile,
+        id: DEFAULT_BIZ_ID
+      });
+    }
+  }, [profile, setProfile]);
 
   useEffect(() => {
     // 1. Try localStorage first (instant, 0ms)
@@ -47,9 +64,6 @@ export const useBusinessProfile = () => {
 
     const fetchProfile = async () => {
       try {
-        // Use getSession() instead of getUser() to avoid Navigator Lock contention.
-        // getUser() acquires the auth lock which conflicts when multiple hooks 
-        // (sidebar, persona, profile) all call it simultaneously on page load.
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) {
           try {
@@ -57,7 +71,8 @@ export const useBusinessProfile = () => {
             const localData = await localRes.json();
             const configMap = (localData.localConfig || []).reduce((acc: any, c: any) => ({ ...acc, [c.key]: c.value }), {});
             
-            const bizId = configMap.business_id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null) || 'local-admin-biz';
+            const rawBizId = configMap.business_id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null);
+            const bizId = isUuid(rawBizId) ? rawBizId : DEFAULT_BIZ_ID;
             setProfile({
               id: bizId,
               business_name: configMap.business_name || 'Noxis Business',
@@ -74,7 +89,7 @@ export const useBusinessProfile = () => {
               preferred_locale: configMap.preferred_locale || 'en',
             } as any);
           } catch {
-            setProfile({ id: 'local-admin-biz', business_name: 'Noxis Business', role: 'retailer', currency: 'PKR' } as any);
+            setProfile({ id: DEFAULT_BIZ_ID, business_name: 'Noxis Business', role: 'retailer', currency: 'PKR' } as any);
           }
           setLoaded(true);
           return;

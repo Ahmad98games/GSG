@@ -48,7 +48,7 @@ export default function WhatsNewPage() {
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-black tracking-tight text-white uppercase">What&apos;s New in Noxis Hub</h1>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#08EBF6] text-black">
-                v13.1.0
+                v13.0.0
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5 font-medium">

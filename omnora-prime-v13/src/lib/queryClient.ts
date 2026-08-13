@@ -14,8 +14,8 @@ export const queryClientOptions = {
       refetchOnReconnect: false,
       // Keep data for 10 minutes before it goes stale
       staleTime: 10 * 60 * 1000,
-      // Keep in cache for 30 minutes
-      gcTime: 30 * 60 * 1000,
+      // Keep in cache for 15 minutes
+      gcTime: 15 * 60 * 1000,
       // Keep previous data during background revalidations to avoid layout flashes
       placeholderData: (prev: any) => prev,
       // Only retry once on failure, with a 2s delay

@@ -19,6 +19,7 @@ export default function robots(): MetadataRoute.Robots {
       { userAgent: 'PerplexityBot', allow: '/' },
       { userAgent: 'anthropic-ai', allow: '/' },
       { userAgent: 'CCBot', allow: '/' },
+      
 
       // Block tech stack scrapers
       // These tools reveal your dependencies to competitors

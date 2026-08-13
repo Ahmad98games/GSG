@@ -11,6 +11,7 @@ import {
   Search, Calendar, Clock, AlertTriangle,
   ChevronDown, User, FileText, CheckCircle2
 } from "lucide-react";
+import { AddPartyModal } from "@/components/parties/AddPartyModal";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Decimal } from "decimal.js";
@@ -38,6 +39,7 @@ export default function NewPurchaseOrder() {
   const createPO = useCreatePO();
 
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
+  const [isAddSupplierModalOpen, setIsAddSupplierModalOpen] = useState(false);
   const [expectedBy, setExpectedBy] = useState("");
   const [items, setItems] = useState<POLineItem[]>([]);
   const [notes, setNotes] = useState("");
@@ -240,7 +242,16 @@ export default function NewPurchaseOrder() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-[10px] uppercase text-gray-500 font-medium">{t('supplier') || 'Supplier'}</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] uppercase text-gray-500 font-medium">{t('supplier') || 'Supplier'}</label>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddSupplierModalOpen(true)}
+                    className="text-[10px] text-[#60A5FA] font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus size={12} /> Add Supplier
+                  </button>
+                </div>
                 <select 
                   className="industrial-input"
                   value={selectedSupplierId}
@@ -456,6 +467,17 @@ export default function NewPurchaseOrder() {
           </div>
         </div>
       </div>
+
+      <AddPartyModal
+        isOpen={isAddSupplierModalOpen}
+        onClose={() => setIsAddSupplierModalOpen(false)}
+        defaultType="supplier"
+        onSuccess={(party) => {
+          if (party?.id) {
+            setSelectedSupplierId(party.id);
+          }
+        }}
+      />
 
       <style jsx global>{`
         .industrial-input {

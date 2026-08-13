@@ -1,9 +1,9 @@
 'use client'
 import { useEffect, useRef, useCallback } from 'react'
 
-export function useFormDraft<T>(
+export function useFormDraft<T = any>(
   key: string,
-  data: T,
+  data?: T,
   enabled = true
 ) {
   const saveTimer = useRef<any>(null)
@@ -32,15 +32,31 @@ export function useFormDraft<T>(
     }
   }, [data, key, enabled, isElectron])
 
+  const saveDraft = useCallback(async (draftData: any) => {
+    if (!isElectron) return
+    if ((window as any).electronAPI?.store?.saveFormDraft) {
+      await (window as any).electronAPI.store.saveFormDraft(key, draftData)
+    }
+  }, [key, isElectron])
+
   const getDraft = useCallback(async (): Promise<T | null> => {
     if (!isElectron) return null
-    return (window as any).electronAPI.store.getFormDraft(key) as Promise<T | null>
+    if ((window as any).electronAPI?.store?.getFormDraft) {
+      return (window as any).electronAPI.store.getFormDraft(key) as Promise<T | null>
+    }
+    if ((window as any).electronAPI?.store?.getDraft) {
+      return (window as any).electronAPI.store.getDraft(key) as Promise<T | null>
+    }
+    return null
   }, [key, isElectron])
 
   const clearDraft = useCallback(async () => {
     if (!isElectron) return
-    await (window as any).electronAPI.store.clearFormDraft(key)
+    if ((window as any).electronAPI?.store?.clearFormDraft) {
+      await (window as any).electronAPI.store.clearFormDraft(key)
+    }
   }, [key, isElectron])
 
-  return { getDraft, clearDraft }
+  return { getDraft, clearDraft, saveDraft }
 }
+

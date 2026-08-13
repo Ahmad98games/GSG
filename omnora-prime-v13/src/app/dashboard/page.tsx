@@ -156,9 +156,8 @@ export default function OwnerDashboard() {
         }
       }
 
-      if (!activeProfile) {
         activeProfile = {
-          id: 'local-admin-biz',
+          id: '00000000-0000-0000-0000-000000000000',
           business_name: 'Noxis Factory Workstation',
           owner_name: 'Factory Admin',
           tier: 'pro',
@@ -170,7 +169,7 @@ export default function OwnerDashboard() {
         }
       }
 
-      const biz = (activeProfile as any)?.id || 'local-admin-biz'
+      const biz = (activeProfile as any)?.id || '00000000-0000-0000-0000-000000000000'
       const today = new Date().toISOString().split('T')[0]
       const monthStart = new Date(today.slice(0, 7) + '-01').toISOString()
 

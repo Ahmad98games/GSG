@@ -141,7 +141,7 @@ export default function NewInvoicePage() {
 
   useEffect(() => {
     if (!profile?.id) return;
-    const loadData = async () => {
+    const t = setTimeout(async () => {
       // Auto-seed chart of accounts if missing
       try {
         const { count: accountCount } = await supabase
@@ -157,14 +157,10 @@ export default function NewInvoicePage() {
         console.warn('[Invoice Load] Seeding check failed:', e);
       }
 
-      const [{ data: pData }, { data: sData }, { data: bData }, { data: count }] = await Promise.all([
-        supabase.from('parties').select('*').eq('business_id', profile.id),
-        supabase.from('skus').select('*').eq('business_id', profile.id).eq('is_active', true),
+      const [{ data: bData }, { count }] = await Promise.all([
         supabase.from('branches').select('*').eq('business_id', profile.id),
         supabase.from('invoices').select('invoice_no', { count: 'exact', head: true }).eq('business_id', profile.id)
       ]);
-      if (pData) setParties(pData);
-      if (sData) setSkus(sData);
       if (bData) {
         setBranches(bData);
         if (bData.length > 0) setValue("branch_id", bData[0].id);
@@ -172,9 +168,50 @@ export default function NewInvoicePage() {
       
       const nextNo = `INV-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(5, '0')}`;
       setValue("invoice_no", nextNo);
-    };
-    loadData();
+    }, 100);
+    return () => clearTimeout(t);
   }, [profile?.id, supabase, setValue]);
+
+  // Lazy load parties on search
+  useEffect(() => {
+    if (!profile?.id) return;
+    const searchParties = async () => {
+      try {
+        let query = supabase.from('parties').select('*').eq('business_id', profile.id);
+        if (debouncedPartySearch.trim()) {
+          query = query.ilike('name', `%${debouncedPartySearch.trim()}%`);
+        }
+        const { data } = await query.limit(20);
+        if (data) setParties(data);
+      } catch (e) {
+        console.error('Failed to load parties:', e);
+      }
+    };
+    searchParties();
+  }, [debouncedPartySearch, profile?.id, supabase]);
+
+  // Lazy load SKUs on search
+  useEffect(() => {
+    if (!profile?.id || !debouncedSkuSearch.trim()) {
+      setSkus([]);
+      return;
+    }
+    const searchSkus = async () => {
+      try {
+        const { data } = await supabase
+          .from('skus')
+          .select('*')
+          .eq('business_id', profile.id)
+          .eq('is_active', true)
+          .or(`sku_code.ilike.%${debouncedSkuSearch.trim()}%,name.ilike.%${debouncedSkuSearch.trim()}%`)
+          .limit(10);
+        if (data) setSkus(data);
+      } catch (e) {
+        console.error('Failed to search skus:', e);
+      }
+    };
+    searchSkus();
+  }, [debouncedSkuSearch, profile?.id, supabase]);
 
   // Currency Rate Fetcher
   useEffect(() => {
@@ -183,7 +220,7 @@ export default function NewInvoicePage() {
       return;
     }
     const fetchRate = async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('exchange_rates')
         .select('rate')
         .eq('from_currency', watchValues.currency)
@@ -199,13 +236,7 @@ export default function NewInvoicePage() {
     fetchRate();
   }, [watchValues.currency, businessCurrency, watchValues.issue_date, supabase, setValue]);
 
-  const filteredSkus = useMemo(() => {
-    if (!debouncedSkuSearch) return [];
-    return skus.filter(s => 
-      s.sku_code.toLowerCase().includes(debouncedSkuSearch.toLowerCase()) || 
-      s.name.toLowerCase().includes(debouncedSkuSearch.toLowerCase())
-    ).slice(0, 10);
-  }, [skus, debouncedSkuSearch]);
+  const filteredSkus = skus;
 
   const onSubmit = async (values: InvoiceFormValues) => {
     setIsSubmitting(true);

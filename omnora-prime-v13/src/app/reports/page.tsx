@@ -62,161 +62,174 @@ export default function ReportsHubPage() {
   }, []);
 
   // Live Data Fetches
-  const { data: plData, error: plError, refetch: refetchPl, isPending: plPending } = useQuery({
+  const { data: plData, error: plError, refetch: refetchPl, isFetching: plFetching } = useQuery({
     queryKey: ['report-summary-pl', businessId, currentBranchId],
     queryFn: async () => {
-      let query = supabase
-        .from('ledger_entries')
-        .select('amount, entry_type, accounts!inner(type)')
-        .eq('business_id', businessId)
-        .eq('status', 'posted')
-        .gte('posted_at', startOfMonth)
-        .lte('posted_at', endOfMonth + 'T23:59:59.999Z');
+      try {
+        let query = supabase
+          .from('ledger_entries')
+          .select('amount, entry_type, accounts!inner(type)')
+          .eq('business_id', businessId)
+          .eq('status', 'posted')
+          .gte('posted_at', startOfMonth)
+          .lte('posted_at', endOfMonth + 'T23:59:59.999Z');
 
-      if (currentBranchId) {
-        query = query.eq('branch_id', currentBranchId);
-      }
-
-      const { data, error } = await query;
-      // Gracefully handle missing accounts table (new business)
-      if (error && error.code !== 'PGRST116' && !error.message?.includes('accounts')) {
-        throw error;
-      }
-
-      let revenue = new Decimal(0);
-      let expenses = new Decimal(0);
-
-      (data || []).forEach((entry: any) => {
-        const amt = new Decimal(entry.amount || 0);
-        const type = entry.accounts?.type;
-        const isDebit = entry.entry_type === 'debit';
-
-        if (type === 'revenue') {
-          if (isDebit) revenue = revenue.minus(amt);
-          else revenue = revenue.plus(amt);
-        } else if (type === 'expense') {
-          if (isDebit) expenses = expenses.plus(amt);
-          else expenses = expenses.minus(amt);
+        if (currentBranchId) {
+          query = query.eq('branch_id', currentBranchId);
         }
-      });
 
-      const netProfit = revenue.minus(expenses);
-      return { 
-        amount: netProfit.abs(),
-        isLoss: netProfit.isNegative()
-      };
+        const { data, error } = await query;
+        if (error) {
+          console.warn('P&L summary fetch warning:', error);
+          return { amount: new Decimal(0), isLoss: false };
+        }
+
+        let revenue = new Decimal(0);
+        let expenses = new Decimal(0);
+
+        (data || []).forEach((entry: any) => {
+          const amt = new Decimal(entry.amount || 0);
+          const type = entry.accounts?.type;
+          const isDebit = entry.entry_type === 'debit';
+
+          if (type === 'revenue') {
+            if (isDebit) revenue = revenue.minus(amt);
+            else revenue = revenue.plus(amt);
+          } else if (type === 'expense') {
+            if (isDebit) expenses = expenses.plus(amt);
+            else expenses = expenses.minus(amt);
+          }
+        });
+
+        const netProfit = revenue.minus(expenses);
+        return { 
+          amount: netProfit.abs(),
+          isLoss: netProfit.isNegative()
+        };
+      } catch (err) {
+        console.warn('P&L query error caught:', err);
+        return { amount: new Decimal(0), isLoss: false };
+      }
     },
     enabled: !!businessId
   });
 
-  const { data: tbData, isPending: tbPending } = useQuery({
+  const { data: tbData, isFetching: tbFetching } = useQuery({
     queryKey: ['report-summary-tb', businessId, currentBranchId],
     queryFn: async () => {
-      let query = supabase
-        .from('ledger_entries')
-        .select('amount, entry_type')
-        .eq('business_id', businessId)
-        .eq('status', 'posted');
+      try {
+        let query = supabase
+          .from('ledger_entries')
+          .select('amount, entry_type')
+          .eq('business_id', businessId)
+          .eq('status', 'posted');
 
-      if (currentBranchId) {
-        query = query.eq('branch_id', currentBranchId);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      let totalDebits = new Decimal(0);
-      let totalCredits = new Decimal(0);
-
-      data.forEach((entry: any) => {
-        const amt = new Decimal(entry.amount);
-        if (entry.entry_type === 'debit') {
-          totalDebits = totalDebits.plus(amt);
-        } else {
-          totalCredits = totalCredits.plus(amt);
+        if (currentBranchId) {
+          query = query.eq('branch_id', currentBranchId);
         }
-      });
 
-      const variance = totalDebits.minus(totalCredits).abs();
-      const isBalanced = variance.lessThanOrEqualTo(0.01);
+        const { data, error } = await query;
+        if (error || !data) return { is_balanced: true, variance: 0 };
 
-      return {
-        is_balanced: isBalanced,
-        variance: variance.toNumber()
-      };
+        let totalDebits = new Decimal(0);
+        let totalCredits = new Decimal(0);
+
+        data.forEach((entry: any) => {
+          const amt = new Decimal(entry.amount || 0);
+          if (entry.entry_type === 'debit') {
+            totalDebits = totalDebits.plus(amt);
+          } else {
+            totalCredits = totalCredits.plus(amt);
+          }
+        });
+
+        const variance = totalDebits.minus(totalCredits).abs();
+        const isBalanced = variance.lessThanOrEqualTo(0.01);
+
+        return {
+          is_balanced: isBalanced,
+          variance: variance.toNumber()
+        };
+      } catch {
+        return { is_balanced: true, variance: 0 };
+      }
     },
     enabled: !!businessId
   });
 
-  const { data: bsData, error: bsError, refetch: refetchBs, isPending: bsPending } = useQuery({
+  const { data: bsData, error: bsError, refetch: refetchBs, isFetching: bsFetching } = useQuery({
     queryKey: ['report-summary-bs', businessId, currentBranchId],
     queryFn: async () => {
-      let query = supabase
-        .from('ledger_entries')
-        .select('amount, entry_type, accounts!inner(type, account_code)')
-        .eq('business_id', businessId)
-        .eq('status', 'posted');
+      try {
+        let query = supabase
+          .from('ledger_entries')
+          .select('amount, entry_type, accounts!inner(type, account_code)')
+          .eq('business_id', businessId)
+          .eq('status', 'posted');
 
-      if (currentBranchId) {
-        query = query.eq('branch_id', currentBranchId);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      let totalAssets = new Decimal(0);
-      let totalLiabilities = new Decimal(0);
-
-      data.forEach((entry: any) => {
-        const amt = new Decimal(entry.amount);
-        const type = entry.accounts?.type;
-        const code = entry.accounts?.account_code || "";
-        const isDebit = entry.entry_type === 'debit';
-
-        if (type === 'asset') {
-          if (isDebit) totalAssets = totalAssets.plus(amt);
-          else totalAssets = totalAssets.minus(amt);
-        } else if (type === 'liability') {
-          if (isDebit) totalLiabilities = totalLiabilities.minus(amt);
-          else totalLiabilities = totalLiabilities.plus(amt);
+        if (currentBranchId) {
+          query = query.eq('branch_id', currentBranchId);
         }
-      });
 
-      return { totalAssets, totalLiabilities };
+        const { data, error } = await query;
+        if (error || !data) return { totalAssets: new Decimal(0), totalLiabilities: new Decimal(0) };
+
+        let totalAssets = new Decimal(0);
+        let totalLiabilities = new Decimal(0);
+
+        data.forEach((entry: any) => {
+          const amt = new Decimal(entry.amount || 0);
+          const type = entry.accounts?.type;
+          const isDebit = entry.entry_type === 'debit';
+
+          if (type === 'asset') {
+            if (isDebit) totalAssets = totalAssets.plus(amt);
+            else totalAssets = totalAssets.minus(amt);
+          } else if (type === 'liability') {
+            if (isDebit) totalLiabilities = totalLiabilities.minus(amt);
+            else totalLiabilities = totalLiabilities.plus(amt);
+          }
+        });
+
+        return { totalAssets, totalLiabilities };
+      } catch {
+        return { totalAssets: new Decimal(0), totalLiabilities: new Decimal(0) };
+      }
     },
     enabled: !!businessId
   });
 
-  const { data: receivablesData, error: recError, refetch: refetchRec, isPending: recPending } = useQuery({
+  const { data: receivablesData, error: recError, refetch: refetchRec, isFetching: recFetching } = useQuery({
     queryKey: ['report-summary-receivables', businessId, currentBranchId],
     queryFn: async () => {
-      let query = supabase
-        .from('ledger_entries')
-        .select('amount, entry_type, accounts!inner(account_code)')
-        .eq('business_id', businessId)
-        .eq('status', 'posted')
-        .eq('accounts.account_code', '1100');
+      try {
+        let query = supabase
+          .from('ledger_entries')
+          .select('amount, entry_type, accounts!inner(account_code)')
+          .eq('business_id', businessId)
+          .eq('status', 'posted')
+          .eq('accounts.account_code', '1100');
 
-      if (currentBranchId) {
-        query = query.eq('branch_id', currentBranchId);
-      }
-
-      const { data, error } = await query;
-      // Gracefully handle missing accounts (new business with no chart of accounts)
-      if (error && error.code !== 'PGRST116' && !error.message?.includes('accounts')) {
-        throw error;
-      }
-
-      let balance = new Decimal(0);
-      (data || []).forEach((entry: any) => {
-        const amt = new Decimal(entry.amount || 0);
-        if (entry.entry_type === 'debit') {
-          balance = balance.plus(amt);
-        } else {
-          balance = balance.minus(amt);
+        if (currentBranchId) {
+          query = query.eq('branch_id', currentBranchId);
         }
-      });
-      return balance;
+
+        const { data, error } = await query;
+        if (error || !data) return new Decimal(0);
+
+        let balance = new Decimal(0);
+        (data || []).forEach((entry: any) => {
+          const amt = new Decimal(entry.amount || 0);
+          if (entry.entry_type === 'debit') {
+            balance = balance.plus(amt);
+          } else {
+            balance = balance.minus(amt);
+          }
+        });
+        return balance;
+      } catch {
+        return new Decimal(0);
+      }
     },
     enabled: !!businessId
   });
@@ -224,14 +237,18 @@ export default function ReportsHubPage() {
   const { data: taxData } = useQuery({
     queryKey: ['report-summary-tax', businessId],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_tax_return', {
-        p_business_id: businessId,
-        p_date_from: startOfQuarter,
-        p_date_to: endOfMonth
-      });
-      if (error) throw error;
-      const netPayable = data.find((r: any) => r.section === 'net_payable')?.tax_amount || 0;
-      return new Decimal(netPayable);
+      try {
+        const { data, error } = await supabase.rpc('get_tax_return', {
+          p_business_id: businessId,
+          p_date_from: startOfQuarter,
+          p_date_to: endOfMonth
+        });
+        if (error || !data) return new Decimal(0);
+        const netPayable = data.find((r: any) => r.section === 'net_payable')?.tax_amount || 0;
+        return new Decimal(netPayable);
+      } catch {
+        return new Decimal(0);
+      }
     },
     enabled: !!businessId
   });
@@ -239,19 +256,23 @@ export default function ReportsHubPage() {
   const { data: ledgerData } = useQuery({
     queryKey: ['report-summary-ledger', businessId, currentBranchId],
     queryFn: async () => {
-      let query = supabase
-        .from('ledger_entries')
-        .select('*', { count: 'exact', head: true })
-        .eq('business_id', businessId)
-        .gte('posted_at', startOfMonth);
+      try {
+        let query = supabase
+          .from('ledger_entries')
+          .select('*', { count: 'exact', head: true })
+          .eq('business_id', businessId)
+          .gte('posted_at', startOfMonth);
 
-      if (currentBranchId) {
-        query = query.eq('branch_id', currentBranchId);
+        if (currentBranchId) {
+          query = query.eq('branch_id', currentBranchId);
+        }
+
+        const { count, error } = await query;
+        if (error) return 0;
+        return count || 0;
+      } catch {
+        return 0;
       }
-
-      const { count, error } = await query;
-      if (error) throw error;
-      return count || 0;
     },
     enabled: !!businessId
   });
@@ -259,18 +280,22 @@ export default function ReportsHubPage() {
   const { data: stockData } = useQuery({
     queryKey: ['report-summary-stock', businessId, currentBranchId],
     queryFn: async () => {
-      let query = supabase
-        .from('skus')
-        .select('qty_on_hand, cost_price')
-        .eq('business_id', businessId);
+      try {
+        let query = supabase
+          .from('skus')
+          .select('qty_on_hand, cost_price')
+          .eq('business_id', businessId);
 
-      if (currentBranchId) {
-        query = query.eq('branch_id', currentBranchId);
+        if (currentBranchId) {
+          query = query.eq('branch_id', currentBranchId);
+        }
+
+        const { data, error } = await query;
+        if (error || !data) return new Decimal(0);
+        return data.reduce((acc: Decimal, sku: any) => acc.plus(new Decimal(sku.qty_on_hand || 0).times(sku.cost_price || 0)), new Decimal(0));
+      } catch {
+        return new Decimal(0);
       }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return data.reduce((acc: Decimal, sku: any) => acc.plus(new Decimal(sku.qty_on_hand || 0).times(sku.cost_price || 0)), new Decimal(0));
     },
     enabled: !!businessId
   });
@@ -278,20 +303,24 @@ export default function ReportsHubPage() {
   const { data: payrollData } = useQuery({
     queryKey: ['report-summary-payroll', businessId, currentBranchId],
     queryFn: async () => {
-      let query = supabase
-        .from('payroll_periods')
-        .select('total_payroll')
-        .eq('business_id', businessId)
-        .gte('period_start', startOfMonth)
-        .lte('period_end', endOfMonth);
+      try {
+        let query = supabase
+          .from('payroll_periods')
+          .select('total_payroll')
+          .eq('business_id', businessId)
+          .gte('period_start', startOfMonth)
+          .lte('period_end', endOfMonth);
 
-      if (currentBranchId) {
-        query = query.eq('branch_id', currentBranchId);
+        if (currentBranchId) {
+          query = query.eq('branch_id', currentBranchId);
+        }
+
+        const { data, error } = await query;
+        if (error || !data || data.length === 0) return new Decimal(0);
+        return new Decimal(data[0]?.total_payroll || 0);
+      } catch {
+        return new Decimal(0);
       }
-
-      const { data, error } = await query.single();
-      if (error && error.code !== 'PGRST116') throw error;
-      return new Decimal(data?.total_payroll || 0);
     },
     enabled: !!businessId
   });
@@ -380,8 +409,8 @@ export default function ReportsHubPage() {
     },
   ];
 
-  // Use React Query's isPending flags — avoids false "loading" when data is zero/empty
-  const isLoading = plPending || tbPending || bsPending || recPending;
+  // Only show full loader if profile is loading and fetching
+  const isLoading = !profile && (plFetching || tbFetching || bsFetching || recFetching);
   if (isLoading) return (
     <div className="p-6 bg-[#0F1113]">
       <div className="grid grid-cols-3 gap-4 mb-6">

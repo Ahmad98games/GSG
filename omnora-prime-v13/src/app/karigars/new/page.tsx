@@ -1,272 +1,719 @@
 'use client'
-import { useState, useEffect } from 'react'
+import {
+  useState, useCallback, useEffect,
+  useRef, memo,
+} from 'react'
 import { useRouter } from 'next/navigation'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import * as z from 'zod'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { createClient } from '@/lib/supabase/client'
-import { useBusinessProfile } from '@/hooks/useBusinessProfile'
-import { useToast } from '@/hooks/useToast'
-import { useFormDraft } from '@/hooks/useFormDraft'
-import { DraftRecoveryBanner } from '@/components/DraftRecoveryBanner'
-import { ArrowLeft, Save, User } from 'lucide-react'
+import { useToastStore } from '@/hooks/useToast'
+import {
+  Users2, ChevronLeft, Save,
+  User, Phone, CreditCard,
+} from 'lucide-react'
+import { createClient }
+  from '@/lib/supabase/client'
+import { useBusinessProfile }
+  from '@/hooks/useBusinessProfile'
+import { useFormDraft }
+  from '@/hooks/useFormDraft'
+import { useActionGuard } from '@/hooks/useActionGuard'
 
-const karigarSchema = z.object({
-  name: z.string().min(1, 'Worker name is required'),
-  father_name: z.string().optional(),
-  cnic: z.string().optional(),
-  phone: z.string().optional().refine(val => {
-    if (!val) return true
-    const digits = val.replace(/[^0-9]/g, '')
-    return digits.length >= 10 && digits.length <= 13
-  }, 'Enter a valid phone number'),
-  address: z.string().optional(),
-  skill_type: z.string().min(1, 'Skill type is required'),
-  grade_id: z.string().min(1, 'Grade is required'),
-  wage_type: z.enum(['piece_rate', 'daily_wage', 'monthly_salary']),
-  rate: z.coerce.number().min(0, 'Rate cannot be negative'),
-  joining_date: z.string().min(1, 'Joining date is required'),
-})
+const toast = Object.assign(
+  (msg: string, _opts?: any) => {
+    useToastStore.getState().addToast({ type: 'warning', title: msg })
+  },
+  {
+    success: (msg: string) => useToastStore.getState().addToast({ type: 'success', title: msg }),
+    error: (msg: string) => useToastStore.getState().addToast({ type: 'error', title: msg }),
+  }
+)
 
-type KarigarFormValues = z.infer<typeof karigarSchema>
+// ALL static data OUTSIDE component
+const WAGE_TYPES = [
+  { value: 'piece_rate', label: 'Piece Rate' },
+  { value: 'daily', label: 'Daily Wage' },
+  { value: 'monthly', label: 'Monthly Salary' },
+] as const
+
+const DEPARTMENTS = [
+  'Weaving', 'Spinning', 'Finishing',
+  'Cutting', 'Stitching', 'Packing',
+  'Dyeing', 'Printing', 'Quality Control',
+  'Maintenance', 'Security', 'Admin',
+  'Accounts', 'Store', 'Other',
+] as const
+
+const DESIGNATIONS = [
+  'Karigar', 'Supervisor', 'Head Karigar',
+  'Operator', 'Helper', 'Technician',
+  'Guard', 'Clerk', 'Manager', 'Other',
+] as const
+
+const BLOOD_GROUPS = [
+  'A+', 'A-', 'B+', 'B-',
+  'AB+', 'AB-', 'O+', 'O-',
+] as const
+
+const INITIAL_KARIGAR = {
+  name: '',
+  karigarCode: '',
+  phone: '',
+  cnic: '',
+  address: '',
+  department: '',
+  designation: 'Karigar',
+  wageType: 'piece_rate' as 'piece_rate' | 'daily' | 'monthly',
+  pieceRate: '',
+  dailyWage: '',
+  monthlySalary: '',
+  joiningDate: new Date()
+    .toISOString().split('T')[0],
+  bankAccountNumber: '',
+  bankName: '',
+  eobiNumber: '',
+  bloodGroup: '',
+  emergencyContact: '',
+  notes: '',
+}
 
 export default function NewKarigarPage() {
   const router = useRouter()
   const supabase = createClient()
-  const queryClient = useQueryClient()
   const { profile } = useBusinessProfile()
-  const toast = useToast()
+  const { saveDraft, clearDraft } =
+    useFormDraft('karigar-new')
 
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [form, setForm] =
+    useState(INITIAL_KARIGAR)
+  const [saving, setSaving] = useState(false)
+  const [cnicError, setCnicError] =
+    useState('')
+  const nameRef = useRef<HTMLInputElement>(null)
 
-  const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<KarigarFormValues>({
-    resolver: zodResolver(karigarSchema) as any,
-    mode: 'onChange',
-    defaultValues: {
-      name: '',
-      father_name: '',
-      cnic: '',
-      phone: '',
-      address: '',
-      skill_type: '',
-      grade_id: '',
-      wage_type: 'piece_rate',
-      rate: 0,
-      joining_date: new Date().toISOString().split('T')[0],
+  // Focus name — deferred to not
+  // block initial render
+  useEffect(() => {
+    const t = setTimeout(() => {
+      nameRef.current?.focus()
+    }, 0)
+    return () => clearTimeout(t)
+  }, [])
+
+  // Restore draft — async, deferred 100ms
+  useEffect(() => {
+    let cancelled = false
+    const t = setTimeout(async () => {
+      try {
+        const draft = await (window as any)
+          .electronAPI?.store
+          ?.getDraft?.('karigar-new') || await (window as any)
+          .electronAPI?.store
+          ?.getFormDraft?.('karigar-new')
+        if (draft && !cancelled) {
+          setForm(prev => ({
+            ...prev, ...draft
+          }))
+        }
+      } catch {}
+    }, 100)
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+    }
+  }, [])
+
+  // Auto-save draft every 5s
+  useEffect(() => {
+    if (!form.name) return
+    const t = setInterval(() => {
+      saveDraft(form)
+    }, 5000)
+    return () => clearInterval(t)
+  }, [form, saveDraft])
+
+  // Batch field updates
+  const updateField = useCallback(
+    (field: keyof typeof INITIAL_KARIGAR) =>
+      (e: React.ChangeEvent<
+        HTMLInputElement |
+        HTMLSelectElement |
+        HTMLTextAreaElement
+      >) => {
+        setForm(prev => ({
+          ...prev,
+          [field]: e.target.value,
+        }))
+      },
+    []
+  )
+
+  // CNIC validation — only on blur
+  // NOT on every keystroke
+  const validateCnic = useCallback(
+    (value: string) => {
+      if (!value) {
+        setCnicError('')
+        return
+      }
+      const pattern = /^\d{5}-\d{7}-\d$/
+      if (!pattern.test(value)) {
+        setCnicError(
+          'Format: XXXXX-XXXXXXX-X'
+        )
+      } else {
+        setCnicError('')
+      }
     },
-  })
+    []
+  )
 
-  const watchValues = watch()
-  const DRAFT_KEY = 'karigar-new'
-  const { getDraft, clearDraft } = useFormDraft(DRAFT_KEY, watchValues)
+  // What wage fields to show
+  const showPieceRate =
+    form.wageType === 'piece_rate'
+  const showDailyWage =
+    form.wageType === 'daily'
+  const showMonthlySalary =
+    form.wageType === 'monthly'
 
-  // Fetch grades
-  const { data: grades = [] } = useQuery({
-    queryKey: ['karigar_grades', profile?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('karigar_grades')
-        .select('*')
-        .eq('business_id', profile?.id)
-      if (error) throw error
-      return data || []
-    },
-    enabled: !!profile?.id,
-  })
+  const validate = useCallback(
+    (): string | null => {
+    if (!form.name.trim())
+      return 'Name is required'
+    if (!form.phone.trim())
+      return 'Phone number is required'
+    if (form.cnic && cnicError)
+      return 'Fix CNIC format first'
+    if (form.wageType === 'piece_rate' &&
+      !form.pieceRate)
+      return 'Piece rate amount is required'
+    if (form.wageType === 'daily' &&
+      !form.dailyWage)
+      return 'Daily wage amount is required'
+    if (form.wageType === 'monthly' &&
+      !form.monthlySalary)
+      return 'Monthly salary is required'
+    return null
+  }, [form, cnicError])
 
-  const onSubmit = async (values: KarigarFormValues) => {
-    if (!profile?.id) return
-    setIsSubmitting(true)
+  const { guard } = useActionGuard()
 
-    try {
-      const payload = {
-        business_id: profile.id,
-        name: values.name,
-        father_name: values.father_name || null,
-        cnic: values.cnic || null,
-        phone: values.phone || null,
-        address: values.address || null,
-        skill_type: values.skill_type,
-        grade_id: values.grade_id,
-        wage_type: values.wage_type,
-        joining_date: values.joining_date,
-        piece_rate: values.wage_type === 'piece_rate' ? values.rate : null,
-        daily_rate: values.wage_type === 'daily_wage' ? values.rate : null,
-        monthly_salary: values.wage_type === 'monthly_salary' ? values.rate : null,
-        current_advance: 0,
-        status: 'active',
+  const handleSave = useCallback(() => {
+    guard(async () => {
+      const error = validate()
+      if (error) {
+        toast.error(error)
+        return
+      }
+      if (!profile?.id) {
+        toast.error('Business profile not loaded')
+        return
       }
 
-      const { error } = await supabase.from('karigars').insert(payload)
-      if (error) throw error
+      setSaving(true)
+      try {
+        // Generate karigar code if empty
+        const code = form.karigarCode.trim() ||
+          `KAR-${Date.now().toString().slice(-5)}`
 
-      await clearDraft()
-      toast.success('Worker registered successfully')
-      queryClient.invalidateQueries({ queryKey: ['karigars_registry'] })
-      router.push('/karigars')
-    } catch (err: any) {
-      console.error(err)
-      toast.error('Registration failed', err.message || 'Unknown error')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
+        const payload = {
+          business_id: profile.id,
+          name: form.name.trim(),
+          karigar_code: code,
+          phone: form.phone.trim(),
+          cnic: form.cnic.trim() || null,
+          address: form.address.trim() || null,
+          department:
+            form.department || null,
+          designation:
+            form.designation || 'Karigar',
+          wage_type: form.wageType,
+          piece_rate:
+            form.wageType === 'piece_rate'
+              ? parseFloat(form.pieceRate) || 0
+              : null,
+          daily_wage:
+            form.wageType === 'daily'
+              ? parseFloat(form.dailyWage) || 0
+              : null,
+          monthly_salary:
+            form.wageType === 'monthly'
+              ? parseFloat(form.monthlySalary) || 0
+              : null,
+          joining_date: form.joiningDate,
+          bank_account_number:
+            form.bankAccountNumber.trim() || null,
+          bank_name:
+            form.bankName.trim() || null,
+          eobi_number:
+            form.eobiNumber.trim() || null,
+          blood_group:
+            form.bloodGroup || null,
+          emergency_contact:
+            form.emergencyContact.trim() || null,
+          notes:
+            form.notes.trim() || null,
+          status: 'active',
+          peshgi_balance: 0,
+        }
+
+        const { data, error } = await supabase
+          .from('karigars')
+          .insert(payload)
+          .select()
+          .single()
+
+        if (error) throw error
+
+        clearDraft()
+        toast.success(
+          `${form.name.trim()} registered`
+        )
+        setTimeout(() => {
+          router.push('/karigars')
+        }, 500)
+
+      } catch (err: any) {
+        toast.error(
+          err.message || 'Failed to register karigar'
+        )
+      } finally {
+        setSaving(false)
+      }
+    })
+  }, [form, profile, validate, clearDraft, router, supabase, guard])
 
   return (
-    <div className="min-h-screen bg-[#0F1113] text-slate-200 p-6 flex flex-col">
-      <main className="max-w-xl mx-auto w-full flex-1 flex flex-col justify-center">
-        <DraftRecoveryBanner
-          draftKey={DRAFT_KEY}
-          onRecover={(data) => reset(data)}
-          onDiscard={() => {}}
-        />
+    <div className="flex flex-col h-full">
 
-        <div className="flex items-center gap-3 mb-6">
-          <button
-            onClick={() => router.push('/karigars')}
-            className="p-2 bg-white/5 border border-white/8 hover:bg-white/10 rounded-sm text-gray-400 hover:text-white transition-all"
-          >
-            <ArrowLeft size={16} />
-          </button>
+      {/* HEADER */}
+      <div className="flex items-center
+        gap-4 px-6 py-4 border-b
+        border-white/6 bg-[#0A0C0F]
+        flex-shrink-0">
+        <button
+          onClick={() =>
+            router.push('/karigars')}
+          className="flex items-center gap-2
+            text-gray-500 hover:text-white
+            transition-colors text-sm"
+        >
+          <ChevronLeft size={16} />
+          Karigars
+        </button>
+        <div className="flex items-center
+          gap-3 flex-1">
+          <div className="w-8 h-8 rounded-lg
+            bg-[#10B981]/10 border
+            border-[#10B981]/20
+            flex items-center justify-center">
+            <Users2 size={15}
+              className="text-[#10B981]" />
+          </div>
           <div>
-            <h1 className="text-lg font-bold text-white flex items-center gap-2">
-              <User size={18} className="text-[#C5A059]" /> Register Worker
+            <h1 className="text-sm font-bold
+              text-white">
+              Register New Karigar
             </h1>
-            <p className="text-xs text-gray-500">Add a new Karigar to the factory registry</p>
+            <p className="text-[10px]
+              text-gray-600">
+              Fields marked * are required
+            </p>
           </div>
         </div>
-
-        <div className="bg-[#16191E] border border-white/8 p-6 rounded-sm space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1.5 font-bold">Worker Name *</label>
-              <input
-                type="text"
-                {...register('name')}
-                placeholder="Worker Name"
-                className="w-full bg-[#0F1114] border border-white/8 text-white text-xs px-3 py-2 outline-none focus:border-[#C5A059]/40"
-              />
-              {errors.name && <p className="text-[10px] text-red-400 mt-1">{errors.name.message as string}</p>}
-            </div>
-
-            <div>
-              <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1.5 font-bold">Father Name</label>
-              <input
-                type="text"
-                {...register('father_name')}
-                placeholder="Father Name"
-                className="w-full bg-[#0F1114] border border-white/8 text-white text-xs px-3 py-2 outline-none focus:border-[#C5A059]/40"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1.5 font-bold">CNIC Number</label>
-              <input
-                type="text"
-                {...register('cnic')}
-                placeholder="e.g. 35201-1234567-8"
-                className="w-full bg-[#0F1114] border border-white/8 text-white text-xs px-3 py-2 outline-none focus:border-[#C5A059]/40"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1.5 font-bold">Phone Number</label>
-              <input
-                type="text"
-                {...register('phone')}
-                placeholder="e.g. 03264742678"
-                className="w-full bg-[#0F1114] border border-white/8 text-white text-xs px-3 py-2 outline-none focus:border-[#C5A059]/40"
-              />
-              {errors.phone && <p className="text-[10px] text-red-400 mt-1">{errors.phone.message as string}</p>}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1.5 font-bold">Address</label>
-            <input
-              type="text"
-              {...register('address')}
-              placeholder="Full Address"
-              className="w-full bg-[#0F1114] border border-white/8 text-white text-xs px-3 py-2 outline-none focus:border-[#C5A059]/40"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1.5 font-bold">Skill Type / Role *</label>
-              <input
-                type="text"
-                {...register('skill_type')}
-                placeholder="e.g. Master, Cutter, Helper"
-                className="w-full bg-[#0F1114] border border-white/8 text-white text-xs px-3 py-2 outline-none focus:border-[#C5A059]/40"
-              />
-              {errors.skill_type && <p className="text-[10px] text-red-400 mt-1">{errors.skill_type.message as string}</p>}
-            </div>
-
-            <div>
-              <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1.5 font-bold">Grade *</label>
-              <select
-                {...register('grade_id')}
-                className="w-full bg-[#0F1114] border border-white/8 text-white text-xs px-3 py-2 outline-none focus:border-[#C5A059]/40"
-              >
-                <option value="">Select Grade</option>
-                {grades.map((g: any) => (
-                  <option key={g.id} value={g.id}>{g.grade_name}</option>
-                ))}
-              </select>
-              {errors.grade_id && <p className="text-[10px] text-red-400 mt-1">{errors.grade_id.message as string}</p>}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1.5 font-bold">Wage Type *</label>
-              <select
-                {...register('wage_type')}
-                className="w-full bg-[#0F1114] border border-white/8 text-white text-xs px-3 py-2 outline-none focus:border-[#C5A059]/40"
-              >
-                <option value="piece_rate">Piece-rate</option>
-                <option value="daily_wage">Daily wage</option>
-                <option value="monthly_salary">Monthly salary</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1.5 font-bold">Rate Amount *</label>
-              <input
-                type="number"
-                {...register('rate')}
-                className="w-full bg-[#0F1114] border border-white/8 text-white text-xs px-3 py-2 outline-none focus:border-[#C5A059]/40"
-              />
-              {errors.rate && <p className="text-[10px] text-red-400 mt-1">{errors.rate.message as string}</p>}
-            </div>
-
-            <div>
-              <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1.5 font-bold">Joining Date *</label>
-              <input
-                type="date"
-                {...register('joining_date')}
-                className="w-full bg-[#0F1114] border border-white/8 text-white text-xs px-3 py-2 outline-none focus:border-[#C5A059]/40"
-              />
-            </div>
-          </div>
-
+        <div className="flex gap-3">
           <button
-            onClick={handleSubmit(onSubmit)}
-            disabled={isSubmitting}
-            className="w-full py-3 bg-[#C5A059] text-black font-black text-xs uppercase tracking-widest hover:bg-[#D4AF37] transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-4"
+            onClick={() =>
+              router.push('/karigars')}
+            className="px-4 py-2 border
+              border-white/8 text-gray-400
+              text-sm hover:border-white/15
+              hover:text-white transition-all"
           >
-            {isSubmitting ? 'Registering...' : (
-              <>
-                <Save size={14} /> Register Worker
-              </>
-            )}
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={
+              saving || !form.name.trim()
+            }
+            className="flex items-center
+              gap-2 px-5 py-2 bg-[#10B981]
+              text-white font-bold text-sm
+              hover:brightness-110
+              disabled:opacity-40 transition-all"
+          >
+            <Save size={14} />
+            {saving ? 'Saving...' : 'Register'}
           </button>
         </div>
-      </main>
+      </div>
+
+      {/* FORM */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-2xl mx-auto
+          p-6 space-y-6">
+
+          {/* PERSONAL INFO */}
+          <KSection title="Personal Information">
+
+            <KField label="Full Name" required>
+              <input
+                ref={nameRef}
+                value={form.name}
+                onChange={updateField('name')}
+                placeholder="Muhammad Akram"
+                className="noxis-input"
+                maxLength={100}
+              />
+            </KField>
+
+            <div className="grid grid-cols-2
+              gap-4">
+              <KField label="Karigar Code">
+                <input
+                  value={form.karigarCode}
+                  onChange={
+                    updateField('karigarCode')}
+                  placeholder="KAR-001 (auto if empty)"
+                  className="noxis-input"
+                />
+              </KField>
+              <KField label="Blood Group">
+                <select
+                  value={form.bloodGroup}
+                  onChange={
+                    updateField('bloodGroup')}
+                  className="noxis-input"
+                >
+                  <option value="">
+                    Select (optional)
+                  </option>
+                  {BLOOD_GROUPS.map(b => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))}
+                </select>
+              </KField>
+            </div>
+
+            <div className="grid grid-cols-2
+              gap-4">
+              <KField label="Phone / WhatsApp"
+                required>
+                <input
+                  value={form.phone}
+                  onChange={updateField('phone')}
+                  placeholder="03XX-XXXXXXX"
+                  type="tel"
+                  className="noxis-input"
+                />
+              </KField>
+              <KField label="CNIC">
+                <input
+                  value={form.cnic}
+                  onChange={
+                    updateField('cnic')}
+                  onBlur={e =>
+                    validateCnic(e.target.value)}
+                  placeholder="XXXXX-XXXXXXX-X"
+                  className={`noxis-input ${
+                    cnicError
+                      ? 'border-red-500/50'
+                      : ''}`}
+                />
+                {cnicError && (
+                  <p className="text-[10px]
+                    text-red-400 mt-1">
+                    {cnicError}
+                  </p>
+                )}
+              </KField>
+            </div>
+
+            <KField label="Emergency Contact">
+              <input
+                value={form.emergencyContact}
+                onChange={
+                  updateField('emergencyContact')}
+                placeholder="03XX-XXXXXXX (optional)"
+                type="tel"
+                className="noxis-input"
+              />
+            </KField>
+
+            <KField label="Address">
+              <textarea
+                value={form.address}
+                onChange={updateField('address')}
+                placeholder="Home address (optional)"
+                rows={2}
+                className="noxis-input resize-none"
+              />
+            </KField>
+
+          </KSection>
+
+          {/* EMPLOYMENT */}
+          <KSection title="Employment">
+
+            <div className="grid grid-cols-2
+              gap-4">
+              <KField label="Department">
+                <select
+                  value={form.department}
+                  onChange={
+                    updateField('department')}
+                  className="noxis-input"
+                >
+                  <option value="">
+                    Select department
+                  </option>
+                  {DEPARTMENTS.map(d => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </KField>
+              <KField label="Designation">
+                <select
+                  value={form.designation}
+                  onChange={
+                    updateField('designation')}
+                  className="noxis-input"
+                >
+                  {DESIGNATIONS.map(d => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </KField>
+            </div>
+
+            <KField label="Joining Date">
+              <input
+                value={form.joiningDate}
+                onChange={
+                  updateField('joiningDate')}
+                type="date"
+                className="noxis-input"
+              />
+            </KField>
+
+          </KSection>
+
+          {/* WAGES */}
+          <KSection title="Wages">
+
+            {/* Wage type selector pills */}
+            <KField label="Wage Type" required>
+              <div className="grid grid-cols-3
+                gap-2">
+                {WAGE_TYPES.map(w => (
+                  <button
+                    key={w.value}
+                    type="button"
+                    onClick={() =>
+                      setForm(prev => ({
+                        ...prev,
+                        wageType: w.value,
+                      }))}
+                    className={`py-2.5 px-3
+                      rounded-sm border text-sm
+                      font-semibold transition-all
+                      ${form.wageType === w.value
+                        ? 'bg-[#10B981]/10 border-[#10B981]/40 text-[#10B981]'
+                        : 'bg-[#0F1114] border-white/8 text-gray-500 hover:border-white/15'}`}
+                  >
+                    {w.label}
+                  </button>
+                ))}
+              </div>
+            </KField>
+
+            {/* Conditional wage input */}
+            {showPieceRate && (
+              <KField
+                label="Piece Rate (PKR per unit)"
+                required>
+                <input
+                  value={form.pieceRate}
+                  onChange={
+                    updateField('pieceRate')}
+                  placeholder="PKR per piece"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="noxis-input"
+                  autoFocus
+                />
+              </KField>
+            )}
+
+            {showDailyWage && (
+              <KField
+                label="Daily Wage (PKR)"
+                required>
+                <input
+                  value={form.dailyWage}
+                  onChange={
+                    updateField('dailyWage')}
+                  placeholder="PKR per day"
+                  type="number"
+                  min="0"
+                  className="noxis-input"
+                  autoFocus
+                />
+              </KField>
+            )}
+
+            {showMonthlySalary && (
+              <KField
+                label="Monthly Salary (PKR)"
+                required>
+                <input
+                  value={form.monthlySalary}
+                  onChange={
+                    updateField('monthlySalary')}
+                  placeholder="PKR per month"
+                  type="number"
+                  min="0"
+                  className="noxis-input"
+                  autoFocus
+                />
+              </KField>
+            )}
+
+          </KSection>
+
+          {/* BANK + EOBI */}
+          <KSection title="Bank & EOBI">
+
+            <div className="grid grid-cols-2
+              gap-4">
+              <KField label="Bank Name">
+                <input
+                  value={form.bankName}
+                  onChange={
+                    updateField('bankName')}
+                  placeholder="HBL, MCB, UBL..."
+                  className="noxis-input"
+                />
+              </KField>
+              <KField label="Account Number">
+                <input
+                  value={form.bankAccountNumber}
+                  onChange={updateField(
+                    'bankAccountNumber')}
+                  placeholder="PK00XXXX..."
+                  className="noxis-input"
+                />
+              </KField>
+            </div>
+
+            <KField label="EOBI Number">
+              <input
+                value={form.eobiNumber}
+                onChange={
+                  updateField('eobiNumber')}
+                placeholder="EOBI registration (optional)"
+                className="noxis-input"
+              />
+            </KField>
+
+          </KSection>
+
+          {/* NOTES */}
+          <KSection title="Notes">
+            <KField label="Additional Notes">
+              <textarea
+                value={form.notes}
+                onChange={updateField('notes')}
+                placeholder="Any other relevant information..."
+                rows={3}
+                className="noxis-input resize-none"
+                maxLength={500}
+              />
+            </KField>
+          </KSection>
+
+          {/* Bottom save */}
+          <div className="flex gap-3 pb-8">
+            <button
+              onClick={handleSave}
+              disabled={
+                saving || !form.name.trim()
+              }
+              className="flex-1 py-3
+                bg-[#10B981] text-white
+                font-bold text-sm
+                hover:brightness-110
+                disabled:opacity-40
+                transition-all flex
+                items-center justify-center
+                gap-2"
+            >
+              <Save size={15} />
+              {saving
+                ? 'Registering...'
+                : 'Register Karigar'}
+            </button>
+          </div>
+
+        </div>
+      </div>
     </div>
   )
 }
+
+// Memoized section wrapper
+const KSection = memo(function KSection({
+  title,
+  children,
+}: {
+  title: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <p className="text-[10px] font-bold
+          uppercase tracking-widest
+          text-gray-500 whitespace-nowrap">
+          {title}
+        </p>
+        <div className="flex-1 h-px
+          bg-white/6" />
+      </div>
+      {children}
+    </div>
+  )
+})
+
+// Memoized field wrapper
+const KField = memo(function KField({
+  label,
+  required,
+  children,
+}: {
+  label: string
+  required?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-[10px]
+        font-bold uppercase tracking-widest
+        text-gray-500 block">
+        {label}
+        {required && (
+          <span className="text-red-400 ml-1">
+            *
+          </span>
+        )}
+      </label>
+      {children}
+    </div>
+  )
+})

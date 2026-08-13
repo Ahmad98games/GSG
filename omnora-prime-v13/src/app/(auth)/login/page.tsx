@@ -67,7 +67,7 @@ export default function LoginPage() {
     // Establish Local Master Session & License (guaranteed zero network block)
     try {
       const localProfile = {
-        id: 'local-admin-biz',
+        id: '00000000-0000-0000-0000-000000000000',
         business_name: 'Noxis Factory Workstation',
         owner_name: email ? email.split('@')[0] : 'Factory Admin',
         tier: 'pro',
@@ -104,7 +104,7 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       const localProfile = {
-        id: 'local-admin-biz',
+        id: '00000000-0000-0000-0000-000000000000',
         business_name: 'Noxis Factory Workstation',
         owner_name: 'Factory Admin',
         tier: 'pro',

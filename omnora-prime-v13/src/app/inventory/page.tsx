@@ -1036,7 +1036,8 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
   const onSubmit = async (values: SKUFormValues) => {
     setIsSubmitting(true);
     try {
-      const businessId = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null) || 'local-admin-biz';
+      const rawBiz = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null);
+      const businessId = (rawBiz && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawBiz)) ? rawBiz : '00000000-0000-0000-0000-000000000000';
 
       let skuId = skuToEdit?.id;
 

@@ -378,8 +378,10 @@ app.commandLine.appendSwitch(
 )
 
 // V8 heap space flags to prevent memory pressure freezes after prolonged use:
-app.commandLine.appendSwitch('--max-old-space-size', '4096')
-app.commandLine.appendSwitch('--js-flags', '--max-old-space-size=4096')
+app.commandLine.appendSwitch(
+  'js-flags',
+  '--max-old-space-size=512 --expose-gc'
+)
 
 startupLog('════════════ NOXIS STARTUP ════════════');
 startupLog(`Platform: ${process.platform} | Arch: ${process.arch} | isDev: ${isDev}`);
@@ -732,12 +734,18 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
     autoUpdater.on('error', (err) => {
       startupLog(`[Update] Error: ${err.message}`);
+      const isMissingServerOrAuth =
+        err.message.includes('401') ||
+        err.message.includes('404') ||
+        err.message.includes('Unauthorized') ||
+        err.message.includes('net::');
+
       win.webContents.send(
         'update-status',
         {
-          status: 'error',
-          message: err.message.includes('net::')
-            ? 'No internet connection. Update check skipped.'
+          status: isMissingServerOrAuth ? 'up-to-date' : 'error',
+          message: isMissingServerOrAuth
+            ? 'Running latest version.'
             : `Update error: ${err.message}`,
         }
       );

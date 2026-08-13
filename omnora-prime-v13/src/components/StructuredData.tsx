@@ -42,7 +42,7 @@ export function SoftwareSchema() {
       'RS232 weighbridge integration',
     ],
     'screenshot': 'https://noxishub.app/screenshot.png',
-    'softwareVersion': '13.0.0',
+    'softwareVersion': '13.1.0',
     'datePublished': '2026-07-01',
     'author': {
       '@type': 'Organization',

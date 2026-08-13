@@ -224,7 +224,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/who-is-it-for") ||
     pathname.startsWith("/technology") ||
     pathname.startsWith("/whats-new") ||
-    pathname.startsWith("/file-morph") ||
     pathname.startsWith("/admin");
 
   // Allow browser testing on all routes

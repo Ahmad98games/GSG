@@ -15,7 +15,7 @@ export async function GET() {
   return NextResponse.json({
     status: 'ok',
     uptime: Math.floor(uptime),
-    version: '13.0.0-industrial',
+    version: process.env.npm_package_version || '13.1.0-industrial',
     nodeCount: 0, // In production, query the active node manager
     system: {
       platform: os.platform(),

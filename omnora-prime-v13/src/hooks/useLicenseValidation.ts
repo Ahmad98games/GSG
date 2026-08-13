@@ -136,7 +136,7 @@ export function useLicenseValidation() {
               revalidation: true,
               platform: navigator.platform,
             },
-            appVersion: '13.0.0',
+            appVersion: '13.1.0',
             nonce,
           }),
           signal: controller.signal,

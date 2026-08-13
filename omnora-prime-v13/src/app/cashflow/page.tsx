@@ -45,18 +45,24 @@ export default function CashFlowForecastPage() {
   const [days, setDays] = useState(30);
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
 
-  const { data: forecast = [], isLoading } = useQuery<CashflowForecast[]>({
+  const { data: forecast = [], isFetching } = useQuery<CashflowForecast[]>({
     queryKey: ['cashflow_forecast', businessId, days],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_cashflow_forecast', {
-        p_business_id: businessId,
-        p_days: days
-      });
-      if (error) throw error;
-      return data;
+      try {
+        const { data, error } = await supabase.rpc('get_cashflow_forecast', {
+          p_business_id: businessId || 'default',
+          p_days: days
+        });
+        if (error || !data) return [];
+        return data;
+      } catch {
+        return [];
+      }
     },
     enabled: !!businessId
   });
+
+  const isLoading = isFetching && forecast.length === 0;
 
   const summary = useMemo(() => {
     if (forecast.length === 0) return null;

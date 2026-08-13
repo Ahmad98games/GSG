@@ -29,28 +29,77 @@ export default function UsersPage() {
     useQuery({
       queryKey: ['sub-users', profile?.id],
       queryFn: async () => {
-        const { data } = await supabase
+        if (!profile?.id) return []
+        // Try sub_users table first
+        const { data: subData, error: subErr } = await supabase
           .from('sub_users')
           .select('*')
-          .eq('business_id', profile!.id)
+          .eq('business_id', profile.id)
           .eq('is_active', true)
           .order('created_at')
-        return data || []
+
+        if (!subErr && subData && subData.length > 0) return subData
+
+        // Fallback to staff_users table
+        const { data: staffData } = await supabase
+          .from('staff_users')
+          .select('*')
+          .eq('business_id', profile.id)
+          .eq('is_active', true)
+          .order('created_at')
+
+        return staffData || subData || []
       },
-      enabled: !!profile?.id && isOwner,
+      enabled: !!profile?.id,
     })
 
   const addUser = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
+      if (!newUser.name.trim() || !newUser.email.trim()) {
+        throw new Error('Name and email are required')
+      }
+      if (!profile?.id) {
+        throw new Error('Business profile not loaded')
+      }
+
+      const payload = {
+        business_id: profile.id,
+        name: newUser.name.trim(),
+        email: newUser.email.trim().toLowerCase(),
+        role: newUser.role,
+        is_active: true,
+      }
+
+      // Try sub_users first
+      const { error: subErr } = await supabase
         .from('sub_users')
-        .insert({
-          business_id: profile!.id,
-          name: newUser.name.trim(),
-          email: newUser.email.trim().toLowerCase(),
-          role: newUser.role,
-        })
-      if (error) throw error
+        .insert(payload)
+
+      if (subErr) {
+        console.warn('sub_users insert error, trying staff_users:', subErr)
+        // Fallback to staff_users table
+        const { error: staffErr } = await supabase
+          .from('staff_users')
+          .insert(payload)
+
+        if (staffErr) {
+          // Send via staff invite API endpoint fallback
+          const res = await fetch('/api/staff/invite', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              businessId: profile.id,
+              name: newUser.name.trim(),
+              email: newUser.email.trim().toLowerCase(),
+              role: newUser.role,
+            }),
+          })
+          if (!res.ok) {
+            const resData = await res.json().catch(() => ({}))
+            throw new Error(resData.error || staffErr.message || subErr.message)
+          }
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -66,9 +115,9 @@ export default function UsersPage() {
     onError: (err: any) => {
       toast.error(
         'Failed',
-        err.message.includes('duplicate')
+        err.message?.includes('duplicate')
           ? 'This email is already a team member'
-          : 'Could not add team member'
+          : (err.message || 'Could not add team member')
       )
     },
   })

@@ -257,7 +257,7 @@ export default function WorkflowsPage() {
         </div>
         <button
           onClick={() => setShowBuilder(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-electric-blue text-onyx text-xs font-black uppercase tracking-widest hover:brightness-110 transition-all"
+          className="flex items-center gap-2 px-4 py-2.5 bg-[#60A5FA] text-slate-950 text-xs font-black uppercase tracking-widest hover:bg-blue-400 transition-all rounded-sm"
         >
           <Plus size={14} />
           New Workflow
@@ -282,7 +282,7 @@ export default function WorkflowsPage() {
           </p>
           <button
             onClick={() => setShowBuilder(true)}
-            className="px-4 py-2.5 bg-electric-blue text-onyx text-xs font-black uppercase tracking-widest hover:brightness-10"
+            className="px-4 py-2.5 bg-[#60A5FA] text-slate-950 text-xs font-black uppercase tracking-widest hover:bg-blue-400 transition-all rounded-sm"
           >
             Create First Workflow
           </button>
