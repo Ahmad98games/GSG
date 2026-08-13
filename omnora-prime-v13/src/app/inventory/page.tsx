@@ -191,50 +191,42 @@ export default function InventoryPage() {
     }
   });
 
-  // Data Fetching — True Instant Local-First (0ms Lag)
+  // Data Fetching — Fast & Stable Local-First
   const { data: skus = [], isLoading: skusLoading, error: skusError, refetch: refetchSkus } = useQuery({
     queryKey: ['inventory', profile?.id],
     queryFn: async () => {
-      let localData: SKU[] = [];
+      if (!profile?.id) return [];
+      let cachedData: SKU[] = [];
 
-      // 1. Read instantly from local storage cache (0ms)
-      if (typeof window !== 'undefined' && profile?.id) {
+      if (typeof window !== 'undefined') {
         const cached = localStorage.getItem(`noxis_cached_skus_${profile.id}`);
         if (cached) {
-          try {
-            localData = JSON.parse(cached);
-          } catch {}
+          try { cachedData = JSON.parse(cached); } catch {}
         }
       }
 
-      // 2. Fetch remote update non-blocking with 2s max timeout
-      if (profile?.id) {
-        try {
-          const timeoutPromise = new Promise<{ data: null; error: any }>(resolve => 
-            setTimeout(() => resolve({ data: null, error: new Error('Timeout') }), 2000)
-          );
-          const fetchPromise = supabase
-            .from('skus')
-            .select('*')
-            .eq('business_id', profile.id)
-            .order('name', { ascending: true });
+      try {
+        const { data, error } = await supabase
+          .from('skus')
+          .select('*')
+          .eq('business_id', profile.id)
+          .order('name', { ascending: true });
 
-          const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
-          if (!error && data && data.length > 0) {
-            try {
-              localStorage.setItem(`noxis_cached_skus_${profile.id}`, JSON.stringify(data));
-            } catch {}
-            return data as SKU[];
+        if (!error && data) {
+          if (typeof window !== 'undefined') {
+            try { localStorage.setItem(`noxis_cached_skus_${profile.id}`, JSON.stringify(data)); } catch {}
           }
-        } catch (err) {
-          console.warn('[Inventory] Remote sync skipped, returning instant local data:', err);
+          setLastFetchedAt(new Date());
+          return data as SKU[];
         }
+      } catch (err) {
+        console.warn('[Inventory] Query failed, using cached data:', err);
       }
 
-      return localData;
+      return cachedData;
     },
     enabled: !!profile?.id,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
   });
 
   const { mutate: adjustStock } = useOptimisticMutation<any, any>({
@@ -615,59 +607,27 @@ export default function InventoryPage() {
                             </tr>
                           ))}
                         </thead>
-                       <tbody>
-                          {(() => {
-                            const virtualRows = rowVirtualizer.getVirtualItems();
-                            const paddingTop =
-                              virtualRows.length > 0 ? virtualRows[0]?.start ?? 0 : 0;
-                            const paddingBottom =
-                              virtualRows.length > 0
-                                ? rowVirtualizer.getTotalSize() -
-                                  (virtualRows[virtualRows.length - 1]?.end ?? 0)
-                                : 0;
-                            const colCount = table.getAllColumns().length;
-
-                            return (
-                              <>
-                                {paddingTop > 0 && (
-                                  <tr>
-                                    <td style={{ height: `${paddingTop}px` }} colSpan={colCount} />
-                                  </tr>
-                                )}
-                                {virtualRows.map((virtualRow) => {
-                                  const row = rows[virtualRow.index];
-                                  return (
-                                    <tr
-                                      key={row.id}
-                                      onClick={() => setSelectedSku(row.original)}
-                                      className="border-b border-white/4 hover:bg-white/[0.02] transition-colors cursor-pointer"
-                                    >
-                                      {row.getVisibleCells().map((cell) => (
-                                        <td
-                                          key={cell.id}
-                                          className="px-4 py-2.5 text-sm text-gray-200 border-b border-white/[0.04]"
-                                        >
-                                          {flexRender(
-                                            cell.column.columnDef.cell,
-                                            cell.getContext()
-                                          )}
-                                        </td>
-                                      ))}
-                                    </tr>
-                                  );
-                                })}
-                                {paddingBottom > 0 && (
-                                  <tr>
-                                    <td
-                                      style={{ height: `${paddingBottom}px` }}
-                                      colSpan={colCount}
-                                    />
-                                  </tr>
-                                )}
-                              </>
-                            );
-                          })()}
-                       </tbody>
+                        <tbody>
+                          {rows.map((row) => (
+                            <tr
+                              key={row.id}
+                              onClick={() => setSelectedSku(row.original)}
+                              className="border-b border-white/4 hover:bg-white/[0.02] transition-colors cursor-pointer"
+                            >
+                              {row.getVisibleCells().map((cell) => (
+                                <td
+                                  key={cell.id}
+                                  className="px-4 py-2.5 text-sm text-gray-200 border-b border-white/[0.04]"
+                                >
+                                  {flexRender(
+                                    cell.column.columnDef.cell,
+                                    cell.getContext()
+                                  )}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
                     </table>
                     
                     {/* Pagination */}
