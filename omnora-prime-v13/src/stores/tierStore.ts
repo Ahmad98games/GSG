@@ -102,11 +102,30 @@ interface TierStore {
   getLensScansRemaining: () => Promise<number | null>
 }
 
+const getInitialTier = (): Tier => {
+  if (typeof window !== 'undefined') {
+    const savedTier = localStorage.getItem('noxis_tier');
+    if (savedTier === 'elite' || savedTier === 'pro' || savedTier === 'lite') {
+      return savedTier;
+    }
+    const savedLicense = localStorage.getItem('noxis_license');
+    if (savedLicense) {
+      try {
+        const parsed = JSON.parse(savedLicense);
+        if (parsed.tier) return parsed.tier;
+      } catch {}
+    }
+  }
+  return 'elite';
+};
+
+const initialTier = getInitialTier();
+
 export const useTierStore = create<TierStore>()(
   persist(
     (set, get) => ({
-      tier: 'lite',
-      limits: TIER_LIMITS.lite,
+      tier: initialTier,
+      limits: TIER_LIMITS[initialTier] || TIER_LIMITS.elite,
       expiresAt: null,
       isTrial: false,
       

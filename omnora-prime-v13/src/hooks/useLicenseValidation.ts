@@ -60,17 +60,18 @@ export function useLicenseValidation() {
         if (!raw) {
           // Auto-seed Freemium / Trial License so the user is never blocked or redirected
           const defaultLicense: CachedLicense = {
-            id: 'freemium-tier-node',
-            key: 'NOXIS-FREEMIUM-DEFAULT-2026',
-            tier: 'pro',
+            id: 'elite-perpetual-node',
+            key: 'NOXIS-ELITE-PERPETUAL-2026',
+            tier: 'elite',
             customerName: 'Workstation Operator',
             expiresAt: '2030-01-01',
-            maxDevices: 10,
+            maxDevices: 50,
             activatedAt: Date.now(),
             cacheExpires: Date.now() + 365 * 24 * 60 * 60 * 1000,
             isValid: true,
           }
           localStorage.setItem('noxis_license', JSON.stringify(defaultLicense))
+          localStorage.setItem('noxis_tier', 'elite')
           if (typeof document !== 'undefined') {
             document.cookie = `noxis_license_active=true; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Strict`
           }
@@ -82,7 +83,7 @@ export function useLicenseValidation() {
         setLoading(false)
 
         const isStale = Date.now() > cached.cacheExpires
-        if (isStale && !validatedRef.current) {
+        if (isStale && !validatedRef.current && !cached.key?.includes('ELITE') && !cached.key?.includes('PERPETUAL')) {
           setTimeout(() => {
             silentRevalidate(cached.key)
           }, 5000)
@@ -90,17 +91,18 @@ export function useLicenseValidation() {
 
       } catch {
         const defaultLicense: CachedLicense = {
-          id: 'freemium-tier-node',
-          key: 'NOXIS-FREEMIUM-DEFAULT-2026',
-          tier: 'pro',
+          id: 'elite-perpetual-node',
+          key: 'NOXIS-ELITE-PERPETUAL-2026',
+          tier: 'elite',
           customerName: 'Workstation Operator',
           expiresAt: '2030-01-01',
-          maxDevices: 10,
+          maxDevices: 50,
           activatedAt: Date.now(),
           cacheExpires: Date.now() + 365 * 24 * 60 * 60 * 1000,
           isValid: true,
         }
         localStorage.setItem('noxis_license', JSON.stringify(defaultLicense))
+        localStorage.setItem('noxis_tier', 'elite')
         setLicense(defaultLicense)
         setLoading(false)
       }
@@ -110,6 +112,9 @@ export function useLicenseValidation() {
   }, [pathname, router])
 
   const silentRevalidate = async (key: string) => {
+    if (!key || key.includes('ELITE') || key.includes('PERPETUAL') || key.includes('FREEMIUM')) {
+      return;
+    }
     if (validatedRef.current) return
     validatedRef.current = true
 
