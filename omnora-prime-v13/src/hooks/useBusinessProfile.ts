@@ -52,6 +52,30 @@ export const useBusinessProfile = () => {
         // (sidebar, persona, profile) all call it simultaneously on page load.
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) {
+          try {
+            const localRes = await fetch('/api/settings');
+            const localData = await localRes.json();
+            const configMap = (localData.localConfig || []).reduce((acc: any, c: any) => ({ ...acc, [c.key]: c.value }), {});
+            
+            const bizId = configMap.business_id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null) || 'local-admin-biz';
+            setProfile({
+              id: bizId,
+              business_name: configMap.business_name || 'Noxis Business',
+              owner_name: configMap.owner_name || 'Noxis Owner',
+              tier: configMap.tier || 'lite',
+              industry_type: configMap.industry_type || 'general',
+              industry_key: configMap.industry_key || 'general',
+              role: configMap.role || 'retailer',
+              currency: configMap.currency || 'PKR',
+              region: configMap.region || 'south_asian',
+              country_code: configMap.country_code || 'PK',
+              tax_name: configMap.tax_name || 'GST',
+              tax_rate: Number(configMap.tax_rate || 0),
+              preferred_locale: configMap.preferred_locale || 'en',
+            } as any);
+          } catch {
+            setProfile({ id: 'local-admin-biz', business_name: 'Noxis Business', role: 'retailer', currency: 'PKR' } as any);
+          }
           setLoaded(true);
           return;
         }

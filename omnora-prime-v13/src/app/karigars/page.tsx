@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
@@ -903,8 +904,9 @@ function RegisterKarigarModal({ grades, onClose, onSuccess }: { grades: Grade[],
   const onSubmit = async (values: KarigarFormValues) => {
     setIsSubmitting(true);
     try {
+      const businessId = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null) || 'local-admin-biz';
       const { error } = await supabase.from('karigars').insert({
-        business_id: profile?.id,
+        business_id: businessId,
         name: values.name,
         father_name: values.father_name,
         cnic: values.cnic,
