@@ -156,6 +156,7 @@ export default function OwnerDashboard() {
         }
       }
 
+      if (!activeProfile) {
         activeProfile = {
           id: '00000000-0000-0000-0000-000000000000',
           business_name: 'Noxis Factory Workstation',
