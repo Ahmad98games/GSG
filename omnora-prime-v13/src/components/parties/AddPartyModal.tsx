@@ -102,7 +102,7 @@ export function AddPartyModal({
       if (balanceAmount > 0 && data?.id) {
         try {
           await supabase.from('ledger_entries').insert({
-            business_id: profile.id,
+            business_id: businessId,
             party_id: data.id,
             entry_type: 'opening_balance',
             entry_date: new Date().toISOString().split('T')[0],
