@@ -3,8 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import React from 'react';
 import Link from "next/link";
-
-export type InvoiceFormValues = z.infer<typeof invoiceSchema>;
+import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftRecoveryBanner } from '@/components/DraftRecoveryBanner';
@@ -58,7 +57,7 @@ const invoiceSchema = z.object({
   payment_terms: z.string().optional(),
 });
 
-type InvoiceFormValues = z.infer<typeof invoiceSchema>;
+export type InvoiceFormValues = z.infer<typeof invoiceSchema>;
 
 export default function NewInvoicePage() {
   const router = useRouter();
