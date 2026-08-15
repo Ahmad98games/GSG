@@ -40,7 +40,7 @@ function LedgerAuditContent() {
   const { data: accounts = [] } = useQuery({
     queryKey: ['accounts', businessId],
     queryFn: async () => {
-      const { data } = await supabase.from('accounts').select('id, name, account_code').eq('business_id', businessId);
+      const { data } = await supabase.from('accounts').select('id, name, account_code').eq('business_id', businessId).limit(500);
       return data || [];
     },
     enabled: !!businessId
@@ -50,7 +50,7 @@ function LedgerAuditContent() {
   const { data: parties = [] } = useQuery({
     queryKey: ['parties', businessId],
     queryFn: async () => {
-      const { data } = await supabase.from('parties').select('id, name').eq('business_id', businessId);
+      const { data } = await supabase.from('parties').select('id, name').eq('business_id', businessId).limit(500);
       return data || [];
     },
     enabled: !!businessId
@@ -72,7 +72,8 @@ function LedgerAuditContent() {
       .from("ledger_entries")
       .select("*, accounts(name, account_code), parties(name)")
       .eq("business_id", businessId)
-      .order("posted_at", { ascending: false });
+      .order("posted_at", { ascending: false })
+      .limit(1000);
 
     if (localFilters.dateFrom) query = query.gte("posted_at", localFilters.dateFrom);
     if (localFilters.dateTo) query = query.lte("posted_at", localFilters.dateTo);

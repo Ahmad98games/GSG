@@ -1,11 +1,22 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useBusinessProfile } from '@/hooks/useBusinessProfile'
 import { humanizeError } from '@/lib/utils/errors'
+
+export interface PartyFormValues {
+  name: string
+  party_type: string
+  phone?: string
+  email?: string
+  address?: string
+  credit_limit?: string | number
+  credit_days?: string | number
+}
 
 export default function EditPartyPage() {
   const { partyId } = useParams()

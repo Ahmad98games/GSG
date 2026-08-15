@@ -49,7 +49,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 
 // --- Types ---
 
-interface Karigar {
+export interface Karigar {
   id: string;
   karigar_code: string;
   name: string;
@@ -104,7 +104,7 @@ const karigarSchema = z.object({
   path: ["rate"]
 });
 
-type KarigarFormValues = z.infer<typeof karigarSchema>;
+export type KarigarFormValues = z.infer<typeof karigarSchema>;
 
 const attendanceSchema = z.object({
   date: z.string().min(1),

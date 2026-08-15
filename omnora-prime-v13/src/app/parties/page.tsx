@@ -31,7 +31,7 @@ import { SharePortalButton } from "@/components/parties/SharePortalButton";
 import { humanizeError } from "@/lib/utils/errors";
 import { AddPartyModal } from '@/components/parties/AddPartyModal';
 
-interface Party {
+export interface Party {
   id: string;
   business_id: string;
   name: string;
@@ -46,7 +46,7 @@ interface Party {
   created_at?: string;
 }
 
-interface Stats {
+export interface Stats {
   receivable: number;
   payable: number;
   blocked: number;

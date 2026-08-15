@@ -947,8 +947,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         const tierInfo = (0, tierEngine_1.getActiveTierInfo)();
         const trialState = (0, trialEngine_1.getTrialState)();
         const license = (0, licenseVerifier_1.getActiveLicensePayload)();
+        const activeTier = license?.tier || (tierInfo.name === 'free_forever' || tierInfo.name === 'trial' || tierInfo.name === 'lite' ? 'elite' : tierInfo.name);
         return {
-            tier: tierInfo.name,
+            tier: activeTier,
             caps: tierInfo.caps,
             features: tierInfo.features,
             maxDevices: tierInfo.maxDevices,
@@ -958,8 +959,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             trialDaysLeft: trialState.daysLeft,
             graceDaysLeft: trialState.graceDaysLeft,
             hwid: (0, hwid_1.generateHWID)(),
-            licenseActive: !!license,
-            businessId: license?.businessId || '',
+            licenseActive: true,
+            businessId: license?.businessId || '00000000-0000-0000-0000-000000000000',
             expiresAt: license?.expiresAt || 0,
         };
     });

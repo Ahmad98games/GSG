@@ -81,11 +81,11 @@ export default function AnalyticsDashboard() {
         { data: parties },
         { data: expenses }
       ] = await Promise.all([
-        supabase.from('invoices').select('total, issue_date, party_id, status').eq('business_id', businessId),
-        supabase.from('skus').select('qty_on_hand, cost_price, category').eq('business_id', businessId),
-        supabase.from('karigar_production_logs').select('qty_produced, log_date').eq('business_id', businessId),
-        supabase.from('parties').select('id, name'),
-        supabase.from('ledger_entries').select('amount, posted_at').eq('business_id', businessId).eq('entry_type', 'debit') // Rough proxy for expenses
+        supabase.from('invoices').select('total, issue_date, party_id, status').eq('business_id', businessId).order('issue_date', { ascending: false }).limit(1000),
+        supabase.from('skus').select('qty_on_hand, cost_price, category').eq('business_id', businessId).limit(1000),
+        supabase.from('karigar_production_logs').select('qty_produced, log_date').eq('business_id', businessId).order('log_date', { ascending: false }).limit(1000),
+        supabase.from('parties').select('id, name').limit(1000),
+        supabase.from('ledger_entries').select('amount, posted_at').eq('business_id', businessId).eq('entry_type', 'debit').order('posted_at', { ascending: false }).limit(1000) // Rough proxy for expenses
       ]);
 
       return { invoices, skus, production, parties, expenses };

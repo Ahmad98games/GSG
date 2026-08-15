@@ -57,7 +57,7 @@ try {
     ? path.join(app.getPath('userData'), 'debug-startup.txt')
     : path.join(process.cwd(), 'debug-startup.txt');
   fs.writeFileSync(debugPath, `Start execution: packaged=${app.isPackaged}\n`);
-} catch {}
+} catch { }
 let mainWindow: BrowserWindow | null = null;
 let splashWindow: BrowserWindow | null = null;
 let nextServer: ChildProcess | UtilityProcess | null = null;
@@ -76,7 +76,7 @@ let wasPowerCut = false;
 const isDev = !app.isPackaged;
 
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
-const WARNING_LEAD_MS    = 60 * 1000;
+const WARNING_LEAD_MS = 60 * 1000;
 
 log.transports.file.level = 'info'
 log.transports.file.maxSize = 5 * 1024 * 1024
@@ -96,16 +96,34 @@ let downloadProgress = 0
 // ─────────────────────────────────────────────
 // 1. LOGGER
 // ─────────────────────────────────────────────
+function ensureLogDirectory(): string {
+  try {
+    const userData = (app && app.getPath) ? app.getPath('userData') : path.join(process.env.APPDATA || '', 'NoxisHub');
+    const logsDir = path.join(userData, 'logs');
+    if (!fs.existsSync(logsDir)) {
+      fs.mkdirSync(logsDir, { recursive: true });
+    }
+    return logsDir;
+  } catch {
+    const fallback = path.join(process.env.APPDATA || 'C:\\ProgramData', 'NoxisHub', 'logs');
+    try { fs.mkdirSync(fallback, { recursive: true }); } catch {}
+    return fallback;
+  }
+}
+
 let logPath = '';
 
 function startupLog(msg: string): void {
   try {
     if (!logPath) {
-      logPath = path.join(app.getPath('userData'), 'startup.log');
+      const logsDir = ensureLogDirectory();
+      logPath = path.join(logsDir, 'startup.log');
     }
-    fs.appendFileSync(logPath, `[${new Date().toISOString()}] ${msg}\n`);
-  } catch { /* userData not ready yet */ }
-  log.info(msg);
+    fs.appendFileSync(logPath, `[${new Date().toISOString()}] ${msg}\n`, 'utf8');
+  } catch (err) {
+    console.error('Failed writing to log file:', err);
+  }
+  try { log.info(msg); } catch {}
 }
 
 // ── AUTO-START MANAGEMENT ──
@@ -326,8 +344,7 @@ function getWindowsVersion(): {
   isWin7: boolean
   isWin8: boolean
   isWin10Plus: boolean
-} 
-{
+} {
   if (process.platform !== 'win32') {
     return {
       major: 0, minor: 0,
@@ -390,7 +407,7 @@ function killProcess(child: ChildProcess | UtilityProcess | null, name: string):
   return new Promise((resolve) => {
     if (!child) { resolve(); return; }
     startupLog(`[Cleanup] Terminating ${name} (PID: ${child.pid || 'N/A'})...`);
-    
+
     // Safety timeout: resolve after 2.5 seconds no matter what to prevent app hangs
     const safetyTimeout = setTimeout(() => {
       startupLog(`[Cleanup] Safety timeout reached for ${name}, forcing resolve`);
@@ -459,7 +476,7 @@ if (!gotTheLock) {
 
       const server = net.createServer();
       const timeout = setTimeout(() => {
-        try { server.close(); } catch {}
+        try { server.close(); } catch { }
         startupLog(`[Port] Reserve attempt on ${startPort} timed out`);
         resolve(reserveAvailablePort(startPort + 1, attempt + 1));
       }, 2000);
@@ -468,7 +485,7 @@ if (!gotTheLock) {
         clearTimeout(timeout);
         const addr = server.address();
         if (!addr || typeof addr === 'string') {
-          try { server.close(); } catch {}
+          try { server.close(); } catch { }
           resolve(reserveAvailablePort(startPort + 1, attempt + 1));
           return;
         }
@@ -622,7 +639,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     splashWindow.webContents.executeJavaScript(`
       document.body.style.transition = 'opacity 0.35s ease';
       document.body.style.opacity = '0';
-    `).catch(() => {});
+    `).catch(() => { });
     setTimeout(() => {
       if (splashWindow && !splashWindow.isDestroyed()) {
         splashWindow.destroy();
@@ -649,7 +666,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     visionProcess = spawn('python', [visionScriptPath, '--config', configPath], {
       env: {
         ...process.env,
-        NEXT_PUBLIC_SUPABASE_URL:  process.env.NEXT_PUBLIC_SUPABASE_URL  ?? '',
+        NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
         SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
       },
     });
@@ -775,7 +792,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   // ─────────────────────────────────────────────
   function resetInactivityTimer(): void {
     if (sessionTimeoutTimer) clearTimeout(sessionTimeoutTimer);
-    if (warningTimer)        clearTimeout(warningTimer);
+    if (warningTimer) clearTimeout(warningTimer);
 
     warningTimer = setTimeout(() => {
       if (mainWindow && !mainWindow.isDestroyed())
@@ -862,8 +879,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       )
 
       if (!weightPort) {
-        return { success: false,
-          reason: 'No weighbridge detected' }
+        return {
+          success: false,
+          reason: 'No weighbridge detected'
+        }
       }
 
       const port = new SerialPort({
@@ -874,9 +893,11 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       return new Promise((resolve) => {
         let data = ''
         const timeout = setTimeout(() => {
-          try { port.close() } catch {}
-          resolve({ success: false,
-            reason: 'Weighbridge timeout' })
+          try { port.close() } catch { }
+          resolve({
+            success: false,
+            reason: 'Weighbridge timeout'
+          })
         }, 3000)
 
         port.on('data', (chunk: Buffer) => {
@@ -886,7 +907,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
           )
           if (match) {
             clearTimeout(timeout)
-            try { port.close() } catch {}
+            try { port.close() } catch { }
             resolve({
               success: true,
               weight: parseFloat(match[1]),
@@ -897,7 +918,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
         port.on('error', (err: any) => {
           clearTimeout(timeout)
-          try { port.close() } catch {}
+          try { port.close() } catch { }
           resolve({
             success: false,
             reason: err.message || 'Port error'
@@ -905,8 +926,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         })
       })
     } catch {
-      return { success: false,
-        reason: 'SerialPort not available' }
+      return {
+        success: false,
+        reason: 'SerialPort not available'
+      }
     }
   });
   ipcMain.handle('check-for-updates', async () => {
@@ -1077,24 +1100,24 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
   // Returns current tier info + HWID + trial state for the Settings page
   ipcMain.handle('license:getInfo', () => {
-    const tierInfo   = getActiveTierInfo();
+    const tierInfo = getActiveTierInfo();
     const trialState = getTrialState();
-    const license    = getActiveLicensePayload();
+    const license = getActiveLicensePayload();
     const activeTier = license?.tier || (tierInfo.name === 'free_forever' || tierInfo.name === 'trial' || tierInfo.name === 'lite' ? 'elite' : tierInfo.name);
     return {
-      tier:         activeTier,
-      caps:         tierInfo.caps,
-      features:     tierInfo.features,
-      maxDevices:   tierInfo.maxDevices,
-      maxBranches:  tierInfo.maxBranches,
-      maxCameras:   tierInfo.maxCameras,
-      trialStatus:  trialState.status,
+      tier: activeTier,
+      caps: tierInfo.caps,
+      features: tierInfo.features,
+      maxDevices: tierInfo.maxDevices,
+      maxBranches: tierInfo.maxBranches,
+      maxCameras: tierInfo.maxCameras,
+      trialStatus: trialState.status,
       trialDaysLeft: trialState.daysLeft,
       graceDaysLeft: trialState.graceDaysLeft,
-      hwid:         generateHWID(),
+      hwid: generateHWID(),
       licenseActive: true,
-      businessId:   license?.businessId || '00000000-0000-0000-0000-000000000000',
-      expiresAt:    license?.expiresAt  || 0,
+      businessId: license?.businessId || '00000000-0000-0000-0000-000000000000',
+      expiresAt: license?.expiresAt || 0,
     };
   });
 
@@ -1240,7 +1263,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             stmt.run(
               entryBusinessId,
               partyId,
-              debit  ? 1 : 0,
+              debit ? 1 : 0,
               credit ? 1 : 0,
               amount,
               entryDate || new Date().toISOString().split('T')[0],
@@ -1547,7 +1570,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       const mem = process.memoryUsage()
       startupLog(
         `[FREEZE] Memory at freeze: ` +
-        `heap ${Math.round(mem.heapUsed/1024/1024)}MB`
+        `heap ${Math.round(mem.heapUsed / 1024 / 1024)}MB`
       )
 
       // Log all active IPC channels
@@ -1618,9 +1641,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       }, 16); // ~60fps
     });
 
-    mainWindow.on('maximize',   () => mainWindow?.webContents.send('maximize-changed', true));
+    mainWindow.on('maximize', () => mainWindow?.webContents.send('maximize-changed', true));
     mainWindow.on('unmaximize', () => mainWindow?.webContents.send('maximize-changed', false));
-    mainWindow.on('closed',     () => { mainWindow = null; });
+    mainWindow.on('closed', () => { mainWindow = null; });
 
     const serverUrl = `http://127.0.0.1:${PORT}`;
     const targetUrl = `http://127.0.0.1:${PORT}/dashboard`;
@@ -1718,7 +1741,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       // ── TRIAL HEARTBEAT (30s monotonic checkpoint) ───────────────────
       trialHeartbeatInterval = setInterval(() => {
         checkpointMonotonicElapsed();
-        
+
       }, 30000);
 
       process.on('uncaughtException', (error) => {
@@ -1733,8 +1756,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             `Log: ${logPath}\n\n` +
             `WhatsApp: +92 326 4742678`
           )
-        } catch {}
-        
+        } catch { }
+
         // Clean up child processes before exiting on crash
         Promise.all([
           killProcess(visionProcess, 'Vision Engine'),
@@ -1781,9 +1804,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                     const parts = line.trim().split(/\s+/);
                     const pid = parts[parts.length - 1];
                     if (
-                      pid && 
-                      /^\d+$/.test(pid) && 
-                      pid !== '0' && 
+                      pid &&
+                      /^\d+$/.test(pid) &&
+                      pid !== '0' &&
                       pid !== process.pid.toString()
                     ) {
                       pids.add(pid);
@@ -1829,27 +1852,27 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       PORT = await reserveAvailablePort(PORT);
       startupLog(`[Electron] Port: ${PORT}`);
 
-    // ── STEP 1: Show splash immediately ──
-    // User sees branded screen within ~200ms
-    createSplashWindow();
+      // ── STEP 1: Show splash immediately ──
+      // User sees branded screen within ~200ms
+      createSplashWindow();
 
-    // ── STEP 2: Spawn Next.js server (production) ──
-    const resourcesPath = app.isPackaged ? process.resourcesPath : process.cwd();
-    const serverPath = app.isPackaged
-      ? (fs.existsSync(path.join(resourcesPath, 'standalone', 'server-with-bridge.js'))
+      // ── STEP 2: Spawn Next.js server (production) ──
+      const resourcesPath = app.isPackaged ? process.resourcesPath : process.cwd();
+      const serverPath = app.isPackaged
+        ? (fs.existsSync(path.join(resourcesPath, 'standalone', 'server-with-bridge.js'))
           ? path.join(resourcesPath, 'standalone', 'server-with-bridge.js')
           : path.join(resourcesPath, 'standalone', 'server.js'))
-      : (fs.existsSync(path.join(resourcesPath, '.next', 'standalone', 'server-with-bridge.js'))
+        : (fs.existsSync(path.join(resourcesPath, '.next', 'standalone', 'server-with-bridge.js'))
           ? path.join(resourcesPath, '.next', 'standalone', 'server-with-bridge.js')
           : path.join(resourcesPath, '.next', 'standalone', 'server.js'));
 
-    const sqlitePath = app.isPackaged
-      ? path.join(resourcesPath, 'better-sqlite3-multiple-ciphers')
-      : path.join(resourcesPath, 'node_modules', 'better-sqlite3-multiple-ciphers');
+      const sqlitePath = app.isPackaged
+        ? path.join(resourcesPath, 'better-sqlite3-multiple-ciphers')
+        : path.join(resourcesPath, 'node_modules', 'better-sqlite3-multiple-ciphers');
 
-    startupLog(`[Electron] Server path: ${serverPath}`)
-    startupLog(`[Electron] SQLite path: ${sqlitePath}`)
-    startupLog(`[Electron] Resources: ${resourcesPath}`)
+      startupLog(`[Electron] Server path: ${serverPath}`)
+      startupLog(`[Electron] SQLite path: ${sqlitePath}`)
+      startupLog(`[Electron] Resources: ${resourcesPath}`)
 
       if (!fs.existsSync(serverPath)) {
         startupLog('[FATAL] Neither server-with-bridge.js nor server.js found')
@@ -1931,8 +1954,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       // ── FIX D: Dedicated stderr file written synchronously ──
       // If the process crashes before async handlers flush,
       // appendFileSync ensures we still capture the error.
-      const stderrPath = path.join(userDataPath, 'server-stderr.log');
-      try { fs.writeFileSync(stderrPath, `--- ${new Date().toISOString()} ---\n`); } catch {}
+      const stderrPath = path.join(ensureLogDirectory(), 'server-stderr.log');
+      try { fs.writeFileSync(stderrPath, `--- ${new Date().toISOString()} ---\n`); } catch { }
 
       // Release the held port RIGHT BEFORE spawning —
       // this minimizes the gap to milliseconds instead
@@ -1951,14 +1974,14 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         cwd: path.dirname(normalizedServerPath),
         env: {
           ...process.env,
-          PORT:                 String(PORT),
-          NODE_ENV:             'production',
+          PORT: String(PORT),
+          NODE_ENV: 'production',
           // 0.0.0.0 allows mobile phones on the same WiFi to connect.
           // Electron's BrowserWindow still uses http://127.0.0.1:PORT
           // (see waitForServer / loadURL below) — only the TCP listen binding changes.
-          HOSTNAME:             '0.0.0.0',
-          ELECTRON_USER_DATA:   userDataPath,
-          ELECTRON_RESOURCES:   resourcesPath,
+          HOSTNAME: '0.0.0.0',
+          ELECTRON_USER_DATA: userDataPath,
+          ELECTRON_RESOURCES: resourcesPath,
 
           // CRITICAL: Tell Node where to find
           // the native sqlite binding
@@ -1973,7 +1996,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
           BETTER_SQLITE3_BINDING: sqliteBinding,
 
           // Supabase from env
-          NEXT_PUBLIC_SUPABASE_URL:  process.env.NEXT_PUBLIC_SUPABASE_URL  ?? '',
+          NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
           NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
           SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
 
@@ -1997,7 +2020,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         startupLog(`[Next.js ERR] ${msg.trim()}`)
         serverLog += '[ERR] ' + msg + '\n'
         // ── FIX D: Synchronous write so data is never lost on fast crash ──
-        try { fs.appendFileSync(stderrPath, msg); } catch {}
+        try { fs.appendFileSync(stderrPath, msg); } catch { }
       })
 
       nextServer.on('message', (msg: any) => {
@@ -2020,10 +2043,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         // Read the stderr file on exit in case async handlers lost data
         try {
           const stderrContents = fs.readFileSync(stderrPath, 'utf-8');
-          if (stderrContents && stderrContents.trim() !== `--- ${new Date().toISOString().slice(0,10)}`) {
+          if (stderrContents && stderrContents.trim() !== `--- ${new Date().toISOString().slice(0, 10)}`) {
             startupLog(`[Next.js] Full stderr on exit:\n${stderrContents.slice(-2000)}`);
           }
-        } catch {}
+        } catch { }
         startupLog(`[Next.js] Last buffered output:\n${serverLog.slice(-1000)}`)
         if (code !== 0) {
           destroySplash();
@@ -2035,100 +2058,100 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         nextServer = null;
       })
 
-    // ── STEP 3: Create main window (loads silently) ──
-    // Splash stays visible while this loads.
-    // ready-to-show event handles the transition.
-    await createMainWindow();
+      // ── STEP 3: Create main window (loads silently) ──
+      // Splash stays visible while this loads.
+      // ready-to-show event handles the transition.
+      await createMainWindow();
 
-    if (app.isPackaged) {
-      const autoStartOn = getAutoStartEnabled()
-      applyAutoStart(autoStartOn)
-    }
-
-    const wasAutoStarted = process.argv.includes('--autostart')
-    if (wasAutoStarted) {
-      startupLog('[AutoStart] Launched via Windows startup')
-    }
-
-    // ── STEP 4: Setup non-blocking features ──
-    // Run these AFTER window is shown, not before.
-    // This prevents blocking the UI thread at startup.
-    if (mainWindow) {
-      const storedVersion = getLastSeenVersion()
-      const currentVersion = app.getVersion()
-
-      if (storedVersion !== currentVersion) {
-        mainWindow.webContents.on('did-finish-load', () => {
-          if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('app:new-version', {
-              previous: storedVersion,
-              current: currentVersion,
-            })
-            setLastSeenVersion(currentVersion)
-          }
-        })
+      if (app.isPackaged) {
+        const autoStartOn = getAutoStartEnabled()
+        applyAutoStart(autoStartOn)
       }
 
-      setTimeout(() => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          setupAutoUpdater(mainWindow);
+      const wasAutoStarted = process.argv.includes('--autostart')
+      if (wasAutoStarted) {
+        startupLog('[AutoStart] Launched via Windows startup')
+      }
+
+      // ── STEP 4: Setup non-blocking features ──
+      // Run these AFTER window is shown, not before.
+      // This prevents blocking the UI thread at startup.
+      if (mainWindow) {
+        const storedVersion = getLastSeenVersion()
+        const currentVersion = app.getVersion()
+
+        if (storedVersion !== currentVersion) {
+          mainWindow.webContents.on('did-finish-load', () => {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send('app:new-version', {
+                previous: storedVersion,
+                current: currentVersion,
+              })
+              setLastSeenVersion(currentVersion)
+            }
+          })
         }
-      }, 5000);
 
-      setTimeout(() => {
-        if (app.isPackaged) {
-          if (process.env.CLOUDFLARE_TUNNEL_URL) {
-            startupLog('[Tunnel] Custom CLOUDFLARE_TUNNEL_URL defined — skipping local daemon spawn');
-            return;
-          }
-          const configPath = path.join(
-            process.env.USERPROFILE || process.env.HOME || '',
-            '.cloudflared',
-            'config.yml'
-          );
-          if (fs.existsSync(configPath)) {
-            startCloudflaredTunnel();
-          } else {
-            startQuickTunnel();
-          }
-        }
-      }, 6000);
-
-      setTimeout(() => {
-        startMemoryMonitor();
-      }, 10000);
-
-      setTimeout(() => {
-        spawnVisionEngine();
-      }, 8000);
-
-      // ── STEP 5: Register CCTV / ONVIF IPC handlers ──
-      // Registered after window is created so startupLog is fully available
-      registerOnvifHandlers(startupLog);
-      registerMediamtxHandlers(startupLog);
-
-      // ── STEP 6: Start WebSocket bridge server ──
-      startWsBridgeServer();
-
-      // ── STEP 7: Send power-cut recovery signal to renderer ──
-      if (wasPowerCut) {
         setTimeout(() => {
           if (mainWindow && !mainWindow.isDestroyed()) {
-            const lastRoute = getLastRoute();
-            mainWindow.webContents.send('ipc:power-cut-detected', {
-              lastRoute,
-              message: 'Noxis detected an ungraceful shutdown. Your unsaved work may be recoverable.',
-            });
-            startupLog(`[PowerCut] Recovery signal sent to renderer. Last route: ${lastRoute}`);
+            setupAutoUpdater(mainWindow);
           }
-        }, 2000); // give renderer time to fully mount
+        }, 5000);
+
+        setTimeout(() => {
+          if (app.isPackaged) {
+            if (process.env.CLOUDFLARE_TUNNEL_URL) {
+              startupLog('[Tunnel] Custom CLOUDFLARE_TUNNEL_URL defined — skipping local daemon spawn');
+              return;
+            }
+            const configPath = path.join(
+              process.env.USERPROFILE || process.env.HOME || '',
+              '.cloudflared',
+              'config.yml'
+            );
+            if (fs.existsSync(configPath)) {
+              startCloudflaredTunnel();
+            } else {
+              startQuickTunnel();
+            }
+          }
+        }, 6000);
+
+        setTimeout(() => {
+          startMemoryMonitor();
+        }, 10000);
+
+        setTimeout(() => {
+          spawnVisionEngine();
+        }, 8000);
+
+        // ── STEP 5: Register CCTV / ONVIF IPC handlers ──
+        // Registered after window is created so startupLog is fully available
+        registerOnvifHandlers(startupLog);
+        registerMediamtxHandlers(startupLog);
+
+        // ── STEP 6: Start WebSocket bridge server ──
+        startWsBridgeServer();
+
+        // ── STEP 7: Send power-cut recovery signal to renderer ──
+        if (wasPowerCut) {
+          setTimeout(() => {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              const lastRoute = getLastRoute();
+              mainWindow.webContents.send('ipc:power-cut-detected', {
+                lastRoute,
+                message: 'Noxis detected an ungraceful shutdown. Your unsaved work may be recoverable.',
+              });
+              startupLog(`[PowerCut] Recovery signal sent to renderer. Last route: ${lastRoute}`);
+            }
+          }, 2000); // give renderer time to fully mount
+        }
       }
-    }
     } catch (fatalErr: any) {
       startupLog(
         `[FATAL] ${fatalErr.message}`
       )
-      try { destroySplash() } catch {}
+      try { destroySplash() } catch { }
       dialog.showErrorBox(
         'Noxis Failed to Start',
         `Fatal error:\n\n${fatalErr.message}\n\n` +
@@ -2158,7 +2181,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       startupLog('[Electron] Shutting down...');
 
       if (sessionTimeoutTimer) clearTimeout(sessionTimeoutTimer);
-      if (warningTimer)        clearTimeout(warningTimer);
+      if (warningTimer) clearTimeout(warningTimer);
       if (memoryMonitorInterval) clearInterval(memoryMonitorInterval);
 
       if (splashWindow && !splashWindow.isDestroyed()) {

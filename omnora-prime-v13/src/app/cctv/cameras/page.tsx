@@ -52,8 +52,8 @@ export default function CamerasManagementPage() {
   async function fetchData() {
     setIsLoading(true);
     const [cRes, bRes] = await Promise.all([
-      supabase.from("cctv_nodes").select("*").order("created_at", { ascending: false }),
-      supabase.from("cctv_brands").select("*")
+      supabase.from("cctv_nodes").select("*").order("created_at", { ascending: false }).limit(100),
+      supabase.from("cctv_brands").select("*").limit(100)
     ]);
     setCameras(cRes.data || []);
     setBrands(bRes.data || []);
