@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bell, X, CheckCheck, ExternalLink, ShieldAlert, Smartphone, DollarSign, Package, BrainCircuit } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
 export interface NotificationItem {
   id: string
@@ -37,43 +38,85 @@ export function notify(payload: Omit<NotificationItem, 'id' | 'timestamp' | 'rea
 
 export function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false)
-  const [notifications, setNotifications] = useState<NotificationItem[]>([
-    {
-      id: 'notif-1',
-      type: 'mobile_sync',
-      title: 'Attendance Synced',
-      description: '47 karigars marked via Mobile Companion',
-      icon: '📱',
-      timestamp: '2 min ago',
-      read: false,
-      action: { label: 'View Attendance', href: '/karigars' },
-    },
-    {
-      id: 'notif-2',
-      type: 'inventory_alert',
-      title: 'Low Stock Warning',
-      description: 'Sufi Fabric below reorder level (2 meters remaining)',
-      icon: '📦',
-      severity: 'warning',
-      timestamp: '15 min ago',
-      read: false,
-      action: { label: 'Reorder', href: '/inventory?filter=low-stock' },
-    },
-    {
-      id: 'notif-[#]',
-      type: 'financial',
-      title: 'Overdue Invoice',
-      description: 'Al-Hameed Textile — PKR 45,000 overdue by 35 days',
-      icon: '💰',
-      severity: 'critical',
-      timestamp: '1 hour ago',
-      read: false,
-      action: { label: 'Send Reminder', href: '/parties' },
-    },
-  ])
+  const [notifications, setNotifications] = useState<NotificationItem[]>([])
 
   const router = useRouter()
   const panelRef = useRef<HTMLDivElement>(null)
+
+  // Automatic background calculation scanner for invoices & stock
+  useEffect(() => {
+    const scanCalculations = async () => {
+      try {
+        const supabase = createClient()
+        const { data: invoices } = await supabase
+          .from('invoices')
+          .select('id, invoice_number, total_amount, balance_due, created_at, party:parties(name)')
+          .gt('balance_due', 0)
+          .limit(10)
+
+        const calculatedNotifs: NotificationItem[] = []
+        const now = Date.now()
+
+        if (invoices && invoices.length > 0) {
+          invoices.forEach((inv: any) => {
+            const daysOld = Math.round((now - new Date(inv.created_at).getTime()) / 86400000)
+            const partyName = (inv.party as any)?.name || 'Client'
+            const due = Number(inv.balance_due || inv.total_amount || 0)
+            if (daysOld >= 14 && due > 0) {
+              calculatedNotifs.push({
+                id: `calc_inv_${inv.id}`,
+                type: 'financial',
+                title: `Overdue Payment: ${partyName}`,
+                description: `Invoice ${inv.invoice_number || 'INV'} has PKR ${due.toLocaleString('en-PK')} overdue by ${daysOld} days`,
+                icon: '💰',
+                severity: 'critical',
+                timestamp: `${daysOld}d overdue`,
+                read: false,
+                action: { label: 'Send Reminder', href: '/parties/reminders' },
+              })
+            }
+          })
+        }
+
+        const { data: skus } = await supabase
+          .from('skus')
+          .select('id, name, quantity, min_stock')
+          .limit(10)
+
+        if (skus && skus.length > 0) {
+          skus.forEach((sku: any) => {
+            if (sku.quantity <= (sku.min_stock || 10)) {
+              calculatedNotifs.push({
+                id: `calc_stock_${sku.id}`,
+                type: 'inventory_alert',
+                title: `Low Stock: ${sku.name}`,
+                description: `${sku.name} is at ${sku.quantity} units (below threshold of ${sku.min_stock || 10})`,
+                icon: '📦',
+                severity: 'warning',
+                timestamp: 'Active alert',
+                read: false,
+                action: { label: 'Reorder', href: '/inventory?filter=low-stock' },
+              })
+            }
+          })
+        }
+
+        if (calculatedNotifs.length > 0) {
+          setNotifications(prev => {
+            const existingIds = new Set(prev.map(n => n.id))
+            const newOnly = calculatedNotifs.filter(n => !existingIds.has(n.id))
+            return [...newOnly, ...prev]
+          })
+        }
+      } catch (e) {
+        // Silent calculation check
+      }
+    }
+
+    scanCalculations()
+    const interval = setInterval(scanCalculations, 60000)
+    return () => clearInterval(interval)
+  }, [])
 
   // Listen for incoming notify() events
   useEffect(() => {

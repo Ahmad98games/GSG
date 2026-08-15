@@ -43,6 +43,7 @@ const logger_1 = require("../logger");
 const fs_1 = __importDefault(require("fs"));
 const schema = __importStar(require("./schema"));
 const pragmas_1 = require("./pragmas");
+const schema_1 = require("../../../electron/database/schema");
 function getDbPath() {
     // Priority 1: Electron passes userData via env
     if (process.env.ELECTRON_USER_DATA) {
@@ -262,6 +263,15 @@ exports.db = new Proxy({}, {
                     }
                 }
                 _db = initDrizzle(sqlite);
+                try {
+                    sqlite.exec(schema_1.NOXIS_SCHEMA);
+                    console.log('[DB] Schema applied successfully');
+                    const tables = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all();
+                    console.log(`[DB] Tables: ${tables.map(t => t.name).join(', ')}`);
+                }
+                catch (schemaErr) {
+                    console.error('[DB] Schema execution error:', schemaErr);
+                }
                 // Apply production-tuned performance pragmas
                 if (dbPath !== ':memory:') {
                     try {

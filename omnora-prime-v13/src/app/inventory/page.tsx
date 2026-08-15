@@ -417,45 +417,7 @@ export default function InventoryPage() {
 
   // Table Config
 
-  if (skusLoading) return (
-    <div className="p-6 bg-[#121417]">
-      <div className="flex justify-between mb-4">
-        <Skeleton className="h-8 w-32" />
-        <Skeleton className="h-9 w-28" />
-      </div>
-      <TableSkeleton rows={10} cols={6} />
-    </div>
-  );
 
-  if (skusError) return (
-    <div className="h-screen bg-[#121417] flex items-center justify-center p-8">
-      <ErrorState
-        message="Could not load inventory data"
-        detail={(skusError as Error).message}
-        onRetry={refetchSkus}
-      />
-    </div>
-  );
-
-  if (!skus || skus.length === 0) return (
-    <div className="min-h-screen bg-[#121417] text-slate-200 p-6 flex flex-col justify-center">
-      <NewEmptyState
-        icon="📦"
-        title="No products yet"
-        description="Add your first product to start tracking inventory"
-        action={{ label: 'Add product', onClick: () => setIsAddModalOpen(true) }}
-      />
-      <AnimatePresence>
-        {isAddModalOpen && (
-          <AddProductModal 
-            initialBarcode={prefilledBarcode}
-            onClose={() => { setIsAddModalOpen(false); setPrefilledBarcode(""); }} 
-            onSuccess={(msg) => { setSuccessToast(msg); setIsAddModalOpen(false); setPrefilledBarcode(""); queryClient.invalidateQueries({ queryKey: ['inventory'] }); }}
-          />
-        )}
-      </AnimatePresence>
-    </div>
-  );
 
   return (
     <div className="min-h-screen bg-[#121417] text-slate-200 p-6">
@@ -570,7 +532,7 @@ export default function InventoryPage() {
 
           {/* Table Container */}
           <ScrollReveal3D>
-            <div className="bg-surface border border-white/5">
+            <div ref={parentRef} className="bg-surface border border-white/5 overflow-x-auto max-h-[700px] relative scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/5">
                {skusLoading ? (
                  <div className="h-64 flex items-center justify-center space-x-3">
                     <div className="w-2 h-2 bg-electric-blue animate-bounce" />
@@ -587,7 +549,7 @@ export default function InventoryPage() {
                     }}
                   />
                ) : (
-                 <div className="overflow-x-auto max-h-[700px] relative scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/5" ref={parentRef}>
+                 <>
                     <table className="w-full text-left border-collapse">
                         <thead className="bg-[#0F1114]">
                           {table.getHeaderGroups().map(headerGroup => (
@@ -648,7 +610,7 @@ export default function InventoryPage() {
                           >Next</button>
                        </div>
                     </div>
-                 </div>
+                 </>
                )}
             </div>
           </ScrollReveal3D>

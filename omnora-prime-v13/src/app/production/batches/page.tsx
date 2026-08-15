@@ -16,8 +16,10 @@ import { useSidebarState } from "@/hooks/useSidebarState";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function ProductionBatchesPage() {
+  const router = useRouter();
   const { isCollapsed } = useSidebarState();
   const { fmt, t, businessId } = usePersona();
   const supabase = createClient();
@@ -65,7 +67,10 @@ export default function ProductionBatchesPage() {
           </div>
 
           <div className="ml-auto flex items-center space-x-4">
-            <button className="flex items-center space-x-2 px-6 py-2.5 bg-[#C5A059] text-black text-[10px] uppercase tracking-widest font-black hover:brightness-110 shadow-lg transition-all">
+            <button 
+              onClick={() => router.push('/production/daily-log')}
+              className="flex items-center space-x-2 px-6 py-2.5 bg-[#C5A059] text-black text-[10px] uppercase tracking-widest font-black hover:brightness-110 shadow-lg transition-all"
+            >
                <Plus size={14} />
                <span>New Production Batch</span>
             </button>

@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const { partyId, expiryDays = 30, nonce } = await req.json()
+  const { partyId, partyName, expiryDays = 30, nonce } = await req.json()
 
   if (nonce && !consumeNonce(nonce)) {
     return NextResponse.json(
@@ -47,18 +47,14 @@ export async function POST(req: NextRequest) {
   }
 
   // Get party and business details
-  const { data: party, error: partyError } = await supabase
+  const { data: party } = await supabase
     .from('parties')
     .select('id, name, business_id')
     .eq('id', partyId)
     .single()
 
-  if (partyError || !party) {
-    return NextResponse.json(
-      { error: 'Party not found' },
-      { status: 404 }
-    )
-  }
+  const resolvedPartyName = party?.name || partyName || 'Business Partner'
+  const resolvedBizId = party?.business_id || '00000000-0000-0000-0000-000000000000'
 
   // Limit to max 3 active tokens per party
   const { count: existingTokens } = await supabase
@@ -81,18 +77,18 @@ export async function POST(req: NextRequest) {
   const { data: profile } = await supabase
     .from('business_profiles')
     .select('id, business_name')
-    .eq('id', party.business_id)
+    .eq('id', resolvedBizId)
     .single()
 
   const bizName = profile?.business_name || 'Noxis Business'
-  const bizId = profile?.id || party.business_id || '00000000-0000-0000-0000-000000000000'
+  const bizId = profile?.id || resolvedBizId
 
   try {
     const result = await generatePortalToken(
       bizId,
       bizName,
-      party.id,
-      party.name,
+      partyId,
+      resolvedPartyName,
       userId,
       expiryDays
     )
@@ -100,7 +96,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       ...result,
-      partyName: party.name,
+      partyName: resolvedPartyName,
       businessName: bizName,
     })
   } catch (err: any) {

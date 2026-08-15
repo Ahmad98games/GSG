@@ -375,28 +375,42 @@ export default function POSPage() {
 
           const lastNum = parseInt(lastInv?.invoice_number?.replace(/\D/g, '') || '0')
           finalInvoiceNum = `${(profile as any)?.invoice_prefix || 'INV'}-${String(lastNum + 1).padStart(4, '0')}`
+          const posPayload: any = {
+            business_id: activeBizId,
+            invoice_number: finalInvoiceNum,
+            invoice_no: finalInvoiceNum,
+            party_id: selectedParty?.id || null,
+            status: selectedParty ? 'issued' : 'paid',
+            subtotal,
+            discount_percent: discount,
+            discount_amount: discountAmount,
+            tax_label: taxEnabled ? taxLabel : null,
+            tax_rate: taxEnabled ? taxRate : 0,
+            tax_amount: taxAmount,
+            total_amount: grandTotal,
+            total: grandTotal,
+            paid_amount: selectedParty ? 0 : grandTotal,
+            invoice_type: 'pos',
+            created_by: currentUser?.name || 'POS Counter',
+          };
 
-          const { data: invoice } = await supabase
+          let { data: invoice, error: posInsError } = await supabase
             .from('invoices')
-            .insert({
-              business_id: activeBizId,
-              invoice_number: finalInvoiceNum,
-              party_id: selectedParty?.id || null,
-              status: 'posted',
-              subtotal,
-              discount_percent: discount,
-              discount_amount: discountAmount,
-              tax_label: taxEnabled ? taxLabel : null,
-              tax_rate: taxEnabled ? taxRate : 0,
-              tax_amount: taxAmount,
-              total_amount: grandTotal,
-              balance_due: selectedParty ? grandTotal : 0,
-              paid_amount: selectedParty ? 0 : grandTotal,
-              invoice_type: 'pos',
-              created_by: currentUser?.name || 'POS Counter',
-            })
+            .insert(posPayload)
             .select()
-            .maybeSingle()
+            .maybeSingle();
+
+          if (posInsError) {
+            console.warn('[POS Insert] Primary insert failed:', posInsError.message);
+            delete posPayload.invoice_no;
+            delete posPayload.total;
+            const retryRes = await supabase
+              .from('invoices')
+              .insert(posPayload)
+              .select()
+              .maybeSingle();
+            invoice = retryRes.data;
+          }
 
           if (invoice) {
             createdInvoice = invoice

@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+import React, { useMemo, useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
@@ -129,9 +129,8 @@ export default function KarigarsPage() {
   const queryClient = useQueryClient();
   const toast = useToast();
 
-  // State
   const [searchTerm, setSearchTerm] = useState("");
-  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const registerModalRef = useRef<{ open: () => void }>(null);
   const [attendingKarigar, setAttendingKarigar] = useState<Karigar | null>(null);
   const [advancingKarigar, setAdvancingKarigar] = useState<Karigar | null>(null);
   const [logOutputKarigar, setLogOutputKarigar] = useState<Karigar | null>(null);
@@ -191,13 +190,21 @@ export default function KarigarsPage() {
   const { data: karigars = [], isLoading, error: karigarsError, refetch: refetchKarigars } = useQuery({
     queryKey: ['karigars', profile?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('karigars')
         .select('*, karigar_grades(grade_name)')
         .eq('business_id', profile?.id)
         .order('name');
-      if (error) throw error;
-      return data as Karigar[];
+      if (error) {
+        const simple = await supabase
+          .from('karigars')
+          .select('*')
+          .eq('business_id', profile?.id)
+          .order('name');
+        if (simple.error) return [];
+        data = simple.data;
+      }
+      return (data || []) as Karigar[];
     },
     enabled: !!profile?.id,
     staleTime: 10 * 60 * 1000,
@@ -560,69 +567,7 @@ export default function KarigarsPage() {
       ? rowVirtualizer.getTotalSize() - (virtualRows[virtualRows.length - 1]?.end ?? 0)
       : 0;
 
-  if (isLoading) return (
-    <div className="p-6 bg-noxis-bg">
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <KpiCardSkeleton key={i} />
-        ))}
-      </div>
-      <CardGridSkeleton count={6} />
-    </div>
-  );
 
-  if (karigarsError) return (
-    <div className="min-h-screen bg-noxis-bg flex items-center justify-center p-8">
-      <ErrorState
-        message="Could not load workers registry"
-        detail={(karigarsError as Error).message}
-        onRetry={refetchKarigars}
-      />
-    </div>
-  );
-
-  if (!karigars || karigars.length === 0) return (
-    <div className="min-h-screen bg-noxis-bg text-slate-200 p-6 flex flex-col">
-      {/* Header with Register button still visible in zero-data state */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-lg font-semibold tracking-tight text-white">
-            {workerTermPlural} Registry
-          </h1>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Human Resource Management &amp; Payouts
-          </p>
-        </div>
-        <button
-          onClick={() => setIsRegisterOpen(true)}
-          className="flex items-center space-x-2 px-4 py-2 bg-electric-blue text-onyx text-sm font-semibold rounded-sm hover:brightness-110 transition-all shadow-lg"
-        >
-          <UserPlus size={14} />
-          <span>Register {workerTerm}</span>
-        </button>
-      </div>
-
-      {/* Clean empty state — no broken numbers, no skeleton placeholders */}
-      <div className="flex-1 flex items-center justify-center">
-        <NewEmptyState
-          icon="👷"
-          title="No workers registered yet"
-          description="Add your first karigar to start tracking attendance, advances, and wages."
-          action={{ label: `Register First ${workerTerm}`, onClick: () => setIsRegisterOpen(true) }}
-        />
-      </div>
-
-      <AnimatePresence>
-         {isRegisterOpen && (
-           <RegisterKarigarModal 
-            grades={grades}
-            onClose={() => setIsRegisterOpen(false)} 
-            onSuccess={(msg) => { setSuccessToast(msg); setIsRegisterOpen(false); queryClient.invalidateQueries({ queryKey: ['karigars'] }); }} 
-           />
-         )}
-      </AnimatePresence>
-    </div>
-  );
 
   return (
     <div className="min-h-screen bg-noxis-bg text-slate-200 p-6">
@@ -638,7 +583,7 @@ export default function KarigarsPage() {
           </div>
           <div className="flex items-center gap-3">
              <button 
-               onClick={() => setIsRegisterOpen(true)}
+               onClick={() => registerModalRef.current?.open()}
                className="flex items-center space-x-2 px-4 py-2 bg-electric-blue text-onyx text-sm font-semibold rounded-sm hover:brightness-110 transition-all shadow-lg"
              >
                 <UserPlus size={14} />
@@ -721,7 +666,10 @@ export default function KarigarsPage() {
            </div>
 
            {/* Main Registry Table */}
-           <div className="bg-surface border border-white/5 flex-1 overflow-auto">
+           <div
+             ref={parentRef}
+             className="bg-surface border border-white/5 flex-1 overflow-x-auto overflow-y-auto max-h-[calc(100vh-200px)]"
+           >
               {isLoading ? (
                 <div className="p-20 space-y-4">
                    {[1,2,3,4,5].map(i => <div key={i} className="h-12 bg-white/[0.02] animate-pulse" />)}
@@ -732,80 +680,66 @@ export default function KarigarsPage() {
                   page="karigars"
                   action={{
                     label: `Onboard First ${workerTerm}`,
-                    onClick: () => setIsRegisterOpen(true)
+                    onClick: () => registerModalRef.current?.open()
                   }}
                 />
               ) : (
-                <div
-                  ref={parentRef}
-                  className="overflow-x-auto overflow-y-auto"
-                  style={{ maxHeight: 'calc(100vh - 200px)' }}
-                >
-                   <table className="w-full text-left">
-                      <thead className="bg-[#1A1D21] border-b border-white/10 sticky top-0 z-10">
-                         {table.getHeaderGroups().map(hg => (
-                           <tr key={hg.id}>
-                              {hg.headers.map(h => (
-                                <th key={h.id} className="px-6 py-4 table-header">
-                                   {flexRender(h.column.columnDef.header, h.getContext())}
-                                </th>
-                              ))}
-                           </tr>
-                         ))}
-                      </thead>
-                      <tbody>
-                         {paddingTop > 0 && (
-                           <tr>
-                             <td style={{ height: `${paddingTop}px` }} colSpan={columns.length} />
-                           </tr>
-                         )}
-                         {virtualRows.map((virtualRow) => {
-                           const row = rows[virtualRow.index];
-                           return (
-                             <KarigarRow key={row.id} row={row} i={virtualRow.index} />
-                           );
-                         })}
-                         {paddingBottom > 0 && (
-                           <tr>
-                             <td style={{ height: `${paddingBottom}px` }} colSpan={columns.length} />
-                           </tr>
-                         )}
-                      </tbody>
-                   </table>
-                </div>
+                <table className="w-full text-left">
+                   <thead className="bg-[#1A1D21] border-b border-white/10 sticky top-0 z-10">
+                      {table.getHeaderGroups().map(hg => (
+                        <tr key={hg.id}>
+                           {hg.headers.map(h => (
+                             <th key={h.id} className="px-6 py-4 table-header">
+                                {flexRender(h.column.columnDef.header, h.getContext())}
+                             </th>
+                           ))}
+                        </tr>
+                      ))}
+                   </thead>
+                   <tbody>
+                      {paddingTop > 0 && (
+                        <tr>
+                          <td style={{ height: `${paddingTop}px` }} colSpan={columns.length} />
+                        </tr>
+                      )}
+                      {virtualRows.map((virtualRow) => {
+                        const row = rows[virtualRow.index];
+                        return (
+                          <KarigarRow key={row.id} row={row} i={virtualRow.index} />
+                        );
+                      })}
+                      {paddingBottom > 0 && (
+                        <tr>
+                          <td style={{ height: `${paddingBottom}px` }} colSpan={columns.length} />
+                        </tr>
+                      )}
+                   </tbody>
+                </table>
               )}
            </div>
       </main>
 
-      {/* Modals — each in its own AnimatePresence to avoid cross-modal exit diffing */}
-      <AnimatePresence>
-         {isRegisterOpen && (
-           <RegisterKarigarModal 
-            grades={grades}
-            onClose={() => setIsRegisterOpen(false)} 
-            onSuccess={(msg) => { setSuccessToast(msg); setIsRegisterOpen(false); queryClient.invalidateQueries({ queryKey: ['karigars'] }); }} 
-           />
-         )}
-      </AnimatePresence>
-      <AnimatePresence>
-         {attendingKarigar && (
-           <AttendanceModal 
-            karigar={attendingKarigar}
-            onClose={() => setAttendingKarigar(null)}
-            onSuccess={(msg) => { setSuccessToast(msg); setAttendingKarigar(null); }}
-            onMark={markAttendance}
-           />
-         )}
-      </AnimatePresence>
-      <AnimatePresence>
-         {advancingKarigar && (
-           <AdvanceModal 
-            karigar={advancingKarigar}
-            onClose={() => setAdvancingKarigar(null)}
-            onSuccess={(msg) => { setSuccessToast(msg); setAdvancingKarigar(null); queryClient.invalidateQueries({ queryKey: ['karigars'] }); }}
-           />
-         )}
-      </AnimatePresence>
+      {/* Register modal — always mounted, controls its own open state imperatively */}
+      <RegisterKarigarModal 
+       ref={registerModalRef}
+       grades={grades}
+       onSuccess={(msg) => { setSuccessToast(msg); queryClient.invalidateQueries({ queryKey: ['karigars'] }); }} 
+      />
+      {attendingKarigar && (
+        <AttendanceModal 
+         karigar={attendingKarigar}
+         onClose={() => setAttendingKarigar(null)}
+         onSuccess={(msg) => { setSuccessToast(msg); setAttendingKarigar(null); }}
+         onMark={markAttendance}
+        />
+      )}
+      {advancingKarigar && (
+        <AdvanceModal 
+         karigar={advancingKarigar}
+         onClose={() => setAdvancingKarigar(null)}
+         onSuccess={(msg) => { setSuccessToast(msg); setAdvancingKarigar(null); queryClient.invalidateQueries({ queryKey: ['karigars'] }); }}
+        />
+      )}
 
       {/* LogProductionModal rendered via portal — mounts outside this page's render tree
           so setLogOutputKarigar() does NOT trigger table/virtualizer re-renders */}
@@ -881,17 +815,23 @@ const KarigarRow = React.memo(
   }
 );
 
-function RegisterKarigarModal({ grades, onClose, onSuccess }: { grades: Grade[], onClose: () => void, onSuccess: (msg: string) => void }) {
+// RegisterKarigarModal — self-contained, controlled imperatively via forwardRef
+// This pattern avoids re-rendering the parent (and the heavy virtualizer) when the modal opens.
+const RegisterKarigarModal = forwardRef<
+  { open: () => void },
+  { grades: Grade[]; onSuccess: (msg: string) => void }
+>(function RegisterKarigarModal({ grades, onSuccess }, ref) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { profile } = useBusinessProfile();
+  const { t } = useIndustryConfig();
   const supabase = createClient();
   const toast = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { t } = useIndustryConfig();
-  const workerTerm = t.worker;
 
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<KarigarFormValues>({
+  // ALL hooks must be called unconditionally before any early return
+  const { register, handleSubmit, watch, reset, formState: { errors } } = useForm<KarigarFormValues>({
     resolver: zodResolver(karigarSchema),
-    mode: "onTouched",
+    mode: 'onTouched',
     defaultValues: {
       joining_date: new Date().toISOString().split('T')[0],
       wage_type: 'piece_rate',
@@ -899,7 +839,12 @@ function RegisterKarigarModal({ grades, onClose, onSuccess }: { grades: Grade[],
     }
   });
 
-  const wageType = watch("wage_type");
+  useImperativeHandle(ref, () => ({ open: () => { reset(); setIsOpen(true); } }));
+
+  const wageType = watch('wage_type');
+  const workerTerm = t.worker;
+
+  const handleClose = () => setIsOpen(false);
 
   const onSubmit = async (values: KarigarFormValues) => {
     setIsSubmitting(true);
@@ -927,35 +872,31 @@ function RegisterKarigarModal({ grades, onClose, onSuccess }: { grades: Grade[],
 
       // Telemetry — Emit anonymous wage signal silently
       if (profile?.industry_key && profile?.city) {
-        const pieceRate = values.wage_type === 'piece_rate' ? values.rate : null;
-        const dailyRate = values.wage_type === 'daily_wage' ? values.rate : null;
-        const monthlySalary = values.wage_type === 'monthly_salary' ? values.rate : null;
+        const rate = values.rate;
         emitWageSignal(
-          profile.industry_key,
-          profile.city,
-          profile.country_code || 'PK',
-          values.wage_type,
-          pieceRate || dailyRate || monthlySalary || 0,
-          profile.currency || 'PKR'
+          profile.industry_key, profile.city, profile.country_code || 'PK',
+          values.wage_type, rate, profile.currency || 'PKR'
         ).catch(() => {});
       }
 
       onSuccess(`Successfully registered ${values.name} into the registry.`);
+      setIsOpen(false);
     } catch (err: unknown) {
-      toast.error("Onboarding failed", humanizeError(err, 'register worker'));
+      toast.error('Onboarding failed', humanizeError(err, 'register worker'));
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (typeof document === 'undefined') return null;
+  // Only render the portal content when open
+  if (!isOpen || typeof document === 'undefined') return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex justify-end bg-black/60 backdrop-blur-sm">
-       <motion.div 
-        initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
-        className="w-full max-w-xl bg-surface border-l border-white/5 h-full flex flex-col shadow-2xl"
-       >
+    <div
+      className="fixed inset-0 z-[100] flex justify-end bg-black/60 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
+    >
+       <div className="w-full max-w-xl bg-surface border-l border-white/5 h-full flex flex-col shadow-2xl animate-in slide-in-from-right duration-200">
           <div className="p-8 border-b border-white/5 flex items-center justify-between">
              <div className="flex items-center space-x-3">
                 <div className="p-3 bg-electric-blue/10 text-electric-blue">
@@ -966,7 +907,7 @@ function RegisterKarigarModal({ grades, onClose, onSuccess }: { grades: Grade[],
                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Personnel Registry System v9.0</p>
                 </div>
              </div>
-             <button onClick={onClose} className="p-2 text-gray-500 hover:text-white transition-colors"><X size={24} /></button>
+             <button onClick={handleClose} className="p-2 text-gray-500 hover:text-white transition-colors"><X size={24} /></button>
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto p-8 space-y-8">
@@ -975,20 +916,20 @@ function RegisterKarigarModal({ grades, onClose, onSuccess }: { grades: Grade[],
                 <div className="grid grid-cols-2 gap-6">
                    <div className="col-span-2 space-y-2">
                       <Label>Full Name</Label>
-                      <Input {...register("name")} placeholder="e.g. Muhammad Ahmed" />
+                      <Input {...register('name')} placeholder="e.g. Muhammad Ahmed" />
                       <FieldError message={errors.name?.message} />
                    </div>
                    <div className="space-y-2">
                       <Label>Father&apos;s Name</Label>
-                      <Input {...register("father_name")} />
+                      <Input {...register('father_name')} />
                    </div>
                    <div className="space-y-2">
                       <Label>CNIC Number</Label>
-                      <Input {...register("cnic")} placeholder="XXXXX-XXXXXXX-X" />
+                      <Input {...register('cnic')} placeholder="XXXXX-XXXXXXX-X" />
                    </div>
                    <div className="space-y-2 col-span-2">
                       <Label>Phone Number</Label>
-                      <Input {...register("phone")} placeholder="e.g. 03001234567" />
+                      <Input {...register('phone')} placeholder="e.g. 03001234567" />
                       <FieldError message={errors.phone?.message} />
                    </div>
                 </div>
@@ -999,7 +940,7 @@ function RegisterKarigarModal({ grades, onClose, onSuccess }: { grades: Grade[],
                 <div className="grid grid-cols-2 gap-6">
                    <div className="space-y-2">
                       <Label>Artisan Grade</Label>
-                      <select {...register("grade_id")} className="w-full bg-onyx border border-white/10 p-3 text-xs text-white outline-none focus:border-electric-blue transition-all">
+                      <select {...register('grade_id')} className="w-full bg-onyx border border-white/10 p-3 text-xs text-white outline-none focus:border-electric-blue transition-all">
                          <option value="">Select Grade</option>
                          {grades.map(g => <option key={g.id} value={g.id}>{g.grade_name}</option>)}
                       </select>
@@ -1007,12 +948,12 @@ function RegisterKarigarModal({ grades, onClose, onSuccess }: { grades: Grade[],
                    </div>
                    <div className="space-y-2">
                       <Label>Skill Vertical</Label>
-                      <Input {...register("skill_type")} placeholder="e.g. Stitching" />
+                      <Input {...register('skill_type')} placeholder="e.g. Stitching" />
                       <FieldError message={errors.skill_type?.message} />
                    </div>
                    <div className="space-y-2">
                       <Label>Pay Model</Label>
-                      <select {...register("wage_type")} className="w-full bg-onyx border border-white/10 p-3 text-xs text-white outline-none">
+                      <select {...register('wage_type')} className="w-full bg-onyx border border-white/10 p-3 text-xs text-white outline-none">
                          <option value="piece_rate">Piece Rate (Standard)</option>
                          <option value="daily_wage">Daily Wage</option>
                          <option value="monthly_salary">Fixed Monthly</option>
@@ -1022,7 +963,7 @@ function RegisterKarigarModal({ grades, onClose, onSuccess }: { grades: Grade[],
                       <Label>
                          {wageType === 'piece_rate' ? 'Rate per Piece (PKR)' : wageType === 'daily_wage' ? 'Daily Rate (PKR)' : 'Monthly Base (PKR)'}
                       </Label>
-                      <Input type="number" {...register("rate")} />
+                      <Input type="number" {...register('rate')} />
                       <FieldError message={errors.rate?.message} />
                    </div>
                 </div>
@@ -1030,20 +971,21 @@ function RegisterKarigarModal({ grades, onClose, onSuccess }: { grades: Grade[],
           </form>
 
           <div className="p-8 bg-onyx border-t border-white/5 flex items-center space-x-4">
-             <button onClick={onClose} className="flex-1 py-4 text-[10px] uppercase font-bold text-gray-500 hover:text-white transition-colors">Discard Draft</button>
-             <button 
-              onClick={handleSubmit(onSubmit)} 
+             <button onClick={handleClose} className="flex-1 py-4 text-[10px] uppercase font-bold text-gray-500 hover:text-white transition-colors">Discard Draft</button>
+             <button
+              onClick={handleSubmit(onSubmit)}
               disabled={isSubmitting}
               className="flex-[2] py-4 bg-electric-blue text-onyx text-[10px] font-black uppercase tracking-widest shadow-xl hover:brightness-110 disabled:opacity-50"
              >
-                {isSubmitting ? "Syncing..." : `Commit ${workerTerm} to Registry`}
+                {isSubmitting ? 'Syncing...' : `Commit ${workerTerm} to Registry`}
              </button>
           </div>
-       </motion.div>
+       </div>
     </div>,
     document.body
   );
-}
+});
+
 
 function AttendanceModal({ karigar, onClose, onSuccess, onMark }: { karigar: Karigar, onClose: () => void, onSuccess: (msg: string) => void, onMark: (v: any) => Promise<void> }) {
   const { profile } = useBusinessProfile();
@@ -1085,7 +1027,7 @@ function AttendanceModal({ karigar, onClose, onSuccess, onMark }: { karigar: Kar
 
   return createPortal(
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
-       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="max-w-md w-full bg-surface border border-white/10 shadow-2xl overflow-hidden">
+       <div className="max-w-md w-full bg-surface border border-white/10 shadow-2xl overflow-hidden animate-in zoom-in-95 fade-in-0 duration-200">
           <div className="p-6 bg-onyx border-b border-white/5 flex items-center justify-between">
              <div className="flex items-center space-x-3">
                 <Calendar className="text-electric-blue" size={18} />
@@ -1120,7 +1062,7 @@ function AttendanceModal({ karigar, onClose, onSuccess, onMark }: { karigar: Kar
                 {isSubmitting ? "Logging..." : "Commit Attendance"}
              </button>
           </form>
-       </motion.div>
+       </div>
     </div>,
     document.body
   );
@@ -1168,7 +1110,7 @@ function AdvanceModal({ karigar, onClose, onSuccess }: { karigar: Karigar, onClo
 
   return createPortal(
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
-       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="max-w-md w-full bg-surface border border-white/10 shadow-2xl overflow-hidden">
+       <div className="max-w-md w-full bg-surface border border-white/10 shadow-2xl overflow-hidden animate-in zoom-in-95 fade-in-0 duration-200">
           <div className="p-6 bg-onyx border-b border-white/5 flex items-center justify-between">
              <div className="flex items-center space-x-3">
                  <Banknote className="text-amber-500" size={18} />
@@ -1212,7 +1154,7 @@ function AdvanceModal({ karigar, onClose, onSuccess }: { karigar: Karigar, onClo
                </button>
              </div>
           </form>
-       </motion.div>
+       </div>
     </div>,
     document.body
   );

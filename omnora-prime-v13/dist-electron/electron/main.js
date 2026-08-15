@@ -101,16 +101,40 @@ let downloadProgress = 0;
 // ─────────────────────────────────────────────
 // 1. LOGGER
 // ─────────────────────────────────────────────
+function ensureLogDirectory() {
+    try {
+        const userData = (electron_1.app && electron_1.app.getPath) ? electron_1.app.getPath('userData') : path.join(process.env.APPDATA || '', 'NoxisHub');
+        const logsDir = path.join(userData, 'logs');
+        if (!fs.existsSync(logsDir)) {
+            fs.mkdirSync(logsDir, { recursive: true });
+        }
+        return logsDir;
+    }
+    catch {
+        const fallback = path.join(process.env.APPDATA || 'C:\\ProgramData', 'NoxisHub', 'logs');
+        try {
+            fs.mkdirSync(fallback, { recursive: true });
+        }
+        catch { }
+        return fallback;
+    }
+}
 let logPath = '';
 function startupLog(msg) {
     try {
         if (!logPath) {
-            logPath = path.join(electron_1.app.getPath('userData'), 'startup.log');
+            const logsDir = ensureLogDirectory();
+            logPath = path.join(logsDir, 'startup.log');
         }
-        fs.appendFileSync(logPath, `[${new Date().toISOString()}] ${msg}\n`);
+        fs.appendFileSync(logPath, `[${new Date().toISOString()}] ${msg}\n`, 'utf8');
     }
-    catch { /* userData not ready yet */ }
-    electron_log_1.default.info(msg);
+    catch (err) {
+        console.error('Failed writing to log file:', err);
+    }
+    try {
+        electron_log_1.default.info(msg);
+    }
+    catch { }
 }
 // ── AUTO-START MANAGEMENT ──
 function applyAutoStart(enabled) {
@@ -427,7 +451,7 @@ else {
             }
         });
     }
-    function waitForServer(url, timeout = 90000, interval = 1000) {
+    function waitForServer(url, timeout = 90000, interval = 100) {
         return new Promise((resolve, reject) => {
             const start = Date.now();
             let done = false;
@@ -444,19 +468,23 @@ else {
                         return;
                     if (res.statusCode) {
                         done = true;
+                        // Pre-warm dashboard route in background for instant first render
+                        try {
+                            http.get(`${url}/dashboard`, () => { }).on('error', () => { });
+                        }
+                        catch { }
                         resolve();
                     }
                     else {
                         setTimeout(check, interval);
                     }
                 });
-                req.on('error', (err) => {
+                req.on('error', () => {
                     if (done)
                         return;
-                    startupLog(`[Health Check ERR] ${err.message} (${err.code || 'NO_CODE'})`);
                     setTimeout(check, interval);
                 });
-                req.setTimeout(2000, () => {
+                req.setTimeout(1000, () => {
                     req.destroy();
                 });
             };
@@ -728,8 +756,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             const weightPort = ports.find((p) => p.manufacturer?.includes('Prolific') ||
                 p.path?.includes('COM'));
             if (!weightPort) {
-                return { success: false,
-                    reason: 'No weighbridge detected' };
+                return {
+                    success: false,
+                    reason: 'No weighbridge detected'
+                };
             }
             const port = new SerialPort({
                 path: weightPort.path,
@@ -742,8 +772,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                         port.close();
                     }
                     catch { }
-                    resolve({ success: false,
-                        reason: 'Weighbridge timeout' });
+                    resolve({
+                        success: false,
+                        reason: 'Weighbridge timeout'
+                    });
                 }, 3000);
                 port.on('data', (chunk) => {
                     data += chunk.toString();
@@ -775,8 +807,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             });
         }
         catch {
-            return { success: false,
-                reason: 'SerialPort not available' };
+            return {
+                success: false,
+                reason: 'SerialPort not available'
+            };
         }
     });
     electron_1.ipcMain.handle('check-for-updates', async () => {
@@ -1676,7 +1710,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             // ── FIX D: Dedicated stderr file written synchronously ──
             // If the process crashes before async handlers flush,
             // appendFileSync ensures we still capture the error.
-            const stderrPath = path.join(userDataPath, 'server-stderr.log');
+            const stderrPath = path.join(ensureLogDirectory(), 'server-stderr.log');
             try {
                 fs.writeFileSync(stderrPath, `--- ${new Date().toISOString()} ---\n`);
             }

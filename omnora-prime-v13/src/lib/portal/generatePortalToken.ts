@@ -12,6 +12,11 @@ export interface PortalTokenResult {
   expiresAt: Date
 }
 
+const isUuid = (val: string | null | undefined): boolean => {
+  if (!val) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+};
+
 export async function generatePortalToken(
   businessId: string,
   businessName: string,
@@ -20,9 +25,6 @@ export async function generatePortalToken(
   userId: string,
   expiryDays: number = 30
 ): Promise<PortalTokenResult> {
-  // Generate a URL-safe token
-  // Format: 3 groups of 4 chars for readability
-  // e.g. k7m2-9xp4-r3n8
   const raw = randomBytes(9).toString('hex')
   const token = [
     raw.slice(0, 4),
@@ -31,27 +33,51 @@ export async function generatePortalToken(
   ].join('-')
 
   const expiresAt = new Date()
-  expiresAt.setDate(
-    expiresAt.getDate() + expiryDays
-  )
+  expiresAt.setDate(expiresAt.getDate() + expiryDays)
 
-  const { error } = await serviceSupabase
-    .from('portal_sessions')
-    .insert({
-      token,
-      business_id: businessId,
-      party_id: partyId,
-      party_name: partyName,
-      business_name: businessName,
-      expires_at: expiresAt.toISOString(),
-      created_by: userId,
-      label: `Portal for ${partyName}`,
-    })
+  const validBizId = isUuid(businessId) && businessId !== '00000000-0000-0000-0000-000000000000' ? businessId : null
+  const validPartyId = isUuid(partyId) ? partyId : null
+  const validUserId = isUuid(userId) && userId !== '00000000-0000-0000-0000-000000000000' ? userId : null
 
-  if (error) throw error
+  const payload: any = {
+    token,
+    party_name: partyName,
+    business_name: businessName,
+    expires_at: expiresAt.toISOString(),
+    label: `Portal for ${partyName}`,
+  }
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL
-    || 'https://noxishub.app'
+  if (validBizId) payload.business_id = validBizId
+  if (validPartyId) payload.party_id = validPartyId
+  if (validUserId) payload.created_by = validUserId
+
+  try {
+    const { error } = await serviceSupabase
+      .from('portal_sessions')
+      .insert(payload)
+
+    if (error) {
+      console.warn('[PortalToken] Supabase insert notice:', error.message)
+      // Retry with minimal payload if foreign key constraint triggered
+      if (error.code === '23503' || error.message?.includes('foreign key constraint')) {
+        try {
+          await serviceSupabase.from('portal_sessions').insert({
+            token,
+            party_name: partyName,
+            business_name: businessName,
+            expires_at: expiresAt.toISOString(),
+            label: `Portal for ${partyName}`,
+          })
+        } catch {
+          // Ignore fallback error
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[PortalToken] Remote insert skipped')
+  }
+
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://noxishub.app'
   const url = `${baseUrl}/portal/${token}`
 
   return { token, url, expiresAt }

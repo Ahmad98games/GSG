@@ -335,20 +335,20 @@ export default function PartiesPage() {
            </div>
 
             {/* Parties List */}
-            {isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[1,2,3,4,5,6].map(i => <div key={i} className="h-48 bg-white/[0.02] animate-pulse border border-white/5" />)}
-              </div>
-            ) : filteredParties.length === 0 ? (
-              <div className="h-96 flex flex-col items-center justify-center opacity-30 italic">
-                 <Users size={60} strokeWidth={0.5} />
-                 <p className="mt-4 uppercase tracking-[0.2em] text-[10px]">No parties matched criteria</p>
-              </div>
-            ) : (
-              <div
-                ref={parentRef}
-                className="overflow-y-auto max-h-[calc(100vh-280px)] pr-2"
-              >
+            <div
+              ref={parentRef}
+              className="overflow-y-auto max-h-[calc(100vh-280px)] pr-2"
+            >
+              {isLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[1,2,3,4,5,6].map(i => <div key={i} className="h-48 bg-white/[0.02] animate-pulse border border-white/5" />)}
+                </div>
+              ) : filteredParties.length === 0 ? (
+                <div className="h-96 flex flex-col items-center justify-center opacity-30 italic">
+                   <Users size={60} strokeWidth={0.5} />
+                   <p className="mt-4 uppercase tracking-[0.2em] text-[10px]">No parties matched criteria</p>
+                </div>
+              ) : (
                 <div
                   style={{
                     height: `${rowVirtualizer.getTotalSize()}px`,
@@ -386,8 +386,8 @@ export default function PartiesPage() {
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
         </div>
       </main>
 

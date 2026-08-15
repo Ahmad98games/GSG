@@ -20,19 +20,19 @@ export function SharePortalButton({
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
   const [portalUrl, setPortalUrl] = useState<string | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
   const toast = useToast()
 
   const generatePortal = async (e: React.MouseEvent) => {
-    e.stopPropagation() // Prevent row click navigation
+    e.stopPropagation()
 
     if (portalUrl) {
-      handleShare(portalUrl)
+      setIsModalOpen(true)
       return
     }
 
     setLoading(true)
     try {
-      // Generate a secure client-side nonce (32 hex characters)
       const array = new Uint8Array(16);
       window.crypto.getRandomValues(array);
       const nonce = Array.from(array, dec => dec.toString(16).padStart(2, '0')).join('');
@@ -46,6 +46,7 @@ export function SharePortalButton({
           },
           body: JSON.stringify({
             partyId,
+            partyName,
             expiryDays: 30,
             nonce,
           }),
@@ -60,7 +61,7 @@ export function SharePortalButton({
       }
 
       setPortalUrl(data.url)
-      handleShare(data.url, data.partyName)
+      setIsModalOpen(true)
 
     } catch (err: any) {
       toast.error('Error', 'Portal generation failed')
@@ -69,63 +70,124 @@ export function SharePortalButton({
     }
   }
 
-  const handleShare = (
-    url: string,
-    name?: string
-  ) => {
-    // Copy to clipboard
-    copyToClipboard(url)
+  const handleCopy = () => {
+    if (!portalUrl) return
+    copyToClipboard(portalUrl)
     setCopied(true)
+    toast.success('Copied', 'Portal link copied to clipboard')
     setTimeout(() => setCopied(false), 2000)
+  }
 
-    // Open WhatsApp if phone available
-    if (partyPhone) {
-      const digits = partyPhone
-        .replace(/\D/g, '')
-        .replace(/^0/, '92')
-      const msg = encodeURIComponent(
-        `Assalam o Alaikum ${name || partyName},\n\n` +
-        `Your account portal is ready. ` +
-        `You can view all your invoices, ` +
-        `deliveries, and payment history here:\n\n` +
-        `${url}\n\n` +
-        `This link is private to your account ` +
-        `and valid for 30 days.\n\n` +
-        `_Noxis Hub_`
-      )
-      window.open(
-        `https://wa.me/${digits}?text=${msg}`,
-        '_blank'
-      )
-    } else {
-      toast.success('Success', 'Portal link copied to clipboard')
-    }
+  const handleOpenBrowser = () => {
+    if (!portalUrl) return
+    window.open(portalUrl, '_blank')
+  }
+
+  const handleWhatsAppShare = () => {
+    if (!portalUrl) return
+    const digits = (partyPhone || '')
+      .replace(/\D/g, '')
+      .replace(/^0/, '92')
+    const msg = encodeURIComponent(
+      `Assalam o Alaikum ${partyName},\n\n` +
+      `Your account portal is ready. You can view all your invoices, deliveries, and statement history here:\n\n` +
+      `${portalUrl}\n\n` +
+      `This link is valid for 30 days.\n\n` +
+      `_Noxis Hub_`
+    )
+    window.open(`https://wa.me/${digits}?text=${msg}`, '_blank')
   }
 
   return (
-    <button
-      onClick={generatePortal}
-      disabled={loading}
-      title="Share client portal"
-      className={`flex items-center gap-1.5
-        text-xs px-3 py-1.5 rounded-sm
-        border transition-colors
-        ${portalUrl
-          ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/8'
-          : 'border-white/10 text-gray-500 hover:border-white/20'}`}
-    >
-      {loading ? (
-        <span className="animate-spin">⟳</span>
-      ) : copied ? (
-        <Check size={12} className="text-emerald-400" />
-      ) : (
-        <Share2 size={12} />
+    <>
+      <button
+        onClick={generatePortal}
+        disabled={loading}
+        title="Share client portal"
+        className={`flex items-center gap-1.5
+          text-xs px-3 py-1.5 rounded-sm
+          border transition-colors
+          ${portalUrl
+            ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/8'
+            : 'border-white/10 text-gray-500 hover:border-white/20'}`}
+      >
+        {loading ? (
+          <span className="animate-spin">⟳</span>
+        ) : copied ? (
+          <Check size={12} className="text-emerald-400" />
+        ) : (
+          <Share2 size={12} />
+        )}
+        {loading
+          ? 'Generating...'
+          : 'Share Portal'}
+      </button>
+
+      {/* Share Portal Modal */}
+      {isModalOpen && portalUrl && (
+        <div
+          className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in-0 duration-200"
+          onClick={(e) => { e.stopPropagation(); setIsModalOpen(false); }}
+        >
+          <div
+            className="w-full max-w-lg bg-[#0F1114] border border-emerald-500/30 rounded-sm shadow-2xl p-6 space-y-6 animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div>
+                <h3 className="text-base font-bold text-white uppercase tracking-tight">
+                  Client Portal Link · {partyName}
+                </h3>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">
+                  Private & Valid for 30 Days
+                </p>
+              </div>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-gray-500 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                Portal URL
+              </label>
+              <div className="flex items-center gap-2 bg-[#1A1D21] border border-white/10 p-2.5 rounded-sm">
+                <input
+                  type="text"
+                  readOnly
+                  value={portalUrl}
+                  className="flex-1 bg-transparent text-xs text-emerald-400 font-mono outline-none"
+                />
+                <button
+                  onClick={handleCopy}
+                  className="px-3 py-1.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-widest border border-emerald-500/30 hover:bg-emerald-500/30 transition-all rounded-sm flex items-center gap-1"
+                >
+                  {copied ? <Check size={12} /> : null}
+                  <span>{copied ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                onClick={handleOpenBrowser}
+                className="py-3 px-4 bg-electric-blue/10 border border-electric-blue/30 text-electric-blue text-xs font-bold uppercase tracking-wider hover:bg-electric-blue/20 transition-all rounded-sm flex items-center justify-center gap-2"
+              >
+                🌐 Open Portal
+              </button>
+              <button
+                onClick={handleWhatsAppShare}
+                className="py-3 px-4 bg-[#25D366]/10 border border-[#25D366]/30 text-[#25D366] text-xs font-bold uppercase tracking-wider hover:bg-[#25D366]/20 transition-all rounded-sm flex items-center justify-center gap-2"
+              >
+                💬 WhatsApp (Optional)
+              </button>
+            </div>
+          </div>
+        </div>
       )}
-      {loading
-        ? 'Generating...'
-        : copied
-        ? 'Copied!'
-        : 'Share Portal'}
-    </button>
+    </>
   )
 }

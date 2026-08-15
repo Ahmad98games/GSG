@@ -36,8 +36,6 @@ export async function generatePredictions(
     .select('*')
     .eq('business_id', businessId)
 
-  if (!patterns) return []
-
   // Load current state for context
   const { data: activeInvoices } = await supabase
     .from('invoices')
@@ -48,8 +46,75 @@ export async function generatePredictions(
       party:parties(name, phone)
     `)
     .eq('business_id', businessId)
-    .eq('status', 'posted')
-    .gt('balance_due', 0)
+
+  const { data: skus } = await supabase
+    .from('skus')
+    .select('id, name, sku, quantity, min_stock')
+    .eq('business_id', businessId)
+
+  // Direct Calculation 1: Low Stock & Runout Alerts
+  if (skus && skus.length > 0) {
+    skus.forEach((sku: any) => {
+      const minStock = sku.min_stock || 10
+      if (sku.quantity <= minStock) {
+        predictions.push({
+          id: `stock_${sku.id}`,
+          type: 'stock_runout_prediction',
+          title: `Low Stock Alert: ${sku.name} (${sku.quantity} left)`,
+          detail: `Stock level of ${sku.name} (${sku.sku || 'SKU'}) is ${sku.quantity}, which is at or below the reorder threshold of ${minStock} units. Reorder now to avoid inventory depletion.`,
+          predictedDate: new Date().toISOString().split('T')[0],
+          confidence: 0.95,
+          impact: sku.quantity <= 2 ? 'critical' : 'high',
+          entityLabel: sku.name,
+          draftAction: {
+            label: 'Reorder Product',
+            route: '/inventory?filter=low-stock',
+          },
+          supportingData: {
+            currentQty: sku.quantity,
+            minStock: minStock,
+          },
+        })
+      }
+    })
+  }
+
+  // Direct Calculation 2: Overdue Invoices & Pending Receivables
+  if (activeInvoices && activeInvoices.length > 0) {
+    activeInvoices.forEach((inv: any) => {
+      const balance = Number(inv.balance_due || inv.total_amount || 0)
+      if (balance > 0) {
+        const dueDate = inv.due_date ? new Date(inv.due_date) : new Date(new Date(inv.created_at).getTime() + 30 * 86400000)
+        const daysOverdue = Math.round((now.getTime() - dueDate.getTime()) / 86400000)
+        const partyName = (inv.party as any)?.name || 'Customer'
+
+        if (daysOverdue > 0) {
+          predictions.push({
+            id: `inv_overdue_${inv.id}`,
+            type: 'payment_prediction',
+            title: `Overdue Invoice: ${partyName} (PKR ${balance.toLocaleString('en-PK')})`,
+            detail: `Invoice ${inv.invoice_number || 'INV'} for ${partyName} is ${daysOverdue} days past due date. Outstanding balance: PKR ${balance.toLocaleString('en-PK')}.`,
+            predictedDate: dueDate.toISOString().split('T')[0],
+            confidence: 0.98,
+            impact: daysOverdue > 30 ? 'critical' : 'high',
+            entityLabel: partyName,
+            draftAction: {
+              label: 'Send WhatsApp Reminder',
+              route: `/parties/reminders`,
+              prefill: { partyId: inv.party_id },
+            },
+            supportingData: {
+              invoiceNumber: inv.invoice_number,
+              balanceDue: balance,
+              daysOverdue,
+            },
+          })
+        }
+      }
+    })
+  }
+
+  if (patterns && patterns.length > 0) {
 
   for (const pattern of patterns) {
     const data = pattern.pattern_data
@@ -297,6 +362,7 @@ export async function generatePredictions(
         break
       }
     }
+  }
   }
 
   // Save predictions to database

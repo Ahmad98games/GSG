@@ -135,18 +135,20 @@ export async function runDeltaSync(
     }
 
     // Log sync to Supabase for multi-device sync coordination (safely catch if table missing)
-    try {
-      await supabase.from('hub_sync_log')
-        .insert({
-          business_id: businessId,
-          device_id: 'hub-pc',
-          last_sync_at: new Date(newSyncAt).toISOString(),
-          tables_synced: tablesWithNewData,
-          rows_pulled: totalRowsPulled,
-          sync_duration_ms: durationMs,
-        })
-    } catch (e) {
-      // Ignore if hub_sync_log is local-only
+    if (businessId && businessId !== '00000000-0000-0000-0000-000000000000') {
+      try {
+        await supabase.from('hub_sync_log')
+          .insert({
+            business_id: businessId,
+            device_id: 'hub-pc',
+            last_sync_at: new Date(newSyncAt).toISOString(),
+            tables_synced: tablesWithNewData,
+            rows_pulled: totalRowsPulled,
+            sync_duration_ms: durationMs,
+          })
+      } catch (e) {
+        // Ignore if hub_sync_log is local-only or unauthorized
+      }
     }
 
     console.log(`[DeltaSync] Complete: ${totalRowsPulled} rows in ${durationMs}ms`)
@@ -174,7 +176,7 @@ export async function runDeltaSync(
 export async function bootDeltaSync(
   businessId: string
 ): Promise<DeltaSyncResult | null> {
-  if (!businessId) return null
+  if (!businessId || businessId === '00000000-0000-0000-0000-000000000000') return null
 
   // Get last sync time from electron store
   let lastSyncAt = 0

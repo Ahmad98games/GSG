@@ -521,7 +521,7 @@ if (!gotTheLock) {
   function waitForServer(
     url: string,
     timeout = 90000,
-    interval = 1000
+    interval = 100
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       const start = Date.now();
@@ -539,19 +539,22 @@ if (!gotTheLock) {
           if (done) return;
           if (res.statusCode) {
             done = true;
+            // Pre-warm dashboard route in background for instant first render
+            try {
+              http.get(`${url}/dashboard`, () => {}).on('error', () => {});
+            } catch {}
             resolve();
           } else {
             setTimeout(check, interval);
           }
         });
 
-        req.on('error', (err: any) => {
+        req.on('error', () => {
           if (done) return;
-          startupLog(`[Health Check ERR] ${err.message} (${err.code || 'NO_CODE'})`);
           setTimeout(check, interval);
         });
 
-        req.setTimeout(2000, () => {
+        req.setTimeout(1000, () => {
           req.destroy();
         });
       };
