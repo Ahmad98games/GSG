@@ -28,6 +28,7 @@ import { useLicense } from '@/hooks/useLicense'
 import { useFormDraft }
   from '@/hooks/useFormDraft'
 import { useActionGuard } from '@/hooks/useActionGuard'
+import { GlobalErrorBoundary } from '@/components/ui/GlobalErrorBoundary'
 
 // CRITICAL: Define all static data
 // OUTSIDE the component so they never
@@ -274,6 +275,7 @@ export default function NewInventoryPage() {
   }, [router])
 
   return (
+    <GlobalErrorBoundary>
     <div className="flex flex-col h-full">
 
       {/* HEADER — no heavy logic */}
@@ -567,6 +569,7 @@ export default function NewInventoryPage() {
         </div>
       </div>
     </div>
+    </GlobalErrorBoundary>
   )
 }
 

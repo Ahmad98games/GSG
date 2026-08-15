@@ -33,6 +33,7 @@ import { FieldError } from "@/components/ui/StateViews";
 import { useToast } from "@/hooks/useToast";
 
 import { CURRENCIES, formatCurrency, CurrencyCode } from '@/lib/currency/currencyEngine';
+import { GlobalErrorBoundary } from '@/components/ui/GlobalErrorBoundary';
 
 const CURRENCY_CODES = Object.keys(CURRENCIES) as CurrencyCode[];
 
@@ -572,6 +573,7 @@ export default function NewInvoicePage() {
   
 
   return (
+    <GlobalErrorBoundary>
     <div className="min-h-screen bg-[#0F1113] text-slate-200 font-inter flex">
       
       
@@ -981,5 +983,6 @@ export default function NewInvoicePage() {
         trigger="post_invoice"
       />
     </div>
+    </GlobalErrorBoundary>
   );
 }

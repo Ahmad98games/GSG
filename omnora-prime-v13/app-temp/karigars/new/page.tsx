@@ -16,6 +16,7 @@ import { useBusinessProfile }
 import { useFormDraft }
   from '@/hooks/useFormDraft'
 import { useActionGuard } from '@/hooks/useActionGuard'
+import { GlobalErrorBoundary } from '@/components/ui/GlobalErrorBoundary'
 
 const toast = Object.assign(
   (msg: string, _opts?: any) => {
@@ -282,6 +283,7 @@ export default function NewKarigarPage() {
   }, [form, profile, validate, clearDraft, router, supabase, guard])
 
   return (
+    <GlobalErrorBoundary>
     <div className="flex flex-col h-full">
 
       {/* HEADER */}
@@ -664,6 +666,7 @@ export default function NewKarigarPage() {
         </div>
       </div>
     </div>
+    </GlobalErrorBoundary>
   )
 }
 
