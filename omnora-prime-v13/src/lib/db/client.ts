@@ -3,6 +3,7 @@ import { logger } from '../logger'
 import fs from 'fs'
 import * as schema from './schema'
 import { applyProductionPragmas } from './pragmas'
+import { NOXIS_SCHEMA } from '../../../electron/database/schema'
 
 function getDbPath(): string {
   // Priority 1: Electron passes userData via env
@@ -227,6 +228,15 @@ export const db = new Proxy({} as Record<string, any>, {
         
         _db = initDrizzle(sqlite);
         
+        try {
+          sqlite.exec(NOXIS_SCHEMA);
+          console.log('[DB] Schema applied successfully');
+          const tables = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all() as { name: string }[];
+          console.log(`[DB] Tables: ${tables.map(t => t.name).join(', ')}`);
+        } catch (schemaErr) {
+          console.error('[DB] Schema execution error:', schemaErr);
+        }
+
         // Apply production-tuned performance pragmas
         if (dbPath !== ':memory:') {
           try {
