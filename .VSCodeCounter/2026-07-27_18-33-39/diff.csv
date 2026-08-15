@@ -1,0 +1,55 @@
+"filename", "language", "TypeScript", "TypeScript JSX", "JavaScript", "JSON", "comment", "blank", "total"
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\dist-electron\electron\main.js", "JavaScript", 0, 0, 58, 0, 5, 0, 63
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\dist-electron\electron\preload.js", "JavaScript", 0, 0, 1, 0, 0, 0, 1
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\electron\main.ts", "TypeScript", 156, 0, 0, 0, 5, 31, 192
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\electron\preload.ts", "TypeScript", 65, 0, 0, 0, 0, 0, 65
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\electron\store.ts", "TypeScript", 178, 0, 0, 0, 12, 35, 225
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\package-lock.json", "JSON", 0, 0, 0, 283, 0, 0, 283
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\package.json", "JSON", 0, 0, 0, 2, 0, 0, 2
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\scripts\create-user-license.js", "JavaScript", 0, 0, 23, 0, 0, 5, 28
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\(auth)\login\page.tsx", "TypeScript JSX", 0, 2, 0, 0, 0, 0, 2
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\(onboarding)\license\page.tsx", "TypeScript JSX", 0, 4, 0, 0, 0, 0, 4
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\about\page.tsx", "TypeScript JSX", 0, 4, 0, 0, 0, 0, 4
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\api\dashboard\kpis\route.ts", "TypeScript", 148, 0, 0, 0, 17, 25, 190
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\blog\[slug]\page.tsx", "TypeScript JSX", 0, 2, 0, 0, 0, 0, 2
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\dashboard\page.tsx", "TypeScript JSX", 0, -114, 0, 0, -15, -13, -142
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\inventory\new\page.tsx", "TypeScript JSX", 0, 241, 0, 0, 0, 23, 264
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\inventory\page.tsx", "TypeScript JSX", 0, 24, 0, 0, 2, 4, 30
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\invoices\[id]\page.tsx", "TypeScript JSX", 0, 13, 0, 0, 0, 0, 13
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\invoices\new\page.tsx", "TypeScript JSX", 0, 10, 0, 0, 0, 1, 11
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\invoices\recurring\new\page.tsx", "TypeScript JSX", 0, 22, 0, 0, 0, 3, 25
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\karigars\new\page.tsx", "TypeScript JSX", 0, 247, 0, 0, 1, 25, 273
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\layout.tsx", "TypeScript JSX", 0, 8, 0, 0, 0, 0, 8
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\lock\page.tsx", "TypeScript JSX", 0, 265, 0, 0, 12, 36, 313
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\parties\new\page.tsx", "TypeScript JSX", 0, 205, 0, 0, 0, 22, 227
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\pos\page.tsx", "TypeScript JSX", 0, -17, 0, 0, -4, -2, -23
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\production\grid\page.tsx", "TypeScript JSX", 0, 15, 0, 0, 4, 5, 24
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\promises\page.tsx", "TypeScript JSX", 0, 12, 0, 0, 0, 3, 15
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\purchase\new\page.tsx", "TypeScript JSX", 0, 19, 0, 0, 0, 2, 21
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\settings\general\page.tsx", "TypeScript JSX", 0, 204, 0, 0, 8, 21, 233
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\settings\page.tsx", "TypeScript JSX", 0, 37, 0, 0, 0, 3, 40
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\settings\security\page.tsx", "TypeScript JSX", 0, 225, 0, 0, 7, 23, 255
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\app\weight-entry\page.tsx", "TypeScript JSX", 0, 3, 0, 0, 0, 0, 3
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\components\DraftRecoveryBanner.tsx", "TypeScript JSX", 0, 65, 0, 0, 0, 7, 72
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\components\shell\AppShell.tsx", "TypeScript JSX", 0, -2, 0, 0, 0, 0, -2
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\components\shell\AutoStartRecoveryBanner.tsx", "TypeScript JSX", 0, 53, 0, 0, 1, 8, 62
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\components\shell\CommandPalette.tsx", "TypeScript JSX", 0, 8, 0, 0, 0, 0, 8
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\components\shell\GlobalSearch.tsx", "TypeScript JSX", 0, 1, 0, 0, 0, 0, 1
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\components\shell\IndustrialSidebar.tsx", "TypeScript JSX", 0, -2, 0, 0, 0, 0, -2
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\components\shell\MobileSyncListener.tsx", "TypeScript JSX", 0, 29, 0, 0, 1, 7, 37
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\components\ui\Skeleton.tsx", "TypeScript JSX", 0, 44, 0, 0, 0, 3, 47
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\hooks\useAppLock.ts", "TypeScript", 52, 0, 0, 0, 1, 14, 67
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\hooks\useBusinessProfile.ts", "TypeScript", 1, 0, 0, 0, 0, 0, 1
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\hooks\useFormDraft.ts", "TypeScript", 37, 0, 0, 0, 1, 9, 47
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\hooks\useLicenseValidation.ts", "TypeScript", 1, 0, 0, 0, 0, 0, 1
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\hooks\useMobileSyncToast.ts", "TypeScript", 111, 0, 0, 0, 2, 20, 133
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\hooks\useOptimisticMutation.ts", "TypeScript", -49, 0, 0, 0, -10, -17, -76
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\hooks\useRouteTracking.ts", "TypeScript", 22, 0, 0, 0, 1, 5, 28
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\lib\queryClient.ts", "TypeScript", 1, 0, 0, 0, 1, 0, 2
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\lib\security\authHelpers.ts", "TypeScript", 4, 0, 0, 0, 0, 0, 4
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\lib\supabase\client.ts", "TypeScript", 7, 0, 0, 0, 0, 0, 7
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\lib\sync\deltaSyncEngine.ts", "TypeScript", 128, 0, 0, 0, 9, 21, 158
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\lib\sync\realtimeCDC.ts", "TypeScript", 225, 0, 0, 0, 13, 24, 262
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\providers\AuthProvider.tsx", "TypeScript JSX", 0, 196, 0, 0, 4, 29, 229
+"c:\Users\omnora\OneDrive\Desktop\new_system\omnora-prime-v13\src\providers\SyncProvider.tsx", "TypeScript JSX", 0, 141, 0, 0, 5, 19, 165
+"Total", "-", 1087, 1964, 82, 285, 83, 401, 3902
