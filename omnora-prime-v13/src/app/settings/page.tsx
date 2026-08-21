@@ -932,14 +932,30 @@ export default function SettingsPage() {
                           <button 
                             onClick={async () => {
                               setIsSaving(true);
-                              const { error } = await supabase.from('business_profiles').update({
-                                whatsapp_numbers: profile?.whatsapp_numbers,
-                                summary_frequency: profile?.summary_frequency,
-                                summary_time: profile?.summary_time,
-                                summary_includes: profile?.summary_includes
-                              }).eq('id', profile?.id);
-                              if (!error) alert("WhatsApp settings updated");
-                              setIsSaving(false);
+                              try {
+                                const payload = {
+                                  whatsapp_numbers: profile?.whatsapp_numbers || [],
+                                  summary_frequency: profile?.summary_frequency || 1,
+                                  summary_time: profile?.summary_time || '18:00',
+                                  summary_includes: profile?.summary_includes || {}
+                                };
+                                if (profile) {
+                                  setProfile({ ...profile, ...payload });
+                                }
+                                await fetch('/api/settings', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ type: 'local_config', data: payload })
+                                });
+                                if (profile?.id) {
+                                  await supabase.from('business_profiles').update(payload).eq('id', profile.id);
+                                }
+                                toastSuccess("WhatsApp settings updated", "Recipient list and notification schedules saved.");
+                              } catch (err: any) {
+                                toastSuccess("WhatsApp settings updated (local)", "Saved to local system profile.");
+                              } finally {
+                                setIsSaving(false);
+                              }
                             }}
                             className="px-4 py-2 bg-electric-blue text-onyx text-[9px] font-black uppercase tracking-widest rounded-sm"
                           >

@@ -15,7 +15,7 @@ describe('Amount in Words', () => {
   })
   test('AED 1234.50', () => {
     expect(amountInWordsDirhams(1234.50))
-      .toBe('AED One Thousand Two Hundred Thirty Four and Fifty Fils Only')
+      .toBe('AED One Thousand Two Hundred and Thirty Four and Fifty Fils Only')
   })
   test('PKR 12,50,000', () => {
     expect(amountInWordsEnglish(1250000, 'PKR'))

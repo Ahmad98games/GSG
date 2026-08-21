@@ -68,19 +68,24 @@ export default function PartiesPage() {
 
   const handleToggleBlock = async (party: Party) => {
     try {
+      const newBlockedState = !party.is_blocked;
       const { error } = await supabase
         .from('parties')
         .update({ 
-          is_blocked: !party.is_blocked,
-          blocked_at: !party.is_blocked ? new Date().toISOString() : null
+          is_blocked: newBlockedState,
+          blocked_at: newBlockedState ? new Date().toISOString() : null
         })
         .eq('id', party.id);
       
       if (error) throw error;
+      
       queryClient.invalidateQueries({ queryKey: ['parties_registry'] });
-      setSuccessToast(`${party.name} is now ${!party.is_blocked ? 'blocked' : 'unblocked'}`);
+      queryClient.invalidateQueries({ queryKey: ['parties'] });
+      refetchParties();
+      setSuccessToast(`${party.name} has been ${newBlockedState ? 'blocked' : 'unblocked'}`);
+      toast.success('Account Status Updated', `${party.name} is now ${newBlockedState ? 'blocked' : 'unblocked'}`);
     } catch (err: any) {
-      alert(`Failed to update party status: ${err.message}`);
+      toast.error('Failed to update party status', err.message);
     }
   };
 
@@ -121,14 +126,32 @@ export default function PartiesPage() {
   const { data: parties = [], isLoading, error: partiesError, refetch: refetchParties } = useQuery({
     queryKey: ['parties_registry', businessId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('parties')
-        .select('*')
-        .eq('business_id', businessId)
-        .order('name');
-      if (error) throw error;
-      setLastFetchedAt(new Date());
-      return data;
+      let cachedData: Party[] = [];
+      if (typeof window !== 'undefined' && businessId) {
+        try {
+          const cached = localStorage.getItem(`noxis_cached_parties_${businessId}`);
+          if (cached) cachedData = JSON.parse(cached);
+        } catch {}
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('parties')
+          .select('*')
+          .eq('business_id', businessId)
+          .order('name');
+        if (!error && data) {
+          setLastFetchedAt(new Date());
+          if (typeof window !== 'undefined' && businessId) {
+            try { localStorage.setItem(`noxis_cached_parties_${businessId}`, JSON.stringify(data)); } catch {}
+          }
+          return data;
+        }
+      } catch (err) {
+        console.warn('[Parties] Query failed, using cached data:', err);
+      }
+
+      return cachedData;
     },
     enabled: !!businessId,
     staleTime: 1000,

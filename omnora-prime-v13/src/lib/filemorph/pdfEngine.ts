@@ -312,9 +312,29 @@ export async function compressPdf(
   onProgress?: (p: number) => void
 ): Promise<Uint8Array> {
   if (onProgress) onProgress(20);
-  const pdf = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true, updateMetadata: false });
-  if (onProgress) onProgress(60);
-  const bytes = await pdf.save({ useObjectStreams: true, addDefaultPage: false });
+  const srcPdf = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true, updateMetadata: false });
+  if (onProgress) onProgress(40);
+
+  // Create a brand new clean container to strip orphan objects and stale stream overhead
+  const cleanPdf = await PDFDocument.create();
+  const pageIndices = srcPdf.getPageIndices();
+  const copiedPages = await cleanPdf.copyPages(srcPdf, pageIndices);
+  copiedPages.forEach(p => cleanPdf.addPage(p));
+  if (onProgress) onProgress(80);
+
+  // Strip non-essential metadata headers
+  cleanPdf.setTitle('');
+  cleanPdf.setAuthor('');
+  cleanPdf.setSubject('');
+  cleanPdf.setKeywords([]);
+  cleanPdf.setProducer('Noxis High-Res Compressor');
+  cleanPdf.setCreator('Noxis Hub 13');
+
+  const bytes = await cleanPdf.save({
+    useObjectStreams: true,
+    addDefaultPage: false,
+    objectsPerTick: 50,
+  });
   if (onProgress) onProgress(100);
   return bytes;
 }

@@ -15,14 +15,21 @@ export const revalidate = 0
 
 export default async function UnifiedPortalPage({ params }: Props) {
   const { token } = await params
-  const portalId = token
+  const rawToken = decodeURIComponent(token).trim()
 
-  if (!portalId) {
+  if (!rawToken) {
     return <PortalErrorFallback reason="Missing Portal ID Parameter" />
   }
 
-  // 1. First attempt validating as token session
-  const tokenResult = await validatePortalToken(portalId).catch(() => ({ valid: false, session: null, reason: 'Invalid Token' }))
+  // Extract base token if slug/party name is appended (e.g. "3d15-1d91-c756 _gold she Garments" -> "3d15-1d91-c756")
+  const match = rawToken.match(/^([a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4})/);
+  const baseToken = match ? match[1] : rawToken.split(/[\s_]/)[0];
+
+  // Attempt token validation with baseToken first, then rawToken
+  let tokenResult = await validatePortalToken(baseToken).catch(() => ({ valid: false, session: null, reason: 'Invalid Token' }))
+  if (!tokenResult.valid) {
+    tokenResult = await validatePortalToken(rawToken).catch(() => ({ valid: false, session: null, reason: 'Invalid Token' }))
+  }
   
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || '',
@@ -50,12 +57,19 @@ export default async function UnifiedPortalPage({ params }: Props) {
     if (invRes.status === 'fulfilled') invoices = invRes.value.data || []
     if (payRes.status === 'fulfilled') payments = payRes.value.data || []
   } else {
-    // 2. Fallback: Query party directly by id or portal_token / slug matching portalId
-    const { data: partyData } = await supabase
-      .from('parties')
-      .select('*')
-      .or(`id.eq.${portalId},portal_token.eq.${portalId}`)
-      .maybeSingle()
+    // 2. Fallback: Query party directly by baseToken or rawToken safely using .eq()
+    const { data: p1 } = await supabase.from('parties').select('*').eq('portal_token', baseToken).maybeSingle()
+    let partyData = p1
+
+    if (!partyData) {
+      const { data: p2 } = await supabase.from('parties').select('*').eq('id', baseToken).maybeSingle()
+      if (p2) partyData = p2
+    }
+
+    if (!partyData) {
+      const { data: p3 } = await supabase.from('parties').select('*').eq('portal_token', rawToken).maybeSingle()
+      if (p3) partyData = p3
+    }
 
     if (partyData) {
       party = partyData
@@ -63,7 +77,7 @@ export default async function UnifiedPortalPage({ params }: Props) {
         .from('business_profiles')
         .select('*')
         .eq('id', party.business_id)
-        .single()
+        .maybeSingle()
       business = bizData
 
       const [invRes, payRes] = await Promise.allSettled([
@@ -116,7 +130,7 @@ export default async function UnifiedPortalPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-[#06080B] text-slate-200 font-sans selection:bg-[#C5A059] selection:text-black py-10 px-4 sm:px-8">
-      <div className="max-w-5xl mx-auto space-y-8">
+      <div className="printable-statement max-w-5xl mx-auto space-y-8">
         
         {/* ═══ HEADER BAR ═══ */}
         <header className="bg-[#0D1017] border border-white/[0.08] p-6 sm:p-8 rounded-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-2xl">

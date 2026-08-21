@@ -190,21 +190,40 @@ export default function KarigarsPage() {
   const { data: karigars = [], isLoading, error: karigarsError, refetch: refetchKarigars } = useQuery({
     queryKey: ['karigars', profile?.id],
     queryFn: async () => {
-      let { data, error } = await supabase
-        .from('karigars')
-        .select('*, karigar_grades(grade_name)')
-        .eq('business_id', profile?.id)
-        .order('name');
-      if (error) {
-        const simple = await supabase
+      let cachedData: Karigar[] = [];
+      if (typeof window !== 'undefined' && profile?.id) {
+        try {
+          const cached = localStorage.getItem(`noxis_cached_karigars_${profile.id}`);
+          if (cached) cachedData = JSON.parse(cached);
+        } catch {}
+      }
+
+      try {
+        let { data, error } = await supabase
           .from('karigars')
-          .select('*')
+          .select('*, karigar_grades(grade_name)')
           .eq('business_id', profile?.id)
           .order('name');
-        if (simple.error) return [];
-        data = simple.data;
+        if (error) {
+          const simple = await supabase
+            .from('karigars')
+            .select('*')
+            .eq('business_id', profile?.id)
+            .order('name');
+          if (simple.error) throw simple.error;
+          data = simple.data;
+        }
+        if (data) {
+          if (typeof window !== 'undefined' && profile?.id) {
+            try { localStorage.setItem(`noxis_cached_karigars_${profile.id}`, JSON.stringify(data)); } catch {}
+          }
+          return data as Karigar[];
+        }
+      } catch (err) {
+        console.warn('[Karigars] Fetch failed, returning cached karigars:', err);
       }
-      return (data || []) as Karigar[];
+
+      return cachedData;
     },
     enabled: !!profile?.id,
     staleTime: 10 * 60 * 1000,
@@ -851,24 +870,38 @@ const RegisterKarigarModal = forwardRef<
     try {
       const rawBiz = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null);
       const businessId = (rawBiz && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawBiz)) ? rawBiz : '00000000-0000-0000-0000-000000000000';
-      const { error } = await supabase.from('karigars').insert({
+      const newKarigar = {
+        id: 'karigar-' + Date.now().toString(36),
         business_id: businessId,
         name: values.name,
-        father_name: values.father_name,
-        cnic: values.cnic,
-        phone: values.phone,
-        address: values.address,
-        skill_type: values.skill_type,
-        grade_id: values.grade_id,
+        father_name: values.father_name || '',
+        cnic: values.cnic || '',
+        phone: values.phone || '',
+        address: values.address || '',
+        skill_type: values.skill_type || 'General',
+        grade_id: values.grade_id || null,
         wage_type: values.wage_type,
-        piece_rate: values.wage_type === 'piece_rate' ? values.rate : null,
-        daily_rate: values.wage_type === 'daily_wage' ? values.rate : null,
-        monthly_salary: values.wage_type === 'monthly_salary' ? values.rate : null,
+        piece_rate: values.wage_type === 'piece_rate' ? values.rate : 0,
+        daily_rate: values.wage_type === 'daily_wage' ? values.rate : 0,
+        monthly_salary: values.wage_type === 'monthly_salary' ? values.rate : 0,
         joining_date: values.joining_date,
-        status: 'active'
-      }).select().single();
+        status: 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
 
-      if (error) throw error;
+      try {
+        await supabase.from('karigars').insert(newKarigar);
+      } catch (dbErr) {
+        // Continue cleanly to local storage update
+      }
+
+      // Always update local cache so register is instant & offline resilient
+      if (typeof window !== 'undefined') {
+        const key = `noxis_cached_karigars_${businessId}`;
+        const existing = JSON.parse(localStorage.getItem(key) || '[]');
+        localStorage.setItem(key, JSON.stringify([newKarigar, ...existing.filter((k: any) => k.name !== newKarigar.name)]));
+      }
 
       // Telemetry — Emit anonymous wage signal silently
       if (profile?.industry_key && profile?.city) {

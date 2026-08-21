@@ -51,15 +51,33 @@ export function usePurchaseOrders(status?: string) {
   return useQuery({
     queryKey: ['purchase-orders', status],
     queryFn: async () => {
-      let query = supabase
-        .from('purchase_orders')
-        .select('*, supplier:parties(name)');
-      
-      if (status) query = query.eq('status', status);
-      
-      const { data, error } = await query.order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
+      let cachedData: any[] = [];
+      if (typeof window !== 'undefined') {
+        try {
+          const raw = localStorage.getItem('noxis_cached_purchase_orders');
+          if (raw) cachedData = JSON.parse(raw);
+        } catch {}
+      }
+
+      try {
+        let query = supabase
+          .from('purchase_orders')
+          .select('*, supplier:parties(name)');
+        
+        if (status) query = query.eq('status', status);
+        
+        const { data, error } = await query.order('created_at', { ascending: false });
+        if (!error && data) {
+          if (typeof window !== 'undefined') {
+            try { localStorage.setItem('noxis_cached_purchase_orders', JSON.stringify(data)); } catch {}
+          }
+          return data;
+        }
+      } catch (err) {
+        console.warn('[Purchase] Fetch failed, returning cached purchase orders:', err);
+      }
+
+      return cachedData;
     }
   });
 }

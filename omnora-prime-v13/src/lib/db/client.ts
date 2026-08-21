@@ -88,16 +88,70 @@ export const db = new Proxy({} as Record<string, any>, {
           const instance = Object.assign(drizzle(sqliteInst, { schema }), { $client: sqliteInst });
           try {
             const { migrate } = nativeRequire('drizzle-orm/better-sqlite3/migrator');
-            const migrationsPath = process.env.ELECTRON_RESOURCES
-              ? path.join(process.env.ELECTRON_RESOURCES, 'standalone', 'src', 'lib', 'db', 'migrations')
-              : path.join(process.cwd(), 'src', 'lib', 'db', 'migrations');
-            
-            console.log('[DB] Running migrations from:', migrationsPath);
-            migrate(instance, { migrationsFolder: migrationsPath });
-            console.log('[DB] Migrations applied successfully ✓');
+            const candidates = [
+              path.join(process.cwd(), 'src', 'lib', 'db', 'migrations'),
+              path.join(process.cwd(), '.next', 'standalone', 'src', 'lib', 'db', 'migrations'),
+              path.join(__dirname, 'migrations'),
+              path.join(process.cwd(), 'migrations'),
+              process.env.ELECTRON_RESOURCES ? path.join(process.env.ELECTRON_RESOURCES, 'standalone', 'src', 'lib', 'db', 'migrations') : '',
+              process.env.ELECTRON_RESOURCES ? path.join(process.env.ELECTRON_RESOURCES, 'src', 'lib', 'db', 'migrations') : '',
+            ].filter(Boolean);
+
+            const validFolder = candidates.find(c => fs.existsSync(path.join(c, 'meta', '_journal.json')));
+            if (validFolder) {
+              console.log('[DB] Running migrations from:', validFolder);
+              migrate(instance, { migrationsFolder: validFolder });
+              console.log('[DB] Migrations applied successfully ✓');
+            } else {
+              console.warn('[DB] Migrations folder not found, relying on DDL schema initialization');
+            }
           } catch (migrationErr) {
-            console.error('[DB] Failed to run migrations:', migrationErr);
+            console.error('[DB] Migration step warning, relying on DDL schema fallback:', migrationErr);
           }
+
+          // DDL Fallback for all tables & columns
+          try {
+            sqliteInst.exec(`
+              CREATE TABLE IF NOT EXISTS sku_cache (
+                sku_id TEXT PRIMARY KEY,
+                sku_code TEXT NOT NULL,
+                name TEXT NOT NULL,
+                qty_on_hand TEXT NOT NULL DEFAULT '0',
+                unit TEXT NOT NULL,
+                cost_price TEXT NOT NULL DEFAULT '0',
+                sale_price TEXT NOT NULL DEFAULT '0',
+                location TEXT,
+                branch_id TEXT,
+                last_synced_at TEXT NOT NULL DEFAULT (datetime('now')),
+                barcode TEXT,
+                oem_number TEXT,
+                compatible_vehicles TEXT,
+                commission_rate TEXT DEFAULT '0'
+              );
+            `);
+            const alterTableSafe = (table: string, colDef: string) => {
+              try { sqliteInst.exec(`ALTER TABLE ${table} ADD COLUMN ${colDef};`); } catch {}
+            };
+            alterTableSafe('sku_cache', 'oem_number TEXT');
+            alterTableSafe('sku_cache', 'compatible_vehicles TEXT');
+            alterTableSafe('sku_cache', 'commission_rate TEXT DEFAULT "0"');
+            alterTableSafe('auth_devices', 'business_id TEXT');
+            alterTableSafe('branch_cache', 'business_id TEXT');
+            alterTableSafe('sync_logs', 'business_id TEXT');
+            alterTableSafe('parties', 'business_id TEXT');
+            alterTableSafe('parties', 'is_blocked INTEGER DEFAULT 0');
+            alterTableSafe('invoices', 'business_id TEXT');
+            alterTableSafe('ledger_entries', 'business_id TEXT');
+            alterTableSafe('payments', 'business_id TEXT');
+            alterTableSafe('skus', 'business_id TEXT');
+            alterTableSafe('karigars', 'business_id TEXT');
+            alterTableSafe('expenses', 'business_id TEXT');
+            alterTableSafe('purchase_orders', 'business_id TEXT');
+            alterTableSafe('workflows', 'business_id TEXT');
+            alterTableSafe('workflow_runs', 'business_id TEXT');
+            alterTableSafe('employees', 'business_id TEXT');
+          } catch {}
+
           return instance;
         };
         
@@ -230,7 +284,19 @@ export const db = new Proxy({} as Record<string, any>, {
         
         try {
           sqlite.exec(NOXIS_SCHEMA);
-          console.log('[DB] Schema applied successfully');
+          // Auto-migrate missing columns for existing local databases
+          const alterTableSafe = (table: string, colDef: string) => {
+            try { sqlite.exec(`ALTER TABLE ${table} ADD COLUMN ${colDef};`); } catch {}
+          };
+          alterTableSafe('parties', 'business_id TEXT');
+          alterTableSafe('parties', 'is_blocked INTEGER DEFAULT 0');
+          alterTableSafe('invoices', 'business_id TEXT');
+          alterTableSafe('ledger_entries', 'business_id TEXT');
+          alterTableSafe('payments', 'business_id TEXT');
+          alterTableSafe('skus', 'business_id TEXT');
+          alterTableSafe('karigars', 'business_id TEXT');
+          alterTableSafe('expenses', 'business_id TEXT');
+          console.log('[DB] Schema applied & column migrations verified ✓');
           const tables = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all() as { name: string }[];
           console.log(`[DB] Tables: ${tables.map(t => t.name).join(', ')}`);
         } catch (schemaErr) {

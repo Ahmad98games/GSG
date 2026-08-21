@@ -137,8 +137,26 @@ export default function KhataPage() {
         .select('*, accounts(name, type), parties(name, phone, current_balance)')
         .eq('business_id', businessId)
         .order('posted_at', { ascending: false });
-      if (error) throw error;
-      return data as LedgerEntry[];
+
+      if (!error && data) return data as LedgerEntry[];
+
+      const { data: plainEntries, error: plainError } = await supabase
+        .from('ledger_entries')
+        .select('*')
+        .eq('business_id', businessId)
+        .order('posted_at', { ascending: false });
+
+      if (plainError) throw plainError;
+
+      return (plainEntries || []).map((entry: any) => {
+        const acc = accounts.find((a: any) => a.id === entry.account_id);
+        const party = parties.find((p: any) => p.id === entry.party_id);
+        return {
+          ...entry,
+          accounts: entry.accounts || (acc ? { name: acc.name, type: acc.type } : { name: 'Account', type: 'asset' }),
+          parties: entry.parties || (party ? { name: party.name, phone: party.phone, current_balance: party.current_balance } : null),
+        };
+      }) as LedgerEntry[];
     },
     enabled: !!businessId,
   });

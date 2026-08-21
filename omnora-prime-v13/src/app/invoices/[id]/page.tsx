@@ -308,12 +308,60 @@ export default function InvoiceDetailPage() {
   const { data: invoice, isLoading: invoiceLoading } = useQuery<Invoice>({
     queryKey: ['invoice', invoiceId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      if (!invoiceId || invoiceId === 'null' || invoiceId === 'undefined' || invoiceId === '[object Object]') {
+        throw new Error('Invalid Invoice ID');
+      }
+
+      // Step 1: Try fetching by ID with joined party
+      let { data } = await supabase
         .from('invoices')
         .select('*, party:parties(*)')
         .eq('id', invoiceId)
-        .single();
-      if (error) throw error;
+        .maybeSingle();
+
+      // Step 2: Try fetching by invoice_no with joined party
+      if (!data) {
+        const { data: byNo } = await supabase
+          .from('invoices')
+          .select('*, party:parties(*)')
+          .eq('invoice_no', invoiceId)
+          .maybeSingle();
+        if (byNo) data = byNo;
+      }
+
+      // Step 3: Fallback query without relationship join (prevents PostgREST schema cache join errors)
+      if (!data) {
+        let { data: rawInv } = await supabase
+          .from('invoices')
+          .select('*')
+          .eq('id', invoiceId)
+          .maybeSingle();
+
+        if (!rawInv) {
+          const { data: rawByNo } = await supabase
+            .from('invoices')
+            .select('*')
+            .eq('invoice_no', invoiceId)
+            .maybeSingle();
+          if (rawByNo) rawInv = rawByNo;
+        }
+
+        if (rawInv) {
+          data = rawInv;
+          if (data.party_id) {
+            const { data: partyData } = await supabase
+              .from('parties')
+              .select('*')
+              .eq('id', data.party_id)
+              .maybeSingle();
+            if (partyData) {
+              data.party = partyData;
+            }
+          }
+        }
+      }
+
+      if (!data) throw new Error('Invoice not found');
       return data as Invoice;
     }
   });
@@ -321,12 +369,18 @@ export default function InvoiceDetailPage() {
   const { data: items } = useQuery<InvoiceItem[]>({
     queryKey: ['invoice_items', invoiceId],
     queryFn: async () => {
+      const targetId = invoice?.id || invoiceId;
       const { data, error } = await supabase
         .from('invoice_items')
         .select('*, sku:skus(sku_code, name)')
-        .eq('invoice_id', invoiceId);
-      if (error) throw error;
-      return (data as InvoiceItem[]) || [];
+        .eq('invoice_id', targetId);
+      if (!error && data) return data as InvoiceItem[];
+
+      const { data: fallbackItems } = await supabase
+        .from('invoice_items')
+        .select('*')
+        .eq('invoice_id', targetId);
+      return (fallbackItems as InvoiceItem[]) || [];
     },
     enabled: !!invoice
   });
@@ -530,6 +584,45 @@ export default function InvoiceDetailPage() {
     }
   };
 
+  const handleDownloadPDF = async () => {
+    if (!invoice) return;
+    try {
+      toast.info('Generating PDF...', 'Preparing vector PDF document for download.');
+      const { generateInvoicePDF } = await import('@/lib/accounting/generateInvoice');
+      generateInvoicePDF({
+        businessName: business?.business_name || profile?.business_name || 'Noxis Business Engine',
+        businessPhone: business?.phone || profile?.phone || '',
+        businessAddress: business?.address || profile?.address || '',
+        type: invoice.tax_amount > 0 ? 'tax_invoice' : 'invoice',
+        invoiceNumber: invoice.invoice_no,
+        invoiceDate: invoice.issue_date,
+        dueDate: invoice.due_date || undefined,
+        partyName: invoice.party?.name || 'Customer',
+        partyPhone: invoice.party?.phone || undefined,
+        partyAddress: invoice.party?.address || undefined,
+        items: (items || []).map(item => ({
+          description: item.sku?.name || item.description || 'Line Item',
+          quantity: item.qty || 1,
+          unit: item.unit || 'pcs',
+          unitPrice: item.unit_price || 0,
+          totalPrice: item.line_total || ((item.qty || 0) * (item.unit_price || 0)) || 0,
+        })),
+        currency: business?.currency || profile?.currency || 'PKR',
+        subtotal: invoice.subtotal || 0,
+        discountAmount: invoice.discount_amount || 0,
+        taxLabel: 'TAX',
+        taxRate: invoice.tax_pct || 0,
+        taxAmount: invoice.tax_amount || 0,
+        grandTotal: invoice.total || 0,
+        balanceDue: invoice.balance_due,
+      });
+      toast.success('PDF Downloaded', `Saved Invoice-${invoice.invoice_no}.pdf`);
+    } catch (err: any) {
+      console.error('PDF Generation Failed:', err);
+      window.print();
+    }
+  };
+
   if (invoiceLoading) return (
     <div className="min-h-screen bg-[#0F1113] flex items-center justify-center font-mono text-[10px] uppercase tracking-[0.5em] text-gray-700 animate-pulse">
       Compiling Fiscal Statement...
@@ -568,7 +661,7 @@ export default function InvoiceDetailPage() {
         <div className="p-8 max-w-[1600px] mx-auto w-full flex flex-col lg:flex-row gap-8 print:p-0 print:max-w-none">
            {/* LEFT: INVOICE DOCUMENT (60%) */}
            <section className="flex-1 lg:max-w-[1000px] print:w-full">
-              <div className="bg-white text-black min-h-[1100px] p-12 shadow-2xl shadow-black/50 flex flex-col print:shadow-none print:p-8">
+              <div className="invoice-preview bg-white text-black min-h-[1100px] p-12 shadow-2xl shadow-black/50 flex flex-col print:shadow-none print:p-8">
                  {/* Header */}
                  <div className="flex justify-between items-start mb-16">
                     <div className="space-y-4">
@@ -792,7 +885,7 @@ export default function InvoiceDetailPage() {
 
                   <div className="space-y-3 pt-8 border-t border-white/5">
                      <button
-                       onClick={() => window.print()}
+                       onClick={handleDownloadPDF}
                        className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 border border-white/5 transition-all group"
                      >
                         <div className="flex items-center space-x-3">

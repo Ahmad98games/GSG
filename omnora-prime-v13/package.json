@@ -20,6 +20,7 @@
                     "test:ui":  "vitest --ui",
                     "test:ci":  "vitest run --reporter=junit --outputFile=test-results.xml",
                     "compile:electron":  "tsc -p electron/tsconfig.json",
+                    "electron:compile":  "tsc -p electron/tsconfig.json",
                     "seed:demo":  "npx ts-node scripts/seed-demo-data.ts",
                     "clean":  "taskkill /F /IM \"Noxis Hub.exe\" /T /FI \"STATUS eq RUNNING\" \u003eNUL 2\u003eNUL \u0026 taskkill /F /IM Noxis.exe /T /FI \"STATUS eq RUNNING\" \u003eNUL 2\u003eNUL \u0026 rimraf dist dist-electron \u0026 ver \u003e NUL",
                     "electron:dev":  "npm run compile:electron \u0026\u0026 electron .",

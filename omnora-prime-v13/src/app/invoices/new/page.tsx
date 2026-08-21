@@ -287,6 +287,16 @@ export default function NewInvoicePage() {
         console.warn('[Invoice] Account check/seed non-fatal:', seedCheckErr.message);
       }
 
+      const extractInvId = (input: any): string | null => {
+        if (!input) return null;
+        if (typeof input === 'string') return input;
+        if (Array.isArray(input) && input.length > 0) return extractInvId(input[0]);
+        if (typeof input === 'object') {
+          return input.id || input.invoice_id || input.inv_id || input.p_invoice_id || null;
+        }
+        return null;
+      };
+
       let invId: string | null = null;
       
       // Attempt database RPC first
@@ -304,6 +314,9 @@ export default function NewInvoicePage() {
         p_currency: values.currency,
         p_exchange_rate: values.exchange_rate
       });
+      if (!rpcError && data) {
+        invId = extractInvId(data);
+      }
 
       if (rpcError) {
         console.warn("RPC create_invoice_atomic error/missing. Executing resilient client-side transaction fallback.", rpcError);
@@ -437,9 +450,10 @@ export default function NewInvoicePage() {
         ];
 
         for (const payload of candidatePayloads) {
-          const res = await supabase.from('invoices').insert(payload).select('id').single();
-          if (!res.error && res.data?.id) {
-            invId = res.data.id;
+          const res = await supabase.from('invoices').insert(payload).select('id');
+          const candidateId = extractInvId(res.data);
+          if (!res.error && candidateId) {
+            invId = candidateId;
             lastInsErr = null;
             break;
           } else {
@@ -448,8 +462,21 @@ export default function NewInvoicePage() {
           }
         }
 
-        if (!invId && lastInsErr) {
-          throw lastInsErr;
+        if (!invId && profile?.id && values.invoice_no) {
+          const { data: fallbackInv } = await supabase
+            .from('invoices')
+            .select('id')
+            .eq('business_id', profile.id)
+            .eq('invoice_no', values.invoice_no)
+            .maybeSingle();
+          if (fallbackInv?.id) {
+            invId = fallbackInv.id;
+          }
+        }
+
+        if (!invId) {
+          if (lastInsErr) throw lastInsErr;
+          throw new Error("Invoice was created but its ID could not be resolved.");
         }
 
         // 5. Insert Invoice Items with fallback resilience
@@ -572,7 +599,16 @@ export default function NewInvoicePage() {
       } else {
         // RPC succeeded — also update party balance (belt-and-suspenders;
         // the stored procedure may already do this, but we ensure consistency)
-        invId = data;
+        invId = extractInvId(data) || invId;
+        if (!invId && profile?.id && values.invoice_no) {
+          const { data: fallbackInv } = await supabase
+            .from('invoices')
+            .select('id')
+            .eq('business_id', profile.id)
+            .eq('invoice_no', values.invoice_no)
+            .maybeSingle();
+          if (fallbackInv?.id) invId = fallbackInv.id;
+        }
         try {
           const { data: currentParty } = await supabase
             .from('parties')

@@ -57,42 +57,98 @@ export default function LoginPage() {
 
     try {
       if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
-        await Promise.race([
-          supabase.auth.signInWithPassword({ email, password }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Offline Timeout')), 500))
-        ])
-      }
-    } catch (e) {}
+        const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
 
-    // Establish Local Master Session & License (guaranteed zero network block)
+        if (authErr) {
+          if (isNetworkError(authErr)) {
+            setIsOfflineError(true);
+          } else {
+            setError(authErr.message || 'Invalid email or password');
+            setIsLoading(false);
+            return;
+          }
+        } else if (authData?.user) {
+          // Fetch user's business profile from DB
+          const { data: bizProfile } = await supabase
+            .from('business_profiles')
+            .select('*')
+            .eq('user_id', authData.user.id)
+            .maybeSingle();
+
+          const userProfile = {
+            id: bizProfile?.id || authData.user.id,
+            user_id: authData.user.id,
+            business_name: bizProfile?.business_name || `${email.split('@')[0]}'s Business`,
+            owner_name: bizProfile?.owner_name || email.split('@')[0],
+            tier: bizProfile?.tier || 'pro',
+            currency: bizProfile?.base_currency || 'PKR',
+            city: bizProfile?.city || 'Lahore',
+            country_code: bizProfile?.country_code || 'PK',
+          };
+
+          const userLicense = {
+            id: 'noxis-active-license',
+            key: 'NOXIS-ACTIVE-USER-2026',
+            tier: 'pro',
+            customerName: userProfile.owner_name,
+            expiresAt: '2030-01-01',
+            maxDevices: 10,
+            activatedAt: Date.now(),
+            cacheExpires: Date.now() + 365 * 24 * 60 * 60 * 1000,
+            isValid: true,
+          };
+
+          localStorage.setItem('noxis-business-profile', JSON.stringify(userProfile));
+          localStorage.setItem('noxis_business_id', userProfile.id);
+          localStorage.setItem('noxis_license', JSON.stringify(userLicense));
+          localStorage.setItem('noxis_session_started', 'true');
+          if (typeof document !== 'undefined') {
+            document.cookie = `noxis_license_active=true; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Strict`;
+          }
+          router.push("/dashboard");
+          return;
+        }
+      }
+    } catch (e: any) {
+      if (isNetworkError(e)) {
+        setIsOfflineError(true);
+      }
+    }
+
+    // Offline / Fallback Local Master Session
     try {
+      const fallbackUser = email ? email.split('@')[0] : 'Operator';
       const localProfile = {
         id: '00000000-0000-0000-0000-000000000000',
-        business_name: 'Noxis Factory Workstation',
-        owner_name: email ? email.split('@')[0] : 'Factory Admin',
+        business_name: `${fallbackUser}'s Workstation`,
+        owner_name: fallbackUser,
         tier: 'pro',
         currency: 'PKR',
         city: 'Lahore',
-      }
+      };
       const defaultLicense = {
         id: 'freemium-tier-node',
         key: 'NOXIS-FREEMIUM-DEFAULT-2026',
         tier: 'pro',
-        customerName: 'Workstation Operator',
+        customerName: fallbackUser,
         expiresAt: '2030-01-01',
         maxDevices: 10,
         activatedAt: Date.now(),
         cacheExpires: Date.now() + 365 * 24 * 60 * 60 * 1000,
         isValid: true,
-      }
-      localStorage.setItem('noxis-business-profile', JSON.stringify(localProfile))
-      localStorage.setItem('noxis_license', JSON.stringify(defaultLicense))
-      localStorage.setItem('noxis_session_started', 'true')
+      };
+      localStorage.setItem('noxis-business-profile', JSON.stringify(localProfile));
+      localStorage.setItem('noxis_business_id', localProfile.id);
+      localStorage.setItem('noxis_license', JSON.stringify(defaultLicense));
+      localStorage.setItem('noxis_session_started', 'true');
       if (typeof document !== 'undefined') {
-        document.cookie = `noxis_license_active=true; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Strict`
+        document.cookie = `noxis_license_active=true; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Strict`;
       }
       router.push("/dashboard");
-    } catch (e) {
+    } catch {
       router.push("/dashboard");
     } finally {
       setIsLoading(false);

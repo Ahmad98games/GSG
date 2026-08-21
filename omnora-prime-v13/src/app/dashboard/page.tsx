@@ -211,9 +211,9 @@ export default function OwnerDashboard() {
         totalKarigars: raw.totalKarigars || 0,
         absentToday: Math.max(0, (raw.totalKarigars || 0) - (raw.attendanceToday || 0)),
 
-        revenueThisMonth: invoices.reduce((s: number, i: any) => s + (i.subtotal || 0), 0),
+        revenueThisMonth: invoices.reduce((s: number, i: any) => s + (i.subtotal ?? i.total ?? i.total_amount ?? 0), 0),
         invoiceCount: invoices.length,
-        pendingReceivables: receivablesData.reduce((s: number, i: any) => s + (i.total_amount || 0), 0),
+        pendingReceivables: receivablesData.reduce((s: number, i: any) => s + (i.balance_due ?? i.total_amount ?? i.total ?? 0), 0),
         overdueCount: overdueInvoices.length,
 
         stockValue: stock.reduce((s: number, i: any) => s + ((i.qty_on_hand || 0) * (i.cost_price || 0)), 0),

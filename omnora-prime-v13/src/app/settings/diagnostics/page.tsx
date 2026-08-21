@@ -85,29 +85,29 @@ export default function DiagnosticsPage() {
                 icon={Cloud} 
                 title="Cloud Handshake" 
                 subtitle="Supabase Integration"
-                status={data?.supabase.status || 'loading'} 
-                detail={data?.supabase.detail as string} 
+                status={data?.supabase?.status || 'loading'} 
+                detail={data?.supabase?.detail as string} 
               />
               <CheckCard 
                 icon={Database} 
                 title="Local Storage" 
                 subtitle="SQLite Registry"
-                status={data?.sqlite.status || 'loading'} 
-                detail={data?.sqlite.detail as string} 
+                status={data?.sqlite?.status || 'loading'} 
+                detail={data?.sqlite?.detail as string} 
               />
               <CheckCard 
                 icon={Network} 
                 title="Mesh Network" 
                 subtitle="TCP Hub Status"
-                status={data?.tcp.status || 'loading'} 
-                detail={data?.tcp.detail as string} 
+                status={data?.tcp?.status || 'loading'} 
+                detail={data?.tcp?.detail as string} 
               />
               <CheckCard 
                 icon={Package} 
                 title="Synchronization" 
                 subtitle="Cloud Data Queue"
-                status={data?.sync.status || 'loading'} 
-                detail={data?.sync.detail as string} 
+                status={data?.sync?.status || 'loading'} 
+                detail={data?.sync?.detail as string} 
               />
 
            </div>
@@ -118,11 +118,11 @@ export default function DiagnosticsPage() {
                     <ShieldCheck size={18} className="text-[#C5A059]" />
                     <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white">Security & Environment</h3>
                  </div>
-                 <StatusBadge status={data?.env.status || 'loading'} />
+                 <StatusBadge status={data?.env?.status || 'loading'} />
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                 {(data?.env.detail as any[])?.map((env: any) => (
+                 {(data?.env?.detail as any[])?.map((env: any) => (
                     <div key={env.key} className="flex items-center justify-between p-4 bg-black/50 border border-white/5 rounded-sm">
                        <span className="text-[10px] font-mono text-slate-500">{env.key}</span>
                        <span className={cn(

@@ -30,30 +30,61 @@ export default function LocalizationPage() {
 
   const saveSettings = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from('business_profiles')
-        .update({
+      const profileId = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null) || '00000000-0000-0000-0000-000000000000';
+      
+      // Try updating Supabase
+      try {
+        await supabase
+          .from('business_profiles')
+          .update({
+            country_code: form.country_code,
+            currency: form.currency,
+            tax_label: form.tax_label,
+            tax_rate: form.tax_rate,
+            industry_key: form.industry,
+            industry_type: form.industry,
+          })
+          .eq('id', profileId);
+      } catch (e) {
+        // Fallback to local storage update
+      }
+
+      // Persist to local storage business profile
+      if (typeof window !== 'undefined') {
+        const raw = localStorage.getItem('noxis-business-profile');
+        const existing = raw ? JSON.parse(raw) : {};
+        const updated = {
+          ...existing,
+          id: profileId,
           country_code: form.country_code,
           currency: form.currency,
+          base_currency: form.currency,
           tax_label: form.tax_label,
           tax_rate: form.tax_rate,
           industry_key: form.industry,
           industry_type: form.industry,
-        })
-        .eq('id', profile!.id)
-      if (error) throw error
+        };
+        localStorage.setItem('noxis-business-profile', JSON.stringify(updated));
+
+        try {
+          await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ local_config: updated }),
+          });
+        } catch {}
+      }
     },
     onSuccess: async () => {
-      // Automatic global cache invalidation is enough to refresh the app state
       await queryClient.invalidateQueries({
         queryKey: ['business-profile']
-      })
-      toast.success('Localization updated', 'Settings re-applied successfully.')
+      });
+      toast.success('Localization updated', 'Settings re-applied successfully.');
     },
     onError: () => {
-      toast.error('Could not save settings')
+      toast.error('Could not save settings');
     },
-  })
+  });
 
   const INPUT = 'w-full bg-[#161A1F] border border-white/8 text-white text-xs px-3 py-2.5 outline-none focus:border-[#60A5FA]/40'
   const LABEL = 'text-[10px] font-bold uppercase tracking-widest text-gray-500 block mb-1.5'

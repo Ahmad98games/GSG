@@ -15,6 +15,20 @@
       "when": 1780773443000,
       "tag": "0001_add_missing_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1780773500000,
+      "tag": "0002_mobile_bridge_devices",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1780773600000,
+      "tag": "0003_add_auto_parts_fields",
+      "breakpoints": true
     }
   ]
 }

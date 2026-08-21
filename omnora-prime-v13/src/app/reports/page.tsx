@@ -436,24 +436,6 @@ export default function ReportsHubPage() {
     </div>
   );
 
-  // Zero-data empty state: show clean message with zeroes, not skeletons
-  if (ledgerData === 0 || ledgerData === null) return (
-    <div className="min-h-screen bg-[#0F1113] text-slate-200 p-6 flex flex-col">
-      <header className="h-16 border-b border-white/5 flex items-center px-8 bg-[#1A1D21]/50 backdrop-blur-md sticky top-0 z-40 -mx-6 -mt-6 mb-6">
-        <div className="flex items-center text-[10px] uppercase tracking-[0.2em] text-gray-500 font-medium">
-          <span className="text-white">Reports Overview</span>
-        </div>
-      </header>
-      <div className="flex-1 flex items-center justify-center">
-        <EmptyState
-          icon="📊"
-          title="No data for this period"
-          description="Post your first invoice or record a transaction to see financial reports with real data."
-          action={{ label: 'Create first invoice', href: '/invoices/new' }}
-        />
-      </div>
-    </div>
-  );
 
   return (
     <div className="min-h-screen bg-[#0F1113] text-slate-200 p-6">

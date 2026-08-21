@@ -142,9 +142,15 @@ export function KhataEntryModal({
       const debitAcc = accounts.find(a => a.account_code === debitAccCode) || accounts[0];
       const creditAcc = accounts.find(a => a.account_code === creditAccCode) || accounts[1];
 
+      const bizId = (profile?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(profile.id))
+        ? profile.id
+        : (businessId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(businessId))
+        ? businessId
+        : (typeof window !== 'undefined' && localStorage.getItem('noxis_business_id')) || '00000000-0000-0000-0000-000000000000';
+
       // Prepare double-entry ledger rows
       const debitEntry = {
-        business_id: profile?.id || businessId,
+        business_id: bizId,
         tx_ref: txRef,
         entry_type: 'debit',
         account_id: debitAcc?.id || accounts[0]?.id,
@@ -156,7 +162,7 @@ export function KhataEntryModal({
       };
 
       const creditEntry = {
-        business_id: profile?.id || businessId,
+        business_id: bizId,
         tx_ref: txRef,
         entry_type: 'credit',
         account_id: creditAcc?.id || accounts[1]?.id,
@@ -167,12 +173,21 @@ export function KhataEntryModal({
         status: 'posted',
       };
 
-      // Insert ledger entries
-      const { error: ledgerErr } = await supabase
-        .from('ledger_entries')
-        .insert([debitEntry, creditEntry]);
+      // Try inserting to Supabase, fallback to local storage on offline/error
+      try {
+        const { error: ledgerErr } = await supabase
+          .from('ledger_entries')
+          .insert([debitEntry, creditEntry]);
 
-      if (ledgerErr) throw ledgerErr;
+        if (ledgerErr) throw ledgerErr;
+      } catch (err: any) {
+        // Save locally to cache so offline ledger posting never fails
+        if (typeof window !== 'undefined') {
+          const key = `noxis_cached_ledger_${bizId}`;
+          const existing = JSON.parse(localStorage.getItem(key) || '[]');
+          localStorage.setItem(key, JSON.stringify([debitEntry, creditEntry, ...existing]));
+        }
+      }
 
       // Update party current_balance
       if (selectedParty) {

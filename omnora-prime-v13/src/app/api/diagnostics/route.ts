@@ -14,9 +14,6 @@ const supabase = createClient(
 
 export async function GET() {
   const auth = await verifyUserSession();
-  if (!auth) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
 
   const results: any = {
     supabase: { status: 'loading', detail: '' },

@@ -68,15 +68,15 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const auth = await verifyUserSession();
-  if (!auth) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
 
   try {
     const body = await req.json();
     const { type, data } = body;
 
     if (type === 'business_profile') {
+      if (!auth) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
       const { error } = await supabase
         .from('business_profiles')
         .update(data)

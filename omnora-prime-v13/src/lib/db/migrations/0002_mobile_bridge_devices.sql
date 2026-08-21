@@ -14,9 +14,6 @@ ALTER TABLE `authorized_devices` ADD COLUMN `is_revoked` integer DEFAULT 0 NOT N
 --> statement-breakpoint
 ALTER TABLE `authorized_devices` ADD COLUMN `created_at` text DEFAULT (datetime('now')) NOT NULL;
 --> statement-breakpoint
--- Allow meshKey to be empty for mobile-only device rows
--- (NSP rows will still have a mesh_key, mobile rows use device_id instead)
---> statement-breakpoint
 CREATE INDEX IF NOT EXISTS `idx_auth_devices_business` ON `authorized_devices` (`business_id`);
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS `idx_auth_devices_device_id` ON `authorized_devices` (`device_id`);

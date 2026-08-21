@@ -65,6 +65,36 @@ export default function CustomerPortalPage() {
   const { business, party, summary, invoices } = data;
   const getStatusStyle = (s: string) => s === 'paid' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : s === 'issued' ? "bg-blue-500/10 text-blue-500 border-blue-500/20" : s === 'overdue' ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-white/5 text-gray-400 border-white/10";
 
+  const handleDownloadSingleInvoice = async (inv: any) => {
+    try {
+      const { generateInvoicePDF } = await import('@/lib/accounting/generateInvoice');
+      generateInvoicePDF({
+        businessName: business.business_name || 'Noxis Business Engine',
+        invoiceNumber: inv.invoice_no,
+        invoiceDate: inv.issue_date || new Date().toISOString().split('T')[0],
+        dueDate: inv.due_date || undefined,
+        partyName: party.name,
+        partyPhone: party.phone || undefined,
+        items: [
+          {
+            description: `Sales Invoice ${inv.invoice_no}`,
+            quantity: 1,
+            unitPrice: inv.total || inv.total_amount || 0,
+            totalPrice: inv.total || inv.total_amount || 0,
+          }
+        ],
+        currency: currency,
+        subtotal: inv.total || inv.total_amount || 0,
+        discountAmount: 0,
+        taxAmount: 0,
+        grandTotal: inv.total || inv.total_amount || 0,
+        balanceDue: inv.balance_due || 0,
+      });
+    } catch {
+      window.print();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#0A0B0D] text-white font-sans antialiased selection:bg-[#C5A059] selection:text-black">
       <header className="h-20 border-b border-white/5 bg-[#0A0B0D]/80 backdrop-blur-xl sticky top-0 z-50">
@@ -112,7 +142,7 @@ export default function CustomerPortalPage() {
                     <td className="px-6 py-5 text-right font-mono text-emerald-500">{fmt(inv.paid_amount)}</td>
                     <td className="px-6 py-5 text-right font-mono font-bold text-red-400">{fmt(inv.balance_due)}</td>
                     <td className="px-6 py-5"><div className="flex justify-center"><span className={cn("inline-flex items-center space-x-1.5 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest border rounded-sm", getStatusStyle(inv.status))}><span>{inv.status}</span></span></div></td>
-                    <td className="px-6 py-5"><div className="flex justify-center"><button className="p-2 bg-white/5 hover:bg-[#C5A059]/20 text-gray-500 hover:text-[#C5A059] transition-all rounded-sm" title="Download PDF"><Download size={14} /></button></div></td>
+                    <td className="px-6 py-5"><div className="flex justify-center"><button onClick={() => handleDownloadSingleInvoice(inv)} className="p-2 bg-white/5 hover:bg-[#C5A059]/20 text-gray-500 hover:text-[#C5A059] transition-all rounded-sm" title="Download PDF"><Download size={14} /></button></div></td>
                   </tr>
                 )) : (
                   <tr><td colSpan={7} className="px-6 py-16 text-center text-gray-600 italic text-xs uppercase tracking-widest">No invoices found for your account.</td></tr>

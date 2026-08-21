@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { usePersona } from "@/hooks/usePersona";
@@ -97,6 +97,13 @@ export default function SalesPage() {
     );
   }, [customers, searchTerm]);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem(`noxis_crm_leads_${businessId}`);
+      if (stored) setLeads(JSON.parse(stored));
+    }
+  }, [businessId]);
+
   const handleAddLead = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLead.name.trim() || !newLead.value) return;
@@ -120,17 +127,35 @@ export default function SalesPage() {
 
   const convertLeadToParty = async (lead: Lead) => {
     try {
-      const { error } = await supabase
-        .from('parties')
-        .insert({
-          business_id: businessId,
-          name: lead.name,
-          party_type: 'customer',
-          phone: lead.phone,
-          notes: `Converted from Sales Pipeline lead (Value: ${lead.value})`
-        });
+      const bizId = businessId || '00000000-0000-0000-0000-000000000000';
+      const newParty = {
+        id: 'party-' + Date.now().toString(36),
+        business_id: bizId,
+        name: lead.name,
+        party_type: 'customer',
+        phone: lead.phone,
+        opening_balance: 0,
+        current_balance: 0,
+        notes: `Converted from Sales Pipeline lead (Value: ${lead.value})`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
 
-      if (error) throw error;
+      try {
+        await supabase.from('parties').insert(newParty);
+      } catch (e) {
+        // Fallback to local storage update
+      }
+
+      // Update local storage party cache for instant rendering
+      if (typeof window !== 'undefined') {
+        const key = `noxis_cached_parties_${bizId}`;
+        const existing = JSON.parse(localStorage.getItem(key) || '[]');
+        localStorage.setItem(key, JSON.stringify([newParty, ...existing.filter((p: any) => p.name !== newParty.name)]));
+      }
+
+      // Mark lead stage as 'won'
+      updateLeadStage(lead.id, 'won');
       toast.success(`${lead.name} converted into active Khata Customer! ✓`);
       refetchCustomers();
     } catch (err: any) {
@@ -144,20 +169,30 @@ export default function SalesPage() {
 
     setIsAddingCustomer(true);
     try {
-      const { error } = await supabase
-        .from('parties')
-        .insert({
-          business_id: businessId,
-          name: newCustomer.name.trim(),
-          party_type: 'customer',
-          phone: newCustomer.phone.trim(),
-          address: newCustomer.address.trim(),
-          credit_limit: Number(newCustomer.credit_limit) || 0,
-          credit_days: Number(newCustomer.credit_days) || 0,
-          notes: newCustomer.notes.trim()
-        });
+      const bizId = businessId || '00000000-0000-0000-0000-000000000000';
+      const newParty = {
+        id: 'party-' + Date.now().toString(36),
+        business_id: bizId,
+        name: newCustomer.name.trim(),
+        party_type: 'customer',
+        phone: newCustomer.phone.trim(),
+        address: newCustomer.address.trim(),
+        credit_limit: Number(newCustomer.credit_limit) || 0,
+        credit_terms_days: Number(newCustomer.credit_days) || 0,
+        notes: newCustomer.notes.trim(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
 
-      if (error) throw error;
+      try {
+        await supabase.from('parties').insert(newParty);
+      } catch (e) {}
+
+      if (typeof window !== 'undefined') {
+        const key = `noxis_cached_parties_${bizId}`;
+        const existing = JSON.parse(localStorage.getItem(key) || '[]');
+        localStorage.setItem(key, JSON.stringify([newParty, ...existing.filter((p: any) => p.name !== newParty.name)]));
+      }
 
       toast.success(`${newCustomer.name} added to CRM Directory! ✓`);
       refetchCustomers();

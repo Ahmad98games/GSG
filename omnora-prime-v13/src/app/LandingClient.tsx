@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -8,59 +8,20 @@ import { createClient } from '@/lib/supabase/client'
 import {
   Database, Layers, Smartphone, ShieldCheck, BarChart4, Globe2,
   Download, Check, X, Menu, Terminal, CircleDollarSign,
-  ShieldAlert, Sparkles, MessageSquare, Wifi, Lock, Cpu, ChevronRight
+  ShieldAlert, Sparkles, MessageSquare, Wifi, Lock, Cpu, ChevronRight,
+  Camera, FileText, ArrowUpRight, Zap, RefreshCw, Eye, Sliders, CheckCircle2,
+  Building, HardDrive, FileSpreadsheet, LockKeyhole, HelpCircle, FileCheck
 } from 'lucide-react'
 import {
   LandingBackdrop,
   BrandLogo,
-  NavBrand,
-  CHAMPAGNE,
-  CHAMPAGNE_LIGHT,
   OBSIDIAN,
   AnimatePresence,
-  motion,
-  CockpitTabs,
-  TypewriterConsole,
-  SplitHeadline,
-  FeatureCard,
-  Reveal,
-  RevealStagger,
-  RevealItem,
-  SignatureMarquee
+  motion
 } from '@/components/landing/LandingMotion'
 import PublicNavbar from '@/components/shell/PublicNavbar'
 
-type CockpitTab = 'dashboard' | 'wages' | 'sqlite' | 'khata' | 'cctv'
-
-const sqliteLogs = [
-  '[21:32:04] Initializing secure local SQLite database...',
-  '[21:32:04] Opening local tables at C:\\NoxisData\\Noxis-Local.db',
-  '[21:32:05] SUCCESS: Local AES-256 database connection active.',
-  '[21:32:08] TELEMETRY: Offline mode enabled. Transactions queued locally.',
-  '[21:32:15] TRANSACT: Logged 1,420 yards for Weaver Hamid Saeed.',
-  '[21:32:44] INVENTORY: Stock scanned (Item SKU-4920) - saved to memory queue.',
-  '[21:35:12] NETWORK: 4 Android companion devices paired on local Wi-Fi subnet.',
-  '[21:36:00] REPLICATION: Queue holds 142 records. Waiting for cloud handshake.',
-]
-
-const cctvAlerts = [
-  { time: '21:30:15', msg: 'System check: 4 floor camera RTSP feeds connected.', status: 'info' },
-  { time: '21:31:00', msg: 'Face matched: Hamid Saeed checked-in at Loom Cam 01.', status: 'success' },
-  { time: '21:32:12', msg: 'Face matched: Bilal Khan checked-in at Packing Cam 02.', status: 'success' },
-  { time: '21:35:44', msg: 'ALERT: Intruders/Zone breach at Loom Area (Cam 03).', status: 'danger' },
-  { time: '21:35:45', msg: 'Security action: Triggered local PC siren and push notice.', status: 'warning' },
-]
-
-const marqueeTerms = [
-  'OFFLINE-FIRST CORE',
-  'SQLITE LOCAL ENCRYPTION',
-  'SUPABASE CLOUD SYNC',
-  'ROW-LEVEL SECURITY',
-  'KARIGAR PIECE-RATE PAYROLL',
-  'CCTV SENTINEL AI FEED',
-  'LOCAL WI-FI MESH NODE',
-  'PAKISTAN & UAE TAX COMPLIANCE'
-]
+type FeatureModuleTab = 'mesh' | 'erp' | 'filemorph' | 'cctv' | 'capital' | 'compliance'
 
 export default function LandingClient() {
   const router = useRouter()
@@ -68,13 +29,56 @@ export default function LandingClient() {
 
   const [mounted, setMounted] = useState(false)
   const [checking, setChecking] = useState(true)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<CockpitTab>('dashboard')
+  const [activeTab, setActiveTab] = useState<FeatureModuleTab>('mesh')
 
-  // Hydration-safe initial check
+  // Modals state
+  const [deployModalOpen, setDeployModalOpen] = useState(false)
+  const [capitalModalOpen, setCapitalModalOpen] = useState(false)
+  const [selectedPartner, setSelectedPartner] = useState('Akhuwat Microfinance')
+  const [capitalAmount, setCapitalAmount] = useState('2500')
+  const [capitalPurpose, setCapitalPurpose] = useState('Raw Material Fabric Inventory')
+  const [referralToken, setReferralToken] = useState<string | null>(null)
+
+  // Interactive Demos State
+  // 1. FileMorph Demo State
+  const [fileMorphAction, setFileMorphAction] = useState<'encrypt' | 'watermark' | 'compress' | 'convert' | 'exif'>('encrypt')
+  const [fileMorphProcessing, setFileMorphProcessing] = useState(false)
+  const [fileMorphResult, setFileMorphResult] = useState<string | null>(null)
+
+  // 2. CCTV Scanner Demo State
+  const [cctvScanning, setCctvScanning] = useState(false)
+  const [cctvDevicesFound, setCctvDevicesFound] = useState([
+    { ip: '192.168.1.104', port: 554, brand: 'Hikvision DS-2CD2143', location: 'Loom Floor Cam 01', status: 'Online' },
+    { ip: '192.168.1.108', port: 554, brand: 'Imou Cue 2MP', location: 'Packing Dock Cam 02', status: 'Online' },
+    { ip: '192.168.1.115', port: 80, brand: 'Dahua IPC-HDW', location: 'Raw Dye Warehouse 03', status: 'Online' },
+  ])
+
+  // 3. Karigar Payroll Calculator State
+  const [karigarUnits, setKarigarUnits] = useState(450)
+  const [karigarRate, setKarigarRate] = useState(35)
+  const [karigarPeshgi, setKarigarPeshgi] = useState(1500)
+
+  // 4. Working Capital Score Calculator State
+  const [monthsActive, setMonthsActive] = useState(4)
+  const [invoiceCount, setInvoiceCount] = useState(18)
+  const [customerCount, setCustomerCount] = useState(6)
+
+  // Calculate live credit score
+  const creditScore = useMemo(() => {
+    const timeScore = Math.min(25, monthsActive * 5)
+    const invScore = Math.min(40, invoiceCount * 2)
+    const custScore = Math.min(35, customerCount * 5)
+    const total = Math.min(100, timeScore + invScore + custScore)
+    const grade = total >= 80 ? 'A' : total >= 60 ? 'B' : total >= 40 ? 'C' : 'D'
+    const maxLoan = total >= 80 ? 5000 : total >= 60 ? 2500 : total >= 40 ? 1000 : 500
+    return { score: total, grade, maxLoan }
+  }, [monthsActive, invoiceCount, customerCount])
+
+  // Hydration-safe initial check & URL hash scrolling
   useEffect(() => {
     setMounted(true)
-    async function handleAuthRedirect() {
+
+    async function checkEnvironment() {
       try {
         const isElectron = typeof window !== 'undefined' && (
           window.navigator.userAgent.toLowerCase().includes('electron') ||
@@ -82,850 +86,904 @@ export default function LandingClient() {
           !!(window as any).electron
         )
 
-        // Strict: Redirect to /dashboard ONLY inside Electron app frame
         if (isElectron) {
           const { data: { session } } = await supabase.auth.getSession()
           if (session) {
-            const { data: profile } = await supabase
-              .from('business_profiles').select('id, onboarding_done')
-              .eq('user_id', session.user.id).single()
-            router.replace(profile?.onboarding_done !== false ? '/dashboard' : '/setup')
-            return
-          } else {
             router.replace('/dashboard')
             return
           }
         }
-
-        // Web production build: ALWAYS display public website pages
         setChecking(false)
       } catch {
         setChecking(false)
       }
     }
-    handleAuthRedirect()
+    checkEnvironment()
   }, [supabase, router])
+
+  // Scroll handler for hash navigation
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (window.location.hash) {
+      const hash = window.location.hash.substring(1)
+      setTimeout(() => {
+        const el = document.getElementById(hash)
+        if (el) el.scrollIntoView({ behavior: 'smooth' })
+      }, 150)
+    }
+  }, [mounted])
+
+  const runFileMorphDemo = () => {
+    setFileMorphProcessing(true)
+    setFileMorphResult(null)
+    setTimeout(() => {
+      setFileMorphProcessing(false)
+      if (fileMorphAction === 'encrypt') {
+        setFileMorphResult('SUCCESS: Document encrypted in-memory with AES-256-GCM. 0 bytes sent to external cloud.')
+      } else if (fileMorphAction === 'watermark') {
+        setFileMorphResult('SUCCESS: Applied 45° opacity-controlled vector watermark "NOXIS FACTORY SEAL".')
+      } else if (fileMorphAction === 'compress') {
+        setFileMorphResult('SUCCESS: Reduced PDF stream size by 78.4% (8.4 MB → 1.8 MB). Stripped unused metadata.')
+      } else if (fileMorphAction === 'convert') {
+        setFileMorphResult('SUCCESS: Converted 12 PDF pages to 300 DPI high-resolution PNG image zip archive.')
+      } else if (fileMorphAction === 'exif') {
+        setFileMorphResult('SUCCESS: Stripped GPS coordinates, camera model tags, and EXIF metadata from 24 photos.')
+      }
+    }, 600)
+  }
+
+  const runCctvScannerDemo = () => {
+    setCctvScanning(true)
+    setTimeout(() => {
+      setCctvScanning(false)
+      const newDev = {
+        ip: `192.168.1.${Math.floor(120 + Math.random() * 80)}`,
+        port: 554,
+        brand: 'Hikvision RTSP Sentinel Cam',
+        location: 'Finished Goods Bay 04',
+        status: 'Online'
+      }
+      setCctvDevicesFound(prev => [newDev, ...prev.slice(0, 3)])
+    }, 800)
+  }
+
+  const handleRequestCapital = (e: React.FormEvent) => {
+    e.preventDefault()
+    const token = `REF-${selectedPartner.substring(0, 3).toUpperCase()}-${Math.floor(10000 + Math.random() * 90000)}`
+    setReferralToken(token)
+
+    if (typeof window !== 'undefined') {
+      const existing = JSON.parse(localStorage.getItem('noxis_capital_applications') || '[]')
+      const app = {
+        referral_token: token,
+        partner_name: selectedPartner,
+        amount: capitalAmount,
+        purpose: capitalPurpose,
+        status: 'Pre-Approved',
+        submitted_at: new Date().toISOString()
+      }
+      localStorage.setItem('noxis_capital_applications', JSON.stringify([app, ...existing]))
+    }
+  }
 
   if (!mounted || checking) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-6" style={{ background: OBSIDIAN }}>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-[#0B0F17] text-white">
         <BrandLogo size="splash" showWordmark={false} />
-        <div
-          className="w-10 h-10 rounded-full border-2 border-t-transparent animate-spin"
-          style={{ borderColor: `${CHAMPAGNE}33`, borderTopColor: CHAMPAGNE }}
-        />
+        <div className="w-10 h-10 rounded-full border-2 border-t-transparent border-[#06B6D4] animate-spin" />
       </div>
     )
   }
 
-  const docsFeatures = [
-    {
-      id: 'install',
-      title: '01. Platform Installation',
-      desc: 'Download the optimized Windows desktop client setup binary (.exe) and install the local system node directly on your factory floor PC.',
-      badge: 'Workstation Setup',
-      icon: Terminal,
-    },
-    {
-      id: 'license',
-      title: '02. Cryptographic Activation',
-      desc: 'Perform a secure one-time activation. Your verified license key acts as a cryptographic recovery key for the local database block.',
-      badge: 'License Control',
-      icon: Lock,
-    },
-    {
-      id: 'sqlite',
-      title: '03. Local SQLite Architecture',
-      desc: 'All factory transactions are stored locally with zero internet dependency, utilizing Write-Ahead Logging (WAL) for absolute stability.',
-      badge: 'Database Core',
-      icon: Database,
-    },
-    {
-      id: 'mobile',
-      title: '04. Local WiFi Phone Pairing',
-      desc: 'Connect supervisor Android phones directly to your office PC over local Wi-Fi. Log operator inputs and attendance without internet.',
-      badge: 'Floor Sync',
-      icon: Smartphone,
-    },
-    {
-      id: 'inventory',
-      title: '05. Barcode & Inventory Config',
-      desc: 'Scan grades of fabric rolls, chemical batches, or yarn packs. Get automated stock reorder alerts when inventory levels fall low.',
-      badge: 'Stock Tracking',
-      icon: Layers,
-    },
-    {
-      id: 'invoices',
-      title: '06. Ledger & Invoicing Setup',
-      desc: 'Professional PDF invoice printouts, party-wise accounting registers, and cash book entries automatically keeping double-entry ledger records.',
-      badge: 'Accounting',
-      icon: CircleDollarSign,
-    },
-    {
-      id: 'data-safety',
-      title: '07. Data Safety Protocol',
-      desc: 'Your data is backed up dual-fold: locally via downloadable encrypted JSON files and synced securely to Supabase servers when online.',
-      badge: 'Security',
-      icon: ShieldCheck,
-    },
-    {
-      id: 'quickentry',
-      title: '08. Floor Quick Entry Console',
-      desc: 'A touch-friendly entry cockpit for computers on the floor, enabling quick records of production rates and attendance within seconds.',
-      badge: 'Fast Logging',
-      icon: Cpu,
-    },
-    {
-      id: 'troubleshoot',
-      title: '09. Regional Diagnostics',
-      desc: 'Simple diagnostics checks for network subnets, local router connections, and device mapping errors to prevent any floor downtime.',
-      badge: 'Diagnostics',
-      icon: ShieldAlert,
-    },
-    {
-      id: 'intelligence',
-      title: '10. Predictive Intelligence',
-      desc: 'Automated moving average inventory alerts, customer churn metrics, and live regional market rate indices calculated on your dashboard.',
-      badge: 'Analytics',
-      icon: BarChart4,
-    },
-    {
-      id: 'finance',
-      title: '11. Credit Scoring & Peshgi',
-      desc: 'Track worker advance pays (peshgi), calculate credit profiles for operators, and coordinate wage payouts with digital wallet APIs.',
-      badge: 'Finance Flow',
-      icon: Globe2,
-    },
-    {
-      id: 'api-worker',
-      title: '12. Digital Worker IDs & APIs',
-      desc: 'Generate QR badges for karigars displaying credentials, and utilize secure webhook integrations to sync inventory to third-party tools.',
-      badge: 'Developer Integration',
-      icon: Terminal,
-    },
-  ]
-
-  const comparisonRows = [
-    { metric: 'Network Dependency', noxis: '100% Offline-capable (Runs on local Wi-Fi)', cloud: 'Completely blocks on internet drops', manual: 'Paper records' },
-    { metric: 'Karigar Wages & Peshgi', noxis: 'Automated piece-rate & advance deductions', cloud: 'Requires complex custom spreadsheets', manual: 'Calculated manually, prone to errors' },
-    { metric: 'Security Camera Integration', noxis: 'Local AI camera alert zones, zero cloud fees', cloud: 'Requires high monthly fee smart cameras', manual: 'None (manual video playback)' },
-    { metric: 'Data Control & Safety', noxis: 'Encrypted local database + automatic cloud mirror', cloud: 'Stored on public clouds with limited export', manual: 'No backup (fire/loss risk)' },
-    { metric: 'Operational Costs', noxis: 'Affordable, one-time fee with no recurring monthly rent', cloud: 'Per-seat monthly subscriptions', manual: 'High losses from calculation mistakes' },
-  ]
-
   return (
     <>
-      <div
-        className="font-sans min-h-screen selection:text-black overflow-x-hidden text-[#E2E8F0] relative"
-        style={{ background: OBSIDIAN }}
-      >
+      {/* Structured JSON-LD Metadata */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'SoftwareApplication',
+            'name': 'Noxis Hub Industrial OS',
+            'operatingSystem': 'Windows, WebAssembly, Android Bridge',
+            'applicationCategory': 'BusinessApplication',
+            'offers': {
+              '@type': 'Offer',
+              'price': '0',
+              'priceCurrency': 'USD'
+            },
+            'description': 'Offline-first industrial operating system for textile factories, karigar piece-rate payroll, CCTV Sentinel AI, FileMorph zero-cloud data studio, and Working Capital credit scoring.'
+          })
+        }}
+      />
+
+      <div className="font-sans min-h-screen selection:bg-[#06B6D4] selection:text-black overflow-x-hidden text-[#E2E8F0] relative bg-[#0B0F17]">
         <LandingBackdrop />
 
         {/* Global ambient overlay */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(197,160,89,0.05)_0%,transparent_50%)] pointer-events-none z-0" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(6,182,212,0.06)_0%,transparent_60%)] pointer-events-none z-0" />
 
         <div className="relative z-10">
           {/* Header Navigation */}
           <PublicNavbar />
 
-          {/* Hero Section */}
-          <section className="pt-32 pb-16 lg:pt-48 lg:pb-28 px-4 sm:px-6 max-w-7xl mx-auto">
-            <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
+          {/* ========================================== */}
+          {/* HERO SECTION                               */}
+          {/* ========================================== */}
+          <section className="pt-32 pb-20 lg:pt-44 lg:pb-32 px-4 sm:px-6 max-w-7xl mx-auto">
+            <div className="flex flex-col items-center text-center max-w-5xl mx-auto">
               <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="mb-8"
+                className="mb-6"
               >
                 <BrandLogo size="hero" showWordmark={true} />
               </motion.div>
 
-              <div
-                className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 border border-[#C5A059]/20 bg-[#C5A059]/5 mb-8"
-              >
-                <Sparkles size={12} className="text-[#C5A059] animate-pulse" />
-                <span className="text-[10px] font-bold tracking-[0.25em] uppercase text-[#E8D5B5] font-mono">
-                  Industrial-Grade Factory Core
+              <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 border border-[#06B6D4]/30 bg-[#06B6D4]/10 mb-8 backdrop-blur-md shadow-[0_0_20px_rgba(6,182,212,0.15)]">
+                <Sparkles size={13} className="text-[#06B6D4] animate-pulse" />
+                <span className="text-[10px] font-black tracking-[0.25em] uppercase text-[#08EBF6] font-mono">
+                  Production-Grade Offline-First Industrial OS
                 </span>
               </div>
 
-              <SplitHeadline
-                lines={[
-                  { text: 'Offline-First ERP' },
-                  { text: 'For Manufacturing Plants', accent: true }
-                ]}
-              />
+              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tight text-white italic leading-tight mb-8">
+                THE 100% OFFLINE-FIRST <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#06B6D4] via-[#08EBF6] to-white not-italic">
+                  FACTORY OPERATING SYSTEM
+                </span>
+              </h1>
 
-              <p className="text-[#94A3B8] text-sm sm:text-base lg:text-lg leading-relaxed max-w-2xl mx-auto mt-8 font-medium">
-                Eliminate calculation disputes and paper registers. Noxis runs locally on your office PC without internet, calculating worker piece-rates, tracking warehouse inventory, and coordinating payouts with ease.
+              <p className="text-sm sm:text-base text-gray-400 max-w-3xl leading-relaxed font-normal mb-10">
+                Engineered for textile factories, garment manufacturers, pharma labs, and industrial plants. Operates seamlessly with zero active internet dependencies utilizing local encrypted SQLite Write-Ahead Logging, QR-based LAN mobile device pairing, Karigar piece-rate payroll, CCTV Sentinel AI, FileMorph 100% client-side document studio, and Working Capital telemetry.
               </p>
 
-              <div className="w-full mt-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-4">
-                <Link
-                  href="/download"
-                  className="inline-flex items-center justify-center gap-2 font-extrabold text-[11px] tracking-[0.2em] uppercase px-8 py-4 rounded-sm transition-all duration-300"
-                  style={{
-                    background: `linear-gradient(135deg, ${CHAMPAGNE_LIGHT}, ${CHAMPAGNE})`,
-                    color: OBSIDIAN,
-                    boxShadow: `0 12px 40px ${CHAMPAGNE}33`,
-                  }}
-                >
-                  <Download size={14} /> Download Free Trial (.exe)
-                </Link>
+              {/* Hero Action CTAs */}
+              <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
                 <a
-                  href="https://wa.me/923264742678"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 border border-white/[0.08] bg-white/[0.02] text-white font-extrabold text-[11px] tracking-[0.2em] uppercase px-8 py-4 rounded-sm backdrop-blur-sm transition-all duration-300 hover:border-[#C5A059]/60 hover:text-[#E8D5B5]"
+                  href="#features"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    const el = document.getElementById('features')
+                    if (el) el.scrollIntoView({ behavior: 'smooth' })
+                  }}
+                  className="w-full sm:w-auto px-8 py-4 text-xs font-black uppercase tracking-widest text-black bg-[#06B6D4] hover:bg-[#08EBF6] rounded shadow-[0_0_30px_rgba(6,182,212,0.4)] transition-all flex items-center justify-center gap-2 no-underline"
                 >
-                  <MessageSquare size={14} className="text-emerald-400" /> WhatsApp Live Demo
+                  <Cpu size={16} />
+                  <span>Explore Architecture</span>
                 </a>
-              </div>
-            </div>
-          </section>
 
-          {/* Marquee Features */}
-          <SignatureMarquee items={marqueeTerms} />
+                <button
+                  onClick={() => setDeployModalOpen(true)}
+                  className="w-full sm:w-auto px-8 py-4 text-xs font-black uppercase tracking-widest text-white bg-white/5 border border-[#06B6D4]/40 hover:bg-[#06B6D4]/10 hover:border-[#06B6D4] rounded transition-all flex items-center justify-center gap-2"
+                >
+                  <Download size={16} className="text-[#06B6D4]" />
+                  <span>Deploy Offline Node</span>
+                </button>
 
-          {/* High-Fidelity B2B Dashboard Cockpit */}
-          <section className="px-4 md:px-6 py-24 max-w-7xl mx-auto">
-            <Reveal variant="up" className="space-y-8">
-              <div className="mb-8 text-center lg:text-left">
-                <p className="text-[10px] font-bold tracking-[0.3em] uppercase mb-1" style={{ color: CHAMPAGNE }}>Executive Operations Center</p>
-                <h2 className="text-2xl font-bold text-white tracking-tight uppercase">Noxis Hub Dashboard Interface</h2>
-                <p className="text-xs text-gray-500 mt-1">Realistic live simulation of Noxis industrial software node</p>
-              </div>
-
-              <div className="rounded-xl overflow-hidden border border-white/[0.06] bg-[#0A0B0D] shadow-2xl relative">
-                {/* Decorative border glow */}
-                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#C5A059]/40 to-transparent" />
-
-                {/* Simulator Header */}
-                <div className="bg-[#070708] border-b border-white/[0.04] px-5 py-4 flex flex-wrap items-center justify-between gap-3 relative z-10">
-                  <div className="flex items-center gap-3">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#EF4444]" />
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#C5A059]" />
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#10B981]" />
-                    <span className="text-[11px] text-white font-mono uppercase font-bold tracking-widest ml-2">Noxis local server : C:\\NoxisData\\</span>
-                  </div>
-                  <div className="flex items-center gap-4 text-[10px] font-mono uppercase tracking-wider">
-                    <span className="flex items-center gap-1.5 text-emerald-400"><Wifi size={12} /> Local Mesh</span>
-                    <span className="flex items-center gap-1.5 text-[#C5A059]"><Lock size={12} /> Encrypted DB</span>
-                  </div>
-                </div>
-
-                {/* Operations Overview stats cards inside simulator */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-white/[0.03] border-b border-white/[0.04] relative z-10">
-                  {[
-                    { title: 'Floor Looms', value: '24 Active', detail: 'Local mesh connected', color: 'text-white' },
-                    { title: 'Checked-in Staff', value: '148 Karigars', detail: 'Via Android companion app', color: 'text-white' },
-                    { title: 'Shift Production', value: '12,850 Yards', detail: 'Grey grade A output', color: 'text-[#C5A059]' },
-                    { title: 'Sync Status', value: 'Offline Grace', detail: 'Replicates once online', color: 'text-emerald-400' },
-                  ].map((stat) => (
-                    <div key={stat.title} className="p-5 bg-[#0A0B0D]">
-                      <span className="text-[10px] text-gray-500 uppercase tracking-widest block font-bold mb-1">{stat.title}</span>
-                      <span className={`text-lg font-bold block ${stat.color}`}>{stat.value}</span>
-                      <span className="text-[9px] text-gray-600 font-mono block mt-1">{stat.detail}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Simulator Tab Content */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 relative z-10">
-                  {/* Left side vertical tabs */}
-                  <CockpitTabs
-                    tabs={[
-                      { id: 'dashboard', label: 'Operations Summary', icon: <Cpu size={14} /> },
-                      { id: 'wages', label: 'Karigar Wages Ledger', icon: <CircleDollarSign size={14} /> },
-                      { id: 'sqlite', label: 'Local Database Logs', icon: <Terminal size={14} /> },
-                      { id: 'khata', label: 'Cash Accounts & Mandi', icon: <BarChart4 size={14} /> },
-                      { id: 'cctv', label: 'Security AI CCTV', icon: <ShieldAlert size={14} /> },
-                    ]}
-                    activeId={activeTab}
-                    onSelect={(id) => setActiveTab(id as CockpitTab)}
-                  />
-
-                  {/* Right side content window */}
-                  <div className="lg:col-span-9 p-6 bg-[#0A0B0D] min-h-[380px] flex flex-col justify-between border-t lg:border-t-0 border-white/[0.04]">
-                    <AnimatePresence mode="wait">
-                      {/* Tab: Dashboard Summary */}
-                      {activeTab === 'dashboard' && (
-                        <motion.div
-                          key="dashboard"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          className="space-y-6 flex-1"
-                        >
-                          <div className="flex items-center justify-between border-b border-white/[0.03] pb-3">
-                            <h3 className="text-xs font-bold uppercase tracking-widest text-[#C5A059]">Mill Floor Status Overview</h3>
-                            <span className="text-[10px] text-gray-500 font-mono">Telemetry v13.1</span>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="p-4 rounded border border-white/[0.04] bg-white/[0.01] space-y-2">
-                              <span className="text-[9px] font-bold text-[#60A5FA] uppercase tracking-wider block">Local Network Gateway</span>
-                              <p className="text-xs text-gray-400 font-mono">
-                                PC Server running at <span className="text-white">192.168.10.42:3000</span><br />
-                                Android Terminals connected: <span className="text-white">4 Handhelds</span><br />
-                                Ping Latency: <span className="text-emerald-400">0.4ms (Instant)</span>
-                              </p>
-                            </div>
-                            <div className="p-4 rounded border border-white/[0.04] bg-white/[0.01] space-y-2">
-                              <span className="text-[9px] font-bold text-amber-400 uppercase tracking-wider block">Database Health</span>
-                              <p className="text-xs text-gray-400 font-mono">
-                                Encryption Cipher: <span className="text-white">AES-256-GCM</span><br />
-                                File Size: <span className="text-white">4.82 MB</span><br />
-                                Integrity Scan: <span className="text-emerald-400">100% Secure</span>
-                              </p>
-                            </div>
-                          </div>
-                          <div className="p-4 rounded border border-[#C5A059]/20 bg-[#C5A059]/5 flex items-center gap-3">
-                            <ShieldCheck className="text-[#C5A059] shrink-0" size={18} />
-                            <p className="text-xs text-gray-300 font-medium">
-                              <strong>Zero-Internet Operation Active:</strong> The Noxis local server processes worker wages, inventories, and accounting offline. Workstations will mirror these transactions to the cloud once an internet connection is established.
-                            </p>
-                          </div>
-                        </motion.div>
-                      )}
-
-                      {/* Tab: Wages */}
-                      {activeTab === 'wages' && (
-                        <motion.div
-                          key="wages"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          className="space-y-4 flex-1"
-                        >
-                          <div className="flex items-center justify-between border-b border-white/[0.03] pb-3">
-                            <h3 className="text-xs font-bold uppercase tracking-widest text-[#C5A059]">Karigar Wages & Peshgi (Advances)</h3>
-                            <span className="text-[10px] text-gray-500 font-mono">Current Shift Logs</span>
-                          </div>
-                          <div className="overflow-x-auto rounded border border-white/[0.04]">
-                            <table className="w-full text-left font-mono text-[11px] min-w-[500px]">
-                              <thead>
-                                <tr className="border-b border-white/[0.05] bg-white/[0.02] text-gray-500">
-                                  <th className="p-2.5 uppercase font-bold text-[9px]">Operator</th>
-                                  <th className="p-2.5 uppercase font-bold text-[9px]">Shift</th>
-                                  <th className="p-2.5 uppercase font-bold text-[9px] text-right">Production</th>
-                                  <th className="p-2.5 uppercase font-bold text-[9px] text-right">Advance Paid</th>
-                                  <th className="p-2.5 uppercase font-bold text-[9px] text-right">Net Salary</th>
-                                  <th className="p-2.5 uppercase font-bold text-[9px] text-center">Status</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {[
-                                  { name: 'Hamid Saeed', shift: 'Morning', yds: '1,420 yds', adv: '₨ 12,500', net: '₨ 42,600', status: 'PAID' },
-                                  { name: 'Muhammad Asif', shift: 'Morning', yds: '1,150 yds', adv: '₨ 5,000', net: '₨ 39,200', status: 'PAID' },
-                                  { name: 'Bilal Khan', shift: 'Night', yds: '1,560 yds', adv: '₨ 18,000', net: '₨ 44,400', status: 'DRAFT' },
-                                  { name: 'Tariq Mahmood', shift: 'Night', yds: '980 yds', adv: '₨ 0', net: '₨ 34,300', status: 'DRAFT' },
-                                ].map((row) => (
-                                  <tr key={row.name} className="border-b border-white/[0.02]">
-                                    <td className="p-2.5 text-white font-bold">{row.name}</td>
-                                    <td className="p-2.5 text-gray-400">{row.shift}</td>
-                                    <td className="p-2.5 text-right text-gray-300">{row.yds}</td>
-                                    <td className="p-2.5 text-right text-red-400">{row.adv}</td>
-                                    <td className="p-2.5 text-right font-bold text-[#C5A059]">{row.net}</td>
-                                    <td className="p-2.5 text-center">
-                                      <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${
-                                        row.status === 'PAID' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'
-                                      }`}>{row.status}</span>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </motion.div>
-                      )}
-
-                      {/* Tab: SQLite Logs */}
-                      {activeTab === 'sqlite' && (
-                        <motion.div
-                          key="sqlite"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          className="space-y-4 flex-1 flex flex-col justify-between"
-                        >
-                          <div className="flex items-center justify-between border-b border-white/[0.03] pb-3">
-                            <h3 className="text-xs font-bold uppercase tracking-widest text-[#C5A059]">Local SQLite Datagrid Terminal</h3>
-                            <span className="text-[10px] text-gray-500 font-mono">WAL Mode Active</span>
-                          </div>
-                          <TypewriterConsole lines={sqliteLogs} />
-                        </motion.div>
-                      )}
-
-                      {/* Tab: Khata & Mandi */}
-                      {activeTab === 'khata' && (
-                        <motion.div
-                          key="khata"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          className="space-y-4 flex-1"
-                        >
-                          <div className="flex items-center justify-between border-b border-white/[0.03] pb-3">
-                            <h3 className="text-xs font-bold uppercase tracking-widest text-[#C5A059]">Double-Entry cash book ledger</h3>
-                            <span className="text-[10px] text-gray-500 font-mono">Balance Reconciled</span>
-                          </div>
-                          <div className="grid grid-cols-3 gap-3">
-                            {[
-                              { item: 'Cotton Mandi', price: '₨ 18,450 / maund', delta: '+1.2%' },
-                              { item: 'Yarn 30s', price: '₨ 412 / kg', delta: '-0.4%' },
-                              { item: 'Grey Fabric 60"', price: '₨ 285 / meter', delta: '+0.8%' },
-                            ].map((rate) => (
-                              <div key={rate.item} className="p-3 bg-white/[0.02] border border-white/[0.04] rounded">
-                                <span className="text-[9px] text-gray-500 uppercase block font-bold mb-1">{rate.item}</span>
-                                <span className="text-xs font-bold block text-white font-mono">{rate.price}</span>
-                                <span className={`text-[9px] font-mono block mt-1 ${rate.delta.startsWith('+') ? 'text-emerald-400' : 'text-red-400'}`}>{rate.delta}</span>
-                              </div>
-                            ))}
-                          </div>
-                          <div className="overflow-x-auto rounded border border-white/[0.04] bg-black/20">
-                            <table className="w-full text-left font-mono text-[11px] min-w-[500px]">
-                              <thead>
-                                <tr className="border-b border-white/[0.05] bg-white/[0.02] text-gray-500">
-                                  <th className="p-2 uppercase font-bold text-[9px]">Txn ID</th>
-                                  <th className="p-2 uppercase font-bold text-[9px]">Description</th>
-                                  <th className="p-2 uppercase font-bold text-[9px] text-right">Debit</th>
-                                  <th className="p-2 uppercase font-bold text-[9px] text-right">Credit</th>
-                                  <th className="p-2 uppercase font-bold text-[9px] text-right">Balance</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {[
-                                  { id: 'TX-9028', desc: 'Bale Yarn Raw Stock Procurement', dr: '₨ 450,000', cr: '—', bal: '₨ 1,240,500' },
-                                  { id: 'TX-9029', desc: 'Faisalabad Mandi Sale — Batch 12', dr: '—', cr: '₨ 850,000', bal: '₨ 2,090,500' },
-                                  { id: 'TX-9030', desc: 'Weekly Karigar Wages Cashout', dr: '₨ 160,500', cr: '—', bal: '₨ 1,930,000' },
-                                ].map((row) => (
-                                  <tr key={row.id} className="border-b border-white/[0.02]">
-                                    <td className="p-2 text-gray-500 font-bold">{row.id}</td>
-                                    <td className="p-2 text-white">{row.desc}</td>
-                                    <td className="p-2 text-right text-red-400 font-bold">{row.dr}</td>
-                                    <td className="p-2 text-right text-emerald-400 font-bold">{row.cr}</td>
-                                    <td className="p-2 text-right text-[#C5A059] font-bold">{row.bal}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </motion.div>
-                      )}
-
-                      {/* Tab: CCTV */}
-                      {activeTab === 'cctv' && (
-                        <motion.div
-                          key="cctv"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          className="space-y-4 flex-1"
-                        >
-                          <div className="flex items-center justify-between border-b border-white/[0.03] pb-3">
-                            <h3 className="text-xs font-bold uppercase tracking-widest text-[#C5A059]">AI CCTV Sentinel Edge Feed</h3>
-                            <span className="text-[10px] text-gray-500 font-mono">0.12ms Local Inference</span>
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="relative aspect-video rounded border border-white/[0.06] bg-black overflow-hidden flex items-center justify-center">
-                              <span className="absolute top-2 left-2 text-[8px] font-mono bg-red-600 text-white font-bold px-1.5 py-0.5 rounded-sm uppercase tracking-widest flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> Cam 01 : Loom Floor
-                              </span>
-                              <div className="border border-emerald-400/40 rounded p-1 text-[8px] font-mono text-emerald-400 bg-black/60">
-                                [Weaver #04 : Hamid Saeed matched 98%]
-                              </div>
-                            </div>
-                            <div className="p-3 bg-black/40 border border-white/[0.04] rounded font-mono text-[9px] space-y-1.5 max-h-[140px] overflow-y-auto">
-                              {cctvAlerts.map((alert, i) => (
-                                <p key={i} className={
-                                  alert.status === 'danger' ? 'text-red-400 font-bold' :
-                                  alert.status === 'success' ? 'text-emerald-400' : 'text-gray-500'
-                                }>
-                                  [{alert.time}] {alert.msg}
-                                </p>
-                              ))}
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
-                    {/* Simulator footer */}
-                    <div className="mt-6 pt-4 border-t border-white/[0.04] flex items-center justify-between text-[10px] font-mono text-gray-500">
-                      <span>Noxis Workstation Database Node: active</span>
-                      <span className="text-[#C5A059] font-bold uppercase">Safe local storage</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Reveal>
-          </section>
-
-          {/* System Capabilities Section - Listing all 12 modules */}
-          <section id="features" className="py-24 px-4 sm:px-6 max-w-7xl mx-auto border-t border-white/[0.04]">
-            <div className="text-center mb-16 space-y-3">
-              <p className="text-[10px] font-bold tracking-[0.3em] uppercase" style={{ color: CHAMPAGNE }}>Complete Capability Index</p>
-              <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white uppercase">System Features & Documentation</h2>
-              <p className="text-sm text-gray-400 max-w-xl mx-auto">
-                Explore the technical capabilities and system configurations built directly into the Noxis Hub platform.
-              </p>
-            </div>
-
-            <RevealStagger className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {docsFeatures.map((f, i) => (
-                <FeatureCard
-                  key={f.id}
-                  href={`/docs#${f.id}`}
-                  icon={f.icon}
-                  title={f.title}
-                  desc={f.desc}
-                  index={i}
-                />
-              ))}
-            </RevealStagger>
-          </section>
-
-          {/* ═══ MOBILE HUB SECTION ═══ */}
-          <section id="mobile" className="py-24 px-4 sm:px-6 relative overflow-hidden border-t border-white/[0.04]">
-            {/* Subtle blue glow background */}
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#60A5FA]/[0.03] to-transparent pointer-events-none" />
-
-            <div className="max-w-7xl mx-auto relative">
-              {/* Header */}
-              <Reveal variant="up" className="text-center mb-16">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#60A5FA]/10 border border-[#60A5FA]/20 text-[#60A5FA] text-[10px] font-bold uppercase tracking-widest mb-6">
-                  <div className="w-2 h-2 rounded-full bg-[#60A5FA] animate-pulse" />
-                  Coming Soon
-                </div>
-                <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-4 uppercase">
-                  Noxis Mobile Hub
-                </h2>
-                <p className="text-base text-gray-500 max-w-2xl mx-auto leading-relaxed">
-                  Your factory floor, in your pocket. Works over local WiFi — no internet required.
-                  Pairs with the PC Hub in under 60 seconds.
-                </p>
-              </Reveal>
-
-              {/* Phone mockup + features */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start mb-20">
-                {/* Left: Phone mockup */}
-                <div className="relative mx-auto flex justify-center">
-                  <div className="relative w-64 h-[520px] bg-[#0A0C0F] rounded-[3rem] border-2 border-white/10 shadow-2xl overflow-hidden">
-                    {/* Status bar */}
-                    <div className="absolute top-0 left-0 right-0 h-12 bg-[#0A0C0F] flex items-center justify-between px-6 pt-2">
-                      <span className="text-[10px] text-gray-600 font-mono">9:41</span>
-                      <div className="w-20 h-4 bg-black rounded-full" />
-                      <div className="flex gap-1 items-center">
-                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="text-[9px] text-emerald-400 font-bold">Live</span>
-                      </div>
-                    </div>
-
-                    {/* Screen */}
-                    <div className="absolute top-12 left-0 right-0 bottom-0 bg-[#060708] p-4 overflow-hidden">
-                      {/* Hub status */}
-                      <div className="flex items-center justify-between py-2 mb-4 border-b border-white/[0.06]">
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                          <span className="text-[10px] text-emerald-400 font-semibold">Hub Online</span>
-                        </div>
-                        <span className="text-[9px] font-bold text-[#C5A059] bg-[#C5A059]/10 px-1.5 py-0.5 rounded">PRO</span>
-                      </div>
-
-                      {/* KPI grid */}
-                      <div className="grid grid-cols-2 gap-2 mb-4">
-                        {([['Present', '47/52', '#10B981'], ['Units Today', '1,840', '#60A5FA'], ['Pending', '3 orders', '#F59E0B'], ['Alerts', '0', '#374151']] as const).map(([label, value, color]) => (
-                          <div key={label} className="bg-[#0F1114] rounded-xl p-3 border border-white/[0.06]">
-                            <p className="text-[9px] text-gray-600 mb-1">{label}</p>
-                            <p className="text-sm font-bold font-mono" style={{ color }}>{value}</p>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Quick actions */}
-                      <div className="grid grid-cols-3 gap-2 mb-4">
-                        {([['✓', 'Attend', '#10B981'], ['⚡', 'Log', '#60A5FA'], ['⊞', 'Scan', '#F59E0B']] as const).map(([icon, label, color]) => (
-                          <div key={label} className="bg-[#0F1114] rounded-xl p-3 border border-white/[0.06] flex flex-col items-center gap-1.5">
-                            <span className="text-lg" style={{ color }}>{icon}</span>
-                            <span className="text-[9px] text-gray-500 font-medium">{label}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Live event */}
-                      <div className="bg-emerald-500/[0.08] border border-emerald-500/20 rounded-xl p-3">
-                        <p className="text-[9px] text-emerald-400 font-semibold">✓ Muhammad Akram marked Present</p>
-                        <p className="text-[8px] text-gray-700 mt-0.5">Just now · synced to Hub</p>
-                      </div>
-                    </div>
-
-                    {/* Tab bar */}
-                    <div className="absolute bottom-0 left-0 right-0 h-14 bg-[#0A0C0F] border-t border-white/[0.06] flex items-center justify-around px-2">
-                      {(['⊞', '👷', '⚡', '✓', '≡'] as const).map((icon, i) => (
-                        <div key={i} className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg ${i === 0 ? 'bg-[#60A5FA]/15' : ''}`}>
-                          <span className={`text-sm ${i === 0 ? 'text-[#60A5FA]' : 'text-gray-700'}`}>{icon}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Phone glow */}
-                  <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-48 h-16 bg-[#60A5FA]/15 rounded-full blur-3xl" />
-                </div>
-
-                {/* Right: Features */}
-                <RevealStagger className="space-y-6">
-                  {/* Available now */}
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-emerald-400 mb-4 flex items-center gap-2">
-                      <span className="w-4 h-px bg-emerald-400/50" />
-                      Available with PC Hub today
-                    </p>
-                    <div className="space-y-3">
-                      {[
-                        { icon: '📡', title: 'Instant WiFi Pairing', desc: 'Scan QR from PC Hub. Connected in 60 seconds. No app store required.' },
-                        { icon: '✓', title: 'Attendance Marking', desc: 'Mark Present / Absent / Half for every karigar. Updates PC instantly.' },
-                        { icon: '⚡', title: 'Production Logging', desc: 'Log units, grade, and earnings. Live calculation before you save.' },
-                        { icon: '💰', title: 'Peshgi Advances', desc: 'Give advances from the floor. Balance updates on PC in real time.' },
-                      ].map(item => (
-                        <RevealItem key={item.title}>
-                          <div className="flex items-start gap-3 p-4 bg-[#0F1114] border border-white/[0.08] rounded-xl hover:border-emerald-500/20 transition-colors">
-                            <span className="text-xl flex-shrink-0 mt-0.5">{item.icon}</span>
-                            <div>
-                              <div className="flex items-center gap-2 mb-0.5">
-                                <p className="text-sm font-semibold text-white">{item.title}</p>
-                                <span className="text-[9px] bg-emerald-500/15 text-emerald-400 px-1.5 py-0.5 rounded font-bold">LIVE</span>
-                              </div>
-                              <p className="text-xs text-gray-500 leading-relaxed">{item.desc}</p>
-                            </div>
-                          </div>
-                        </RevealItem>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Coming soon */}
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#60A5FA] mb-4 flex items-center gap-2">
-                      <span className="w-4 h-px bg-[#60A5FA]/50" />
-                      Coming in Noxis Mobile v1.0
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {[
-                        { icon: '📦', title: 'Barcode Scanner', desc: 'Scan items to look up stock, receive goods, or dispatch.' },
-                        { icon: '📊', title: 'Live Reports', desc: 'Revenue, payroll summary, and outstanding balances on your phone.' },
-                        { icon: '🧠', title: 'Foresight Alerts', desc: 'Critical predictions pushed to your phone before problems happen.' },
-                        { icon: '🔔', title: 'Smart Notifications', desc: 'Payment overdue, stock running low, zone breach alerts.' },
-                        { icon: '🌐', title: 'Works Anywhere', desc: 'Cloudflare tunnel means you connect from home, Dubai, or anywhere.' },
-                        { icon: '🇵🇰', title: 'Urdu Interface', desc: 'Complete Urdu translation for supervisors and floor staff.' },
-                      ].map(item => (
-                        <RevealItem key={item.title}>
-                          <div className="flex items-start gap-3 p-4 bg-[#0F1114] border border-white/[0.06] rounded-xl opacity-75 hover:opacity-100 hover:border-[#60A5FA]/20 transition-all">
-                            <span className="text-lg flex-shrink-0 mt-0.5">{item.icon}</span>
-                            <div>
-                              <div className="flex items-center gap-2 mb-0.5">
-                                <p className="text-sm font-semibold text-white">{item.title}</p>
-                                <span className="text-[9px] bg-[#60A5FA]/10 text-[#60A5FA] px-1.5 py-0.5 rounded font-bold border border-[#60A5FA]/20">SOON</span>
-                              </div>
-                              <p className="text-xs text-gray-600 leading-relaxed">{item.desc}</p>
-                            </div>
-                          </div>
-                        </RevealItem>
-                      ))}
-                    </div>
-                  </div>
-                </RevealStagger>
+                <button
+                  onClick={() => setCapitalModalOpen(true)}
+                  className="w-full sm:w-auto px-8 py-4 text-xs font-black uppercase tracking-widest text-[#EAB308] bg-[#EAB308]/10 border border-[#EAB308]/30 hover:bg-[#EAB308]/20 rounded transition-all flex items-center justify-center gap-2"
+                >
+                  <Building size={16} />
+                  <span>Capital Referral</span>
+                </button>
               </div>
 
-              {/* Early access signup */}
-              <Reveal variant="up">
-                <div className="max-w-xl mx-auto text-center p-8 bg-[#0F1114] border border-[#60A5FA]/20 rounded-2xl">
-                  <div className="w-12 h-12 rounded-full bg-[#60A5FA]/10 border border-[#60A5FA]/20 flex items-center justify-center mx-auto mb-4 text-2xl">📱</div>
-                  <h3 className="text-xl font-bold text-white mb-2">Get early access to Noxis Mobile</h3>
-                  <p className="text-sm text-gray-500 mb-6 leading-relaxed">
-                    We are releasing Noxis Mobile to PC Hub customers first.
-                    Tell us what you need most — your feedback shapes the release.
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <input
-                      type="tel"
-                      placeholder="Your WhatsApp number (e.g. 0326...)"
-                      className="flex-1 bg-[#161A1F] border border-white/[0.08] text-white text-sm px-4 py-3 rounded-xl outline-none focus:border-[#60A5FA]/40 placeholder:text-gray-700"
-                    />
-                    <a
-                      href="https://wa.me/923264742678?text=I%20want%20early%20access%20to%20Noxis%20Mobile%20Hub"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="sm:flex-shrink-0 px-6 py-3 bg-[#60A5FA] text-black font-bold text-sm rounded-xl hover:bg-blue-400 transition-colors whitespace-nowrap text-center"
-                    >
-                      Get Early Access
-                    </a>
-                  </div>
-                  <p className="text-[10px] text-gray-700 mt-3">WhatsApp us directly — we respond within 2 hours.</p>
-                </div>
-              </Reveal>
-
-              {/* Connection diagram */}
-              <Reveal variant="up" className="mt-16 text-center">
-                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-gray-600 mb-8">How it connects</p>
-                <div className="flex items-center justify-center gap-4 flex-wrap">
-                  {[
-                    { icon: '🖥', label: 'Noxis PC Hub', sub: 'Windows PC', borderColor: 'border-white/10' },
-                  ].map(n => (
-                    <div key={n.label} className="flex flex-col items-center gap-2">
-                      <div className={`w-16 h-16 bg-[#0F1114] border ${n.borderColor} rounded-2xl flex items-center justify-center text-2xl`}>{n.icon}</div>
-                      <p className="text-xs text-gray-500 font-semibold">{n.label}</p>
-                      <p className="text-[10px] text-gray-700">{n.sub}</p>
+              {/* Key Highlights Ribbon */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-16 w-full max-w-5xl">
+                {[
+                  ['100% Offline Mode', 'Zero cloud lockout or internet downtime', Database],
+                  ['QR Multi-Device LAN', 'Instant Android Wi-Fi pairing on floor', Smartphone],
+                  ['Karigar Piece-Rate', 'Artisan output & peshgi wage calculator', CircleDollarSign],
+                  ['100% Client FileMorph', 'In-memory AES-256 PDF & Image suite', LockKeyhole],
+                ].map(([title, desc, Icon]: any, idx) => (
+                  <div key={idx} className="p-4 bg-[#0F141C]/80 border border-[#06B6D4]/20 rounded backdrop-blur-md text-left space-y-1">
+                    <div className="flex items-center gap-2 text-[#06B6D4]">
+                      <Icon size={16} />
+                      <span className="text-xs font-bold uppercase tracking-wider text-white">{title}</span>
                     </div>
-                  ))}
-                  <div className="flex flex-col items-center gap-1">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-px bg-[#60A5FA]/40" />
-                      <span className="px-2 py-1 bg-[#60A5FA]/10 border border-[#60A5FA]/20 rounded text-[9px] text-[#60A5FA] font-bold">WiFi</span>
-                      <div className="w-8 h-px bg-[#60A5FA]/40" />
-                    </div>
-                    <p className="text-[9px] text-gray-700">Same network</p>
+                    <p className="text-[10px] text-gray-400 font-medium leading-normal">{desc}</p>
                   </div>
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="w-16 h-16 bg-[#0F1114] border border-[#60A5FA]/30 rounded-2xl flex items-center justify-center text-2xl">📱</div>
-                    <p className="text-xs text-[#60A5FA] font-semibold">Noxis Mobile</p>
-                    <p className="text-[10px] text-gray-700">Android · Coming Soon</p>
-                  </div>
-                  <div className="flex flex-col items-center gap-1">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-px bg-emerald-500/40" />
-                      <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded text-[9px] text-emerald-400 font-bold">Cloud</span>
-                      <div className="w-8 h-px bg-emerald-500/40" />
-                    </div>
-                    <p className="text-[9px] text-gray-700">When online</p>
-                  </div>
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="w-16 h-16 bg-[#0F1114] border border-emerald-500/20 rounded-2xl flex items-center justify-center text-2xl">☁️</div>
-                    <p className="text-xs text-emerald-400 font-semibold">Secure Cloud</p>
-                    <p className="text-[10px] text-gray-700">Backup &amp; sync</p>
-                  </div>
-                </div>
-              </Reveal>
-            </div>
-          </section>
-
-          {/* Comparison Matrix */}
-          <section className="py-24 px-4 sm:px-6 border-t border-white/[0.04] bg-[#070708]/50">
-            <Reveal variant="up" className="max-w-7xl mx-auto space-y-12">
-              <div className="text-center space-y-3">
-                <p className="text-[10px] font-bold tracking-[0.3em] uppercase" style={{ color: CHAMPAGNE }}>Platform Parameters</p>
-                <h2 className="text-3xl font-bold tracking-tight text-white uppercase">Designed for Industrial Reality</h2>
-                <p className="text-xs text-gray-500">Comparison of Noxis Local ERP vs cloud systems and manual books</p>
-              </div>
-
-              <div className="overflow-x-auto rounded border border-white/[0.05] bg-[#0A0B0D]">
-                <table className="w-full text-left text-xs md:text-sm border-collapse min-w-[700px]">
-                  <thead>
-                    <tr className="border-b border-white/[0.06] bg-[#070708] text-gray-400 text-[10px] uppercase font-bold tracking-widest">
-                      <th className="p-4 w-[25%]">Parameter</th>
-                      <th className="p-4 text-center w-[30%]" style={{ color: CHAMPAGNE, background: `${CHAMPAGNE}08` }}>Noxis Local ERP</th>
-                      <th className="p-4 text-center">Legacy Cloud SaaS</th>
-                      <th className="p-4 text-center">Manual Accounting</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {comparisonRows.map((row) => (
-                      <tr key={row.metric} className="border-b border-white/[0.03] hover:bg-white/[0.01]">
-                        <td className="p-4 font-bold text-white text-[11px] uppercase tracking-wide">{row.metric}</td>
-                        <td className="p-4 text-center border-x border-white/[0.03]" style={{ background: `${CHAMPAGNE}06` }}>
-                          <span className="inline-flex items-start justify-center gap-2 text-[11px]" style={{ color: CHAMPAGNE_LIGHT }}>
-                            <Check size={14} className="text-emerald-400 shrink-0 mt-0.5" />
-                            {row.noxis}
-                          </span>
-                        </td>
-                        <td className="p-4 text-center text-gray-400 font-medium">{row.cloud}</td>
-                        <td className="p-4 text-center text-gray-500 font-medium">{row.manual}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Reveal>
-          </section>
-
-          {/* Onboarding Invitation CTA */}
-          <section className="py-24 px-4 sm:px-6 max-w-4xl mx-auto">
-            <Reveal variant="scale">
-              <div
-                className="rounded-xl p-10 md:p-14 text-center border relative overflow-hidden"
-                style={{ borderColor: `${CHAMPAGNE}30`, background: 'linear-gradient(165deg, rgba(197,160,89,0.03) 0%, rgba(10,11,13,0.98) 70%)' }}
-              >
-                <div className="absolute top-0 right-0 w-48 h-48 rounded-full blur-3xl pointer-events-none opacity-20" style={{ background: CHAMPAGNE }} />
-                <div className="relative space-y-6">
-                  <div className="flex justify-center mb-2">
-                    <BrandLogo size="nav" showWordmark={false} />
-                  </div>
-                  <p className="text-[10px] font-bold tracking-[0.3em] uppercase" style={{ color: CHAMPAGNE }}>Founding Factory Cohort</p>
-                  <h3 className="text-2xl sm:text-3xl font-bold text-white tracking-tight uppercase">Get Started with Noxis Hub</h3>
-                  <p className="text-xs text-gray-400 max-w-md mx-auto leading-relaxed">
-                    We assist with local WiFi routing configurations, operator account mapping, and custom piece-rate settings directly for your plant.
-                  </p>
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
-                    <a
-                      href="https://wa.me/923264742678"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 font-extrabold text-[10px] tracking-[0.2em] uppercase py-4 px-8 rounded-sm bg-[#25D366] text-black"
-                    >
-                      <MessageSquare size={14} /> WhatsApp Support Board
-                    </a>
-                    <Link
-                      href="/download"
-                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 border border-white/20 font-extrabold text-[10px] tracking-[0.2em] uppercase py-4 px-8 rounded-sm text-white hover:bg-white/5 transition-colors"
-                    >
-                      <Download size={14} /> Download Free Trial
-                  </Link>
-                  </div>
-                </div>
-              </div>
-            </Reveal>
-          </section>
-
-          {/* Simple Professional Footer */}
-          <footer className="border-t border-white/[0.04] py-14 px-4 sm:px-6" style={{ background: '#030304' }}>
-            <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
-              <div className="flex flex-col sm:flex-row items-center gap-4">
-                <BrandLogo size="footer" />
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  <Image src="/logos/omnoralabs.png" alt="Omnora Labs" width={72} height={20} className="h-5 w-auto object-contain opacity-60" />
-                </div>
-              </div>
-              <div className="flex flex-wrap justify-center gap-6 sm:gap-8 text-[10px] font-bold uppercase tracking-widest text-gray-500">
-                {[{ label: 'Download', href: '/download' }, { label: 'Mobile', href: '#mobile' }, { label: 'Pricing', href: '/pricing' }, { label: 'Reviews', href: '/reviews' }, { label: 'Blog', href: '/blog' }, { label: 'Docs', href: '/docs' }, { label: 'Privacy', href: '/privacy' }, { label: 'Terms', href: '/terms' }, { label: 'Refund', href: '/refund' }, { label: 'About', href: '/about' }].map((l) => (
-                  l.href.startsWith('#')
-                    ? <a key={l.href} href={l.href} className="hover:text-[#60A5FA] transition-colors text-[#60A5FA]/60">{l.label}</a>
-                    : <Link key={l.href} href={l.href} className="hover:text-white transition-colors">{l.label}</Link>
                 ))}
               </div>
-              <p className="text-center md:text-right text-xs text-gray-600">© 2026 Noxis Hub · Engineered in Pakistan</p>
+            </div>
+          </section>
+
+          {/* ========================================== */}
+          {/* CORE MODULES & FEATURES SECTION (#features) */}
+          {/* ========================================== */}
+          <section id="features" className="py-24 px-4 sm:px-6 max-w-7xl mx-auto border-t border-[#06B6D4]/20">
+            <div className="text-center max-w-3xl mx-auto mb-14">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#06B6D4]/10 border border-[#06B6D4]/30 text-[#06B6D4] text-[10px] font-bold uppercase tracking-widest mb-3">
+                <Layers size={12} />
+                <span>Production System UI Architecture</span>
+              </div>
+              <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tight text-white italic">
+                EXPLORE NOXIS HUB CORE MODULES
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-400 mt-2">
+                Click any module tab below to interact with live system components and operational simulators.
+              </p>
+            </div>
+
+            {/* Feature Tabs Selector */}
+            <div className="flex flex-wrap items-center justify-center gap-2 mb-10">
+              {[
+                { id: 'mesh', label: 'Offline Mesh Node', icon: Database },
+                { id: 'erp', label: 'Garment ERP & Karigars', icon: CircleDollarSign },
+                { id: 'filemorph', label: 'FileMorph Data Studio', icon: LockKeyhole },
+                { id: 'cctv', label: 'CCTV Sentinel AI', icon: Camera },
+                { id: 'capital', label: 'Working Capital Hub', icon: Building },
+                { id: 'compliance', label: 'Governance & GDPR', icon: ShieldCheck },
+              ].map(tab => {
+                const Icon = tab.icon
+                const active = activeTab === tab.id
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as FeatureModuleTab)}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded text-xs font-bold uppercase tracking-wider transition-all border ${
+                      active
+                        ? 'bg-[#06B6D4] text-black border-[#08EBF6] shadow-[0_0_20px_rgba(6,182,212,0.4)]'
+                        : 'bg-[#0F141C]/60 text-gray-400 border-white/5 hover:border-[#06B6D4]/40 hover:text-white'
+                    }`}
+                  >
+                    <Icon size={14} />
+                    <span>{tab.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Tab Contents */}
+            <div className="bg-[#0F141C]/90 border border-[#06B6D4]/30 rounded-lg p-6 sm:p-10 shadow-2xl backdrop-blur-xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-96 h-96 bg-[#06B6D4]/5 rounded-full blur-3xl pointer-events-none" />
+
+              {/* MODULE 1: OFFLINE MESH & SYNC */}
+              {activeTab === 'mesh' && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                  <div className="space-y-6">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#06B6D4]/10 border border-[#06B6D4]/30 text-[#06B6D4] text-[10px] font-mono font-bold uppercase tracking-wider">
+                      <Wifi size={12} />
+                      <span>Zero-Cloud Dependency Engine</span>
+                    </div>
+                    <h3 className="text-xl sm:text-2xl font-black uppercase text-white tracking-tight italic">
+                      100% Offline-First Mesh & Device Pairing
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-400 leading-relaxed font-normal">
+                      Noxis Workstation runs on an embedded local SQLite engine configured with Write-Ahead Logging (WAL) and AES-256 local database encryption. Factories can log raw material transactions, attendance, and sales for months with zero internet connectivity.
+                    </p>
+
+                    <div className="space-y-3 text-xs">
+                      {[
+                        'Local Wi-Fi Subnet QR Discovery: Pair supervisor Android devices instantly over local Wi-Fi.',
+                        'Automatic Cloud Sync: When active internet connects, changes reconcile asynchronously.',
+                        'Conflict Resolution Engine: Automatic timestamped transaction queue merging.',
+                      ].map((item, idx) => (
+                        <div key={idx} className="flex items-start gap-2 text-gray-300">
+                          <CheckCircle2 size={16} className="text-[#06B6D4] shrink-0 mt-0.5" />
+                          <span>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => setDeployModalOpen(true)}
+                      className="px-6 py-3 bg-[#06B6D4] text-black text-xs font-black uppercase tracking-widest rounded shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:bg-[#08EBF6] transition-all flex items-center gap-2"
+                    >
+                      <Download size={14} />
+                      <span>Download Offline Workstation Installer</span>
+                    </button>
+                  </div>
+
+                  {/* Simulated Terminal Console */}
+                  <div className="bg-[#07090D] border border-white/10 rounded p-4 font-mono text-[11px] space-y-2">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-3">
+                      <div className="flex items-center gap-2 text-[#06B6D4]">
+                        <Terminal size={14} />
+                        <span className="font-bold uppercase tracking-wider">Noxis Local Mesh Node Console</span>
+                      </div>
+                      <span className="text-[9px] px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded font-bold uppercase">
+                        LOCAL ENGINE ACTIVE
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5 text-gray-300">
+                      <p className="text-gray-500">[21:32:04] Initializing local SQLite database: C:\NoxisData\Noxis-Local.db</p>
+                      <p className="text-[#06B6D4]">[21:32:05] SUCCESS: AES-256 encrypted WAL journal active.</p>
+                      <p className="text-emerald-400">[21:32:08] TELEMETRY: Offline mode enabled. Transactions queued locally.</p>
+                      <p className="text-gray-300">[21:32:15] TRANSACT: Logged 1,420 yards for Weaver Hamid Saeed.</p>
+                      <p className="text-amber-400">[21:35:12] MESH: 4 Android companion devices connected via subnet 192.168.1.0/24</p>
+                      <p className="text-cyan-300">[21:36:00] QUEUE: 142 records ready for cloud handshake when online.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* MODULE 2: INDUSTRIAL GARMENT ERP & KARIGARS */}
+              {activeTab === 'erp' && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center" id="erp">
+                  <div className="space-y-6">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#06B6D4]/10 border border-[#06B6D4]/30 text-[#06B6D4] text-[10px] font-mono font-bold uppercase tracking-wider">
+                      <CircleDollarSign size={12} />
+                      <span>Artisan & Piece-Rate Registry</span>
+                    </div>
+                    <h3 className="text-xl sm:text-2xl font-black uppercase text-white tracking-tight italic">
+                      Karigars, Piece-Rate Payroll & Supply Chain
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-400 leading-relaxed font-normal">
+                      Built specifically for garment & textile mills. Track piece-rate wages per yard/unit, manage worker advance payments (peshgi), print salary slips, manage purchase orders, track fabric stock, and trigger automated workflow alerts.
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-4 text-xs">
+                      <div className="p-3 bg-black/40 border border-white/10 rounded space-y-1">
+                        <span className="text-[10px] uppercase font-bold text-gray-400">Karigar Wage Types</span>
+                        <p className="text-white font-bold">Piece-rate, Daily & Monthly</p>
+                      </div>
+                      <div className="p-3 bg-black/40 border border-white/10 rounded space-y-1">
+                        <span className="text-[10px] uppercase font-bold text-gray-400">Advance Deductions</span>
+                        <p className="text-white font-bold">Automated Peshgi Tracking</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Interactive Karigar Payroll Calculator Simulator */}
+                  <div className="bg-[#07090D] border border-[#06B6D4]/30 rounded p-6 space-y-4">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-[#06B6D4] flex items-center justify-between border-b border-white/10 pb-3">
+                      <span>Live Karigar Payroll Slip Simulator</span>
+                      <span className="text-[9px] font-mono text-gray-400">Interactive Tool</span>
+                    </h4>
+
+                    <div className="space-y-3 text-xs">
+                      <div>
+                        <div className="flex justify-between text-gray-400 mb-1">
+                          <span>Units Produced (Yards / Stitching):</span>
+                          <span className="font-bold text-white font-mono">{karigarUnits} units</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="50"
+                          max="2000"
+                          value={karigarUnits}
+                          onChange={(e) => setKarigarUnits(Number(e.target.value))}
+                          className="w-full accent-[#06B6D4]"
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between text-gray-400 mb-1">
+                          <span>Piece Rate per Unit (PKR):</span>
+                          <span className="font-bold text-white font-mono">PKR {karigarRate}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="10"
+                          max="200"
+                          value={karigarRate}
+                          onChange={(e) => setKarigarRate(Number(e.target.value))}
+                          className="w-full accent-[#06B6D4]"
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between text-gray-400 mb-1">
+                          <span>Peshgi (Advance Deduction):</span>
+                          <span className="font-bold text-[#06B6D4] font-mono">PKR {karigarPeshgi}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="10000"
+                          step="250"
+                          value={karigarPeshgi}
+                          onChange={(e) => setKarigarPeshgi(Number(e.target.value))}
+                          className="w-full accent-[#06B6D4]"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-black/60 border border-white/10 rounded space-y-2 font-mono text-xs">
+                      <div className="flex justify-between text-gray-400">
+                        <span>Gross Earnings ({karigarUnits} × {karigarRate}):</span>
+                        <span className="text-white font-bold">PKR {(karigarUnits * karigarRate).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-gray-400">
+                        <span>Peshgi Deduction:</span>
+                        <span className="text-red-400">- PKR {karigarPeshgi.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-white font-bold border-t border-white/10 pt-2 text-sm">
+                        <span className="text-[#06B6D4]">Net Payable Wage:</span>
+                        <span className="text-emerald-400">PKR {Math.max(0, (karigarUnits * karigarRate) - karigarPeshgi).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* MODULE 3: FILEMORPH DATA STUDIO */}
+              {activeTab === 'filemorph' && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center" id="filemorph">
+                  <div className="space-y-6">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#06B6D4]/10 border border-[#06B6D4]/30 text-[#06B6D4] text-[10px] font-mono font-bold uppercase tracking-wider">
+                      <LockKeyhole size={12} />
+                      <span>100% Client-Side In-Memory Engine</span>
+                    </div>
+                    <h3 className="text-xl sm:text-2xl font-black uppercase text-white tracking-tight italic">
+                      FileMorph Data & Document Studio
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-400 leading-relaxed font-normal">
+                      Zero-cloud document suite running 100% inside your browser / desktop RAM via WebAssembly. Perform PDF encryption, watermarking, size compression, format conversions, image background removal, EXIF cleaner, and Tally/WhatsApp order CSV importers.
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      {[
+                        'AES-256 PDF Encryption & Lock',
+                        'PDF Compression (up to 80% size reduction)',
+                        'PDF to 300 DPI Images & Word',
+                        'Edge Background Remover & EXIF Stripper',
+                        'Tally & QuickBooks CSV Ledger Importers',
+                        'WhatsApp Order Text Parser',
+                      ].map((item, i) => (
+                        <div key={i} className="flex items-center gap-1.5 text-gray-300">
+                          <CheckCircle2 size={14} className="text-[#06B6D4] shrink-0" />
+                          <span>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Interactive FileMorph Simulator */}
+                  <div className="bg-[#07090D] border border-[#06B6D4]/30 rounded p-6 space-y-4">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-[#06B6D4] flex items-center justify-between border-b border-white/10 pb-3">
+                      <span>Interactive FileMorph Tool Simulator</span>
+                      <span className="text-[9px] font-mono text-gray-400">100% WASM Client-Side</span>
+                    </h4>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { id: 'encrypt', label: 'PDF Encrypt (AES-256)' },
+                        { id: 'watermark', label: 'PDF Watermark' },
+                        { id: 'compress', label: 'Compress PDF (80%)' },
+                        { id: 'convert', label: 'PDF → 300DPI PNG' },
+                        { id: 'exif', label: 'EXIF Metadata Strip' },
+                      ].map(btn => (
+                        <button
+                          key={btn.id}
+                          onClick={() => setFileMorphAction(btn.id as any)}
+                          className={`p-2 text-[10px] font-bold uppercase rounded border transition-colors ${
+                            fileMorphAction === btn.id
+                              ? 'bg-[#06B6D4] text-black border-[#08EBF6]'
+                              : 'bg-white/5 text-gray-300 border-white/10 hover:border-white/20'
+                          }`}
+                        >
+                          {btn.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="p-4 bg-black/60 border border-white/10 rounded space-y-3">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-gray-400 font-mono">Sample Input File:</span>
+                        <span className="text-white font-bold font-mono">Factory_Payroll_2026.pdf (8.4 MB)</span>
+                      </div>
+
+                      <button
+                        onClick={runFileMorphDemo}
+                        disabled={fileMorphProcessing}
+                        className="w-full py-3 bg-[#06B6D4] hover:bg-[#08EBF6] text-black text-xs font-black uppercase tracking-widest rounded transition-all flex items-center justify-center gap-2"
+                      >
+                        {fileMorphProcessing ? (
+                          <>
+                            <RefreshCw size={14} className="animate-spin" />
+                            <span>Processing in RAM...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Zap size={14} />
+                            <span>Run {fileMorphAction.toUpperCase()} Operation</span>
+                          </>
+                        )}
+                      </button>
+
+                      {fileMorphResult && (
+                        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono text-[11px] rounded">
+                          {fileMorphResult}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* MODULE 4: CCTV SENTINEL AI */}
+              {activeTab === 'cctv' && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center" id="cctv">
+                  <div className="space-y-6">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#06B6D4]/10 border border-[#06B6D4]/30 text-[#06B6D4] text-[10px] font-mono font-bold uppercase tracking-wider">
+                      <Camera size={12} />
+                      <span>RTSP & Port 80/554 Auto-Discovery</span>
+                    </div>
+                    <h3 className="text-xl sm:text-2xl font-black uppercase text-white tracking-tight italic">
+                      CCTV Sentinel AI & Security Hub
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-400 leading-relaxed font-normal">
+                      Scan local LAN subnets automatically for Hikvision, Imou, Dahua, and RTSP IP camera feeds (Port 80 / 554). Run local face matching, zone intrusion detection, and instant floor sirens without monthly cloud storage fees.
+                    </p>
+
+                    <div className="space-y-3 text-xs text-gray-300">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 size={16} className="text-[#06B6D4]" />
+                        <span>Zero cloud storage fee — RTSP video stays 100% local.</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 size={16} className="text-[#06B6D4]" />
+                        <span>Local face check-in logging for Karigars and Operators.</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 size={16} className="text-[#06B6D4]" />
+                        <span>Automated siren & push notifications on zone breaches.</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Interactive CCTV Scanner Simulator */}
+                  <div className="bg-[#07090D] border border-[#06B6D4]/30 rounded p-6 space-y-4">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-[#06B6D4] flex items-center gap-2">
+                        <Camera size={14} />
+                        <span>LAN Subnet Camera Auto-Discovery</span>
+                      </h4>
+                      <button
+                        onClick={runCctvScannerDemo}
+                        disabled={cctvScanning}
+                        className="px-3 py-1 bg-[#06B6D4] text-black text-[10px] font-black uppercase tracking-wider rounded hover:bg-[#08EBF6] transition-all flex items-center gap-1"
+                      >
+                        <RefreshCw size={12} className={cctvScanning ? 'animate-spin' : ''} />
+                        <span>Scan 192.168.1.0/24</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-2 text-xs font-mono">
+                      {cctvDevicesFound.map((dev, idx) => (
+                        <div key={idx} className="p-3 bg-black/50 border border-white/10 rounded flex items-center justify-between">
+                          <div>
+                            <p className="text-white font-bold">{dev.location}</p>
+                            <p className="text-gray-500 text-[10px]">{dev.brand} ({dev.ip}:{dev.port})</p>
+                          </div>
+                          <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold rounded uppercase">
+                            {dev.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* MODULE 5: WORKING CAPITAL HUB */}
+              {activeTab === 'capital' && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center" id="capital">
+                  <div className="space-y-6">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#EAB308]/10 border border-[#EAB308]/30 text-[#EAB308] text-[10px] font-mono font-bold uppercase tracking-wider">
+                      <Building size={12} />
+                      <span>SME Funding Telemetry & Credit Scoring</span>
+                    </div>
+                    <h3 className="text-xl sm:text-2xl font-black uppercase text-white tracking-tight italic">
+                      Noxis Capital Core & Working Capital Hub
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-400 leading-relaxed font-normal">
+                      Verified factory telemetry converts live ledger invoice activity into credit health scores (A/B tiering). Access collateral-free SME microfinance referrals from institutional partners (Akhuwat Microfinance, NRSP, HBL).
+                    </p>
+
+                    <button
+                      onClick={() => setCapitalModalOpen(true)}
+                      className="px-6 py-3 bg-[#EAB308] text-black text-xs font-black uppercase tracking-widest rounded shadow-[0_0_20px_rgba(234,179,8,0.3)] hover:bg-amber-300 transition-all flex items-center gap-2"
+                    >
+                      <ArrowUpRight size={16} />
+                      <span>Submit Capital Referral Request</span>
+                    </button>
+                  </div>
+
+                  {/* Interactive Credit Score Calculator */}
+                  <div className="bg-[#07090D] border border-[#EAB308]/30 rounded p-6 space-y-4">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-[#EAB308] flex items-center justify-between border-b border-white/10 pb-3">
+                      <span>Live Credit Score Benchmark Calculator</span>
+                      <span className="text-[9px] font-mono text-gray-400">Factory Score</span>
+                    </h4>
+
+                    <div className="grid grid-cols-3 gap-3 text-center">
+                      <div className="p-3 bg-black/50 border border-white/10 rounded">
+                        <span className="text-[10px] text-gray-400 uppercase font-bold block">Credit Score</span>
+                        <span className="text-2xl font-black text-white font-mono">{creditScore.score}/100</span>
+                      </div>
+                      <div className="p-3 bg-black/50 border border-white/10 rounded">
+                        <span className="text-[10px] text-gray-400 uppercase font-bold block">Credit Grade</span>
+                        <span className="text-2xl font-black text-[#EAB308] font-mono">Grade {creditScore.grade}</span>
+                      </div>
+                      <div className="p-3 bg-black/50 border border-white/10 rounded">
+                        <span className="text-[10px] text-gray-400 uppercase font-bold block">Pre-Approved Limit</span>
+                        <span className="text-lg font-black text-emerald-400 font-mono">${creditScore.maxLoan} USD</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 text-xs">
+                      <div>
+                        <div className="flex justify-between text-gray-400 mb-1">
+                          <span>Months Active on Noxis:</span>
+                          <span className="font-bold text-white font-mono">{monthsActive} months</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="1"
+                          max="24"
+                          value={monthsActive}
+                          onChange={(e) => setMonthsActive(Number(e.target.value))}
+                          className="w-full accent-[#EAB308]"
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between text-gray-400 mb-1">
+                          <span>Invoice Volume (last 90 days):</span>
+                          <span className="font-bold text-white font-mono">{invoiceCount} invoices</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="1"
+                          max="100"
+                          value={invoiceCount}
+                          onChange={(e) => setInvoiceCount(Number(e.target.value))}
+                          className="w-full accent-[#EAB308]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* MODULE 6: GOVERNANCE, COMPLIANCE & GDPR */}
+              {activeTab === 'compliance' && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center" id="compliance">
+                  <div className="space-y-6">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#06B6D4]/10 border border-[#06B6D4]/30 text-[#06B6D4] text-[10px] font-mono font-bold uppercase tracking-wider">
+                      <ShieldCheck size={12} />
+                      <span>Audit Trails & Data Governance</span>
+                    </div>
+                    <h3 className="text-xl sm:text-2xl font-black uppercase text-white tracking-tight italic">
+                      Governance, Compliance & GDPR Center
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-400 leading-relaxed font-normal">
+                      Immutable double-entry audit trails, SLA verifications, industry GMP checklists, and one-click GDPR subject data export or permanent deletion.
+                    </p>
+
+                    <div className="space-y-2 text-xs">
+                      <div className="p-3 bg-black/40 border border-white/10 rounded flex items-center justify-between">
+                        <span className="text-gray-300">FDA & GMP Audit Verification Reports</span>
+                        <span className="text-emerald-400 font-bold">100% Passed</span>
+                      </div>
+                      <div className="p-3 bg-black/40 border border-white/10 rounded flex items-center justify-between">
+                        <span className="text-gray-300">GDPR Data Privacy Export Engine</span>
+                        <span className="text-[#06B6D4] font-bold">Compliant</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-6 bg-[#07090D] border border-white/10 rounded space-y-3 font-mono text-xs">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                      <span className="text-white font-bold">GDPR Subject Request Console</span>
+                      <span className="text-emerald-400">Ready</span>
+                    </div>
+                    <p className="text-gray-400 text-[11px]">
+                      Enter subject email address to generate an encrypted export bundle or execute a right-to-be-forgotten erasure.
+                    </p>
+                    <div className="flex gap-2 pt-2">
+                      <input
+                        type="email"
+                        placeholder="operator@factory.com"
+                        className="flex-1 bg-black border border-white/20 text-xs px-3 py-2 text-white outline-none focus:border-[#06B6D4]"
+                      />
+                      <button className="px-4 py-2 bg-[#06B6D4] text-black text-xs font-bold uppercase tracking-wider rounded">
+                        Export ZIP
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </section>
+
+          {/* ========================================== */}
+          {/* COMPARISON MATRIX                          */}
+          {/* ========================================== */}
+          <section className="py-20 px-4 sm:px-6 max-w-7xl mx-auto border-t border-[#06B6D4]/20">
+            <div className="text-center max-w-3xl mx-auto mb-12">
+              <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tight text-white italic">
+                NOXIS HUB VS TRADITIONAL SOFTWARE
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-400 mt-2">
+                Why industrial factories choose offline-first local workstations over fragile cloud SaaS tools.
+              </p>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse border border-white/10 rounded overflow-hidden">
+                <thead>
+                  <tr className="bg-[#0F141C] border-b border-white/10 text-xs font-black uppercase tracking-wider text-gray-300">
+                    <th className="p-4">Operational Feature</th>
+                    <th className="p-4 text-[#06B6D4]">Noxis Hub (Offline-First OS)</th>
+                    <th className="p-4 text-gray-500">Generic Cloud SaaS</th>
+                    <th className="p-4 text-gray-500">Paper Ledgers</th>
+                  </tr>
+                </thead>
+                <tbody className="text-xs text-gray-300 font-medium divide-y divide-white/5 bg-[#07090D]">
+                  {[
+                    ['Network Dependency', '100% Offline-capable (Runs on local Wi-Fi)', 'Completely blocks on internet drops', 'Manual records'],
+                    ['Karigar Wages & Peshgi', 'Automated piece-rate & advance deductions', 'Requires complex custom spreadsheets', 'Calculated manually, high error rate'],
+                    ['Document Privacy (FileMorph)', '100% In-memory WASM (0 bytes uploaded)', 'Uploaded to third-party web servers', 'Physical paper copies'],
+                    ['Security Camera Feeds', 'Local AI RTSP camera scanner (Zero cloud fee)', 'High monthly fee cloud cameras', 'None'],
+                    ['Data Control & Safety', 'Encrypted local SQLite + auto cloud mirror', 'Stored on public multi-tenant clouds', 'No backup (fire/loss risk)'],
+                  ].map(([row, noxis, cloud, manual], i) => (
+                    <tr key={i} className="hover:bg-white/[0.02]">
+                      <td className="p-4 font-bold text-white">{row}</td>
+                      <td className="p-4 text-[#08EBF6] font-semibold">{noxis}</td>
+                      <td className="p-4 text-gray-400">{cloud}</td>
+                      <td className="p-4 text-gray-500">{manual}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          {/* ========================================== */}
+          {/* DEPLOY OFFLINE NODE MODAL                  */}
+          {/* ========================================== */}
+          {deployModalOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+              <div className="max-w-md w-full bg-[#0B0F17] border border-[#06B6D4]/40 rounded-lg p-6 space-y-4 shadow-2xl relative">
+                <button onClick={() => setDeployModalOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-white">
+                  <X size={18} />
+                </button>
+                <div className="flex items-center gap-2 text-[#06B6D4]">
+                  <Download size={20} />
+                  <h3 className="text-base font-black uppercase text-white tracking-wider">Deploy Noxis Offline Node</h3>
+                </div>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  Download the optimized Windows desktop workstation setup binary (.exe) or launcher for local factory computers.
+                </p>
+
+                <div className="space-y-3 pt-2">
+                  <a
+                    href="/download"
+                    className="w-full py-3.5 bg-[#06B6D4] hover:bg-[#08EBF6] text-black text-xs font-black uppercase tracking-widest rounded flex items-center justify-center gap-2 no-underline"
+                  >
+                    <Download size={14} />
+                    <span>Download Windows Workstation Setup (.exe)</span>
+                  </a>
+                  <a
+                    href="https://wa.me/923264742678?text=Hello%20Noxis%20Team%2C%20I%20want%20to%20deploy%20an%20Offline%20Factory%20Node"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-3.5 bg-white/5 border border-white/10 hover:border-white/20 text-gray-300 text-xs font-bold uppercase tracking-widest rounded flex items-center justify-center gap-2 no-underline"
+                  >
+                    <MessageSquare size={14} />
+                    <span>Request Guided Onboarding via WhatsApp</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================== */}
+          {/* WORKING CAPITAL REFERRAL MODAL             */}
+          {/* ========================================== */}
+          {capitalModalOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+              <div className="max-w-lg w-full bg-[#0B0F17] border border-[#EAB308]/40 rounded-lg p-6 space-y-4 shadow-2xl relative">
+                <button onClick={() => { setCapitalModalOpen(false); setReferralToken(null); }} className="absolute top-4 right-4 text-gray-400 hover:text-white">
+                  <X size={18} />
+                </button>
+                <div className="flex items-center gap-2 text-[#EAB308]">
+                  <Building size={20} />
+                  <h3 className="text-base font-black uppercase text-white tracking-wider">Institutional Capital Referral</h3>
+                </div>
+
+                {!referralToken ? (
+                  <form onSubmit={handleRequestCapital} className="space-y-4 text-xs">
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1">Select Financial Partner</label>
+                      <select
+                        value={selectedPartner}
+                        onChange={(e) => setSelectedPartner(e.target.value)}
+                        className="w-full bg-[#07090D] border border-white/20 text-white p-3 rounded outline-none focus:border-[#EAB308]"
+                      >
+                        <option value="Akhuwat Microfinance">Akhuwat Microfinance (Qarz-e-Hasna 0% Markup)</option>
+                        <option value="NRSP Microfinance Bank">NRSP Microfinance Bank (SME Inventory Loans)</option>
+                        <option value="HBL Microfinance Bank">HBL Microfinance Bank (Commercial Credit)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1">Requested Amount (USD / Equivalent)</label>
+                      <input
+                        type="number"
+                        value={capitalAmount}
+                        onChange={(e) => setCapitalAmount(e.target.value)}
+                        className="w-full bg-[#07090D] border border-white/20 text-white p-3 rounded outline-none focus:border-[#EAB308]"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1">Purpose of Capital</label>
+                      <input
+                        type="text"
+                        value={capitalPurpose}
+                        onChange={(e) => setCapitalPurpose(e.target.value)}
+                        className="w-full bg-[#07090D] border border-white/20 text-white p-3 rounded outline-none focus:border-[#EAB308]"
+                        required
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full py-3.5 bg-[#EAB308] hover:bg-amber-300 text-black text-xs font-black uppercase tracking-widest rounded flex items-center justify-center gap-2"
+                    >
+                      <ArrowUpRight size={16} />
+                      <span>Submit Capital Referral Request</span>
+                    </button>
+                  </form>
+                ) : (
+                  <div className="space-y-4 text-xs font-mono text-center py-2">
+                    <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded">
+                      <p className="font-bold text-sm">REFERRAL APPLICATION GENERATED ✓</p>
+                      <p className="text-white text-base font-black mt-2">{referralToken}</p>
+                    </div>
+                    <p className="text-gray-400">
+                      Your referral telemetry has been queued for {selectedPartner}. A microfinance credit desk officer will review your score benchmarks within 24-48 hours.
+                    </p>
+                    <button
+                      onClick={() => setCapitalModalOpen(false)}
+                      className="w-full py-3 bg-white/10 hover:bg-white/20 text-white font-bold uppercase rounded"
+                    >
+                      Done
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ========================================== */}
+          {/* DYNAMIC FOOTER                             */}
+          {/* ========================================== */}
+          <footer className="border-t border-[#06B6D4]/20 bg-[#07090D] py-12 px-4 sm:px-6">
+            <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 text-xs text-gray-400">
+              <div className="flex items-center gap-3">
+                <BrandLogo size="footer" showWordmark={true} />
+                <span className="text-[10px] font-mono px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded font-bold uppercase">
+                  ● All Systems Nominal • Mesh Local Engine Active
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-6 font-semibold uppercase text-[11px]">
+                <Link href="/specs" className="hover:text-[#06B6D4] transition-colors no-underline">Hardware Specs</Link>
+                <Link href="/docs" className="hover:text-[#06B6D4] transition-colors no-underline">Documentation</Link>
+                <Link href="/pricing" className="hover:text-[#06B6D4] transition-colors no-underline">Pricing</Link>
+                <Link href="/terms" className="hover:text-[#06B6D4] transition-colors no-underline">Terms</Link>
+                <Link href="/privacy" className="hover:text-[#06B6D4] transition-colors no-underline">Privacy Policy</Link>
+              </div>
+
+              <p className="text-[10px] font-mono text-gray-500">
+                © 2026 Noxis Hub. Built for extreme performance.
+              </p>
             </div>
           </footer>
         </div>
       </div>
-
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@700&display=swap');
-        .font-sans { font-family: 'Outfit', sans-serif; }
-        .font-mono { font-family: 'JetBrains+Mono', monospace; }
-        body { background-color: #08090A; }
-        
-        @keyframes noxis-grid-drift {
-          0% {
-            background-position: 0px 0px;
-          }
-          100% {
-            background-position: 64px 64px;
-          }
-        }
-        .noxis-grid-drift {
-          animation: noxis-grid-drift 24s linear infinite;
-        }
-      `}</style>
     </>
   )
 }

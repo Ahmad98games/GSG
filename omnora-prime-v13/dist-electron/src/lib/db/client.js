@@ -265,7 +265,22 @@ exports.db = new Proxy({}, {
                 _db = initDrizzle(sqlite);
                 try {
                     sqlite.exec(schema_1.NOXIS_SCHEMA);
-                    console.log('[DB] Schema applied successfully');
+                    // Auto-migrate missing columns for existing local databases
+                    const alterTableSafe = (table, colDef) => {
+                        try {
+                            sqlite.exec(`ALTER TABLE ${table} ADD COLUMN ${colDef};`);
+                        }
+                        catch { }
+                    };
+                    alterTableSafe('parties', 'business_id TEXT');
+                    alterTableSafe('parties', 'is_blocked INTEGER DEFAULT 0');
+                    alterTableSafe('invoices', 'business_id TEXT');
+                    alterTableSafe('ledger_entries', 'business_id TEXT');
+                    alterTableSafe('payments', 'business_id TEXT');
+                    alterTableSafe('skus', 'business_id TEXT');
+                    alterTableSafe('karigars', 'business_id TEXT');
+                    alterTableSafe('expenses', 'business_id TEXT');
+                    console.log('[DB] Schema applied & column migrations verified ✓');
                     const tables = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all();
                     console.log(`[DB] Tables: ${tables.map(t => t.name).join(', ')}`);
                 }

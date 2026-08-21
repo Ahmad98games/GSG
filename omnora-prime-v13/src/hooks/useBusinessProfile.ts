@@ -102,21 +102,19 @@ export const useBusinessProfile = () => {
           .single();
 
         if (error) {
-          if (error.code === 'PGRST116' || error.code === '406') {
-            setProfile(null);
-          }
           console.error('Profile fetch error:', error);
           setOffline(true);
 
-          // Secondary Fallback Layer: Load from local SQLite config
-          try {
-            const localRes = await fetch('/api/settings');
-            const localData = await localRes.json();
-            const configMap = (localData.localConfig || []).reduce((acc: any, c: any) => ({ ...acc, [c.key]: c.value }), {});
-            
-            if (configMap.business_id) {
+          // Secondary Fallback Layer: Load from local SQLite config or default profile if none exists
+          if (!profile) {
+            try {
+              const localRes = await fetch('/api/settings');
+              const localData = await localRes.json();
+              const configMap = (localData.localConfig || []).reduce((acc: any, c: any) => ({ ...acc, [c.key]: c.value }), {});
+              
+              const bizId = isUuid(configMap.business_id) ? configMap.business_id : DEFAULT_BIZ_ID;
               const fallbackProfile: any = {
-                id: configMap.business_id,
+                id: bizId,
                 business_name: configMap.business_name || 'Noxis Business',
                 owner_name: configMap.owner_name || 'Noxis Owner',
                 avatar_type: (configMap.avatar_type || 'preset') as any,
@@ -135,9 +133,9 @@ export const useBusinessProfile = () => {
                 preferred_locale: configMap.preferred_locale || 'en',
               };
               setProfile(fallbackProfile);
+            } catch (localErr) {
+              setProfile({ id: DEFAULT_BIZ_ID, business_name: 'Noxis Business', role: 'retailer', currency: 'PKR' } as any);
             }
-          } catch (localErr) {
-            console.error('Failed to load local config fallback:', localErr);
           }
         } else {
           setProfile({

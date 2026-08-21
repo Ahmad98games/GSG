@@ -157,15 +157,35 @@ export default function WorkflowsPage() {
   const { data: workflows = [], isLoading } = useQuery({
     queryKey: ['workflows', profile?.id],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('workflows')
-        .select(`
-          *,
-          workflow_runs(count)
-        `)
-        .eq('business_id', profile!.id)
-        .order('created_at', { ascending: false })
-      return data || []
+      let cachedData: any[] = [];
+      if (typeof window !== 'undefined' && profile?.id) {
+        try {
+          const cached = localStorage.getItem(`noxis_cached_workflows_${profile.id}`);
+          if (cached) cachedData = JSON.parse(cached);
+        } catch {}
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('workflows')
+          .select(`
+            *,
+            workflow_runs(count)
+          `)
+          .eq('business_id', profile!.id)
+          .order('created_at', { ascending: false });
+
+        if (!error && data) {
+          if (typeof window !== 'undefined' && profile?.id) {
+            try { localStorage.setItem(`noxis_cached_workflows_${profile.id}`, JSON.stringify(data)); } catch {}
+          }
+          return data;
+        }
+      } catch (err) {
+        console.warn('[Workflows] Query failed, using cached workflows:', err);
+      }
+
+      return cachedData;
     },
     enabled: !!profile?.id,
   })
@@ -205,17 +225,31 @@ export default function WorkflowsPage() {
     mutationFn: async () => {
       if (!draft.trigger_type || !draft.actions.length || !draft.name) return
 
-      const { error } = await supabase
-        .from('workflows')
-        .insert({
-          business_id: profile!.id,
-          name: draft.name,
-          trigger_type: draft.trigger_type,
-          trigger_config: draft.trigger_config,
-          actions: draft.actions,
-          is_active: true,
-        })
-      if (error) throw error
+      const bizId = profile?.id || '00000000-0000-0000-0000-000000000000';
+      const newWf = {
+        id: `wf_${Date.now()}`,
+        business_id: bizId,
+        name: draft.name,
+        trigger_type: draft.trigger_type,
+        trigger_config: draft.trigger_config,
+        actions: draft.actions,
+        is_active: true,
+        created_at: new Date().toISOString(),
+      };
+
+      try {
+        const { error } = await supabase
+          .from('workflows')
+          .insert(newWf);
+
+        if (error) throw error;
+      } catch (err) {
+        console.warn('[Workflows] Save failed, caching locally:', err);
+        if (typeof window !== 'undefined') {
+          const cached = JSON.parse(localStorage.getItem(`noxis_cached_workflows_${bizId}`) || '[]');
+          localStorage.setItem(`noxis_cached_workflows_${bizId}`, JSON.stringify([newWf, ...cached]));
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
