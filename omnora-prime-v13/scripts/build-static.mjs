@@ -5,7 +5,7 @@ import path from 'path';
 const appPath = path.join(process.cwd(), 'src/app');
 const tempPath = path.join(process.cwd(), 'app-temp');
 
-const PUBLIC_DIRECTORIES = ['download', 'pricing', 'privacy', 'docs', 'blog', 'reviews', 'file-morph', 'terms', 'refund', 'about', 'dashboard', 'industries', 'changelog', 'compare'];
+const PUBLIC_DIRECTORIES = ['features', 'download', 'pricing', 'privacy', 'docs', 'blog', 'reviews', 'file-morph', 'terms', 'refund', 'about', 'industries', 'changelog', 'compare'];
 let hiddenDirs = [];
 
 let buildFailed = false;
@@ -67,7 +67,7 @@ try {
   for (const entry of allEntries) {
     const entryPath = path.join(appPath, entry);
     if (fs.statSync(entryPath).isDirectory()) {
-      if (!PUBLIC_DIRECTORIES.includes(entry) && entry !== 'api' && entry !== 'og') {
+      if (!PUBLIC_DIRECTORIES.includes(entry)) {
         const dest = path.join(tempPath, entry);
         fs.cpSync(entryPath, dest, { recursive: true });
         robustRmSync(entryPath);
