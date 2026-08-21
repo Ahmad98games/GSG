@@ -227,8 +227,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/portal") ||
     pathname.startsWith("/admin");
 
-  // Allow browser testing on all routes
-  const isPublicRoute = true;
+  // Check if current route is a public marketing route
+  const isPublicRoute = shouldHideShell;
 
   if (!isPublicRoute && !isElectron && process.env.NODE_ENV !== 'development') {
     return (
