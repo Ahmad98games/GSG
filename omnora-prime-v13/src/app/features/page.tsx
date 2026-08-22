@@ -39,9 +39,7 @@ export default function FeaturesPage() {
       icon: CircleDollarSign,
       color: 'text-amber-400',
       border: 'border-amber-500/20',
-      bg: 'bg-amber-500/10',
-      route: '/pos',
-      routeLabel: 'Open POS Counter'
+      bg: 'bg-amber-500/10'
     },
     {
       id: 'payroll',
@@ -59,9 +57,7 @@ export default function FeaturesPage() {
       icon: Users,
       color: 'text-blue-400',
       border: 'border-blue-500/20',
-      bg: 'bg-blue-500/10',
-      route: '/karigars',
-      routeLabel: 'Manage Karigars'
+      bg: 'bg-blue-500/10'
     },
     {
       id: 'accounting',
@@ -79,9 +75,7 @@ export default function FeaturesPage() {
       icon: FileText,
       color: 'text-emerald-400',
       border: 'border-emerald-500/20',
-      bg: 'bg-emerald-500/10',
-      route: '/khata',
-      routeLabel: 'View Khata Ledger'
+      bg: 'bg-emerald-500/10'
     },
     {
       id: 'filemorph',
@@ -99,9 +93,7 @@ export default function FeaturesPage() {
       icon: RefreshCw,
       color: 'text-cyan-400',
       border: 'border-cyan-500/20',
-      bg: 'bg-cyan-500/10',
-      route: '/file-morph',
-      routeLabel: 'Launch File Morph'
+      bg: 'bg-cyan-500/10'
     },
     {
       id: 'production',
@@ -119,9 +111,7 @@ export default function FeaturesPage() {
       icon: PackageCheck,
       color: 'text-[#C5A059]',
       border: 'border-[#C5A059]/20',
-      bg: 'bg-[#C5A059]/10',
-      route: '/production',
-      routeLabel: 'Manage Production Batches'
+      bg: 'bg-[#C5A059]/10'
     },
     {
       id: 'crm',
@@ -139,9 +129,7 @@ export default function FeaturesPage() {
       icon: BarChart4,
       color: 'text-indigo-400',
       border: 'border-indigo-500/20',
-      bg: 'bg-indigo-500/10',
-      route: '/parties',
-      routeLabel: 'Open Customer Directory'
+      bg: 'bg-indigo-500/10'
     },
     {
       id: 'offline',
@@ -159,9 +147,7 @@ export default function FeaturesPage() {
       icon: Lock,
       color: 'text-purple-400',
       border: 'border-purple-500/20',
-      bg: 'bg-purple-500/10',
-      route: '/settings',
-      routeLabel: 'System Settings'
+      bg: 'bg-purple-500/10'
     },
     {
       id: 'cctv',
@@ -179,9 +165,7 @@ export default function FeaturesPage() {
       icon: ShieldAlert,
       color: 'text-red-400',
       border: 'border-red-500/20',
-      bg: 'bg-red-500/10',
-      route: '/cctv',
-      routeLabel: 'Launch Sentinel CCTV'
+      bg: 'bg-red-500/10'
     },
     {
       id: 'mobile',
@@ -199,9 +183,7 @@ export default function FeaturesPage() {
       icon: Smartphone,
       color: 'text-cyan-400',
       border: 'border-cyan-500/20',
-      bg: 'bg-cyan-500/10',
-      route: '/pairing',
-      routeLabel: 'Pair Mobile Devices'
+      bg: 'bg-cyan-500/10'
     }
   ]
 
@@ -350,18 +332,6 @@ export default function FeaturesPage() {
                       ))}
                     </ul>
                   </div>
-
-                  {cat.route && (
-                    <div className="pt-4 border-t border-white/[0.04]">
-                      <Link
-                        href={cat.route}
-                        className="inline-flex items-center gap-2 text-xs font-bold text-[#C5A059] hover:text-white transition-colors uppercase tracking-wider"
-                      >
-                        <span>{cat.routeLabel}</span>
-                        <ArrowRight size={12} />
-                      </Link>
-                    </div>
-                  )}
                 </div>
               )
             })}
