@@ -10,7 +10,78 @@ export interface VoidTransactionParams {
   businessId?: string;
 }
 
+export interface AddKhataEntryParams {
+  businessId: string;
+  partyId?: string | null;
+  amount: number | string;
+  entryType: 'DEBIT' | 'CREDIT' | 'debit' | 'credit';
+  description?: string;
+}
+
 export class KhataService {
+  /**
+   * Adds and persists a new Khata ledger entry safely with input sanitization.
+   */
+  static async addKhataEntry(params: AddKhataEntryParams): Promise<{ success: boolean; entryId: string }> {
+    try {
+      const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `entry-${Date.now()}`;
+      const createdAt = new Date().toISOString();
+      const numAmount = Math.abs(Number(params.amount) || 0);
+      const entryTypeLower = String(params.entryType).toLowerCase() as 'debit' | 'credit';
+      const txRef = `TX-${Date.now().toString(36).toUpperCase()}`;
+
+      const supabase = createClient();
+      const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+
+      const entry = {
+        id,
+        business_id: params.businessId,
+        party_id: params.partyId || null,
+        amount: numAmount,
+        entry_type: entryTypeLower,
+        description: params.description || '',
+        posted_at: createdAt,
+        created_at: createdAt,
+        tx_ref: txRef,
+        status: 'posted'
+      };
+
+      if (isOnline) {
+        try {
+          const { error } = await supabase.from('ledger_entries').insert([entry]);
+          if (error) throw error;
+        } catch (err) {
+          pushOfflineOperation({
+            table: 'ledger_entries',
+            operation: 'insert',
+            data: entry
+          });
+        }
+      } else {
+        pushOfflineOperation({
+          table: 'ledger_entries',
+          operation: 'insert',
+          data: entry
+        });
+      }
+
+      // Local storage optimistic cache update
+      try {
+        const cacheKey = `noxis_khata_cache_${params.businessId || 'default'}`;
+        const localCacheRaw = localStorage.getItem(cacheKey);
+        const cache = localCacheRaw ? JSON.parse(localCacheRaw) : { ledger_entries: [] };
+        if (!Array.isArray(cache.ledger_entries)) cache.ledger_entries = [];
+        cache.ledger_entries.unshift(entry);
+        localStorage.setItem(cacheKey, JSON.stringify(cache));
+      } catch {}
+
+      return { success: true, entryId: id };
+    } catch (error) {
+      console.error("Failed to persist Khata entry:", error);
+      throw new Error("Khata entry creation failed");
+    }
+  }
+
   /**
    * Offline-First Local Reversion of a Transaction.
    * 1. Does NOT execute a direct blocking cloud fetch first.

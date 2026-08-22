@@ -55,6 +55,7 @@ export async function GET(req: Request) {
       topKarigarsRes,
       promisesRes,
       expiringRes,
+      ledgerEntriesRes,
     ] = await Promise.all([
       // 1. Today attendance present count
       safeRun(async () => await supabase.from('attendance_logs').select('id', { count: 'exact', head: true }).eq('business_id', biz).eq('log_date', today).eq('status', 'present')),
@@ -100,6 +101,9 @@ export async function GET(req: Request) {
 
       // 15. Expiring stock items
       safeRun(async () => await supabase.from('skus').select('id', { count: 'exact', head: true }).eq('business_id', biz).eq('is_active', true).not('expiry_date', 'is', null).lte('expiry_date', thirtyDaysStr).gt('qty_on_hand', 0)),
+
+      // 16. Khata ledger entries aggregate summary
+      safeRun(async () => await supabase.from('ledger_entries').select('entry_type, amount, party_id').eq('business_id', biz).eq('status', 'posted')),
     ])
 
     return NextResponse.json({
@@ -118,6 +122,7 @@ export async function GET(req: Request) {
       topKarigars: topKarigarsRes.data || [],
       promises: promisesRes.data || [],
       expiringCount: expiringRes.count || 0,
+      ledgerEntries: ledgerEntriesRes.data || [],
     })
   } catch (err: any) {
     console.error('[Dashboard KPI server crash]', err)

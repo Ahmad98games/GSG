@@ -71,6 +71,11 @@ export default async function UnifiedPortalPage({ params }: Props) {
       if (p3) partyData = p3
     }
 
+    if (!partyData) {
+      const { data: p4 } = await supabase.from('parties').select('*').eq('id', rawToken).maybeSingle()
+      if (p4) partyData = p4
+    }
+
     if (partyData) {
       party = partyData
       const { data: bizData } = await supabase
@@ -293,12 +298,18 @@ function PortalErrorFallback({ reason }: { reason: string }) {
         <p className="text-xs text-slate-400 leading-relaxed font-medium">
           {reason}
         </p>
-        <div className="pt-2">
+        <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
           <a
-            href="/"
-            className="inline-block bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase px-6 py-3 rounded-sm transition-all"
+            href="/parties"
+            className="w-full sm:w-auto inline-block bg-[#08EBF6]/10 border border-[#08EBF6]/30 text-[#08EBF6] hover:bg-[#08EBF6]/20 font-bold text-xs uppercase px-5 py-3 rounded-sm transition-all"
           >
-            Return to Noxis Home
+            Go to Parties Ledger
+          </a>
+          <a
+            href="/dashboard"
+            className="w-full sm:w-auto inline-block bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase px-5 py-3 rounded-sm transition-all"
+          >
+            Dashboard
           </a>
         </div>
       </div>

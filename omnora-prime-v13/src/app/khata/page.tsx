@@ -132,31 +132,66 @@ export default function KhataPage() {
   const { data: rawEntries = [], isLoading: entriesLoading, error: entriesError, refetch: refetchEntries } = useQuery({
     queryKey: ['ledger_entries', businessId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('ledger_entries')
-        .select('*, accounts(name, type), parties(name, phone, current_balance)')
-        .eq('business_id', businessId)
-        .order('posted_at', { ascending: false });
+      let localEntries: any[] = [];
+      if (typeof window !== 'undefined') {
+        try {
+          const cacheKey = `noxis_khata_cache_${businessId}`;
+          const rawCache = localStorage.getItem(cacheKey);
+          if (rawCache) {
+            const parsed = JSON.parse(rawCache);
+            if (Array.isArray(parsed.ledger_entries)) localEntries = parsed.ledger_entries;
+          }
 
-      if (!error && data) return data as LedgerEntry[];
+          const legacyKey = `noxis_cached_ledger_${businessId}`;
+          const legacyRaw = localStorage.getItem(legacyKey);
+          if (legacyRaw) {
+            const legacyParsed = JSON.parse(legacyRaw);
+            if (Array.isArray(legacyParsed)) {
+              localEntries = [...localEntries, ...legacyParsed];
+            }
+          }
+        } catch {}
+      }
 
-      const { data: plainEntries, error: plainError } = await supabase
-        .from('ledger_entries')
-        .select('*')
-        .eq('business_id', businessId)
-        .order('posted_at', { ascending: false });
+      let remoteEntries: any[] = [];
+      try {
+        const { data, error } = await supabase
+          .from('ledger_entries')
+          .select('*, accounts(name, type), parties(name, phone, current_balance)')
+          .eq('business_id', businessId)
+          .order('posted_at', { ascending: false });
 
-      if (plainError) throw plainError;
+        if (!error && data) {
+          remoteEntries = data;
+        } else {
+          const { data: plainEntries } = await supabase
+            .from('ledger_entries')
+            .select('*')
+            .eq('business_id', businessId)
+            .order('posted_at', { ascending: false });
+          if (plainEntries) remoteEntries = plainEntries;
+        }
+      } catch (err) {
+        console.warn('Supabase ledger fetch notice (using local entries):', err);
+      }
 
-      return (plainEntries || []).map((entry: any) => {
-        const acc = accounts.find((a: any) => a.id === entry.account_id);
-        const party = parties.find((p: any) => p.id === entry.party_id);
-        return {
-          ...entry,
-          accounts: entry.accounts || (acc ? { name: acc.name, type: acc.type } : { name: 'Account', type: 'asset' }),
-          parties: entry.parties || (party ? { name: party.name, phone: party.phone, current_balance: party.current_balance } : null),
-        };
-      }) as LedgerEntry[];
+      const map = new Map<string, any>();
+      [...localEntries, ...remoteEntries].forEach((entry: any) => {
+        const key = entry.id || `${entry.tx_ref}_${entry.entry_type}_${entry.account_id}`;
+        if (!map.has(key)) {
+          const acc = accounts.find((a: any) => a.id === entry.account_id);
+          const party = parties.find((p: any) => p.id === entry.party_id);
+          map.set(key, {
+            ...entry,
+            accounts: entry.accounts || (acc ? { name: acc.name, type: acc.type } : { name: entry.entry_type === 'debit' ? 'Cash / Asset Account' : 'Revenue Account', type: 'asset' }),
+            parties: entry.parties || (party ? { name: party.name, phone: party.phone, current_balance: party.current_balance } : null),
+          });
+        }
+      });
+
+      const merged = Array.from(map.values());
+      merged.sort((a, b) => new Date(b.posted_at || b.created_at || 0).getTime() - new Date(a.posted_at || a.created_at || 0).getTime());
+      return merged as LedgerEntry[];
     },
     enabled: !!businessId,
   });
@@ -565,6 +600,8 @@ export default function KhataPage() {
           setSuccessToast(msg);
           queryClient.invalidateQueries({ queryKey: ['ledger_entries'] });
           queryClient.invalidateQueries({ queryKey: ['parties'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
         }}
         accounts={accounts}
         parties={parties}

@@ -20,12 +20,15 @@ export default function FeaturesPage() {
     )
   }, [])
 
+  const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(null)
+
   const featureCategories = [
     {
       id: 'pos',
       title: 'POS Counter & Hardware Control',
       badge: 'Hardware Integrated',
       desc: 'High-speed POS counter for factory retail & wholesale outlets with thermal printer & weighbridge COM scale support.',
+      image: '/software-images/pos.png',
       items: [
         'Instant barcode scanner integration & quick SKU entry',
         'Weighbridge COM scale live payload reading',
@@ -45,6 +48,7 @@ export default function FeaturesPage() {
       title: 'Karigar Payroll & Peshgi Ledger',
       badge: 'Pakistan Factory Specialization',
       desc: 'Automate piece-rate & daily-wage worker payroll with real-time Peshgi advance deductions and printable slips.',
+      image: '/software-images/register karigar.png',
       items: [
         'Piece-rate wage calculations (per yard, meter, suit, maund)',
         'Peshgi (Advance) ledger & automatic salary deduction',
@@ -64,6 +68,7 @@ export default function FeaturesPage() {
       title: 'Double-Entry Khata Accounting',
       badge: 'Audit Verified',
       desc: 'Complete financial ledger engine automatically balancing Debit and Credit for zero-error accounting.',
+      image: '/software-images/party.png',
       items: [
         'Automatic journal entries for sales, purchases, & expenses',
         'Real-time P&L (Profit & Loss), Trial Balance, & Balance Sheet',
@@ -75,14 +80,75 @@ export default function FeaturesPage() {
       color: 'text-emerald-400',
       border: 'border-emerald-500/20',
       bg: 'bg-emerald-500/10',
-      route: '/accounting/ledger',
+      route: '/khata',
       routeLabel: 'View Khata Ledger'
+    },
+    {
+      id: 'filemorph',
+      title: 'File Morph & Document Security Suite',
+      badge: '100% Offline Utilities',
+      desc: 'Local-first PDF, Image, and Document processing engine with complete privacy and zero cloud uploads.',
+      image: '/software-images/file morph.png',
+      items: [
+        'Convert PDF, Word, Excel, Images & HTML documents offline',
+        'Merge, split, extract pages, rotate, and compress PDF files',
+        'Redact sensitive text, add digital watermarks & metadata cleaner',
+        'Image background remover, resizer, scaler & batch optimizer',
+        'AES-256 PDF decryption and password unlocking'
+      ],
+      icon: RefreshCw,
+      color: 'text-cyan-400',
+      border: 'border-cyan-500/20',
+      bg: 'bg-cyan-500/10',
+      route: '/file-morph',
+      routeLabel: 'Launch File Morph'
+    },
+    {
+      id: 'production',
+      title: 'Batch Production & Fabric Purchase',
+      badge: 'Loom & Mill Control',
+      desc: 'Track raw material yarn/fabric purchasing, batch production stages, and stitching job allotments.',
+      image: '/software-images/batch.png',
+      items: [
+        'Raw material fabric purchase orders & supplier tracking',
+        'Loom production batch creation with SKU yield measurement',
+        'Stitching job slip assignment to karigars',
+        'Finished goods quality inspection & batch completion',
+        'Maund & Mandi rate conversions built-in'
+      ],
+      icon: PackageCheck,
+      color: 'text-[#C5A059]',
+      border: 'border-[#C5A059]/20',
+      bg: 'bg-[#C5A059]/10',
+      route: '/production',
+      routeLabel: 'Manage Production Batches'
+    },
+    {
+      id: 'crm',
+      title: 'Corporate CRM & Deal Pipeline',
+      badge: 'B2B Sales Acceleration',
+      desc: 'Manage wholesale buyer pipelines, corporate party directories, deals, and automated WhatsApp payment reminders.',
+      image: '/software-images/crm.png',
+      items: [
+        'Corporate customer directory with multi-contact profiles',
+        'Visual deal pipeline tracking from lead to final dispatch',
+        'Automated WhatsApp billing reminders & invoice sharing',
+        'Credit limit & credit days utilization monitoring',
+        'Party reliability scoring & AI credit evaluation'
+      ],
+      icon: BarChart4,
+      color: 'text-indigo-400',
+      border: 'border-indigo-500/20',
+      bg: 'bg-indigo-500/10',
+      route: '/parties',
+      routeLabel: 'Open Customer Directory'
     },
     {
       id: 'offline',
       title: '100% Offline SQLite Data Engine',
       badge: 'Zero Internet Dependency',
       desc: 'Keep working through power cuts and load-shedding with local encrypted SQLite database files.',
+      image: '/software-images/setting.png',
       items: [
         'AES-256 SQLCipher encrypted local database file',
         'Sub-50ms query response time directly on your hard drive',
@@ -102,6 +168,7 @@ export default function FeaturesPage() {
       title: 'CCTV Sentinel AI Monitoring',
       badge: 'Elite AI Feature',
       desc: 'Connect factory IP cameras for AI face check-in attendance and automated perimeter security breach alerts.',
+      image: '/software-images/cctv.png',
       items: [
         'RTSP & ONVIF stream integration for up to 6 camera channels',
         'AI face recognition matching karigars at loom floor doors',
@@ -121,6 +188,7 @@ export default function FeaturesPage() {
       title: 'Local WiFi Mobile Mesh Nodes',
       badge: 'No Internet Needed',
       desc: 'Pair floor supervisor Android smartphones over local office WiFi in under 60 seconds without cloud dependency.',
+      image: '/software-images/device pair.png',
       items: [
         'QR code instant device pairing via local IP subnet',
         'Floor attendance marking & Peshgi advance logging',
@@ -132,9 +200,22 @@ export default function FeaturesPage() {
       color: 'text-cyan-400',
       border: 'border-cyan-500/20',
       bg: 'bg-cyan-500/10',
-      route: '/settings/devices',
+      route: '/pairing',
       routeLabel: 'Pair Mobile Devices'
     }
+  ]
+
+  const softwareShowcaseScreenshots = [
+    { title: 'POS Counter Interface', src: '/software-images/pos.png', desc: 'Real-time SKU barcode entry & thermal invoice printer control' },
+    { title: 'Karigar Registration & Wages', src: '/software-images/register karigar.png', desc: 'Piece-rate rate setups & Peshgi advance ledger' },
+    { title: 'Double-Entry Khata Ledger', src: '/software-images/party.png', desc: 'Party accounts receivable & debit/credit balance ledger' },
+    { title: 'File Morph Security Suite', src: '/software-images/file morph.png', desc: 'Local PDF conversion, compression, & watermark utilities' },
+    { title: 'Batch Production & Loom Control', src: '/software-images/batch.png', desc: 'Fabric purchasing, stitching job slips & yield tracking' },
+    { title: 'CCTV Sentinel AI Monitoring', src: '/software-images/cctv.png', desc: 'ONVIF IP camera stream integration & intruder alarms' },
+    { title: 'Corporate CRM & Deal Pipeline', src: '/software-images/crm.png', desc: 'Wholesale buyer pipeline & automated WhatsApp notifications' },
+    { title: 'Workflow Automation Rules', src: '/software-images/workflows.png', desc: 'Trigger-based alert rules & automated scheduled tasks' },
+    { title: 'Local WiFi Device Pairing', src: '/software-images/device pair.png', desc: 'QR code pairing for Android floor supervisor smartphones' },
+    { title: 'Audit Trail & Compliance Logs', src: '/software-images/audit logs.png', desc: 'Cryptographic security logs & tamper-evident audit history' },
   ]
 
   const tierComparison = [
@@ -220,34 +301,55 @@ export default function FeaturesPage() {
                 <div 
                   key={cat.id} 
                   id={cat.id}
-                  className="bg-[#0A0D10] border border-white/[0.06] p-8 rounded-sm space-y-6 hover:border-[#C5A059]/40 transition-all group relative overflow-hidden"
+                  className="bg-[#0A0D10] border border-white/[0.06] p-6 rounded-sm space-y-5 hover:border-[#C5A059]/40 transition-all group relative overflow-hidden flex flex-col justify-between"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className={`w-12 h-12 rounded-sm ${cat.bg} border ${cat.border} flex items-center justify-center ${cat.color}`}>
-                      <Icon size={24} />
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className={`w-12 h-12 rounded-sm ${cat.bg} border ${cat.border} flex items-center justify-center ${cat.color}`}>
+                        <Icon size={24} />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold uppercase tracking-widest px-2.5 py-1 bg-white/5 border border-white/10 text-slate-400 rounded-sm">
+                        {cat.badge}
+                      </span>
                     </div>
-                    <span className="text-[10px] font-mono font-bold uppercase tracking-widest px-2.5 py-1 bg-white/5 border border-white/10 text-slate-400 rounded-sm">
-                      {cat.badge}
-                    </span>
-                  </div>
 
-                  <div className="space-y-2">
-                    <h3 className="text-lg font-black text-white uppercase tracking-wide group-hover:text-[#C5A059] transition-colors">
-                      {cat.title}
-                    </h3>
-                    <p className="text-xs text-slate-400 leading-relaxed font-medium">
-                      {cat.desc}
-                    </p>
-                  </div>
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-black text-white uppercase tracking-wide group-hover:text-[#C5A059] transition-colors">
+                        {cat.title}
+                      </h3>
+                      <p className="text-xs text-slate-400 leading-relaxed font-medium">
+                        {cat.desc}
+                      </p>
+                    </div>
 
-                  <ul className="space-y-2.5 pt-2 border-t border-white/[0.04]">
-                    {cat.items.map((item, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-xs text-slate-300">
-                        <Check size={14} className="text-[#C5A059] flex-shrink-0 mt-0.5" />
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
+                    {/* Screenshot Preview thumbnail */}
+                    {cat.image && (
+                      <div 
+                        onClick={() => setSelectedScreenshot(cat.image)}
+                        className="relative h-36 w-full bg-black/40 border border-white/10 rounded-sm overflow-hidden cursor-pointer group/img"
+                      >
+                        <img 
+                          src={cat.image} 
+                          alt={cat.title} 
+                          className="w-full h-full object-cover opacity-80 group-hover/img:opacity-100 group-hover/img:scale-105 transition-all duration-300"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-2">
+                          <span className="text-[9px] font-bold text-[#C5A059] uppercase tracking-wider">
+                            🔍 Click to Preview Screenshot
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    <ul className="space-y-2.5 pt-2 border-t border-white/[0.04]">
+                      {cat.items.map((item, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-xs text-slate-300">
+                          <Check size={14} className="text-[#C5A059] flex-shrink-0 mt-0.5" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
 
                   {cat.route && (
                     <div className="pt-4 border-t border-white/[0.04]">
@@ -263,6 +365,44 @@ export default function FeaturesPage() {
                 </div>
               )
             })}
+          </div>
+        </section>
+
+        {/* ═══ INTERACTIVE SCREENSHOT GALLERY ═══ */}
+        <section className="bg-[#0A0D10] border border-white/[0.06] p-8 sm:p-12 rounded-sm space-y-8">
+          <div className="text-center space-y-2">
+            <span className="text-xs font-mono font-bold uppercase tracking-widest text-[#C5A059]">Visual Walkthrough</span>
+            <h2 className="text-2xl sm:text-3xl font-black uppercase text-white">Live Software Interface Showcase</h2>
+            <p className="text-xs text-slate-400 max-w-xl mx-auto">
+              Real screenshots captured directly from active industrial workstations using Noxis Hub v13.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {softwareShowcaseScreenshots.map((sc, i) => (
+              <div 
+                key={i}
+                onClick={() => setSelectedScreenshot(sc.src)}
+                className="bg-[#040608] border border-white/10 rounded-sm overflow-hidden cursor-pointer hover:border-[#C5A059]/50 transition-all group"
+              >
+                <div className="h-44 overflow-hidden relative">
+                  <img 
+                    src={sc.src} 
+                    alt={sc.title} 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                  />
+                  <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors" />
+                </div>
+                <div className="p-4 space-y-1 bg-[#0D1017]">
+                  <h4 className="text-xs font-black uppercase text-white tracking-wider group-hover:text-[#C5A059] transition-colors">
+                    {sc.title}
+                  </h4>
+                  <p className="text-[11px] text-slate-400 font-medium leading-normal">
+                    {sc.desc}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 
@@ -335,6 +475,35 @@ export default function FeaturesPage() {
         </section>
 
       </div>
+
+      {/* Screenshot Lightbox Modal */}
+      {selectedScreenshot && (
+        <div 
+          onClick={() => setSelectedScreenshot(null)}
+          className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-md p-4 sm:p-8 flex items-center justify-center cursor-pointer animate-in fade-in-0 duration-200"
+        >
+          <div className="relative max-w-5xl w-full bg-[#0D1017] border border-[#C5A059]/40 rounded-sm p-4 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <span className="text-xs font-mono font-bold text-[#C5A059] uppercase tracking-wider">
+                High-Resolution Software Interface Screenshot
+              </span>
+              <button 
+                onClick={() => setSelectedScreenshot(null)}
+                className="text-slate-400 hover:text-white text-xs font-bold uppercase tracking-wider px-2 py-1 bg-white/5 rounded-sm"
+              >
+                ✕ Close Preview
+              </button>
+            </div>
+            <div className="max-h-[75vh] overflow-auto flex items-center justify-center bg-black/50 rounded-sm p-2">
+              <img 
+                src={selectedScreenshot} 
+                alt="Software Screenshot Preview" 
+                className="max-h-[70vh] w-auto object-contain rounded-sm shadow-2xl" 
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

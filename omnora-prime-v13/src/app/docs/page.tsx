@@ -382,7 +382,20 @@ export default function DocsPage() {
                 </p>
 
                 <div className="bg-[#0A0D10] border border-white/[0.04] p-6 rounded-sm space-y-4 ml-6">
-                  <h4 className="text-xs font-bold uppercase tracking-widest text-white">POS Keyboard Shortcuts & Operation</h4>
+                  {/* Screenshot Figure */}
+                  <div className="border border-white/10 rounded-sm overflow-hidden bg-black/40">
+                    <img 
+                      src="/software-images/pos.png" 
+                      alt="Noxis POS Counter Interface" 
+                      className="w-full h-auto object-cover max-h-80"
+                    />
+                    <div className="p-2.5 bg-[#08090C] border-t border-white/10 text-[10px] font-mono text-slate-400 flex items-center justify-between">
+                      <span>FIGURE 6.1 — Noxis Desktop POS Counter Interface</span>
+                      <span className="text-[#C5A059] font-bold">Hardware Ready</span>
+                    </div>
+                  </div>
+
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-white pt-2">POS Keyboard Shortcuts & Operation</h4>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                     <div className="bg-white/5 p-3 rounded-sm border border-white/5">
                       <span className="font-mono text-amber-400 font-bold">F2</span>
@@ -472,6 +485,18 @@ export default function DocsPage() {
                 </p>
 
                 <div className="bg-[#0A0D10] border border-white/[0.04] p-6 rounded-sm space-y-4 ml-6 font-mono text-xs text-slate-400">
+                  <div className="border border-white/10 rounded-sm overflow-hidden bg-black/40 mb-4 font-sans">
+                    <img 
+                      src="/software-images/register karigar.png" 
+                      alt="Karigar Registration & Peshgi Ledger" 
+                      className="w-full h-auto object-cover max-h-72"
+                    />
+                    <div className="p-2.5 bg-[#08090C] border-t border-white/10 text-[10px] font-mono text-slate-400 flex items-center justify-between">
+                      <span>FIGURE 9.1 — Karigar Management & Peshgi Advance Control</span>
+                      <span className="text-[#60A5FA] font-bold">Piece-Rate Payroll</span>
+                    </div>
+                  </div>
+
                   <p className="text-emerald-400 font-bold">// Payout Formula</p>
                   <p className="bg-[#08090C] p-3 border border-white/5 rounded-sm">
                     Net Payout = (Completed Units × Piece Rate) + Overtime Allowance - Peshgi Deductions
@@ -495,6 +520,20 @@ export default function DocsPage() {
                 <p className="text-sm text-slate-400 leading-relaxed font-medium pl-6 border-l border-white/[0.02]">
                   Auto-discover IP cameras via ONVIF WS-Discovery and render ultra-low-latency streams powered by embedded MediaMTX engine.
                 </p>
+
+                <div className="bg-[#0A0D10] border border-white/[0.04] p-6 rounded-sm space-y-4 ml-6">
+                  <div className="border border-white/10 rounded-sm overflow-hidden bg-black/40">
+                    <img 
+                      src="/software-images/cctv.png" 
+                      alt="CCTV Sentinel AI Stream Grid" 
+                      className="w-full h-auto object-cover max-h-72"
+                    />
+                    <div className="p-2.5 bg-[#08090C] border-t border-white/10 text-[10px] font-mono text-slate-400 flex items-center justify-between">
+                      <span>FIGURE 10.1 — Sentinel AI CCTV Live Monitor & Breach Alarms</span>
+                      <span className="text-red-400 font-bold">RTSP / ONVIF Active</span>
+                    </div>
+                  </div>
+                </div>
               </ScrollReveal3D>
             </motion.section>
 

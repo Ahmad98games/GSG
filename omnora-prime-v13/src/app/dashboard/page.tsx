@@ -98,6 +98,17 @@ export default function OwnerDashboard() {
     staleTime: 10 * 60 * 1000,
   })
 
+  useQuery({
+    queryKey: ['dashboard-summary', profile?.id],
+    queryFn: async () => {
+      await loadDashboard();
+      return true;
+    },
+    enabled: isLoaded,
+    staleTime: 5000,
+    refetchOnWindowFocus: true,
+  })
+
   const isElectron = typeof window !== 'undefined' && (
     !!(window as any).electronWindow || 
     !!(window as any).electron ||
@@ -115,44 +126,14 @@ export default function OwnerDashboard() {
         if (!prev) setLoading(true)
         return prev
       })
-      
-      const isOffline = typeof window !== 'undefined' && !navigator.onLine
-      
+
       let activeProfile = profile
-      let user = null
-      
-      if (!isOffline && !activeProfile) {
-        try {
-          const authRes: any = await Promise.race([
-            supabase.auth.getSession(),
-            new Promise(r => setTimeout(() => r({ data: { session: null } }), 1500))
-          ])
-          const session = authRes?.data?.session || null
-          user = session?.user || null
-          
-          if (user) {
-            const { data: prof } = await supabase
-              .from('business_profiles')
-              .select('*')
-              .eq('user_id', user.id)
-              .maybeSingle()
-            if (prof) {
-              activeProfile = prof
-            }
-          }
-        } catch (e) {
-          console.warn('Failed to connect to Supabase Auth:', e)
-        }
-      }
-      
-      if (!activeProfile) {
-        if (typeof window !== 'undefined') {
-          const cachedProfileStr = localStorage.getItem('noxis-business-profile') || localStorage.getItem('noxis_avatar')
-          if (cachedProfileStr) {
-            try {
-              activeProfile = JSON.parse(cachedProfileStr)
-            } catch (e) {}
-          }
+      if (!activeProfile && typeof window !== 'undefined') {
+        const cachedProfileStr = localStorage.getItem('noxis-business-profile') || localStorage.getItem('noxis_avatar')
+        if (cachedProfileStr) {
+          try {
+            activeProfile = JSON.parse(cachedProfileStr)
+          } catch (e) {}
         }
       }
 
@@ -165,20 +146,11 @@ export default function OwnerDashboard() {
           currency: 'PKR',
           city: 'Lahore',
         } as any
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('noxis-business-profile', JSON.stringify(activeProfile))
-        }
       }
 
       const biz = (activeProfile as any)?.id || '00000000-0000-0000-0000-000000000000'
-      const today = new Date().toISOString().split('T')[0]
-      const monthStart = new Date(today.slice(0, 7) + '-01').toISOString()
 
-      if (isOffline) {
-        throw new Error('Offline mode')
-      }
-
-      // Single consolidated server API fetch
+      // 1. Single consolidated server API fetch (non-blocking fallback)
       let raw: any = {}
       try {
         const res = await fetch(`/api/dashboard/kpis?biz=${biz}`)
@@ -186,7 +158,29 @@ export default function OwnerDashboard() {
           raw = await res.json()
         }
       } catch (e) {
-        console.warn('Dashboard KPI fetch error, using local state defaults:', e)
+        console.warn('Dashboard KPI fetch fallback to local storage:', e)
+      }
+
+      // 2. Read local storage caches for offline & real-time updates
+      let localKarigars: any[] = []
+      let localKhataEntries: any[] = []
+      if (typeof window !== 'undefined') {
+        try {
+          const kStr = localStorage.getItem(`noxis_cached_karigars_${biz}`)
+          if (kStr) localKarigars = JSON.parse(kStr)
+
+          const khataStr = localStorage.getItem(`noxis_khata_cache_${biz}`)
+          if (khataStr) {
+            const parsed = JSON.parse(khataStr)
+            if (Array.isArray(parsed.ledger_entries)) localKhataEntries = parsed.ledger_entries
+          }
+
+          const legacyStr = localStorage.getItem(`noxis_cached_ledger_${biz}`)
+          if (legacyStr) {
+            const parsedLegacy = JSON.parse(legacyStr)
+            if (Array.isArray(parsedLegacy)) localKhataEntries = [...localKhataEntries, ...parsedLegacy]
+          }
+        } catch (e) {}
       }
 
       const invoices = raw.invoicesMonth || []
@@ -200,6 +194,19 @@ export default function OwnerDashboard() {
         (inv: any) => inv.due_date && new Date(inv.due_date) < now
       )
 
+      // Calculate Khata totals from local storage
+      let localReceivables = 0
+      let localRevenue = 0
+      localKhataEntries.forEach((e: any) => {
+        if (e.status === 'posted') {
+          if (e.entry_type === 'debit') localRevenue += Number(e.amount || 0)
+          else localReceivables += Number(e.amount || 0)
+        }
+      })
+
+      const totalKarigarCount = Math.max(raw.totalKarigars || 0, localKarigars.length)
+      const attendanceCount = raw.attendanceToday || 0
+
       const dashboardData: DashboardData = {
         businessName: (activeProfile as any)?.business_name || 'My Factory',
         industry: (activeProfile as any)?.industry_key || (activeProfile as any)?.industry_type || (activeProfile as any)?.industry || 'textile',
@@ -207,13 +214,13 @@ export default function OwnerDashboard() {
         tier: (activeProfile as any)?.tier || 'lite',
         currency: (activeProfile as any)?.currency || 'PKR',
 
-        presentToday: raw.attendanceToday || 0,
-        totalKarigars: raw.totalKarigars || 0,
-        absentToday: Math.max(0, (raw.totalKarigars || 0) - (raw.attendanceToday || 0)),
+        presentToday: attendanceCount,
+        totalKarigars: totalKarigarCount,
+        absentToday: Math.max(0, totalKarigarCount - attendanceCount),
 
-        revenueThisMonth: invoices.reduce((s: number, i: any) => s + (i.subtotal ?? i.total ?? i.total_amount ?? 0), 0),
-        invoiceCount: invoices.length,
-        pendingReceivables: receivablesData.reduce((s: number, i: any) => s + (i.balance_due ?? i.total_amount ?? i.total ?? 0), 0),
+        revenueThisMonth: invoices.reduce((s: number, i: any) => s + (i.subtotal ?? i.total ?? i.total_amount ?? 0), 0) + localRevenue,
+        invoiceCount: invoices.length + Math.ceil(localKhataEntries.length / 2),
+        pendingReceivables: receivablesData.reduce((s: number, i: any) => s + (i.balance_due ?? i.total_amount ?? i.total ?? 0), 0) + localReceivables,
         overdueCount: overdueInvoices.length,
 
         stockValue: stock.reduce((s: number, i: any) => s + ((i.qty_on_hand || 0) * (i.cost_price || 0)), 0),
@@ -240,43 +247,7 @@ export default function OwnerDashboard() {
       }
       setLastUpdated(new Date())
     } catch (err) {
-      console.error('Dashboard load error, loading fallback cache:', err)
-      if (typeof window !== 'undefined') {
-        const cached = localStorage.getItem('noxis_dashboard_cache')
-        if (cached) {
-          try {
-            setData(JSON.parse(cached))
-          } catch (e) {}
-        } else {
-          // If no cache, populate with initial empty skeleton
-          setData({
-            businessName: profile?.business_name || 'My Factory',
-            industry: profile?.industry_key || profile?.industry_type || (profile as any)?.industry || 'textile',
-            city: profile?.city || '',
-            tier: profile?.tier || 'lite',
-            currency: profile?.currency || 'PKR',
-            presentToday: 0,
-            totalKarigars: 0,
-            absentToday: 0,
-            revenueThisMonth: 0,
-            invoiceCount: 0,
-            pendingReceivables: 0,
-            overdueCount: 0,
-            stockValue: 0,
-            lowStockCount: 0,
-            pendingDispatch: 0,
-            pendingPurchases: 0,
-            totalPayrollThisMonth: 0,
-            totalPeshgiOutstanding: 0,
-            expiringCount: 0,
-            avgYield: 68.2,
-            recentInvoices: [],
-            recentAttendance: [],
-            topKarigars: [],
-            promises: []
-          })
-        }
-      }
+      console.error('Dashboard load fallback:', err)
     } finally {
       setLoading(false)
     }

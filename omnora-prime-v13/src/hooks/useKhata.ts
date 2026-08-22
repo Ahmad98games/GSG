@@ -11,6 +11,29 @@ export function useKhata() {
   const queryClient = useQueryClient();
   const toast = useToast();
 
+  const addKhataEntry = useCallback(
+    async (payload: {
+      businessId: string;
+      partyId?: string | null;
+      amount: number;
+      entryType: 'DEBIT' | 'CREDIT' | 'debit' | 'credit';
+      description?: string;
+    }) => {
+      try {
+        const res = await KhataService.addKhataEntry(payload);
+        toast.success('Khata Entry Created');
+        queryClient.invalidateQueries({ queryKey: ['ledger_entries'] });
+        queryClient.invalidateQueries({ queryKey: ['parties'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+        return res;
+      } catch (err: any) {
+        toast.error('Failed to create Khata entry', err.message || String(err));
+        throw err;
+      }
+    },
+    [queryClient, toast]
+  );
+
   const voidTransaction = useCallback(
     async (params: VoidTransactionParams) => {
       try {
@@ -43,6 +66,7 @@ export function useKhata() {
         // 4. Invalidate queries for eventual consistency
         queryClient.invalidateQueries({ queryKey: ['ledger_entries'] });
         queryClient.invalidateQueries({ queryKey: ['parties'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
       } catch (err: any) {
         toast.error('Error voiding transaction', err.message || String(err));
       }
@@ -51,6 +75,7 @@ export function useKhata() {
   );
 
   return {
+    addKhataEntry,
     voidTransaction,
   };
 }

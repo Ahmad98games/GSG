@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
@@ -48,22 +48,8 @@ export default function KarigarDetailPage() {
   const [copiedShareLink, setCopiedShareLink] = useState(false);
   const [advanceModalOpen, setAdvanceModalOpen] = useState(false);
   
-  useEffect(() => {
-    if (isLoaded && !profile?.id) {
-      router.push('/karigars');
-      return;
-    }
+  const loadKarigarDetails = useCallback(async (signal?: AbortSignal) => {
     if (!profile?.id || !karigarId) return;
-
-    const controller = new AbortController();
-    loadKarigarDetails(controller.signal);
-
-    return () => {
-      controller.abort();
-    };
-  }, [isLoaded, profile?.id, karigarId]);
-  
-  const loadKarigarDetails = async (signal?: AbortSignal) => {
     try {
       setLoading(true);
       // 1. Fetch Karigar record
@@ -72,7 +58,7 @@ export default function KarigarDetailPage() {
         .select('*, karigar_grades(grade_name)')
         .eq('id', karigarId)
         .single();
-         
+
       if (signal?.aborted) return;
 
       if (karErr || !karRec) {
@@ -80,7 +66,7 @@ export default function KarigarDetailPage() {
         return;
       }
       setKarigar(karRec);
-      
+
       // 2. Fetch or create worker identity
       let { data: ident, error: identErr } = await supabase
         .from('worker_identities')
@@ -88,10 +74,10 @@ export default function KarigarDetailPage() {
         .eq('karigar_id', karigarId)
         .eq('business_id', profile?.id)
         .maybeSingle();
-        
+
       if (signal?.aborted) return;
-        
-      if (!ident && !identErr) {
+
+      if (!ident && !identErr && profile?.id) {
         const { data: newIdent, error: createErr } = await supabase
           .from('worker_identities')
           .insert({
@@ -105,17 +91,17 @@ export default function KarigarDetailPage() {
           })
           .select()
           .single();
-          
+
         if (signal?.aborted) return;
-          
+
         if (!createErr && newIdent) {
           ident = { ...newIdent, worker_skills: [] };
         }
       }
       setIdentity(ident);
-      
+
       // 3. Fetch RPC Stats and raw logs (Attendance, Production, Advances)
-      const [attStats, prodStats, rawAttendance, rawProduction, rawAdvances] = await Promise.all([
+      const [attStats, prodStats, rawAttendance, rawProduction, rawAdvances] = await Promise.allSettled([
         supabase.rpc('get_karigar_attendance_rate', {
           p_karigar_id: karigarId,
           p_days: 90
@@ -140,32 +126,47 @@ export default function KarigarDetailPage() {
           .eq('karigar_id', karigarId)
           .order('advance_date', { ascending: false })
       ]);
-      
+
       if (signal?.aborted) return;
-      
-      if (attStats.data !== null) {
-        setAttendanceRate(Number(attStats.data));
+
+      if (attStats.status === 'fulfilled' && attStats.value.data !== null) {
+        setAttendanceRate(Number(attStats.value.data) || 100);
       }
-      if (prodStats.data && (prodStats.data as any)[0]) {
-        const stats = (prodStats.data as any)[0];
+      if (prodStats.status === 'fulfilled' && prodStats.value.data && (prodStats.value.data as any)[0]) {
+        const stats = (prodStats.value.data as any)[0];
         setProductionStats({
           avg_units_per_day: Number(stats.avg_units_per_day) || 0,
           avg_grade_a_pct: Number(stats.avg_grade_a_pct) || 0
         });
       }
-      if (rawAttendance.data) setAttendanceLogs(rawAttendance.data);
-      if (rawProduction.data) setProductionLogs(rawProduction.data);
-      if (rawAdvances.data) setAdvancesLogs(rawAdvances.data);
-      
+      if (rawAttendance.status === 'fulfilled' && rawAttendance.value.data) setAttendanceLogs(rawAttendance.value.data);
+      if (rawProduction.status === 'fulfilled' && rawProduction.value.data) setProductionLogs(rawProduction.value.data);
+      if (rawAdvances.status === 'fulfilled' && rawAdvances.value.data) setAdvancesLogs(rawAdvances.value.data);
+
       setActiveTab('profile');
     } catch (e) {
-      console.error(e);
+      console.error("Karigar details load error:", e);
     } finally {
       if (!signal?.aborted) {
         setLoading(false);
       }
     }
-  };
+  }, [profile?.id, karigarId, supabase, router]);
+
+  useEffect(() => {
+    if (isLoaded && !profile?.id) {
+      router.push('/karigars');
+      return;
+    }
+    if (!profile?.id || !karigarId) return;
+
+    const controller = new AbortController();
+    loadKarigarDetails(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
+  }, [isLoaded, profile?.id, karigarId, loadKarigarDetails]);
   
   const toggleVisibility = async () => {
     if (!identity) return;

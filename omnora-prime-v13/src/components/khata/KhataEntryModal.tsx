@@ -148,45 +148,94 @@ export function KhataEntryModal({
         ? businessId
         : (typeof window !== 'undefined' && localStorage.getItem('noxis_business_id')) || '00000000-0000-0000-0000-000000000000';
 
+      const defaultDebitAccId = debitAcc?.id || '00000000-0000-0000-0000-000000000001';
+      const defaultCreditAccId = creditAcc?.id || '00000000-0000-0000-0000-000000000002';
+
       // Prepare double-entry ledger rows
       const debitEntry = {
+        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `entry-d-${Date.now()}`,
         business_id: bizId,
         tx_ref: txRef,
         entry_type: 'debit',
-        account_id: debitAcc?.id || accounts[0]?.id,
+        account_id: defaultDebitAccId,
         party_id: selectedParty?.id || null,
         amount: amount,
         description: `${values.description} [${values.payment_mode}${values.reference_no ? ' Ref:' + values.reference_no : ''}]`,
         posted_at: new Date(values.date).toISOString(),
+        created_at: new Date(values.date).toISOString(),
         status: 'posted',
+        accounts: debitAcc ? { name: debitAcc.name, type: debitAcc.type } : { name: values.payment_mode === 'Cash' ? 'Cash in Hand' : 'Bank Account', type: 'asset' },
+        parties: selectedParty ? { name: selectedParty.name, phone: selectedParty.phone, current_balance: selectedParty.current_balance } : null,
       };
 
       const creditEntry = {
+        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `entry-c-${Date.now()}`,
         business_id: bizId,
         tx_ref: txRef,
         entry_type: 'credit',
-        account_id: creditAcc?.id || accounts[1]?.id,
+        account_id: defaultCreditAccId,
         party_id: selectedParty?.id || null,
         amount: amount,
         description: `${values.description} [${values.payment_mode}${values.reference_no ? ' Ref:' + values.reference_no : ''}]`,
         posted_at: new Date(values.date).toISOString(),
+        created_at: new Date(values.date).toISOString(),
         status: 'posted',
+        accounts: creditAcc ? { name: creditAcc.name, type: creditAcc.type } : { name: 'Sales / Ledger Account', type: 'revenue' },
+        parties: selectedParty ? { name: selectedParty.name, phone: selectedParty.phone, current_balance: selectedParty.current_balance } : null,
       };
 
-      // Try inserting to Supabase, fallback to local storage on offline/error
+      // Always save to local storage cache immediately so UI & offline mode show the new entry instantly
+      if (typeof window !== 'undefined') {
+        try {
+          const cacheKey = `noxis_khata_cache_${bizId}`;
+          const rawCache = localStorage.getItem(cacheKey);
+          const cache = rawCache ? JSON.parse(rawCache) : { ledger_entries: [] };
+          if (!Array.isArray(cache.ledger_entries)) cache.ledger_entries = [];
+          cache.ledger_entries.unshift(debitEntry, creditEntry);
+          localStorage.setItem(cacheKey, JSON.stringify(cache));
+
+          const legacyKey = `noxis_cached_ledger_${bizId}`;
+          const existingLegacy = JSON.parse(localStorage.getItem(legacyKey) || '[]');
+          localStorage.setItem(legacyKey, JSON.stringify([debitEntry, creditEntry, ...existingLegacy]));
+        } catch (cacheErr) {
+          console.warn('Local cache save notice:', cacheErr);
+        }
+      }
+
+      // Try inserting to Supabase silently
       try {
         const { error: ledgerErr } = await supabase
           .from('ledger_entries')
-          .insert([debitEntry, creditEntry]);
+          .insert([
+            {
+              id: debitEntry.id,
+              business_id: debitEntry.business_id,
+              tx_ref: debitEntry.tx_ref,
+              entry_type: debitEntry.entry_type,
+              account_id: debitEntry.account_id,
+              party_id: debitEntry.party_id,
+              amount: debitEntry.amount,
+              description: debitEntry.description,
+              posted_at: debitEntry.posted_at,
+              status: debitEntry.status,
+            },
+            {
+              id: creditEntry.id,
+              business_id: creditEntry.business_id,
+              tx_ref: creditEntry.tx_ref,
+              entry_type: creditEntry.entry_type,
+              account_id: creditEntry.account_id,
+              party_id: creditEntry.party_id,
+              amount: creditEntry.amount,
+              description: creditEntry.description,
+              posted_at: creditEntry.posted_at,
+              status: creditEntry.status,
+            }
+          ]);
 
-        if (ledgerErr) throw ledgerErr;
+        if (ledgerErr) console.warn('Supabase insert notice (saved locally):', ledgerErr.message);
       } catch (err: any) {
-        // Save locally to cache so offline ledger posting never fails
-        if (typeof window !== 'undefined') {
-          const key = `noxis_cached_ledger_${bizId}`;
-          const existing = JSON.parse(localStorage.getItem(key) || '[]');
-          localStorage.setItem(key, JSON.stringify([debitEntry, creditEntry, ...existing]));
-        }
+        console.warn('Network / Supabase insert skipped (saved locally):', err);
       }
 
       // Update party current_balance
@@ -198,10 +247,12 @@ export function KhataEntryModal({
         else if (values.type === 'payable') delta = -amount; // bill added -> payable increases
 
         const newBal = Number(selectedParty.current_balance || 0) + delta;
-        await supabase
-          .from('parties')
-          .update({ current_balance: newBal })
-          .eq('id', selectedParty.id);
+        try {
+          await supabase
+            .from('parties')
+            .update({ current_balance: newBal })
+            .eq('id', selectedParty.id);
+        } catch {}
       }
 
       reset();

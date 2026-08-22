@@ -77,7 +77,9 @@ export async function generatePortalToken(
     console.warn('[PortalToken] Remote insert skipped')
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://noxishub.app'
+  const baseUrl = (typeof window !== 'undefined' && window.location?.origin)
+    ? window.location.origin
+    : (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000')
   const url = `${baseUrl}/portal/${token}`
 
   return { token, url, expiresAt }

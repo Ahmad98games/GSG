@@ -13,6 +13,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
     pathname.startsWith('/static') ||
+    pathname.startsWith('/portal/') ||
+    pathname.startsWith('/shared/') ||
     PUBLIC_FILE.test(pathname)
   ) {
     return NextResponse.next();
@@ -74,6 +76,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|portal).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|portal|shared).*)',
   ],
 }

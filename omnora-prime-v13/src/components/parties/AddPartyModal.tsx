@@ -153,6 +153,8 @@ export function AddPartyModal({
       queryClient.invalidateQueries({ queryKey: ['parties'] })
       queryClient.invalidateQueries({ queryKey: ['khata-parties'] })
       queryClient.invalidateQueries({ queryKey: ['khata-entries'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] })
 
       toast.success(`${trimmedName} added successfully`)
       onSuccess(createdParty)

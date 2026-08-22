@@ -724,7 +724,7 @@ export default function KarigarsPage() {
                       {virtualRows.map((virtualRow) => {
                         const row = rows[virtualRow.index];
                         return (
-                          <KarigarRow key={row.id} row={row} i={virtualRow.index} />
+                          <KarigarRow key={row.id} row={row} />
                         );
                       })}
                       {paddingBottom > 0 && (
@@ -742,7 +742,12 @@ export default function KarigarsPage() {
       <RegisterKarigarModal 
        ref={registerModalRef}
        grades={grades}
-       onSuccess={(msg) => { setSuccessToast(msg); queryClient.invalidateQueries({ queryKey: ['karigars'] }); }} 
+       onSuccess={(msg) => {
+         setSuccessToast(msg);
+         queryClient.invalidateQueries({ queryKey: ['karigars'] });
+         queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+         queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+       }} 
       />
       {attendingKarigar && (
         <AttendanceModal 
@@ -808,29 +813,22 @@ export default function KarigarsPage() {
 
 
 const KarigarRow = React.memo(
-  function KarigarRow({ row, i }: { row: any; i: number }) {
-    const controls = useRowHighlight(row.original.current_advance);
-    
+  function KarigarRow({ row }: { row: any }) {
     return (
-       <motion.tr 
-         animate={controls}
-         custom={controls}
+       <tr 
          key={row.id} 
-         className="border-b border-white/4 hover:bg-white/[0.02] transition-colors cursor-pointer"
+         className="border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors cursor-pointer"
        >
          {row.getVisibleCells().map((cell: any) => (
            <td key={cell.id} className="px-4 py-2.5 text-sm text-gray-200 border-b border-white/[0.04]">
              {flexRender(cell.column.columnDef.cell, cell.getContext())}
            </td>
          ))}
-       </motion.tr>
+       </tr>
     );
   },
   (prevProps, nextProps) => {
-    return (
-      prevProps.row.original === nextProps.row.original &&
-      prevProps.i === nextProps.i
-    );
+    return prevProps.row.original === nextProps.row.original;
   }
 );
 
@@ -975,7 +973,7 @@ const RegisterKarigarModal = forwardRef<
                       <Label>Artisan Grade</Label>
                       <select {...register('grade_id')} className="w-full bg-onyx border border-white/10 p-3 text-xs text-white outline-none focus:border-electric-blue transition-all">
                          <option value="">Select Grade</option>
-                         {grades.map(g => <option key={g.id} value={g.id}>{g.grade_name}</option>)}
+                         {(grades || []).map(g => <option key={g.id} value={g.id}>{g.grade_name}</option>)}
                       </select>
                       <FieldError message={errors.grade_id?.message} />
                    </div>
@@ -1001,18 +999,18 @@ const RegisterKarigarModal = forwardRef<
                    </div>
                 </div>
              </div>
+             
+             <div className="pt-6 border-t border-white/5 flex items-center space-x-4">
+               <button type="button" onClick={handleClose} className="flex-1 py-4 text-[10px] uppercase font-bold text-gray-500 hover:text-white transition-colors">Discard Draft</button>
+               <button
+                type="submit"
+                disabled={isSubmitting}
+                className="flex-[2] py-4 bg-electric-blue text-onyx text-[10px] font-black uppercase tracking-widest shadow-xl hover:brightness-110 disabled:opacity-50 cursor-pointer"
+               >
+                  {isSubmitting ? 'Syncing...' : `Commit ${workerTerm} to Registry`}
+               </button>
+            </div>
           </form>
-
-          <div className="p-8 bg-onyx border-t border-white/5 flex items-center space-x-4">
-             <button onClick={handleClose} className="flex-1 py-4 text-[10px] uppercase font-bold text-gray-500 hover:text-white transition-colors">Discard Draft</button>
-             <button
-              onClick={handleSubmit(onSubmit)}
-              disabled={isSubmitting}
-              className="flex-[2] py-4 bg-electric-blue text-onyx text-[10px] font-black uppercase tracking-widest shadow-xl hover:brightness-110 disabled:opacity-50"
-             >
-                {isSubmitting ? 'Syncing...' : `Commit ${workerTerm} to Registry`}
-             </button>
-          </div>
        </div>
     </div>,
     document.body
