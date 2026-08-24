@@ -17,7 +17,7 @@ export default function NotFound() {
         <Link href="/dashboard"
           className="px-4 py-2 border border-electric-blue text-electric-blue text-sm hover:bg-electric-blue/10 transition-colors"
         >
-          Go to Dashboard
+         Please Go to Dashboard
         </Link>
       </div>
     </div>
