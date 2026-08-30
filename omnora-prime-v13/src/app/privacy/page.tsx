@@ -81,7 +81,7 @@ function PrivacyContent() {
               </li>
               <li className="flex gap-2">
                 <span className="text-amber-400 font-mono">✕</span>
-                <span><strong>No Career Counseling / Mentorship:</strong> We do not provide career counseling, personal training, mentorship, or recruitment coaching through general channels.</span>
+                <span><strong>No Career Counseling / Mentorship:</strong> We do not provide career counseling, personal training, mentorship, or recruitment coaching through general channels and contacts.</span>
               </li>
               <li className="flex gap-2">
                 <span className="text-amber-400 font-mono">✕</span>
@@ -90,7 +90,7 @@ function PrivacyContent() {
             </ul>
           </div>
           <p className="text-xs text-slate-500">
-            Any non-business communication sent to official contact desks is automatically purged without response. Repeated spam or unsolicited inquiries will result in communication blocking.
+            Any non-business communication or personal talk will sent to official contact desks and is automatically purged without response. Repeated spam or unsolicited inquiries will result in communication blocking or any illegal activity or blackmail will led us to take strict legal action against the user.
           </p>
         </div>
       ),
