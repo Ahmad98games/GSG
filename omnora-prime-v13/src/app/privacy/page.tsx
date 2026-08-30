@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Shield, Lock, Cloud, Globe, Database, Eye, Trash2, Cookie, Mail, ArrowLeft, ChevronRight, Server } from "lucide-react";
+import { Shield, Lock, Cloud, Globe, Database, Eye, Trash2, Cookie, Mail, ArrowLeft, ChevronRight, Server, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -62,9 +62,43 @@ function PrivacyContent() {
       ),
     },
     {
+      id: "communication-scope",
+      icon: <ShieldAlert className="w-4 h-4" />,
+      title: "2. Communication Scope & Disclaimers",
+      content: (
+        <div className="space-y-4">
+          <p>
+            Noxis Hub and Omnora Labs maintain strictly professional and technical communication channels.
+          </p>
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded p-4 space-y-3">
+            <p className="text-amber-400 font-bold text-xs uppercase tracking-widest">
+              Strict Non-Scope Policy:
+            </p>
+            <ul className="space-y-2 list-none text-xs text-slate-300">
+              <li className="flex gap-2">
+                <span className="text-amber-400 font-mono">✕</span>
+                <span><strong>No Personal Inquiries:</strong> Official contact points will not entertain personal conversations, casual messaging, or non-business queries.</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-amber-400 font-mono">✕</span>
+                <span><strong>No Career Counseling / Mentorship:</strong> We do not provide career counseling, personal training, mentorship, or recruitment coaching through general channels.</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-amber-400 font-mono">✕</span>
+                <span><strong>No Third-Party Exploits / Gaming Assistance:</strong> Noxis Hub is enterprise management software. Requests regarding game scripting, hacking, or unrelated third-party software are discarded and flagged immediately.</span>
+              </li>
+            </ul>
+          </div>
+          <p className="text-xs text-slate-500">
+            Any non-business communication sent to official contact desks is automatically purged without response. Repeated spam or unsolicited inquiries will result in communication blocking.
+          </p>
+        </div>
+      ),
+    },
+    {
       id: "data-storage",
       icon: <Lock className="w-4 h-4" />,
-      title: "2. How Data Is Stored",
+      title: "3. How Data Is Stored",
       content: (
         <div className="space-y-4">
           <p>
@@ -92,7 +126,7 @@ function PrivacyContent() {
     {
       id: "data-access",
       icon: <Eye className="w-4 h-4" />,
-      title: "3. Who Can Access Your Data",
+      title: "4. Who Can Access Your Data",
       content: (
         <div className="space-y-4">
           <p>
@@ -103,7 +137,7 @@ function PrivacyContent() {
               { who: "You (Account Owner)", access: "Full read and write access to all your business data." },
               { who: "Your Staff (Sub-Users)", access: "Access limited by the role you assign: Manager, Operator, Viewer, or Accountant. Each role has explicit permission gates — for example, a Viewer cannot modify invoices." },
               { who: "Omnora Labs", access: "No access to your business records. Our database security policies are enforced at the database engine level and cannot be bypassed by application code. In the event of a technical support request that requires database inspection, we will always ask for your explicit written consent first." },
-              { who: "Third Parties", access: "We do not sell, rent, or share your data with any third party for commercial purposes. Data is only shared with sub-processors listed in Section 6 for the purpose of providing the service." },
+              { who: "Third Parties", access: "We do not sell, rent, or share your data with any third party for commercial purposes. Data is only shared with sub-processors listed in Section 7 for the purpose of providing the service." },
             ].map((item) => (
               <li key={item.who} className="flex gap-3">
                 <span className="text-[#C5A059] mt-1">▸</span>
@@ -117,7 +151,7 @@ function PrivacyContent() {
     {
       id: "data-deletion",
       icon: <Trash2 className="w-4 h-4" />,
-      title: "4. Data Deletion",
+      title: "5. Data Deletion",
       content: (
         <div className="space-y-4">
           <p>You have the right to request full deletion of your data at any time. Here is what happens:</p>
@@ -150,7 +184,7 @@ function PrivacyContent() {
     {
       id: "cookies",
       icon: <Cookie className="w-4 h-4" />,
-      title: "5. Cookies & Local Storage",
+      title: "6. Cookies & Local Storage",
       content: (
         <div className="space-y-4">
           <p>Noxis Hub uses a minimal, functional-only cookie policy. We do not use advertising cookies, tracking pixels, or behavioral analytics.</p>
@@ -178,7 +212,7 @@ function PrivacyContent() {
     {
       id: "third-party",
       icon: <Cloud className="w-4 h-4" />,
-      title: "6. Third-Party Services",
+      title: "7. Third-Party Services",
       content: (
         <div className="space-y-4">
           <p>We use the following sub-processors to deliver Noxis Hub. Each is bound by their own privacy policies and data processing agreements:</p>
@@ -204,7 +238,7 @@ function PrivacyContent() {
     {
       id: "gdpr",
       icon: <Globe className="w-4 h-4" />,
-      title: "7. GDPR Rights (EU Users)",
+      title: "8. GDPR Rights (EU Users)",
       content: (
         <div className="space-y-4">
           <p>If you are located in the European Union or European Economic Area, you have the following rights under the General Data Protection Regulation (GDPR):</p>
@@ -212,7 +246,7 @@ function PrivacyContent() {
             {[
               { right: "Right to Access", desc: "Request a copy of all personal data we hold about you." },
               { right: "Right to Rectification", desc: "Request correction of any inaccurate personal data." },
-              { right: "Right to Erasure", desc: "Request deletion of your personal data ('Right to be Forgotten'). See Section 4." },
+              { right: "Right to Erasure", desc: "Request deletion of your personal data ('Right to be Forgotten'). See Section 5." },
               { right: "Right to Portability", desc: "Request your data in a machine-readable format (JSON/CSV export available in Settings → Data Export)." },
               { right: "Right to Restrict Processing", desc: "Request that we stop processing your data while a dispute is resolved." },
               { right: "Right to Object", desc: "Object to processing based on legitimate interests." },
@@ -232,26 +266,26 @@ function PrivacyContent() {
     {
       id: "contact",
       icon: <Mail className="w-4 h-4" />,
-      title: "8. Contact Us",
+      title: "9. Contact Us",
       content: (
         <div className="space-y-4">
-          <p>For any privacy-related questions, data requests, or concerns, contact our specific departments:</p>
+          <p>For any privacy-related questions, enterprise contracts, or technical concerns, contact our specific desks:</p>
           <div className="grid gap-4 mt-4">
             <div className="border border-white/[0.04] bg-[#0A0D10]/40 p-4 rounded space-y-2">
               <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block font-mono">Support & General Contact</span>
-              <p className="text-xs text-slate-400">For customer assistance, billing queries, and support questions, write to our primary support address:</p>
+              <p className="text-xs text-slate-400">For customer assistance, billing queries, and software support:</p>
               <a href="mailto:support@noxis.app" className="text-[#C5A059] font-extrabold text-sm hover:underline font-mono">support@noxis.app</a>
             </div>
-            
+
             <div className="border border-white/[0.04] bg-[#0A0D10]/40 p-4 rounded space-y-2">
               <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block font-mono">Legal & Compliance</span>
-              <p className="text-xs text-slate-400">For EULA compliance, licensing terms verification, and dispute resolution, contact our legal desk:</p>
+              <p className="text-xs text-slate-400">For EULA compliance, licensing terms verification, and dispute resolution:</p>
               <a href="mailto:legal@noxishub.app" className="text-[#C5A059] font-extrabold text-sm hover:underline font-mono">legal@noxishub.app</a>
             </div>
 
             <div className="border border-white/[0.04] bg-[#0A0D10]/40 p-4 rounded space-y-2">
               <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block font-mono">Main Corporate Office</span>
-              <p className="text-xs text-slate-400">For corporate partnerships, vendor contracts, or business owner inquiries, contact Omnora Labs:</p>
+              <p className="text-xs text-slate-400">For corporate partnerships, vendor contracts, or business owner inquiries:</p>
               <a href="mailto:omnora@noxishub.app" className="text-[#C5A059] font-extrabold text-sm hover:underline font-mono">omnora@noxishub.app</a>
             </div>
           </div>
@@ -293,7 +327,7 @@ function PrivacyContent() {
 
               <div className="bg-[#0A0D10] border border-white/[0.04] p-4 rounded space-y-2">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">Last Updated</p>
-                <p className="text-white font-bold text-sm">July 13, 2026</p>
+                <p className="text-white font-bold text-sm">August 30, 2026</p>
               </div>
 
               <div className="bg-[#0A0D10] border border-white/[0.04] p-5 rounded flex items-center justify-between text-[10px] font-mono font-bold uppercase tracking-widest text-slate-600">
@@ -313,7 +347,7 @@ function PrivacyContent() {
                 Privacy <span className="text-[#C5A059]">Policy</span>
               </h1>
               <p className="text-slate-400 text-sm sm:text-base leading-relaxed font-medium">
-                Last updated July 13, 2026. This policy explains what data Noxis Hub collects, how it is stored and protected, who can access it, and your rights as a user.
+                Last updated August 30, 2026. This policy outlines data governance, communication boundaries, storage integrity, and user rights for the Noxis Hub platform.
               </p>
             </motion.div>
 
@@ -335,7 +369,7 @@ function PrivacyContent() {
 
             {/* Footer */}
             <footer className="pt-8 border-t border-white/[0.05] flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] font-mono uppercase tracking-widest text-slate-600">
-              <span>Noxis Hub Privacy Policy v13.0</span>
+              <span>Noxis Hub Privacy Policy v13.1</span>
               <div className="flex items-center gap-4">
                 <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
                 <Link href="/refund" className="hover:text-white transition-colors">Refund</Link>
