@@ -1,10 +1,16 @@
 import { randomBytes } from 'crypto'
 import { createClient } from '@supabase/supabase-js'
 
-const serviceSupabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+function getServiceSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !key) return null
+  try {
+    return createClient(url, key)
+  } catch (e) {
+    return null
+  }
+}
 
 export interface PortalTokenResult {
   token: string
@@ -52,24 +58,26 @@ export async function generatePortalToken(
   if (validUserId) payload.created_by = validUserId
 
   try {
-    const { error } = await serviceSupabase
-      .from('portal_sessions')
-      .insert(payload)
+    const serviceSupabase = getServiceSupabase()
+    if (serviceSupabase) {
+      const { error } = await serviceSupabase
+        .from('portal_sessions')
+        .insert(payload)
 
-    if (error) {
-      console.warn('[PortalToken] Supabase insert notice:', error.message)
-      // Retry with minimal payload if foreign key constraint triggered
-      if (error.code === '23503' || error.message?.includes('foreign key constraint')) {
-        try {
-          await serviceSupabase.from('portal_sessions').insert({
-            token,
-            party_name: partyName,
-            business_name: businessName,
-            expires_at: expiresAt.toISOString(),
-            label: `Portal for ${partyName}`,
-          })
-        } catch {
-          // Ignore fallback error
+      if (error) {
+        console.warn('[PortalToken] Supabase insert notice:', error.message)
+        if (error.code === '23503' || error.message?.includes('foreign key constraint')) {
+          try {
+            await serviceSupabase.from('portal_sessions').insert({
+              token,
+              party_name: partyName,
+              business_name: businessName,
+              expires_at: expiresAt.toISOString(),
+              label: `Portal for ${partyName}`,
+            })
+          } catch {
+            // Ignore fallback error
+          }
         }
       }
     }
@@ -89,6 +97,9 @@ export async function revokePortalToken(
   token: string,
   businessId: string
 ): Promise<void> {
+  const serviceSupabase = getServiceSupabase()
+  if (!serviceSupabase) return
+
   const { error } = await serviceSupabase
     .from('portal_sessions')
     .update({ is_revoked: true })
@@ -105,37 +116,46 @@ export async function validatePortalToken(
   session?: any
   reason?: string
 }> {
-  const { data: session, error } =
-    await serviceSupabase
+  try {
+    const serviceSupabase = getServiceSupabase()
+    if (!serviceSupabase) {
+      return { valid: false, reason: 'database_unavailable' }
+    }
+
+    const { data: session, error } = await serviceSupabase
       .from('portal_sessions')
       .select('*')
       .eq('token', token)
       .single()
 
-  if (error || !session) {
-    return { valid: false, reason: 'not_found' }
-  }
+    if (error || !session) {
+      return { valid: false, reason: 'not_found' }
+    }
 
-  if (session.is_revoked) {
-    return { valid: false, reason: 'revoked' }
-  }
+    if (session.is_revoked) {
+      return { valid: false, reason: 'revoked' }
+    }
 
-  if (new Date() > new Date(session.expires_at)) {
-    return { valid: false, reason: 'expired' }
-  }
+    if (new Date() > new Date(session.expires_at)) {
+      return { valid: false, reason: 'expired' }
+    }
 
-  // Update access tracking (non-fatal)
-  try {
-    await serviceSupabase
-      .from('portal_sessions')
-      .update({
-        last_accessed_at: new Date().toISOString(),
-        access_count: session.access_count + 1,
-      })
-      .eq('token', token)
-  } catch (e) {
-    // Non-fatal, ignore
-  }
+    // Update access tracking (non-fatal)
+    try {
+      await serviceSupabase
+        .from('portal_sessions')
+        .update({
+          last_accessed_at: new Date().toISOString(),
+          access_count: (session.access_count || 0) + 1,
+        })
+        .eq('token', token)
+    } catch (e) {
+      // Non-fatal, ignore
+    }
 
-  return { valid: true, session }
+    return { valid: true, session }
+  } catch (e: any) {
+    return { valid: false, reason: e?.message || 'validation_error' }
+  }
 }
+

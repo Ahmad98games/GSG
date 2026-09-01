@@ -7,8 +7,9 @@ import { useRouter } from 'next/navigation'
 import { useToastStore } from '@/hooks/useToast'
 import {
   Package, ChevronLeft, Save,
-  Barcode, Calendar, AlertTriangle,
+  Barcode, Calendar, AlertTriangle, Printer,
 } from 'lucide-react'
+import { UniversalLabelGenerator } from '@/components/common/UniversalLabelGenerator'
 
 const toast = Object.assign(
   (msg: string, _opts?: any) => {
@@ -88,6 +89,7 @@ export default function NewInventoryPage() {
   const [form, setForm] =
     useState(INITIAL_STATE)
   const [saving, setSaving] = useState(false)
+  const [showLabelModal, setShowLabelModal] = useState(false)
 
   // Ref for the name input — focus on mount
   const nameRef = useRef<HTMLInputElement>(null)
@@ -313,6 +315,15 @@ export default function NewInventoryPage() {
           </div>
         </div>
         <div className="flex gap-3">
+          <button
+            onClick={() => setShowLabelModal(true)}
+            className="flex items-center gap-2 px-4 py-2 border
+              border-blue-500/30 bg-blue-500/10 text-blue-300
+              text-sm hover:bg-blue-500/20 font-bold transition-all"
+          >
+            <Printer size={14} />
+            Print Sticker
+          </button>
           <button
             onClick={handleCancel}
             className="px-4 py-2 border
@@ -568,6 +579,24 @@ export default function NewInventoryPage() {
 
         </div>
       </div>
+
+      {showLabelModal && (
+        <UniversalLabelGenerator
+          isOpen={showLabelModal}
+          onClose={() => setShowLabelModal(false)}
+          data={{
+            name: form.name || 'New Inventory Item',
+            skuCode: form.skuCode || 'SKU-000',
+            barcode: form.barcode || form.skuCode || '000000000000',
+            price: parseFloat(form.salePrice) || 0,
+            unit: form.unit,
+            category: form.category,
+            payloadType: 'SKU',
+          }}
+          defaultDimension="50x30"
+          defaultQuantity={parseInt(form.openingStock) || 1}
+        />
+      )}
     </div>
     </GlobalErrorBoundary>
   )

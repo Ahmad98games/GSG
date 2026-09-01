@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import Fuse from 'fuse.js';
 
 interface VoiceIntent {
@@ -19,29 +19,45 @@ export function useFloorVoice(intents: VoiceIntent[]) {
   const [lastIntent, setLastIntent] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
 
-  const fuse = new Fuse(intents, {
-    keys: ['triggers'],
-    threshold: 0.4
-  });
+  // Always keep the latest intents accessible without rebuilding Fuse
+  const intentsRef = useRef(intents);
+  intentsRef.current = intents;
 
-  const speak = (text: string) => {
+  // Build a static Fuse instance once, using command names as search keys.
+  // We search against command names (stable strings), then look up the live
+  // action from intentsRef.current — this prevents Fuse from being rebuilt
+  // on every render when intents[] is a new array reference.
+  const fuse = useMemo(() => {
+    // Snapshot the command/triggers structure for indexing (these don't change)
+    return new Fuse(intents.map(i => ({ command: i.command, triggers: i.triggers })), {
+      keys: ['triggers'],
+      threshold: 0.4
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Stable — intentionally built once; actions are resolved via intentsRef
+
+  const speak = useCallback((text: string) => {
     if (typeof window === 'undefined') return;
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = 1.0;
     utterance.pitch = 1.0;
     window.speechSynthesis.speak(utterance);
-  };
+  }, []);
 
   const processTranscript = useCallback((text: string) => {
     const cleanText = text.toLowerCase().trim();
     console.log('[FloorVoice] Processing:', cleanText);
 
-    // Fuzzy match intent
+    // Fuzzy match against stable snapshot of command/triggers
     const result = fuse.search(cleanText);
     
     if (result.length > 0) {
-      const intent = result[0].item;
-      setLastIntent(intent.command);
+      const matchedCommand = result[0].item.command;
+      // Resolve live action from the ref (always uses latest callbacks)
+      const liveIntent = intentsRef.current.find(i => i.command === matchedCommand);
+      if (!liveIntent) return;
+
+      setLastIntent(liveIntent.command);
       
       // Extract numbers if any (e.g. "log 500 units")
       const numbers = cleanText.match(/\d+/g);
@@ -50,16 +66,20 @@ export function useFloorVoice(intents: VoiceIntent[]) {
         quantity: numbers ? parseInt(numbers[0]) : null
       };
 
-      intent.action(params);
-      speak(`Acknowledged. Triggering ${intent.command}.`);
+      liveIntent.action(params);
+      speak(`Acknowledged. Triggering ${liveIntent.command}.`);
     } else {
       speak("Command not recognized. Please repeat.");
     }
-  }, [intents]);
+  }, [fuse, speak]);
 
   const startListening = useCallback(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) return;
+
+    if (recognitionRef.current) {
+      try { recognitionRef.current.abort(); } catch {}
+    }
 
     const recognition = new SpeechRecognition();
     recognition.continuous = false;
@@ -84,3 +104,4 @@ export function useFloorVoice(intents: VoiceIntent[]) {
     speak
   };
 }
+

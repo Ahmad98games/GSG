@@ -333,6 +333,404 @@ vi.mock('@supabase/supabase-js', () => {
     async rpc(functionName: string, params: any) {
       const store = (globalThis as any).__SUPABASE_STORE__;
       try {
+        if (functionName === 'complete_sale') {
+          const {
+            p_business_id, p_user_id, p_client_transaction_id, p_party_id, p_party_name, p_party_phone,
+            p_invoice_date, p_subtotal, p_discount_amount, p_discount_percent, p_tax_amount,
+            p_grand_total, p_items = [], p_payments = [], p_notes, p_invoice_currency = 'PKR'
+          } = params;
+
+          // 1. Tenant Authorization Check
+          const authUid = (this.clientContext && this.clientContext.authUid) || null;
+          let isOwner = true;
+          if (authUid) {
+            const bizProfile = (store.business_profiles || []).find((b: any) => b.id === p_business_id && b.user_id === authUid);
+            const branchAssignment = (store.branch_user_assignments || []).find((b: any) => b.business_id === p_business_id && b.user_id === authUid);
+            if (!bizProfile && !branchAssignment) {
+              return {
+                data: {
+                  status: 'ERROR',
+                  error_code: 'UNAUTHORIZED_BUSINESS',
+                  message: 'Caller is not authorized for this business',
+                },
+                error: null,
+              };
+            }
+            isOwner = !!bizProfile;
+          }
+
+          // Party Tenant Verification
+          if (p_party_id) {
+            const party = (store.parties || []).find((p: any) => p.id === p_party_id && p.business_id === p_business_id);
+            if (!party) {
+              return {
+                data: {
+                  status: 'ERROR',
+                  error_code: 'INVALID_PARTY',
+                  message: 'Customer party does not belong to this business',
+                },
+                error: null,
+              };
+            }
+          }
+
+          // 2. Idempotency Check
+          const existing = (store.invoices || []).find(
+            (i: any) => i.business_id === p_business_id && i.client_transaction_id === p_client_transaction_id
+          );
+          if (existing) {
+            return {
+              data: {
+                status: 'ALREADY_COMPLETED',
+                invoice_id: existing.id,
+                idempotent: true,
+              },
+              error: null,
+            };
+          }
+
+          // 3. Validate Business & Lock Counter
+          const biz = (store.business_profiles || []).find((b: any) => b.id === p_business_id);
+          if (!biz) {
+            return {
+              data: {
+                status: 'ERROR',
+                error_code: 'INVALID_BUSINESS',
+                message: 'Business not found',
+              },
+              error: null,
+            };
+          }
+
+          if (biz.invoice_counter === undefined) biz.invoice_counter = 1;
+          const seq = biz.invoice_counter;
+          biz.invoice_counter += 1;
+
+          // 4. Validate Payload & Payments
+          if (!p_items || p_items.length === 0) {
+            return {
+              data: {
+                status: 'ERROR',
+                error_code: 'INVALID_PAYLOAD',
+                message: 'No items in sale',
+              },
+              error: null,
+            };
+          }
+
+          if (p_grand_total <= 0) {
+            return {
+              data: {
+                status: 'ERROR',
+                error_code: 'INVALID_TOTAL',
+                message: 'Grand total must be positive',
+              },
+              error: null,
+            };
+          }
+
+          let totalAllocated = 0;
+          let hasCredit = false;
+          for (const p of p_payments) {
+            const amt = Number(p.amount);
+            if (amt <= 0 || isNaN(amt)) {
+              return {
+                data: {
+                  status: 'ERROR',
+                  error_code: 'INVALID_PAYMENT',
+                  message: 'Payment amount must be greater than zero',
+                },
+                error: null,
+              };
+            }
+            totalAllocated += amt;
+            if (p.method === 'credit') {
+              hasCredit = true;
+            }
+          }
+
+          const unallocated = Math.max(0, p_grand_total - totalAllocated);
+
+          if ((hasCredit || unallocated > 0) && !p_party_id) {
+            return {
+              data: {
+                status: 'ERROR',
+                error_code: 'CREDIT_REQUIRES_PARTY',
+                message: 'Credit payment requires a customer',
+              },
+              error: null,
+            };
+          }
+
+          // 5. Price Verification & Input Validation
+          let calcSubtotal = 0;
+          let calcTax = 0;
+
+          for (const item of p_items) {
+            const qty = Number(item.quantity);
+            const unitPrice = Number(item.unit_price);
+            const discAmt = Number(item.discount_amount || 0);
+            const taxAmt = Number(item.tax_amount || 0);
+
+            if (qty <= 0 || isNaN(qty)) {
+              return {
+                data: {
+                  status: 'ERROR',
+                  error_code: 'INVALID_QUANTITY',
+                  message: `Quantity must be greater than zero for SKU: ${item.sku_id}`,
+                },
+                error: null,
+              };
+            }
+
+            if (unitPrice < 0 || discAmt < 0 || taxAmt < 0) {
+              return {
+                data: {
+                  status: 'ERROR',
+                  error_code: 'INVALID_PAYLOAD',
+                  message: 'Price, discount and tax amounts must be non-negative',
+                },
+                error: null,
+              };
+            }
+
+            const sku = (store.skus || []).find(
+              (s: any) => s.id === item.sku_id && s.business_id === p_business_id
+            );
+
+            if (!sku || sku.is_active === false) {
+              return {
+                data: {
+                  status: 'ERROR',
+                  error_code: 'INVALID_SKU',
+                  message: `SKU not found or inactive: ${item.sku_id}`,
+                },
+                error: null,
+              };
+            }
+
+            const dbPrice = Number(sku.sale_price || 0);
+            if (unitPrice !== dbPrice && !isOwner) {
+              return {
+                data: {
+                  status: 'ERROR',
+                  error_code: 'PRICE_MISMATCH',
+                  message: `Price override not authorized for SKU: ${item.sku_id}`,
+                },
+                error: null,
+              };
+            }
+
+            calcSubtotal += (unitPrice * qty) - discAmt;
+            calcTax += taxAmt;
+          }
+
+          const calcGrandTotal = Math.round((calcSubtotal - Number(p_discount_amount || 0) + calcTax) * 100) / 100;
+          if (Math.abs(calcGrandTotal - Number(p_grand_total)) > 0.01) {
+            return {
+              data: {
+                status: 'ERROR',
+                error_code: 'PRICE_MISMATCH',
+                message: `Grand total mismatch. Client: ${p_grand_total}, Calculated: ${calcGrandTotal}`,
+              },
+              error: null,
+            };
+          }
+
+          // 6. Aggregate Duplicate SKUs & Check Stock
+          const skuTotals: Record<string, number> = {};
+          for (const item of p_items) {
+            skuTotals[item.sku_id] = (skuTotals[item.sku_id] || 0) + Number(item.quantity);
+          }
+
+          for (const [skuId, totalQty] of Object.entries(skuTotals)) {
+            const sku = store.skus.find((s: any) => s.id === skuId);
+            const currentQty = Number(sku.qty_on_hand !== undefined ? sku.qty_on_hand : (sku.qty !== undefined ? sku.qty : 0));
+            if (currentQty < totalQty) {
+              return {
+                data: {
+                  status: 'ERROR',
+                  error_code: 'INSUFFICIENT_STOCK',
+                  sku_id: skuId,
+                  available: currentQty,
+                  requested: totalQty,
+                  message: `Insufficient stock for SKU ${skuId}. Available: ${currentQty}, Requested: ${totalQty}`,
+                },
+                error: null,
+              };
+            }
+          }
+
+          // 7. Generate Invoice Number & Payment Calculations
+          const prefix = biz.invoice_prefix || 'INV';
+          const invoiceNumber = `${prefix}-${seq.toString().padStart(6, '0')}`;
+          const invoiceId = crypto.randomUUID();
+
+          let amountPaid = 0;
+          for (const p of p_payments) {
+            if (p.method !== 'credit') {
+              amountPaid += Number(p.amount || 0);
+            }
+          }
+          const balanceDue = Math.max(0, p_grand_total - amountPaid);
+          const invoiceStatus = balanceDue <= 0 ? 'paid' : amountPaid > 0 ? 'partial' : 'posted';
+
+          const invoice = {
+            id: invoiceId,
+            business_id: p_business_id,
+            invoice_number: invoiceNumber,
+            invoice_type: 'invoice',
+            party_id: p_party_id,
+            party_name: p_party_name,
+            party_phone: p_party_phone,
+            invoice_date: p_invoice_date,
+            status: invoiceStatus,
+            subtotal: p_subtotal,
+            discount_amount: p_discount_amount,
+            discount_percent: p_discount_percent,
+            tax_amount: p_tax_amount,
+            total_amount: p_grand_total,
+            amount_paid: amountPaid,
+            balance_due: balanceDue,
+            invoice_currency: p_invoice_currency,
+            client_transaction_id: p_client_transaction_id,
+            notes: p_notes,
+            created_at: new Date().toISOString(),
+          };
+
+          if (!store.invoices) store.invoices = [];
+          store.invoices.push(invoice);
+
+          // Deduct aggregated stock quantities
+          for (const [skuId, totalQty] of Object.entries(skuTotals)) {
+            const sku = store.skus.find((s: any) => s.id === skuId);
+            if (sku) {
+              if (sku.qty_on_hand !== undefined) {
+                sku.qty_on_hand = Number(sku.qty_on_hand) - totalQty;
+              } else {
+                sku.qty = Number(sku.qty || 0) - totalQty;
+              }
+            }
+
+            if (!store.stock_adjustments) store.stock_adjustments = [];
+            store.stock_adjustments.push({
+              id: crypto.randomUUID(),
+              business_id: p_business_id,
+              sku_id: skuId,
+              adjustment_type: 'decrease',
+              quantity: -totalQty,
+              reason: 'sale',
+              reference: invoiceNumber,
+              adjustment_date: p_invoice_date,
+              created_at: new Date().toISOString(),
+            });
+          }
+
+          // Payments
+          if (!store.payments) store.payments = [];
+          for (const p of p_payments) {
+            store.payments.push({
+              id: crypto.randomUUID(),
+              business_id: p_business_id,
+              invoice_id: invoiceId,
+              party_id: p_party_id,
+              payment_type: 'received',
+              amount: Number(p.amount),
+              payment_date: p_invoice_date,
+              payment_method: p.method,
+              reference: p.reference || null,
+              created_at: new Date().toISOString(),
+            });
+          }
+
+          if (unallocated > 0) {
+            store.payments.push({
+              id: crypto.randomUUID(),
+              business_id: p_business_id,
+              invoice_id: invoiceId,
+              party_id: p_party_id,
+              payment_type: 'received',
+              amount: unallocated,
+              payment_date: p_invoice_date,
+              payment_method: 'credit',
+              reference: 'Auto Unallocated Credit',
+              created_at: new Date().toISOString(),
+            });
+          }
+
+          // Ledger Entries
+          if (!store.ledger_entries) store.ledger_entries = [];
+
+          store.ledger_entries.push({
+            id: crypto.randomUUID(),
+            business_id: p_business_id,
+            party_id: p_party_id,
+            entry_type: 'sales',
+            entry_date: p_invoice_date,
+            description: `Sale: ${invoiceNumber}`,
+            debit: 0,
+            credit: p_grand_total,
+            source_table: 'invoices',
+            source_id: invoiceId,
+            created_at: new Date().toISOString(),
+          });
+
+          for (const p of p_payments) {
+            const desc = p.method === 'cash' ? 'Cash Received' : p.method === 'bank' ? 'Bank Transfer Received' : p.method === 'credit' ? 'Accounts Receivable' : 'Payment Received';
+            store.ledger_entries.push({
+              id: crypto.randomUUID(),
+              business_id: p_business_id,
+              party_id: p_party_id,
+              entry_type: 'sales',
+              entry_date: p_invoice_date,
+              description: `${desc}: ${invoiceNumber}`,
+              debit: Number(p.amount),
+              credit: 0,
+              source_table: 'invoices',
+              source_id: invoiceId,
+              created_at: new Date().toISOString(),
+            });
+          }
+
+          if (unallocated > 0) {
+            store.ledger_entries.push({
+              id: crypto.randomUUID(),
+              business_id: p_business_id,
+              party_id: p_party_id,
+              entry_type: 'sales',
+              entry_date: p_invoice_date,
+              description: `Accounts Receivable: ${invoiceNumber}`,
+              debit: unallocated,
+              credit: 0,
+              source_table: 'invoices',
+              source_id: invoiceId,
+              created_at: new Date().toISOString(),
+            });
+          }
+
+          // Update party balance with COALESCE NULL Safety
+          if (p_party_id && balanceDue > 0) {
+            const party = (store.parties || []).find((pt: any) => pt.id === p_party_id);
+            if (party) {
+              const currentBal = (party.current_balance === null || party.current_balance === undefined) ? 0 : Number(party.current_balance);
+              party.current_balance = currentBal + balanceDue;
+            }
+          }
+
+          return {
+            data: {
+              status: 'SUCCESS',
+              invoice_id: invoiceId,
+              invoice_number: invoiceNumber,
+              invoice_status: invoiceStatus,
+              amount_paid: amountPaid,
+              balance_due: balanceDue,
+              idempotent: false,
+            },
+            error: null,
+          };
+        }
+
         if (functionName === 'set_branch_context') {
           this.clientContext.clientBranchContext = params.branch_id || null;
           return { data: null, error: null };

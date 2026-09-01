@@ -34,9 +34,12 @@ export function createClient() {
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
         return Promise.reject(new TypeError('Failed to fetch (Offline)'));
       }
-      const controller = new AbortController()
-      // Strict 1.2s timeout for local-first zero-lag responsiveness
-      const id = setTimeout(() => controller.abort(), 1200)
+      const urlStr = typeof url === 'string' ? url : (url?.url || '');
+      const isUpload = urlStr.includes('/storage/') || urlStr.includes('/upload') || options?.body instanceof FormData || options?.body instanceof Blob;
+      // 45s for file uploads, 15s for cloud database mutations/queries
+      const timeoutMs = isUpload ? 45000 : 15000;
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeoutMs);
       return fetch(url, {
         ...options,
         signal: controller.signal,
@@ -47,7 +50,7 @@ export function createClient() {
           }
           throw err;
         })
-        .finally(() => clearTimeout(id))
+        .finally(() => clearTimeout(id));
     };
 
     _client = createBrowserClient(

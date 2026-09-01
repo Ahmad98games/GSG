@@ -58,22 +58,16 @@ function copyFile(src, dest, { required = false } = {}) {
   console.log(`[Electron Build] ✓ Copied ${path.relative(ROOT, src)} → ${path.relative(ROOT, dest)}`);
 }
 
-// ── Copy next subpath wrapper .js files into standalone ──────────────────────
+// ── Copy next package into standalone node_modules ───────────────────────────
 function copyNextSubpathWrappers() {
   const srcDir = path.join(ROOT, 'node_modules', 'next');
   const destDir = path.join(STANDALONE, 'node_modules', 'next');
-  if (!fs.existsSync(srcDir) || !fs.existsSync(destDir)) {
-    console.warn('[Electron Build] ⚠ Could not copy next subpath wrappers (dirs missing)');
+  if (!fs.existsSync(srcDir)) {
+    console.warn('[Electron Build] ⚠ node_modules/next missing');
     return;
   }
-  let copied = 0;
-  for (const file of fs.readdirSync(srcDir)) {
-    if (file.endsWith('.js')) {
-      fs.copyFileSync(path.join(srcDir, file), path.join(destDir, file));
-      copied++;
-    }
-  }
-  console.log(`[Electron Build] ✓ Copied ${copied} next subpath wrappers`);
+  copyDir(srcDir, destDir);
+  console.log('[Electron Build] ✓ Copied complete next package into standalone node_modules');
 }
 
 // ── Assemble the standalone bundle ───────────────────────────────────────────
@@ -96,7 +90,7 @@ function prepareStandaloneBundle() {
     path.join(STANDALONE, 'src', 'lib', 'db', 'migrations')
   );
 
-  // 4. Next.js subpath wrappers (headers.js, etc.)
+  // 4. Complete Next.js runtime (headers, cookies, navigation, dist)
   copyNextSubpathWrappers();
 
   // 5. Mobile WebSocket bridge server
@@ -117,7 +111,7 @@ try {
   console.log('[Electron Build] Starting Next.js standalone compilation...');
   console.log('[Electron Build] ══════════════════════════════════════════\n');
 
-  execSync('npx next build', {
+  execSync('npx next build --webpack', {
     stdio: 'inherit',
     env: {
       ...process.env,

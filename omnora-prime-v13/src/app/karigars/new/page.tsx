@@ -62,6 +62,7 @@ const INITIAL_KARIGAR = {
   address: '',
   department: '',
   designation: 'Karigar',
+  grade: 'B' as 'MASTER' | 'A' | 'B' | 'C',
   wageType: 'piece_rate' as 'piece_rate' | 'daily' | 'monthly',
   pieceRate: '',
   dailyWage: '',
@@ -226,6 +227,7 @@ export default function NewKarigarPage() {
             form.department || null,
           designation:
             form.designation || 'Karigar',
+          grade: form.grade || 'B',
           wage_type: form.wageType,
           piece_rate:
             form.wageType === 'piece_rate'
@@ -493,15 +495,29 @@ export default function NewKarigarPage() {
               </KField>
             </div>
 
-            <KField label="Joining Date">
-              <input
-                value={form.joiningDate}
-                onChange={
-                  updateField('joiningDate')}
-                type="date"
-                className="noxis-input"
-              />
-            </KField>
+            <div className="grid grid-cols-2 gap-4">
+              <KField label="Artisan Grade">
+                <select
+                  value={form.grade}
+                  onChange={updateField('grade')}
+                  className="noxis-input font-semibold"
+                >
+                  <option value="MASTER">Master (Ustaad)</option>
+                  <option value="A">Grade A (Expert)</option>
+                  <option value="B">Grade B (Intermediate)</option>
+                  <option value="C">Grade C (Apprentice)</option>
+                </select>
+              </KField>
+              <KField label="Joining Date">
+                <input
+                  value={form.joiningDate}
+                  onChange={
+                    updateField('joiningDate')}
+                  type="date"
+                  className="noxis-input"
+                />
+              </KField>
+            </div>
 
           </KSection>
 

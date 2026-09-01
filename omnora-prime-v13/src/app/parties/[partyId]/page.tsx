@@ -345,7 +345,26 @@ export default function PartyDetailPage() {
 
   const shareViaWhatsApp = () => {
     if (!portalLink || !party) return;
-    const msg = `Hello ${party.name},\n\nYou can view your account statement and invoices here:\n${portalLink}\n\nThis link is valid for 90 days.`;
+    const bizName = profile?.business_name || 'Noxis Hub';
+    const balanceVal = Number(party.current_balance || 0);
+    const balanceFormatted = Math.abs(balanceVal).toLocaleString('en-PK');
+    const balanceStatus = balanceVal > 0 ? 'Payable (Amount Due)' : balanceVal < 0 ? 'Advance (Credit)' : 'Settled / Nil';
+
+    const msg = 
+      `*CLIENT ACCOUNT PORTAL & STATEMENT*\n` +
+      `🏛️ *${bizName}*\n\n` +
+      `Assalam-o-Alaikum *${party.name}*,\n\n` +
+      `Here is your secure, real-time client account portal. You can view all your verified invoices, payment ledger, and download official PDF statements anytime:\n\n` +
+      `📊 *Account Summary*:\n` +
+      `• *Current Balance*: PKR ${balanceFormatted} (${balanceStatus})\n` +
+      (party.credit_limit ? `• *Credit Limit*: PKR ${Number(party.credit_limit).toLocaleString('en-PK')}\n` : '') +
+      (party.credit_days ? `• *Payment Terms*: ${party.credit_days} Days Net\n` : '') +
+      `\n🔗 *Click to Open Live Portal*:\n` +
+      `${portalLink}\n\n` +
+      `⏳ _This encrypted link is valid for 90 days._\n\n` +
+      `Thank you for your valued partnership.\n` +
+      `*${bizName}*`;
+
     sendWhatsAppAlert(party.phone || '', msg);
   };
 
@@ -524,6 +543,8 @@ export default function PartyDetailPage() {
                   partyId={party.id}
                   partyName={party.name}
                   partyPhone={party.phone}
+                  partyBalance={party.current_balance}
+                  businessName={profile?.business_name}
                />
             </div>
         </header>

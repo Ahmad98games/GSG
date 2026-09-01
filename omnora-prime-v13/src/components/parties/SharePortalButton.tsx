@@ -10,12 +10,16 @@ interface SharePortalButtonProps {
   partyId: string
   partyName: string
   partyPhone?: string | null
+  partyBalance?: number | null
+  businessName?: string | null
 }
 
 export function SharePortalButton({
   partyId,
   partyName,
   partyPhone,
+  partyBalance,
+  businessName,
 }: SharePortalButtonProps) {
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -88,12 +92,24 @@ export function SharePortalButton({
     const digits = (partyPhone || '')
       .replace(/\D/g, '')
       .replace(/^0/, '92')
+
+    const biz = businessName || 'Noxis Hub'
+    const balVal = partyBalance != null ? Number(partyBalance) : null
+    const balanceText = balVal != null
+      ? `\n📊 *Account Status*:\n• *Current Balance*: PKR ${Math.abs(balVal).toLocaleString('en-PK')} (${balVal > 0 ? 'Payable (Amount Due)' : balVal < 0 ? 'Advance (Credit)' : 'Settled / Nil'})\n• *Verified Invoices & Ledger Available*\n`
+      : ''
+
     const msg = encodeURIComponent(
-      `Assalam o Alaikum ${partyName},\n\n` +
-      `Your account portal is ready. You can view all your invoices, deliveries, and statement history here:\n\n` +
+      `*CLIENT ACCOUNT PORTAL ACCESS*\n` +
+      `🏛️ *${biz}*\n\n` +
+      `Assalam-o-Alaikum *${partyName}*,\n\n` +
+      `Here is your secure, private access to view your updated account statement, verified invoices, delivery records, and download official PDF statements in real-time:\n` +
+      balanceText +
+      `\n🔗 *Click to Open Live Portal*:\n` +
       `${portalUrl}\n\n` +
-      `This link is valid for 30 days.\n\n` +
-      `_Noxis Hub_`
+      `⏳ _This encrypted link is valid for 30 days._\n\n` +
+      `Thank you for your valued partnership.\n` +
+      `*${biz}*`
     )
     window.open(`https://wa.me/${digits}?text=${msg}`, '_blank')
   }

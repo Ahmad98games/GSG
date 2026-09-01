@@ -600,7 +600,8 @@ export function TypedText({ phrases, className = '', speed = 80, pauseTime = 180
   const [isWaiting, setIsWaiting] = useState(false)
 
   useEffect(() => {
-    const phrase = phrases[phraseIdx]
+    const phrase = phrases[phraseIdx] || ''
+    let pauseTimeout: NodeJS.Timeout | null = null
 
     if (isWaiting) return
 
@@ -610,7 +611,7 @@ export function TypedText({ phrases, className = '', speed = 80, pauseTime = 180
           setDisplayed(phrase.slice(0, displayed.length + 1))
         } else {
           setIsWaiting(true)
-          setTimeout(() => {
+          pauseTimeout = setTimeout(() => {
             setIsWaiting(false)
             setIsDeleting(true)
           }, pauseTime)
@@ -625,7 +626,10 @@ export function TypedText({ phrases, className = '', speed = 80, pauseTime = 180
       }
     }, isDeleting ? speed / 2 : speed)
 
-    return () => clearTimeout(timeout)
+    return () => {
+      clearTimeout(timeout)
+      if (pauseTimeout) clearTimeout(pauseTimeout)
+    }
   }, [displayed, isDeleting, phraseIdx, phrases, isWaiting, speed, pauseTime])
 
   return (

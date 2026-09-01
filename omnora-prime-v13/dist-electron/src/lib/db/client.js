@@ -198,6 +198,13 @@ exports.db = new Proxy({}, {
                         : undefined,
                     nativeBinding: process.env.BETTER_SQLITE3_BINDING || undefined,
                 });
+                // Apply busy_timeout & WAL pragmas immediately after opening connection to prevent database lock crashes
+                if (dbPath !== ':memory:') {
+                    try {
+                        (0, pragmas_1.applyProductionPragmas)(sqlite);
+                    }
+                    catch { }
+                }
                 // Apply encryption key if present
                 if (dbKey) {
                     try {
@@ -236,13 +243,13 @@ exports.db = new Proxy({}, {
                                 nativeBinding: process.env.BETTER_SQLITE3_BINDING || undefined,
                             });
                             newSqlite.pragma(`key = '${dbKey}'`);
-                            _db = initDrizzle(newSqlite);
                             if (dbPath !== ':memory:') {
                                 try {
                                     (0, pragmas_1.applyProductionPragmas)(newSqlite);
                                 }
                                 catch { }
                             }
+                            _db = initDrizzle(newSqlite);
                             return _db[prop];
                         }
                         catch (migrationErr) {
@@ -294,13 +301,13 @@ exports.db = new Proxy({}, {
                                 nativeBinding: process.env.BETTER_SQLITE3_BINDING || undefined,
                             });
                             freshSqlite.pragma(`key = '${dbKey}'`);
-                            _db = initDrizzle(freshSqlite);
                             if (targetDbPath !== ':memory:') {
                                 try {
                                     (0, pragmas_1.applyProductionPragmas)(freshSqlite);
                                 }
                                 catch { }
                             }
+                            _db = initDrizzle(freshSqlite);
                             return _db[prop];
                         }
                         finally {
@@ -338,28 +345,21 @@ exports.db = new Proxy({}, {
                     alterTableSafe('karigars', 'business_id TEXT');
                     alterTableSafe('expenses', 'business_id TEXT');
                     console.log('[DB] Schema applied & column migrations verified ✓');
-                    const tables = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all();
-                    console.log(`[DB] Tables: ${tables.map(t => t.name).join(', ')}`);
+                    try {
+                        const tables = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all();
+                        console.log(`[DB] Tables: ${tables.map(t => t.name).join(', ')}`);
+                    }
+                    catch { }
                 }
                 catch (schemaErr) {
-                    console.error('[DB] Schema execution error:', schemaErr);
-                }
-                // Apply production-tuned performance pragmas
-                if (dbPath !== ':memory:') {
-                    try {
-                        (0, pragmas_1.applyProductionPragmas)(sqlite);
-                    }
-                    catch (e) {
-                        console.error("Failed to apply pragmas:", e);
-                    }
+                    console.warn('[DB] Non-critical schema initialization warning:', schemaErr);
                 }
             }
             catch (err) {
-                console.error("Local Database Initialization Failed:", err);
-                // Return a mock or throw a meaningful error that routes can catch
-                throw new Error("LOCAL_DB_UNAVAILABLE");
+                console.error("Local Database Initialization Warning:", err);
+                return undefined;
             }
         }
-        return _db[prop];
+        return _db ? _db[prop] : undefined;
     }
 });

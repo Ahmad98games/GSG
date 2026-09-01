@@ -372,53 +372,39 @@ td {
 }
 
 @media print {
-  @page {
-    size: A4 portrait;
-    margin: 10mm;
-  }
-
-  /* Hide everything by default */
-  body, body * {
-    visibility: hidden !important;
-    background: transparent !important;
-  }
-
-  /* Make printable elements visible */
-  .invoice-preview,
-  .invoice-preview *,
-  .printable-statement,
-  .printable-statement * {
-    visibility: visible !important;
-  }
-
-  /* Position printable content at absolute top-left of page */
-  .invoice-preview,
-  .printable-statement {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow: visible !important;
-    border: none !important;
-    box-shadow: none !important;
-    background: white !important;
-    color: black !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  /* Explicitly hide non-printable UI elements */
+  /* Hide UI chrome and interactive buttons */
   .no-print,
   .no-print *,
-  header,
+  nav,
   aside,
-  footer,
   [data-sidebar],
   .sidebar-expanded,
   .sidebar-collapsed {
     display: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Printable containers */
+  .invoice-preview,
+  .printable-statement {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 8mm !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }
 

@@ -586,12 +586,13 @@ const PartyCard = React.memo(function PartyCard({
                    </Can>
                 </p>
              </div>
-             <div className="flex items-center space-x-2">
-                <SharePortalButton
-                  partyId={party.id}
-                  partyName={party.name}
-                  partyPhone={party.phone}
-                />
+              <div className="flex items-center space-x-2">
+                 <SharePortalButton
+                   partyId={party.id}
+                   partyName={party.name}
+                   partyPhone={party.phone}
+                   partyBalance={balance}
+                 />
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();

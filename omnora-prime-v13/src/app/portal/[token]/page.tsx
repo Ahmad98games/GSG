@@ -1,10 +1,8 @@
 import React from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { validatePortalToken } from '@/lib/portal/generatePortalToken'
-import { 
-  Building2, User, Phone, ShieldCheck, FileText, Download, 
-  ArrowUpRight, ArrowDownLeft, AlertCircle, Share2, DollarSign
-} from 'lucide-react'
+import { AlertCircle } from 'lucide-react'
+import { UnifiedPortalClientView } from './UnifiedPortalClientView'
 
 interface Props {
   params: Promise<{ token: string }>
@@ -13,278 +11,172 @@ interface Props {
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
+function getSupabaseClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !key) return null
+  try {
+    return createClient(url, key)
+  } catch {
+    return null
+  }
+}
+
 export default async function UnifiedPortalPage({ params }: Props) {
-  const { token } = await params
-  const rawToken = decodeURIComponent(token).trim()
+  try {
+    const { token } = await params
+    const rawToken = decodeURIComponent(token || '').trim()
 
-  if (!rawToken) {
-    return <PortalErrorFallback reason="Missing Portal ID Parameter" />
-  }
-
-  // Extract base token if slug/party name is appended (e.g. "3d15-1d91-c756 _gold she Garments" -> "3d15-1d91-c756")
-  const match = rawToken.match(/^([a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4})/);
-  const baseToken = match ? match[1] : rawToken.split(/[\s_]/)[0];
-
-  // Attempt token validation with baseToken first, then rawToken
-  let tokenResult = await validatePortalToken(baseToken).catch(() => ({ valid: false, session: null, reason: 'Invalid Token' }))
-  if (!tokenResult.valid) {
-    tokenResult = await validatePortalToken(rawToken).catch(() => ({ valid: false, session: null, reason: 'Invalid Token' }))
-  }
-  
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-  )
-
-  let party: any = null
-  let business: any = null
-  let invoices: any[] = []
-  let payments: any[] = []
-
-  if (tokenResult.valid && tokenResult.session) {
-    const businessId = tokenResult.session.business_id
-    const partyId = tokenResult.session.party_id
-
-    const [partyRes, bizRes, invRes, payRes] = await Promise.allSettled([
-      supabase.from('parties').select('*').eq('id', partyId).single(),
-      supabase.from('business_profiles').select('*').eq('id', businessId).single(),
-      supabase.from('invoices').select('*').eq('party_id', partyId).order('created_at', { ascending: false }).limit(20),
-      supabase.from('payments').select('*').eq('party_id', partyId).order('payment_date', { ascending: false }).limit(20),
-    ])
-
-    if (partyRes.status === 'fulfilled') party = partyRes.value.data
-    if (bizRes.status === 'fulfilled') business = bizRes.value.data
-    if (invRes.status === 'fulfilled') invoices = invRes.value.data || []
-    if (payRes.status === 'fulfilled') payments = payRes.value.data || []
-  } else {
-    // 2. Fallback: Query party directly by baseToken or rawToken safely using .eq()
-    const { data: p1 } = await supabase.from('parties').select('*').eq('portal_token', baseToken).maybeSingle()
-    let partyData = p1
-
-    if (!partyData) {
-      const { data: p2 } = await supabase.from('parties').select('*').eq('id', baseToken).maybeSingle()
-      if (p2) partyData = p2
+    if (!rawToken) {
+      return <PortalErrorFallback reason="Missing Portal ID Parameter" />
     }
 
-    if (!partyData) {
-      const { data: p3 } = await supabase.from('parties').select('*').eq('portal_token', rawToken).maybeSingle()
-      if (p3) partyData = p3
+    // Extract base token if slug/party name is appended (e.g. "3d15-1d91-c756 _gold she Garments" -> "3d15-1d91-c756")
+    const match = rawToken.match(/^([a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4})/);
+    const baseToken = match ? match[1] : rawToken.split(/[\s_]/)[0];
+
+    // Attempt token validation with baseToken first, then rawToken
+    let tokenResult = await validatePortalToken(baseToken).catch(() => ({ valid: false, session: null, reason: 'Invalid Token' }))
+    if (!tokenResult.valid) {
+      tokenResult = await validatePortalToken(rawToken).catch(() => ({ valid: false, session: null, reason: 'Invalid Token' }))
     }
 
-    if (!partyData) {
-      const { data: p4 } = await supabase.from('parties').select('*').eq('id', rawToken).maybeSingle()
-      if (p4) partyData = p4
-    }
+    const supabase = getSupabaseClient()
 
-    if (partyData) {
-      party = partyData
-      const { data: bizData } = await supabase
-        .from('business_profiles')
-        .select('*')
-        .eq('id', party.business_id)
-        .maybeSingle()
-      business = bizData
+    let party: any = null
+    let business: any = null
+    let invoices: any[] = []
+    let payments: any[] = []
 
-      const [invRes, payRes] = await Promise.allSettled([
-        supabase.from('invoices').select('*').eq('party_id', party.id).order('created_at', { ascending: false }).limit(20),
-        supabase.from('payments').select('*').eq('party_id', party.id).order('payment_date', { ascending: false }).limit(20),
+    if (tokenResult.valid && tokenResult.session && supabase) {
+      const businessId = tokenResult.session.business_id
+      const partyId = tokenResult.session.party_id
+
+      const [partyRes, bizRes, invRes, payRes] = await Promise.allSettled([
+        supabase.from('parties').select('*').eq('id', partyId).single(),
+        supabase.from('business_profiles').select('*').eq('id', businessId).single(),
+        supabase.from('invoices').select('*').eq('party_id', partyId).order('created_at', { ascending: false }).limit(20),
+        supabase.from('payments').select('*').eq('party_id', partyId).order('payment_date', { ascending: false }).limit(20),
       ])
+
+      if (partyRes.status === 'fulfilled') party = partyRes.value.data
+      if (bizRes.status === 'fulfilled') business = bizRes.value.data
       if (invRes.status === 'fulfilled') invoices = invRes.value.data || []
       if (payRes.status === 'fulfilled') payments = payRes.value.data || []
+
+      if (!party && tokenResult.session.party_name) {
+        party = {
+          id: partyId || 'party-id',
+          name: tokenResult.session.party_name,
+          phone: null,
+          current_balance: 0,
+          credit_limit: 0,
+        }
+      }
+    } else if (supabase) {
+      // 2. Fallback: Query party directly by baseToken or rawToken safely using .eq()
+      const { data: p1 } = await supabase.from('parties').select('*').eq('portal_token', baseToken).maybeSingle()
+      let partyData = p1
+
+      if (!partyData) {
+        const { data: p2 } = await supabase.from('parties').select('*').eq('id', baseToken).maybeSingle()
+        if (p2) partyData = p2
+      }
+
+      if (!partyData) {
+        const { data: p3 } = await supabase.from('parties').select('*').eq('portal_token', rawToken).maybeSingle()
+        if (p3) partyData = p3
+      }
+
+      if (!partyData) {
+        const { data: p4 } = await supabase.from('parties').select('*').eq('id', rawToken).maybeSingle()
+        if (p4) partyData = p4
+      }
+
+      if (partyData) {
+        party = partyData
+        const { data: bizData } = await supabase
+          .from('business_profiles')
+          .select('*')
+          .eq('id', party.business_id)
+          .maybeSingle()
+        business = bizData
+
+        const [invRes, payRes] = await Promise.allSettled([
+          supabase.from('invoices').select('*').eq('party_id', party.id).order('created_at', { ascending: false }).limit(20),
+          supabase.from('payments').select('*').eq('party_id', party.id).order('payment_date', { ascending: false }).limit(20),
+        ])
+        if (invRes.status === 'fulfilled') invoices = invRes.value.data || []
+        if (payRes.status === 'fulfilled') payments = payRes.value.data || []
+      }
     }
+
+    if (!party) {
+      return <PortalErrorFallback reason="Invalid or Expired Client Portal Link." />
+    }
+
+    const currentBalance = Number(party.current_balance || 0)
+    const creditLimit = Number(party.credit_limit || 0)
+    const creditUtilization = creditLimit > 0 ? Math.min(100, Math.round((Math.abs(currentBalance) / creditLimit) * 100)) : 0
+    const isReceivable = currentBalance >= 0
+
+    // Combine invoices and payments into a ledger timeline
+    const ledgerEntries = [
+      ...invoices.map((inv: any) => ({
+        id: String(inv.id),
+        date: String(inv.created_at || inv.issue_date || new Date().toISOString()),
+        type: 'INVOICE' as const,
+        ref: String(inv.invoice_number || `INV-${String(inv.id).slice(0, 6)}`),
+        debit: Number(inv.total_amount || 0),
+        credit: 0,
+        note: inv.status ? `Status: ${inv.status.toUpperCase()}` : 'Sales Invoice',
+      })),
+      ...payments.map((pay: any) => ({
+        id: String(pay.id),
+        date: String(pay.payment_date || pay.created_at || new Date().toISOString()),
+        type: 'PAYMENT' as const,
+        ref: String(pay.reference_number || `PAY-${String(pay.id).slice(0, 6)}`),
+        debit: 0,
+        credit: Number(pay.amount || pay.total_amount || 0),
+        note: pay.payment_method ? `Method: ${pay.payment_method}` : 'Payment Received',
+      })),
+    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+    // Calculate running balance
+    let runningBal = currentBalance
+    const ledgerWithRunningBalance = ledgerEntries.map((entry) => {
+      const item = { ...entry, runningBalance: runningBal }
+      runningBal = runningBal - (entry.debit - entry.credit)
+      return item
+    })
+
+    return (
+      <UnifiedPortalClientView
+        party={{
+          id: String(party.id),
+          name: String(party.name || 'Client'),
+          phone: party.phone ? String(party.phone) : null,
+          address: party.address ? String(party.address) : null,
+          current_balance: currentBalance,
+          credit_limit: creditLimit,
+          credit_days: party.credit_days ? Number(party.credit_days) : 30,
+        }}
+        business={business ? { 
+          business_name: String(business.business_name || ''),
+          phone: business.phone ? String(business.phone) : null,
+          address: business.address ? String(business.address) : null,
+        } : null}
+        currentBalance={currentBalance}
+        creditLimit={creditLimit}
+        creditUtilization={creditUtilization}
+        isReceivable={isReceivable}
+        ledgerWithRunningBalance={ledgerWithRunningBalance}
+      />
+    )
+  } catch (err: any) {
+    console.error('[UnifiedPortalPage] Render error:', err)
+    return <PortalErrorFallback reason="An unexpected error occurred while loading this portal link. Please try again." />
   }
-
-  if (!party) {
-    return <PortalErrorFallback reason="Invalid or Expired Client Portal Link." />
-  }
-
-  const currentBalance = Number(party.current_balance || 0)
-  const creditLimit = Number(party.credit_limit || 0)
-  const creditUtilization = creditLimit > 0 ? Math.min(100, Math.round((Math.abs(currentBalance) / creditLimit) * 100)) : 0
-  const isReceivable = currentBalance >= 0
-
-  // Combine invoices and payments into a ledger timeline
-  const ledgerEntries = [
-    ...invoices.map((inv: any) => ({
-      id: inv.id,
-      date: inv.created_at || inv.issue_date || new Date().toISOString(),
-      type: 'INVOICE',
-      ref: inv.invoice_number || `INV-${inv.id.slice(0, 6)}`,
-      debit: Number(inv.total_amount || 0),
-      credit: 0,
-      note: inv.status ? `Status: ${inv.status.toUpperCase()}` : 'Sales Invoice',
-    })),
-    ...payments.map((pay: any) => ({
-      id: pay.id,
-      date: pay.payment_date || pay.created_at || new Date().toISOString(),
-      type: 'PAYMENT',
-      ref: pay.reference_number || `PAY-${pay.id.slice(0, 6)}`,
-      debit: 0,
-      credit: Number(pay.amount || pay.total_amount || 0),
-      note: pay.payment_method ? `Method: ${pay.payment_method}` : 'Payment Received',
-    })),
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-
-  // Calculate running balance
-  let runningBal = currentBalance
-  const ledgerWithRunningBalance = ledgerEntries.map((entry) => {
-    const item = { ...entry, runningBalance: runningBal }
-    runningBal = runningBal - (entry.debit - entry.credit)
-    return item
-  })
-
-  return (
-    <div className="min-h-screen bg-[#06080B] text-slate-200 font-sans selection:bg-[#C5A059] selection:text-black py-10 px-4 sm:px-8">
-      <div className="printable-statement max-w-5xl mx-auto space-y-8">
-        
-        {/* ═══ HEADER BAR ═══ */}
-        <header className="bg-[#0D1017] border border-white/[0.08] p-6 sm:p-8 rounded-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-2xl">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="bg-[#C5A059]/10 border border-[#C5A059]/30 text-[#C5A059] text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full">
-                Interactive Client Web Portal
-              </span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight">
-              {party.name}
-            </h1>
-            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400 font-medium pt-1">
-              <span className="flex items-center gap-1.5">
-                <Building2 size={14} className="text-[#60A5FA]" />
-                {business?.business_name || 'Noxis Business Engine'}
-              </span>
-              <span>•</span>
-              <span className="flex items-center gap-1.5">
-                <Phone size={14} className="text-emerald-400" />
-                {party.phone || 'Phone Unlisted'}
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-black/40 border border-white/[0.06] p-4 rounded-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-sm bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-black text-lg">
-              98%
-            </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Party Reliability Score</p>
-              <p className="text-xs font-bold text-emerald-400 uppercase">Tier 1 Verified Client</p>
-            </div>
-          </div>
-        </header>
-
-        {/* ═══ BALANCE & CREDIT STATS ═══ */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Net Balance Card */}
-          <div className="bg-[#0D1017] border border-white/[0.08] p-6 rounded-sm space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Current Net Balance</p>
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-mono font-black text-white">
-                PKR {Math.abs(currentBalance).toLocaleString()}
-              </span>
-            </div>
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-[10px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              {isReceivable ? <ArrowUpRight size={12} /> : <ArrowDownLeft size={12} />}
-              <span>{isReceivable ? 'Receivable (Party Owes You)' : 'Payable (Advance / Credit)'}</span>
-            </div>
-          </div>
-
-          {/* Credit Limit Card */}
-          <div className="bg-[#0D1017] border border-white/[0.08] p-6 rounded-sm space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Authorized Credit Limit</p>
-            <div className="text-3xl font-mono font-black text-slate-300">
-              PKR {creditLimit.toLocaleString()}
-            </div>
-            <p className="text-xs text-slate-500">Terms: {party.credit_days || 30} Days Net</p>
-          </div>
-
-          {/* Credit Utilization Card */}
-          <div className="bg-[#0D1017] border border-white/[0.08] p-6 rounded-sm space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Credit Utilization</p>
-            <div className="text-3xl font-mono font-black text-[#60A5FA]">
-              {creditUtilization}%
-            </div>
-            <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">
-              <div className="bg-[#60A5FA] h-full rounded-full" style={{ width: `${creditUtilization}%` }} />
-            </div>
-          </div>
-        </div>
-
-        {/* ═══ ACTIONS BAR ═══ */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#0D1017] border border-white/[0.08] p-4 rounded-sm">
-          <div className="text-xs text-slate-400 font-medium">
-            Showing latest {ledgerWithRunningBalance.length} verified transactions
-          </div>
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <button 
-              onClick={() => window.print()}
-              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase px-4 py-2.5 rounded-sm transition-all"
-            >
-              <Download size={14} />
-              <span>Export Statement PDF</span>
-            </button>
-            <a 
-              href={`https://wa.me/?text=${encodeURIComponent(`Assalam-o-Alaikum, here is your updated account statement with ${business?.business_name || 'our company'}: Net Balance PKR ${currentBalance.toLocaleString()}`)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase px-4 py-2.5 rounded-sm transition-all"
-            >
-              <Share2 size={14} />
-              <span>WhatsApp Receipt</span>
-            </a>
-          </div>
-        </div>
-
-        {/* ═══ COMMITMENT LOG / LEDGER TABLE ═══ */}
-        <div className="bg-[#0D1017] border border-white/[0.08] rounded-sm overflow-hidden shadow-2xl">
-          <div className="p-6 border-b border-white/[0.08]">
-            <h3 className="text-sm font-black uppercase text-white tracking-wider">
-              Transaction Ledger & Commitment Log
-            </h3>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-black/40 border-b border-white/[0.08] text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  <th className="p-4">Date</th>
-                  <th className="p-4">Type</th>
-                  <th className="p-4">Reference ID</th>
-                  <th className="p-4 text-right">Debit (PKR)</th>
-                  <th className="p-4 text-right">Credit (PKR)</th>
-                  <th className="p-4 text-right">Running Balance</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/[0.04] text-xs font-mono">
-                {ledgerWithRunningBalance.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="p-8 text-center text-slate-500 font-sans">
-                      No ledger transactions logged for this client portal.
-                    </td>
-                  </tr>
-                ) : (
-                  ledgerWithRunningBalance.map((item) => (
-                    <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="p-4 text-slate-400">{new Date(item.date).toLocaleDateString()}</td>
-                      <td className="p-4">
-                        <span className={`px-2 py-0.5 rounded-sm text-[9px] font-black uppercase ${item.type === 'INVOICE' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
-                          {item.type}
-                        </span>
-                      </td>
-                      <td className="p-4 text-white font-bold">{item.ref}</td>
-                      <td className="p-4 text-right text-slate-200">{item.debit > 0 ? item.debit.toLocaleString() : '—'}</td>
-                      <td className="p-4 text-right text-emerald-400">{item.credit > 0 ? item.credit.toLocaleString() : '—'}</td>
-                      <td className="p-4 text-right text-white font-bold">PKR {item.runningBalance.toLocaleString()}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  )
 }
 
 function PortalErrorFallback({ reason }: { reason: string }) {
@@ -316,3 +208,4 @@ function PortalErrorFallback({ reason }: { reason: string }) {
     </div>
   )
 }
+

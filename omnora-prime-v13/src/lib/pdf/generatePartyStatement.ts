@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf'
-import 'jspdf-autotable'
+import autoTable from 'jspdf-autotable'
 import { getAmountInWords } from '@/lib/format/amountInWords'
 
 export interface PartyStatementItem {
@@ -87,33 +87,35 @@ export function generatePartyStatementPDF(data: PartyStatementPDFData) {
   y += 30
 
   // Table rows
-  const tableRows = data.items.map(item => [
-    item.date,
-    item.reference,
-    item.description,
+  const tableRows = (data.items || []).map(item => [
+    item.date || '—',
+    item.reference || '—',
+    item.description || 'Transaction',
     item.debit > 0 ? `${currency} ${item.debit.toLocaleString('en-PK', { minimumFractionDigits: 2 })}` : '-',
     item.credit > 0 ? `${currency} ${item.credit.toLocaleString('en-PK', { minimumFractionDigits: 2 })}` : '-',
-    `${currency} ${item.runningBalance.toLocaleString('en-PK', { minimumFractionDigits: 2 })}`,
+    `${currency} ${(item.runningBalance || 0).toLocaleString('en-PK', { minimumFractionDigits: 2 })}`,
   ])
 
-  ;(doc as any).autoTable({
+  const bodyRows: any[] = [
+    [data.startDate, '—', 'Opening Balance', '-', '-', `${currency} ${(data.openingBalance || 0).toLocaleString('en-PK', { minimumFractionDigits: 2 })}`],
+    ...(tableRows.length > 0 ? tableRows : [[data.startDate, '—', 'No transactions in this period', '-', '-', `${currency} ${(data.closingBalance || 0).toLocaleString('en-PK', { minimumFractionDigits: 2 })}`]]),
+    [data.endDate, '—', 'Closing Balance', `${currency} ${(data.totalDebit || 0).toLocaleString('en-PK', { minimumFractionDigits: 2 })}`, `${currency} ${(data.totalCredit || 0).toLocaleString('en-PK', { minimumFractionDigits: 2 })}`, `${currency} ${(data.closingBalance || 0).toLocaleString('en-PK', { minimumFractionDigits: 2 })}`]
+  ]
+
+  autoTable(doc, {
     startY: y,
     head: [['Date', 'Reference', 'Description', 'Debit', 'Credit', 'Balance']],
-    body: [
-      [data.startDate, '—', 'Opening Balance', '-', '-', `${currency} ${data.openingBalance.toLocaleString('en-PK', { minimumFractionDigits: 2 })}`],
-      ...tableRows,
-      [data.endDate, '—', 'Closing Balance', `${currency} ${data.totalDebit.toLocaleString('en-PK', { minimumFractionDigits: 2 })}`, `${currency} ${data.totalCredit.toLocaleString('en-PK', { minimumFractionDigits: 2 })}`, `${currency} ${data.closingBalance.toLocaleString('en-PK', { minimumFractionDigits: 2 })}`]
-    ],
+    body: bodyRows,
     margin: { left: M, right: M },
     styles: { fontSize: 8, cellPadding: 2.5 },
     headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [248, 250, 252] },
   })
 
-  const finalY = (doc as any).lastAutoTable.finalY + 12
+  const finalY = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 12 : y + 40
 
   // Amount in words
-  const words = getAmountInWords(data.closingBalance, currency, 'en')
+  const words = getAmountInWords(Math.abs(data.closingBalance || 0), currency, 'en')
   doc.setFont('helvetica', 'italic')
   doc.setFontSize(8.5)
   doc.setTextColor(107, 114, 128)
@@ -126,5 +128,5 @@ export function generatePartyStatementPDF(data: PartyStatementPDFData) {
   doc.setFontSize(7.5)
   doc.text('Authorized Signatory', PAGE_W - M - 45, finalY + 20)
 
-  doc.save(`Statement_${data.partyName.replace(/\s/g, '_')}.pdf`)
+  doc.save(`Statement_${(data.partyName || 'Client').replace(/\s+/g, '_')}.pdf`)
 }

@@ -11,6 +11,9 @@ export function useBarcodeScan(
 ) {
   const buffer = useRef<string[]>([]);
   const lastKeyTime = useRef<number>(0);
+  const onScanRef = useRef(onScan);
+  onScanRef.current = onScan;
+
   const MIN_BARCODE_LENGTH = 4;
 
   useEffect(() => {
@@ -25,7 +28,7 @@ export function useBarcodeScan(
         const scanned = buffer.current.join('');
         if (scanned.length >= MIN_BARCODE_LENGTH) {
           // It's a valid barcode scan
-          onScan(scanned);
+          onScanRef.current(scanned);
           e.preventDefault();
         }
         buffer.current = [];
@@ -45,5 +48,6 @@ export function useBarcodeScan(
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onScan, enabled]);
+  }, [enabled]);
 }
+

@@ -9,6 +9,8 @@ export function OfflineIndicator() {
   const [showReconnected, setShowReconnected] = useState(false);
 
   useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
+
     const updateStatus = () => {
       const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
       if (!online) {
@@ -16,10 +18,10 @@ export function OfflineIndicator() {
       }
       if (online && wasOffline) {
         setShowReconnected(true);
-        const timer = setTimeout(() => {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => {
           setShowReconnected(false);
         }, 3000);
-        return () => clearTimeout(timer);
       }
       setIsOnline(online);
     };
@@ -29,6 +31,7 @@ export function OfflineIndicator() {
     window.addEventListener('online', updateStatus);
     window.addEventListener('offline', updateStatus);
     return () => {
+      if (timer) clearTimeout(timer);
       window.removeEventListener('online', updateStatus);
       window.removeEventListener('offline', updateStatus);
     };

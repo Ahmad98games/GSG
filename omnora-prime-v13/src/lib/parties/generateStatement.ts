@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf'
-import 'jspdf-autotable'
+import autoTable from 'jspdf-autotable'
 
 interface StatementData {
   businessName: string
@@ -115,20 +115,23 @@ export function generatePartyStatement(data: StatementData): void {
   y += 28
 
   // Transactions table
-  ;(doc as any).autoTable({
+  autoTable(doc, {
     startY: y,
     margin: { left: MARGIN, right: MARGIN },
     head: [['Date', 'Reference', 'Description', 'Debit', 'Credit', 'Balance']],
     body: [
-      [data.period.from, '—', 'Opening Balance', '', '', fmt(data.openingBalance)],
-      ...data.transactions.map(t => [
-        t.date,
-        t.reference,
-        t.description,
-        t.debit > 0 ? fmt(t.debit) : '',
-        t.credit > 0 ? fmt(t.credit) : '',
-        fmt(t.balance),
-      ]),
+      [data.period.from, '—', 'Opening Balance', '', '', fmt(data.openingBalance || 0)],
+      ...(data.transactions.length > 0
+        ? data.transactions.map(t => [
+            t.date,
+            t.reference,
+            t.description,
+            t.debit > 0 ? fmt(t.debit) : '',
+            t.credit > 0 ? fmt(t.credit) : '',
+            fmt(t.balance),
+          ])
+        : [[data.period.from, '—', 'No transactions in this period', '', '', fmt(data.closingBalance || 0)]]
+      ),
     ],
     styles: { fontSize: 8, cellPadding: 3 },
     headStyles: {
@@ -153,7 +156,7 @@ export function generatePartyStatement(data: StatementData): void {
     },
   })
 
-  const finalY = (doc as any).lastAutoTable.finalY + 10
+  const finalY = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 10 : y + 40
 
   // Closing summary
   doc.setFillColor(245, 245, 245)

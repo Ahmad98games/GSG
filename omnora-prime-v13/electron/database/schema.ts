@@ -213,6 +213,7 @@ CREATE TABLE IF NOT EXISTS invoices (
   exchange_rate REAL DEFAULT 1.0,
   notes TEXT,
   footer_message TEXT,
+  client_transaction_id TEXT,
   created_by TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))

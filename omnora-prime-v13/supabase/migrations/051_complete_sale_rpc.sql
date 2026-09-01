@@ -1,0 +1,428 @@
+-- Migration 051: Complete Sale Atomic RPC with Row Locking, Concurrency-Safe Invoice Counter & Idempotency
+
+-- Add idempotency column to invoices
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS client_transaction_id TEXT;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_invoices_client_transaction_id
+  ON invoices(business_id, client_transaction_id)
+  WHERE client_transaction_id IS NOT NULL;
+
+CREATE OR REPLACE FUNCTION complete_sale(
+  p_business_id UUID,
+  p_user_id UUID,
+  p_client_transaction_id TEXT,
+  p_invoice_date DATE,
+  p_party_id UUID DEFAULT NULL,
+  p_party_name TEXT DEFAULT NULL,
+  p_party_phone TEXT DEFAULT NULL,
+  p_notes TEXT DEFAULT NULL,
+  p_invoice_currency TEXT DEFAULT 'PKR',
+  p_subtotal NUMERIC(15,2) DEFAULT 0,
+  p_discount_amount NUMERIC(15,2) DEFAULT 0,
+  p_discount_percent NUMERIC(5,2) DEFAULT 0,
+  p_tax_amount NUMERIC(15,2) DEFAULT 0,
+  p_grand_total NUMERIC(15,2) DEFAULT 0,
+  p_items JSONB DEFAULT '[]',
+  p_payments JSONB DEFAULT '[]'
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_invoice_id UUID;
+  v_invoice_number TEXT;
+  v_amount_paid NUMERIC(15,2) := 0;
+  v_balance_due NUMERIC(15,2) := 0;
+  v_unallocated NUMERIC(15,2) := 0;
+  v_invoice_status TEXT;
+  v_item JSONB;
+  v_payment JSONB;
+  v_sku_id UUID;
+  v_qty_available NUMERIC(12,4);
+  v_qty_requested NUMERIC(12,4);
+  v_total_allocated NUMERIC(15,2) := 0;
+  v_has_credit BOOLEAN := FALSE;
+  v_existing_invoice_id UUID;
+  v_seq INTEGER;
+  v_prefix TEXT := 'INV';
+  v_dr_total NUMERIC(15,2) := 0;
+  v_cr_total NUMERIC(15,2) := 0;
+BEGIN
+
+  -- 1. IDEMPOTENCY CHECK
+  SELECT id INTO v_existing_invoice_id
+  FROM invoices
+  WHERE business_id = p_business_id
+  AND client_transaction_id = p_client_transaction_id
+  LIMIT 1;
+
+  IF v_existing_invoice_id IS NOT NULL THEN
+    RETURN jsonb_build_object(
+      'status', 'ALREADY_COMPLETED',
+      'invoice_id', v_existing_invoice_id,
+      'idempotent', true
+    );
+  END IF;
+
+  -- 2. VALIDATE BUSINESS CONTEXT & LOCK FOR INVOICE COUNTER
+  SELECT COALESCE(invoice_counter, 1), COALESCE(invoice_prefix, 'INV')
+  INTO v_seq, v_prefix
+  FROM business_profiles
+  WHERE id = p_business_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object(
+      'status', 'ERROR',
+      'error_code', 'INVALID_BUSINESS',
+      'message', 'Business not found'
+    );
+  END IF;
+
+  -- 3. VALIDATE PAYLOAD
+  IF jsonb_array_length(p_items) = 0 THEN
+    RETURN jsonb_build_object(
+      'status', 'ERROR',
+      'error_code', 'INVALID_PAYLOAD',
+      'message', 'No items in sale'
+    );
+  END IF;
+
+  IF p_grand_total <= 0 THEN
+    RETURN jsonb_build_object(
+      'status', 'ERROR',
+      'error_code', 'INVALID_TOTAL',
+      'message', 'Grand total must be positive'
+    );
+  END IF;
+
+  -- 4. VALIDATE PAYMENTS
+  FOR v_payment IN SELECT * FROM jsonb_array_elements(p_payments)
+  LOOP
+    v_total_allocated := v_total_allocated + (v_payment->>'amount')::NUMERIC;
+    IF (v_payment->>'method') = 'credit' THEN
+      v_has_credit := TRUE;
+    END IF;
+  END LOOP;
+
+  v_unallocated := GREATEST(0, p_grand_total - v_total_allocated);
+
+  IF (v_has_credit OR v_unallocated > 0) AND p_party_id IS NULL THEN
+    RETURN jsonb_build_object(
+      'status', 'ERROR',
+      'error_code', 'CREDIT_REQUIRES_PARTY',
+      'message', 'Credit payment requires a customer'
+    );
+  END IF;
+
+  -- 5. LOCK INVENTORY ROWS + VERIFY STOCK (FOR UPDATE prevents race conditions)
+  FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
+  LOOP
+    v_sku_id := (v_item->>'sku_id')::UUID;
+    v_qty_requested := (v_item->>'quantity')::NUMERIC;
+
+    SELECT qty_on_hand INTO v_qty_available
+    FROM skus
+    WHERE id = v_sku_id
+    AND business_id = p_business_id
+    AND is_active = TRUE
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+      RETURN jsonb_build_object(
+        'status', 'ERROR',
+        'error_code', 'INVALID_SKU',
+        'message', format('SKU not found: %s', v_sku_id)
+      );
+    END IF;
+
+    IF v_qty_available < v_qty_requested THEN
+      RETURN jsonb_build_object(
+        'status', 'ERROR',
+        'error_code', 'INSUFFICIENT_STOCK',
+        'sku_id', v_sku_id,
+        'available', v_qty_available,
+        'requested', v_qty_requested,
+        'message', format('Insufficient stock. Available: %s, Requested: %s', v_qty_available, v_qty_requested)
+      );
+    END IF;
+  END LOOP;
+
+  -- 6. GENERATE CONCURRENCY-SAFE INVOICE NUMBER
+  v_invoice_number := v_prefix || '-' || LPAD(v_seq::TEXT, 6, '0');
+  
+  UPDATE business_profiles
+  SET invoice_counter = invoice_counter + 1,
+      updated_at = NOW()
+  WHERE id = p_business_id;
+
+  -- 7. CALCULATE PAYMENT STATE
+  v_amount_paid := 0;
+  FOR v_payment IN SELECT * FROM jsonb_array_elements(p_payments)
+  LOOP
+    IF (v_payment->>'method') != 'credit' THEN
+      v_amount_paid := v_amount_paid + (v_payment->>'amount')::NUMERIC;
+    END IF;
+  END LOOP;
+
+  v_balance_due := GREATEST(0, p_grand_total - v_amount_paid);
+
+  v_invoice_status := CASE
+    WHEN v_balance_due <= 0 THEN 'paid'
+    WHEN v_amount_paid > 0 THEN 'partial'
+    ELSE 'posted'
+  END;
+
+  -- 8. CREATE INVOICE
+  v_invoice_id := gen_random_uuid();
+
+  INSERT INTO invoices (
+    id, business_id, invoice_number,
+    invoice_type, party_id,
+    party_name, party_phone,
+    invoice_date, status,
+    subtotal, discount_amount,
+    discount_percent, tax_amount,
+    total_amount, amount_paid,
+    balance_due, invoice_currency,
+    client_transaction_id, notes,
+    created_at, updated_at
+  ) VALUES (
+    v_invoice_id, p_business_id,
+    v_invoice_number, 'invoice',
+    p_party_id, p_party_name,
+    p_party_phone, p_invoice_date,
+    v_invoice_status,
+    p_subtotal, p_discount_amount,
+    p_discount_percent, p_tax_amount,
+    p_grand_total, v_amount_paid,
+    v_balance_due, p_invoice_currency,
+    p_client_transaction_id, p_notes,
+    NOW(), NOW()
+  );
+
+  -- 9. INSERT ITEMS & DEDUCT STOCK ATOMICALLY
+  FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
+  LOOP
+    INSERT INTO invoice_items (
+      id, invoice_id, business_id,
+      sku_id, description,
+      quantity, unit, unit_price,
+      discount_percent, discount_amount,
+      tax_rate, tax_amount, total_price,
+      sort_order
+    ) VALUES (
+      gen_random_uuid(),
+      v_invoice_id,
+      p_business_id,
+      (v_item->>'sku_id')::UUID,
+      v_item->>'description',
+      (v_item->>'quantity')::NUMERIC,
+      v_item->>'unit',
+      (v_item->>'unit_price')::NUMERIC,
+      COALESCE((v_item->>'discount_percent')::NUMERIC, 0),
+      COALESCE((v_item->>'discount_amount')::NUMERIC, 0),
+      COALESCE((v_item->>'tax_rate')::NUMERIC, 0),
+      COALESCE((v_item->>'tax_amount')::NUMERIC, 0),
+      (v_item->>'line_total')::NUMERIC,
+      0
+    );
+
+    UPDATE skus SET
+      qty_on_hand = qty_on_hand - (v_item->>'quantity')::NUMERIC,
+      updated_at = NOW()
+    WHERE id = (v_item->>'sku_id')::UUID
+    AND business_id = p_business_id;
+
+    INSERT INTO stock_adjustments (
+      id, business_id, sku_id,
+      adjustment_type, quantity,
+      reason, reference,
+      adjustment_date, adjusted_by,
+      created_at
+    ) VALUES (
+      gen_random_uuid(),
+      p_business_id,
+      (v_item->>'sku_id')::UUID,
+      'decrease',
+      -(v_item->>'quantity')::NUMERIC,
+      'sale',
+      v_invoice_number,
+      p_invoice_date,
+      p_user_id::TEXT,
+      NOW()
+    );
+  END LOOP;
+
+  -- 10. RECORD PAYMENTS
+  FOR v_payment IN SELECT * FROM jsonb_array_elements(p_payments)
+  LOOP
+    INSERT INTO payments (
+      id, business_id, invoice_id,
+      party_id, payment_type,
+      amount, payment_date,
+      payment_method, reference,
+      created_at
+    ) VALUES (
+      gen_random_uuid(),
+      p_business_id,
+      v_invoice_id,
+      p_party_id,
+      'received',
+      (v_payment->>'amount')::NUMERIC,
+      p_invoice_date,
+      v_payment->>'method',
+      v_payment->>'reference',
+      NOW()
+    );
+  END LOOP;
+
+  IF v_unallocated > 0 THEN
+    INSERT INTO payments (
+      id, business_id, invoice_id,
+      party_id, payment_type,
+      amount, payment_date,
+      payment_method, reference,
+      created_at
+    ) VALUES (
+      gen_random_uuid(),
+      p_business_id,
+      v_invoice_id,
+      p_party_id,
+      'received',
+      v_unallocated,
+      p_invoice_date,
+      'credit',
+      'Auto Unallocated Credit',
+      NOW()
+    );
+  END IF;
+
+  -- 11. DOUBLE-ENTRY ACCOUNTING
+  -- CR Sales Revenue
+  INSERT INTO ledger_entries (
+    id, business_id, party_id,
+    entry_type, entry_date,
+    description, debit, credit,
+    source_table, source_id,
+    created_at
+  ) VALUES (
+    gen_random_uuid(), p_business_id,
+    p_party_id, 'sales',
+    p_invoice_date,
+    'Sale: ' || v_invoice_number,
+    0, p_grand_total,
+    'invoices', v_invoice_id,
+    NOW()
+  );
+  v_cr_total := v_cr_total + p_grand_total;
+
+  -- DR Payment allocations
+  FOR v_payment IN SELECT * FROM jsonb_array_elements(p_payments)
+  LOOP
+    DECLARE
+      v_pay_amount NUMERIC(15,2) := (v_payment->>'amount')::NUMERIC;
+      v_pay_method TEXT := v_payment->>'method';
+      v_account_desc TEXT;
+    BEGIN
+      v_account_desc := CASE v_pay_method
+        WHEN 'cash' THEN 'Cash Received'
+        WHEN 'bank' THEN 'Bank Transfer Received'
+        WHEN 'jazzcash' THEN 'JazzCash Received'
+        WHEN 'easypaisa' THEN 'EasyPaisa Received'
+        WHEN 'credit' THEN 'Accounts Receivable'
+        ELSE 'Payment Received'
+      END;
+
+      INSERT INTO ledger_entries (
+        id, business_id, party_id,
+        entry_type, entry_date,
+        description, debit, credit,
+        source_table, source_id,
+        created_at
+      ) VALUES (
+        gen_random_uuid(),
+        p_business_id,
+        p_party_id,
+        'sales',
+        p_invoice_date,
+        v_account_desc || ': ' || v_invoice_number,
+        v_pay_amount, 0,
+        'invoices', v_invoice_id,
+        NOW()
+      );
+      v_dr_total := v_dr_total + v_pay_amount;
+    END;
+  END LOOP;
+
+  -- DR Unallocated credit if implicit partial payment
+  IF v_unallocated > 0 THEN
+    INSERT INTO ledger_entries (
+      id, business_id, party_id,
+      entry_type, entry_date,
+      description, debit, credit,
+      source_table, source_id,
+      created_at
+    ) VALUES (
+      gen_random_uuid(),
+      p_business_id,
+      p_party_id,
+      'sales',
+      p_invoice_date,
+      'Accounts Receivable: ' || v_invoice_number,
+      v_unallocated, 0,
+      'invoices', v_invoice_id,
+      NOW()
+    );
+    v_dr_total := v_dr_total + v_unallocated;
+  END IF;
+
+  -- Verify DR = CR exactly
+  IF round(v_dr_total, 2) != round(v_cr_total, 2) THEN
+    RAISE EXCEPTION 'ACCOUNTING_IMBALANCE: DR=% CR=%', v_dr_total, v_cr_total;
+  END IF;
+
+  -- 12. UPDATE PARTY BALANCE
+  IF p_party_id IS NOT NULL AND v_balance_due > 0 THEN
+    UPDATE parties SET
+      current_balance = current_balance + v_balance_due,
+      updated_at = NOW()
+    WHERE id = p_party_id
+    AND business_id = p_business_id;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'status', 'SUCCESS',
+    'invoice_id', v_invoice_id,
+    'invoice_number', v_invoice_number,
+    'invoice_status', v_invoice_status,
+    'amount_paid', v_amount_paid,
+    'balance_due', v_balance_due,
+    'idempotent', false
+  );
+
+EXCEPTION
+  WHEN unique_violation THEN
+    -- Handle concurrent duplicate transaction insertion race safely
+    SELECT id INTO v_existing_invoice_id
+    FROM invoices
+    WHERE business_id = p_business_id
+    AND client_transaction_id = p_client_transaction_id
+    LIMIT 1;
+
+    RETURN jsonb_build_object(
+      'status', 'ALREADY_COMPLETED',
+      'invoice_id', v_existing_invoice_id,
+      'idempotent', true
+    );
+
+  WHEN OTHERS THEN
+    RETURN jsonb_build_object(
+      'status', 'ERROR',
+      'error_code', 'TRANSACTION_FAILED',
+      'message', SQLERRM
+    );
+END;
+$$;

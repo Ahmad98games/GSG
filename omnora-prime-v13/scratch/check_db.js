@@ -1,34 +1,38 @@
+const { Pool } = require('pg');
+require('dotenv').config({ path: '.env.local' });
 
-import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
-dotenv.config({ path: '.env.local' });
+async function check() {
+  const pool = new Pool({
+    connectionString: process.env.SUPABASE_DB_POOL_URL,
+    ssl: { rejectUnauthorized: false }
+  });
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  try {
+    const resGrants = await pool.query(`
+      SELECT grantee, privilege_type 
+      FROM information_schema.role_table_grants 
+      WHERE table_name = 'karigars';
+    `);
+    console.log('Grants on karigars:', resGrants.rows);
 
-if (!supabaseUrl || !supabaseKey) {
-  console.error('Missing Supabase environment variables');
-  process.exit(1);
+    const resRLS = await pool.query(`
+      SELECT tablename, rowsecurity 
+      FROM pg_tables 
+      WHERE tablename = 'karigars';
+    `);
+    console.log('RLS status:', resRLS.rows);
+
+    const resPolicies = await pool.query(`
+      SELECT policyname, permissive, roles, cmd, qual, with_check 
+      FROM pg_policies 
+      WHERE tablename = 'karigars';
+    `);
+    console.log('Policies on karigars:', resPolicies.rows);
+  } catch (err) {
+    console.error('DB Error:', err);
+  } finally {
+    await pool.end();
+  }
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-async function checkSKUs() {
-  const { data: skus, error } = await supabase.from('skus').select('id, name, sku_code, business_id');
-  if (error) {
-    console.error('Error fetching SKUs:', error);
-    return;
-  }
-  console.log('SKUs in database:', skus.length);
-  skus.forEach(s => console.log(`- [${s.id}] ${s.sku_code}: ${s.name} (Business: ${s.business_id})`));
-
-  const { data: profiles, error: pError } = await supabase.from('business_profiles').select('id, business_name');
-  if (pError) {
-    console.error('Error fetching profiles:', pError);
-    return;
-  }
-  console.log('\nBusiness Profiles:');
-  profiles.forEach(p => console.log(`- [${p.id}] ${p.name}`));
-}
-
-checkSKUs();
+check();

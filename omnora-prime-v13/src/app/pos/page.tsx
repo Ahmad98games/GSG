@@ -1,1110 +1,1510 @@
 'use client'
-import { useState, useEffect, useRef,
-  useCallback, useMemo } from 'react'
-import { useQuery, useMutation,
-  useQueryClient }
-  from '@tanstack/react-query'
+import {
+  useState, useCallback, useEffect,
+  useRef, memo, useMemo,
+} from 'react'
+import { useRouter } from 'next/navigation'
+import { useToastStore } from '@/hooks/useToast'
+
+const toast = Object.assign(
+  (msg: string, _opts?: any) => {
+    useToastStore.getState().addToast({ type: 'warning', title: msg })
+  },
+  {
+    success: (msg: string) => useToastStore.getState().addToast({ type: 'success', title: msg }),
+    error: (msg: string) => useToastStore.getState().addToast({ type: 'error', title: msg }),
+  }
+)
+import {
+  Search, Barcode, X, Plus, Minus,
+  ChevronDown, Receipt, Send,
+  CreditCard, Banknote, Smartphone,
+  Users, Trash2, Tag, Percent,
+  AlertTriangle, CheckCircle,
+  Printer, Share2,
+} from 'lucide-react'
 import { createClient }
   from '@/lib/supabase/client'
-import { useBusinessProfile }
-  from '@/hooks/useBusinessProfile'
-import { useIndustryConfig }
-  from '@/hooks/useIndustryConfig'
-import { useCurrentUser }
-  from '@/hooks/useCurrentUser'
+import { useBusinessProfile } from '@/hooks/useBusinessProfile'
+import { useLicense } from '@/hooks/useLicense'
+import { useQueryClient } from '@tanstack/react-query'
+import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { useFormDraft }
+  from '@/hooks/useFormDraft'
 import {
-  IndustrialMath
-} from '@/lib/finance/IndustrialMath'
-import { useToast } from '@/hooks/useToast'
-import { useFormDraft } from '@/hooks/useFormDraft'
-import { DraftRecoveryBanner } from '@/components/DraftRecoveryBanner'
-import {
-  Search, Plus, Minus, Trash2,
-  Printer, ShoppingCart, AlertTriangle,
-  CheckCircle, ChevronRight, X,
-  Zap, Package,
-} from 'lucide-react'
+  createEmptyCart, addItemToCart,
+  removeItemFromCart, updateItemQuantity,
+  updateItemPrice, updateItemDiscount,
+  applyOrderDiscount, addPayment,
+  removePayment, setParty,
+  validateCartStock, recalcPayments,
+  type POSCart, type PaymentMethod, type CartItem,
+} from '@/lib/pos/posEngine'
+import { parseScannedPayload }
+  from '@/lib/barcode/barcodeEngine'
+import { formatCurrency }
+  from '@/lib/i18n/currencies'
+import { buildWhatsAppInvoiceMessage }
+  from '@/lib/invoices/whatsappBuilder'
+import { generateThermalReceipt }
+  from '@/lib/pdf/generateThermal'
+import { generateInvoicePDF }
+  from '@/lib/accounting/generateInvoice'
 
-interface CartItem {
-  skuId: string
-  name: string
-  unit: string
-  quantity: number
-  unitPrice: number
-  discount: number
-  total: number
-  batchNumber?: string
-  expiryDate?: string | null
-  daysToExpiry?: number | null
-  stockAvailable: number
-  mechanicId?: string
-  mechanicName?: string
-  commissionRate?: number
-}
-
-interface QuickSearchResult {
-  id: string
-  name: string
-  sku_code: string
-  sale_price: number
-  qty_on_hand: number
-  unit: string
-  batch_number?: string
-  expiry_date?: string | null
-  barcode?: string
-}
-
-// Days until expiry warning threshold
-const EXPIRY_WARNING_DAYS = 30
-const EXPIRY_CRITICAL_DAYS = 7
-
-function getDaysToExpiry(
-  expiryDate: string | null | undefined
-): number | null {
-  if (!expiryDate) return null
-  return Math.ceil(
-    (new Date(expiryDate).getTime() -
-      Date.now()) / 86400000
-  )
-}
-
-function ExpiryBadge({
-  days
-}: { days: number | null }) {
-  if (days === null) return null
-
-  if (days < 0) {
-    return (
-      <span className="text-[9px] font-bold bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded border border-red-500/30">
-        EXPIRED
-      </span>
-    )
-  }
-  if (days <= EXPIRY_CRITICAL_DAYS) {
-    return (
-      <span className="text-[9px] font-bold bg-red-500/15 text-red-400 px-1.5 py-0.5 rounded border border-red-500/20">
-        {days}d left
-      </span>
-    )
-  }
-  if (days <= EXPIRY_WARNING_DAYS) {
-    return (
-      <span className="text-[9px] font-bold bg-amber-500/15 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/20">
-        {days}d left
-      </span>
-    )
-  }
-  return null
-}
+// Static data outside component
+const PAYMENT_METHODS = [
+  { method: 'cash' as PaymentMethod,
+    label: 'Cash',
+    icon: Banknote,
+    color: '#10B981' },
+  { method: 'bank' as PaymentMethod,
+    label: 'Bank',
+    icon: CreditCard,
+    color: '#60A5FA' },
+  { method: 'jazzcash' as PaymentMethod,
+    label: 'JazzCash',
+    icon: Smartphone,
+    color: '#EF4444' },
+  { method: 'easypaisa' as PaymentMethod,
+    label: 'EasyPaisa',
+    icon: Smartphone,
+    color: '#10B981' },
+  { method: 'credit' as PaymentMethod,
+    label: 'Credit',
+    icon: Users,
+    color: '#C5A059' },
+]
 
 export default function POSPage() {
   const supabase = createClient()
-  const queryClient = useQueryClient()
+  const router = useRouter()
   const { profile } = useBusinessProfile()
-  const { t, fmt, fmtDate, taxLabel,
-    taxRate, features } = useIndustryConfig()
-  const { currentUser } = useCurrentUser()
-  const toast = useToast()
+  const { can, effectiveTier } = useLicense()
 
-  // ── STATE ──
-  const [cart, setCart] = useState<CartItem[]>([])
-  const DRAFT_KEY = 'pos-cart'
-  const { getDraft, clearDraft } = useFormDraft(DRAFT_KEY, cart)
+  const [cart, setCart] =
+    useState<POSCart>(createEmptyCart())
   const [search, setSearch] = useState('')
   const [searchResults, setSearchResults] =
-    useState<QuickSearchResult[]>([])
-  const [searching, setSearching] =
-    useState(false)
-  const [selectedParty, setSelectedParty] =
-    useState<any>(null)
-  const [partySearch, setPartySearch] =
-    useState('')
-  const [partyResults, setPartyResults] =
     useState<any[]>([])
-  const [discount, setDiscount] = useState(0)
-  const [taxEnabled, setTaxEnabled] =
+  const [searchLoading, setSearchLoading] =
     useState(false)
   const [completing, setCompleting] =
     useState(false)
-  const [lastSale, setLastSale] =
-    useState<any>(null)
   const [showReceipt, setShowReceipt] =
     useState(false)
+  const [lastInvoice, setLastInvoice] =
+    useState<any>(null)
+  const [showPaymentPanel, setShowPaymentPanel] =
+    useState(false)
+  const [scanFeedback, setScanFeedback] =
+    useState<'success' | 'error' | null>(null)
 
   const searchRef = useRef<HTMLInputElement>(null)
-  const qtyInputRef = useRef<HTMLInputElement>(null)
-  const searchDebounce = useRef<any>(null)
+  const searchTimeout = useRef<any>(null)
 
-  // ── TOTALS ──
-  const subtotal = cart.reduce(
-    (s, item) => s + item.total, 0
-  )
-  const discountAmount =
-    (subtotal * discount) / 100
-  const taxableAmount = subtotal - discountAmount
-  const taxAmount = taxEnabled
-    ? (taxableAmount * taxRate) / 100
-    : 0
-  const grandTotal = taxableAmount + taxAmount
+  const { saveDraft, clearDraft } =
+    useFormDraft('pos_cart')
 
-  // ── CART LOCALSTORAGE SYNC ──
+  const currency = profile?.base_currency
+    || 'PKR'
+
+  // Restore cart from draft
   useEffect(() => {
-    const savedCart = localStorage.getItem('noxis_pos_cart');
-    if (savedCart) {
-      try {
-        setCart(JSON.parse(savedCart));
-      } catch (e) {
-        console.error('Error loading POS cart from localstorage:', e);
+    const t = setTimeout(async () => {
+      const draft = await (window as any)
+        .electronAPI?.store
+        ?.getDraft?.('pos_cart')
+      if (draft?.items?.length > 0) {
+        setCart(draft)
+        toast(
+          'Cart restored from last session',
+          { icon: '🔄' }
+        )
       }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (cart.length > 0) {
-      localStorage.setItem('noxis_pos_cart', JSON.stringify(cart));
-    } else {
-      localStorage.removeItem('noxis_pos_cart');
-    }
-  }, [cart]);
-
-  // ── FOCUS SEARCH ON MOUNT ──
-  useEffect(() => {
-    searchRef.current?.focus()
+    }, 200)
+    return () => clearTimeout(t)
   }, [])
 
-  // ── BARCODE / SEARCH ──
-  const handleSearchChange = useCallback(
-    (value: string) => {
-      setSearch(value)
-      if (searchDebounce.current) {
-        clearTimeout(searchDebounce.current)
-      }
+  // Auto-save draft every 5s
+  useEffect(() => {
+    if (cart.items.length === 0) return
+    const t = setInterval(() => {
+      saveDraft(cart)
+    }, 5000)
+    return () => clearInterval(t)
+  }, [cart, saveDraft])
 
-      if (!value.trim()) {
-        setSearchResults([])
-        return
-      }
-
-      searchDebounce.current = setTimeout(
-        async () => {
-          setSearching(true)
-          try {
-            const { data } = await supabase
-              .from('skus')
-              .select(`
-                id, name, sku_code, sale_price,
-                qty_on_hand, unit,
-                batch_number, expiry_date, barcode
-              `)
-              .eq('business_id', profile!.id)
-              .eq('is_active', true)
-              .or(
-                `name.ilike.%${value}%,` +
-                `sku_code.ilike.%${value}%,` +
-                `barcode.eq.${value}`
-              )
-              .order('name')
-              .limit(10)
-
-            setSearchResults(data || [])
-
-            // If exact barcode match —
-            // add to cart immediately
-            if (data && data.length === 1 &&
-              data[0].barcode === value) {
-              addToCart(data[0])
-              setSearch('')
-              setSearchResults([])
-              searchRef.current?.focus()
-            }
-          } catch { /* non-fatal */ }
-          setSearching(false)
-        },
-        value.length > 6
-          ? 0  // Barcode scan — instant
-          : 300 // Typing — debounce
-      )
-    },
-    [profile?.id]
-  )
-
-  // ── KEYBOARD HANDLER ──
-  // Enter on search → add first result
-  // Enter on cart → complete sale
+  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement
-
-      if (e.key === 'Enter') {
-        // If search has focus and results exist
-        if (target === searchRef.current &&
-          searchResults.length > 0) {
-          addToCart(searchResults[0])
-          setSearch('')
-          setSearchResults([])
-          searchRef.current?.focus()
-          return
-        }
-      }
-
       if (e.key === 'F2') {
         e.preventDefault()
         searchRef.current?.focus()
       }
-
-      if (e.key === 'F10' && cart.length > 0) {
+      if (e.key === 'F10') {
         e.preventDefault()
-        handleCompleteSale()
+        if (cart.items.length > 0) {
+          setShowPaymentPanel(true)
+        }
       }
-
       if (e.key === 'Escape') {
         setSearch('')
         setSearchResults([])
-        searchRef.current?.focus()
+        searchRef.current?.blur()
       }
     }
-
     window.addEventListener('keydown', handler)
     return () =>
       window.removeEventListener('keydown', handler)
-  }, [searchResults, cart])
+  }, [cart.items.length])
 
-  // ── ADD TO CART ──
-  const addToCart = useCallback(
-    (sku: QuickSearchResult, qty = 1) => {
-      const daysToExpiry =
-        getDaysToExpiry(sku.expiry_date)
+  const handleAddItem = useCallback(
+    (sku: any) => {
+    setCart(prev => addItemToCart(prev, sku))
+    setSearch('')
+    setSearchResults([])
+    searchRef.current?.focus()
+  }, [])
 
-      setCart(prev => {
-        const existing = prev.find(
-          i => i.skuId === sku.id
-        )
-        if (existing) {
-          return prev.map(item =>
-            item.skuId === sku.id
-              ? {
-                  ...item,
-                  quantity: item.quantity + qty,
-                  total: (item.quantity + qty) *
-                    item.unitPrice,
-                }
-              : item
+  // Debounced search
+  useEffect(() => {
+    clearTimeout(searchTimeout.current)
+    const parsedScan = parseScannedPayload(search)
+    const queryTerm = parsedScan.skuCode || parsedScan.cleanCode
+
+    if (!queryTerm || !profile?.id) {
+      setSearchResults([])
+      return
+    }
+
+    // Handle Karigar Job Tag payload scanned in POS
+    if (parsedScan.type === 'JOB' && parsedScan.jobPayload) {
+      toast.success(
+        `Job Order #${parsedScan.jobPayload.job_id} Scanned (${parsedScan.jobPayload.stage})`
+      )
+    }
+
+    searchTimeout.current = setTimeout(
+      async () => {
+      setSearchLoading(true)
+      try {
+        const { data } = await supabase
+          .from('skus')
+          .select(`
+            id, name, sku_code, barcode,
+            sale_price, wholesale_price,
+            dealer_price, unit, tax_rate,
+            qty_on_hand, reorder_level
+          `)
+          .eq('business_id', profile.id)
+          .eq('is_active', true)
+          .or(
+            `name.ilike.%${queryTerm}%,` +
+            `sku_code.ilike.%${queryTerm}%,` +
+            `barcode.eq.${queryTerm}`
+          )
+          .order('name')
+          .limit(8)
+
+        setSearchResults(data || [])
+
+        // Barcode exact match = auto-add
+        if (data && data.length === 1 &&
+          (data[0].barcode === queryTerm || data[0].sku_code === queryTerm)) {
+          handleAddItem(data[0])
+          setScanFeedback('success')
+          setTimeout(() =>
+            setScanFeedback(null), 600
+          )
+        } else if (
+          queryTerm.length > 5 &&
+          data?.length === 0
+        ) {
+          setScanFeedback('error')
+          setTimeout(() =>
+            setScanFeedback(null), 600
           )
         }
+      } finally {
+        setSearchLoading(false)
+      }
+    }, 200)
 
-        return [...prev, {
-          skuId: sku.id,
-          name: sku.name,
-          unit: sku.unit,
-          quantity: qty,
-          unitPrice: sku.sale_price,
-          discount: 0,
-          total: qty * sku.sale_price,
-          batchNumber: sku.batch_number,
-          expiryDate: sku.expiry_date,
-          daysToExpiry,
-          stockAvailable: sku.qty_on_hand,
-        }]
+    return () =>
+      clearTimeout(searchTimeout.current)
+  }, [search, profile?.id, handleAddItem])
+
+  const queryClient = useQueryClient()
+  const { currentUser } = useCurrentUser()
+
+  const completeSale = useCallback(
+    async () => {
+    if (cart.items.length === 0) return
+
+    const { valid, errors } =
+      validateCartStock(cart)
+    if (!valid) {
+      toast.error(errors[0])
+      return
+    }
+
+    if (cart.balanceDue > 0 &&
+      !cart.partyId &&
+      cart.payments.some(
+        p => p.method === 'credit'
+      )) {
+      toast.error(
+        'Select a customer for credit sales'
+      )
+      return
+    }
+
+    setCompleting(true)
+
+    // Generate ONE idempotency ID per cart
+    const clientTxId =
+      cart.clientTransactionId ||
+      crypto.randomUUID()
+
+    // Save ID to cart state so power cut recovery reuses same ID
+    if (!cart.clientTransactionId) {
+      setCart(prev => ({
+        ...prev,
+        clientTransactionId: clientTxId,
+      }))
+      saveDraft({
+        ...cart,
+        clientTransactionId: clientTxId,
       })
-    },
-    []
-  )
+    }
 
-  // ── UPDATE QTY ──
-  const updateQty = useCallback(
-    (skuId: string, qty: number) => {
-      if (qty <= 0) {
-        setCart(prev =>
-          prev.filter(i => i.skuId !== skuId)
+    try {
+      const { data, error } =
+        await (supabase as any).rpc('complete_sale', {
+          p_business_id: profile!.id,
+          p_user_id: currentUser?.id,
+          p_client_transaction_id: clientTxId,
+          p_invoice_date: new Date()
+            .toISOString().split('T')[0],
+          p_party_id: cart.partyId,
+          p_party_name: cart.partyName,
+          p_party_phone: cart.partyPhone,
+          p_notes: cart.notes || null,
+          p_invoice_currency: currency,
+          p_subtotal: cart.subtotal,
+          p_discount_amount:
+            cart.discountAmount,
+          p_discount_percent:
+            cart.discountType === 'percent'
+              ? cart.discountValue : 0,
+          p_tax_amount: cart.taxAmount,
+          p_grand_total: cart.grandTotal,
+          p_items: cart.items.map(item => ({
+            sku_id: item.skuId,
+            description: item.name,
+            quantity: item.quantity,
+            unit: item.unit,
+            unit_price: item.unitPrice,
+            discount_percent:
+              item.discountType === 'percent'
+                ? item.discountValue : 0,
+            discount_amount:
+              item.discountAmount,
+            tax_rate: item.taxRate,
+            tax_amount: item.taxAmount,
+            line_total: item.lineTotal,
+          })),
+          p_payments: cart.payments.map(p => ({
+            method: p.method,
+            amount: p.amount,
+            reference: p.reference || null,
+          })),
+        })
+
+      if (error) throw error
+
+      const result = data as {
+        status: string
+        error_code?: string
+        message?: string
+        invoice_id?: string
+        invoice_number?: string
+        invoice_status?: string
+        amount_paid?: number
+        balance_due?: number
+        idempotent?: boolean
+      }
+
+      if (result.status === 'ERROR') {
+        const MESSAGES: Record<string, string> = {
+          INSUFFICIENT_STOCK:
+            `Insufficient stock. ${
+              result.message || ''
+            }`,
+          INVALID_SKU:
+            'One or more items are invalid.',
+          INVALID_PAYMENT:
+            'Payment allocation is invalid.',
+          CREDIT_REQUIRES_PARTY:
+            'Select a customer for credit sales.',
+          PERMISSION_DENIED:
+            'You do not have permission.',
+          DUPLICATE_TRANSACTION:
+            'This sale was already processed.',
+          INVALID_TOTAL:
+            'Sale total is invalid.',
+          INVALID_DISCOUNT:
+            'Discount value is invalid.',
+          TRANSACTION_FAILED:
+            'Sale failed. Please try again.',
+        }
+        toast.error(
+          MESSAGES[result.error_code || '']
+            || result.message
+            || 'Sale failed'
         )
         return
       }
-      setCart(prev =>
-        prev.map(item =>
-          item.skuId === skuId
-            ? {
-                ...item,
-                quantity: qty,
-                total: qty * item.unitPrice,
-              }
-            : item
+
+      if (result.status === 'ALREADY_COMPLETED'
+        || result.idempotent) {
+        toast(
+          'Sale was already recorded.',
+          { icon: 'ℹ️' }
         )
-      )
-    },
-    []
-  )
-
-  // ── UPDATE ITEM PRICE ──
-  const updateItemPrice = useCallback(
-    (skuId: string, price: number) => {
-      setCart(prev =>
-        prev.map(item =>
-          item.skuId === skuId
-            ? {
-                ...item,
-                unitPrice: price,
-                total: item.quantity * price,
-              }
-            : item
-        )
-      )
-    },
-    []
-  )
-
-  // ── COMPLETE SALE ──
-  const handleCompleteSale = useCallback(
-    async () => {
-      if (cart.length === 0 || completing) return
-      setCompleting(true)
-
-      const activeBizId = profile?.id || 'local-business'
-      let finalInvoiceNum = `INV-${Date.now().toString().slice(-6)}`
-      let createdInvoice: any = null
-
-      try {
-        // 1. Try to sync to Supabase if connected
-        try {
-          const { data: lastInv } = await supabase
-            .from('invoices')
-            .select('invoice_number')
-            .eq('business_id', activeBizId)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle()
-
-          const lastNum = parseInt(lastInv?.invoice_number?.replace(/\D/g, '') || '0')
-          finalInvoiceNum = `${(profile as any)?.invoice_prefix || 'INV'}-${String(lastNum + 1).padStart(4, '0')}`
-          const posPayload: any = {
-            business_id: activeBizId,
-            invoice_number: finalInvoiceNum,
-            invoice_no: finalInvoiceNum,
-            party_id: selectedParty?.id || null,
-            status: selectedParty ? 'issued' : 'paid',
-            subtotal,
-            discount_percent: discount,
-            discount_amount: discountAmount,
-            tax_label: taxEnabled ? taxLabel : null,
-            tax_rate: taxEnabled ? taxRate : 0,
-            tax_amount: taxAmount,
-            total_amount: grandTotal,
-            total: grandTotal,
-            paid_amount: selectedParty ? 0 : grandTotal,
-            invoice_type: 'pos',
-            created_by: currentUser?.name || 'POS Counter',
-          };
-
-          let { data: invoice, error: posInsError } = await supabase
-            .from('invoices')
-            .insert(posPayload)
-            .select()
-            .maybeSingle();
-
-          if (posInsError) {
-            console.warn('[POS Insert] Primary insert failed:', posInsError.message);
-            delete posPayload.invoice_no;
-            delete posPayload.total;
-            const retryRes = await supabase
-              .from('invoices')
-              .insert(posPayload)
-              .select()
-              .maybeSingle();
-            invoice = retryRes.data;
-          }
-
-          if (invoice) {
-            createdInvoice = invoice
-
-            // Insert line items asynchronously
-            const lineItems = cart.map(item => ({
-              invoice_id: invoice.id,
-              business_id: activeBizId,
-              sku_id: item.skuId,
-              description: item.name,
-              quantity: item.quantity,
-              unit_price: item.unitPrice,
-              discount_percent: item.discount,
-              total_price: item.total,
-            }))
-            await supabase.from('invoice_items').insert(lineItems)
-
-            // Post ledger entries
-            await supabase.from('ledger_entries').insert([
-              {
-                business_id: activeBizId,
-                invoice_id: invoice.id,
-                entry_type: 'invoice',
-                entry_date: new Date().toISOString().split('T')[0],
-                reference: finalInvoiceNum,
-                description: `POS Sale — ${finalInvoiceNum}`,
-                debit: grandTotal,
-                credit: 0,
-                account_code: selectedParty ? '1100' : '1001',
-              },
-              {
-                business_id: activeBizId,
-                invoice_id: invoice.id,
-                entry_type: 'invoice',
-                entry_date: new Date().toISOString().split('T')[0],
-                reference: finalInvoiceNum,
-                description: `Sales — ${finalInvoiceNum}`,
-                debit: 0,
-                credit: subtotal - discountAmount,
-                account_code: '4000',
-              },
-              ...(taxAmount > 0 ? [{
-                business_id: activeBizId,
-                invoice_id: invoice.id,
-                entry_type: 'invoice',
-                entry_date: new Date().toISOString().split('T')[0],
-                reference: finalInvoiceNum,
-                description: `${taxLabel} — ${finalInvoiceNum}`,
-                debit: 0,
-                credit: taxAmount,
-                account_code: '2100',
-              }] : []),
-            ])
-
-            // Update party balance if credit sale
-            if (selectedParty) {
-              await supabase
-                .from('parties')
-                .update({
-                  current_balance: (selectedParty.current_balance || 0) + grandTotal
-                })
-                .eq('id', selectedParty.id)
-            }
-          }
-        } catch (dbErr) {
-          console.warn('[POS] Supabase write skipped or offline:', dbErr)
-        }
-
-        // 2. Invalidate queries
-        queryClient.invalidateQueries({ queryKey: ['invoices'] })
-        queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-
-        // 3. Show receipt modal immediately
-        const completedSale = {
-          invoice: createdInvoice || { id: `inv_${Date.now()}`, invoice_number: finalInvoiceNum },
-          invoiceNum: createdInvoice?.invoice_number || finalInvoiceNum,
-          cart: [...cart],
-          subtotal,
-          discountAmount,
-          taxAmount,
-          grandTotal,
-          party: selectedParty,
-          profile,
-        }
-
-        setLastSale(completedSale)
-        setShowReceipt(true)
-
-        // Reset state and clear cart
-        setCart([])
-        try { localStorage.removeItem('noxis_pos_cart') } catch {}
-        await clearDraft()
-        setSelectedParty(null)
-        setPartySearch('')
-        setDiscount(0)
-        setTaxEnabled(false)
-        searchRef.current?.focus()
-
-        toast.success('Sale Completed', `Receipt #${completedSale.invoiceNum} created successfully`)
-      } catch (err: any) {
-        toast.error('Sale Processing Error', err.message || 'Could not record sale')
-      } finally {
-        setCompleting(false)
       }
-    },
-    [cart, selectedParty, discount,
-      subtotal, discountAmount, taxAmount,
-      grandTotal, taxEnabled, completing,
-      profile, taxLabel, taxRate, currentUser, queryClient, toast]
-  )
 
-  // ── PRINT RECEIPT ──
-  const handlePrint = useCallback(() => {
-    if (!lastSale) return
+      // Success
+      clearDraft()
+      setLastInvoice({
+        id: result.invoice_id,
+        invoice_number: result.invoice_number,
+        invoice_status: result.invoice_status,
+        total_amount: cart.grandTotal,
+        amount_paid: result.amount_paid,
+        balance_due: result.balance_due,
+      })
+      setShowPaymentPanel(false)
+      setShowReceipt(true)
+      setCart(createEmptyCart())
+
+      // Invalidate affected queries
+      queryClient.invalidateQueries({
+        queryKey: ['skus', profile!.id]
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['invoices', profile!.id]
+      })
+      if (cart.partyId) {
+        queryClient.invalidateQueries({
+          queryKey: ['party', cart.partyId]
+        })
+      }
+
+      toast.success(
+        `Sale complete — ${
+          result.invoice_number
+        }`
+      )
+
+    } catch (err: any) {
+      toast.error(
+        err.message || 'Failed to complete sale'
+      )
+    } finally {
+      setCompleting(false)
+    }
+  }, [cart, profile, currentUser, currency,
+    clearDraft, saveDraft, queryClient])
+
+  const handleWhatsApp = useCallback(() => {
+    if (!lastInvoice) return
+    const msg = buildWhatsAppInvoiceMessage(
+      lastInvoice, cart, profile
+    )
+    const phone = (cart.partyPhone || '')
+      .replace(/[^0-9+]/g, '')
+      .replace(/^0/, '92')
+    window.open(
+      `https://wa.me/${phone}?text=${
+        encodeURIComponent(msg)
+      }`,
+      '_blank'
+    )
+  }, [lastInvoice, cart, profile])
+
+  const handlePrintThermal =
+    useCallback(async () => {
+    if (!lastInvoice) return
+    await generateThermalReceipt(
+      lastInvoice,
+      cart.items,
+      profile
+    )
     window.print()
-  }, [lastSale])
+  }, [lastInvoice, cart, profile])
+
+  const handlePrintA4 =
+    useCallback(async () => {
+    if (!lastInvoice) return
+    await generateInvoicePDF({
+      ...lastInvoice,
+      items: cart.items,
+      businessName: profile?.business_name,
+      businessAddress: profile?.address,
+      businessPhone: profile?.phone,
+      ntnNumber: (profile as any)?.ntn_number,
+      strnNumber: (profile as any)?.strn_number,
+      currency,
+    })
+  }, [lastInvoice, cart, profile, currency])
+
+  // Low stock warning items
+  const lowStockItems = useMemo(() =>
+    cart.items.filter(
+      i => i.quantity > i.stockAvailable * 0.9
+    ),
+    [cart.items]
+  )
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#060708]">
+    <div className="flex h-full overflow-hidden
+      bg-[#060708]">
 
-      {/* LEFT — Search and Cart */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      {/* ── LEFT: SEARCH + RESULTS ── */}
+      <div className="w-80 flex-shrink-0
+        flex flex-col border-r border-white/6
+        bg-[#0A0C0F]">
 
-        {/* TOP BAR */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/8 bg-[#0A0C0F] flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <ShoppingCart size={18} className="text-[#60A5FA]" />
-            <div>
-              <h1 className="text-sm font-bold text-white">
-                POS Counter
-              </h1>
-              <p className="text-[10px] text-gray-600">
-                F2 = Search · Enter = Add · F10 = Complete Sale
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <a
-              href="/dashboard"
-              className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
-            >
-              Full Dashboard →
-            </a>
-          </div>
-        </div>
-        <DraftRecoveryBanner
-          draftKey={DRAFT_KEY}
-          onRecover={(data) => setCart(data)}
-          onDiscard={() => {}}
-        />
-
-        {/* SEARCH BAR — full width, always focused */}
-        <div className="px-4 py-3 border-b border-white/6 flex-shrink-0">
-          <div className="relative">
-            <Search
-              size={16}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600"
-            />
+        {/* Search bar */}
+        <div className="p-4 border-b
+          border-white/6">
+          <div className={`
+            flex items-center gap-2
+            bg-[#0F1114] border px-3 py-2.5
+            rounded-sm transition-all duration-200
+            ${scanFeedback === 'success'
+              ? 'border-emerald-500/60 bg-emerald-500/8 shadow-[0_0_0_3px_rgba(16,185,129,0.1)]'
+              : scanFeedback === 'error'
+              ? 'border-red-500/60 bg-red-500/8 animate-[shake_0.3s_ease]'
+              : 'border-white/8 focus-within:border-[#60A5FA]/40'}
+          `}>
+            <Search size={14}
+              className="text-gray-600
+                flex-shrink-0" />
             <input
               ref={searchRef}
               value={search}
               onChange={e =>
-                handleSearchChange(e.target.value)
-              }
-              placeholder={
-                `Search ${t.item} by name, ` +
-                `code, or scan barcode...`
-              }
-              className="w-full bg-[#0F1114] border border-white/10 text-white text-sm pl-9 pr-4 py-3 outline-none focus:border-[#60A5FA]/50 rounded-sm"
+                setSearch(e.target.value)}
+              placeholder="Search or scan barcode... [F2]"
+              className="flex-1 bg-transparent
+                text-white text-sm outline-none
+                placeholder:text-gray-700"
               autoFocus
-              autoComplete="off"
             />
-            {searching && (
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-[#60A5FA]/20 border-t-[#60A5FA] rounded-full animate-spin" />
+            {search && (
+              <button
+                onClick={() => {
+                  setSearch('')
+                  setSearchResults([])
+                }}
+                className="text-gray-600
+                  hover:text-gray-400">
+                <X size={13} />
+              </button>
             )}
+            <Barcode size={14}
+              className="text-gray-700
+                flex-shrink-0" />
           </div>
 
-          {/* Search results dropdown */}
-          {searchResults.length > 0 && (
-            <div className="mt-1 bg-[#0F1114] border border-white/10 rounded-sm shadow-2xl max-h-64 overflow-y-auto">
-              {searchResults.map((sku, i) => {
-                const days = getDaysToExpiry(
-                  sku.expiry_date
-                )
+          {/* Low stock warnings */}
+          {lowStockItems.length > 0 && (
+            <div className="mt-2 flex
+              items-center gap-2 px-2 py-1.5
+              bg-red-500/8 border
+              border-red-500/20 rounded-sm">
+              <AlertTriangle size={12}
+                className="text-red-400
+                  flex-shrink-0" />
+              <p className="text-[10px]
+                text-red-400">
+                {lowStockItems.length} item(s)
+                near stock limit
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Search results */}
+        <div className="flex-1 overflow-y-auto">
+          {searchLoading && (
+            <div className="px-4 py-3">
+              <div className="h-3 bg-white/5
+                animate-pulse rounded mb-2 w-3/4" />
+              <div className="h-3 bg-white/5
+                animate-pulse rounded w-1/2" />
+            </div>
+          )}
+
+          {!searchLoading &&
+            searchResults.map(sku => {
+            const isLow =
+              sku.qty_on_hand <= (
+                sku.reorder_level || 0
+              )
+            const isOut =
+              sku.qty_on_hand <= 0
+            return (
+              <button
+                key={sku.id}
+                onClick={() =>
+                  !isOut && handleAddItem(sku)}
+                disabled={isOut}
+                className={`
+                  w-full flex items-center
+                  justify-between gap-3
+                  px-4 py-3 text-left
+                  border-b border-white/4
+                  transition-colors
+                  ${isOut
+                    ? 'opacity-40 cursor-not-allowed'
+                    : 'hover:bg-white/4 cursor-pointer'}
+                `}
+              >
+                <div className="min-w-0">
+                  <p className="text-sm
+                    font-semibold text-white
+                    truncate">
+                    {sku.name}
+                  </p>
+                  <div className="flex
+                    items-center gap-2 mt-0.5">
+                    <span className="text-[10px]
+                      text-gray-600">
+                      {sku.sku_code}
+                    </span>
+                    {isLow && (
+                      <span className="text-[9px]
+                        font-bold text-amber-400
+                        bg-amber-400/10 px-1
+                        rounded-sm">
+                        LOW STOCK
+                      </span>
+                    )}
+                    {isOut && (
+                      <span className="text-[9px]
+                        font-bold text-red-400
+                        bg-red-400/10 px-1
+                        rounded-sm">
+                        OUT OF STOCK
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right
+                  flex-shrink-0">
+                  <p className="text-sm
+                    font-bold text-[#60A5FA]
+                    font-mono">
+                    {formatCurrency(
+                      sku.sale_price, currency
+                    )}
+                  </p>
+                  <p className="text-[10px]
+                    text-gray-600">
+                    {sku.qty_on_hand} {sku.unit}
+                  </p>
+                </div>
+              </button>
+            )
+          })}
+
+          {!searchLoading &&
+            search &&
+            searchResults.length === 0 && (
+            <div className="px-4 py-8
+              text-center">
+              <p className="text-sm
+                text-gray-600">
+                No items found
+              </p>
+            </div>
+          )}
+
+          {!search && (
+            <div className="px-4 py-8
+              text-center">
+              <Barcode size={24}
+                className="text-gray-800
+                  mx-auto mb-2" />
+              <p className="text-xs
+                text-gray-700">
+                Type item name or
+                scan barcode
+              </p>
+              <p className="text-[10px]
+                text-gray-800 mt-1">
+                F2 to focus
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Party selector */}
+        <PartySelector
+          cart={cart}
+           onSelect={(party: any) =>
+            setCart(prev => setParty(prev, party))}
+          currency={currency}
+          profile={profile}
+        />
+      </div>
+
+      {/* ── CENTER: CART ── */}
+      <div className="flex-1 flex flex-col
+        min-w-0">
+
+        {/* Cart header */}
+        <div className="flex items-center
+          justify-between px-5 py-3
+          border-b border-white/6
+          bg-[#0A0C0F] flex-shrink-0">
+          <div className="flex items-center
+            gap-3">
+            <Receipt size={15}
+              className="text-gray-500" />
+            <p className="text-sm font-bold
+              text-white">
+              Cart
+            </p>
+            {cart.items.length > 0 && (
+              <span className="text-[10px]
+                font-bold text-[#60A5FA]
+                bg-[#60A5FA]/10 px-2
+                py-0.5 rounded-full">
+                {cart.items.length} items
+              </span>
+            )}
+          </div>
+          {cart.items.length > 0 && (
+            <button
+              onClick={() =>
+                setCart(createEmptyCart())}
+              className="flex items-center
+                gap-1 text-[10px] text-gray-600
+                hover:text-red-400
+                transition-colors">
+              <Trash2 size={11} />
+              Clear
+            </button>
+          )}
+        </div>
+
+        {/* Cart items */}
+        <div className="flex-1 overflow-y-auto">
+          {cart.items.length === 0 ? (
+            <div className="flex flex-col
+              items-center justify-center
+              h-full text-center px-8">
+              <Receipt size={32}
+                className="text-gray-800
+                  mb-3" />
+              <p className="text-sm font-bold
+                text-gray-600">
+                Cart is empty
+              </p>
+              <p className="text-xs text-gray-700
+                mt-1">
+                Search for items above or
+                scan a barcode
+              </p>
+            </div>
+          ) : (
+            cart.items.map(item => (
+              <CartItemRow
+                key={item.id}
+                item={item}
+                currency={currency}
+                onQtyChange={(q) =>
+                  setCart(prev => updateItemQuantity(
+                    prev, item.id, q
+                  ))}
+                onPriceChange={(p) =>
+                  setCart(prev => updateItemPrice(
+                    prev, item.id, p
+                  ))}
+                onDiscountChange={(t, v) =>
+                  setCart(prev => updateItemDiscount(
+                    prev, item.id, t, v
+                  ))}
+                onRemove={() =>
+                  setCart(prev => removeItemFromCart(
+                    prev, item.id
+                  ))}
+              />
+            ))
+          )}
+        </div>
+
+        {/* Order discount + totals */}
+        {cart.items.length > 0 && (
+          <OrderTotals
+            cart={cart}
+            currency={currency}
+            onDiscountChange={(t, v) =>
+              setCart(prev => applyOrderDiscount(
+                prev, t, v
+              ))}
+          />
+        )}
+      </div>
+
+      {/* ── RIGHT: PAYMENT PANEL ── */}
+      {(showPaymentPanel ||
+        cart.items.length > 0) && (
+        <div className="w-72 flex-shrink-0
+          flex flex-col border-l
+          border-white/6 bg-[#0A0C0F]">
+
+          <div className="p-4 border-b
+            border-white/6">
+            <p className="text-[10px] font-bold
+              uppercase tracking-widest
+              text-gray-500 mb-3">
+              Payment
+            </p>
+
+            {/* Grand total */}
+            <div className="text-center mb-4">
+              <p className="text-xs
+                text-gray-600 mb-1">
+                Grand Total
+              </p>
+              <p className="text-3xl font-black
+                text-[#60A5FA] font-mono
+                tracking-tight">
+                {formatCurrency(
+                  cart.grandTotal, currency
+                )}
+              </p>
+            </div>
+
+            {/* Payment method buttons */}
+            <div className="grid grid-cols-3
+              gap-2 mb-3">
+              {PAYMENT_METHODS.map(pm => {
+                const Icon = pm.icon
+                const isCredit =
+                  pm.method === 'credit'
+                const disabled =
+                  isCredit && !cart.partyId
+
                 return (
                   <button
-                    key={sku.id}
+                    key={pm.method}
                     onClick={() => {
-                      addToCart(sku)
-                      setSearch('')
-                      setSearchResults([])
-                      searchRef.current?.focus()
+                      if (disabled) {
+                        toast.error(
+                          'Select a customer first'
+                        )
+                        return
+                      }
+                      setCart(prev => {
+                        const remaining =
+                          prev.balanceDue > 0
+                            ? prev.balanceDue
+                            : prev.grandTotal -
+                              prev.totalPaid
+                        return addPayment(
+                          prev, pm.method,
+                          Math.max(0, remaining)
+                        )
+                      })
                     }}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/5 border-b border-white/4 last:border-0 ${i === 0 ? 'bg-[#60A5FA]/5' : ''}`}
+                    disabled={disabled}
+                    className={`
+                      flex flex-col items-center
+                      gap-1 p-2 rounded-sm
+                      border transition-all
+                      text-[10px] font-bold
+                      ${disabled
+                        ? 'border-white/5 text-gray-700 cursor-not-allowed'
+                        : 'border-white/8 text-gray-500 hover:border-white/20 hover:text-white cursor-pointer'}
+                    `}
                   >
-                    <Package size={14} className="text-gray-600 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-white truncate">
-                          {sku.name}
-                        </p>
-                        <ExpiryBadge days={days} />
-                        {sku.qty_on_hand <= 0 && (
-                          <span className="text-[9px] bg-red-500/15 text-red-400 px-1.5 py-0.5 rounded font-bold border border-red-500/20">
-                            OUT
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[10px] text-gray-600">
-                        {sku.sku_code} · Stock: {sku.qty_on_hand}{' '}
-                        {sku.unit}
-                        {sku.batch_number &&
-                          ` · Batch: ${sku.batch_number}`}
-                      </p>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-sm font-bold font-mono text-[#60A5FA]">
-                        {fmt(sku.sale_price)}
-                      </p>
-                      <p className="text-[10px] text-gray-700">
-                        per {sku.unit}
-                      </p>
-                    </div>
+                    <Icon size={14}
+                      color={
+                        disabled
+                          ? '#374151'
+                          : pm.color
+                      } />
+                    {pm.label}
                   </button>
                 )
               })}
             </div>
-          )}
-        </div>
 
-        {/* CART */}
-        <div className="flex-1 overflow-y-auto">
-          {cart.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-8">
-              <ShoppingCart size={48} className="text-gray-800 mb-4" />
-              <p className="text-gray-600 text-sm font-medium mb-1">
-                Cart is empty
-              </p>
-              <p className="text-gray-700 text-xs">
-                Search for items above or scan a barcode
-              </p>
-            </div>
-          ) : (
-            <table className="w-full">
-              <thead className="border-b border-white/6 sticky top-0 bg-[#060708]">
-                <tr>
-                  <th className="text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-600">
-                    Item
-                  </th>
-                  <th className="text-center px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-600 w-28">
-                    Qty
-                  </th>
-                  <th className="text-right px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-600 w-28">
-                    Price
-                  </th>
-                  <th className="text-right px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-600 w-28">
-                    Total
-                  </th>
-                  <th className="w-10" />
-                </tr>
-              </thead>
-              <tbody>
-                {cart.map(item => (
-                  <tr key={item.skuId} className="border-b border-white/4 hover:bg-white/2 group">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm text-white font-medium">
-                          {item.name}
-                        </p>
-                        <ExpiryBadge days={item.daysToExpiry || null} />
-                      </div>
-                      {item.batchNumber && (
-                        <p className="text-[10px] text-gray-700">
-                          Batch: {item.batchNumber}
-                        </p>
-                      )}
-                    </td>
-
-                    {/* Qty controls */}
-                    <td className="px-3 py-3">
-                      <div className="flex items-center justify-center gap-1">
-                        <button
-                          onClick={() =>
-                            updateQty(
-                              item.skuId,
-                              item.quantity - 1
-                            )
-                          }
-                          className="w-7 h-7 border border-white/10 text-gray-400 hover:border-white/20 hover:text-white rounded flex items-center justify-center text-sm transition-colors"
-                        >
-                          -
-                        </button>
-                        <input
-                          type="number"
-                          value={item.quantity}
-                          onChange={e => {
-                            const v = parseFloat(
-                              e.target.value
-                            )
-                            if (!isNaN(v) && v >= 0) {
-                              updateQty(
-                                item.skuId, v
-                              )
-                            }
-                          }}
-                          className="w-12 text-center bg-[#0F1114] border border-white/10 text-white text-sm py-1 outline-none focus:border-[#60A5FA]/40 rounded"
-                          min="0"
-                          step="0.5"
-                        />
-                        <button
-                          onClick={() =>
-                            updateQty(
-                              item.skuId,
-                              item.quantity + 1
-                            )
-                          }
-                          className="w-7 h-7 border border-white/10 text-gray-400 hover:border-white/20 hover:text-white rounded flex items-center justify-center text-sm transition-colors"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </td>
-
-                    {/* Price — editable */}
-                    <td className="px-3 py-3">
-                      <input
-                        type="number"
-                        value={item.unitPrice}
-                        onChange={e => {
-                          const v = parseFloat(
-                            e.target.value
-                          )
-                          if (!isNaN(v)) {
-                            updateItemPrice(
-                              item.skuId, v
-                            )
-                          }
-                        }}
-                        className="w-full text-right bg-transparent text-sm text-white outline-none hover:bg-white/5 focus:bg-[#0F1114] focus:border focus:border-[#60A5FA]/40 px-2 py-1 rounded"
-                      />
-                    </td>
-
-                    {/* Total */}
-                    <td className="px-4 py-3 text-right">
-                      <p className="text-sm font-mono font-semibold text-white">
-                        {fmt(item.total)}
-                      </p>
-                    </td>
-
-                    {/* Remove */}
-                    <td className="pr-3 py-3">
-                      <button
-                        onClick={() =>
-                          updateQty(item.skuId, 0)
-                        }
-                        className="opacity-0 group-hover:opacity-100 text-gray-700 hover:text-red-400 transition-all"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
-
-      {/* RIGHT — Totals + Actions Panel */}
-      <div className="w-80 border-l border-white/8 flex flex-col bg-[#0A0C0F] flex-shrink-0">
-
-        {/* Customer selector */}
-        <div className="p-4 border-b border-white/6">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-600 mb-2">
-            Customer (optional)
-          </p>
-          {selectedParty ? (
-            <div className="flex items-center justify-between p-3 bg-[#60A5FA]/8 border border-[#60A5FA]/20 rounded-sm">
-              <div>
-                <p className="text-sm font-bold text-white">
-                  {selectedParty.name}
-                </p>
-                <p className="text-[10px] text-gray-500">
-                  Balance: {fmt(
-                    selectedParty.current_balance || 0
-                  )}
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  setSelectedParty(null)
-                  setPartySearch('')
-                }}
-                className="text-gray-600 hover:text-gray-300"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          ) : (
-            <div className="relative">
-              <input
-                value={partySearch}
-                onChange={async e => {
-                  setPartySearch(e.target.value)
-                  if (e.target.value.length < 2) {
-                    setPartyResults([])
-                    return
-                  }
-                  const { data } = await supabase
-                    .from('parties')
-                    .select('id, name, current_balance')
-                    .eq('business_id', profile!.id)
-                    .ilike('name',
-                      `%${e.target.value}%`
-                    )
-                    .limit(5)
-                  setPartyResults(data || [])
-                }}
-                placeholder="Walk-in customer or search..."
-                className="w-full bg-[#161A1F] border border-white/8 text-white text-xs px-3 py-2 outline-none focus:border-[#60A5FA]/40"
-              />
-              {partyResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 bg-[#0F1114] border border-white/10 shadow-xl z-10">
-                  {partyResults.map(p => (
-                    <button
-                      key={p.id}
-                      onClick={() => {
-                        setSelectedParty(p)
-                        setPartySearch(p.name)
-                        setPartyResults([])
-                      }}
-                      className="w-full text-left px-3 py-2 text-sm text-white hover:bg-white/5 border-b border-white/4 last:border-0"
-                    >
-                      <p>{p.name}</p>
-                      <p className="text-[10px] text-gray-600">
-                        Balance: {fmt(
-                          p.current_balance || 0
-                        )}
-                      </p>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Totals */}
-        <div className="p-4 border-b border-white/6 flex-shrink-0">
-          <div className="space-y-2 mb-4">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">
-                Subtotal
-              </span>
-              <span className="text-white font-mono">
-                {fmt(subtotal)}
-              </span>
-            </div>
-
-            {/* Discount */}
-            <div className="flex items-center justify-between">
-              <span className="text-gray-500 text-sm">
-                Discount %
-              </span>
-              <div className="flex items-center gap-2">
+            {/* Payment allocations */}
+            {cart.payments.map((p, i) => (
+              <div key={i}
+                className="flex items-center
+                  gap-2 mb-2">
+                <span className="text-xs
+                  text-gray-500 capitalize
+                  w-20 flex-shrink-0">
+                  {p.method}
+                </span>
                 <input
+                  value={p.amount}
+                  onChange={e => {
+                    const newAmount = parseFloat(
+                      e.target.value
+                    ) || 0
+                    setCart(prev => {
+                      const payments =
+                        [...prev.payments]
+                      payments[i] = {
+                        ...payments[i],
+                        amount: newAmount,
+                      }
+                      return recalcPayments({
+                        ...prev, payments
+                      })
+                    })
+                  }}
                   type="number"
-                  value={discount}
-                  onChange={e =>
-                    setDiscount(
-                      Math.min(100,
-                        Math.max(0,
-                          parseFloat(e.target.value)
-                          || 0
-                        )
-                      )
-                    )
-                  }
-                  className="w-16 text-right bg-[#0F1114] border border-white/8 text-white text-sm px-2 py-1 outline-none focus:border-[#60A5FA]/40"
                   min="0"
-                  max="100"
+                  className="flex-1 bg-[#0F1114]
+                    border border-white/8
+                    text-white text-sm px-2
+                    py-1.5 font-mono
+                    outline-none rounded-sm
+                    focus:border-[#60A5FA]/40"
                 />
-                <span className="text-gray-600 text-sm">%</span>
+                <button
+                  onClick={() =>
+                    setCart(prev =>
+                      removePayment(prev, i)
+                    )}
+                  className="text-gray-700
+                    hover:text-red-400">
+                  <X size={13} />
+                </button>
               </div>
-            </div>
-            {discount > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className="text-emerald-500">
-                  − Discount
-                </span>
-                <span className="text-emerald-500 font-mono">
-                  − {fmt(discountAmount)}
-                </span>
-              </div>
-            )}
-
-            {/* Tax toggle */}
-            <div className="flex items-center justify-between">
-              <span className="text-gray-500 text-sm">
-                {taxLabel} ({taxRate}%)
-              </span>
-              <button
-                onClick={() =>
-                  setTaxEnabled(p => !p)
-                }
-                className={`relative w-10 h-5 rounded-full transition-colors ${taxEnabled ? 'bg-[#60A5FA]' : 'bg-white/10'}`}
-              >
-                <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform shadow ${taxEnabled ? 'translate-x-5' : 'translate-x-0.5'}`}
-                />
-              </button>
-            </div>
-            {taxEnabled && (
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">
-                  {taxLabel}
-                </span>
-                <span className="text-white font-mono">
-                  {fmt(taxAmount)}
-                </span>
-              </div>
-            )}
-
-            {/* Grand total */}
-            <div className="flex justify-between pt-3 border-t border-white/10">
-              <span className="text-base font-bold text-white">
-                Total
-              </span>
-              <span className="text-xl font-black font-mono text-[#60A5FA]">
-                {fmt(grandTotal)}
-              </span>
-            </div>
-          </div>
-
-          {/* COMPLETE SALE BUTTON */}
-          <button
-            onClick={handleCompleteSale}
-            disabled={
-              cart.length === 0 || completing
-            }
-            className={`w-full py-4 rounded-sm font-bold text-base transition-all flex items-center justify-center gap-2 ${cart.length > 0 && !completing ? 'bg-[#60A5FA] text-black hover:bg-blue-400 active:scale-[0.98]' : 'bg-white/5 text-gray-700 cursor-not-allowed'}`}
-          >
-            {completing ? (
-              <>
-                <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <CheckCircle size={18} />
-                Complete Sale
-                <span className="text-xs bg-black/15 px-1.5 py-0.5 rounded font-mono">
-                  F10
-                </span>
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* Quick links */}
-        <div className="p-3 flex-shrink-0">
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { label: 'Invoices', href: '/invoices' },
-              { label: 'Inventory', href: '/inventory' },
-              { label: 'Parties', href: '/parties' },
-              { label: 'Reports', href: '/reports' },
-            ].map(link => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="flex items-center justify-between px-3 py-2 bg-white/4 text-xs text-gray-500 hover:text-gray-300 hover:bg-white/8 transition-colors rounded-sm"
-              >
-                {link.label}
-                <ChevronRight size={10} />
-              </a>
             ))}
+
+            {/* Balance / Change */}
+            {cart.totalPaid > 0 && (
+              <div className="mt-3 space-y-1">
+                {cart.balanceDue > 0 && (
+                  <div className="flex
+                    justify-between text-sm">
+                    <span className="text-red-400
+                      font-semibold">
+                      Balance Due
+                    </span>
+                    <span className="text-red-400
+                      font-bold font-mono">
+                      {formatCurrency(
+                        cart.balanceDue, currency
+                      )}
+                    </span>
+                  </div>
+                )}
+                {cart.change > 0 && (
+                  <div className="flex
+                    justify-between text-sm">
+                    <span className="text-emerald-400
+                      font-semibold">
+                      Change
+                    </span>
+                    <span className="text-emerald-400
+                      font-bold font-mono">
+                      {formatCurrency(
+                        cart.change, currency
+                      )}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Complete button */}
+          <div className="p-4">
+            <button
+              onClick={completeSale}
+              disabled={
+                completing ||
+                cart.items.length === 0
+              }
+              className="w-full py-4 flex
+                items-center justify-center
+                gap-3 bg-[#10B981] text-black
+                font-black text-base rounded-sm
+                hover:brightness-110
+                disabled:opacity-40
+                transition-all"
+            >
+              {completing ? (
+                <>
+                  <div className="w-4 h-4
+                    border-2 border-black
+                    border-t-transparent
+                    rounded-full animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <CheckCircle size={18} />
+                  Complete Sale [F10]
+                </>
+              )}
+            </button>
+            <p className="text-center
+              text-[10px] text-gray-700 mt-2">
+              Esc to cancel ·
+              F2 to search ·
+              F10 to complete
+            </p>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* RECEIPT MODAL */}
-      {showReceipt && lastSale && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-sm bg-white text-black rounded-sm shadow-2xl print:shadow-none">
-            <div className="p-6">
-              {/* Business header */}
-              <div className="text-center mb-4 pb-4 border-b border-gray-200">
-                {(lastSale.profile?.logo_url || profile?.logo_url) ? (
-                  <div className="flex justify-center mb-3">
-                    <img 
-                      src={lastSale.profile?.logo_url || profile?.logo_url} 
-                      alt="Business Logo" 
-                      className="h-16 w-auto max-w-[180px] object-contain" 
-                    />
-                  </div>
-                ) : (
-                  <div className="w-14 h-14 bg-black text-white font-black text-xl rounded-full flex items-center justify-center mx-auto mb-3 uppercase">
-                    {(lastSale.profile?.business_name || profile?.business_name || 'N').slice(0, 2)}
-                  </div>
-                )}
-                <p className="font-black text-lg uppercase tracking-wide">
-                  {lastSale.profile?.business_name || profile?.business_name}
-                </p>
-                {lastSale.profile?.phone && (
-                  <p className="text-sm text-gray-600">
-                    {lastSale.profile.phone}
-                  </p>
-                )}
-                <p className="text-sm font-bold mt-2">
-                  Receipt #{lastSale.invoiceNum}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {new Date().toLocaleString('en-PK')}
-                </p>
+      {/* ── RECEIPT MODAL ── */}
+      {showReceipt && lastInvoice && (
+        <div className="fixed inset-0
+          z-50 bg-black/80 flex
+          items-end justify-center p-6">
+          <div className="w-full max-w-sm
+            bg-[#0F1114] border
+            border-white/10 rounded-xl
+            p-6 space-y-4
+            animate-in slide-in-from-bottom-6
+            duration-300">
+
+            <div className="text-center">
+              <div className="w-14 h-14
+                rounded-full bg-emerald-500/15
+                border-2 border-emerald-500/30
+                flex items-center justify-center
+                mx-auto mb-3">
+                <CheckCircle size={24}
+                  className="text-emerald-400" />
               </div>
-
-              {/* Items */}
-              <div className="space-y-1 mb-4">
-                {lastSale.cart.map((item: CartItem) => (
-                  <div key={item.skuId} className="flex justify-between text-sm">
-                    <div className="flex-1">
-                      <p>{item.name}</p>
-                      <p className="text-xs text-gray-500">
-                        {item.quantity} ×{' '}
-                        {item.unitPrice.toLocaleString('en-PK')}
-                      </p>
-                    </div>
-                    <p className="font-mono">
-                      {item.total.toLocaleString('en-PK')}
-                    </p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Totals */}
-              <div className="border-t border-gray-200 pt-3 space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span>Subtotal</span>
-                  <span className="font-mono">
-                    {lastSale.subtotal.toLocaleString('en-PK')}
-                  </span>
-                </div>
-                {lastSale.discountAmount > 0 && (
-                  <div className="flex justify-between text-sm text-green-600">
-                    <span>Discount</span>
-                    <span className="font-mono">
-                      −{lastSale.discountAmount.toLocaleString('en-PK')}
-                    </span>
-                  </div>
+              <p className="text-lg font-black
+                text-white">
+                Sale Complete
+              </p>
+              <p className="text-sm text-gray-500">
+                {lastInvoice.invoice_number}
+              </p>
+              <p className="text-2xl font-black
+                text-[#10B981] font-mono mt-1">
+                {formatCurrency(
+                  lastInvoice.total_amount,
+                  currency
                 )}
-                {lastSale.taxAmount > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span>{taxLabel}</span>
-                    <span className="font-mono">
-                      {lastSale.taxAmount.toLocaleString('en-PK')}
-                    </span>
-                  </div>
-                )}
-                <div className="flex justify-between font-black text-base border-t border-gray-300 pt-2 mt-2">
-                  <span>TOTAL</span>
-                  <span className="font-mono">
-                    {lastSale.profile?.currency || 'PKR'}{' '}
-                    {lastSale.grandTotal.toLocaleString('en-PK')}
-                  </span>
-                </div>
-              </div>
-
-              {/* Footer */}
-              <p className="text-center text-xs text-gray-400 mt-4">
-                Thank you for your business!
-                <br />
-                Powered by Noxis Hub
               </p>
             </div>
 
-            {/* Actions */}
-            <div className="flex border-t border-gray-200">
+            <div className="grid grid-cols-3
+              gap-2">
               <button
-                onClick={handlePrint}
-                className="flex-1 py-3 text-sm font-bold text-[#60A5FA] hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
-              >
-                <Printer size={14} />
-                Print
+                onClick={handlePrintThermal}
+                className="flex flex-col
+                  items-center gap-1 p-3
+                  bg-[#161A1F] border
+                  border-white/8 rounded-sm
+                  text-gray-400 hover:text-white
+                  transition-colors">
+                <Printer size={16} />
+                <span className="text-[10px]
+                  font-semibold">
+                  Thermal
+                </span>
               </button>
               <button
-                onClick={() => setShowReceipt(false)}
-                className="flex-1 py-3 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                New Sale
+                onClick={handlePrintA4}
+                className="flex flex-col
+                  items-center gap-1 p-3
+                  bg-[#161A1F] border
+                  border-white/8 rounded-sm
+                  text-gray-400 hover:text-white
+                  transition-colors">
+                <Receipt size={16} />
+                <span className="text-[10px]
+                  font-semibold">
+                  PDF A4
+                </span>
+              </button>
+              <button
+                onClick={handleWhatsApp}
+                disabled={!cart.partyPhone}
+                className="flex flex-col
+                  items-center gap-1 p-3
+                  bg-[#161A1F] border
+                  border-white/8 rounded-sm
+                  text-gray-400 hover:text-white
+                  disabled:opacity-40
+                  transition-colors">
+                <Share2 size={16} />
+                <span className="text-[10px]
+                  font-semibold">
+                  WhatsApp
+                </span>
               </button>
             </div>
+
+            <button
+              onClick={() => {
+                setShowReceipt(false)
+                searchRef.current?.focus()
+              }}
+              className="w-full py-3
+                bg-[#60A5FA] text-black
+                font-bold rounded-sm
+                hover:brightness-110
+                transition-all">
+              New Sale
+            </button>
           </div>
         </div>
       )}
     </div>
   )
 }
+
+// ── MEMOIZED SUB-COMPONENTS ──
+
+const CartItemRow = memo(function CartItemRow({
+  item, currency, onQtyChange,
+  onPriceChange, onDiscountChange, onRemove,
+}: {
+  item: CartItem
+  currency: string
+  onQtyChange: (q: number) => void
+  onPriceChange: (p: number) => void
+  onDiscountChange: (t: any, v: number) => void
+  onRemove: () => void
+}) {
+  const [showDiscount, setShowDiscount] =
+    useState(false)
+  const isOverStock =
+    item.quantity > item.stockAvailable
+
+  return (
+    <div className={`
+      border-b border-white/4 px-5 py-3
+      ${isOverStock ? 'bg-red-500/5' : ''}
+    `}>
+      <div className="flex items-start
+        gap-3">
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center
+            gap-2">
+            <p className="text-sm font-semibold
+              text-white truncate">
+              {item.name}
+            </p>
+            {item.priceTier &&
+              item.priceTier !== 'retail' && (
+              <span className="text-[9px]
+                font-bold text-[#60A5FA]
+                bg-[#60A5FA]/10 px-1.5
+                rounded-sm">
+                {item.priceTier.toUpperCase()}
+              </span>
+            )}
+          </div>
+
+          {/* Price edit */}
+          <div className="flex items-center
+            gap-2 mt-1">
+            <span className="text-[10px]
+              text-gray-600">
+              Unit:
+            </span>
+            <input
+              value={item.unitPrice}
+              onChange={e =>
+                onPriceChange(
+                  parseFloat(e.target.value) || 0
+                )}
+              type="number"
+              min="0"
+              className="w-24 bg-[#0F1114]
+                border border-white/8 text-xs
+                text-[#60A5FA] font-mono
+                px-2 py-1 rounded-sm outline-none
+                focus:border-[#60A5FA]/40"
+            />
+
+            {/* Discount toggle */}
+            <button
+              onClick={() =>
+                setShowDiscount(s => !s)}
+              className={`
+                flex items-center gap-1
+                text-[10px] font-bold px-1.5
+                py-1 rounded-sm transition-colors
+                ${item.discountValue > 0
+                  ? 'text-amber-400 bg-amber-400/10'
+                  : 'text-gray-600 hover:text-gray-400'}
+              `}>
+              <Tag size={10} />
+              {item.discountValue > 0
+                ? `-${item.discountType ===
+                    'percent'
+                      ? item.discountValue + '%'
+                      : formatCurrency(
+                          item.discountValue,
+                          currency
+                        )}`
+                : 'Disc'}
+            </button>
+          </div>
+
+          {/* Discount controls */}
+          {showDiscount && (
+            <div className="flex items-center
+              gap-2 mt-1.5">
+              <button
+                onClick={() =>
+                  onDiscountChange(
+                    item.discountType === 'percent'
+                      ? 'fixed' : 'percent',
+                    item.discountValue
+                  )}
+                className="text-[10px] text-gray-500
+                  border border-white/8 px-2
+                  py-0.5 rounded-sm">
+                {item.discountType === 'percent'
+                  ? '%' : 'PKR'}
+              </button>
+              <input
+                value={item.discountValue}
+                onChange={e =>
+                  onDiscountChange(
+                    item.discountType,
+                    parseFloat(e.target.value) || 0
+                  )}
+                type="number"
+                min="0"
+                className="w-16 bg-[#0F1114]
+                  border border-amber-500/30
+                  text-amber-400 text-xs
+                  px-2 py-0.5 rounded-sm outline-none"
+              />
+            </div>
+          )}
+
+          {/* Stock warning */}
+          {isOverStock && (
+            <p className="text-[10px]
+              text-red-400 mt-1 flex
+              items-center gap-1">
+              <AlertTriangle size={10} />
+              Only {item.stockAvailable}{' '}
+              {item.unit} in stock
+            </p>
+          )}
+        </div>
+
+        {/* Qty + total */}
+        <div className="flex flex-col
+          items-end gap-2 flex-shrink-0">
+          {/* Remove */}
+          <button
+            onClick={onRemove}
+            className="text-gray-700
+              hover:text-red-400 transition-colors">
+            <X size={13} />
+          </button>
+
+          {/* Qty stepper */}
+          <div className="flex items-center
+            gap-1">
+            <button
+              onClick={() =>
+                onQtyChange(item.quantity - 1)}
+              className="w-6 h-6 flex items-center
+                justify-center bg-[#161A1F]
+                border border-white/8 rounded-sm
+                text-gray-400 hover:text-white
+                hover:border-white/20
+                transition-all">
+              <Minus size={10} />
+            </button>
+            <input
+              value={item.quantity}
+              onChange={e =>
+                onQtyChange(
+                  parseFloat(e.target.value) || 1
+                )}
+              type="number"
+              min="0.1"
+              step="0.1"
+              className="w-14 text-center
+                bg-[#0F1114] border border-white/8
+                text-white text-sm font-bold
+                py-0.5 outline-none rounded-sm"
+            />
+            <button
+              onClick={() =>
+                onQtyChange(item.quantity + 1)}
+              className="w-6 h-6 flex items-center
+                justify-center bg-[#161A1F]
+                border border-white/8 rounded-sm
+                text-gray-400 hover:text-white
+                hover:border-white/20
+                transition-all">
+              <Plus size={10} />
+            </button>
+          </div>
+
+          {/* Line total */}
+          <p className="text-sm font-black
+            text-white font-mono">
+            {formatCurrency(
+              item.lineTotal, currency
+            )}
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+})
+
+const OrderTotals = memo(function OrderTotals({
+  cart, currency, onDiscountChange,
+}: {
+  cart: POSCart
+  currency: string
+  onDiscountChange: (t: any, v: number) => void
+}) {
+  return (
+    <div className="border-t border-white/6
+      bg-[#0A0C0F] p-4 space-y-2
+      flex-shrink-0">
+
+      {/* Order discount */}
+      <div className="flex items-center
+        gap-2 pb-2 border-b border-white/6">
+        <Tag size={12} className="text-gray-600" />
+        <span className="text-[10px] text-gray-600
+          flex-1">
+          Order Discount
+        </span>
+        <button
+          onClick={() =>
+            onDiscountChange(
+              cart.discountType === 'percent'
+                ? 'fixed' : 'percent',
+              cart.discountValue
+            )}
+          className="text-[10px] text-gray-600
+            border border-white/8 px-2 py-0.5
+            rounded-sm hover:border-white/15">
+          {cart.discountType === 'percent'
+            ? '%' : 'PKR'}
+        </button>
+        <input
+          value={cart.discountValue}
+          onChange={e =>
+            onDiscountChange(
+              cart.discountType,
+              parseFloat(e.target.value) || 0
+            )}
+          type="number"
+          min="0"
+          className="w-20 bg-[#0F1114]
+            border border-white/8 text-amber-400
+            text-xs text-right px-2 py-1
+            font-mono outline-none rounded-sm"
+        />
+      </div>
+
+      {/* Totals */}
+      <div className="space-y-1">
+        <div className="flex justify-between
+          text-xs text-gray-500">
+          <span>Subtotal</span>
+          <span className="font-mono">
+            {formatCurrency(
+              cart.subtotal, currency
+            )}
+          </span>
+        </div>
+        {cart.discountAmount > 0 && (
+          <div className="flex justify-between
+            text-xs text-amber-400">
+            <span>Discount</span>
+            <span className="font-mono">
+              -{formatCurrency(
+                cart.discountAmount, currency
+              )}
+            </span>
+          </div>
+        )}
+        {cart.taxAmount > 0 && (
+          <div className="flex justify-between
+            text-xs text-gray-500">
+            <span>Tax</span>
+            <span className="font-mono">
+              +{formatCurrency(
+                cart.taxAmount, currency
+              )}
+            </span>
+          </div>
+        )}
+        <div className="flex justify-between
+          text-base font-black border-t
+          border-white/6 pt-1.5">
+          <span className="text-white">
+            Total
+          </span>
+          <span className="text-[#60A5FA]
+            font-mono">
+            {formatCurrency(
+              cart.grandTotal, currency
+            )}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+})
+
+const PartySelector = memo(
+  function PartySelector({
+    cart, onSelect, currency, profile,
+  }: any) {
+    const [search, setSearch] = useState('')
+    const [results, setResults] = useState<any[]>([])
+    const [open, setOpen] = useState(false)
+    const supabase = createClient()
+
+    useEffect(() => {
+      if (!search.trim() || !profile?.id) {
+        setResults([])
+        return
+      }
+      const t = setTimeout(async () => {
+        const { data } = await supabase
+          .from('parties')
+          .select(
+            'id,name,phone,current_balance'
+          )
+          .eq('business_id', profile.id)
+          .ilike('name', `%${search}%`)
+          .limit(5)
+        setResults(data || [])
+      }, 200)
+      return () => clearTimeout(t)
+    }, [search, profile?.id])
+
+    return (
+      <div className="p-3 border-t
+        border-white/6">
+        {cart.partyId ? (
+          <div className="flex items-center
+            gap-2 p-2 bg-[#0F1114] border
+            border-white/8 rounded-sm">
+            <Users size={13}
+              className="text-[#60A5FA]
+                flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold
+                text-white truncate">
+                {cart.partyName}
+              </p>
+              {cart.partyBalance > 0 && (
+                <p className="text-[10px]
+                  text-amber-400">
+                  Balance: {formatCurrency(
+                    cart.partyBalance, currency
+                  )}
+                </p>
+              )}
+            </div>
+            <button
+              onClick={() =>
+                onSelect(null)}
+              className="text-gray-600
+                hover:text-red-400">
+              <X size={12} />
+            </button>
+          </div>
+        ) : (
+          <div className="relative">
+            <div className="flex items-center
+              gap-2 bg-[#0F1114] border
+              border-white/8 rounded-sm
+              px-2 py-2">
+              <Users size={12}
+                className="text-gray-600" />
+              <input
+                value={search}
+                onChange={e => {
+                  setSearch(e.target.value)
+                  setOpen(true)
+                }}
+                onFocus={() => setOpen(true)}
+                placeholder="Add customer (optional)"
+                className="flex-1 bg-transparent
+                  text-xs text-white outline-none
+                  placeholder:text-gray-700"
+              />
+            </div>
+            {open && results.length > 0 && (
+              <div className="absolute bottom-full
+                left-0 right-0 mb-1 bg-[#0F1114]
+                border border-white/10 rounded-sm
+                shadow-xl z-10">
+                {results.map(party => (
+                  <button
+                    key={party.id}
+                    onClick={() => {
+                      onSelect(party)
+                      setSearch('')
+                      setOpen(false)
+                    }}
+                    className="w-full flex
+                      items-center justify-between
+                      px-3 py-2 hover:bg-white/5
+                      transition-colors">
+                    <div>
+                      <p className="text-xs
+                        font-semibold text-white
+                        text-left">
+                        {party.name}
+                      </p>
+                      <p className="text-[10px]
+                        text-gray-600">
+                        {party.phone}
+                      </p>
+                    </div>
+                    {party.current_balance > 0 && (
+                      <span className="text-[10px]
+                        text-amber-400 font-mono">
+                        {formatCurrency(
+                          party.current_balance,
+                          currency
+                        )}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
+)

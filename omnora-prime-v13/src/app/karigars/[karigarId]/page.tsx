@@ -21,6 +21,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useToast } from '@/hooks/useToast';
 import { humanizeError } from '@/lib/utils/errors';
+import { KarigarGradeBadge } from '@/components/karigars/KarigarGradeBadge';
+import { getGradeInfo } from '@/lib/karigars/gradeSystem';
 
 export default function KarigarDetailPage() {
   const params = useParams();
@@ -47,6 +49,24 @@ export default function KarigarDetailPage() {
   const [addingSkill, setAddingSkill] = useState(false);
   const [copiedShareLink, setCopiedShareLink] = useState(false);
   const [advanceModalOpen, setAdvanceModalOpen] = useState(false);
+  const [isUpdatingGrade, setIsUpdatingGrade] = useState(false);
+
+  const handleUpdateGrade = async (newGrade: string) => {
+    setIsUpdatingGrade(true);
+    try {
+      const { error } = await supabase
+        .from('karigars')
+        .update({ grade: newGrade })
+        .eq('id', karigarId);
+      if (error) throw error;
+      setKarigar((prev: any) => ({ ...prev, grade: newGrade }));
+      toast.success(`Artisan grade updated to ${newGrade}`);
+    } catch (err: any) {
+      toast.error('Failed to update grade', humanizeError(err, 'update grade'));
+    } finally {
+      setIsUpdatingGrade(false);
+    }
+  };
   
   const loadKarigarDetails = useCallback(async (signal?: AbortSignal) => {
     if (!profile?.id || !karigarId) return;
@@ -321,9 +341,27 @@ export default function KarigarDetailPage() {
                 </span>
               </div>
               
-              <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mt-1">
-                Vertical: {karigar?.skill_type} · Grade: {karigar?.karigar_grades?.grade_name || 'Standard'}
-              </p>
+              <div className="flex flex-wrap items-center gap-3 mt-2">
+                <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
+                  Vertical: <span className="text-white">{karigar?.skill_type || 'General'}</span>
+                </span>
+                <span className="text-gray-600">·</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Artisan Grade:</span>
+                  <select
+                    value={karigar?.grade || 'B'}
+                    disabled={isUpdatingGrade}
+                    onChange={(e) => handleUpdateGrade(e.target.value)}
+                    className="bg-[#12161F] border border-white/10 text-xs text-white rounded px-2.5 py-1 outline-none focus:border-electric-blue font-semibold cursor-pointer disabled:opacity-50"
+                  >
+                    <option value="MASTER">Master (Ustaad)</option>
+                    <option value="A">Grade A (Expert)</option>
+                    <option value="B">Grade B (Intermediate)</option>
+                    <option value="C">Grade C (Apprentice)</option>
+                  </select>
+                  <KarigarGradeBadge grade={karigar?.grade} showDetails />
+                </div>
+              </div>
               
               <p className="text-[9px] text-gray-600 font-mono mt-1">
                 Active Member Since {new Date(karigar?.joining_date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}

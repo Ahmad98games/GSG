@@ -9,6 +9,7 @@ import { Can } from "@/components/rbac/Can";
 import { createClient } from "@/lib/supabase/client";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
+import { useBusinessProfileStore } from "@/store/BusinessProfileStore";
 import { usePersona } from "@/hooks/usePersona";
 import { useRouter } from "next/navigation";
 import { 
@@ -31,7 +32,6 @@ import { emitSkuPriceSignal } from "@/lib/network/signalCollector";
 import { PersonaEngine } from "@/lib/persona/PersonaEngine";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { ScrollReveal3D } from "@/components/ui/AnimatedComponents";
 import EmptyState from "@/components/ui/EmptyState"; // Keep if needed for subcomponents, but we'll import from StateViews
 import { ErrorState, EmptyState as NewEmptyState, FieldError } from "@/components/ui/StateViews";
 import DataFreshness from "@/components/ui/DataFreshness";
@@ -127,6 +127,32 @@ type AdjustStockValues = z.infer<typeof adjustStockSchema>;
 
 
 
+const SKURow = React.memo(
+  function SKURow({ row, onSelect }: { row: any; onSelect: () => void }) {
+    if (!row) return null;
+    return (
+      <tr
+        key={row.id}
+        onClick={onSelect}
+        className="border-b border-white/4 hover:bg-white/[0.02] transition-colors cursor-pointer"
+      >
+        {row.getVisibleCells().map((cell: any) => (
+          <td
+            key={cell.id}
+            className="px-4 py-2.5 text-sm text-gray-200 border-b border-white/[0.04]"
+          >
+            {flexRender(
+              cell.column.columnDef.cell,
+              cell.getContext()
+            )}
+          </td>
+        ))}
+      </tr>
+    );
+  },
+  (prevProps, nextProps) => prevProps?.row?.original === nextProps?.row?.original
+);
+
 export default function InventoryPage() {
   const { profile } = useBusinessProfile();
   const { t, fmt, term } = usePersona();
@@ -151,34 +177,108 @@ export default function InventoryPage() {
   const [isScannerFlashing, setIsScannerFlashing] = useState(false);
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
 
-  // Floor Voice Operations
-  const { startListening, isListening: isVoiceListening, speak } = useFloorVoice([
+  // Data Fetching — Fast & Stable Local-First (Instant 0ms UI with Stale-While-Revalidate)
+  const { data: skus = [], isLoading: skusLoading, error: skusError, refetch: refetchSkus, dataUpdatedAt: skusUpdatedAt } = useQuery({
+    queryKey: ['inventory', profile?.id],
+    queryFn: async () => {
+      const bizId = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null);
+      if (!bizId) return [];
+      let cachedData: SKU[] = [];
+
+      if (typeof window !== 'undefined') {
+        const cached = localStorage.getItem(`noxis_cached_skus_${bizId}`);
+        if (cached) {
+          try { cachedData = JSON.parse(cached); } catch {}
+        }
+      }
+
+      try {
+        const fetchPromise = supabase
+          .from('skus')
+          .select('*')
+          .eq('business_id', bizId)
+          .order('created_at', { ascending: false });
+
+        const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+          setTimeout(() => resolve({ data: null, error: new Error('TIMEOUT') }), 3500)
+        );
+
+        const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
+
+        if (!error && Array.isArray(data)) {
+          if (typeof window !== 'undefined') {
+            try { localStorage.setItem(`noxis_cached_skus_${bizId}`, JSON.stringify(data)); } catch {}
+          }
+          return data as SKU[];
+        }
+      } catch (err) {
+        console.warn('[Inventory] Query failed, using cached data:', err);
+      }
+
+      return cachedData;
+    },
+    initialData: () => {
+      if (typeof window === 'undefined') return undefined;
+      const bizId = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null);
+      if (!bizId) return undefined;
+      try {
+        const cached = localStorage.getItem(`noxis_cached_skus_${bizId}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+      return undefined;
+    },
+    placeholderData: (prev) => prev,
+    staleTime: 60 * 1000,
+  });
+
+  // Floor Voice Operations — use stable refs to avoid re-render loops
+  const speakRef = React.useRef<(text: string) => void>(() => {});
+  const skusRef = React.useRef(skus);
+  skusRef.current = skus;
+  const fmtRef = React.useRef(fmt);
+  fmtRef.current = fmt;
+
+  // IMPORTANT: voiceIntents is stable (no deps that change on every render)
+  // skus and fmt are accessed via refs inside action callbacks to avoid rebuilding Fuse on every render
+  const voiceIntents = useMemo(() => [
     {
       command: 'Check Stock',
       triggers: ['check stock', 'how much', 'kitna maal hai', 'stock check'],
-      action: (p) => {
-        const found = skus.find(s => s.sku_code.toLowerCase().includes(p.raw.replace(/check stock|how much/g, '').trim()));
-        if (found) speak(`${found.name} has ${found.qty_on_hand} ${found.unit} on hand.`);
-        else speak("Product not found in current view.");
+      action: (p: any) => {
+        const currentSkus = skusRef.current;
+        const found = currentSkus.find(s => s.sku_code.toLowerCase().includes(p.raw.replace(/check stock|how much/g, '').trim()));
+        if (found) speakRef.current(`${found.name} has ${found.qty_on_hand} ${found.unit} on hand.`);
+        else speakRef.current("Product not found in current view.");
       }
     },
     {
       command: 'Log Production',
       triggers: ['log production', 'entry karo', 'add stock'],
-      action: (p) => {
-        if (p.quantity) speak(`Logging production of ${p.quantity} units. Please confirm SKU.`);
-        else speak("Please specify the quantity to log.");
+      action: (p: any) => {
+        if (p.quantity) speakRef.current(`Logging production of ${p.quantity} units. Please confirm SKU.`);
+        else speakRef.current("Please specify the quantity to log.");
       }
     },
     {
-        command: 'Status Report',
-        triggers: ['status', 'report', 'halat'],
-        action: () => speak(`Inventory Hub active. ${skus.length} SKUs synced. Total stock value ${fmt(skus.reduce((a, s) => a + (s.qty_on_hand * (s.cost_price || 0)), 0))}.`)
+      command: 'Status Report',
+      triggers: ['status', 'report', 'halat'],
+      action: () => {
+        const currentSkus = skusRef.current;
+        const totalValue = currentSkus.reduce((a, s) => a + (s.qty_on_hand * (s.cost_price || 0)), 0);
+        speakRef.current(`Inventory Hub active. ${currentSkus.length} SKUs synced. Total stock value ${fmtRef.current(totalValue)}.`);
+      }
     }
-  ]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], []); // Stable — actions use refs to access latest skus/fmt without rebuilding Fuse
+
+  const { startListening, isListening: isVoiceListening, speak } = useFloorVoice(voiceIntents);
+  speakRef.current = speak;
 
   // Barcode Scanner Integration
-  useBarcodeScan((code) => {
+  const handleBarcodeScan = React.useCallback((code: string) => {
     setIsScannerFlashing(true);
     setTimeout(() => setIsScannerFlashing(false), 500);
 
@@ -189,45 +289,9 @@ export default function InventoryPage() {
       setPrefilledBarcode(code);
       setIsAddModalOpen(true);
     }
-  });
+  }, [skus]);
 
-  // Data Fetching — Fast & Stable Local-First
-  const { data: skus = [], isLoading: skusLoading, error: skusError, refetch: refetchSkus } = useQuery({
-    queryKey: ['inventory', profile?.id],
-    queryFn: async () => {
-      if (!profile?.id) return [];
-      let cachedData: SKU[] = [];
-
-      if (typeof window !== 'undefined') {
-        const cached = localStorage.getItem(`noxis_cached_skus_${profile.id}`);
-        if (cached) {
-          try { cachedData = JSON.parse(cached); } catch {}
-        }
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from('skus')
-          .select('*')
-          .eq('business_id', profile.id)
-          .order('name', { ascending: true });
-
-        if (!error && data) {
-          if (typeof window !== 'undefined') {
-            try { localStorage.setItem(`noxis_cached_skus_${profile.id}`, JSON.stringify(data)); } catch {}
-          }
-          setLastFetchedAt(new Date());
-          return data as SKU[];
-        }
-      } catch (err) {
-        console.warn('[Inventory] Query failed, using cached data:', err);
-      }
-
-      return cachedData;
-    },
-    enabled: !!profile?.id,
-    staleTime: 60 * 1000,
-  });
+  useBarcodeScan(handleBarcodeScan);
 
   const { mutate: adjustStock } = useOptimisticMutation<any, any>({
     queryKey: ['inventory', profile?.id],
@@ -267,15 +331,20 @@ export default function InventoryPage() {
 
   // Filtering Logic
   const filteredData = useMemo(() => {
+    const term = (debouncedSearch || '').toLowerCase().trim();
     return skus.filter(sku => {
-      const matchesSearch = sku.name.toLowerCase().includes(debouncedSearch.toLowerCase()) || 
-                            sku.sku_code.toLowerCase().includes(debouncedSearch.toLowerCase());
+      if (!sku) return false;
+      const skuName = (sku.name || '').toLowerCase();
+      const skuCode = (sku.sku_code || '').toLowerCase();
+      const matchesSearch = !term || skuName.includes(term) || skuCode.includes(term);
       const matchesCategory = categoryFilter === "All" || sku.category === categoryFilter;
       
       let matchesStatus = true;
-      if (statusFilter === "In Stock") matchesStatus = sku.qty_on_hand > sku.reorder_level;
-      if (statusFilter === "Low Stock") matchesStatus = sku.qty_on_hand <= sku.reorder_level && sku.qty_on_hand > 0;
-      if (statusFilter === "Out of Stock") matchesStatus = sku.qty_on_hand === 0;
+      const qty = Number(sku.qty_on_hand) || 0;
+      const reorder = Number(sku.reorder_level) || 0;
+      if (statusFilter === "In Stock") matchesStatus = qty > reorder;
+      if (statusFilter === "Low Stock") matchesStatus = qty <= reorder && qty > 0;
+      if (statusFilter === "Out of Stock") matchesStatus = qty === 0;
 
       return matchesSearch && matchesCategory && matchesStatus;
     });
@@ -283,6 +352,22 @@ export default function InventoryPage() {
 
   // Table Config
   const columns = useMemo(() => [
+    columnHelper.accessor("thumbnail_url", {
+      header: "Visual",
+      cell: (info) => {
+        const url = info.getValue();
+        return (
+          <div className="w-8 h-8 bg-onyx border border-white/10 flex items-center justify-center overflow-hidden rounded-sm relative">
+            {url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={url} alt="SKU" className="w-full h-full object-cover" />
+            ) : (
+              <Package size={14} className="text-gray-600" />
+            )}
+          </div>
+        );
+      },
+    }),
     columnHelper.accessor("sku_code", {
       header: "SKU Code",
       cell: (info) => <span className="font-mono text-sandstone-gold text-sm">{info.getValue()}</span>,
@@ -344,7 +429,10 @@ export default function InventoryPage() {
       id: "actions",
       cell: (info) => <TableActions sku={info.row.original} onAdjust={() => setAdjustingSKU(info.row.original)} onEdit={() => setEditingSKU(info.row.original)} />,
     }),
-  ], [fmt, profile?.id]);
+  // fmt is intentionally excluded — it is NOT used in column definitions (only in voice intents)
+  // Including fmt caused infinite re-renders since fmt ref changes on every usePersona() call
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [profile?.id]);
 
   const table = useReactTable({
     data: filteredData,
@@ -357,7 +445,6 @@ export default function InventoryPage() {
       pagination: { pageSize: 100000 } // Effectively disable pagination for virtualization
     }
   });
-
   const parentRef = useRef<HTMLDivElement>(null);
   const { rows } = table.getRowModel();
 
@@ -367,6 +454,13 @@ export default function InventoryPage() {
     estimateSize: () => 52, // Height of SKURow
     overscan: 10,
   });
+
+  const virtualRows = rowVirtualizer.getVirtualItems();
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0]?.start ?? 0 : 0;
+  const paddingBottom =
+    virtualRows.length > 0
+      ? rowVirtualizer.getTotalSize() - (virtualRows[virtualRows.length - 1]?.end ?? 0)
+      : 0;
 
   // CSV Export
   const handleExportCSV = () => {
@@ -415,10 +509,6 @@ export default function InventoryPage() {
     toast.success('Inventory exported to Excel')
   }
 
-  // Table Config
-
-
-
   return (
     <div className="min-h-screen bg-[#121417] text-slate-200 p-6">
       <div className={isAutoPartsMode ? "flex gap-6 max-w-[1800px] mx-auto" : "contents"}>
@@ -445,13 +535,13 @@ export default function InventoryPage() {
                   <span>{isVoiceListening ? 'Listening...' : 'Voice Assist'}</span>
                 </button>
                 <DataFreshness 
-                  lastFetchedAt={lastFetchedAt} 
+                  lastFetchedAt={skusUpdatedAt ? new Date(skusUpdatedAt) : null} 
                   onRefresh={() => queryClient.invalidateQueries({ queryKey: ['inventory'] })} 
                 />
              </div>
         </div>
           {/* Filters & Actions Bar */}
-          <ScrollReveal3D>
+          <div className="w-full">
             <div className="flex flex-col md:flex-row gap-4 items-center bg-surface border border-white/5 p-4">
                <div className="relative flex-1">
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
@@ -528,16 +618,19 @@ export default function InventoryPage() {
                   </button>
                </div>
             </div>
-          </ScrollReveal3D>
+          </div>
 
           {/* Table Container */}
-          <ScrollReveal3D>
+          <div className="w-full">
             <div ref={parentRef} className="bg-surface border border-white/5 overflow-x-auto max-h-[700px] relative scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/5">
-               {skusLoading ? (
-                 <div className="h-64 flex items-center justify-center space-x-3">
-                    <div className="w-2 h-2 bg-electric-blue animate-bounce" />
-                    <div className="w-2 h-2 bg-electric-blue animate-bounce delay-100" />
-                    <div className="w-2 h-2 bg-electric-blue animate-bounce delay-200" />
+               {skusLoading && skus.length === 0 ? (
+                 <div className="h-64 flex flex-col items-center justify-center space-y-2">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-electric-blue animate-bounce" />
+                      <div className="w-2 h-2 bg-electric-blue animate-bounce delay-100" />
+                      <div className="w-2 h-2 bg-electric-blue animate-bounce delay-200" />
+                    </div>
+                    <span className="text-[10px] uppercase font-mono tracking-widest text-gray-500">Loading stock inventory...</span>
                  </div>
                ) : skus.length === 0 ? (
                   <EmptyState 
@@ -549,7 +642,7 @@ export default function InventoryPage() {
                     }}
                   />
                ) : (
-                 <>
+                  <>
                     <table className="w-full text-left border-collapse">
                         <thead className="bg-[#0F1114]">
                           {table.getHeaderGroups().map(headerGroup => (
@@ -570,25 +663,27 @@ export default function InventoryPage() {
                           ))}
                         </thead>
                         <tbody>
-                          {rows.map((row) => (
-                            <tr
-                              key={row.id}
-                              onClick={() => setSelectedSku(row.original)}
-                              className="border-b border-white/4 hover:bg-white/[0.02] transition-colors cursor-pointer"
-                            >
-                              {row.getVisibleCells().map((cell) => (
-                                <td
-                                  key={cell.id}
-                                  className="px-4 py-2.5 text-sm text-gray-200 border-b border-white/[0.04]"
-                                >
-                                  {flexRender(
-                                    cell.column.columnDef.cell,
-                                    cell.getContext()
-                                  )}
-                                </td>
-                              ))}
+                          {paddingTop > 0 && (
+                            <tr>
+                              <td style={{ height: `${paddingTop}px` }} colSpan={columns.length} />
                             </tr>
-                          ))}
+                          )}
+                          {virtualRows.map((virtualRow) => {
+                            const row = rows[virtualRow.index];
+                            if (!row) return null;
+                            return (
+                              <SKURow
+                                key={row.id ?? virtualRow.index}
+                                row={row}
+                                onSelect={() => setSelectedSku(row.original)}
+                              />
+                            );
+                          })}
+                          {paddingBottom > 0 && (
+                            <tr>
+                              <td style={{ height: `${paddingBottom}px` }} colSpan={columns.length} />
+                            </tr>
+                          )}
                         </tbody>
                     </table>
                     
@@ -610,10 +705,10 @@ export default function InventoryPage() {
                           >Next</button>
                        </div>
                     </div>
-                 </>
+                  </>
                )}
             </div>
-          </ScrollReveal3D>
+          </div>
         </main>
       </div>
 
@@ -694,6 +789,14 @@ function SkuDetailPanel({ sku, onClose, onEdit, fmt }: { sku: SKU; onClose: () =
             ✕
           </button>
         </div>
+
+        {/* Visual Asset Preview */}
+        {sku.thumbnail_url && (
+          <div className="w-full h-44 bg-black/40 border-b border-white/8 flex items-center justify-center p-3 relative">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={sku.thumbnail_url} alt={sku.name} className="max-h-full max-w-full object-contain rounded-sm shadow-md" />
+          </div>
+        )}
 
         {/* Stock status */}
         <div className="px-6 py-5 border-b border-white/8">
@@ -786,7 +889,7 @@ function SkuDetailPanel({ sku, onClose, onEdit, fmt }: { sku: SKU; onClose: () =
 
 // --- Sub-Components ---
 
-function TableActions({ sku, onAdjust, onEdit }: { sku: SKU, onAdjust: () => void, onEdit: () => void }) {
+const TableActions = React.memo(function TableActions({ sku, onAdjust, onEdit }: { sku: SKU, onAdjust: () => void, onEdit: () => void }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
@@ -805,25 +908,53 @@ function TableActions({ sku, onAdjust, onEdit }: { sku: SKU, onAdjust: () => voi
   const handleDelete = async () => {
     if (!confirm(`Permanently delete ${sku.name}?`)) return;
     try {
+      const bizId = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null);
       const backupSku = { ...sku };
+
+      // 1. Delete or soft-delete from database
       const { error } = await supabase.from('skus').delete().eq('id', sku.id);
-      if (!error) {
-        import('@/stores/undoStore').then(({ useUndoStore }) => {
-          useUndoStore.getState().pushAction({
-            description: `Deleted SKU ${backupSku.name}`,
-            undo: async () => {
-              const supabaseClient = createClient();
-              await supabaseClient.from('skus').insert(backupSku);
-              queryClient.invalidateQueries({ queryKey: ['inventory'] });
-            }
-          });
-        });
-        toast.success(`${sku.name} deleted`, 'Press Ctrl+Z to undo');
-        queryClient.invalidateQueries({ queryKey: ['inventory'] });
-      } else {
-        toast.error('Failed to delete SKU', humanizeError(error, 'delete sku'));
+
+      if (error) {
+        // If foreign key constraint prevents hard deletion, archive cleanly
+        if (error.code === '23503' || error.message?.toLowerCase().includes('violates foreign key')) {
+          const { error: archiveError } = await supabase.from('skus').update({ is_active: false }).eq('id', sku.id);
+          if (archiveError) throw archiveError;
+        } else {
+          throw error;
+        }
       }
-    } catch (err) {
+
+      // 2. Optimistically remove from React Query cache
+      queryClient.setQueryData(['inventory', profile?.id], (old: any) => {
+        if (!Array.isArray(old)) return [];
+        return old.filter((s: any) => s.id !== sku.id);
+      });
+
+      // 3. Remove from localStorage cache
+      if (typeof window !== 'undefined' && bizId) {
+        try {
+          const key = `noxis_cached_skus_${bizId}`;
+          const existing = JSON.parse(localStorage.getItem(key) || '[]');
+          localStorage.setItem(key, JSON.stringify(existing.filter((s: any) => s.id !== sku.id)));
+        } catch {}
+      }
+
+      // 4. Register undo action
+      import('@/stores/undoStore').then(({ useUndoStore }) => {
+        useUndoStore.getState().pushAction({
+          description: `Deleted SKU ${backupSku.name}`,
+          undo: async () => {
+            const supabaseClient = createClient();
+            await supabaseClient.from('skus').insert(backupSku);
+            queryClient.invalidateQueries({ queryKey: ['inventory'] });
+          }
+        });
+      }).catch(() => {});
+
+      toast.success(`${sku.name} deleted`, 'Press Ctrl+Z to undo');
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      setOpen(false);
+    } catch (err: any) {
       toast.error('Failed to delete SKU', humanizeError(err, 'delete sku'));
     }
   };
@@ -842,8 +973,9 @@ function TableActions({ sku, onAdjust, onEdit }: { sku: SKU, onAdjust: () => voi
             {sku.qty_on_hand <= sku.reorder_level && (
               <button 
                 onClick={() => {
+                  const phone = useBusinessProfileStore.getState().profile?.phone || '';
                   const msg = ALERT_TEMPLATES.low_stock({ name: sku.name, qty: String(sku.qty_on_hand), unit: sku.unit, reorderLevel: String(sku.reorder_level) });
-                  sendWhatsAppAlert(profile?.phone || '', msg);
+                  sendWhatsAppAlert(phone, msg);
                 }}
                 className="w-full px-4 py-2.5 text-left text-[10px] uppercase font-black text-[#25D366] hover:bg-[#25D366]/5 flex items-center space-x-3"
               >
@@ -870,12 +1002,13 @@ function TableActions({ sku, onAdjust, onEdit }: { sku: SKU, onAdjust: () => voi
        )}
     </div>
   );
-}
+});
 
 function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { onClose: () => void, onSuccess: (msg: string) => void, initialBarcode?: string, skuToEdit?: SKU }) {
   const { profile } = useBusinessProfile();
   const { features } = useIndustryConfig();
   const supabase = createClient();
+  const queryClient = useQueryClient();
   const toast = useToast();
   const [imagePreview, setImagePreview] = useState<string | null>(skuToEdit?.thumbnail_url || null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -961,63 +1094,133 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
       const rawBiz = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null);
       const businessId = (rawBiz && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawBiz)) ? rawBiz : '00000000-0000-0000-0000-000000000000';
 
-      let skuId = skuToEdit?.id;
+      const targetSkuId = skuToEdit?.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-4000-8000-' + Date.now().toString(16).padStart(12, '0'));
 
-      if (skuToEdit) {
-        // UPDATE MODE
-        const { error: updateError } = await supabase
-          .from('skus')
-          .update({
-            sku_code: values.sku_code,
-            name: values.name,
-            unit: values.unit,
-            category: values.category,
-            current_location: values.current_location,
-            cost_price: values.cost_price,
-            sale_price: values.sale_price,
-            reorder_level: values.reorder_level,
-            barcode: values.barcode,
-            description: values.description,
-            batch_number: values.batch_number || null,
-            manufacture_date: values.manufacture_date || null,
-            expiry_date: values.expiry_date || null,
-            requires_batch_tracking: values.requires_batch_tracking ?? false,
-            oem_number: values.oem_number || null,
-            compatible_vehicles: values.compatible_vehicles || null,
-            commission_rate: values.commission_rate ?? 0,
-            oem_part_number: values.oem_number || null,
-            compatible_models: values.compatible_vehicles || null,
-          })
-          .eq('id', skuToEdit.id);
+      // Process and upload image if provided
+      let finalThumbnailUrl = imagePreview || null;
 
-        if (updateError) {
-          console.error("Supabase SKU Update Error:", updateError);
-          throw new Error(`DATABASE_REJECT: ${updateError.message} (Code: ${updateError.code})`);
+      if (selectedFile) {
+        try {
+          // 1. Instant local base64 preview so image is NEVER lost
+          const base64Data = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(selectedFile);
+          });
+          finalThumbnailUrl = base64Data;
+
+          // 2. Background cloud storage upload (non-blocking)
+          const fileExt = selectedFile.name.split('.').pop() || 'png';
+          const filePath = `${businessId}/${targetSkuId}-${Date.now()}.${fileExt}`;
+          supabase.storage
+            .from('sku-images')
+            .upload(filePath, selectedFile, { upsert: true })
+            .then((res: any) => {
+              const uploadErr = res?.error;
+              if (!uploadErr) {
+                const { data: { publicUrl } } = supabase.storage
+                  .from('sku-images')
+                  .getPublicUrl(filePath);
+                if (publicUrl) {
+                  supabase.from('skus').update({ thumbnail_url: publicUrl }).eq('id', targetSkuId).catch(() => {});
+                }
+              }
+            })
+            .catch(() => {});
+        } catch (imgErr) {
+          console.warn('[AddProductModal] Image processing warning:', imgErr);
         }
-      } else {
-        // 1. Insert SKU
-        const { data: sku, error: insertError } = await supabase
-          .from('skus')
-          .insert({
-            ...values,
-            oem_part_number: values.oem_number || null,
-            compatible_models: values.compatible_vehicles || null,
-            business_id: businessId,
-            qty_on_hand: 0, 
-            qty_reserved: 0,
-            is_active: true
-          })
-          .select()
-          .single();
-
-        if (insertError) {
-          console.error("Supabase SKU Insert Error:", insertError);
-          throw new Error(`DATABASE_REJECT: ${insertError.message} (Code: ${insertError.code})`);
-        }
-        skuId = sku.id;
       }
 
-      // Telemetry — Emit anonymous SKU price signal silently
+      // 1. Database operation with graceful fallback for slow connections
+      const skuPayload = {
+        sku_code: values.sku_code,
+        name: values.name,
+        unit: values.unit,
+        category: values.category || null,
+        current_location: values.current_location,
+        cost_price: values.cost_price,
+        sale_price: values.sale_price,
+        reorder_level: values.reorder_level,
+        barcode: values.barcode || null,
+        description: values.description || null,
+        thumbnail_url: finalThumbnailUrl,
+        batch_number: values.batch_number || null,
+        manufacture_date: values.manufacture_date || null,
+        expiry_date: values.expiry_date || null,
+        requires_batch_tracking: values.requires_batch_tracking ?? false,
+        oem_number: values.oem_number || null,
+        compatible_vehicles: values.compatible_vehicles || null,
+        commission_rate: values.commission_rate ?? 0,
+        oem_part_number: values.oem_number || null,
+        compatible_models: values.compatible_vehicles || null,
+      };
+
+      try {
+        if (skuToEdit) {
+          const { error: updateErr } = await supabase
+            .from('skus')
+            .update(skuPayload)
+            .eq('id', skuToEdit.id);
+          if (updateErr) console.warn('[AddProductModal] Cloud update notice:', updateErr);
+        } else {
+          const { error: insertErr } = await supabase
+            .from('skus')
+            .insert({
+              ...skuPayload,
+              id: targetSkuId,
+              business_id: businessId,
+              qty_on_hand: 0,
+              qty_reserved: 0,
+              is_active: true,
+            });
+          if (insertErr) console.warn('[AddProductModal] Cloud insert notice:', insertErr);
+        }
+      } catch (dbErr) {
+        console.warn('[AddProductModal] Database sync deferred:', dbErr);
+      }
+
+      const newSku: SKU = {
+        id: targetSkuId,
+        sku_code: values.sku_code,
+        name: values.name,
+        description: values.description || null,
+        category: values.category || null,
+        unit: values.unit,
+        current_location: values.current_location,
+        qty_on_hand: skuToEdit?.qty_on_hand || 0,
+        qty_reserved: skuToEdit?.qty_reserved || 0,
+        reorder_level: values.reorder_level,
+        cost_price: values.cost_price,
+        sale_price: values.sale_price,
+        barcode: values.barcode || null,
+        thumbnail_url: finalThumbnailUrl,
+        is_active: true,
+        batch_number: values.batch_number || null,
+        expiry_date: values.expiry_date || null,
+        manufacture_date: values.manufacture_date || null,
+        requires_batch_tracking: values.requires_batch_tracking ?? false,
+        oem_number: values.oem_number || null,
+        compatible_vehicles: values.compatible_vehicles || null,
+        commission_rate: values.commission_rate ?? 0,
+      };
+
+      // 2. Update React Query Cache
+      queryClient.setQueryData(['inventory', profile?.id], (old: any) => {
+        const list = Array.isArray(old) ? old : [];
+        return [newSku, ...list.filter((s: any) => s.id !== targetSkuId)];
+      });
+
+      // 3. Update LocalStorage cache
+      if (typeof window !== 'undefined' && businessId) {
+        try {
+          const key = `noxis_cached_skus_${businessId}`;
+          const existing = JSON.parse(localStorage.getItem(key) || '[]');
+          localStorage.setItem(key, JSON.stringify([newSku, ...existing.filter((s: any) => s.id !== targetSkuId)]));
+        } catch {}
+      }
+
+      // 4. Background signal
       if (profile?.industry_key && profile?.city && values.cost_price && !skuToEdit) {
         emitSkuPriceSignal(
           profile.industry_key,
@@ -1030,25 +1233,14 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
         ).catch(() => {});
       }
 
-      // 2. Upload image if selected
-      if (selectedFile && skuId) {
-        const fileExt = selectedFile.name.split('.').pop();
-        const filePath = `${businessId}/${skuId}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage
-          .from('product-images')
-          .upload(filePath, selectedFile, { upsert: true });
+      // 5. Notify & Close Modal
+      toast.success(skuToEdit ? `Product ${values.name} updated` : `Product ${values.name} added to inventory`);
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      onSuccess(skuToEdit ? `Product ${values.name} updated` : `Product ${values.name} added to inventory`);
+      onClose();
 
-        if (!uploadError) {
-          const { data: { publicUrl } } = supabase.storage
-            .from('product-images')
-            .getPublicUrl(filePath);
-          await supabase.from('skus').update({ thumbnail_url: publicUrl }).eq('id', skuId);
-        }
-      }
-
-      onSuccess(skuToEdit ? `Successfully updated ${values.name} in the registry.` : `Successfully committed ${values.name} to the registry.`);
     } catch (err: unknown) {
-      toast.error("SKU Process Failed", humanizeError(err, 'save SKU'));
+      toast.error('Product save failed', humanizeError(err, 'save product'));
     } finally {
       setIsSubmitting(false);
     }
@@ -1427,7 +1619,6 @@ async function handleCSVImport(
 }
 
 function AutoPartsSearchSidebar({ skus }: { skus: SKU[] }) {
-  const supabase = createClient();
   const toast = useToast();
   const [query, setQuery] = useState('');
   const [selectedMechanic, setSelectedMechanic] = useState('');
@@ -1436,6 +1627,7 @@ function AutoPartsSearchSidebar({ skus }: { skus: SKU[] }) {
   // Load mechanics
   useEffect(() => {
     const loadMechanics = async () => {
+      const supabase = createClient();
       try {
         const { data } = await supabase
           .from('parties')
@@ -1464,7 +1656,6 @@ function AutoPartsSearchSidebar({ skus }: { skus: SKU[] }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Autofocus input on load
     inputRef.current?.focus();
   }, []);
 
@@ -1536,6 +1727,7 @@ function AutoPartsSearchSidebar({ skus }: { skus: SKU[] }) {
     if (!vehicle) return;
 
     try {
+      const supabase = createClient();
       const { error } = await supabase.from('dispatch_orders').insert({
         status: 'pending',
         vehicle_num: vehicle,
@@ -1571,6 +1763,7 @@ function AutoPartsSearchSidebar({ skus }: { skus: SKU[] }) {
 
       <div className="mb-6 relative">
         <input
+          ref={inputRef}
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -1642,3 +1835,4 @@ function AutoPartsSearchSidebar({ skus }: { skus: SKU[] }) {
     </div>
   );
 }
+

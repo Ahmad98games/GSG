@@ -6,66 +6,30 @@ directories:
   buildResources: build
   output: dist
 
-# Files to include in the app
+# Fast compression for significantly faster installer generation
+compression: normal
+
+# Files to include in app.asar (minimal for speed and reliability)
 files:
-  - "**/*"
-  - "!src"
-  - "!.next"
-  - "!dist"
-  - "!*.ts"
-  - "!*.map"
-  - "!.git"
-  - "!scratch"
-  - "!.agents"
-  - "!.claude"
-  - "!.windsurf"
-  - "!.github"
-  - "!.venv"
-  - "!android"
-  - "!supabase"
-  - "!scripts"
-  - "!*.html"
-  - "!audit*"
-  - "!lint_results*"
-  - dist-electron/**/*
-  - package.json
+  - "dist-electron/**/*"
+  - "package.json"
+  - "!src/**"
+  - "!android/**"
+  - "!supabase/**"
+  - "!scripts/**"
+  - "!software images/**"
+  - "!coverage/**"
+  - "!winCodeSign/**"
+  - "!**/*.ts"
+  - "!**/*.map"
+  - "!**/*.md"
 
 # Extra resources copied to resources/
 # These are accessible via process.resourcesPath
 extraResources:
-  # The Next.js standalone server
+  # The Next.js standalone bundle (already fully assembled with static, public, migrations, node_modules by build-electron.mjs)
   - from: ".next/standalone"
     to: "standalone"
-    filter:
-      - "**/*"
-
-  # Standalone node_modules (copied explicitly since electron-builder ignores nested node_modules)
-  - from: ".next/standalone/node_modules"
-    to: "standalone/node_modules"
-    filter:
-      - "**/*"
-
-  # Mobile WebSocket bridge wrapper server
-  # Spawned by electron/main.ts instead of bare server.js.
-  # Boots Next.js + attaches /mobile-bridge WebSocket endpoint.
-  - from: "server-with-bridge.js"
-    to: "standalone/server-with-bridge.js"
-
-  # SQLite database migrations
-  - from: "src/lib/db/migrations"
-    to: "standalone/src/lib/db/migrations"
-    filter:
-      - "**/*"
-
-  # Static files the server needs
-  - from: ".next/static"
-    to: "standalone/.next/static"
-    filter:
-      - "**/*"
-
-  # Public folder
-  - from: "public"
-    to: "standalone/public"
     filter:
       - "**/*"
 
@@ -75,6 +39,9 @@ extraResources:
     to: "better-sqlite3-multiple-ciphers"
     filter:
       - "**/*"
+      - "!deps"
+      - "!src"
+      - "!*.md"
 
   # Build assets (icon etc)
   - from: "build"
@@ -100,8 +67,9 @@ win:
     - target: nsis
       arch:
         - x64
-  # Edit executable resources (icon and metadata) in the final Windows binary
-  signAndEditExecutable: true
+  # Skip unnecessary signing tool attempts on embedded resources
+  signAndEditExecutable: false
+  forceCodeSigning: false
 
 nsis:
   oneClick: false
@@ -114,6 +82,7 @@ nsis:
   uninstallDisplayName: "Noxis Hub"
   allowElevation: true
   perMachine: false
+  differentialPackage: false
 
 mac:
   icon: build/icon.icns

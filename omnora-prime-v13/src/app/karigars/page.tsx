@@ -42,10 +42,11 @@ import Image from 'next/image';
 import FinancialAmount from "@/components/ui/FinancialAmount";
 import { useRowHighlight } from "@/hooks/useRowHighlight";
 import AnimatedNumber from "@/components/ui/AnimatedNumber";
-import { Skeleton, KpiCardSkeleton, CardGridSkeleton } from "@/components/ui/Skeleton";
 import { ErrorState, EmptyState as NewEmptyState, FieldError } from "@/components/ui/StateViews";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { KarigarGradeBadge } from "@/components/karigars/KarigarGradeBadge";
+import { KARIGAR_GRADES, getGradeInfo } from "@/lib/karigars/gradeSystem";
 
 // --- Types ---
 
@@ -63,6 +64,7 @@ export interface Karigar {
   status: 'active' | 'inactive' | 'on_leave';
   skill_type: string;
   joining_date: string;
+  grade?: string | null;
   karigar_grades: { grade_name: string } | null;
 }
 
@@ -86,7 +88,8 @@ const karigarSchema = z.object({
   }, "Enter a valid phone number"),
   address: z.string().optional(),
   skill_type: z.string().min(1, "Skill type is required"),
-  grade_id: z.string().min(1, "Grade is required"),
+  grade: z.enum(['MASTER', 'A', 'B', 'C']).default('B'),
+  grade_id: z.string().optional(),
   wage_type: z.enum(['piece_rate', 'daily_wage', 'monthly_salary']),
   rate: z.coerce.number().min(0, "Rate cannot be negative"),
   joining_date: z.string().min(1, "Joining date is required"),
@@ -118,702 +121,36 @@ const advanceSchema = z.object({
   notes: z.string().optional(),
 });
 
-// --- Main Component ---
+// --- Sub-Components ---
 
-export default function KarigarsPage() {
-  const { profile } = useBusinessProfile();
-  const { t, features, fmt } = useIndustryConfig();
-  const workerTerm = t.worker;
-  const workerTermPlural = t.workers;
-  const supabase = createClient();
-  const queryClient = useQueryClient();
-  const toast = useToast();
-
-  const [searchTerm, setSearchTerm] = useState("");
-  const registerModalRef = useRef<{ open: () => void }>(null);
-  const [attendingKarigar, setAttendingKarigar] = useState<Karigar | null>(null);
-  const [advancingKarigar, setAdvancingKarigar] = useState<Karigar | null>(null);
-  const [logOutputKarigar, setLogOutputKarigar] = useState<Karigar | null>(null);
-  const [wageFilter, setWageFilter] = useState<'all' | 'piece_rate' | 'daily_wage' | 'monthly_salary'>('all');
-  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
-  const [successToast, setSuccessToast] = useState<string | null>(null);
-  const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
-
-  // Memoized handlers
-  const handleLogOutput = React.useCallback((k: Karigar) => {
-    setLogOutputKarigar(k);
-  }, []);
-
-  const handleAttend = React.useCallback((k: Karigar) => {
-    setAttendingKarigar(k);
-  }, []);
-
-  const handleAdvance = React.useCallback((k: Karigar) => {
-    setAdvancingKarigar(k);
-  }, []);
-
-  const handleDelete = React.useCallback(async (karigar: Karigar) => {
-    if (!confirm(`Are you sure you want to deactivate ${karigar.name}?`)) return;
-
-    try {
-      const { error } = await supabase
-        .from('karigars')
-        .update({ status: 'inactive' })
-        .eq('id', karigar.id);
-
-      if (!error) {
-        import('@/stores/undoStore').then(({ useUndoStore }) => {
-          useUndoStore.getState().pushAction({
-            description: `Deactivated ${karigar.name}`,
-            undo: async () => {
-              const supabaseClient = createClient();
-              await supabaseClient
-                .from('karigars')
-                .update({ status: 'active' })
-                .eq('id', karigar.id);
-              queryClient.invalidateQueries({ queryKey: ['karigars'] });
-            }
-          });
-        });
-
-        toast.success(`${karigar.name} deactivated`, { message: 'Press Ctrl+Z to undo' });
-        queryClient.invalidateQueries({ queryKey: ['karigars'] });
-      } else {
-        toast.error('Failed to deactivate worker', humanizeError(error, 'deactivate karigar'));
-      }
-    } catch (err) {
-      toast.error('Failed to deactivate worker', humanizeError(err, 'deactivate karigar'));
-    }
-  }, [supabase, queryClient, toast]);
-
-  // Queries
-  const { data: karigars = [], isLoading, error: karigarsError, refetch: refetchKarigars } = useQuery({
-    queryKey: ['karigars', profile?.id],
-    queryFn: async () => {
-      let cachedData: Karigar[] = [];
-      if (typeof window !== 'undefined' && profile?.id) {
-        try {
-          const cached = localStorage.getItem(`noxis_cached_karigars_${profile.id}`);
-          if (cached) cachedData = JSON.parse(cached);
-        } catch {}
-      }
-
-      try {
-        let { data, error } = await supabase
-          .from('karigars')
-          .select('*, karigar_grades(grade_name)')
-          .eq('business_id', profile?.id)
-          .order('name');
-        if (error) {
-          const simple = await supabase
-            .from('karigars')
-            .select('*')
-            .eq('business_id', profile?.id)
-            .order('name');
-          if (simple.error) throw simple.error;
-          data = simple.data;
-        }
-        if (data) {
-          if (typeof window !== 'undefined' && profile?.id) {
-            try { localStorage.setItem(`noxis_cached_karigars_${profile.id}`, JSON.stringify(data)); } catch {}
-          }
-          return data as Karigar[];
-        }
-      } catch (err) {
-        console.warn('[Karigars] Fetch failed, returning cached karigars:', err);
-      }
-
-      return cachedData;
-    },
-    enabled: !!profile?.id,
-    staleTime: 10 * 60 * 1000,
-  });
-
-  const { data: attendanceToday = [] } = useQuery({
-    queryKey: ['attendance_today', profile?.id],
-    queryFn: async () => {
-      const today = new Date().toISOString().split('T')[0];
-      const { data, error } = await supabase
-        .from('attendance_logs')
-        .select('karigar_id')
-        .eq('business_id', profile?.id)
-        .eq('log_date', today)
-        .eq('status', 'present');
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!profile?.id,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const { data: grades = [] } = useQuery({
-    queryKey: ['karigar_grades', profile?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('karigar_grades').select('*').eq('business_id', profile?.id);
-      if (error) throw error;
-      return data as Grade[];
-    },
-    enabled: !!profile?.id,
-    staleTime: 30 * 60 * 1000,
-  });
-
-  // Query active batches for production logging modal in the parent to avoid on-mount fetch
-  const { data: activeBatches = [] } = useQuery({
-    queryKey: ['active_batches_karigars', profile?.id],
-    queryFn: async () => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-      try {
-        const { data, error } = await supabase
-          .from('production_batches')
-          .select('id, batch_no, sku_id, skus(name, unit)')
-          .eq('business_id', profile?.id)
-          .neq('status', 'completed')
-          .order('created_at', { ascending: false })
-          .abortSignal(controller.signal)
-          .limit(50);
-        if (error) throw error;
-        return data;
-      } finally {
-        clearTimeout(timeoutId);
-      }
-    },
-    enabled: !!profile?.id,
-    staleTime: 10 * 60 * 1000,
-  });
-
-  const { mutate: markAttendance } = useOptimisticMutation<any, any>({
-    queryKey: ['attendance_today', profile?.id],
-    optimisticUpdate: (current, variables) => {
-      const { karigarId, status, date } = variables;
-      const existing = current.find(
-        (a: any) => a.karigar_id === karigarId
-      );
-      if (existing) {
-        return current.map((a: any) =>
-          a.karigar_id === karigarId
-            ? { ...a, status }
-            : a
-        );
-      }
-      return [...current, {
-        karigar_id: karigarId,
-        status,
-        log_date: date,
-        id: `temp_${karigarId}`,
-      }];
-    },
-    mutationFn: async (variables) => {
-      const { error } = await supabase
-        .from('attendance_logs')
-        .upsert({
-          business_id: profile?.id,
-          karigar_id: variables.karigarId,
-          log_date: variables.date,
-          status: variables.status,
-          notes: variables.notes,
-        }, {
-          onConflict: 'business_id,karigar_id,log_date'
-        });
-      if (error) throw error;
-    },
-    successMessage: undefined,
-    errorMessage: 'Attendance queued — will sync when online',
-    undoDescription: 'Attendance mark',
-  });
-
-  const { mutate: logProduction } = useOptimisticMutation<any, any>({
-    queryKey: ['active_batches_karigars', profile?.id],
-    optimisticUpdate: (current, variables) => {
-      return current;
-    },
-    mutationFn: async (variables) => {
-      const { error } = await supabase
-        .from('karigar_production_logs')
-        .insert({
-          business_id: profile?.id,
-          karigar_id: variables.karigar_id,
-          batch_id: variables.batch_id,
-          sku_id: variables.sku_id,
-          qty_produced: variables.qty_produced,
-          piece_rate_used: variables.piece_rate_used,
-          quality_grade: variables.quality_grade,
-          department: variables.department,
-          time_taken_minutes: variables.time_taken_minutes,
-        });
-      if (error) throw error;
-    },
-    successMessage: 'Production logged',
-    undoDescription: 'Logged Production',
-    undoFn: async (variables) => {
-      const supabaseClient = createClient();
-      await supabaseClient
-        .from('karigar_production_logs')
-        .delete()
-        .eq('business_id', profile?.id)
-        .eq('karigar_id', variables.karigar_id)
-        .eq('qty_produced', variables.qty_produced)
-        .order('created_at', { ascending: false })
-        .limit(1);
-    }
-  });
-
-  // Summary Stats
-  const stats = useMemo(() => {
-    const active = karigars.filter(k => k.status === 'active');
-    const totalAdvances = karigars.reduce((acc, k) => acc.plus(new Decimal(k.current_advance)), new Decimal(0));
-    
-    // Honest payroll estimation based on active contracts
-    const estMonthlyPayroll = active.reduce((acc, k) => {
-      let monthly = new Decimal(0);
-      if (k.wage_type === 'monthly_salary') {
-        monthly = new Decimal(k.monthly_salary || 0);
-      } else if (k.wage_type === 'daily_wage') {
-        monthly = new Decimal(k.daily_rate || 0).times(26); // Standard 26-day industrial month
-      }
-      return acc.plus(monthly);
-    }, new Decimal(0));
-
-    return {
-      activeCount: active.length,
-      presentCount: attendanceToday.length,
-      advancesOutstanding: totalAdvances,
-      monthlyPayrollEst: estMonthlyPayroll
-    };
-  }, [karigars, attendanceToday]);
-
-  const exportToExcel = () => {
-    if (!karigars || karigars.length === 0) {
-      toast.error('No data to export')
-      return
-    }
-    
-    const data = karigars.map((k: Karigar) => ({
-      'Karigar Code': k.karigar_code,
-      'Name': k.name,
-      'Phone': k.phone || '',
-      'Wage Type': k.wage_type,
-      'Piece Rate': k.piece_rate || 0,
-      'Daily Rate': k.daily_rate || 0,
-      'Monthly Salary': k.monthly_salary || 0,
-      'Current Advance': k.current_advance || 0,
-      'Status': k.status,
-      'Skill Type': k.skill_type || '',
-      'Joining Date': k.joining_date || '',
-    }))
-    
-    const ws = XLSX.utils.json_to_sheet(data)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Karigars')
-    XLSX.writeFile(wb,
-      `noxis_karigars_${new Date().toISOString().split('T')[0]}.xlsx`
-    )
-    
-    toast.success('Karigars registry exported to Excel')
-  }
-
-  const columns = useMemo(() => {
-    const cols: any[] = [
-      columnHelper.accessor("name", {
-        header: "Name",
-        cell: (info) => {
-          const k = info.row.original;
-          const initials = k.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '';
-          return (
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-[#60A5FA]/20 flex items-center justify-center text-[10px] font-bold text-[#60A5FA] flex-shrink-0 overflow-hidden relative">
-                {k.photo_url ? (
-                  <Image src={k.photo_url} alt={k.name} fill className="object-cover" />
-                ) : (
-                  initials
-                )}
-              </div>
-              <span className="text-sm text-white font-medium">{k.name}</span>
-            </div>
-          );
-        }
-      }),
-      columnHelper.accessor("karigar_code", {
-        header: "Code",
-        cell: (info) => {
-          const k = info.row.original;
-          return (
-            <Link
-              href={`/karigars/${k.id}`}
-              className="text-[#60A5FA] hover:text-blue-300 transition-colors text-sm font-mono font-bold"
-            >
-              {k.karigar_code}
-            </Link>
-          );
-        }
-      }),
-      columnHelper.accessor("karigar_grades.grade_name", {
-        header: "Grade",
-        cell: (info) => (
-          <span className="text-xs text-gray-500">
-            {info.getValue() || "—"}
-          </span>
-        ),
-      }),
-      columnHelper.accessor("wage_type", {
-        header: "Pay Type",
-        cell: (info) => {
-          const type = info.getValue();
-          const colors = {
-            piece_rate: "text-electric-blue bg-electric-blue/10",
-            daily_wage: "text-amber-500 bg-amber-500/10",
-            monthly_salary: "text-emerald bg-emerald/10"
-          };
-          return <span className={cn("px-2 py-0.5 text-[9px] uppercase font-black rounded-sm", colors[type])}>{type.replace('_', ' ')}</span>;
-        }
-      })
-    ];
-
-    if (features.pieceRateWages) {
-      cols.push(
-        columnHelper.accessor("id", {
-          id: "rate",
-          header: () => <div className="text-right">{`Rate per ${t.productionUnit}`}</div>,
-          cell: (info) => {
-            const k = info.row.original;
-            let rate = 0;
-            let unit = "";
-            if (k.wage_type === 'piece_rate') { rate = k.piece_rate || 0; unit = ` / ${t.productionUnit}`; }
-            if (k.wage_type === 'daily_wage') { rate = k.daily_rate || 0; unit = " / day"; }
-            if (k.wage_type === 'monthly_salary') { rate = k.monthly_salary || 0; unit = " / mo"; }
-            return (
-              <FinancialAmount 
-                value={rate} 
-                unit={unit}
-                className="text-right"
-              />
-            );
-          }
-        })
-      );
-    }
-
-    if (features.peshgiAdvances) {
-      cols.push(
-        columnHelper.accessor("current_advance", {
-          header: () => <div className="text-right">{t.advance}</div>,
-          cell: (info) => <FinancialAmount value={info.getValue()} />,
-        })
-      );
-    }
-
-    cols.push(
-      columnHelper.accessor("status", {
-        header: "Status",
-        cell: (info) => {
-          const s = info.getValue();
-          const colors = { active: "bg-emerald", inactive: "bg-gray-700", on_leave: "bg-amber-500" };
-          return (
-            <div className="flex items-center space-x-2">
-               <div className={cn("w-1.5 h-1.5 rounded-full", colors[s])} />
-               <span className="text-[10px] uppercase font-bold text-gray-500">{s.replace('_', ' ')}</span>
-            </div>
-          );
-        }
-      }),
-      columnHelper.display({
-        id: "actions",
-        cell: (info) => {
-          const k = info.row.original;
-          const meta = info.table.options.meta as any;
-          return (
-            <div className="flex justify-end space-x-4">
-               {k.wage_type === 'piece_rate' && (
-                 <button 
-                   onClick={() => meta?.onLogOutput(k)}
-                   className="text-[10px] uppercase font-black text-sandstone-gold hover:text-white transition-colors flex items-center bg-transparent border-none cursor-pointer"
-                 >
-                   <Zap size={10} className="mr-1" /> {features.pieceRateWages ? 'Log Output' : 'Log Work'}
-                 </button>
-               )}
-               <button onClick={() => meta?.onAttend(k)} className="text-[10px] uppercase font-black text-gray-600 hover:text-white transition-colors">Attend</button>
-               <button onClick={() => meta?.onAdvance(k)} className="text-[10px] uppercase font-black text-gray-600 hover:text-white transition-colors">Advance</button>
-               <button onClick={() => meta?.onDelete(k)} className="text-[10px] uppercase font-black text-red-500 hover:text-red-400 transition-colors">Remove</button>
-               <Link href={`/karigars/${k.id}`} className="text-gray-500 hover:text-white"><ChevronRight size={16} /></Link>
-            </div>
-          );
-        }
-      })
-    );
-
-    return cols;
-  }, [features, t, fmt]);
-
-  const debouncedSearch = useDebounce(searchTerm, 300);
-
-  const filteredKarigars = useMemo(
-    () =>
-      karigars.filter((k) => {
-        const matchesSearch =
-          k.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-          (k.karigar_code && k.karigar_code.toLowerCase().includes(debouncedSearch.toLowerCase()));
-        const matchesWage = wageFilter === 'all' || k.wage_type === wageFilter;
-        return matchesSearch && matchesWage;
-      }),
-    [karigars, debouncedSearch, wageFilter]
-  );
-
-  const table = useReactTable({
-    data: filteredKarigars,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    initialState: { pagination: { pageSize: 100_000 } },
-    meta: {
-      onLogOutput: handleLogOutput,
-      onAttend: handleAttend,
-      onAdvance: handleAdvance,
-      onDelete: handleDelete,
-    }
-  });
-
-  const parentRef = useRef<HTMLDivElement>(null);
-  const { rows } = table.getRowModel();
-  const rowVirtualizer = useVirtualizer({
-    count: rows.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 52,
-    overscan: 10,
-  });
-  const virtualRows = rowVirtualizer.getVirtualItems();
-  const paddingTop = virtualRows.length > 0 ? virtualRows[0]?.start ?? 0 : 0;
-  const paddingBottom =
-    virtualRows.length > 0
-      ? rowVirtualizer.getTotalSize() - (virtualRows[virtualRows.length - 1]?.end ?? 0)
-      : 0;
-
-
-
+function SectionHeader({ icon: Icon, label }: { icon: React.ElementType, label: string }) {
   return (
-    <div className="min-h-screen bg-noxis-bg text-slate-200 p-6">
-      <main className="max-w-[1600px] mx-auto space-y-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight text-white">
-              {workerTermPlural} Registry
-            </h1>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Human Resource Management & Payouts
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-             <button 
-               onClick={() => registerModalRef.current?.open()}
-               className="flex items-center space-x-2 px-4 py-2 bg-electric-blue text-onyx text-sm font-semibold rounded-sm hover:brightness-110 transition-all shadow-lg"
-             >
-                <UserPlus size={14} />
-                <span>Register {workerTerm}</span>
-             </button>
-          </div>
-        </div>
-           {/* Summary Bar */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <SummaryCard label={`Total ${workerTermPlural}`} value={stats.activeCount} isCurrency={false} sub="Active duty" />
-              <SummaryCard label="Present Today" value={stats.presentCount} isCurrency={false} sub="Attendance logged" />
-              <SummaryCard label={t.advance} value={stats.advancesOutstanding.toNumber()} sub="Total outstanding" />
-              <SummaryCard label="Est. Payroll" value={stats.monthlyPayrollEst.toNumber()} sub="Projected this month" />
-            </div>
-
-            <div className="flex justify-end">
-               <DataFreshness 
-                 lastFetchedAt={lastFetchedAt} 
-                 onRefresh={() => queryClient.invalidateQueries({ queryKey: ['karigars'] })} 
-               />
-            </div>
-
-           {/* Table Controls */}
-           <div className="bg-surface border border-white/5 p-4 flex items-center justify-between">
-              <div className="relative w-96">
-                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-                 <input 
-                  type="text" 
-                  placeholder={`Search by name or ${workerTerm} code...`} 
-                  className="w-full bg-onyx border border-white/5 pl-10 pr-4 py-2 text-xs text-white outline-none focus:border-electric-blue/50"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                 />
-              </div>
-              <div className="flex items-center space-x-2 relative">
-                  <button 
-                    onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-                    className={cn(
-                      "p-2 border transition-colors",
-                      wageFilter !== 'all' ? "border-electric-blue text-electric-blue bg-electric-blue/10" : "border-white/5 text-gray-500 hover:text-white hover:bg-white/5"
-                    )}
-                    title="Filter workers"
-                  >
-                    <Filter size={16} />
-                  </button>
-                  {showFilterDropdown && (
-                    <div className="absolute right-0 top-10 z-50 w-48 bg-[#0F1115] border border-white/10 p-2 rounded-sm shadow-xl space-y-1">
-                      <p className="text-[9px] font-black uppercase text-gray-500 px-2 py-1">Filter by Wage Type</p>
-                      {[
-                        ['all', 'All Workers'],
-                        ['piece_rate', 'Piece Rate'],
-                        ['daily_wage', 'Daily Wage'],
-                        ['monthly_salary', 'Monthly Salary']
-                      ].map(([val, label]) => (
-                        <button
-                          key={val}
-                          onClick={() => {
-                            setWageFilter(val as any);
-                            setShowFilterDropdown(false);
-                          }}
-                          className={cn(
-                            "w-full text-left px-2 py-1.5 text-xs rounded-sm transition-colors",
-                            wageFilter === val ? "bg-electric-blue/20 text-electric-blue font-bold" : "text-gray-400 hover:bg-white/5 hover:text-white"
-                          )}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                 <button onClick={exportToExcel}
-                   className="flex items-center gap-1.5
-                     px-3 py-1.5 text-xs font-medium
-                     border border-white/10 text-gray-400
-                     hover:border-white/20 hover:text-white
-                     transition-colors">
-                   ↓ Export Excel
-                 </button>
-              </div>
-           </div>
-
-           {/* Main Registry Table */}
-           <div
-             ref={parentRef}
-             className="bg-surface border border-white/5 flex-1 overflow-x-auto overflow-y-auto max-h-[calc(100vh-200px)]"
-           >
-              {isLoading ? (
-                <div className="p-20 space-y-4">
-                   {[1,2,3,4,5].map(i => <div key={i} className="h-12 bg-white/[0.02] animate-pulse" />)}
-                </div>
-              ) : karigars.length === 0 ? (
-                <EmptyState 
-                  icon={Briefcase}
-                  page="karigars"
-                  action={{
-                    label: `Onboard First ${workerTerm}`,
-                    onClick: () => registerModalRef.current?.open()
-                  }}
-                />
-              ) : (
-                <table className="w-full text-left">
-                   <thead className="bg-[#1A1D21] border-b border-white/10 sticky top-0 z-10">
-                      {table.getHeaderGroups().map(hg => (
-                        <tr key={hg.id}>
-                           {hg.headers.map(h => (
-                             <th key={h.id} className="px-6 py-4 table-header">
-                                {flexRender(h.column.columnDef.header, h.getContext())}
-                             </th>
-                           ))}
-                        </tr>
-                      ))}
-                   </thead>
-                   <tbody>
-                      {paddingTop > 0 && (
-                        <tr>
-                          <td style={{ height: `${paddingTop}px` }} colSpan={columns.length} />
-                        </tr>
-                      )}
-                      {virtualRows.map((virtualRow) => {
-                        const row = rows[virtualRow.index];
-                        return (
-                          <KarigarRow key={row.id} row={row} />
-                        );
-                      })}
-                      {paddingBottom > 0 && (
-                        <tr>
-                          <td style={{ height: `${paddingBottom}px` }} colSpan={columns.length} />
-                        </tr>
-                      )}
-                   </tbody>
-                </table>
-              )}
-           </div>
-      </main>
-
-      {/* Register modal — always mounted, controls its own open state imperatively */}
-      <RegisterKarigarModal 
-       ref={registerModalRef}
-       grades={grades}
-       onSuccess={(msg) => {
-         setSuccessToast(msg);
-         queryClient.invalidateQueries({ queryKey: ['karigars'] });
-         queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
-         queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
-       }} 
-      />
-      {attendingKarigar && (
-        <AttendanceModal 
-         karigar={attendingKarigar}
-         onClose={() => setAttendingKarigar(null)}
-         onSuccess={(msg) => { setSuccessToast(msg); setAttendingKarigar(null); }}
-         onMark={markAttendance}
-        />
-      )}
-      {advancingKarigar && (
-        <AdvanceModal 
-         karigar={advancingKarigar}
-         onClose={() => setAdvancingKarigar(null)}
-         onSuccess={(msg) => { setSuccessToast(msg); setAdvancingKarigar(null); queryClient.invalidateQueries({ queryKey: ['karigars'] }); }}
-        />
-      )}
-
-      {/* LogProductionModal rendered via portal — mounts outside this page's render tree
-          so setLogOutputKarigar() does NOT trigger table/virtualizer re-renders */}
-      {logOutputKarigar &&
-        typeof document !== 'undefined' &&
-        createPortal(
-          <LogProductionModal
-            karigar={logOutputKarigar}
-            batches={activeBatches}
-            onClose={() => setLogOutputKarigar(null)}
-            onLog={logProduction}
-            onSaved={() => {
-              setSuccessToast(`Logged production output for ${logOutputKarigar.name} ✓`);
-              setLogOutputKarigar(null);
-              queryClient.invalidateQueries({
-                queryKey: ['karigars']
-              });
-              queryClient.invalidateQueries({
-                queryKey: ['production-logs']
-              });
-            }}
-          />,
-          document.body
-        )
-      }
-
-      {/* Toast Notification */}
-      <AnimatePresence>
-        {successToast && (
-          <motion.div 
-            initial={{ y: 50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 50, opacity: 0 }}
-            className="fixed bottom-8 right-8 z-[100] bg-emerald text-onyx px-6 py-3 flex items-center space-x-3 shadow-2xl rounded-sm font-bold uppercase text-xs tracking-widest"
-          >
-            <CheckCircle2 size={18} />
-            <span>{successToast}</span>
-            <button onClick={() => setSuccessToast(null)} className="ml-4 opacity-50 hover:opacity-100"><X size={14} /></button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <div className="flex items-center space-x-3 border-b border-white/5 pb-3">
+       <Icon size={14} className="text-gray-500" />
+       <span className="text-[10px] uppercase font-bold text-gray-500 tracking-widest">{label}</span>
     </div>
   );
 }
 
-// --- Sub-Components ---
+function Label({ children }: { children: React.ReactNode }) {
+  return <label className="text-[10px] uppercase font-bold text-gray-600 tracking-widest">{children}</label>;
+}
 
+const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>((props, ref) => (
+  <input ref={ref} {...props} className="w-full bg-onyx border border-white/10 p-3 text-xs text-white focus:border-electric-blue outline-none transition-all" />
+));
+Input.displayName = "Input";
+
+function ErrorMsg({ children }: { children: React.ReactNode }) {
+  return <div className="text-[9px] text-critical-red uppercase font-bold mt-1 flex items-center space-x-1">
+    <AlertCircle size={10} />
+    <span>{children}</span>
+  </div>;
+}
 
 const KarigarRow = React.memo(
   function KarigarRow({ row }: { row: any }) {
+    if (!row) return null;
     return (
        <tr 
          key={row.id} 
@@ -827,38 +164,60 @@ const KarigarRow = React.memo(
        </tr>
     );
   },
-  (prevProps, nextProps) => {
-    return prevProps.row.original === nextProps.row.original;
-  }
+  (prevProps, nextProps) => prevProps?.row?.original === nextProps?.row?.original
 );
 
-// RegisterKarigarModal — self-contained, controlled imperatively via forwardRef
-// This pattern avoids re-rendering the parent (and the heavy virtualizer) when the modal opens.
 const RegisterKarigarModal = forwardRef<
   { open: () => void },
   { grades: Grade[]; onSuccess: (msg: string) => void }
 >(function RegisterKarigarModal({ grades, onSuccess }, ref) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAddingGrade, setIsAddingGrade] = useState(false);
+  const [newGradeName, setNewGradeName] = useState('');
+  const [isSavingGrade, setIsSavingGrade] = useState(false);
   const { profile } = useBusinessProfile();
   const { t } = useIndustryConfig();
   const supabase = createClient();
   const toast = useToast();
+  const queryClient = useQueryClient();
 
-  // ALL hooks must be called unconditionally before any early return
+  const handleAddGrade = async () => {
+    const name = newGradeName.trim();
+    if (!name) return;
+    setIsSavingGrade(true);
+    try {
+      const rawBiz = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null);
+      const businessId = (rawBiz && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawBiz)) ? rawBiz : null;
+      if (!businessId) { toast.error('Business not set up'); return; }
+      const { error } = await supabase.from('karigar_grades').insert({ grade_name: name, business_id: businessId });
+      if (error) throw error;
+      toast.success(`Grade "${name}" created`);
+      queryClient.invalidateQueries({ queryKey: ['karigar_grades'] });
+      setNewGradeName('');
+      setIsAddingGrade(false);
+    } catch (err: any) {
+      toast.error('Failed to add grade', err?.message || '');
+    } finally {
+      setIsSavingGrade(false);
+    }
+  };
+
   const { register, handleSubmit, watch, reset, formState: { errors } } = useForm<KarigarFormValues>({
     resolver: zodResolver(karigarSchema),
     mode: 'onTouched',
     defaultValues: {
       joining_date: new Date().toISOString().split('T')[0],
       wage_type: 'piece_rate',
-      rate: 0
+      rate: 0,
+      grade: 'B'
     }
   });
 
-  useImperativeHandle(ref, () => ({ open: () => { reset(); setIsOpen(true); } }));
+  useImperativeHandle(ref, () => ({ open: () => { reset({ grade: 'B', wage_type: 'piece_rate', rate: 0, joining_date: new Date().toISOString().split('T')[0] }); setIsOpen(true); } }));
 
   const wageType = watch('wage_type');
+  const watchGrade = watch('grade') || 'B';
   const workerTerm = t.worker;
 
   const handleClose = () => setIsOpen(false);
@@ -868,8 +227,36 @@ const RegisterKarigarModal = forwardRef<
     try {
       const rawBiz = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null);
       const businessId = (rawBiz && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawBiz)) ? rawBiz : '00000000-0000-0000-0000-000000000000';
-      const newKarigar = {
-        id: 'karigar-' + Date.now().toString(36),
+
+      const targetKarigarId = (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-4000-8000-' + Date.now().toString(16).padStart(12, '0'));
+
+      const validGradeId = values.grade_id && values.grade_id.trim() !== '' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(values.grade_id)
+        ? values.grade_id
+        : null;
+
+      const gradeInfo = getGradeInfo(values.grade);
+
+      const newKarigar: Karigar = {
+        id: targetKarigarId,
+        karigar_code: 'KAR-' + Math.floor(1000 + Math.random() * 9000),
+        name: values.name,
+        phone: values.phone || null,
+        photo_url: null,
+        wage_type: values.wage_type,
+        piece_rate: values.wage_type === 'piece_rate' ? values.rate : 0,
+        daily_rate: values.wage_type === 'daily_wage' ? values.rate : 0,
+        monthly_salary: values.wage_type === 'monthly_salary' ? values.rate : 0,
+        current_advance: 0,
+        status: 'active',
+        skill_type: values.skill_type || 'General',
+        joining_date: values.joining_date || new Date().toISOString().split('T')[0],
+        grade: values.grade || 'B',
+        karigar_grades: { grade_name: gradeInfo.label }
+      };
+
+      // 1. Direct and awaited Database operation
+      const payload = {
+        id: targetKarigarId,
         business_id: businessId,
         name: values.name,
         father_name: values.father_name || '',
@@ -877,41 +264,73 @@ const RegisterKarigarModal = forwardRef<
         phone: values.phone || '',
         address: values.address || '',
         skill_type: values.skill_type || 'General',
-        grade_id: values.grade_id || null,
+        grade: values.grade || 'B',
+        grade_id: validGradeId,
         wage_type: values.wage_type,
-        piece_rate: values.wage_type === 'piece_rate' ? values.rate : 0,
-        daily_rate: values.wage_type === 'daily_wage' ? values.rate : 0,
-        monthly_salary: values.wage_type === 'monthly_salary' ? values.rate : 0,
-        joining_date: values.joining_date,
+        piece_rate: newKarigar.piece_rate,
+        daily_rate: newKarigar.daily_rate,
+        monthly_salary: newKarigar.monthly_salary,
+        joining_date: newKarigar.joining_date,
         status: 'active',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
 
+      // 1. Direct and awaited Database operation via /api/karigars (service role) or direct fallback
+      let savedSuccessfully = false;
       try {
-        await supabase.from('karigars').insert(newKarigar);
-      } catch (dbErr) {
-        // Continue cleanly to local storage update
+        const res = await fetch('/api/karigars', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ operation: 'create', payload }),
+        });
+        const json = await res.json();
+        if (res.ok && json.success) {
+          savedSuccessfully = true;
+        } else {
+          console.warn('[/api/karigars] Notice:', json.error);
+        }
+      } catch (apiErr) {
+        console.warn('[/api/karigars] Fetch error:', apiErr);
       }
 
-      // Always update local cache so register is instant & offline resilient
+      if (!savedSuccessfully) {
+        try {
+          const { error: insertErr } = await supabase.from('karigars').insert(payload);
+          if (!insertErr) savedSuccessfully = true;
+        } catch (dbErr) {
+          console.warn('[RegisterKarigarModal] Direct DB notice:', dbErr);
+        }
+      }
+
+      // 2. Update React Query Cache
+      queryClient.setQueryData(['karigars', profile?.id], (old: any) => {
+        const list = Array.isArray(old) ? old : [];
+        return [newKarigar, ...list.filter((k: any) => k.id !== targetKarigarId)];
+      });
+
+      // 3. Update LocalStorage cache
       if (typeof window !== 'undefined') {
-        const key = `noxis_cached_karigars_${businessId}`;
-        const existing = JSON.parse(localStorage.getItem(key) || '[]');
-        localStorage.setItem(key, JSON.stringify([newKarigar, ...existing.filter((k: any) => k.name !== newKarigar.name)]));
+        try {
+          const key = `noxis_cached_karigars_${businessId}`;
+          const existing = JSON.parse(localStorage.getItem(key) || '[]');
+          localStorage.setItem(key, JSON.stringify([newKarigar, ...existing.filter((k: any) => k.id !== targetKarigarId)]));
+        } catch {}
       }
 
-      // Telemetry — Emit anonymous wage signal silently
+      // 4. Background signal
       if (profile?.industry_key && profile?.city) {
-        const rate = values.rate;
         emitWageSignal(
           profile.industry_key, profile.city, profile.country_code || 'PK',
-          values.wage_type, rate, profile.currency || 'PKR'
+          values.wage_type, values.rate, profile.currency || 'PKR'
         ).catch(() => {});
       }
 
+      toast.success(`Successfully registered ${values.name} (${gradeInfo.label})`);
+      queryClient.invalidateQueries({ queryKey: ['karigars'] });
       onSuccess(`Successfully registered ${values.name} into the registry.`);
       setIsOpen(false);
+
     } catch (err: unknown) {
       toast.error('Onboarding failed', humanizeError(err, 'register worker'));
     } finally {
@@ -919,7 +338,6 @@ const RegisterKarigarModal = forwardRef<
     }
   };
 
-  // Only render the portal content when open
   if (!isOpen || typeof document === 'undefined') return null;
 
   return createPortal(
@@ -970,12 +388,37 @@ const RegisterKarigarModal = forwardRef<
                 <SectionHeader icon={Briefcase} label="Employment Contract" />
                 <div className="grid grid-cols-2 gap-6">
                    <div className="space-y-2">
-                      <Label>Artisan Grade</Label>
-                      <select {...register('grade_id')} className="w-full bg-onyx border border-white/10 p-3 text-xs text-white outline-none focus:border-electric-blue transition-all">
-                         <option value="">Select Grade</option>
-                         {(grades || []).map(g => <option key={g.id} value={g.id}>{g.grade_name}</option>)}
-                      </select>
-                      <FieldError message={errors.grade_id?.message} />
+                     <div className="flex items-center justify-between">
+                       <Label>Artisan Grade</Label>
+                       <span className="text-[9px] text-gray-500 font-mono font-bold uppercase tracking-wider">Skill & Wage Tier</span>
+                     </div>
+                     <select
+                       {...register('grade')}
+                       className="w-full bg-onyx border border-white/10 p-3 text-xs text-white outline-none focus:border-electric-blue transition-all font-semibold"
+                     >
+                       <option value="MASTER">Master (Ustaad)</option>
+                       <option value="A">Grade A (Expert)</option>
+                       <option value="B">Grade B (Intermediate)</option>
+                       <option value="C">Grade C (Apprentice)</option>
+                     </select>
+                     <div className="p-2.5 bg-black/40 border border-white/5 rounded text-[11px] space-y-1">
+                       <div className="flex items-center justify-between">
+                         <KarigarGradeBadge grade={watchGrade} />
+                         <span className="text-[10px] text-gray-400 font-mono">
+                           {watchGrade === 'MASTER' && '1.25× Target Multiplier • 98%+ Yield'}
+                           {watchGrade === 'A' && '1.10× Target Multiplier • 92%+ Yield'}
+                           {watchGrade === 'B' && '1.00× Standard Rate • 85%+ Yield'}
+                           {watchGrade === 'C' && '0.85× Apprentice Rate • 75%+ Yield'}
+                         </span>
+                       </div>
+                       <p className="text-[10px] text-gray-400">
+                         {watchGrade === 'MASTER' && 'Supervisor, master pattern cutting, master sampling & complex job work.'}
+                         {watchGrade === 'A' && 'Senior precision artisan for bridal, luxury, and high-detail stitching.'}
+                         {watchGrade === 'B' && 'Skilled standard artisan for steady commercial production line work.'}
+                         {watchGrade === 'C' && 'Junior apprentice / shagird handling secondary operations and finishing.'}
+                       </p>
+                     </div>
+                     <FieldError message={errors.grade?.message} />
                    </div>
                    <div className="space-y-2">
                       <Label>Skill Vertical</Label>
@@ -1001,15 +444,15 @@ const RegisterKarigarModal = forwardRef<
              </div>
              
              <div className="pt-6 border-t border-white/5 flex items-center space-x-4">
-               <button type="button" onClick={handleClose} className="flex-1 py-4 text-[10px] uppercase font-bold text-gray-500 hover:text-white transition-colors">Discard Draft</button>
-               <button
-                type="submit"
-                disabled={isSubmitting}
-                className="flex-[2] py-4 bg-electric-blue text-onyx text-[10px] font-black uppercase tracking-widest shadow-xl hover:brightness-110 disabled:opacity-50 cursor-pointer"
-               >
-                  {isSubmitting ? 'Syncing...' : `Commit ${workerTerm} to Registry`}
-               </button>
-            </div>
+                <button type="button" onClick={handleClose} className="flex-1 py-4 text-[10px] uppercase font-bold text-gray-500 hover:text-white transition-colors">Discard Draft</button>
+                <button
+                 type="submit"
+                 disabled={isSubmitting}
+                 className="flex-[2] py-4 bg-electric-blue text-onyx text-[10px] font-black uppercase tracking-widest shadow-xl hover:brightness-110 disabled:opacity-50 cursor-pointer"
+                >
+                   {isSubmitting ? 'Syncing...' : `Commit ${workerTerm} to Registry`}
+                </button>
+             </div>
           </form>
        </div>
     </div>,
@@ -1017,10 +460,8 @@ const RegisterKarigarModal = forwardRef<
   );
 });
 
-
 function AttendanceModal({ karigar, onClose, onSuccess, onMark }: { karigar: Karigar, onClose: () => void, onSuccess: (msg: string) => void, onMark: (v: any) => Promise<void> }) {
   const { profile } = useBusinessProfile();
-  const supabase = createClient();
   const toast = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, handleSubmit } = useForm<z.infer<typeof attendanceSchema>>({
@@ -1113,7 +554,6 @@ function AdvanceModal({ karigar, onClose, onSuccess }: { karigar: Karigar, onClo
   const onSubmit = async (values: z.infer<typeof advanceSchema>) => {
     setIsSubmitting(true);
     try {
-      // 1. Log Advance
       const { error: advError } = await supabase.from('karigar_advances').insert({
         business_id: profile?.id,
         karigar_id: karigar.id,
@@ -1123,7 +563,6 @@ function AdvanceModal({ karigar, onClose, onSuccess }: { karigar: Karigar, onClo
       });
       if (advError) throw advError;
 
-      // 2. Update Karigar Balance
       const { error: updateError } = await supabase.from('karigars').update({
         current_advance: Number(karigar.current_advance) + Number(values.amount)
       }).eq('id', karigar.id);
@@ -1168,21 +607,21 @@ function AdvanceModal({ karigar, onClose, onSuccess }: { karigar: Karigar, onClo
                 </select>
              </div>
              <div className="flex flex-col space-y-3">
-               <button type="submit" disabled={isSubmitting} className="w-full py-4 bg-sandstone-gold text-onyx text-[10px] font-black uppercase tracking-widest shadow-lg">
-                  {isSubmitting ? "Processing..." : "Disburse Funds"}
-               </button>
-               
-               <button 
-                 type="button"
-                 onClick={() => {
-                   const msg = ALERT_TEMPLATES.advance_request({ name: karigar.name, amount: String(watchAdvance('amount')), reason: watchAdvance('reason') });
-                   sendWhatsAppAlert(karigar.phone || '', msg);
-                 }}
-                 className="w-full py-3 border border-[#25D366]/30 text-[#25D366] text-[10px] font-black uppercase tracking-widest hover:bg-[#25D366]/5 flex items-center justify-center space-x-2"
-               >
-                  <MessageCircle size={14} />
-                  <span>Send WhatsApp Alert</span>
-               </button>
+                <button type="submit" disabled={isSubmitting} className="w-full py-4 bg-sandstone-gold text-onyx text-[10px] font-black uppercase tracking-widest shadow-lg">
+                   {isSubmitting ? "Processing..." : "Disburse Funds"}
+                </button>
+                
+                <button 
+                  type="button"
+                  onClick={() => {
+                    const msg = ALERT_TEMPLATES.advance_request({ name: karigar.name, amount: String(watchAdvance('amount')), reason: watchAdvance('reason') });
+                    sendWhatsAppAlert(karigar.phone || '', msg);
+                  }}
+                  className="w-full py-3 border border-[#25D366]/30 text-[#25D366] text-[10px] font-black uppercase tracking-widest hover:bg-[#25D366]/5 flex items-center justify-center space-x-2"
+                >
+                   <MessageCircle size={14} />
+                   <span>Send WhatsApp Alert</span>
+                </button>
              </div>
           </form>
        </div>
@@ -1201,10 +640,9 @@ interface LogProductionModalProps {
 
 function LogProductionModal({ karigar, batches = [], onClose, onSaved, onLog }: LogProductionModalProps) {
   const { profile } = useBusinessProfile();
-  const supabase = createClient();
   const toast = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { t, features, fmt } = useIndustryConfig();
+  const { t, fmt } = useIndustryConfig();
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
     defaultValues: {
@@ -1225,7 +663,6 @@ function LogProductionModal({ karigar, batches = [], onClose, onSaved, onLog }: 
     try {
       const selectedBatch = batches.find((b: any) => b.id === values.batch_id);
       const skuId = selectedBatch?.sku_id || null;
-      const unit = selectedBatch?.skus?.unit || 'pcs';
 
       await onLog({
         table: 'karigar_production_logs',
@@ -1375,29 +812,781 @@ function LogProductionModal({ karigar, batches = [], onClose, onSaved, onLog }: 
   );
 }
 
-// --- Helpers ---
+// --- Main Component ---
 
-function SectionHeader({ icon: Icon, label }: { icon: React.ElementType, label: string }) {
+export default function KarigarsPage() {
+  const { profile } = useBusinessProfile();
+  const { t, features, fmt } = useIndustryConfig();
+  const workerTerm = t.worker;
+  const workerTermPlural = t.workers;
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+  const toast = useToast();
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const registerModalRef = useRef<{ open: () => void }>(null);
+  const [attendingKarigar, setAttendingKarigar] = useState<Karigar | null>(null);
+  const [advancingKarigar, setAdvancingKarigar] = useState<Karigar | null>(null);
+  const [logOutputKarigar, setLogOutputKarigar] = useState<Karigar | null>(null);
+  const [wageFilter, setWageFilter] = useState<'all' | 'piece_rate' | 'daily_wage' | 'monthly_salary'>('all');
+  const [gradeFilter, setGradeFilter] = useState<'all' | 'MASTER' | 'A' | 'B' | 'C'>('all');
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
+
+  // Memoized handlers
+  const handleLogOutput = React.useCallback((k: Karigar) => {
+    setLogOutputKarigar(k);
+  }, []);
+
+  const handleAttend = React.useCallback((k: Karigar) => {
+    setAttendingKarigar(k);
+  }, []);
+
+  const handleAdvance = React.useCallback((k: Karigar) => {
+    setAdvancingKarigar(k);
+  }, []);
+
+  const handleDelete = React.useCallback(async (karigar: Karigar) => {
+    if (!confirm(`Are you sure you want to deactivate ${karigar.name}?`)) return;
+
+    try {
+      const { error } = await supabase
+        .from('karigars')
+        .update({ status: 'inactive' })
+        .eq('id', karigar.id);
+
+      if (!error) {
+        import('@/stores/undoStore').then(({ useUndoStore }) => {
+          useUndoStore.getState().pushAction({
+            description: `Deactivated ${karigar.name}`,
+            undo: async () => {
+              const supabaseClient = createClient();
+              await supabaseClient
+                .from('karigars')
+                .update({ status: 'active' })
+                .eq('id', karigar.id);
+              queryClient.invalidateQueries({ queryKey: ['karigars'] });
+            }
+          });
+        });
+
+        toast.success(`${karigar.name} deactivated`, { message: 'Press Ctrl+Z to undo' });
+        queryClient.invalidateQueries({ queryKey: ['karigars'] });
+      } else {
+        toast.error('Failed to deactivate worker', humanizeError(error, 'deactivate karigar'));
+      }
+    } catch (err) {
+      toast.error('Failed to deactivate worker', humanizeError(err, 'deactivate karigar'));
+    }
+  }, [supabase, queryClient, toast]);
+
+  // Queries
+  const { data: karigars = [], isLoading, error: karigarsError, refetch: refetchKarigars, dataUpdatedAt: karigarsUpdatedAt } = useQuery({
+    queryKey: ['karigars', profile?.id],
+    queryFn: async () => {
+      const bizId = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null);
+      if (!bizId) return [];
+      let cachedData: Karigar[] = [];
+
+      if (typeof window !== 'undefined') {
+        try {
+          const cached = localStorage.getItem(`noxis_cached_karigars_${bizId}`);
+          if (cached) cachedData = JSON.parse(cached);
+        } catch {}
+      }
+
+      try {
+        const fetchPromise = (async () => {
+          let { data, error } = await supabase
+            .from('karigars')
+            .select('*, karigar_grades(grade_name)')
+            .eq('business_id', bizId)
+            .order('name');
+          if (error) {
+            const simple = await supabase
+              .from('karigars')
+              .select('*')
+              .eq('business_id', bizId)
+              .order('name');
+            if (simple.error) throw simple.error;
+            data = simple.data;
+          }
+          return data;
+        })();
+
+        const timeoutPromise = new Promise<null>((resolve) =>
+          setTimeout(() => resolve(null), 3500)
+        );
+
+        const data = await Promise.race([fetchPromise, timeoutPromise]);
+
+        if (data && Array.isArray(data) && data.length > 0) {
+          if (typeof window !== 'undefined') {
+            try { localStorage.setItem(`noxis_cached_karigars_${bizId}`, JSON.stringify(data)); } catch {}
+          }
+          return data as Karigar[];
+        }
+      } catch (err) {
+        console.warn('[Karigars] Fetch failed, returning cached karigars:', err);
+      }
+
+      return cachedData;
+    },
+    initialData: () => {
+      if (typeof window === 'undefined') return undefined;
+      const bizId = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null);
+      if (!bizId) return undefined;
+      try {
+        const cached = localStorage.getItem(`noxis_cached_karigars_${bizId}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+      return undefined;
+    },
+    placeholderData: (prev) => prev,
+    staleTime: 60 * 1000,
+  });
+
+  const { data: attendanceToday = [] } = useQuery({
+    queryKey: ['attendance_today', profile?.id],
+    queryFn: async () => {
+      const bizId = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null);
+      if (!bizId) return [];
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const { data, error } = await supabase
+          .from('attendance_logs')
+          .select('karigar_id')
+          .eq('business_id', bizId)
+          .eq('log_date', today)
+          .eq('status', 'present');
+        if (error) return [];
+        return data || [];
+      } catch {
+        return [];
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: grades = [] } = useQuery({
+    queryKey: ['karigar_grades', profile?.id],
+    queryFn: async () => {
+      const bizId = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null);
+      if (!bizId) return [];
+      try {
+        const { data, error } = await supabase.from('karigar_grades').select('*').eq('business_id', bizId);
+        if (error) return [];
+        return (data || []) as Grade[];
+      } catch {
+        return [];
+      }
+    },
+    staleTime: 30 * 60 * 1000,
+  });
+
+  // Query active batches for production logging modal in the parent to avoid on-mount fetch
+  const { data: activeBatches = [] } = useQuery({
+    queryKey: ['active_batches_karigars', profile?.id],
+    queryFn: async () => {
+      const bizId = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null);
+      if (!bizId) return [];
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        const { data, error } = await supabase
+          .from('production_batches')
+          .select('*, sku:skus(name, unit)')
+          .eq('business_id', bizId)
+          .neq('status', 'completed')
+          .order('created_at', { ascending: false })
+          .abortSignal(controller.signal)
+          .limit(50);
+        clearTimeout(timeoutId);
+        if (error) return [];
+        return data || [];
+      } catch {
+        return [];
+      }
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const { mutate: markAttendance } = useOptimisticMutation<any, any>({
+    queryKey: ['attendance_today', profile?.id],
+    optimisticUpdate: (current, variables) => {
+      const { karigarId, status, date } = variables;
+      const existing = current.find(
+        (a: any) => a.karigar_id === karigarId
+      );
+      if (existing) {
+        return current.map((a: any) =>
+          a.karigar_id === karigarId
+            ? { ...a, status }
+            : a
+        );
+      }
+      return [...current, {
+        karigar_id: karigarId,
+        status,
+        log_date: date,
+        id: `temp_${karigarId}`,
+      }];
+    },
+    mutationFn: async (variables) => {
+      const payload = {
+        business_id: profile?.id,
+        karigar_id: variables.karigarId,
+        log_date: variables.date,
+        status: variables.status,
+        notes: variables.notes,
+      };
+      try {
+        const res = await fetch('/api/karigars', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ operation: 'attendance', payload }),
+        });
+        if (res.ok) return;
+      } catch {}
+      const { error } = await supabase
+        .from('attendance_logs')
+        .upsert(payload, {
+          onConflict: 'business_id,karigar_id,log_date'
+        });
+      if (error) throw error;
+    },
+    successMessage: undefined,
+    errorMessage: 'Attendance queued — will sync when online',
+    undoDescription: 'Attendance mark',
+  });
+
+  const { mutate: logProduction } = useOptimisticMutation<any, any>({
+    queryKey: ['active_batches_karigars', profile?.id],
+    optimisticUpdate: (current, variables) => {
+      return current;
+    },
+    mutationFn: async (variables) => {
+      const payload = {
+        business_id: profile?.id,
+        karigar_id: variables.karigar_id,
+        batch_id: variables.batch_id,
+        sku_id: variables.sku_id,
+        qty_produced: variables.qty_produced,
+        piece_rate_used: variables.piece_rate_used,
+        quality_grade: variables.quality_grade,
+        department: variables.department,
+        time_taken_minutes: variables.time_taken_minutes,
+      };
+      try {
+        const res = await fetch('/api/karigars', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ operation: 'production', payload }),
+        });
+        if (res.ok) return;
+      } catch {}
+      const { error } = await supabase
+        .from('karigar_production_logs')
+        .insert({
+          business_id: profile?.id,
+          karigar_id: variables.karigar_id,
+          batch_id: variables.batch_id,
+          sku_id: variables.sku_id,
+          qty_produced: variables.qty_produced,
+          piece_rate_used: variables.piece_rate_used,
+          quality_grade: variables.quality_grade,
+          department: variables.department,
+          time_taken_minutes: variables.time_taken_minutes,
+        });
+      if (error) throw error;
+    },
+    successMessage: 'Production logged',
+    undoDescription: 'Logged Production',
+    undoFn: async (variables) => {
+      const supabaseClient = createClient();
+      await supabaseClient
+        .from('karigar_production_logs')
+        .delete()
+        .eq('business_id', profile?.id)
+        .eq('karigar_id', variables.karigar_id)
+        .eq('qty_produced', variables.qty_produced)
+        .order('created_at', { ascending: false })
+        .limit(1);
+    }
+  });
+
+  // Summary Stats
+  const stats = useMemo(() => {
+    const active = karigars.filter(k => k && k.status === 'active');
+    const totalAdvances = karigars.reduce((acc, k) => acc.plus(new Decimal(k?.current_advance || 0)), new Decimal(0));
+    
+    // Honest payroll estimation based on active contracts
+    const estMonthlyPayroll = active.reduce((acc, k) => {
+      let monthly = new Decimal(0);
+      if (k?.wage_type === 'monthly_salary') {
+        monthly = new Decimal(k?.monthly_salary || 0);
+      } else if (k?.wage_type === 'daily_wage') {
+        monthly = new Decimal(k?.daily_rate || 0).times(26); // Standard 26-day industrial month
+      }
+      return acc.plus(monthly);
+    }, new Decimal(0));
+
+    return {
+      activeCount: active.length,
+      presentCount: attendanceToday.length,
+      advancesOutstanding: totalAdvances,
+      monthlyPayrollEst: estMonthlyPayroll
+    };
+  }, [karigars, attendanceToday]);
+
+  const exportToExcel = () => {
+    if (!karigars || karigars.length === 0) {
+      toast.error('No data to export')
+      return
+    }
+    
+    const data = karigars.map((k: Karigar) => ({
+      'Karigar Code': k.karigar_code,
+      'Name': k.name,
+      'Phone': k.phone || '',
+      'Wage Type': k.wage_type,
+      'Piece Rate': k.piece_rate || 0,
+      'Daily Rate': k.daily_rate || 0,
+      'Monthly Salary': k.monthly_salary || 0,
+      'Current Advance': k.current_advance || 0,
+      'Status': k.status,
+      'Skill Type': k.skill_type || '',
+      'Joining Date': k.joining_date || '',
+    }))
+    
+    const ws = XLSX.utils.json_to_sheet(data)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Karigars')
+    XLSX.writeFile(wb,
+      `noxis_karigars_${new Date().toISOString().split('T')[0]}.xlsx`
+    )
+    
+    toast.success('Karigars registry exported to Excel')
+  }
+
+  const columns = useMemo(() => {
+    const cols: any[] = [
+      columnHelper.accessor("name", {
+        header: "Name",
+        cell: (info) => {
+          const k = info.row.original;
+          const initials = k.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '';
+          return (
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-[#60A5FA]/20 flex items-center justify-center text-[10px] font-bold text-[#60A5FA] flex-shrink-0 overflow-hidden relative">
+                {k.photo_url ? (
+                  <Image src={k.photo_url} alt={k.name} fill className="object-cover" />
+                ) : (
+                  initials
+                )}
+              </div>
+              <span className="text-sm text-white font-medium">{k.name}</span>
+            </div>
+          );
+        }
+      }),
+      columnHelper.accessor("karigar_code", {
+        header: "Code",
+        cell: (info) => {
+          const k = info.row.original;
+          return (
+            <Link
+              href={`/karigars/${k.id}`}
+              className="text-[#60A5FA] hover:text-blue-300 transition-colors text-sm font-mono font-bold"
+            >
+              {k.karigar_code}
+            </Link>
+          );
+        }
+      }),
+      columnHelper.display({
+        id: "grade",
+        header: "Grade",
+        cell: (info) => {
+          const k = info.row.original;
+          const gradeVal = k.grade || k.karigar_grades?.grade_name;
+          return <KarigarGradeBadge grade={gradeVal} />;
+        },
+      }),
+      columnHelper.accessor("wage_type", {
+        header: "Pay Type",
+        cell: (info) => {
+          const type = info.getValue();
+          const colors = {
+            piece_rate: "text-electric-blue bg-electric-blue/10",
+            daily_wage: "text-amber-500 bg-amber-500/10",
+            monthly_salary: "text-emerald bg-emerald/10"
+          };
+          return <span className={cn("px-2 py-0.5 text-[9px] uppercase font-black rounded-sm", colors[type])}>{type.replace('_', ' ')}</span>;
+        }
+      })
+    ];
+
+    if (features.pieceRateWages) {
+      cols.push(
+        columnHelper.accessor("id", {
+          id: "rate",
+          header: () => <div className="text-right">{`Rate per ${t.productionUnit}`}</div>,
+          cell: (info) => {
+            const k = info.row.original;
+            let rate = 0;
+            let unit = "";
+            if (k.wage_type === 'piece_rate') { rate = k.piece_rate || 0; unit = ` / ${t.productionUnit}`; }
+            if (k.wage_type === 'daily_wage') { rate = k.daily_rate || 0; unit = " / day"; }
+            if (k.wage_type === 'monthly_salary') { rate = k.monthly_salary || 0; unit = " / mo"; }
+            return (
+              <FinancialAmount 
+                value={rate} 
+                unit={unit}
+                className="text-right"
+              />
+            );
+          }
+        })
+      );
+    }
+
+    if (features.peshgiAdvances) {
+      cols.push(
+        columnHelper.accessor("current_advance", {
+          header: () => <div className="text-right">{t.advance}</div>,
+          cell: (info) => <FinancialAmount value={info.getValue()} />,
+        })
+      );
+    }
+
+    cols.push(
+      columnHelper.accessor("status", {
+        header: "Status",
+        cell: (info) => {
+          const s = info.getValue();
+          const colors = { active: "bg-emerald", inactive: "bg-gray-700", on_leave: "bg-amber-500" };
+          return (
+            <div className="flex items-center space-x-2">
+               <div className={cn("w-1.5 h-1.5 rounded-full", colors[s])} />
+               <span className="text-[10px] uppercase font-bold text-gray-500">{s.replace('_', ' ')}</span>
+            </div>
+          );
+        }
+      }),
+      columnHelper.display({
+        id: "actions",
+        cell: (info) => {
+          const k = info.row.original;
+          const meta = info.table.options.meta as any;
+          return (
+            <div className="flex justify-end space-x-4">
+               {k.wage_type === 'piece_rate' && (
+                 <button 
+                   onClick={() => meta?.onLogOutput(k)}
+                   className="text-[10px] uppercase font-black text-sandstone-gold hover:text-white transition-colors flex items-center bg-transparent border-none cursor-pointer"
+                 >
+                   <Zap size={10} className="mr-1" /> {features.pieceRateWages ? 'Log Output' : 'Log Work'}
+                 </button>
+               )}
+               <button onClick={() => meta?.onAttend(k)} className="text-[10px] uppercase font-black text-gray-600 hover:text-white transition-colors">Attend</button>
+               <button onClick={() => meta?.onAdvance(k)} className="text-[10px] uppercase font-black text-gray-600 hover:text-white transition-colors">Advance</button>
+               <button onClick={() => meta?.onDelete(k)} className="text-[10px] uppercase font-black text-red-500 hover:text-red-400 transition-colors">Remove</button>
+               <Link href={`/karigars/${k.id}`} className="text-gray-500 hover:text-white"><ChevronRight size={16} /></Link>
+            </div>
+          );
+        }
+      })
+    );
+
+    return cols;
+  // Stable primitive dependencies to prevent infinite re-renders on every useIndustryConfig cycle
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id, features.pieceRateWages, features.peshgiAdvances, t.productionUnit, t.advance]);
+
+  const debouncedSearch = useDebounce(searchTerm, 300);
+
+  const filteredKarigars = useMemo(
+    () =>
+      karigars.filter((k) => {
+        if (!k) return false;
+        const name = (k.name || '').toLowerCase();
+        const code = (k.karigar_code || '').toLowerCase();
+        const term = (debouncedSearch || '').toLowerCase().trim();
+        const matchesSearch = !term || name.includes(term) || code.includes(term);
+        const matchesWage = wageFilter === 'all' || k.wage_type === wageFilter;
+        const kGrade = (k.grade || k.karigar_grades?.grade_name || 'B').toUpperCase();
+        const matchesGrade = gradeFilter === 'all' || kGrade.includes(gradeFilter);
+        return matchesSearch && matchesWage && matchesGrade;
+      }),
+    [karigars, debouncedSearch, wageFilter, gradeFilter]
+  );
+
+  const table = useReactTable({
+    data: filteredKarigars,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    initialState: { pagination: { pageSize: 100_000 } },
+    meta: {
+      onLogOutput: handleLogOutput,
+      onAttend: handleAttend,
+      onAdvance: handleAdvance,
+      onDelete: handleDelete,
+    }
+  });
+
+  const parentRef = useRef<HTMLDivElement>(null);
+  const { rows } = table.getRowModel();
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 52,
+    overscan: 10,
+  });
+  const virtualRows = rowVirtualizer.getVirtualItems();
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0]?.start ?? 0 : 0;
+  const paddingBottom =
+    virtualRows.length > 0
+      ? rowVirtualizer.getTotalSize() - (virtualRows[virtualRows.length - 1]?.end ?? 0)
+      : 0;
+
+
+
   return (
-    <div className="flex items-center space-x-3 border-b border-white/5 pb-3">
-       <Icon size={14} className="text-gray-500" />
-       <span className="text-[10px] uppercase font-bold text-gray-500 tracking-widest">{label}</span>
+    <div className="min-h-screen bg-noxis-bg text-slate-200 p-6">
+      <main className="max-w-[1600px] mx-auto space-y-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-lg font-semibold tracking-tight text-white">
+              {workerTermPlural} Registry
+            </h1>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Human Resource Management & Payouts
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+             <button 
+               onClick={() => registerModalRef.current?.open()}
+               className="flex items-center space-x-2 px-4 py-2 bg-electric-blue text-onyx text-sm font-semibold rounded-sm hover:brightness-110 transition-all shadow-lg"
+             >
+                <UserPlus size={14} />
+                <span>Register {workerTerm}</span>
+             </button>
+          </div>
+        </div>
+           {/* Summary Bar */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <SummaryCard label={`Total ${workerTermPlural}`} value={stats.activeCount} isCurrency={false} sub="Active duty" />
+              <SummaryCard label="Present Today" value={stats.presentCount} isCurrency={false} sub="Attendance logged" />
+              <SummaryCard label={t.advance} value={stats.advancesOutstanding.toNumber()} sub="Total outstanding" />
+              <SummaryCard label="Est. Payroll" value={stats.monthlyPayrollEst.toNumber()} sub="Projected this month" />
+            </div>
+
+            <div className="flex justify-end">
+               <DataFreshness 
+                 lastFetchedAt={karigarsUpdatedAt ? new Date(karigarsUpdatedAt) : null} 
+                 onRefresh={() => queryClient.invalidateQueries({ queryKey: ['karigars'] })} 
+               />
+            </div>
+
+           {/* Table Controls */}
+           <div className="bg-surface border border-white/5 p-4 flex items-center justify-between">
+              <div className="relative w-96">
+                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                 <input 
+                  type="text" 
+                  placeholder={`Search by name or ${workerTerm} code...`} 
+                  className="w-full bg-onyx border border-white/5 pl-10 pr-4 py-2 text-xs text-white outline-none focus:border-electric-blue/50"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                 />
+              </div>
+              <div className="flex items-center space-x-2 relative">
+                  <button 
+                    onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                    className={cn(
+                      "p-2 border transition-colors",
+                      wageFilter !== 'all' ? "border-electric-blue text-electric-blue bg-electric-blue/10" : "border-white/5 text-gray-500 hover:text-white hover:bg-white/5"
+                    )}
+                    title="Filter workers"
+                  >
+                    <Filter size={16} />
+                  </button>
+                  {showFilterDropdown && (
+                    <div className="absolute right-0 top-10 z-50 w-48 bg-[#0F1115] border border-white/10 p-2 rounded-sm shadow-xl space-y-1">
+                      <p className="text-[9px] font-black uppercase text-gray-500 px-2 py-1">Filter by Wage Type</p>
+                      {[
+                        ['all', 'All Workers'],
+                        ['piece_rate', 'Piece Rate'],
+                        ['daily_wage', 'Daily Wage'],
+                        ['monthly_salary', 'Monthly Salary']
+                      ].map(([val, label]) => (
+                        <button
+                          key={val}
+                          onClick={() => {
+                            setWageFilter(val as any);
+                            setShowFilterDropdown(false);
+                          }}
+                          className={cn(
+                            "w-full text-left px-2 py-1.5 text-xs rounded-sm transition-colors",
+                            wageFilter === val ? "bg-electric-blue/20 text-electric-blue font-bold" : "text-gray-400 hover:bg-white/5 hover:text-white"
+                          )}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {/* Grade Filter */}
+                  <select
+                    value={gradeFilter}
+                    onChange={(e) => setGradeFilter(e.target.value as any)}
+                    className="bg-onyx border border-white/10 px-3 py-1.5 text-xs text-gray-300 outline-none focus:border-electric-blue rounded-sm font-semibold cursor-pointer"
+                  >
+                    <option value="all">All Grades</option>
+                    <option value="MASTER">👑 Master (Ustaad)</option>
+                    <option value="A">⭐ Grade A (Expert)</option>
+                    <option value="B">🧵 Grade B (Intermediate)</option>
+                    <option value="C">🌱 Grade C (Apprentice)</option>
+                  </select>
+
+                 <button onClick={exportToExcel}
+                   className="flex items-center gap-1.5
+                     px-3 py-1.5 text-xs font-medium
+                     border border-white/10 text-gray-400
+                     hover:border-white/20 hover:text-white
+                     transition-colors">
+                   ↓ Export Excel
+                 </button>
+              </div>
+           </div>
+
+           {/* Main Registry Table */}
+           <div
+             ref={parentRef}
+             className="bg-surface border border-white/5 flex-1 overflow-x-auto overflow-y-auto max-h-[calc(100vh-200px)]"
+           >
+              {isLoading && karigars.length === 0 ? (
+                <div className="p-20 space-y-4">
+                   {[1,2,3,4,5].map(i => <div key={i} className="h-12 bg-white/[0.02] animate-pulse" />)}
+                </div>
+              ) : karigars.length === 0 ? (
+                <EmptyState 
+                  icon={Briefcase}
+                  page="karigars"
+                  action={{
+                    label: `Onboard First ${workerTerm}`,
+                    onClick: () => registerModalRef.current?.open()
+                  }}
+                />
+              ) : (
+                <table className="w-full text-left">
+                   <thead className="bg-[#1A1D21] border-b border-white/10 sticky top-0 z-10">
+                      {table.getHeaderGroups().map(hg => (
+                        <tr key={hg.id}>
+                           {hg.headers.map(h => (
+                             <th key={h.id} className="px-6 py-4 table-header">
+                                {flexRender(h.column.columnDef.header, h.getContext())}
+                             </th>
+                           ))}
+                        </tr>
+                      ))}
+                   </thead>
+                   <tbody>
+                      {paddingTop > 0 && (
+                        <tr>
+                          <td style={{ height: `${paddingTop}px` }} colSpan={columns.length} />
+                        </tr>
+                      )}
+                      {virtualRows.map((virtualRow) => {
+                        const row = rows[virtualRow.index];
+                        if (!row) return null;
+                        return (
+                          <KarigarRow key={row.id ?? virtualRow.index} row={row} />
+                        );
+                      })}
+                      {paddingBottom > 0 && (
+                        <tr>
+                          <td style={{ height: `${paddingBottom}px` }} colSpan={columns.length} />
+                        </tr>
+                      )}
+                   </tbody>
+                </table>
+              )}
+           </div>
+      </main>
+
+      {/* Register modal — always mounted, controls its own open state imperatively */}
+      <RegisterKarigarModal 
+       ref={registerModalRef}
+       grades={grades}
+       onSuccess={(msg) => {
+         setSuccessToast(msg);
+         queryClient.invalidateQueries({ queryKey: ['karigars'] });
+         queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+         queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+       }} 
+      />
+      {attendingKarigar && (
+        <AttendanceModal 
+         karigar={attendingKarigar}
+         onClose={() => setAttendingKarigar(null)}
+         onSuccess={(msg) => { setSuccessToast(msg); setAttendingKarigar(null); }}
+         onMark={markAttendance}
+        />
+      )}
+      {advancingKarigar && (
+        <AdvanceModal 
+         karigar={advancingKarigar}
+         onClose={() => setAdvancingKarigar(null)}
+         onSuccess={(msg) => { setSuccessToast(msg); setAdvancingKarigar(null); queryClient.invalidateQueries({ queryKey: ['karigars'] }); }}
+        />
+      )}
+
+      {/* LogProductionModal rendered via portal — mounts outside this page's render tree
+          so setLogOutputKarigar() does NOT trigger table/virtualizer re-renders */}
+      {logOutputKarigar &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <LogProductionModal
+            karigar={logOutputKarigar}
+            batches={activeBatches}
+            onClose={() => setLogOutputKarigar(null)}
+            onLog={logProduction}
+            onSaved={() => {
+              setSuccessToast(`Logged production output for ${logOutputKarigar.name} ✓`);
+              setLogOutputKarigar(null);
+              queryClient.invalidateQueries({
+                queryKey: ['karigars']
+              });
+              queryClient.invalidateQueries({
+                queryKey: ['production-logs']
+              });
+            }}
+          />,
+          document.body
+        )
+      }
+
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {successToast && (
+          <motion.div 
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 50, opacity: 0 }}
+            className="fixed bottom-8 right-8 z-[100] bg-emerald text-onyx px-6 py-3 flex items-center space-x-3 shadow-2xl rounded-sm font-bold uppercase text-xs tracking-widest"
+          >
+            <CheckCircle2 size={18} />
+            <span>{successToast}</span>
+            <button onClick={() => setSuccessToast(null)} className="ml-4 opacity-50 hover:opacity-100"><X size={14} /></button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
-}
-
-function Label({ children }: { children: React.ReactNode }) {
-  return <label className="text-[10px] uppercase font-bold text-gray-600 tracking-widest">{children}</label>;
-}
-
-const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>((props, ref) => (
-  <input ref={ref} {...props} className="w-full bg-onyx border border-white/10 p-3 text-xs text-white focus:border-electric-blue outline-none transition-all" />
-));
-Input.displayName = "Input";
-
-function ErrorMsg({ children }: { children: React.ReactNode }) {
-  return <div className="text-[9px] text-critical-red uppercase font-bold mt-1 flex items-center space-x-1">
-    <AlertCircle size={10} />
-    <span>{children}</span>
-  </div>;
 }

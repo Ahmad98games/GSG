@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf'
-import 'jspdf-autotable'
+import autoTable from 'jspdf-autotable'
 import { getAmountInWords } from '@/lib/format/amountInWords'
 
 export interface InvoicePDFItem {
@@ -126,11 +126,11 @@ export function generateInvoicePDF(data: InvoicePDFData) {
 
   // ── LINE ITEMS TABLE ──
   const currency = data.currency || 'PKR'
-  ;(doc as any).autoTable({
+  autoTable(doc, {
     startY: y,
     margin: { left: M, right: M },
     head: [['#', 'Item / Description', 'Qty', 'Rate', 'Discount', 'Total']],
-    body: data.items.map((item, i) => [
+    body: (data.items || []).map((item, i) => [
       String(i + 1),
       item.description,
       `${item.quantity} ${item.unit || ''}`.trim(),
@@ -162,7 +162,7 @@ export function generateInvoicePDF(data: InvoicePDFData) {
     theme: 'plain',
   })
 
-  y = (doc as any).lastAutoTable.finalY + 8
+  y = ((doc as any).lastAutoTable?.finalY ?? y) + 8
 
   // ── TOTALS BLOCK ──
   const totalsX = PAGE_W - M - 75

@@ -16,14 +16,22 @@ export const useBusinessProfile = () => {
   const fetchAttempted = useRef(false);
 
   // Sanitize cached profile if it contains invalid non-UUID string
+  // Use a ref to ensure this only fires once and does not create an infinite loop
+  const sanitizedRef = useRef(false);
   useEffect(() => {
+    if (sanitizedRef.current) return;
     if (profile?.id && !isUuid(profile.id)) {
+      sanitizedRef.current = true;
       setProfile({
         ...profile,
         id: DEFAULT_BIZ_ID
       });
     }
-  }, [profile, setProfile]);
+  // profile is intentionally excluded from deps to prevent infinite loop:
+  // setProfile updates profile, which would re-trigger this effect infinitely.
+  // sanitizedRef.current guards against double-execution.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setProfile]);
 
   useEffect(() => {
     // 1. Try localStorage first (instant, 0ms)

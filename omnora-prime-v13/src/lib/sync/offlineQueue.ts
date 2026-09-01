@@ -15,6 +15,7 @@ export interface QueuedOperation {
   matchValue?: string
   createdAt: number
   attempts: number
+  client_transaction_id?: string
   lastAttemptAt?: number
   error?: string
 }
@@ -90,7 +91,14 @@ export async function drainOfflineQueue(): Promise<{ drained: number; failed: nu
       try {
         let result
 
-        if (op.operation === 'insert') {
+        if ((op as any).operation === 'rpc') {
+          const rpcParams = { ...op.data }
+          if (!rpcParams.p_client_transaction_id) {
+            rpcParams.p_client_transaction_id = op.client_transaction_id || crypto.randomUUID()
+            op.client_transaction_id = rpcParams.p_client_transaction_id
+          }
+          result = await (supabase as any).rpc(op.table, rpcParams)
+        } else if (op.operation === 'insert') {
           result = await supabase
             .from(op.table)
             .insert(op.data)
@@ -111,6 +119,11 @@ export async function drainOfflineQueue(): Promise<{ drained: number; failed: nu
         }
 
         if (result?.error) throw result.error
+        if (result?.data?.status === 'ERROR') {
+          const rpcError = new Error(result.data.message || result.data.error_code || 'RPC transaction failed')
+          ;(rpcError as any).error_code = result.data.error_code
+          throw rpcError
+        }
 
         drained++
         // Don't push to remaining — it's done
@@ -119,6 +132,11 @@ export async function drainOfflineQueue(): Promise<{ drained: number; failed: nu
         op.attempts++
         op.lastAttemptAt = Date.now()
         op.error = err.message || String(err)
+        // If unrecoverable business/validation error (e.g. INSUFFICIENT_STOCK, UNAUTHORIZED_BUSINESS, PRICE_MISMATCH), flag as permanent failure
+        const errCode = err.error_code || ''
+        if (['INSUFFICIENT_STOCK', 'UNAUTHORIZED_BUSINESS', 'PRICE_MISMATCH', 'INVALID_PAYLOAD'].includes(errCode) || op.attempts >= 5) {
+          (op as any).status = 'FAILED_PERMANENT'
+        }
         remaining.push(op)
         failed++
       }

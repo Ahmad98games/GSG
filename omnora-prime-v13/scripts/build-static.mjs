@@ -77,7 +77,7 @@ try {
   }
 
   console.log('[Build] Starting Next.js compilation...');
-  execSync('npx next build', {
+  execSync('npx next build --webpack', {
     stdio: 'inherit',
     env: {
       ...process.env,

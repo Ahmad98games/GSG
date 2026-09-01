@@ -18,12 +18,15 @@ import {
   Search, Filter, ArrowUpDown, 
   MoreHorizontal, Plus, Download, 
   Package, MapPin, Tag, Edit, 
-  ArrowRightLeft, Archive, Image as ImageIcon, Layers
+  ArrowRightLeft, Archive, Image as ImageIcon, Layers, Trash2
 } from "lucide-react";
 import { motion } from "framer-motion";
 import TopBar from "@/components/layout/TopBar";
 import Link from "next/link";
 import Image from "next/image";
+import { useQueryClient } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabase/client";
+import { SKUFormModal } from "@/components/inventory/SKUFormModal";
 
 // Types
 interface SKU {
@@ -45,8 +48,13 @@ const columnHelper = createColumnHelper<SKU>();
 export default function StockLedgerPage() {
   
   const { profile, currency = "PKR" } = useBusinessProfile();
+  const queryClient = useQueryClient();
+  const supabase = createClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingSku, setEditingSku] = useState<any | null>(null);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
   const { 
     data, 
@@ -137,26 +145,74 @@ export default function StockLedgerPage() {
     }),
     columnHelper.display({
       id: "actions",
-      cell: (info) => (
-        <div className="flex items-center justify-end space-x-2">
-          {(info.row.original as any).batch_tracking && (
-            <Link href={`/stock/${(info.row.original as any).id}/batches`} className="p-1.5 hover:bg-purple-500/10 text-gray-500 hover:text-purple-400 transition-colors rounded-sm" title="Manage Batches">
-              <Layers size={14} />
-            </Link>
-          )}
-          <button className="p-1.5 hover:bg-white/5 text-gray-500 hover:text-electric-blue transition-colors rounded-sm" title="Transfer">
-            <ArrowRightLeft size={14} />
-          </button>
-          <button className="p-1.5 hover:bg-white/5 text-gray-500 hover:text-white transition-colors rounded-sm" title="Edit">
-            <Edit size={14} />
-          </button>
-          <button className="p-1.5 hover:bg-white/5 text-gray-500 hover:text-white transition-colors rounded-sm">
-            <MoreHorizontal size={14} />
-          </button>
-        </div>
-      ),
+      cell: (info) => {
+        const sku = info.row.original as any;
+        const isOpen = activeMenuId === sku.id;
+        return (
+          <div className="relative flex items-center justify-end space-x-1">
+            {sku.batch_tracking && (
+              <Link href={`/stock/${sku.id}/batches`} className="p-1.5 hover:bg-purple-500/10 text-gray-500 hover:text-purple-400 transition-colors rounded-sm" title="Manage Batches">
+                <Layers size={14} />
+              </Link>
+            )}
+            <button 
+              onClick={() => setEditingSku(sku)} 
+              className="p-1.5 hover:bg-white/5 text-gray-400 hover:text-white transition-colors rounded-sm" 
+              title="Edit SKU"
+            >
+              <Edit size={14} />
+            </button>
+            <div className="relative">
+              <button 
+                onClick={(e) => { e.stopPropagation(); setActiveMenuId(isOpen ? null : sku.id); }} 
+                className="p-1.5 hover:bg-white/5 text-gray-400 hover:text-white transition-colors rounded-sm"
+              >
+                <MoreHorizontal size={14} />
+              </button>
+              {isOpen && (
+                <div 
+                  className="absolute right-0 top-8 w-36 bg-[#161B26] border border-white/10 shadow-2xl z-50 py-1 rounded"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    onClick={() => { setActiveMenuId(null); setEditingSku(sku); }}
+                    className="w-full px-3 py-2 text-left text-xs text-gray-300 hover:text-white hover:bg-white/5 flex items-center gap-2"
+                  >
+                    <Edit size={12} />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setActiveMenuId(null);
+                      if (!confirm(`Permanently delete ${sku.name}?`)) return;
+                      try {
+                        const { error } = await supabase.from('skus').delete().eq('id', sku.id);
+                        if (error) {
+                          if (error.code === '23503' || error.message?.includes('violates foreign key')) {
+                            await supabase.from('skus').update({ is_active: false }).eq('id', sku.id);
+                          } else {
+                            throw error;
+                          }
+                        }
+                        queryClient.invalidateQueries({ queryKey: ['stock'] });
+                        queryClient.invalidateQueries({ queryKey: ['inventory'] });
+                      } catch (err: any) {
+                        alert('Delete failed: ' + (err.message || 'Error'));
+                      }
+                    }}
+                    className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-red-500/10 flex items-center gap-2"
+                  >
+                    <Trash2 size={12} />
+                    <span>Delete</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      },
     }),
-  ], [currency]);
+  ], [currency, activeMenuId, supabase, queryClient]);
 
   const table = useReactTable({
     data: flatData,
@@ -165,7 +221,7 @@ export default function StockLedgerPage() {
   });
 
   return (
-    <div className="min-h-screen bg-onyx text-slate-200">
+    <div className="min-h-screen bg-onyx text-slate-200" onClick={() => setActiveMenuId(null)}>
       <main className={` transition-all duration-300`}>
         <LowStockBanner onFilter={() => setLocationFilter("reorder")} />
 
@@ -180,7 +236,10 @@ export default function StockLedgerPage() {
                 <Download size={12} />
                 <span>Export CSV</span>
               </button>
-              <button className="flex items-center space-x-2 px-4 py-1.5 bg-electric-blue text-onyx text-[10px] uppercase tracking-widest font-bold hover:bg-blue-400 transition-colors">
+              <button 
+                onClick={() => setIsCreateOpen(true)}
+                className="flex items-center space-x-2 px-4 py-1.5 bg-electric-blue text-onyx text-[10px] uppercase tracking-widest font-bold hover:bg-blue-400 transition-colors cursor-pointer"
+              >
                 <Plus size={12} />
                 <span>Create SKU</span>
               </button>
@@ -280,6 +339,19 @@ export default function StockLedgerPage() {
           </div>
         </div>
       </main>
+
+      <SKUFormModal
+        isOpen={isCreateOpen || !!editingSku}
+        initialData={editingSku}
+        onClose={() => {
+          setIsCreateOpen(false);
+          setEditingSku(null);
+        }}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['stock'] });
+          queryClient.invalidateQueries({ queryKey: ['inventory'] });
+        }}
+      />
     </div>
   );
 }
