@@ -550,17 +550,17 @@ const SidebarItem = React.memo(function SidebarItem({ href, icon: Icon, label: r
   const content = (
     <Link
       href={href}
-      prefetch={false}
+      prefetch={true}
       className={cn(
         "flex items-center py-2.5 my-1.5 rounded-sm px-3 transition-all duration-200 group relative border-l-[3px]",
         isActive 
-          ? "text-cyan-400 bg-cyan-950/20 border-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.15),_inset_4px_0_10px_-4px_rgba(34,211,238,0.2)]" 
+          ? "text-sandstone-gold bg-sandstone-gold/10 border-sandstone-gold" 
           : "text-slate-400 hover:bg-white/5 hover:text-slate-100 border-transparent"
       )}
     >
       <Icon className={cn(
         "w-5 h-5 flex-shrink-0 transition-colors duration-200", 
-        isActive ? "text-cyan-400" : "text-slate-400 group-hover:text-cyan-400"
+        isActive ? "text-sandstone-gold" : "text-slate-400 group-hover:text-sandstone-gold"
       )} />
       {!isCollapsed && (
         <>
@@ -571,7 +571,7 @@ const SidebarItem = React.memo(function SidebarItem({ href, icon: Icon, label: r
             {label}
           </span>
           {badge && (
-            <span className="ml-auto text-[8px] font-black bg-cyan-500/20 text-cyan-400 px-1.5 py-0.5 rounded-sm">
+            <span className="ml-auto text-[8px] font-black bg-sandstone-gold/20 text-sandstone-gold px-1.5 py-0.5 rounded-sm">
               {badge}
             </span>
           )}

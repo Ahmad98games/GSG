@@ -100,6 +100,13 @@ function prepareStandaloneBundle() {
     { required: true }
   );
 
+  // 6. Ensure fresh icons exist in standalone
+  try {
+    execSync('node scripts/generate-icons.js', { stdio: 'inherit' });
+  } catch (e) {
+    console.warn('[Electron Build] ⚠ Warning running generate-icons.js:', e.message);
+  }
+
   console.log('\n[Electron Build] ✓ Bundle assembly complete\n');
 }
 

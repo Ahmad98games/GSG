@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { OrderConfirmation } from "@/components/download/OrderConfirmation";
 
 export default function SuccessPage() {
   const searchParams = useSearchParams();
@@ -47,28 +48,13 @@ export default function SuccessPage() {
            </button>
         </div>
 
-        {/* Next Steps */}
-        <div className="grid md:grid-cols-2 gap-6 mb-12">
-           <Link 
-             href="/download"
-             className="bg-electric-blue text-onyx p-8 flex flex-col items-center justify-center space-y-4 hover:brightness-110 transition-all rounded-sm group"
-           >
-              <Download size={32} />
-              <div className="text-center">
-                 <h4 className="text-sm font-bold uppercase tracking-widest">Download Hub</h4>
-                 <p className="text-[10px] font-bold opacity-70">Windows 10/11 (.exe)</p>
-              </div>
-           </Link>
-           <Link 
-             href="/docs#install"
-             className="bg-white/5 border border-white/10 p-8 flex flex-col items-center justify-center space-y-4 hover:bg-white/10 transition-all rounded-sm"
-           >
-              <BookOpen size={32} className="text-white" />
-              <div className="text-center">
-                 <h4 className="text-sm font-bold uppercase tracking-widest text-white">Setup Guide</h4>
-                 <p className="text-[10px] font-bold text-gray-500">View Documentation</p>
-              </div>
-           </Link>
+        {/* Order Confirmation & Secure R2 Presigned Download */}
+        <div className="mb-12">
+          <OrderConfirmation 
+            orderId={searchParams.get('order_id') || searchParams.get('orderId') || searchParams.get('session_id') || 'ORD-2026-PAID'} 
+            licenseKey={licenseKey}
+            status="PAID"
+          />
         </div>
 
         <div className="flex items-center justify-center space-x-8">

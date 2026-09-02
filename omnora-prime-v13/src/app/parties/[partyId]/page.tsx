@@ -390,22 +390,22 @@ export default function PartyDetailPage() {
 
     const allEvents = [
       ...(invoicesRes.data || []).map((i: any) => ({
-        date: i.created_at.split('T')[0],
+        date: i.created_at ? i.created_at.split('T')[0] : (i.issue_date || new Date().toISOString().split('T')[0]),
         type: 'invoice' as const,
-        reference: i.invoice_no || i.invoice_number || '',
+        reference: i.invoice_no || i.invoice_number || `INV-${String(i.id).slice(0, 6)}`,
         description: `Invoice ${i.invoice_no || i.invoice_number || ''}`,
-        debit: i.total || i.total_amount || 0,
+        debit: Number(i.total ?? i.total_amount ?? i.subtotal ?? 0),
         credit: 0,
-        sortDate: i.created_at,
+        sortDate: i.created_at || i.issue_date || new Date().toISOString(),
       })),
       ...(paymentsRes.data || []).map((p: any) => ({
-        date: p.payment_date,
+        date: p.payment_date || (p.created_at ? p.created_at.split('T')[0] : new Date().toISOString().split('T')[0]),
         type: 'payment' as const,
-        reference: `PMT-${p.id.slice(0, 6).toUpperCase()}`,
-        description: `Payment received${p.method ? ' — ' + p.method : ''}`,
+        reference: p.reference_no || p.reference_number || `PMT-${String(p.id).slice(0, 6).toUpperCase()}`,
+        description: `Payment received${p.payment_method ? ' — ' + p.payment_method : (p.method ? ' — ' + p.method : '')}`,
         debit: 0,
-        credit: p.amount,
-        sortDate: p.payment_date,
+        credit: Number(p.amount ?? p.total_amount ?? 0),
+        sortDate: p.payment_date || p.created_at || new Date().toISOString(),
       })),
     ].sort((a, b) => a.sortDate.localeCompare(b.sortDate));
 

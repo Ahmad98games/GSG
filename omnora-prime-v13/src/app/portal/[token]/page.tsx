@@ -122,24 +122,30 @@ export default async function UnifiedPortalPage({ params }: Props) {
 
     // Combine invoices and payments into a ledger timeline
     const ledgerEntries = [
-      ...invoices.map((inv: any) => ({
-        id: String(inv.id),
-        date: String(inv.created_at || inv.issue_date || new Date().toISOString()),
-        type: 'INVOICE' as const,
-        ref: String(inv.invoice_number || `INV-${String(inv.id).slice(0, 6)}`),
-        debit: Number(inv.total_amount || 0),
-        credit: 0,
-        note: inv.status ? `Status: ${inv.status.toUpperCase()}` : 'Sales Invoice',
-      })),
-      ...payments.map((pay: any) => ({
-        id: String(pay.id),
-        date: String(pay.payment_date || pay.created_at || new Date().toISOString()),
-        type: 'PAYMENT' as const,
-        ref: String(pay.reference_number || `PAY-${String(pay.id).slice(0, 6)}`),
-        debit: 0,
-        credit: Number(pay.amount || pay.total_amount || 0),
-        note: pay.payment_method ? `Method: ${pay.payment_method}` : 'Payment Received',
-      })),
+      ...invoices.map((inv: any) => {
+        const amount = Number(inv.total ?? inv.total_amount ?? inv.subtotal ?? 0);
+        return {
+          id: String(inv.id),
+          date: String(inv.created_at || inv.issue_date || new Date().toISOString()),
+          type: 'INVOICE' as const,
+          ref: String(inv.invoice_no || inv.invoice_number || `INV-${String(inv.id).slice(0, 6)}`),
+          debit: amount,
+          credit: 0,
+          note: inv.status ? `Status: ${inv.status.toUpperCase()}` : 'Sales Invoice',
+        };
+      }),
+      ...payments.map((pay: any) => {
+        const amount = Number(pay.amount ?? pay.total_amount ?? pay.total ?? 0);
+        return {
+          id: String(pay.id),
+          date: String(pay.payment_date || pay.created_at || new Date().toISOString()),
+          type: 'PAYMENT' as const,
+          ref: String(pay.reference_no || pay.reference_number || `PMT-${String(pay.id).slice(0, 6)}`),
+          debit: 0,
+          credit: amount,
+          note: pay.payment_method ? `Method: ${pay.payment_method}` : (pay.method ? `Method: ${pay.method}` : 'Payment Received'),
+        };
+      }),
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
     // Calculate running balance
@@ -190,18 +196,16 @@ function PortalErrorFallback({ reason }: { reason: string }) {
         <p className="text-xs text-slate-400 leading-relaxed font-medium">
           {reason}
         </p>
-        <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+        <div className="pt-2 flex items-center justify-center">
+          
           <a
-            href="/parties"
-            className="w-full sm:w-auto inline-block bg-[#08EBF6]/10 border border-[#08EBF6]/30 text-[#08EBF6] hover:bg-[#08EBF6]/20 font-bold text-xs uppercase px-5 py-3 rounded-sm transition-all"
+            href="/"
+            
+            className="w-full sm:w-auto inline-block bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase px-6 py-3 rounded-sm transition-all"
+
           >
-            Go to Parties Ledger
-          </a>
-          <a
-            href="/dashboard"
-            className="w-full sm:w-auto inline-block bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase px-5 py-3 rounded-sm transition-all"
-          >
-            Dashboard
+
+            Return to Home
           </a>
         </div>
       </div>

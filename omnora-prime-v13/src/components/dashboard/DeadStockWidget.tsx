@@ -63,7 +63,7 @@ export default function DeadStockWidget() {
         <AlertTriangle className="text-amber-500" size={24} />
         <div className="space-y-0.5">
           <p className="text-xs font-black text-white uppercase tracking-tight">
-            PKR {totalValue.toLocaleString()} tied up in slow-moving stock
+            PKR {(totalValue ?? 0).toLocaleString()} tied up in slow-moving stock
           </p>
           <p className="text-[10px] text-amber-500/70 font-bold uppercase">Consider discounting or bundling these items to free up cash.</p>
         </div>
@@ -94,7 +94,7 @@ export default function DeadStockWidget() {
               {item.days_since_movement} Days
             </span>
             <span className="text-[10px] font-mono text-white text-right">
-              {Number(item.stock_value).toLocaleString()}
+              {Number(item.stock_value || 0).toLocaleString()}
             </span>
           </motion.div>
         ))}
@@ -103,7 +103,7 @@ export default function DeadStockWidget() {
       <div className="pt-4 border-t border-white/5 flex items-center justify-between">
         <div className="flex flex-col">
           <span className="text-[8px] font-black text-gray-600 uppercase">Total Stuck Capital</span>
-          <span className="text-lg font-black text-white italic">PKR {totalValue.toLocaleString()}</span>
+          <span className="text-lg font-black text-white italic">PKR {(totalValue ?? 0).toLocaleString()}</span>
         </div>
         <div className="flex space-x-3">
           <button className="px-4 py-2 bg-white/5 border border-white/10 rounded text-[9px] font-black uppercase text-gray-400 hover:text-white transition-all">

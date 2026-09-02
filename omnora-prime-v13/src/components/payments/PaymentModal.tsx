@@ -147,7 +147,7 @@ export default function PaymentModal({ invoiceId, partyId, balanceDue, currency 
                  <span className="text-[10px] uppercase font-bold text-gray-500 tracking-widest">Outstanding Balance</span>
                  <div className="text-2xl font-bold text-white font-mono flex items-baseline">
                     <span className="text-xs text-sandstone-gold mr-2">{currency}</span>
-                    {balanceDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    {Number(balanceDue || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                  </div>
               </div>
               <div className="text-right space-y-1">
@@ -156,7 +156,7 @@ export default function PaymentModal({ invoiceId, partyId, balanceDue, currency 
                    "text-2xl font-bold font-mono flex items-baseline justify-end",
                    remainingAfter <= 0 ? "text-emerald" : "text-sandstone-gold"
                  )}>
-                    {remainingAfter.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    {Number(remainingAfter || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                  </div>
               </div>
            </div>
@@ -207,7 +207,7 @@ export default function PaymentModal({ invoiceId, partyId, balanceDue, currency 
               <div className="pt-6 border-t border-white/10 flex items-center justify-between">
                  <div className="flex flex-col">
                     <span className="text-[10px] uppercase font-bold text-gray-500 tracking-widest">Total Transaction Value</span>
-                    <span className="text-[11px] font-mono text-white">{currency} {totalPaid.toLocaleString()}</span>
+                    <span className="text-[11px] font-mono text-white">{currency} {Number(totalPaid || 0).toLocaleString()}</span>
                  </div>
                  <button 
                   type="submit" 

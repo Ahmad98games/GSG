@@ -44,7 +44,6 @@ import { useRowHighlight } from "@/hooks/useRowHighlight";
 import AnimatedNumber from "@/components/ui/AnimatedNumber";
 import { ErrorState, EmptyState as NewEmptyState, FieldError } from "@/components/ui/StateViews";
 import { useDebounce } from "@/hooks/useDebounce";
-import { useVirtualizer } from '@tanstack/react-virtual';
 import { KarigarGradeBadge } from "@/components/karigars/KarigarGradeBadge";
 import { KARIGAR_GRADES, getGradeInfo } from "@/lib/karigars/gradeSystem";
 
@@ -1339,22 +1338,7 @@ export default function KarigarsPage() {
     }
   });
 
-  const parentRef = useRef<HTMLDivElement>(null);
   const { rows } = table.getRowModel();
-  const rowVirtualizer = useVirtualizer({
-    count: rows.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 52,
-    overscan: 10,
-  });
-  const virtualRows = rowVirtualizer.getVirtualItems();
-  const paddingTop = virtualRows.length > 0 ? virtualRows[0]?.start ?? 0 : 0;
-  const paddingBottom =
-    virtualRows.length > 0
-      ? rowVirtualizer.getTotalSize() - (virtualRows[virtualRows.length - 1]?.end ?? 0)
-      : 0;
-
-
 
   return (
     <div className="min-h-screen bg-noxis-bg text-slate-200 p-6">
@@ -1466,10 +1450,7 @@ export default function KarigarsPage() {
            </div>
 
            {/* Main Registry Table */}
-           <div
-             ref={parentRef}
-             className="bg-surface border border-white/5 flex-1 overflow-x-auto overflow-y-auto max-h-[calc(100vh-200px)]"
-           >
+           <div className="bg-surface border border-white/5 flex-1 overflow-x-auto overflow-y-auto max-h-[calc(100vh-200px)]">
               {isLoading && karigars.length === 0 ? (
                 <div className="p-20 space-y-4">
                    {[1,2,3,4,5].map(i => <div key={i} className="h-12 bg-white/[0.02] animate-pulse" />)}
@@ -1497,23 +1478,9 @@ export default function KarigarsPage() {
                       ))}
                    </thead>
                    <tbody>
-                      {paddingTop > 0 && (
-                        <tr>
-                          <td style={{ height: `${paddingTop}px` }} colSpan={columns.length} />
-                        </tr>
-                      )}
-                      {virtualRows.map((virtualRow) => {
-                        const row = rows[virtualRow.index];
-                        if (!row) return null;
-                        return (
-                          <KarigarRow key={row.id ?? virtualRow.index} row={row} />
-                        );
-                      })}
-                      {paddingBottom > 0 && (
-                        <tr>
-                          <td style={{ height: `${paddingBottom}px` }} colSpan={columns.length} />
-                        </tr>
-                      )}
+                      {rows.map((row) => (
+                        <KarigarRow key={row.id} row={row} />
+                      ))}
                    </tbody>
                 </table>
               )}

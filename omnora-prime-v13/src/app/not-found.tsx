@@ -14,10 +14,10 @@ export default function NotFound() {
         <p className="text-gray-400 text-sm mb-6">
           This page does not exist or has been moved.
         </p>
-        <Link href="/dashboard"
-          className="px-4 py-2 border border-electric-blue text-electric-blue text-sm hover:bg-electric-blue/10 transition-colors"
+        <Link href="/"
+          className="px-6 py-2.5 bg-white/5 border border-white/10 text-gray-300 text-sm hover:bg-white/10 hover:text-white transition-colors rounded-sm inline-block"
         >
-         Please Go to Dashboard
+          Return to Home
         </Link>
       </div>
     </div>

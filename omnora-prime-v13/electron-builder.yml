@@ -33,6 +33,12 @@ extraResources:
     filter:
       - "**/*"
 
+  # Next.js standalone dependencies
+  - from: ".next/standalone/node_modules"
+    to: "standalone/node_modules"
+    filter:
+      - "**/*"
+
   # Native SQLite binding — CRITICAL
   # Without this the server crashes instantly
   - from: "node_modules/better-sqlite3-multiple-ciphers"
@@ -62,13 +68,11 @@ extraResources:
     to: ".env"
 
 win:
-  icon: build/icon.ico
+  icon: "build/icon.ico"
   target:
     - target: nsis
       arch:
         - x64
-  # Skip unnecessary signing tool attempts on embedded resources
-  signAndEditExecutable: false
   forceCodeSigning: false
 
 nsis:
@@ -77,19 +81,21 @@ nsis:
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: "Noxis Hub"
-  installerIcon: build/icon.ico
-  uninstallerIcon: build/icon.ico
+  installerIcon: "build/icon.ico"
+  uninstallerIcon: "build/icon.ico"
+  installerHeader: "build/installerHeader.bmp"
+  installerSidebar: "build/installerSidebar.bmp"
   uninstallDisplayName: "Noxis Hub"
   allowElevation: true
   perMachine: false
   differentialPackage: false
 
 mac:
-  icon: build/icon.icns
+  icon: "build/icon.icns"
   category: public.app-category.business
 
 linux:
-  icon: build/icon.png
+  icon: "build/icon.png"
   category: Office
 
 publish:
@@ -99,7 +105,6 @@ publish:
 
 # Rebuild native modules for the correct
 # Electron Node.js ABI version
-# This is what fixes the .node binding crash
 npmRebuild: false
 electronVersion: "41.4.0"
 

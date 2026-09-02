@@ -129,10 +129,10 @@ export function UnifiedPortalClientView({
       <div className="printable-statement max-w-5xl mx-auto space-y-8">
         
         {/* ═══ HEADER BAR ═══ */}
-        <header className="bg-[#0D1017] border border-white/[0.08] p-6 sm:p-8 rounded-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-2xl">
+        <header className="bg-[#0D1017] border border-cyan-900/30 p-6 sm:p-8 rounded-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-2xl">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <span className="bg-[#C5A059]/10 border border-[#C5A059]/30 text-[#C5A059] text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full">
+              <span className="bg-cyan-950/60 border border-cyan-800/50 text-cyan-400 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full">
                 Interactive Client Web Portal
               </span>
             </div>
@@ -141,7 +141,7 @@ export function UnifiedPortalClientView({
             </h1>
             <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400 font-medium pt-1">
               <span className="flex items-center gap-1.5">
-                <Building2 size={14} className="text-[#60A5FA]" />
+                <Building2 size={14} className="text-cyan-400" />
                 {businessName}
               </span>
               <span>•</span>
@@ -231,17 +231,21 @@ export function UnifiedPortalClientView({
         </div>
 
         {/* ═══ COMMITMENT LOG / LEDGER TABLE ═══ */}
-        <div className="bg-[#0D1017] border border-white/[0.08] rounded-sm overflow-hidden shadow-2xl">
-          <div className="p-6 border-b border-white/[0.08]">
-            <h3 className="text-sm font-black uppercase text-white tracking-wider">
-              Transaction Ledger & Commitment Log
+        <div className="bg-[#0D1017] border border-cyan-900/30 rounded-sm overflow-hidden shadow-2xl">
+          <div className="p-6 border-b border-white/[0.08] flex items-center justify-between">
+            <h3 className="text-sm font-black uppercase text-white tracking-wider flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+              Transaction Ledger & Verified Commitment Log
             </h3>
+            <span className="text-[10px] font-mono text-cyan-400 font-bold uppercase tracking-widest bg-cyan-950/40 border border-cyan-800/40 px-2.5 py-1 rounded-sm">
+              Live Verified
+            </span>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-black/40 border-b border-white/[0.08] text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <tr className="bg-black/50 border-b border-white/[0.08] text-[10px] font-black uppercase tracking-widest text-slate-400">
                   <th className="p-4">Date</th>
                   <th className="p-4">Type</th>
                   <th className="p-4">Reference ID</th>
@@ -258,22 +262,42 @@ export function UnifiedPortalClientView({
                     </td>
                   </tr>
                 ) : (
-                  ledgerWithRunningBalance.map((item) => (
-                    <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="p-4 text-slate-400">{new Date(item.date).toLocaleDateString()}</td>
-                      <td className="p-4">
-                        <span className={`px-2 py-0.5 rounded-sm text-[9px] font-black uppercase ${item.type === 'INVOICE' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
-                          {item.type}
-                        </span>
-                      </td>
-                      <td className="p-4 text-white font-bold">{item.ref}</td>
-                      <td className="p-4 text-right text-slate-200">{item.debit > 0 ? item.debit.toLocaleString() : '—'}</td>
-                      <td className="p-4 text-right text-emerald-400">{item.credit > 0 ? item.credit.toLocaleString() : '—'}</td>
-                      <td className="p-4 text-right text-white font-bold">PKR {item.runningBalance.toLocaleString()}</td>
-                    </tr>
-                  ))
+                  ledgerWithRunningBalance.map((item) => {
+                    const d = Number(item.debit || 0);
+                    const c = Number(item.credit || 0);
+                    return (
+                      <tr key={item.id} className="hover:bg-cyan-950/20 transition-colors">
+                        <td className="p-4 text-slate-400">{item.date ? new Date(item.date).toLocaleDateString('en-GB') : '—'}</td>
+                        <td className="p-4">
+                          <span className={`px-2 py-0.5 rounded-sm text-[9px] font-black uppercase tracking-wider ${item.type === 'INVOICE' ? 'bg-cyan-950/60 text-cyan-400 border border-cyan-800/50' : 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/50'}`}>
+                            {item.type}
+                          </span>
+                        </td>
+                        <td className="p-4 text-white font-bold">{item.ref}</td>
+                        <td className="p-4 text-right text-slate-200">{d > 0 ? `PKR ${d.toLocaleString('en-PK', { minimumFractionDigits: 2 })}` : '—'}</td>
+                        <td className="p-4 text-right text-emerald-400 font-bold">{c > 0 ? `PKR ${c.toLocaleString('en-PK', { minimumFractionDigits: 2 })}` : '—'}</td>
+                        <td className="p-4 text-right text-white font-bold">PKR {Number(item.runningBalance || 0).toLocaleString('en-PK', { minimumFractionDigits: 2 })}</td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
+              <tfoot className="bg-black/60 border-t-2 border-cyan-500/30 text-xs font-mono font-bold">
+                <tr>
+                  <td colSpan={3} className="p-4 text-white uppercase font-black tracking-wider text-[11px]">
+                    Closing Balance & Accumulated Totals
+                  </td>
+                  <td className="p-4 text-right text-slate-200 font-bold">
+                    PKR {ledgerWithRunningBalance.reduce((s, it) => s + (Number(it.debit) || 0), 0).toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+                  </td>
+                  <td className="p-4 text-right text-emerald-400 font-bold">
+                    PKR {ledgerWithRunningBalance.reduce((s, it) => s + (Number(it.credit) || 0), 0).toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+                  </td>
+                  <td className="p-4 text-right text-cyan-400 font-black text-sm">
+                    PKR {Math.abs(currentBalance).toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+                  </td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         </div>

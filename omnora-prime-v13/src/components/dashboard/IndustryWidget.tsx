@@ -54,7 +54,7 @@ function TextileWidget() {
       <div className="grid grid-cols-3 gap-4">
         <div>
           <p className="text-xl font-mono font-bold text-white">
-            {data.totalUnits.toLocaleString()}
+            {(data.totalUnits ?? 0).toLocaleString()}
           </p>
           <p className="text-[10px] text-gray-600 mt-1">
             {t.productionUnit} produced
@@ -201,7 +201,7 @@ function RiceWidget() {
         </div>
         <div>
           <p className="text-xl font-mono font-bold text-amber-400">
-            {data.totalInput.toLocaleString()}
+            {(data.totalInput ?? 0).toLocaleString()}
           </p>
           <p className="text-[10px] text-gray-600 mt-1">
             Paddy in (kg)
@@ -209,7 +209,7 @@ function RiceWidget() {
         </div>
         <div>
           <p className="text-xl font-mono font-bold text-emerald-400">
-            {data.totalOutput.toLocaleString()}
+            {(data.totalOutput ?? 0).toLocaleString()}
           </p>
           <p className="text-[10px] text-gray-600 mt-1">
             Rice out (kg)

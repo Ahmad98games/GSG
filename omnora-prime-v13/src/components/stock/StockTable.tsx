@@ -7,7 +7,6 @@ import {
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
-import { useVirtualizer } from '@tanstack/react-virtual';
 import { usePersona } from '@/hooks/usePersona';
 import { Decimal } from 'decimal.js';
 
@@ -21,20 +20,13 @@ interface StockRow {
 
 const columnHelper = createColumnHelper<StockRow>();
 
-// PERFORMANCE: Memoized Row Component
-const TableRow = memo(({ row, virtualRow }: { row: any, virtualRow: any }) => (
-  <div
-    className="absolute top-0 left-0 w-full flex items-center border-b border-white/5 bg-onyx/50 hover:bg-white/5 transition-colors"
-    style={{
-      height: `${virtualRow.size}px`,
-      transform: `translateY(${virtualRow.start}px)`,
-    }}
-  >
+const TableRow = memo(({ row }: { row: any }) => (
+  <div className="w-full flex items-center border-b border-white/5 bg-onyx/50 hover:bg-white/5 transition-colors">
     {row.getVisibleCells().map((cell: any) => (
       <div 
         key={cell.id} 
         className={cn(
-          "px-4 py-2 text-sm text-gray-300 flex-1",
+          "px-4 py-2.5 text-sm text-gray-300 flex-1",
           cell.column.id === 'qty' && "text-right font-mono"
         )}
       >
@@ -66,15 +58,6 @@ export default function StockTable({ data }: { data: StockRow[] }) {
   });
 
   const { rows } = table.getRowModel();
-  const parentRef = useRef<HTMLDivElement>(null);
-
-  // PERFORMANCE: Virtual Scroll Tuning
-  const rowVirtualizer = useVirtualizer({
-    count: rows.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 44, // Target height for industrial table rows
-    overscan: 10,           // Render extra rows for smooth scrolling
-  });
 
   return (
     <div className="flex flex-col h-full bg-onyx border border-white/10">
@@ -90,26 +73,13 @@ export default function StockTable({ data }: { data: StockRow[] }) {
         ))}
       </div>
 
-      <div
-        ref={parentRef}
-        className="flex-1 overflow-auto relative"
-        style={{ height: '600px' }} // Critical: explicit height for virtualizer
-      >
-        <div
-          style={{
-            height: `${rowVirtualizer.getTotalSize()}px`,
-            width: '100%',
-            position: 'relative',
-          }}
-        >
-          {rowVirtualizer.getVirtualItems().map(virtualRow => (
-            <TableRow 
-              key={virtualRow.key} 
-              row={rows[virtualRow.index]} 
-              virtualRow={virtualRow} 
-            />
-          ))}
-        </div>
+      <div className="flex-1 overflow-auto max-h-[600px]">
+        {rows.map(row => (
+          <TableRow 
+            key={row.id} 
+            row={row} 
+          />
+        ))}
       </div>
     </div>
   );

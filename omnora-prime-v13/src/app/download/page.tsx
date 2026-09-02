@@ -182,13 +182,25 @@ export default function DownloadPage() {
           </p>
 
           <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a
-              href={DOWNLOAD_EXE_URL}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-gradient-to-r from-[#C5A059] via-[#E8D5B5] to-[#C5A059] text-black font-black text-sm uppercase tracking-wider px-8 py-4 rounded-sm hover:brightness-110 transition-all shadow-[0_0_30px_rgba(197,160,89,0.3)]"
+            <button
+              onClick={async () => {
+                try {
+                  const res = await fetch('/api/download-software?licenseKey=NOXIS-TRIAL-2026');
+                  const data = await res.json();
+                  if (data.downloadUrl) {
+                    window.location.href = data.downloadUrl;
+                  } else {
+                    window.location.href = DOWNLOAD_EXE_URL;
+                  }
+                } catch {
+                  window.location.href = DOWNLOAD_EXE_URL;
+                }
+              }}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-cyan-400 hover:bg-cyan-300 text-black font-black text-sm uppercase tracking-wider px-8 py-4 rounded-sm transition-all shadow-[0_0_30px_rgba(34,211,238,0.4)] cursor-pointer"
             >
               <Monitor size={18} />
-              <span>Download Noxis Hub for Windows (.exe)</span>
-            </a>
+              <span>Download Noxis Hub (.exe)</span>
+            </button>
           </div>
 
           <div className="flex items-center justify-center gap-6 text-xs text-slate-500 font-mono tracking-wider pt-2">

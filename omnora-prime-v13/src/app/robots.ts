@@ -11,6 +11,8 @@ export default function robots(): MetadataRoute.Robots {
         disallow: [
           '/portal/',
           '/api/',
+          '/dashboard',
+          '/admin',
         ],
       },
       // Allow AI crawlers (for citations)

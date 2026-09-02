@@ -22,7 +22,6 @@ import {
 import { sendWhatsAppAlert, ALERT_TEMPLATES } from "@/lib/whatsapp/alertEngine";
 import { useIndustryConfig } from "@/hooks/useIndustryConfig";
 import { useBarcodeScan } from "@/hooks/useBarcodeScan";
-import { useVirtualizer } from '@tanstack/react-virtual';
 import ForecastBadge from "@/components/intelligence/ForecastBadge";
 import { useFloorVoice } from "@/hooks/useFloorVoice";
 import * as XLSX from 'xlsx';
@@ -441,26 +440,12 @@ export default function InventoryPage() {
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
     initialState: {
-      pagination: { pageSize: 100000 } // Effectively disable pagination for virtualization
+      pagination: { pageSize: 50 }
     }
   });
-  const parentRef = useRef<HTMLDivElement>(null);
   const { rows } = table.getRowModel();
-
-  const rowVirtualizer = useVirtualizer({
-    count: rows.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 52, // Height of SKURow
-    overscan: 10,
-  });
-
-  const virtualRows = rowVirtualizer.getVirtualItems();
-  const paddingTop = virtualRows.length > 0 ? virtualRows[0]?.start ?? 0 : 0;
-  const paddingBottom =
-    virtualRows.length > 0
-      ? rowVirtualizer.getTotalSize() - (virtualRows[virtualRows.length - 1]?.end ?? 0)
-      : 0;
 
   // CSV Export
   const handleExportCSV = () => {
@@ -622,7 +607,7 @@ export default function InventoryPage() {
 
           {/* Table Container */}
           <div className="w-full">
-            <div ref={parentRef} className="bg-surface border border-white/5 overflow-x-auto max-h-[700px] relative scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/5">
+            <div className="bg-surface border border-white/5 overflow-x-auto max-h-[700px] relative scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/5">
                {skusLoading && skus.length === 0 ? (
                  <div className="h-64 flex flex-col items-center justify-center space-y-2">
                     <div className="flex items-center space-x-3">
@@ -662,28 +647,14 @@ export default function InventoryPage() {
                             </tr>
                           ))}
                         </thead>
-                        <tbody>
-                          {paddingTop > 0 && (
-                            <tr>
-                              <td style={{ height: `${paddingTop}px` }} colSpan={columns.length} />
-                            </tr>
-                          )}
-                          {virtualRows.map((virtualRow) => {
-                            const row = rows[virtualRow.index];
-                            if (!row) return null;
-                            return (
-                              <SKURow
-                                key={row.id ?? virtualRow.index}
-                                row={row}
-                                onSelect={() => setSelectedSku(row.original)}
-                              />
-                            );
-                          })}
-                          {paddingBottom > 0 && (
-                            <tr>
-                              <td style={{ height: `${paddingBottom}px` }} colSpan={columns.length} />
-                            </tr>
-                          )}
+                        <tbody className="divide-y divide-white/[0.04]">
+                          {rows.map((row) => (
+                            <SKURow
+                              key={row.id}
+                              row={row}
+                              onSelect={() => setSelectedSku(row.original)}
+                            />
+                          ))}
                         </tbody>
                     </table>
                     
@@ -1132,16 +1103,16 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
         }
       }
 
-      // 1. Database operation with graceful fallback for slow connections
+      // 1. Clean Database payload matching Supabase schema precisely
       const skuPayload = {
         sku_code: values.sku_code,
         name: values.name,
-        unit: values.unit,
+        unit: values.unit || 'pcs',
         category: values.category || null,
-        current_location: values.current_location,
-        cost_price: values.cost_price,
-        sale_price: values.sale_price,
-        reorder_level: values.reorder_level,
+        current_location: (values.current_location || 'warehouse').toLowerCase(),
+        cost_price: Number(values.cost_price) || 0,
+        sale_price: Number(values.sale_price) || 0,
+        reorder_level: Number(values.reorder_level) || 0,
         barcode: values.barcode || null,
         description: values.description || null,
         thumbnail_url: finalThumbnailUrl,
@@ -1149,35 +1120,34 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
         manufacture_date: values.manufacture_date || null,
         expiry_date: values.expiry_date || null,
         requires_batch_tracking: values.requires_batch_tracking ?? false,
-        oem_number: values.oem_number || null,
-        compatible_vehicles: values.compatible_vehicles || null,
-        commission_rate: values.commission_rate ?? 0,
         oem_part_number: values.oem_number || null,
         compatible_models: values.compatible_vehicles || null,
       };
 
-      try {
-        if (skuToEdit) {
-          const { error: updateErr } = await supabase
-            .from('skus')
-            .update(skuPayload)
-            .eq('id', skuToEdit.id);
-          if (updateErr) console.warn('[AddProductModal] Cloud update notice:', updateErr);
-        } else {
-          const { error: insertErr } = await supabase
-            .from('skus')
-            .insert({
-              ...skuPayload,
-              id: targetSkuId,
-              business_id: businessId,
-              qty_on_hand: 0,
-              qty_reserved: 0,
-              is_active: true,
-            });
-          if (insertErr) console.warn('[AddProductModal] Cloud insert notice:', insertErr);
+      if (skuToEdit) {
+        const { error: updateErr } = await supabase
+          .from('skus')
+          .update(skuPayload)
+          .eq('id', skuToEdit.id);
+        if (updateErr) {
+          console.error('[AddProductModal] Cloud update error:', updateErr);
+          throw updateErr;
         }
-      } catch (dbErr) {
-        console.warn('[AddProductModal] Database sync deferred:', dbErr);
+      } else {
+        const { error: insertErr } = await supabase
+          .from('skus')
+          .insert({
+            ...skuPayload,
+            id: targetSkuId,
+            business_id: businessId,
+            qty_on_hand: 0,
+            qty_reserved: 0,
+            is_active: true,
+          });
+        if (insertErr) {
+          console.error('[AddProductModal] Cloud insert error:', insertErr);
+          throw insertErr;
+        }
       }
 
       const newSku: SKU = {

@@ -217,6 +217,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/privacy") ||
     pathname.startsWith("/terms") ||
     pathname.startsWith("/refund") ||
+    pathname.startsWith("/purchase") ||
     pathname.startsWith("/about") ||
     pathname.startsWith("/reviews") ||
     pathname.startsWith("/docs") ||
@@ -232,50 +233,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   if (!isPublicRoute && !isElectron && process.env.NODE_ENV !== 'development') {
     return (
-      <div className="min-h-screen bg-[#0F1113] text-gray-300 font-inter flex flex-col items-center justify-center p-6 select-none">
-        <ToastContainer />
-        <div className="max-w-xl w-full bg-[#16191C] border border-red-500/20 p-12 text-center space-y-8 relative overflow-hidden shadow-2xl">
-          {/* Decorative background grid */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(239,68,68,0.03)_0%,transparent_70%)] pointer-events-none" />
-          
-          <div className="flex flex-col items-center space-y-4 relative z-10">
-            <div className="w-16 h-16 bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-500 rounded-full animate-pulse shadow-[0_0_20px_rgba(239,68,68,0.1)]">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-              </svg>
-            </div>
-            <div className="space-y-2">
-              <span className="text-[10px] text-red-500 font-mono font-black uppercase tracking-[0.3em] bg-red-500/10 px-3 py-1 border border-red-500/20 rounded-full">
-                Environment Blocked
-              </span>
-              <h2 className="text-3xl font-black uppercase tracking-tight text-white mt-2">
-                Desktop App <span className="text-gray-500">Strictly Required</span>
-              </h2>
-            </div>
-          </div>
-
-          <p className="text-xs text-gray-400 leading-relaxed font-medium max-w-md mx-auto relative z-10">
-            Noxis Industrial Hub runs strictly and securely within the isolated desktop container (<code className="text-red-400 font-mono">.exe</code>). Access to localized database operations, secure WebSocket bridges, and Sentinel AI vision feeds from open-web browser environments is prohibited to prevent telemetry leakage and session hijack.
+      <div className="min-h-screen bg-[#121417] flex items-center justify-center p-8 select-none">
+        <div className="text-center">
+          <p className="text-[#C5A059] font-mono text-6xl font-bold mb-4">404</p>
+          <h2 className="text-white text-xl font-semibold mb-2">
+            Page not found
+          </h2>
+          <p className="text-gray-400 text-sm mb-6">
+            This page does not exist or has been moved.
           </p>
-
-          <div className="pt-4 border-t border-white/5 flex flex-col sm:flex-row gap-4 justify-center relative z-10">
-            <a 
-              href="/download" 
-              className="px-8 py-4 bg-red-500/10 border border-red-500/30 text-[10px] font-black uppercase tracking-widest text-red-400 hover:bg-red-500/20 hover:text-white transition-all shadow-[0_0_15px_rgba(239,68,68,0.1)] text-center font-bold"
-            >
-              Get Desktop Client (.exe)
-            </a>
-            <a 
-              href="/" 
-              className="px-8 py-4 bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:bg-white/10 hover:text-white transition-all text-center font-bold"
-            >
-              Back to Website
-            </a>
-          </div>
-          
-          <div className="text-[8px] font-mono text-gray-600 uppercase tracking-widest relative z-10">
-            Noxis Hub Security Protocol v13.0.0 · AES-256 Protected
-          </div>
+          <a
+            href="/"
+            className="px-6 py-2.5 bg-white/5 border border-white/10 text-gray-300 text-sm hover:bg-white/10 hover:text-white transition-colors rounded-sm inline-block"
+          >
+            Return to Home
+          </a>
         </div>
       </div>
     );

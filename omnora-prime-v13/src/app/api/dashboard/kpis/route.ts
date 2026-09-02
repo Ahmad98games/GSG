@@ -26,8 +26,9 @@ export async function GET(req: Request) {
   const auth = await verifyUserSession()
   const { searchParams } = new URL(req.url)
   const biz = searchParams.get('biz') || '00000000-0000-0000-0000-000000000000'
+  const isElectron = process.env.NEXT_PUBLIC_PLATFORM === 'electron' || process.env.NODE_ENV === 'development'
 
-  if (!auth && process.env.NODE_ENV !== 'development' && biz !== '00000000-0000-0000-0000-000000000000') {
+  if (!auth && !isElectron && biz !== '00000000-0000-0000-0000-000000000000') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

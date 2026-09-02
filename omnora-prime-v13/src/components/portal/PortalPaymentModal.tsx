@@ -118,7 +118,7 @@ export default function PortalPaymentModal({
                <div className="bg-onyx/50 p-6 rounded-sm border border-white/5 space-y-4">
                   <div className="flex justify-between items-baseline">
                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Outstanding Due</span>
-                     <span className="text-2xl font-bold text-white font-mono">Rs. {invoice.balance_due.toLocaleString()}</span>
+                     <span className="text-2xl font-bold text-white font-mono">Rs. {Number(invoice?.balance_due || 0).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-[10px] text-gray-600 uppercase font-black">
                      <span>Account Holder</span>

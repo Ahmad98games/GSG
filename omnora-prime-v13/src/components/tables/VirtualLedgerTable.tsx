@@ -8,7 +8,6 @@ import {
   flexRender,
   ColumnResizeMode,
 } from "@tanstack/react-table";
-import { useVirtualizer } from "@tanstack/react-virtual";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
@@ -192,16 +191,6 @@ export default function VirtualLedgerTable({ businessId }: VirtualLedgerTablePro
 
   const { rows } = table.getRowModel();
 
-  // Virtualizer
-  const rowVirtualizer = useVirtualizer({
-    count: rows.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 48,
-    overscan: 5,
-  });
-
-  const virtualRows = rowVirtualizer.getVirtualItems();
-
   // Infinite Scroll Trigger
   const onScroll = useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {
@@ -233,22 +222,14 @@ export default function VirtualLedgerTable({ businessId }: VirtualLedgerTablePro
         e.preventDefault();
         setSelectedIndex((prev) => Math.max(prev - 1, 0));
       } else if (e.key === "Enter" && selectedIndex !== -1) {
-        const row = rows[selectedIndex].original;
-        console.log("Opening detail for:", row.id);
-        // router.push(`/ledger/${row.id}`);
+        const row = rows[selectedIndex]?.original;
+        console.log("Opening detail for:", row?.id);
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [rows, selectedIndex, isSearchOpen]);
-
-  // Auto-scroll selected row into view
-  useEffect(() => {
-    if (selectedIndex !== -1) {
-      rowVirtualizer.scrollToIndex(selectedIndex);
-    }
-  }, [selectedIndex, rowVirtualizer]);
 
   if (status === "pending") {
     return (
@@ -300,9 +281,7 @@ export default function VirtualLedgerTable({ businessId }: VirtualLedgerTablePro
         onScroll={onScroll}
         className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-white/10"
       >
-        <div 
-          style={{ height: `${rowVirtualizer.getTotalSize()}px`, width: "100%", position: "relative" }}
-        >
+        <div className="w-full">
           {/* Header */}
           <div className="sticky top-0 z-20 flex bg-onyx/80 backdrop-blur-md border-b border-white/10 shadow-lg">
             {table.getLeafHeaders().map((header) => (
@@ -333,29 +312,18 @@ export default function VirtualLedgerTable({ businessId }: VirtualLedgerTablePro
           </div>
 
           {/* Body */}
-          {virtualRows.map((virtualRow) => {
-            const row = rows[virtualRow.index];
-            const isSelected = selectedIndex === virtualRow.index;
+          {rows.map((row, index) => {
+            const isSelected = selectedIndex === index;
             
             return (
               <div
-                key={virtualRow.key}
-                data-index={virtualRow.index}
-                ref={rowVirtualizer.measureElement}
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  height: "48px",
-                  transform: `translateY(${virtualRow.start}px)`,
-                }}
+                key={row.id}
                 className={cn(
-                  "flex border-b border-white/[0.02] items-center transition-colors group cursor-pointer",
+                  "flex border-b border-white/[0.02] items-center transition-colors group cursor-pointer h-12",
                   isSelected ? "bg-electric-blue/10 border-l-2 border-l-electric-blue" : "hover:bg-white/[0.02]",
-                  virtualRow.index % 2 === 0 ? "bg-white/[0.01]" : ""
+                  index % 2 === 0 ? "bg-white/[0.01]" : ""
                 )}
-                onClick={() => setSelectedIndex(virtualRow.index)}
+                onClick={() => setSelectedIndex(index)}
               >
                 {row.getVisibleCells().map((cell) => (
                   <div

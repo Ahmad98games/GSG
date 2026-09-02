@@ -42,7 +42,7 @@ export function generatePartyStatementPDF(data: PartyStatementPDFData) {
   const currency = data.currency || 'PKR'
 
   // Header band
-  doc.setFillColor(15, 31, 61)
+  doc.setFillColor(11, 15, 25)
   doc.rect(0, 0, PAGE_W, 44, 'F')
 
   doc.setFont('helvetica', 'bold')
@@ -58,7 +58,7 @@ export function generatePartyStatementPDF(data: PartyStatementPDFData) {
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(18)
-  doc.setTextColor(96, 165, 250)
+  doc.setTextColor(6, 182, 212) // Cyber Cyan
   doc.text('ACCOUNT STATEMENT', PAGE_W - M, 18, { align: 'right' })
 
   doc.setFont('helvetica', 'normal')
@@ -86,20 +86,30 @@ export function generatePartyStatementPDF(data: PartyStatementPDFData) {
 
   y += 30
 
+  // Calculate totals dynamically if not passed or 0
+  const computedTotalDebit = (data.items || []).reduce((acc, it) => acc + (Number(it.debit) || 0), 0)
+  const computedTotalCredit = (data.items || []).reduce((acc, it) => acc + (Number(it.credit) || 0), 0)
+  const finalTotalDebit = (data.totalDebit != null && data.totalDebit > 0) ? data.totalDebit : computedTotalDebit
+  const finalTotalCredit = (data.totalCredit != null && data.totalCredit > 0) ? data.totalCredit : computedTotalCredit
+
   // Table rows
-  const tableRows = (data.items || []).map(item => [
-    item.date || '—',
-    item.reference || '—',
-    item.description || 'Transaction',
-    item.debit > 0 ? `${currency} ${item.debit.toLocaleString('en-PK', { minimumFractionDigits: 2 })}` : '-',
-    item.credit > 0 ? `${currency} ${item.credit.toLocaleString('en-PK', { minimumFractionDigits: 2 })}` : '-',
-    `${currency} ${(item.runningBalance || 0).toLocaleString('en-PK', { minimumFractionDigits: 2 })}`,
-  ])
+  const tableRows = (data.items || []).map(item => {
+    const d = Number(item.debit || 0)
+    const c = Number(item.credit || 0)
+    return [
+      item.date || '—',
+      item.reference || '—',
+      item.description || 'Transaction',
+      d > 0 ? `${currency} ${d.toLocaleString('en-PK', { minimumFractionDigits: 2 })}` : '-',
+      c > 0 ? `${currency} ${c.toLocaleString('en-PK', { minimumFractionDigits: 2 })}` : '-',
+      `${currency} ${(item.runningBalance || 0).toLocaleString('en-PK', { minimumFractionDigits: 2 })}`,
+    ]
+  })
 
   const bodyRows: any[] = [
     [data.startDate, '—', 'Opening Balance', '-', '-', `${currency} ${(data.openingBalance || 0).toLocaleString('en-PK', { minimumFractionDigits: 2 })}`],
     ...(tableRows.length > 0 ? tableRows : [[data.startDate, '—', 'No transactions in this period', '-', '-', `${currency} ${(data.closingBalance || 0).toLocaleString('en-PK', { minimumFractionDigits: 2 })}`]]),
-    [data.endDate, '—', 'Closing Balance', `${currency} ${(data.totalDebit || 0).toLocaleString('en-PK', { minimumFractionDigits: 2 })}`, `${currency} ${(data.totalCredit || 0).toLocaleString('en-PK', { minimumFractionDigits: 2 })}`, `${currency} ${(data.closingBalance || 0).toLocaleString('en-PK', { minimumFractionDigits: 2 })}`]
+    [data.endDate, '—', 'Closing Balance', `${currency} ${finalTotalDebit.toLocaleString('en-PK', { minimumFractionDigits: 2 })}`, `${currency} ${finalTotalCredit.toLocaleString('en-PK', { minimumFractionDigits: 2 })}`, `${currency} ${(data.closingBalance || 0).toLocaleString('en-PK', { minimumFractionDigits: 2 })}`]
   ]
 
   autoTable(doc, {
@@ -108,7 +118,7 @@ export function generatePartyStatementPDF(data: PartyStatementPDFData) {
     body: bodyRows,
     margin: { left: M, right: M },
     styles: { fontSize: 8, cellPadding: 2.5 },
-    headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' },
+    headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [248, 250, 252] },
   })
 

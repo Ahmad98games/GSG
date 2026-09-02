@@ -19,6 +19,8 @@
 
 # production
 /build
+/dist
+/dist-electron
 
 # misc
 .DS_Store
@@ -69,6 +71,7 @@ google-services.json
 GoogleService-Info.plist
 
 # scratch and tools
+/.claude/
 /scratch/
 /better-sqlite3-multiple-ciphers/
 /winCodeSign/

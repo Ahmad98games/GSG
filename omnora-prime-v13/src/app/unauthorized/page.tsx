@@ -18,8 +18,8 @@ export default function UnauthorizedPage() {
           <h1 className="text-2xl font-black text-white uppercase tracking-tight">Access Restricted</h1>
           <p className="text-sm text-gray-400 leading-relaxed">Your role does not have permission to access this module. Contact your administrator to request access.</p>
         </div>
-        <button onClick={() => router.push('/dashboard')} className="inline-flex items-center space-x-2 px-6 py-3 bg-white/5 border border-white/10 text-[10px] uppercase font-black tracking-widest text-gray-400 hover:text-white hover:bg-white/10 transition-all rounded-sm">
-          <ArrowLeft size={14} /><span>Return to Dashboard</span>
+        <button onClick={() => router.push('/')} className="inline-flex items-center space-x-2 px-6 py-3 bg-white/5 border border-white/10 text-[10px] uppercase font-black tracking-widest text-gray-400 hover:text-white hover:bg-white/10 transition-all rounded-sm">
+          <ArrowLeft size={14} /><span>Return to Home</span>
         </button>
       </motion.div>
     </div>

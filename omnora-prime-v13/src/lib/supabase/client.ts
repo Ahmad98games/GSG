@@ -88,18 +88,31 @@ export function createClient() {
     _client.from = (table: string) => {
       const builder = originalFrom(table);
 
+      let lastReadOnlyCheck = 0;
+      let cachedReadOnly = false;
+
       const isReadOnly = () => {
         if (typeof window === 'undefined') return false;
+        const now = Date.now();
+        if (now - lastReadOnlyCheck < 3000) {
+          return cachedReadOnly;
+        }
+        lastReadOnlyCheck = now;
         try {
           const tierDataStr = localStorage.getItem('noxis-tier');
-          if (!tierDataStr) return false;
+          if (!tierDataStr) {
+            cachedReadOnly = false;
+            return false;
+          }
           const tierData = JSON.parse(tierDataStr);
           if (tierData.state?.isTrial && tierData.state?.expiresAt) {
-            return new Date(tierData.state.expiresAt) < new Date();
+            cachedReadOnly = new Date(tierData.state.expiresAt) < new Date();
+            return cachedReadOnly;
           }
         } catch (e) {
           console.error('Error reading tier store from localStorage:', e);
         }
+        cachedReadOnly = false;
         return false;
       };
 

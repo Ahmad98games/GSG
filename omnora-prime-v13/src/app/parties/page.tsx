@@ -3,7 +3,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Can } from "@/components/rbac/Can";
-import { useVirtualizer } from '@tanstack/react-virtual';
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { 
@@ -193,22 +192,7 @@ export default function PartiesPage() {
     };
   }, [parties]);
 
-  const parentRef = useRef<HTMLDivElement>(null);
   const items = filteredParties || [];
-
-  const chunk = <T,>(arr: T[], size: number): T[][] =>
-    Array.from({ length: Math.ceil(arr.length / size) }, (v, i) =>
-      arr.slice(i * size, i * size + size)
-    );
-
-  const chunkedRows = useMemo(() => chunk(items, 3) as Party[][], [items]);
-
-  const rowVirtualizer = useVirtualizer({
-    count: chunkedRows.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 240,
-    overscan: 5,
-  });
 
   const exportToExcel = () => {
     if (!parties || parties.length === 0) {
@@ -358,10 +342,7 @@ export default function PartiesPage() {
            </div>
 
             {/* Parties List */}
-            <div
-              ref={parentRef}
-              className="overflow-y-auto max-h-[calc(100vh-280px)] pr-2"
-            >
+            <div className="overflow-y-auto max-h-[calc(100vh-280px)] pr-2">
               {isLoading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {[1,2,3,4,5,6].map(i => <div key={i} className="h-48 bg-white/[0.02] animate-pulse border border-white/5" />)}
@@ -372,41 +353,19 @@ export default function PartiesPage() {
                    <p className="mt-4 uppercase tracking-[0.2em] text-[10px]">No parties matched criteria</p>
                 </div>
               ) : (
-                <div
-                  style={{
-                    height: `${rowVirtualizer.getTotalSize()}px`,
-                    width: '100%',
-                    position: 'relative',
-                  }}
-                >
-                  {rowVirtualizer.getVirtualItems().map((virtualRow) => (
-                    <div
-                      key={virtualRow.key}
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: `${virtualRow.size}px`,
-                        transform: `translateY(${virtualRow.start}px)`,
-                      }}
-                    >
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {chunkedRows[virtualRow.index].map((party: Party) => (
-                           <PartyCard 
-                             key={party.id} 
-                             party={party} 
-                             fmt={fmt} 
-                             onView={() => router.push(`/parties/${party.id}`)}
-                             openMenu={openMenu}
-                             setOpenMenu={setOpenMenu}
-                             onToggleBlock={() => handleToggleBlock(party)}
-                             onEdit={() => router.push(`/parties/${party.id}/edit`)}
-                             onDelete={() => handleDeleteParty(party)}
-                           />
-                        ))}
-                      </div>
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredParties.map((party: Party) => (
+                    <PartyCard 
+                      key={party.id} 
+                      party={party} 
+                      fmt={fmt} 
+                      onView={() => router.push(`/parties/${party.id}`)}
+                      openMenu={openMenu}
+                      setOpenMenu={setOpenMenu}
+                      onToggleBlock={() => handleToggleBlock(party)}
+                      onEdit={() => router.push(`/parties/${party.id}/edit`)}
+                      onDelete={() => handleDeleteParty(party)}
+                    />
                   ))}
                 </div>
               )}

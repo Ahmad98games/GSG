@@ -104,8 +104,9 @@ export default function OwnerDashboard() {
       await loadDashboard();
       return true;
     },
-    enabled: isLoaded,
+    enabled: true,
     staleTime: 5000,
+    refetchInterval: 10000,
     refetchOnWindowFocus: true,
   })
 
@@ -260,14 +261,17 @@ export default function OwnerDashboard() {
     return () => clearInterval(interval)
   }, [loadDashboard])
 
-  const formatCurrency = (n: number) =>
-    `${data?.currency || 'PKR'} ${
-      n >= 1000000
-        ? (n / 1000000).toFixed(1) + 'M'
-        : n >= 1000
-        ? (n / 1000).toFixed(0) + 'K'
-        : n.toLocaleString()
+  const formatCurrency = (n: number | null | undefined) => {
+    const val = typeof n === 'number' ? n : Number(n ?? 0)
+    const safeVal = isNaN(val) ? 0 : val
+    return `${data?.currency || 'PKR'} ${
+      Math.abs(safeVal) >= 1000000
+        ? (safeVal / 1000000).toFixed(1) + 'M'
+        : Math.abs(safeVal) >= 1000
+        ? (safeVal / 1000).toFixed(0) + 'K'
+        : safeVal.toLocaleString()
     }`
+  }
 
   const { signOut } = useAuth()
 
@@ -349,7 +353,7 @@ export default function OwnerDashboard() {
               <span className="flex items-center gap-1"><MapPin size={10} />{data.city}</span>
             )}
             <span>•</span>
-            <span className="text-[#C5A059]">{data.tier.toUpperCase()} TIER</span>
+            <span className="text-cyan-400 font-black">{data.tier.toUpperCase()} TIER</span>
           </div>
         </div>
 
@@ -366,8 +370,8 @@ export default function OwnerDashboard() {
               onClick={() => setActiveTab(tab)}
               className={`py-3 px-6 text-xs font-black uppercase tracking-widest transition-all border-b-2 ${
                 activeTab === tab
-                  ? 'border-[#C5A059] text-white bg-white/[0.01]'
-                  : 'border-transparent text-slate-500 hover:text-slate-350'
+                  ? 'border-cyan-400 text-cyan-400 bg-cyan-950/20 shadow-[0_4px_12px_-2px_rgba(6,182,212,0.3)]'
+                  : 'border-transparent text-slate-500 hover:text-slate-300'
               }`}
             >
               {label}
@@ -448,15 +452,15 @@ export default function OwnerDashboard() {
                   value={fmtCompact(data.pendingReceivables)}
                   sub={`${data.overdueCount} overdue items`}
                   accent={data.overdueCount > 0 ? "text-red-400" : "text-slate-500"}
-                  icon={<DollarSign className="w-4 h-4 text-[#C5A059]" />}
+                  icon={<DollarSign className="w-4 h-4 text-cyan-400" />}
                 />
                 {(features.pieceRateWages || features.peshgiAdvances) && (
                   <KpiCard
                     label="Present Today"
                     value={`${data.presentToday} / ${data.totalKarigars}`}
                     sub={`${data.absentToday} absent`}
-                    accent="text-[#00E5FF]"
-                    icon={<Users className="w-4 h-4 text-[#00E5FF]" />}
+                    accent="text-cyan-400"
+                    icon={<Users className="w-4 h-4 text-cyan-400" />}
                   />
                 )}
                 <KpiCard
@@ -478,8 +482,8 @@ export default function OwnerDashboard() {
                     label={`${t.advance} Outstanding`}
                     value={fmtCompact(data.totalPeshgiOutstanding)}
                     sub="advances to recover"
-                    accent="text-[#C5A059]"
-                    icon={<Lock className="w-4 h-4 text-[#C5A059]" />}
+                    accent="text-cyan-400"
+                    icon={<Lock className="w-4 h-4 text-cyan-400" />}
                   />
                 )}
                 {features.expiryManagement && (
@@ -519,9 +523,9 @@ export default function OwnerDashboard() {
                       key={p.id}
                       left={p.party?.name || 'Unknown Partner'}
                       right={formatCurrency(p.amount)}
-                      sub={`Promise date: ${new Date(p.promise_date).toLocaleDateString('en-PK')}`}
-                      accent={new Date(p.promise_date) < new Date() ? 'text-red-400' : 'text-[#C5A059]'}
-                      badge={new Date(p.promise_date) < new Date() ? 'overdue' : 'pending'}
+                      sub={`Promise date: ${p.promise_date ? new Date(p.promise_date).toLocaleDateString('en-PK') : '—'}`}
+                      accent={p.promise_date && new Date(p.promise_date) < new Date() ? 'text-red-400' : 'text-cyan-400'}
+                      badge={p.promise_date && new Date(p.promise_date) < new Date() ? 'overdue' : 'pending'}
                     />
                   ))}
                 </Section>
@@ -535,8 +539,8 @@ export default function OwnerDashboard() {
                   <RowItem
                     key={inv.id}
                     left={inv.party?.name || 'Walk-in Client'}
-                    right={formatCurrency(inv.total_amount)}
-                    sub={`${inv.invoice_number} · ${new Date(inv.created_at).toLocaleDateString('en-PK')}`}
+                    right={formatCurrency(inv.total_amount ?? inv.total ?? inv.subtotal ?? 0)}
+                    sub={`${inv.invoice_number || inv.invoice_no || 'INV'} · ${inv.created_at ? new Date(inv.created_at).toLocaleDateString('en-PK') : '—'}`}
                     accent="text-emerald-400"
                     badge={inv.status}
                   />
@@ -553,7 +557,7 @@ export default function OwnerDashboard() {
                   label="Active Workers"
                   value={String(data.totalKarigars)}
                   sub="registered floor staff"
-                  accent="text-[#00E5FF]"
+                  accent="text-cyan-400"
                 />
                 <KpiCard
                   label="Present"
@@ -600,8 +604,8 @@ export default function OwnerDashboard() {
                     key={i}
                     left={k.karigar?.name || 'Unknown Staff'}
                     right={formatCurrency(k.earnings)}
-                    sub={`${k.units_produced?.toLocaleString() || 0} pieces produced · Code: ${k.karigar?.karigar_code || 'N/A'}`}
-                    accent="text-[#C5A059]"
+                    sub={`${Number(k.units_produced || 0).toLocaleString()} pieces produced · Code: ${k.karigar?.karigar_code || 'N/A'}`}
+                    accent="text-cyan-400"
                   />
                 ))}
               </Section>
@@ -611,13 +615,13 @@ export default function OwnerDashboard() {
                   label="MTD Net Wages"
                   value={formatCurrency(data.totalPayrollThisMonth)}
                   sub="cumulative wages run"
-                  accent="text-[#00E5FF]"
+                  accent="text-cyan-400"
                 />
                 <KpiCard
                   label="Active Peshgi Balances"
                   value={formatCurrency(data.totalPeshgiOutstanding)}
                   sub="total advances given"
-                  accent="text-[#C5A059]"
+                  accent="text-cyan-400"
                 />
               </div>
             </>
@@ -643,13 +647,13 @@ export default function OwnerDashboard() {
                   label="Wages Paid (MTD)"
                   value={formatCurrency(data.totalPayrollThisMonth)}
                   sub="wages run payments"
-                  accent="text-[#00E5FF]"
+                  accent="text-cyan-400"
                 />
                 <KpiCard
                   label="Pending Purchases"
                   value={String(data.pendingPurchases)}
                   sub="POs awaiting receipt"
-                  accent="text-amber-400"
+                  accent="text-cyan-400"
                 />
               </div>
 
@@ -681,9 +685,9 @@ export default function OwnerDashboard() {
                     key={p.id}
                     left={p.party?.name || 'Unknown'}
                     right={formatCurrency(p.amount)}
-                    sub={`Promise date: ${new Date(p.promise_date).toLocaleDateString('en-PK')}`}
-                    accent={new Date(p.promise_date) < new Date() ? 'text-red-400' : 'text-emerald-400'}
-                    badge={new Date(p.promise_date) < new Date() ? 'overdue' : 'pending'}
+                    sub={`Promise date: ${p.promise_date ? new Date(p.promise_date).toLocaleDateString('en-PK') : '—'}`}
+                    accent={p.promise_date && new Date(p.promise_date) < new Date() ? 'text-red-400' : 'text-emerald-400'}
+                    badge={p.promise_date && new Date(p.promise_date) < new Date() ? 'overdue' : 'pending'}
                   />
                 ))}
               </Section>
@@ -698,7 +702,7 @@ export default function OwnerDashboard() {
                   label="Stock Inventory Value"
                   value={formatCurrency(data.stockValue)}
                   sub="on hand costing basis"
-                  accent="text-[#00E5FF]"
+                  accent="text-cyan-400"
                 />
                 <KpiCard
                   label="Low Stock Warnings"
@@ -716,7 +720,7 @@ export default function OwnerDashboard() {
                   label="Purchases Placed"
                   value={String(data.pendingPurchases)}
                   sub="POs in queue"
-                  accent="text-[#C5A059]"
+                  accent="text-cyan-400"
                 />
               </div>
 

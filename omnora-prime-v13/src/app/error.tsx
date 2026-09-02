@@ -35,10 +35,10 @@ export default function ErrorPage({
           >
             Try Again
           </button>
-          <Link href="/dashboard"
-            className="px-4 py-2 bg-white/5 border border-white/10 text-gray-400 text-sm hover:bg-white/10 transition-colors"
+          <Link href="/"
+            className="px-4 py-2 bg-white/5 border border-white/10 text-gray-400 text-sm hover:bg-white/10 hover:text-white transition-colors rounded-sm"
           >
-           Go Back to Dashboard
+           Return to Home
           </Link>
         </div>
       </div>

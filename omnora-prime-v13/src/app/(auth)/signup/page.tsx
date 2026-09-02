@@ -50,7 +50,7 @@ export default function SignupPage() {
       if (data?.user?.identities?.length === 0) {
         setError("This email is already registered. Please login instead.");
       } else {
-        router.push("/");
+        router.push("/setup");
       }
     } catch (err: any) {
       if (isNetworkError(err)) {

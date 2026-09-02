@@ -201,10 +201,10 @@ export const SKUFormModal: React.FC<SKUFormModalProps> = ({
         sku_code: form.skuCode.trim() || null,
         barcode: form.barcode.trim() || null,
         category: form.category || null,
-        unit: form.unit,
+        unit: form.unit || 'pcs',
+        current_location: 'warehouse',
         cost_price: parseFloat(form.costPrice) || 0,
         sale_price: parseFloat(form.salePrice) || 0,
-        wholesale_price: parseFloat(form.wholesalePrice) || 0,
         qty_on_hand: parseFloat(form.qtyOnHand) || 0,
         reorder_level: parseFloat(form.reorderLevel) || 0,
         description: form.description.trim() || null,
@@ -212,27 +212,28 @@ export const SKUFormModal: React.FC<SKUFormModalProps> = ({
         is_active: true,
       }
 
-      try {
-        if (initialData?.id) {
-          const { error } = await supabase
-            .from('skus')
-            .update(payload)
-            .eq('id', initialData.id)
-          if (error) console.warn('[SKUFormModal] Cloud update notice:', error)
-          toast.success('Item updated successfully')
-        } else {
-          const { error } = await supabase
-            .from('skus')
-            .insert({
-              ...payload,
-              id: targetSkuId,
-            })
-          if (error) console.warn('[SKUFormModal] Cloud insert notice:', error)
-          toast.success('Item created successfully')
+      if (initialData?.id) {
+        const { error } = await supabase
+          .from('skus')
+          .update(payload)
+          .eq('id', initialData.id)
+        if (error) {
+          console.error('[SKUFormModal] Cloud update notice:', error)
+          throw error
         }
-      } catch (dbErr) {
-        console.warn('[SKUFormModal] Cloud sync delayed, saved locally:', dbErr)
-        toast.success(initialData?.id ? 'Item updated (locally cached)' : 'Item created (locally cached)')
+        toast.success('Item updated successfully')
+      } else {
+        const { error } = await supabase
+          .from('skus')
+          .insert({
+            ...payload,
+            id: targetSkuId,
+          })
+        if (error) {
+          console.error('[SKUFormModal] Cloud insert notice:', error)
+          throw error
+        }
+        toast.success('Item created successfully')
       }
 
       onSuccess?.()

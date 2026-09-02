@@ -309,8 +309,12 @@ export const db = new Proxy({} as Record<string, any>, {
         } catch (schemaErr) {
           console.warn('[DB] Non-critical schema initialization warning:', schemaErr);
         }
-      } catch (err) {
-        console.error("Local Database Initialization Warning:", err);
+      } catch (err: any) {
+        if (err?.code === 'ERR_DLOPEN_FAILED' || err?.message?.includes('NODE_MODULE_VERSION')) {
+          console.warn('[DB] Native SQLite addon compiled for Electron ABI (non-fatal in Web Dev mode, fallback active)');
+        } else {
+          console.error("Local Database Initialization Warning:", err);
+        }
         return undefined;
       }
     }

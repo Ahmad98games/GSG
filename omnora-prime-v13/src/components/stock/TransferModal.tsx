@@ -31,14 +31,14 @@ export default function TransferModal({ sku, isOpen, onClose, onSuccess }: Trans
   const [gps, setGps] = useState<{ lat: number; lng: number } | null>(null);
   const supabase = createClient();
 
-  const maxQty = sku.qty_on_hand - sku.qty_reserved;
+  const maxQty = (sku?.qty_on_hand || 0) - (sku?.qty_reserved || 0);
 
   const { register, handleSubmit, formState: { errors } } = useForm<TransferFormValues>({
     resolver: zodResolver(transferSchema) as any,
   });
 
   // Get GPS on mount
-   useEffect(() => {
+  useEffect(() => {
     if (isOpen && "geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (pos) => setGps({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
@@ -75,7 +75,7 @@ export default function TransferModal({ sku, isOpen, onClose, onSuccess }: Trans
       const { error: skuError } = await supabase
         .from('skus')
         .update({ 
-          qty_reserved: sku.qty_reserved + values.qty 
+          qty_reserved: (sku.qty_reserved || 0) + values.qty 
         })
         .eq('id', sku.id);
 
@@ -107,7 +107,7 @@ export default function TransferModal({ sku, isOpen, onClose, onSuccess }: Trans
             </div>
             <div>
               <h2 className="text-sm font-bold text-white uppercase tracking-widest">Initiate Stock Transfer</h2>
-              <p className="text-[10px] text-gray-500 font-mono">{sku.sku_code} — {sku.name}</p>
+              <p className="text-[10px] text-gray-500 font-mono">{sku?.sku_code} — {sku?.name}</p>
             </div>
           </div>
           <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
@@ -121,7 +121,7 @@ export default function TransferModal({ sku, isOpen, onClose, onSuccess }: Trans
               <label className="text-[10px] uppercase text-gray-500 font-bold tracking-widest">Origin</label>
               <div className="flex items-center space-x-2 p-3 bg-onyx border border-white/5 opacity-60">
                 <MapPin size={12} className="text-gray-600" />
-                <span className="text-xs uppercase text-gray-400">{sku.current_location}</span>
+                <span className="text-xs uppercase text-gray-400">{sku?.current_location || 'Warehouse'}</span>
               </div>
             </div>
             <div className="space-y-1.5">
@@ -139,7 +139,7 @@ export default function TransferModal({ sku, isOpen, onClose, onSuccess }: Trans
           <div className="p-4 bg-onyx/50 border border-white/5">
             <div className="flex items-center justify-between mb-4">
               <label className="text-[10px] uppercase text-gray-500 font-bold tracking-widest">Transfer Quantity</label>
-              <span className="text-[9px] text-emerald uppercase font-mono">Available: {maxQty.toLocaleString()} {sku.unit}</span>
+              <span className="text-[9px] text-emerald uppercase font-mono">Available: {(maxQty ?? 0).toLocaleString()} {sku?.unit || ''}</span>
             </div>
             <input 
               type="number" 
@@ -175,4 +175,3 @@ export default function TransferModal({ sku, isOpen, onClose, onSuccess }: Trans
     </div>
   );
 }
-

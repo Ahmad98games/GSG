@@ -42,22 +42,24 @@ export function useIndustryConfig(): NoxisPersona {
     )
 
     const fmt = (amount: number) => {
-      if (isNaN(amount) || !isFinite(amount)) {
-        return `${region.currency} 0`
+      const num = typeof amount === 'number' ? amount : Number(amount ?? 0);
+      if (isNaN(num) || !isFinite(num)) {
+        return `${region?.currency || 'PKR'} 0`
       }
-      return `${region.currency} ${
-        Math.abs(amount).toLocaleString(
-          region.defaultLanguage,
+      return `${region?.currency || 'PKR'} ${
+        Math.abs(num).toLocaleString(
+          region?.defaultLanguage || 'en-PK',
           {
             minimumFractionDigits: 0,
             maximumFractionDigits: 0,
           }
         )
-      }${amount < 0 ? ' CR' : ''}`
+      }${num < 0 ? ' CR' : ''}`
     }
 
     const fmtCompact = (amount: number) => {
-      const abs = Math.abs(amount)
+      const num = typeof amount === 'number' ? amount : Number(amount ?? 0);
+      const abs = isNaN(num) ? 0 : Math.abs(num);
       let str: string
       if (abs >= 10_000_000) {
         str = (abs / 1_000_000).toFixed(1) + 'M'
@@ -65,11 +67,11 @@ export function useIndustryConfig(): NoxisPersona {
         str = (abs / 1_000).toFixed(0) + 'K'
       } else {
         str = abs.toLocaleString(
-          region.defaultLanguage
+          region?.defaultLanguage || 'en-PK'
         )
       }
-      return `${region.currency} ${str}${
-        amount < 0 ? ' CR' : ''
+      return `${region?.currency || 'PKR'} ${str}${
+        num < 0 ? ' CR' : ''
       }`
     }
 
@@ -78,7 +80,7 @@ export function useIndustryConfig(): NoxisPersona {
       try {
         const d = typeof date === 'string' ? new Date(date) : date
         if (isNaN(d.getTime())) return '—'
-        if (region.dateFormat === 'MM/DD/YYYY') {
+        if (region?.dateFormat === 'MM/DD/YYYY') {
           return d.toLocaleDateString('en-US')
         }
         return d.toLocaleDateString('en-GB')
@@ -93,7 +95,7 @@ export function useIndustryConfig(): NoxisPersona {
         const d = typeof date === 'string' ? new Date(date) : date
         if (isNaN(d.getTime())) return '—'
         return d.toLocaleString(
-          region.defaultLanguage,
+          region?.defaultLanguage || 'en-PK',
           {
             day: '2-digit',
             month: 'short',
@@ -108,12 +110,14 @@ export function useIndustryConfig(): NoxisPersona {
     }
 
     const fmtTax = (amount: number) => {
-      const rate = profile?.tax_rate ?? region.taxRate
-      const label = profile?.tax_label ?? region.taxLabel
+      const num = typeof amount === 'number' ? amount : Number(amount ?? 0);
+      const safeNum = isNaN(num) ? 0 : num;
+      const rate = profile?.tax_rate ?? region?.taxRate ?? 0
+      const label = profile?.tax_label ?? region?.taxLabel ?? 'Tax'
       return `${label} (${rate}%): ${
-        `${region.currency} ${
-          amount.toLocaleString(
-            region.defaultLanguage
+        `${region?.currency || 'PKR'} ${
+          safeNum.toLocaleString(
+            region?.defaultLanguage || 'en-PK'
           )
         }`
       }`

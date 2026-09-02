@@ -108,7 +108,12 @@ export default function LoginPage() {
           if (typeof document !== 'undefined') {
             document.cookie = `noxis_license_active=true; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Strict`;
           }
-          router.push("/dashboard");
+
+          if (!bizProfile || !bizProfile.onboarding_done) {
+            router.push("/setup");
+          } else {
+            router.push("/dashboard");
+          }
           return;
         }
       }

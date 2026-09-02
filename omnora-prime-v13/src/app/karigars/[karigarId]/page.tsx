@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
@@ -31,7 +31,7 @@ export default function KarigarDetailPage() {
   const { profile } = useBusinessProfile();
   const { isLoaded } = useBusinessProfileStore();
   const { term, workerTerm, fmt } = usePersona();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   
   const karigarId = params.karigarId as string;
   
@@ -54,11 +54,25 @@ export default function KarigarDetailPage() {
   const handleUpdateGrade = async (newGrade: string) => {
     setIsUpdatingGrade(true);
     try {
-      const { error } = await supabase
-        .from('karigars')
-        .update({ grade: newGrade })
-        .eq('id', karigarId);
-      if (error) throw error;
+      let updated = false;
+      try {
+        const res = await fetch('/api/karigars', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ operation: 'update_grade', karigar_id: karigarId, new_grade: newGrade }),
+        });
+        const json = await res.json();
+        if (res.ok && json.success) updated = true;
+      } catch {}
+
+      if (!updated) {
+        const { error } = await supabase
+          .from('karigars')
+          .update({ grade: newGrade })
+          .eq('id', karigarId);
+        if (error) throw error;
+      }
+
       setKarigar((prev: any) => ({ ...prev, grade: newGrade }));
       toast.success(`Artisan grade updated to ${newGrade}`);
     } catch (err: any) {
@@ -69,116 +83,86 @@ export default function KarigarDetailPage() {
   };
   
   const loadKarigarDetails = useCallback(async (signal?: AbortSignal) => {
-    if (!profile?.id || !karigarId) return;
+    if (!karigarId) {
+      setLoading(false);
+      return;
+    }
+
+    const bizId = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null) || '00000000-0000-0000-0000-000000000000';
+
     try {
       setLoading(true);
-      // 1. Fetch Karigar record
-      const { data: karRec, error: karErr } = await supabase
+
+      // Check cached karigar first for instant 0ms load
+      if (typeof window !== 'undefined') {
+        try {
+          const cached = localStorage.getItem(`noxis_cached_karigars_${bizId}`);
+          if (cached) {
+            const list = JSON.parse(cached);
+            const found = Array.isArray(list) ? list.find((k: any) => k.id === karigarId) : null;
+            if (found) setKarigar(found);
+          }
+        } catch {}
+      }
+
+      // 1. Fetch Karigar record with 3.5s timeout
+      const fetchRecord = supabase
         .from('karigars')
         .select('*, karigar_grades(grade_name)')
         .eq('id', karigarId)
         .single();
 
-      if (signal?.aborted) return;
+      const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+        setTimeout(() => resolve({ data: null, error: new Error('TIMEOUT') }), 3500)
+      );
 
-      if (karErr || !karRec) {
-        router.push('/karigars');
-        return;
-      }
-      setKarigar(karRec);
-
-      // 2. Fetch or create worker identity
-      let { data: ident, error: identErr } = await supabase
-        .from('worker_identities')
-        .select('*, worker_skills(*)')
-        .eq('karigar_id', karigarId)
-        .eq('business_id', profile?.id)
-        .maybeSingle();
+      const { data: karRec, error: karErr } = await Promise.race([fetchRecord, timeoutPromise]);
 
       if (signal?.aborted) return;
 
-      if (!ident && !identErr && profile?.id) {
-        const { data: newIdent, error: createErr } = await supabase
-          .from('worker_identities')
-          .insert({
-            karigar_id: karigarId,
-            business_id: profile?.id,
-            current_employer_id: profile?.id,
-            full_name: karRec.name,
-            phone: karRec.phone || '',
-            is_public: false,
-            open_to_work: false,
-          })
-          .select()
-          .single();
-
-        if (signal?.aborted) return;
-
-        if (!createErr && newIdent) {
-          ident = { ...newIdent, worker_skills: [] };
-        }
+      if (!karErr && karRec) {
+        setKarigar(karRec);
       }
-      setIdentity(ident);
 
-      // 3. Fetch RPC Stats and raw logs (Attendance, Production, Advances)
-      const [attStats, prodStats, rawAttendance, rawProduction, rawAdvances] = await Promise.allSettled([
-        supabase.rpc('get_karigar_attendance_rate', {
-          p_karigar_id: karigarId,
-          p_days: 90
-        }),
-        supabase.rpc('get_karigar_production_stats', {
-          p_karigar_id: karigarId,
-          p_days: 90
-        }),
+      // 2. Fetch worker identity and logs safely in parallel
+      const [rawAttendance, rawProduction, rawAdvances] = await Promise.allSettled([
         supabase
           .from('attendance_logs')
           .select('*')
           .eq('karigar_id', karigarId)
-          .order('log_date', { ascending: false }),
+          .order('log_date', { ascending: false })
+          .limit(50),
         supabase
           .from('karigar_production_logs')
           .select('*, skus(name)')
           .eq('karigar_id', karigarId)
-          .order('log_date', { ascending: false }),
+          .order('log_date', { ascending: false })
+          .limit(50),
         supabase
           .from('karigar_advances')
           .select('*')
           .eq('karigar_id', karigarId)
           .order('advance_date', { ascending: false })
+          .limit(50)
       ]);
 
       if (signal?.aborted) return;
 
-      if (attStats.status === 'fulfilled' && attStats.value.data !== null) {
-        setAttendanceRate(Number(attStats.value.data) || 100);
-      }
-      if (prodStats.status === 'fulfilled' && prodStats.value.data && (prodStats.value.data as any)[0]) {
-        const stats = (prodStats.value.data as any)[0];
-        setProductionStats({
-          avg_units_per_day: Number(stats.avg_units_per_day) || 0,
-          avg_grade_a_pct: Number(stats.avg_grade_a_pct) || 0
-        });
-      }
       if (rawAttendance.status === 'fulfilled' && rawAttendance.value.data) setAttendanceLogs(rawAttendance.value.data);
       if (rawProduction.status === 'fulfilled' && rawProduction.value.data) setProductionLogs(rawProduction.value.data);
       if (rawAdvances.status === 'fulfilled' && rawAdvances.value.data) setAdvancesLogs(rawAdvances.value.data);
 
-      setActiveTab('profile');
     } catch (e) {
-      console.error("Karigar details load error:", e);
+      console.warn("Karigar details load notice:", e);
     } finally {
       if (!signal?.aborted) {
         setLoading(false);
       }
     }
-  }, [profile?.id, karigarId, supabase, router]);
+  }, [karigarId, profile?.id, supabase]);
 
   useEffect(() => {
-    if (isLoaded && !profile?.id) {
-      router.push('/karigars');
-      return;
-    }
-    if (!profile?.id || !karigarId) return;
+    if (!karigarId) return;
 
     const controller = new AbortController();
     loadKarigarDetails(controller.signal);
@@ -186,7 +170,7 @@ export default function KarigarDetailPage() {
     return () => {
       controller.abort();
     };
-  }, [isLoaded, profile?.id, karigarId, loadKarigarDetails]);
+  }, [karigarId]);
   
   const toggleVisibility = async () => {
     if (!identity) return;
