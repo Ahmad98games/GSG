@@ -3,24 +3,24 @@
 import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
-const GITHUB_BASE = 'https://github.com/omnoralabs/noxis-releases/releases/latest/download';
+const EXE_DOWNLOAD = '/api/download-software?trial=true&redirect=true';
 
 const DOWNLOADS = {
   lite: {
-    exe: `${GITHUB_BASE}/NoxisSetup-Lite.exe`,
-    apk: `${GITHUB_BASE}/noxis-lite.apk`,
+    exe: EXE_DOWNLOAD,
+    apk: '/download',
     label: 'Noxis Lite',
     color: '#9CA3AF',
   },
   pro: {
-    exe: `${GITHUB_BASE}/NoxisSetup-Pro.exe`,
-    apk: `${GITHUB_BASE}/noxis-pro.apk`,
+    exe: EXE_DOWNLOAD,
+    apk: '/download',
     label: 'Noxis Pro',
     color: '#60A5FA',
   },
   elite: {
-    exe: `${GITHUB_BASE}/NoxisSetup-Elite.exe`,
-    apk: `${GITHUB_BASE}/noxis-elite.apk`,
+    exe: EXE_DOWNLOAD,
+    apk: '/download',
     label: 'Noxis Elite',
     color: '#C5A059',
   },

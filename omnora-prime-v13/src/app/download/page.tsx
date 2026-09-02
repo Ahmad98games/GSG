@@ -182,25 +182,13 @@ export default function DownloadPage() {
           </p>
 
           <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button
-              onClick={async () => {
-                try {
-                  const res = await fetch('/api/download-software?trial=true');
-                  const data = await res.json();
-                  if (data.downloadUrl) {
-                    window.location.href = data.downloadUrl;
-                  } else {
-                    window.location.href = DOWNLOAD_EXE_URL;
-                  }
-                } catch {
-                  window.location.href = DOWNLOAD_EXE_URL;
-                }
-              }}
+            <a
+              href="/api/download-software?trial=true&redirect=true"
               className="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-[#08EBF6] hover:bg-[#08EBF6]/90 text-black font-black text-sm uppercase tracking-wider px-8 py-4 rounded-sm transition-all shadow-[0_0_30px_rgba(8,235,246,0.4)] cursor-pointer"
             >
               <Monitor size={18} />
               <span>Download Noxis Hub (.exe)</span>
-            </button>
+            </a>
           </div>
 
           <div className="flex items-center justify-center gap-6 text-xs text-slate-500 font-mono tracking-wider pt-2">

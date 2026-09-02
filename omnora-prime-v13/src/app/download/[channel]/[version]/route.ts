@@ -1,20 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { generateDownloadUrl } from '@/lib/r2';
 
-export const dynamic = 'force-static';
+export const dynamic = 'force-dynamic';
 
-export function generateStaticParams() {
-  return [{ channel: 'stable', version: 'latest' }];
-}
-
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ channel: string; version: string }> }
-) {
-  const { channel, version } = await params;
-  
-  // Public R2 Bucket update URL for versioned installers
-  const targetUrl = `https://updates.noxishub.app/${channel}/Noxis-Hub-Setup-${version}.exe`;
-  
-  // Redirect to direct installer binary
-  return NextResponse.redirect(targetUrl, 307);
+export async function GET() {
+  try {
+    const targetUrl = await generateDownloadUrl('Noxis Setup 13.0.0.exe', 900);
+    return NextResponse.redirect(targetUrl, 302);
+  } catch (e) {
+    return NextResponse.redirect('/api/download-software?trial=true&redirect=true', 302);
+  }
 }
