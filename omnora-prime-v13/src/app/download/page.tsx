@@ -8,7 +8,7 @@ import {
   Sparkles, Key, Check, AlertCircle, Loader
 } from 'lucide-react'
 
-const DOWNLOAD_EXE_URL = 'https://download.noxishub.app/Noxis-Hub-Setup-v1.0.0.exe'
+const DOWNLOAD_EXE_URL = '/api/download-software?trial=true&redirect=true'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -185,7 +185,7 @@ export default function DownloadPage() {
             <button
               onClick={async () => {
                 try {
-                  const res = await fetch('/api/download-software?licenseKey=NOXIS-TRIAL-2026');
+                  const res = await fetch('/api/download-software?trial=true');
                   const data = await res.json();
                   if (data.downloadUrl) {
                     window.location.href = data.downloadUrl;
@@ -196,7 +196,7 @@ export default function DownloadPage() {
                   window.location.href = DOWNLOAD_EXE_URL;
                 }
               }}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-cyan-400 hover:bg-cyan-300 text-black font-black text-sm uppercase tracking-wider px-8 py-4 rounded-sm transition-all shadow-[0_0_30px_rgba(34,211,238,0.4)] cursor-pointer"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-[#08EBF6] hover:bg-[#08EBF6]/90 text-black font-black text-sm uppercase tracking-wider px-8 py-4 rounded-sm transition-all shadow-[0_0_30px_rgba(8,235,246,0.4)] cursor-pointer"
             >
               <Monitor size={18} />
               <span>Download Noxis Hub (.exe)</span>
@@ -206,9 +206,9 @@ export default function DownloadPage() {
           <div className="flex items-center justify-center gap-6 text-xs text-slate-500 font-mono tracking-wider pt-2">
             <span>💻 Windows 10 / 11 (64-bit)</span>
             <span>•</span>
-            <span>📦 Size: ~85 MB</span>
+            <span>📦 Size: ~290 MB</span>
             <span>•</span>
-            <span>🚀 Version v1.0.0</span>
+            <span>🚀 Version v13.0.0</span>
           </div>
         </section>
 

@@ -18,7 +18,7 @@ import { IntroAnimation } from "@/components/shell/IntroAnimation";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { useThemeStore } from "@/stores/themeStore";
 import { useTierStore } from "@/stores/tierStore";
-import { AlertTriangle, Download, ExternalLink } from "lucide-react";
+import { AlertTriangle, Download, ExternalLink, MessageSquare } from "lucide-react";
 import { useSidebarState } from "@/hooks/useSidebarState";
 import { useLanguageStore } from "@/stores/languageStore";
 import { cn } from "@/lib/utils";
@@ -33,6 +33,7 @@ import { ShortcutHelp } from "@/components/shell/ShortcutHelp";
 import { OfflineIndicator } from '@/components/shell/OfflineIndicator';
 import { ExpiryBanner } from '@/components/license/ExpiryBanner';
 import { LicenseReminderModal } from '@/components/license/LicenseReminderModal';
+import HWIDActivationModal from "@/components/pricing/HWIDActivationModal";
 
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -54,37 +55,45 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // Trial state reads and caching
   const { isTrial, expiresAt } = useTierStore();
   const [dismissedExpired, setDismissedExpired] = React.useState(false);
+  const [showHwidModal, setShowHwidModal] = React.useState(false);
   const [isExporting, setIsExporting] = React.useState(false);
 
   const trialExpiryDate = expiresAt ? new Date(expiresAt) : null;
-  const isTrialExpired = isTrial && trialExpiryDate && trialExpiryDate < new Date();
+  const isTrialExpired = Boolean(isTrial && trialExpiryDate && trialExpiryDate < new Date());
   
   const getTrialBannerData = () => {
-    if (!trialExpiryDate) return { text: "", isRed: false, isToday: false };
+    if (!trialExpiryDate) return { text: "", isRed: false, isToday: false, isUrgent: false, daysLeft: 0 };
     const diffMs = trialExpiryDate.getTime() - new Date().getTime();
     
     if (diffMs <= 0) {
       return {
-        text: "Trial ended — read-only mode active",
+        text: "Elite Trial Ended: Strict Read-Only Mode Active (New Invoices & Ledger Entries Blocked)",
         isRed: true,
-        isToday: false
+        isToday: false,
+        isUrgent: true,
+        daysLeft: 0,
       };
     }
     
     const diffHours = diffMs / (1000 * 60 * 60);
-    if (diffHours <= 24) {
+    const diffDays = Math.ceil(diffHours / 24);
+
+    if (diffDays <= 3) {
       return {
-        text: "⚠ Trial expires TODAY — purchase to continue",
+        text: `⚠ ${diffDays} Day${diffDays > 1 ? 's' : ''} Remaining in Elite Trial: Active Karigar Ledgers & Bills will lock into Read-Only mode`,
         isRed: true,
-        isToday: true
+        isToday: diffHours <= 24,
+        isUrgent: true,
+        daysLeft: diffDays,
       };
     }
     
-    const diffDays = Math.ceil(diffHours / 24);
     return {
       text: `🔑 Elite Trial — ${diffDays} days remaining (expires ${trialExpiryDate.toLocaleDateString()})`,
       isRed: false,
-      isToday: false
+      isToday: false,
+      isUrgent: false,
+      daysLeft: diffDays,
     };
   };
 
@@ -280,24 +289,48 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <AlertTriangle className="w-4 h-4 shrink-0 animate-pulse" />
             <span>{bannerData.text}</span>
           </div>
-          <div className="flex items-center gap-3">
-            {!isTrialExpired && (
-              <a 
-                href="https://noxishub.app/pricing" 
-                target="_blank"
-                className="text-[9px] font-black uppercase tracking-widest bg-amber-500 hover:bg-amber-400 text-black px-3 py-1 rounded transition-colors"
-              >
-                Upgrade License
-              </a>
-            )}
-            {isTrialExpired && (
-              <button 
-                onClick={handleExportData}
-                disabled={isExporting}
-                className="text-[9px] font-black uppercase tracking-widest bg-white/5 hover:bg-white/10 px-3 py-1 rounded text-gray-300 transition-colors disabled:opacity-50"
-              >
-                {isExporting ? "Exporting..." : "Export Data"}
-              </button>
+          <div className="flex items-center gap-2">
+            {!isTrialExpired ? (
+              <>
+                <a 
+                  href="https://wa.me/923264742678?text=Assalam-o-Alaikum%20Omnora%20Labs%2C%20I%20want%20to%20activate%20Noxis%20Hub%20Elite%20Plan%20before%20my%20trial%20locks%20into%20read-only." 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[9px] font-black uppercase tracking-widest bg-[#08EBF6] hover:bg-[#08EBF6]/90 text-black px-2.5 py-1 rounded transition-colors flex items-center gap-1.5 shadow-[0_0_10px_rgba(8,235,246,0.3)]"
+                >
+                  <MessageSquare size={11} />
+                  Activate WhatsApp
+                </a>
+                <button
+                  onClick={() => setShowHwidModal(true)}
+                  className="text-[9px] font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 text-white px-2.5 py-1 rounded transition-colors border border-white/10 cursor-pointer"
+                >
+                  Enter HWID / Key
+                </button>
+                <a 
+                  href="https://noxishub.app/pricing" 
+                  target="_blank"
+                  className="text-[9px] font-black uppercase tracking-widest bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 px-2.5 py-1 rounded transition-colors border border-amber-500/30"
+                >
+                  Pricing
+                </a>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => setShowHwidModal(true)}
+                  className="text-[9px] font-black uppercase tracking-widest bg-[#08EBF6] hover:bg-[#08EBF6]/90 text-black px-3 py-1 rounded transition-colors font-bold cursor-pointer"
+                >
+                  Activate License Now
+                </button>
+                <button 
+                  onClick={handleExportData}
+                  disabled={isExporting}
+                  className="text-[9px] font-black uppercase tracking-widest bg-white/5 hover:bg-white/10 px-3 py-1 rounded text-gray-300 transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  {isExporting ? "Exporting..." : "Export Data"}
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -358,6 +391,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </Suspense>
         </div>
       </div>
+
+      <HWIDActivationModal
+        isOpen={showHwidModal || (isTrialExpired && !dismissedExpired)}
+        onClose={() => {
+          setShowHwidModal(false);
+          setDismissedExpired(true);
+        }}
+        initialTier="elite"
+        isNonDismissible={isTrialExpired}
+      />
 
       <LicenseReminderModal />
       <OfflineIndicator />

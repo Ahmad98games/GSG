@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Check, X, ShieldCheck, Zap, Globe, Copy, ExternalLink } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Check, X, ShieldCheck, Zap, Globe, Copy, ExternalLink, Cpu, Loader, Sparkles } from "lucide-react";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { formatCurrency } from "@/lib/currency/currencyEngine";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ import PublicNavbar from "@/components/shell/PublicNavbar";
 import HWIDActivationModal from "@/components/pricing/HWIDActivationModal";
 
 export default function PricingClient() {
+  const router = useRouter();
   const { profile } = useBusinessProfile();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
   const [displayCurrency, setDisplayCurrency] = useState<'LOCAL' | 'USD'>('LOCAL');
@@ -33,6 +35,10 @@ export default function PricingClient() {
   const [paymentMethod, setPaymentMethod] = useState<'nayapay' | 'jazzcash' | 'easypaisa'>('nayapay');
   const [copied, setCopied] = useState(false);
   const [txId, setTxId] = useState('');
+  const [customerName, setCustomerName] = useState('');
+  const [hwidInput, setHwidInput] = useState('');
+  const [isGeneratingKey, setIsGeneratingKey] = useState(false);
+  const [checkoutError, setCheckoutError] = useState('');
 
   const handleActivateHwid = (tier: string) => {
     setSelectedTierForHwid(tier);
@@ -50,6 +56,7 @@ export default function PricingClient() {
 
   const handlePurchase = (plan: string, price: string) => {
     setSelectedPlan({ tier: plan, price });
+    setCheckoutError('');
     setCheckoutModalOpen(true);
   };
 
@@ -69,15 +76,63 @@ export default function PricingClient() {
     const methodDetails =
       paymentMethod === 'nayapay' ? 'PK74NAYA1234503218338768' : '0321-8338768';
 
+    const cleanBiz = customerName.trim() || profile?.business_name || '';
+    const cleanHwid = hwidInput.trim();
+
+    if (cleanHwid) {
+      navigator.clipboard.writeText(cleanHwid);
+    }
+
     const msg = encodeURIComponent(
-      `Assalam o Alaikum,\n\nI have sent the payment of ${selectedPlan.price} for the Noxis ${selectedPlan.tier} plan.\n\n` +
-      `Payment Method: ${formattedMethodName} (${methodDetails})\n` +
-      `Transaction ID / TID: ${txId || 'N/A'}\n\n` +
-      `Please activate my license key.\nMy business: ${profile?.business_name || ''}\nCity: ${profile?.city || ''}`
+      `Assalam o Alaikum Omnora Labs,\n\n` +
+      `I have sent the payment of ${selectedPlan.price} for the Noxis *${selectedPlan.tier} Plan*.\n\n` +
+      `🏢 Business: ${cleanBiz || 'Not provided'}\n` +
+      `💻 Machine HWID: ${cleanHwid || 'Not provided'}\n` +
+      `💳 Payment Method: ${formattedMethodName} (${methodDetails})\n` +
+      `🧾 Transaction ID (TID): ${txId || 'N/A'}\n\n` +
+      `Please issue my verified offline license key.`
     );
     window.open(`https://wa.me/923264742678?text=${msg}`, '_blank');
     setCheckoutModalOpen(false);
-    setTxId('');
+  };
+
+  const handleInstantKeyGeneration = async () => {
+    if (!selectedPlan) return;
+    const cleanBiz = customerName.trim() || profile?.business_name || '';
+    if (!cleanBiz) {
+      setCheckoutError('Please enter your business or customer name');
+      return;
+    }
+
+    setIsGeneratingKey(true);
+    setCheckoutError('');
+
+    try {
+      const res = await fetch('/api/license/issue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tier: selectedPlan.tier,
+          paymentMethod,
+          txId: txId.trim(),
+          customerName: cleanBiz,
+          hwid: hwidInput.trim(),
+          billingCycle,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to issue license key');
+      }
+
+      setCheckoutModalOpen(false);
+      router.push(`/purchase/success?key=${encodeURIComponent(data.licenseKey)}&tier=${encodeURIComponent(data.tier)}&hwid=${encodeURIComponent(data.hwid || '')}`);
+    } catch (err: any) {
+      setCheckoutError(err.message || 'Error generating key. Please use WhatsApp activation.');
+    } finally {
+      setIsGeneratingKey(false);
+    }
   };
 
   const staggerContainer = {
@@ -454,29 +509,87 @@ export default function PricingClient() {
                     )}
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-wider text-gray-500 block">
-                      Transaction ID (TID) / Ref Number
-                    </label>
-                    <input
-                      type="text"
-                      value={txId}
-                      onChange={(e) => setTxId(e.target.value)}
-                      placeholder="Enter TID from confirmation message"
-                      className="w-full bg-[#121417] border border-white/5 p-3 text-xs text-white placeholder-gray-600 rounded-sm focus:border-[#C5A059]/50 outline-none transition-colors"
-                    />
-                    <p className="text-[10px] text-gray-600 leading-relaxed">
-                      Transfer the exact billing amount to the selected account, enter your Transaction ID above, and submit to verify on WhatsApp.
-                    </p>
+                  <div className="space-y-4 pt-2">
+                    <div>
+                      <label className="text-[10px] font-black uppercase tracking-wider text-gray-400 block mb-1">
+                        Business / Company Name <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        placeholder="e.g. Al-Hamid Textiles"
+                        className="w-full bg-[#121417] border border-white/10 p-3 text-xs text-white placeholder-gray-600 rounded-sm focus:border-[#08EBF6] outline-none transition-colors"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[10px] font-black uppercase tracking-wider text-gray-400">
+                          Machine Hardware ID (HWID) <span className="text-gray-500 font-normal">(Optional for Instant Binding)</span>
+                        </label>
+                      </div>
+                      <input
+                        type="text"
+                        value={hwidInput}
+                        onChange={(e) => setHwidInput(e.target.value.toUpperCase())}
+                        placeholder="e.g. A1B2-C3D4-E5F6-7890"
+                        className="w-full bg-[#121417] border border-white/10 p-3 text-xs text-emerald-400 font-mono placeholder-gray-600 rounded-sm focus:border-[#08EBF6] outline-none transition-colors"
+                      />
+                      <p className="text-[10px] text-gray-500 mt-1 font-medium">
+                        💡 Found in Noxis Hub Desktop → Settings → License & System
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-black uppercase tracking-wider text-gray-400 block mb-1">
+                        Transaction ID (TID) / Ref Number
+                      </label>
+                      <input
+                        type="text"
+                        value={txId}
+                        onChange={(e) => setTxId(e.target.value)}
+                        placeholder="Enter TID from payment receipt"
+                        className="w-full bg-[#121417] border border-white/10 p-3 text-xs text-white font-mono placeholder-gray-600 rounded-sm focus:border-[#08EBF6] outline-none transition-colors"
+                      />
+                      <p className="text-[10px] text-gray-500 mt-1 leading-relaxed">
+                        Transfer the exact billing amount to the selected account, then verify via WhatsApp or generate key instantly.
+                      </p>
+                    </div>
+
+                    {checkoutError && (
+                      <div className="bg-red-500/10 border border-red-500/20 p-3 text-xs text-red-400 rounded-sm">
+                        {checkoutError}
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div className="p-6 border-t border-white/5 bg-black/20">
+                <div className="p-6 border-t border-white/10 bg-black/40 space-y-3">
+                  <button
+                    onClick={handleInstantKeyGeneration}
+                    disabled={isGeneratingKey}
+                    className="w-full py-3.5 bg-[#08EBF6] text-black hover:bg-[#08EBF6]/90 transition-all text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(8,235,246,0.35)] cursor-pointer disabled:opacity-50"
+                  >
+                    {isGeneratingKey ? (
+                      <>
+                        <Loader size={15} className="animate-spin" />
+                        <span>Generating Official Key...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={15} />
+                        <span>Generate & Unlock License Instantly</span>
+                      </>
+                    )}
+                  </button>
+
                   <button
                     onClick={handleVerify}
-                    className="w-full py-4 bg-[#C5A059] text-black hover:bg-[#D4B06A] transition-all text-xs font-black uppercase tracking-widest flex items-center justify-center shadow-[0_0_15px_rgba(197,160,89,0.2)] active:scale-[0.99]"
+                    className="w-full py-3 bg-white/10 text-white hover:bg-white/20 transition-all text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 border border-white/10 cursor-pointer"
                   >
-                    Verify Payment on WhatsApp <ExternalLink size={14} className="ml-2" />
+                    <ExternalLink size={14} />
+                    <span>Activate via WhatsApp (1-Click)</span>
                   </button>
                 </div>
               </motion.div>

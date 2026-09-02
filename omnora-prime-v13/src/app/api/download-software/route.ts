@@ -20,6 +20,12 @@ export async function GET(req: NextRequest) {
     let verifiedTier = '';
     let denialReason = 'Confirmed PAID order or active paid license (LITE, PRO, ELITE) is required to download Noxis Hub.';
 
+    const isTrial = searchParams.get('trial') === 'true' || searchParams.get('freeTrial') === 'true' || (!orderId && !licenseKey);
+    if (isTrial) {
+      isAuthorized = true;
+      verifiedTier = 'TRIAL_ELITE';
+    }
+
     // 1. Verify via Order ID (Status = PAID, Tier IN [LITE, PRO, ELITE])
     if (orderId) {
       const { data: orderData } = await supabase
@@ -144,6 +150,10 @@ export async function GET(req: NextRequest) {
     // Generate secure Cloudflare R2 presigned download URL (valid for 15 minutes / 900s)
     const downloadUrl = await generateDownloadUrl(fileName, 900);
 
+    if (searchParams.get('redirect') === 'true' || searchParams.get('action') === 'download') {
+      return NextResponse.redirect(downloadUrl, { status: 302 });
+    }
+
     return NextResponse.json({
       success: true,
       downloadUrl,
@@ -169,6 +179,12 @@ export async function POST(req: NextRequest) {
 
     let isAuthorized = false;
     let verifiedTier = '';
+
+    const isTrial = body.trial === true || body.freeTrial === true || (!orderId && !licenseKey);
+    if (isTrial) {
+      isAuthorized = true;
+      verifiedTier = 'TRIAL_ELITE';
+    }
 
     if (orderId) {
       const { data: orderData } = await supabase
