@@ -92,6 +92,29 @@ try {
   // Ensure _buildManifest.js and _ssgManifest.js exist in all static build ID folders
   ensureManifestFiles(path.join(process.cwd(), 'out', '_next', 'static'));
   ensureManifestFiles(path.join(process.cwd(), '.next', 'static'));
+
+  // Bundle Cloudflare Pages Advanced Mode _worker.js
+  try {
+    const esbuild = await import('esbuild');
+    const workerSrc = path.join(process.cwd(), 'src/cloudflare-worker.ts');
+    const workerOut = path.join(process.cwd(), 'out/_worker.js');
+    if (fs.existsSync(workerSrc)) {
+      console.log('[Build] Compiling Cloudflare Pages _worker.js...');
+      esbuild.buildSync({
+        entryPoints: [workerSrc],
+        bundle: true,
+        outfile: workerOut,
+        format: 'esm',
+        target: 'es2022',
+        platform: 'browser',
+        minify: true,
+        treeShaking: true,
+      });
+      console.log('[Build] Cloudflare Pages _worker.js bundled successfully.');
+    }
+  } catch (workerErr) {
+    console.warn('[Build] Warning: Failed to bundle _worker.js:', workerErr.message);
+  }
 } catch (err) {
   console.error('[Build] Compilation failed:', err.message);
   buildFailed = true;
