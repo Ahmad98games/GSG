@@ -31,6 +31,7 @@ import { useAuth } from '@/providers/AuthProvider'
 import { DataHealthCard } from '@/components/dashboard/DataHealthCard'
 import { AutoStartRecoveryBanner } from '@/components/shell/AutoStartRecoveryBanner'
 import { CloudBackupNudge } from '@/components/license/CloudBackupNudge'
+import { useTierStore } from '@/stores/tierStore'
 
 interface DashboardData {
   businessName: string
@@ -116,6 +117,7 @@ export default function OwnerDashboard() {
     navigator.userAgent.toLowerCase().includes('electron')
   )
   const { t, features, fmt, fmtCompact } = useIndustryConfig()
+  const { tier: activeTier } = useTierStore()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
@@ -337,7 +339,7 @@ export default function OwnerDashboard() {
       )}
 
       {/* ═══ MAIN LAYOUT ═══ */}
-      <div className={`max-w-4xl mx-auto px-6 ${isElectron ? "pt-8" : "pt-24"} space-y-4`}>
+      <div className={`max-w-4xl mx-auto px-6 ${isElectron ? "pt-8" : "pt-24"} space-y-6`}>
         
         <AutoStartRecoveryBanner />
         <CloudBackupNudge />
@@ -353,7 +355,7 @@ export default function OwnerDashboard() {
               <span className="flex items-center gap-1"><MapPin size={10} />{data.city}</span>
             )}
             <span>•</span>
-            <span className="text-cyan-400 font-black">{data.tier.toUpperCase()} TIER</span>
+            <span className="text-cyan-400 font-black">{activeTier.toUpperCase()} TIER</span>
           </div>
         </div>
 
@@ -380,7 +382,7 @@ export default function OwnerDashboard() {
         </div>
 
         {/* Tab Panels */}
-        <div className="space-y-8">
+        <div className="space-y-10">
           
           {/* ── OVERVIEW TAB ── */}
           {activeTab === 'overview' && (
@@ -507,11 +509,11 @@ export default function OwnerDashboard() {
               </div>
 
               {/* Data Safety Widget */}
-              <div className="mt-4">
+              <div className="mt-6">
                 <DataHealthCard />
               </div>
 
-              <div className="my-6">
+              <div className="my-8">
                 <IndustryWidget />
               </div>
 
