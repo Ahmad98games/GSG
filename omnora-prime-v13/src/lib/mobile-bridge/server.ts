@@ -552,6 +552,39 @@ async function handleMessage(
               .where(eq(schema.branchCache.businessId, client.businessId!));
             break;
 
+          case 'parties': {
+            const admin = getAdmin();
+            if (admin) {
+              const { data: resData, error: resErr } = await admin
+                .from('parties')
+                .select('*')
+                .eq('business_id', client.businessId!)
+                .order('name');
+              if (resErr) throw resErr;
+              data = resData || [];
+            } else {
+              throw new Error('Supabase admin not available');
+            }
+            break;
+          }
+
+          case 'invoices': {
+            const admin = getAdmin();
+            if (admin) {
+              const { data: resData, error: resErr } = await admin
+                .from('invoices')
+                .select('*')
+                .eq('business_id', client.businessId!)
+                .order('created_at', { ascending: false })
+                .limit(100);
+              if (resErr) throw resErr;
+              data = resData || [];
+            } else {
+              throw new Error('Supabase admin not available');
+            }
+            break;
+          }
+
           case 'karigars': {
             const admin = getAdmin();
             if (admin) {
@@ -707,7 +740,9 @@ async function handleMessage(
     case 'ADVANCE_GIVEN':
     case 'INVOICE_CREATED':
     case 'STOCK_UPDATED':
-    case 'SCAN_COMPLETED': {
+    case 'SCAN_COMPLETED':
+    case 'PARTY_CREATED':
+    case 'WORKER_CREATED': {
       console.log(`[Bridge] Event ${String(msg.type)} from ${client.deviceLabel}`);
       broadcastToHubRenderer(String(msg.type), {
         deviceLabel: client.deviceLabel,

@@ -93,24 +93,33 @@ try {
   ensureManifestFiles(path.join(process.cwd(), 'out', '_next', 'static'));
   ensureManifestFiles(path.join(process.cwd(), '.next', 'static'));
 
-  // Bundle Cloudflare Pages Advanced Mode _worker.js
+  // Bundle Cloudflare Pages / Worker entry
   try {
     const esbuild = await import('esbuild');
     const workerSrc = path.join(process.cwd(), 'src/cloudflare-worker.ts');
     const workerOut = path.join(process.cwd(), 'out/_worker.js');
+    const workerDedicated = path.join(process.cwd(), 'worker/index.js');
     if (fs.existsSync(workerSrc)) {
-      console.log('[Build] Compiling Cloudflare Pages _worker.js...');
+      console.log('[Build] Compiling Cloudflare Worker entry...');
+      fs.mkdirSync(path.dirname(workerDedicated), { recursive: true });
       esbuild.buildSync({
         entryPoints: [workerSrc],
         bundle: true,
-        outfile: workerOut,
+        outfile: workerDedicated,
         format: 'esm',
         target: 'es2022',
         platform: 'browser',
         minify: true,
         treeShaking: true,
       });
-      console.log('[Build] Cloudflare Pages _worker.js bundled successfully.');
+
+      // Also copy to out/_worker.js for Pages Advanced Mode compatibility
+      fs.copyFileSync(workerDedicated, workerOut);
+
+      // Ensure .assetsignore exists in out/ to prevent uploading _worker.js as a public static asset
+      fs.writeFileSync(path.join(process.cwd(), 'out/.assetsignore'), '_worker.js\n', 'utf8');
+
+      console.log('[Build] Cloudflare Worker bundled successfully.');
     }
   } catch (workerErr) {
     console.warn('[Build] Warning: Failed to bundle _worker.js:', workerErr.message);

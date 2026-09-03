@@ -1,9 +1,11 @@
 name = "noxishub"
+main = "./omnora-prime-v13/worker/index.js"
 compatibility_date = "2024-04-01"
 
 [assets]
 directory = "./omnora-prime-v13/out"
 not_found_handling = "single-page-application"
+binding = "ASSETS"
 
 [build]
 command = "npm install --prefix omnora-prime-v13 --legacy-peer-deps && npm run build"
