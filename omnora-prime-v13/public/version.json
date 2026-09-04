@@ -1,13 +1,13 @@
 {
-  "version": "13.0.4",
-  "releaseDate": "2026-05-02",
+  "version": "13.0.1",
+  "releaseDate": "2026-09-04",
   "tier": "stable",
-  "windowsUrl": "https://zgxmvwxzjmpmesqliwxl.supabase.co/storage/v1/object/public/installers/NOXIS_Prime_v13.0.4_x64.exe",
+  "windowsUrl": "/api/download-software?trial=true&redirect=true",
   "releaseNotes": [
-    "CCTV Sentinel AI v2 deployed with polygon zone detection.",
-    "Mobile POS Barcode engine optimized for South Asian hardware.",
-    "Mesh Protocol v4: Support for up to 75 simultaneous industrial nodes.",
-    "Financial Engine: Real-time GST/VAT return synchronization."
+    "Unified subscription tier badge — single source of truth across all UI components.",
+    "Dashboard vertical spacing improved for 1080p readability.",
+    "Cloudflare deployment pipeline fixed — .assetsignore and worker entry point configured.",
+    "Mobile bridge: parties and invoices sync support added."
   ]
 }
 
