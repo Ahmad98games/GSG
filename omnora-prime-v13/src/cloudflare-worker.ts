@@ -15,7 +15,7 @@ const r2Client = new S3Client({
   },
 });
 
-async function generateDownloadUrl(fileName = 'Noxis Setup 13.0.0.exe', expiresIn = 900) {
+async function generateDownloadUrl(fileName = 'Noxis Setup 13.0.1.exe', expiresIn = 900) {
   const command = new GetObjectCommand({
     Bucket: R2_BUCKET_NAME,
     Key: fileName,
@@ -41,6 +41,36 @@ export default {
   async fetch(request: Request, env: any, ctx: any): Promise<Response> {
     const url = new URL(request.url);
 
+    // 0. Electron Auto-Updater Endpoint
+    if (url.pathname.startsWith('/updates/')) {
+      const key = url.pathname.replace(/^\//, ''); // e.g. "updates/stable/stable.yml"
+      if (key.endsWith('.yml') || key.endsWith('.yaml') || key.endsWith('.json')) {
+        try {
+          const command = new GetObjectCommand({
+            Bucket: R2_BUCKET_NAME,
+            Key: key,
+          });
+          const res = await r2Client.send(command);
+          const body = await res.Body?.transformToString();
+          return new Response(body, {
+            headers: {
+              'Content-Type': 'text/yaml; charset=utf-8',
+              'Access-Control-Allow-Origin': '*',
+              'Cache-Control': 'no-cache',
+            },
+          });
+        } catch {
+          return new Response('Update manifest not found', { status: 404 });
+        }
+      }
+      try {
+        const downloadUrl = await generateDownloadUrl(key, 3600);
+        return Response.redirect(downloadUrl, 302);
+      } catch {
+        return new Response('File not found', { status: 404 });
+      }
+    }
+
     // 1. API: Download Software
     if (
       url.pathname === '/api/download-software' ||
@@ -50,7 +80,8 @@ export default {
       url.pathname.startsWith('/download/stable')
     ) {
       try {
-        const downloadUrl = await generateDownloadUrl('Noxis Setup 13.0.0.exe', 900);
+        const fileParam = url.searchParams.get('fileName') || 'Noxis Setup 13.0.1.exe';
+        const downloadUrl = await generateDownloadUrl(fileParam, 900);
         const redirect = url.searchParams.get('redirect') === 'true' || url.pathname.startsWith('/download/stable');
 
         if (redirect) {

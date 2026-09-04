@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const orderId = searchParams.get('orderId') || searchParams.get('order_id');
     const licenseKey = searchParams.get('licenseKey') || searchParams.get('key');
-    const fileName = searchParams.get('fileName') || 'Noxis Setup 13.0.0.exe';
+    const fileName = searchParams.get('fileName') || 'Noxis Setup 13.0.1.exe';
 
     let isAuthorized = false;
     let verifiedTier = '';
