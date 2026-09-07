@@ -15,11 +15,9 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { useBusinessProfile } from '@/hooks/useBusinessProfile'
 import { useToastStore } from '@/hooks/useToast'
-import {
-  UniversalLabelGenerator,
-  LabelData,
-  StickerDimension,
-} from '@/components/common/UniversalLabelGenerator'
+import { UniversalLabelGenerator, LabelData, StickerDimension } from '@/components/common/UniversalLabelGenerator'
+import { useLicense } from '@/hooks/useLicense'
+import { SoftLimitModal } from '@/components/license/SoftLimitModal'
 import QRCode from 'react-qr-code'
 
 const toast = Object.assign(
@@ -63,6 +61,8 @@ export const SKUFormModal: React.FC<SKUFormModalProps> = ({
 }) => {
   const supabase = createClient()
   const { profile } = useBusinessProfile()
+  const { atLimit } = useLicense()
+  const [showSoftLimit, setShowSoftLimit] = useState(false)
 
   const [form, setForm] = useState({
     name: '',
@@ -223,6 +223,11 @@ export const SKUFormModal: React.FC<SKUFormModalProps> = ({
         }
         toast.success('Item updated successfully')
       } else {
+        if (atLimit('max_skus')) {
+          setShowSoftLimit(true)
+          return
+        }
+
         const { error } = await supabase
           .from('skus')
           .insert({
@@ -571,6 +576,12 @@ export const SKUFormModal: React.FC<SKUFormModalProps> = ({
           defaultQuantity={printQty}
         />
       )}
+
+      <SoftLimitModal
+        isOpen={showSoftLimit}
+        type="sku"
+        onClose={() => setShowSoftLimit(false)}
+      />
     </div>
   )
 }

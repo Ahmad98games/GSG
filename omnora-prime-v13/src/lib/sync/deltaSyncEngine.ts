@@ -51,6 +51,15 @@ export async function runDeltaSync(
   businessId: string,
   lastSyncAt: number
 ): Promise<DeltaSyncResult> {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return {
+      success: true,
+      tablesChecked: 0,
+      rowsPulled: 0,
+      durationMs: 0,
+    }
+  }
+
   const supabase = createClient()
   const startTime = Date.now()
   let totalRowsPulled = 0

@@ -1,12 +1,14 @@
 'use client'
 import { useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Users } from 'lucide-react'
+import { X, Users, Phone, MapPin, Truck, FileCheck, Coins } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useBusinessProfile } from '@/hooks/useBusinessProfile'
 import { useToast } from '@/hooks/useToast'
 import { useLicense } from '@/hooks/useLicense'
 import { useQueryClient } from '@tanstack/react-query'
+import { SoftLimitModal } from '@/components/license/SoftLimitModal'
+import { MAJOR_TEXTILE_HUBS } from '@/components/parties/EditPartyModal'
 
 type PartyType = 'customer' | 'supplier' | 'karigar'
 type BalanceNature = 'receivable' | 'payable'
@@ -30,31 +32,43 @@ export function AddPartyModal({
   const [partyType, setPartyType] = useState<PartyType>(defaultType || 'customer')
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
+  const [secondaryPhone, setSecondaryPhone] = useState('')
   const [email, setEmail] = useState('')
+  const [city, setCity] = useState('Faisalabad')
+  const [customCity, setCustomCity] = useState('')
   const [address, setAddress] = useState('')
   const [openingBalance, setOpeningBalance] = useState('')
   const [balanceNature, setBalanceNature] = useState<BalanceNature>('receivable')
   const [creditLimit, setCreditLimit] = useState('')
-  const [creditTerms, setCreditTerms] = useState('0')
+  const [creditTerms, setCreditTerms] = useState('30')
+  const [preferredTransport, setPreferredTransport] = useState('')
+  const [cnicOrNtn, setCnicOrNtn] = useState('')
   const [saving, setSaving] = useState(false)
+  const [showPartyLimit, setShowPartyLimit] = useState(false)
 
   const showBalanceNature = parseFloat(openingBalance) > 0
 
   const resetForm = useCallback(() => {
     setName('')
     setPhone('')
+    setSecondaryPhone('')
     setEmail('')
+    setCity('Faisalabad')
+    setCustomCity('')
     setAddress('')
     setOpeningBalance('')
     setBalanceNature('receivable')
     setCreditLimit('')
-    setCreditTerms('0')
+    setCreditTerms('30')
+    setPreferredTransport('')
+    setCnicOrNtn('')
     setPartyType(defaultType || 'customer')
   }, [defaultType])
 
   const handleSubmit = useCallback(async () => {
     const trimmedName = name.trim()
     const trimmedPhone = phone.trim()
+    const effectiveCity = city === 'Other (Custom)' ? (customCity.trim() || 'Pakistan') : city
 
     if (!trimmedName) {
       toast.error('Please enter full name')
@@ -62,11 +76,11 @@ export function AddPartyModal({
     }
 
     const rawBiz = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null);
-    const businessId = (rawBiz && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawBiz)) ? rawBiz : '00000000-0000-0000-0000-000000000000';
+    const businessId = rawBiz || '00000000-0000-0000-0000-000000000000';
 
-    // Check free tier party limit
+    // Check free tier party soft limit
     if (atLimit('max_parties')) {
-      toast.error('Party limit reached on Free plan. Upgrade to add more.')
+      setShowPartyLimit(true)
       return
     }
 
@@ -86,13 +100,17 @@ export function AddPartyModal({
         name: trimmedName,
         party_type: dbPartyType,
         phone: trimmedPhone || null,
+        secondary_phone: secondaryPhone.trim() || null,
         email: email.trim() || null,
         address: address.trim() || null,
+        city: effectiveCity,
         opening_balance: balanceAmount,
         balance_nature: balanceNature,
         current_balance: currentBalance,
         credit_limit: parseFloat(creditLimit) || 0,
-        credit_terms_days: parseInt(creditTerms) || 0,
+        credit_days: parseInt(creditTerms) || 30,
+        preferred_transport: preferredTransport.trim() || null,
+        cnic_or_ntn: cnicOrNtn.trim() || null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }
@@ -106,26 +124,51 @@ export function AddPartyModal({
           .single()
 
         if (error) {
-          // If error is check constraint or DB, fallback to clean insert
-          delete payload.id;
-          const { data: d2, error: e2 } = await supabase.from('parties').insert(payload).select().single();
-          if (e2) throw e2;
-          if (d2) createdParty = d2;
+          // If error is missing columns or schema mismatch, fallback to core columns
+          console.warn('[AddPartyModal] Initial insert fallback:', error.message)
+          const corePayload = {
+            name: trimmedName,
+            party_type: dbPartyType,
+            phone: trimmedPhone || null,
+            email: email.trim() || null,
+            address: address.trim() || null,
+            city: effectiveCity,
+            credit_limit: parseFloat(creditLimit) || 0,
+            credit_days: parseInt(creditTerms) || 30,
+            business_id: businessId,
+            created_at: new Date().toISOString()
+          }
+          const { data: d2, error: e2 } = await supabase.from('parties').insert(corePayload).select().single();
+          if (e2) {
+            console.warn('[AddPartyModal] Fallback insert note:', e2.message);
+          }
+          if (d2) createdParty = { ...payload, ...d2 };
         } else if (data) {
-          createdParty = data;
+          createdParty = { ...payload, ...data };
         }
       } catch (err: any) {
-        // Fallback to local storage cache so party creation NEVER fails
+        console.warn('[AddPartyModal] Offline / local save fallback:', err);
       }
 
-      // Update local storage party cache for instant dashboard & offline rendering
+      // 1. Update local storage party cache for instant dashboard, offline & khata rendering
       if (typeof window !== 'undefined') {
-        const key = `noxis_cached_parties_${businessId}`;
-        const existing = JSON.parse(localStorage.getItem(key) || '[]');
-        localStorage.setItem(key, JSON.stringify([createdParty, ...existing.filter((p: any) => p.name !== createdParty.name)]));
+        const cacheKeys = [
+          `noxis_cached_parties_${businessId}`,
+          `noxis_cached_parties_00000000-0000-0000-0000-000000000000`,
+          `noxis_cached_parties`
+        ]
+        if (rawBiz && rawBiz !== businessId) {
+          cacheKeys.push(`noxis_cached_parties_${rawBiz}`)
+        }
+        cacheKeys.forEach(k => {
+          try {
+            const existing = JSON.parse(localStorage.getItem(k) || '[]');
+            localStorage.setItem(k, JSON.stringify([createdParty, ...existing.filter((p: any) => p.id !== createdParty.id && p.name !== createdParty.name)]));
+          } catch {}
+        })
       }
 
-      // Post opening balance ledger entry if needed
+      // 2. Post opening balance ledger entry if needed
       if (balanceAmount > 0 && createdParty?.id) {
         try {
           await supabase.from('ledger_entries').insert({
@@ -143,18 +186,37 @@ export function AddPartyModal({
         }
       }
 
-      // Increment party count in license store if IPC available
+      // 3. Increment party count in license store if IPC available
       if (typeof window !== 'undefined') {
         (window as any).electronAPI?.license?.incrementParty?.()
       }
+
+      // 4. Update React Query Cache immediately
+      queryClient.setQueryData(['parties', businessId], (prev: any) => {
+        const arr = Array.isArray(prev) ? prev : []
+        return [createdParty, ...arr.filter((p: any) => p.id !== createdParty.id)]
+      })
+      queryClient.setQueryData(['parties_registry', businessId], (prev: any) => {
+        const arr = Array.isArray(prev) ? prev : []
+        return [createdParty, ...arr.filter((p: any) => p.id !== createdParty.id)]
+      })
 
       // Invalidate relevant React Query caches
       queryClient.invalidateQueries({ queryKey: ['parties_registry'] })
       queryClient.invalidateQueries({ queryKey: ['parties'] })
       queryClient.invalidateQueries({ queryKey: ['khata-parties'] })
       queryClient.invalidateQueries({ queryKey: ['khata-entries'] })
+      queryClient.invalidateQueries({ queryKey: ['ledger_entries'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] })
+
+      // 5. Broadcast event across app
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('noxis:party-added', { detail: createdParty }))
+        if ((window as any).electronAPI?.party?.notifyUpdate) {
+          (window as any).electronAPI.party.notifyUpdate({ partyId: createdParty.id, ...createdParty })
+        }
+      }
 
       toast.success(`${trimmedName} added successfully`)
       onSuccess(createdParty)
@@ -167,8 +229,8 @@ export function AddPartyModal({
       setSaving(false)
     }
   }, [
-    name, phone, email, address, partyType, openingBalance, balanceNature,
-    creditLimit, creditTerms, profile, atLimit, onSuccess, onClose, resetForm, toast, queryClient, supabase
+    name, phone, secondaryPhone, email, address, city, customCity, partyType, openingBalance, balanceNature,
+    creditLimit, creditTerms, preferredTransport, cnicOrNtn, profile, atLimit, onSuccess, onClose, resetForm, toast, queryClient, supabase
   ])
 
   if (!isOpen) return null
@@ -201,7 +263,7 @@ export function AddPartyModal({
       }}
     >
       {/* Modal */}
-      <div className="w-full max-w-md bg-[#0F1114] border border-[#60A5FA]/25 rounded-lg shadow-2xl shadow-[#60A5FA]/5 animate-in zoom-in-95 fade-in-0 duration-200 overflow-hidden">
+      <div className="w-full max-w-lg bg-[#0F1114] border border-[#60A5FA]/25 rounded-xl shadow-2xl shadow-[#60A5FA]/5 overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/6 bg-[#0A0C0F]">
           <div className="flex items-center gap-3">
@@ -210,19 +272,19 @@ export function AddPartyModal({
             </div>
             <div>
               <p className="text-sm font-bold text-white">Add New Party</p>
-              <p className="text-[10px] text-gray-400">Customer, supplier, or worker</p>
+              <p className="text-[10px] text-gray-400">Wholesale buyer, mill supplier, or vendor</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-200 transition-colors"
+            className="text-gray-400 hover:text-gray-200 transition-colors cursor-pointer"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* Form Body */}
-        <div className="px-6 py-5 overflow-y-auto max-h-[70vh] space-y-4">
+        <div className="px-6 py-5 overflow-y-auto space-y-4">
           {/* Party Type Pills */}
           <div>
             <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-2">
@@ -235,7 +297,7 @@ export function AddPartyModal({
                   type="button"
                   onClick={() => setPartyType(type.value)}
                   className={`
-                    py-2.5 px-2 rounded-sm border text-center transition-all duration-150
+                    py-2.5 px-2 rounded-sm border text-center transition-all duration-150 cursor-pointer
                     ${partyType === type.value
                       ? 'bg-[#60A5FA]/10 border-[#60A5FA]/40 text-[#60A5FA]'
                       : 'bg-[#0F1114] border-white/8 text-gray-400 hover:border-white/15 hover:text-gray-200'}
@@ -266,52 +328,101 @@ export function AddPartyModal({
             />
           </div>
 
-          {/* Phone */}
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">
-              WhatsApp / Phone <span className="text-gray-500 ml-1 text-[9px] normal-case tracking-normal font-normal">optional</span>
-            </label>
-            <input
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              placeholder="03XX-XXXXXXX"
-              type="tel"
-              className="noxis-input"
-            />
+          {/* Phone & Munshi */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5 flex items-center gap-1">
+                <Phone size={11} className="text-[#60A5FA]" />
+                Primary Phone
+              </label>
+              <input
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                placeholder="03XX-XXXXXXX"
+                type="tel"
+                className="noxis-input"
+              />
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5 flex items-center gap-1">
+                <Phone size={11} className="text-[#60A5FA]" />
+                Munshi / Contact
+              </label>
+              <input
+                value={secondaryPhone}
+                onChange={e => setSecondaryPhone(e.target.value)}
+                placeholder="Munshi name / phone"
+                type="tel"
+                className="noxis-input"
+              />
+            </div>
           </div>
 
-          {/* Email */}
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">
-              Email Address <span className="text-gray-500 ml-1 text-[9px] normal-case tracking-normal font-normal">optional</span>
-            </label>
-            <input
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="contact@business.com"
-              type="email"
-              className="noxis-input"
-            />
+          {/* City & Email */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5 flex items-center gap-1">
+                <MapPin size={11} className="text-[#60A5FA]" />
+                City / Textile Hub
+              </label>
+              <select
+                value={city}
+                onChange={e => setCity(e.target.value)}
+                className="noxis-input"
+              >
+                {MAJOR_TEXTILE_HUBS.map(hub => (
+                  <option key={hub} value={hub}>{hub}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">
+                Email Address
+              </label>
+              <input
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="contact@business.com"
+                type="email"
+                className="noxis-input"
+              />
+            </div>
           </div>
+
+          {city === 'Other (Custom)' && (
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">
+                Specify City Name
+              </label>
+              <input
+                value={customCity}
+                onChange={e => setCustomCity(e.target.value)}
+                placeholder="Enter city..."
+                className="noxis-input"
+              />
+            </div>
+          )}
 
           {/* Address */}
           <div>
             <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">
-              Address / City <span className="text-gray-500 ml-1 text-[9px] normal-case tracking-normal font-normal">optional</span>
+              Shop / Factory Address
             </label>
-            <textarea
+            <input
               value={address}
               onChange={e => setAddress(e.target.value)}
-              placeholder="Street address, city, country"
-              rows={2}
-              className="noxis-input resize-none"
+              placeholder="Plot #, Street, Mill Area, Market"
+              className="noxis-input"
             />
           </div>
 
           {/* Opening Balance & Nature */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5 flex items-center gap-1">
+                <Coins size={11} className="text-[#60A5FA]" />
                 Opening Balance
               </label>
               <input
@@ -324,26 +435,22 @@ export function AddPartyModal({
               />
             </div>
 
-            {showBalanceNature ? (
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">
-                  Balance Type
-                </label>
-                <select
-                  value={balanceNature}
-                  onChange={e => setBalanceNature(e.target.value as BalanceNature)}
-                  className="noxis-input"
-                >
-                  <option value="receivable">Receivable (Jama) — They owe</option>
-                  <option value="payable">Payable (Naam) — We owe</option>
-                </select>
-              </div>
-            ) : (
-              <div />
-            )}
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">
+                Balance Type
+              </label>
+              <select
+                value={balanceNature}
+                onChange={e => setBalanceNature(e.target.value as BalanceNature)}
+                className="noxis-input"
+              >
+                <option value="receivable">Receivable (Lena Hai)</option>
+                <option value="payable">Payable (Dena Hai)</option>
+              </select>
+            </div>
           </div>
 
-          {/* Credit Limit + Terms */}
+          {/* Credit Limit & Goods Adda */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">
@@ -358,29 +465,33 @@ export function AddPartyModal({
                 className="noxis-input"
               />
             </div>
+
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">
-                Credit Terms (Days)
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5 flex items-center gap-1">
+                <Truck size={11} className="text-[#60A5FA]" />
+                Preferred Goods Adda
               </label>
               <input
-                value={creditTerms}
-                onChange={e => setCreditTerms(e.target.value)}
-                placeholder="0"
-                type="number"
-                min="0"
+                value={preferredTransport}
+                onChange={e => setPreferredTransport(e.target.value)}
+                placeholder="e.g. Faisal Movers"
                 className="noxis-input"
               />
             </div>
           </div>
 
-          {/* System Protocol Banner */}
-          <div className="p-3 rounded-sm border border-[#60A5FA]/15 bg-[#60A5FA]/5 flex items-start gap-2.5">
-            <div className="w-4 h-4 rounded bg-[#60A5FA]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <span className="text-[8px] text-[#60A5FA] font-black">i</span>
-            </div>
-            <p className="text-[10px] text-gray-400 leading-relaxed">
-              <span className="text-[#60A5FA] font-bold">SYSTEM PROTOCOL:</span> Onboarding a party automatically creates a sub-ledger context. Credit limit or credit term breaches will trigger automatic transactional warnings.
-            </p>
+          {/* CNIC / NTN */}
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5 flex items-center gap-1">
+              <FileCheck size={11} className="text-[#60A5FA]" />
+              CNIC / NTN (Tax Verification)
+            </label>
+            <input
+              value={cnicOrNtn}
+              onChange={e => setCnicOrNtn(e.target.value)}
+              placeholder="33100-XXXXXXX-X or NTN"
+              className="noxis-input"
+            />
           </div>
         </div>
 
@@ -391,7 +502,7 @@ export function AddPartyModal({
             onClick={handleSubmit}
             disabled={!name.trim() || saving}
             className="
-              flex-1 py-3 bg-[#60A5FA] text-white font-bold text-sm rounded-sm
+              flex-1 py-3 bg-[#60A5FA] text-black font-black uppercase tracking-wider text-xs rounded-lg
               hover:brightness-110 disabled:opacity-40 transition-all cursor-pointer
             "
           >
@@ -401,7 +512,7 @@ export function AddPartyModal({
             type="button"
             onClick={onClose}
             className="
-              px-6 py-3 border border-white/8 text-gray-400 text-sm font-semibold rounded-sm
+              px-6 py-3 border border-white/8 text-gray-400 text-xs font-semibold rounded-lg
               hover:border-white/15 hover:text-white transition-all cursor-pointer
             "
           >
@@ -409,6 +520,12 @@ export function AddPartyModal({
           </button>
         </div>
       </div>
+
+      <SoftLimitModal
+        isOpen={showPartyLimit}
+        type="party"
+        onClose={() => setShowPartyLimit(false)}
+      />
     </div>,
     document.body
   )

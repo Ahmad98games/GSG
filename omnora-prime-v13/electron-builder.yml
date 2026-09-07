@@ -100,7 +100,7 @@ linux:
 
 publish:
   provider: generic
-  url: https://pub-9293149a463a4eb5b1db3df28d613e59.r2.dev/updates/stable
+  url: https://noxishub.app/updates/stable
   channel: stable
 
 # Rebuild native modules for the correct

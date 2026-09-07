@@ -747,9 +747,8 @@ export default function OwnerDashboard() {
       </div>
 
       <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@700&display=swap');
-        .font-sans { font-family: 'Outfit', sans-serif; }
-        .font-mono { font-family: 'JetBrains+Mono', monospace; }
+        .font-sans { font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace; }
         body { background-color: #040608; }
       `}</style>
     </div>

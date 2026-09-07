@@ -140,7 +140,7 @@ const TIER_FEATURES = {
 };
 const TIER_CAPS = {
     trial: { maxDevices: 5, maxBranches: 1, maxCameras: 4, maxSkus: -1, maxParties: -1 },
-    free_forever: { maxDevices: 1, maxBranches: 1, maxCameras: 0, maxSkus: 200, maxParties: 50 },
+    free_forever: { maxDevices: 1, maxBranches: 1, maxCameras: 0, maxSkus: 100, maxParties: 30 },
     lite: { maxDevices: 2, maxBranches: 1, maxCameras: 1, maxSkus: -1, maxParties: -1 },
     pro: { maxDevices: 10, maxBranches: 3, maxCameras: 8, maxSkus: -1, maxParties: -1 },
     elite: { maxDevices: -1, maxBranches: -1, maxCameras: -1, maxSkus: -1, maxParties: -1 },

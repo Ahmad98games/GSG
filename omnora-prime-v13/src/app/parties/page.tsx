@@ -29,6 +29,7 @@ import { useToast } from "@/hooks/useToast";
 import { SharePortalButton } from "@/components/parties/SharePortalButton";
 import { humanizeError } from "@/lib/utils/errors";
 import { AddPartyModal } from '@/components/parties/AddPartyModal';
+import { EditPartyModal } from '@/components/parties/EditPartyModal';
 
 export interface Party {
   id: string;
@@ -59,6 +60,7 @@ export default function PartiesPage() {
 
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingParty, setEditingParty] = useState<Party | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<'all' | 'customer' | 'supplier'>('all');
   const [successToast, setSuccessToast] = useState<string | null>(null);
@@ -363,7 +365,7 @@ export default function PartiesPage() {
                       openMenu={openMenu}
                       setOpenMenu={setOpenMenu}
                       onToggleBlock={() => handleToggleBlock(party)}
-                      onEdit={() => router.push(`/parties/${party.id}/edit`)}
+                      onEdit={() => setEditingParty(party)}
                       onDelete={() => handleDeleteParty(party)}
                     />
                   ))}
@@ -374,6 +376,17 @@ export default function PartiesPage() {
       </main>
 
       <AddPartyModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={(party: any) => { setSuccessToast(`Party ${party?.name || ''} created successfully`); queryClient.invalidateQueries({ queryKey: ['parties_registry'] }); setIsModalOpen(false); }} />
+
+      <EditPartyModal
+        isOpen={!!editingParty}
+        party={editingParty}
+        onClose={() => setEditingParty(null)}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['parties_registry'] });
+          queryClient.invalidateQueries({ queryKey: ['parties'] });
+          refetchParties();
+        }}
+      />
 
       <AnimatePresence>
         {successToast && (

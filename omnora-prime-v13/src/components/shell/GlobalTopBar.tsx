@@ -158,7 +158,7 @@ export default React.memo(function GlobalTopBar() {
       setLocalQueueCount(getQueuedCount())
     }
     check()
-    const interval = setInterval(check, 15000)
+    const interval = setInterval(check, 60000)
     return () => clearInterval(interval)
   }, [])
 
@@ -189,7 +189,7 @@ export default React.memo(function GlobalTopBar() {
   return (
     <>
       <header className={cn(
-        "h-14 border-b border-noxis-border flex items-center px-6 bg-noxis-bg/80 backdrop-blur-[20px] sticky z-40 w-full",
+        "h-14 border-b border-noxis-border flex items-center px-6 bg-[#0B0F17] sticky z-40 w-full",
         isElectron ? "top-10" : "top-0"
       )}>
         {/* LEFT: Search */}

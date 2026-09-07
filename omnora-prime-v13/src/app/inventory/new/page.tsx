@@ -30,6 +30,7 @@ import { useFormDraft }
   from '@/hooks/useFormDraft'
 import { useActionGuard } from '@/hooks/useActionGuard'
 import { GlobalErrorBoundary } from '@/components/ui/GlobalErrorBoundary'
+import { SoftLimitModal } from '@/components/license/SoftLimitModal'
 
 // CRITICAL: Define all static data
 // OUTSIDE the component so they never
@@ -90,6 +91,7 @@ export default function NewInventoryPage() {
     useState(INITIAL_STATE)
   const [saving, setSaving] = useState(false)
   const [showLabelModal, setShowLabelModal] = useState(false)
+  const [showSoftLimit, setShowSoftLimit] = useState(false)
 
   // Ref for the name input — focus on mount
   const nameRef = useRef<HTMLInputElement>(null)
@@ -202,12 +204,9 @@ export default function NewInventoryPage() {
         return
       }
 
-      // Free tier limit check
+      // Free tier soft limit check
       if (atLimit('max_skus' as any)) {
-        toast.error(
-          'Free plan limit: 200 items. ' +
-          'Upgrade to add more.'
-        )
+        setShowSoftLimit(true)
         return
       }
 
@@ -597,6 +596,12 @@ export default function NewInventoryPage() {
           defaultQuantity={parseInt(form.openingStock) || 1}
         />
       )}
+
+      <SoftLimitModal
+        isOpen={showSoftLimit}
+        type="sku"
+        onClose={() => setShowSoftLimit(false)}
+      />
     </div>
     </GlobalErrorBoundary>
   )

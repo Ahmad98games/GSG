@@ -8,12 +8,15 @@ import { useTierStore } from '@/stores/tierStore';
 import { AddCameraWizard } from '@/components/cctv/AddCameraWizard';
 import { CameraGrid } from '@/components/cctv/CameraGrid';
 import { CameraEventFeed } from '@/components/cctv/CameraEventFeed';
-import { Video, Plus, Info, RefreshCw } from 'lucide-react';
+import { Video, Plus, Info, RefreshCw, Lock, ArrowRight, ShieldCheck, Camera, Eye } from 'lucide-react';
+import { useLicense } from '@/hooks/useLicense';
+import Link from 'next/link';
 
 export default function CCTVPage() {
   const supabase = createClient();
   const { profile } = useBusinessProfile();
   const { limits, tier } = useTierStore();
+  const { effectiveTier, isTrial } = useLicense();
   const queryClient = useQueryClient();
   const [showWizard, setShowWizard] = useState(false);
   const [selectedCamera, setSelectedCamera] = useState<string | null>(null);
@@ -85,6 +88,84 @@ export default function CCTVPage() {
   }, [cameras]);
 
   const onlineCount = cameras.filter((c: any) => c.status === 'online').length;
+
+  // TRIGGER 5 — Warm CCTV Preview on Free tier (instead of cold UpgradeGate)
+  if (effectiveTier === 'free' && !isTrial) {
+    return (
+      <div className="min-h-screen bg-[#07080A] text-slate-300 p-6 sm:p-10 font-inter flex items-center justify-center">
+        <div className="max-w-4xl w-full space-y-8 animate-in fade-in zoom-in-95 duration-300">
+          <div className="text-center space-y-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/25 text-[#60A5FA] text-[10px] font-mono font-bold uppercase tracking-widest mb-2">
+              <Video size={13} />
+              <span>CCTV Feeds — Lite+ Feature</span>
+            </div>
+            <h1 className="text-3xl font-black text-white tracking-tight">
+              Real-Time Workshop & Factory Video Surveillance
+            </h1>
+            <p className="text-xs sm:text-sm text-zinc-400 max-w-xl mx-auto leading-relaxed">
+              Connect your existing RTSP cameras. No extra hardware needed. Works with any Hikvision, Dahua, or generic IP camera.
+            </p>
+          </div>
+
+          {/* Screenshot / Demo of what CCTV looks like */}
+          <div className="bg-[#0D0F14] border border-white/10 rounded-lg p-4 sm:p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-white/5 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">Live Feeds Simulation (4 Channels)</span>
+              </div>
+              <span className="text-[10px] font-mono text-zinc-500">1080p @ 30 FPS · RTSP/H.264</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[
+                { name: 'CAM-01 · Production Floor (Karigar Units)', status: 'ACTIVE STREAM', detections: '3 Workers Detected' },
+                { name: 'CAM-02 · Main Gate & Loading Bay', status: 'ACTIVE STREAM', detections: 'Motion Event Logged' },
+                { name: 'CAM-03 · Inventory Warehouse & Safe', status: 'ACTIVE STREAM', detections: 'No Motion' },
+                { name: 'CAM-04 · POS Cash Counter & Till', status: 'ACTIVE STREAM', detections: 'Cashier Active' },
+              ].map((cam, idx) => (
+                <div key={idx} className="relative aspect-video bg-black/80 border border-white/10 rounded-sm overflow-hidden flex flex-col justify-between p-3 group">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 pointer-events-none" />
+                  <div className="flex items-center justify-between relative z-10">
+                    <span className="text-[10px] font-mono font-bold text-white bg-black/60 px-2 py-0.5 rounded border border-white/10">
+                      {cam.name}
+                    </span>
+                    <span className="text-[9px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                      ● REC
+                    </span>
+                  </div>
+
+                  {/* Simulated AI detection bounding box */}
+                  <div className="border border-cyan-400/40 bg-cyan-400/5 rounded-sm p-2 w-32 mx-auto text-center pointer-events-none">
+                    <p className="text-[9px] font-mono text-cyan-300 font-bold">{cam.detections}</p>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[9px] font-mono text-zinc-400 relative z-10">
+                    <span>{cam.status}</span>
+                    <span>192.168.1.{100 + idx}:554</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Action CTA */}
+          <div className="text-center space-y-4">
+            <Link
+              href="/settings/license?upgrade=true"
+              className="inline-flex items-center gap-2 px-8 py-3.5 bg-[#60A5FA] hover:bg-blue-400 text-black font-black uppercase tracking-wider text-xs rounded-sm transition-all shadow-[0_4px_25px_rgba(96,165,250,0.3)]"
+            >
+              <span>See Lite plan — PKR 25,000/year</span>
+              <ArrowRight size={14} />
+            </Link>
+            <p className="text-[11px] text-zinc-500 font-mono">
+              Unlocks camera streams, unlimited items, WhatsApp automation, and report exports.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#07080A]">

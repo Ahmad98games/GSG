@@ -36,6 +36,17 @@ export const useBusinessProfile = () => {
   useEffect(() => {
     // 1. Try localStorage first (instant, 0ms)
     if (typeof window !== 'undefined') {
+      const cachedProfile = localStorage.getItem('noxis-business-profile') || localStorage.getItem('noxis_business_profile');
+      if (cachedProfile) {
+        try {
+          const parsed = JSON.parse(cachedProfile);
+          if (parsed && parsed.id) {
+            setProfile(parsed);
+            setLoaded(true);
+          }
+        } catch (e) {}
+      }
+
       const cached = localStorage.getItem('noxis_avatar');
       if (cached) {
         try {
@@ -71,12 +82,22 @@ export const useBusinessProfile = () => {
     fetchAttempted.current = true;
 
     const fetchProfile = async () => {
+      // If offline, do not attempt remote network fetch
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setOffline(true);
+        setLoaded(true);
+        return;
+      }
+
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) {
           try {
-            const localRes = await fetch('/api/settings');
-            const localData = await localRes.json();
+            const ctrl = new AbortController();
+            const tid = setTimeout(() => ctrl.abort(), 1500);
+            const localRes = await fetch('/api/settings', { signal: ctrl.signal }).catch(() => null);
+            clearTimeout(tid);
+            const localData = localRes && localRes.ok ? await localRes.json() : {};
             const configMap = (localData.localConfig || []).reduce((acc: any, c: any) => ({ ...acc, [c.key]: c.value }), {});
             
             const rawBizId = configMap.business_id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null);
@@ -116,8 +137,11 @@ export const useBusinessProfile = () => {
           // Secondary Fallback Layer: Load from local SQLite config or default profile if none exists
           if (!profile) {
             try {
-              const localRes = await fetch('/api/settings');
-              const localData = await localRes.json();
+              const ctrl = new AbortController();
+              const tid = setTimeout(() => ctrl.abort(), 1500);
+              const localRes = await fetch('/api/settings', { signal: ctrl.signal }).catch(() => null);
+              clearTimeout(tid);
+              const localData = localRes && localRes.ok ? await localRes.json() : {};
               const configMap = (localData.localConfig || []).reduce((acc: any, c: any) => ({ ...acc, [c.key]: c.value }), {});
               
               const bizId = isUuid(configMap.business_id) ? configMap.business_id : DEFAULT_BIZ_ID;

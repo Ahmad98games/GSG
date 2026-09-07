@@ -1,5 +1,13 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap');
 @import "tailwindcss";
+
+/* Offline-First Instant Font Fallbacks (0ms network delay) */
+@font-face {
+  font-family: 'Noto Nastaliq Urdu';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: local('Noto Nastaliq Urdu'), local('Urdu Typesetting'), local('Jameel Noori Nastaleeq'), local('Segoe UI');
+}
 
 /* Electron: disable transitions that cause jank */
 @media (prefers-reduced-motion: reduce) {

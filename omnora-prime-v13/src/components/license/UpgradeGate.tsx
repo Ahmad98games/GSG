@@ -91,6 +91,11 @@ function UpgradeCard({
           href={waUrl}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => {
+            if (typeof window !== 'undefined') {
+              sessionStorage.setItem('noxis_upgrade_redirect', window.location.pathname);
+            }
+          }}
           className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-[#25D366] text-black rounded-sm text-xs font-black uppercase tracking-wider hover:bg-[#22C05D] transition-colors"
         >
           <MessageCircle size={13} />
@@ -98,6 +103,11 @@ function UpgradeCard({
         </a>
         <Link
           href="/settings/license"
+          onClick={() => {
+            if (typeof window !== 'undefined') {
+              sessionStorage.setItem('noxis_upgrade_redirect', window.location.pathname);
+            }
+          }}
           className="w-full flex items-center justify-center gap-1.5 py-2 px-4 border border-white/10 text-slate-400 hover:text-white hover:border-white/20 rounded-sm text-[10px] font-bold uppercase tracking-widest transition-colors"
         >
           Compare Plans <ExternalLink size={10} />

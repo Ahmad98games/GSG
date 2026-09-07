@@ -1,10 +1,9 @@
 'use client'
 
-import React, { useEffect, useState, useMemo } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { useQueryClient } from '@tanstack/react-query'
+import React, { useState, useEffect, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import {
+  X,
   Building2,
   Phone,
   Mail,
@@ -12,34 +11,57 @@ import {
   Truck,
   FileCheck,
   CreditCard,
+  Layers,
+  CheckCircle2,
+  AlertCircle,
+  HelpCircle,
   Clock,
   Coins,
   ArrowDownLeft,
-  ArrowUpRight,
-  ArrowLeft,
-  CheckCircle2,
-  AlertCircle
+  ArrowUpRight
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useBusinessProfile } from '@/hooks/useBusinessProfile'
-import { humanizeError } from '@/lib/utils/errors'
-import { MAJOR_TEXTILE_HUBS } from '@/components/parties/EditPartyModal'
+import { useToast } from '@/hooks/useToast'
+import { useQueryClient } from '@tanstack/react-query'
 
-export default function EditPartyPage() {
-  const { partyId } = useParams()
-  const router = useRouter()
+export const MAJOR_TEXTILE_HUBS = [
+  'Faisalabad',
+  'Lahore',
+  'Karachi',
+  'Gujranwala',
+  'Multan',
+  'Sialkot',
+  'Rawalpindi',
+  'Peshawar',
+  'Kasur',
+  'Hafizabad',
+  'Other (Custom)'
+] as const
+
+export interface EditPartyModalProps {
+  isOpen: boolean
+  onClose: () => void
+  party: any
+  onSuccess?: (updatedParty: any) => void
+}
+
+export function EditPartyModal({
+  isOpen,
+  onClose,
+  party,
+  onSuccess
+}: EditPartyModalProps) {
   const supabase = createClient()
   const queryClient = useQueryClient()
   const { profile } = useBusinessProfile()
+  const toast = useToast()
 
   const [activeTab, setActiveTab] = useState<'basic' | 'commercial'>('basic')
-  const [party, setParty] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [generalError, setGeneralError] = useState('')
-  const [successMsg, setSuccessMsg] = useState('')
 
+  // Form State
   const [form, setForm] = useState({
     name: '',
     party_type: 'customer',
@@ -58,98 +80,45 @@ export default function EditPartyPage() {
     notes: ''
   })
 
+  // Hydrate form when party changes
   useEffect(() => {
-    loadParty()
-  }, [partyId, profile?.id])
+    if (party && isOpen) {
+      const existingCity = party.city || ''
+      const isKnownHub = MAJOR_TEXTILE_HUBS.includes(existingCity as any)
+      const selectedHub = isKnownHub
+        ? existingCity
+        : existingCity
+        ? 'Other (Custom)'
+        : 'Faisalabad'
 
-  const loadParty = async () => {
-    if (!partyId) return
-    setLoading(true)
-
-    const rawBiz = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null)
-
-    // 1. Try local cache first for 0ms load
-    if (typeof window !== 'undefined') {
-      const keys = [
-        rawBiz ? `noxis_cached_parties_${rawBiz}` : null,
-        `noxis_cached_parties_00000000-0000-0000-0000-000000000000`,
-        `noxis_cached_parties`
-      ].filter(Boolean) as string[]
-
-      for (const k of keys) {
-        try {
-          const raw = localStorage.getItem(k)
-          if (raw) {
-            const list = JSON.parse(raw)
-            const found = list.find((p: any) => p.id === partyId)
-            if (found) {
-              hydrateParty(found)
-              setLoading(false)
-              break
-            }
-          }
-        } catch {}
-      }
+      setForm({
+        name: party.name || '',
+        party_type: party.party_type || 'customer',
+        phone: party.phone || '',
+        secondaryPhone: party.secondary_phone || party.secondaryPhone || '',
+        email: party.email || '',
+        city: selectedHub,
+        customCity: !isKnownHub && existingCity ? existingCity : '',
+        address: party.address || '',
+        openingBalance: String(
+          party.opening_balance ?? party.openingBalance ?? (party.current_balance ? Math.abs(party.current_balance) : '0')
+        ),
+        openingBalanceType:
+          party.balance_nature ||
+          party.openingBalanceType ||
+          (Number(party.current_balance || 0) < 0 ? 'payable' : 'receivable'),
+        credit_limit: String(party.credit_limit ?? ''),
+        credit_days: String(party.credit_days ?? party.credit_terms_days ?? '30'),
+        preferredTransport: party.preferred_transport || party.preferredTransport || '',
+        cnicOrNtn: party.cnic_or_ntn || party.cnicOrNtn || party.ntn || '',
+        notes: party.notes || ''
+      })
+      setErrors({})
+      setActiveTab('basic')
     }
+  }, [party, isOpen])
 
-    // 2. Fetch from Supabase
-    try {
-      let query = supabase.from('parties').select('*').eq('id', partyId)
-      if (rawBiz) {
-        query = query.eq('business_id', rawBiz)
-      }
-      const { data, error } = await query.maybeSingle()
-      if (data) {
-        hydrateParty(data)
-      }
-    } catch (err: any) {
-      console.warn('[EditPartyPage] Network fetch note:', err.message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const hydrateParty = (data: any) => {
-    setParty(data)
-    const existingCity = data.city || ''
-    const isKnownHub = MAJOR_TEXTILE_HUBS.includes(existingCity as any)
-    const selectedHub = isKnownHub
-      ? existingCity
-      : existingCity
-      ? 'Other (Custom)'
-      : 'Faisalabad'
-
-    setForm({
-      name: data.name || '',
-      party_type: data.party_type || 'customer',
-      phone: data.phone || '',
-      secondaryPhone: data.secondary_phone || data.secondaryPhone || '',
-      email: data.email || '',
-      city: selectedHub,
-      customCity: !isKnownHub && existingCity ? existingCity : '',
-      address: data.address || '',
-      openingBalance: String(
-        data.opening_balance ?? data.openingBalance ?? (data.current_balance ? Math.abs(data.current_balance) : '0')
-      ),
-      openingBalanceType:
-        data.balance_nature ||
-        data.openingBalanceType ||
-        (Number(data.current_balance || 0) < 0 ? 'payable' : 'receivable'),
-      credit_limit: String(data.credit_limit ?? ''),
-      credit_days: String(data.credit_days ?? data.credit_terms_days ?? '30'),
-      preferredTransport: data.preferred_transport || data.preferredTransport || '',
-      cnicOrNtn: data.cnic_or_ntn || data.cnicOrNtn || data.ntn || '',
-      notes: data.notes || ''
-    })
-  }
-
-  const effectiveCity = useMemo(() => {
-    if (form.city === 'Other (Custom)') {
-      return form.customCity.trim() || 'Pakistan'
-    }
-    return form.city || 'Faisalabad'
-  }, [form.city, form.customCity])
-
+  // Field validation
   const validateForm = () => {
     const errs: Record<string, string> = {}
 
@@ -161,6 +130,8 @@ export default function EditPartyPage() {
       errs.phone = 'Valid phone number required (e.g. 03001234567)'
     }
 
+    // Wholesale Credit Limit Validation:
+    // Minimum threshold for non-zero wholesale credit is PKR 10,000 to prevent accidental under-limits.
     const creditVal = parseFloat(form.credit_limit || '0')
     if (form.credit_limit && form.credit_limit.trim() !== '') {
       if (isNaN(creditVal) || creditVal < 0) {
@@ -179,12 +150,18 @@ export default function EditPartyPage() {
     return Object.keys(errs).length === 0
   }
 
+  const effectiveCity = useMemo(() => {
+    if (form.city === 'Other (Custom)') {
+      return form.customCity.trim() || 'Pakistan'
+    }
+    return form.city || 'Faisalabad'
+  }, [form.city, form.customCity])
+
   const handleSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
-    setGeneralError('')
-    setSuccessMsg('')
 
     if (!validateForm()) {
+      // If error is in commercial tab and we are on basic tab, switch tabs or notify
       if (errors.credit_limit || errors.credit_days) {
         setActiveTab('commercial')
       }
@@ -194,8 +171,8 @@ export default function EditPartyPage() {
     const rawBiz = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null)
     const businessId = rawBiz || party?.business_id || '00000000-0000-0000-0000-000000000000'
 
-    if (!partyId) {
-      setGeneralError('Missing Party ID.')
+    if (!party?.id) {
+      toast.error('Missing party identifier')
       return
     }
 
@@ -205,6 +182,7 @@ export default function EditPartyPage() {
     const creditDaysNum = parseInt(form.credit_days || '0', 10) || 0
     const opBalNum = parseFloat(form.openingBalance || '0') || 0
 
+    // Full wholesale payload
     const updatedPayload: Record<string, any> = {
       name: form.name.trim(),
       party_type: form.party_type,
@@ -224,13 +202,17 @@ export default function EditPartyPage() {
     }
 
     try {
-      const { error: updateErr } = await supabase
+      // 1. Attempt update on Supabase
+      const { data, error: updateErr } = await supabase
         .from('parties')
         .update(updatedPayload)
-        .eq('id', partyId)
+        .eq('id', party.id)
+        .select()
+        .single()
 
       if (updateErr) {
-        console.warn('[EditPartyPage] Extended columns fallback:', updateErr.message)
+        // Fallback: If DB schema doesn't have newer columns yet, strip new columns and save core fields
+        console.warn('[EditPartyModal] Extended column update fallback:', updateErr.message)
         const corePayload = {
           name: form.name.trim(),
           party_type: form.party_type,
@@ -243,9 +225,17 @@ export default function EditPartyPage() {
           notes: form.notes.trim() || null,
           updated_at: new Date().toISOString()
         }
-        await supabase.from('parties').update(corePayload).eq('id', partyId)
+        const { error: coreErr } = await supabase
+          .from('parties')
+          .update(corePayload)
+          .eq('id', party.id)
+
+        if (coreErr) {
+          console.warn('[EditPartyModal] Core update fallback:', coreErr.message)
+        }
       }
 
+      // 2. Updated Party Object combining old and new properties
       const mergedParty = {
         ...party,
         ...updatedPayload,
@@ -257,7 +247,7 @@ export default function EditPartyPage() {
         openingBalanceType: form.openingBalanceType
       }
 
-      // Local storage cache update
+      // 3. Update localStorage cache immediately for 0ms offline rendering
       if (typeof window !== 'undefined') {
         const cacheKeys = [
           `noxis_cached_parties_${businessId}`,
@@ -271,7 +261,7 @@ export default function EditPartyPage() {
               const list = JSON.parse(raw)
               if (Array.isArray(list)) {
                 const updatedList = list.map((p: any) =>
-                  p.id === partyId ? { ...p, ...mergedParty } : p
+                  p.id === party.id ? { ...p, ...mergedParty } : p
                 )
                 localStorage.setItem(k, JSON.stringify(updatedList))
               }
@@ -280,49 +270,44 @@ export default function EditPartyPage() {
         })
       }
 
-      // Query cache updates
+      // 4. Update React Query Cache immediately
       queryClient.setQueryData(['parties', businessId], (old: any) => {
         if (!Array.isArray(old)) return [mergedParty]
-        return old.map((p: any) => (p.id === partyId ? { ...p, ...mergedParty } : p))
+        return old.map((p: any) => (p.id === party.id ? { ...p, ...mergedParty } : p))
       })
       queryClient.setQueryData(['parties_registry', businessId], (old: any) => {
         if (!Array.isArray(old)) return [mergedParty]
-        return old.map((p: any) => (p.id === partyId ? { ...p, ...mergedParty } : p))
+        return old.map((p: any) => (p.id === party.id ? { ...p, ...mergedParty } : p))
       })
-      queryClient.setQueryData(['party', partyId], mergedParty)
+      queryClient.setQueryData(['party', party.id], mergedParty)
 
       queryClient.invalidateQueries({ queryKey: ['parties'] })
       queryClient.invalidateQueries({ queryKey: ['parties_registry'] })
-      queryClient.invalidateQueries({ queryKey: ['party', partyId] })
+      queryClient.invalidateQueries({ queryKey: ['party', party.id] })
       queryClient.invalidateQueries({ queryKey: ['khata-parties'] })
 
+      // 5. Broadcast update event across window & Electron
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('noxis:party-updated', { detail: mergedParty }))
         if ((window as any).electronAPI?.party?.notifyUpdate) {
-          ;(window as any).electronAPI.party.notifyUpdate({ partyId, ...mergedParty })
+          ;(window as any).electronAPI.party.notifyUpdate({ partyId: party.id, ...mergedParty })
         }
       }
 
-      setSuccessMsg('Party details updated successfully!')
-      setTimeout(() => {
-        router.push(`/parties/${partyId}`)
-      }, 700)
+      toast.success('Party Updated', `${mergedParty.name} details saved successfully`)
+      if (onSuccess) onSuccess(mergedParty)
+      onClose()
     } catch (err: any) {
-      console.error('[EditPartyPage] Error updating party:', err)
-      setGeneralError(humanizeError(err, 'party update'))
+      console.error('[EditPartyModal] Error saving party:', err)
+      toast.error('Save Notice', err.message || 'Updated locally')
+      onClose()
     } finally {
       setSaving(false)
     }
   }
 
-  if (loading && !party) {
-    return (
-      <div className="p-8 max-w-3xl mx-auto space-y-6">
-        <div className="h-8 w-48 bg-[#1e293b] rounded-xl animate-pulse" />
-        <div className="h-64 bg-[#0f172a] border border-[#1e293b] rounded-2xl animate-pulse" />
-      </div>
-    )
-  }
+  if (!isOpen || !party) return null
+  if (typeof document === 'undefined') return null
 
   const inputClass = (field: string) => `
     w-full bg-[#030712] border ${
@@ -330,48 +315,45 @@ export default function EditPartyPage() {
     } text-slate-100 text-xs px-3.5 py-2.5 rounded-xl outline-none transition-all placeholder:text-slate-600 focus:ring-1 focus:ring-[#38bdf8]/30
   `
 
-  return (
-    <div className="p-6 md:p-8 max-w-3xl mx-auto space-y-6">
-      {/* Top Bar Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={() => router.back()}
-            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/10 transition-colors cursor-pointer"
-          >
-            <ArrowLeft size={16} />
-          </button>
-          <div>
-            <h1 className="text-xl font-black text-white tracking-wide uppercase flex items-center gap-2">
-              <span>Edit Wholesale Party</span>
-            </h1>
-            <p className="text-xs text-slate-400 font-mono">
-              {party?.name} &bull; Manage accounts, terms, and dispatch logistics
-            </p>
-          </div>
-        </div>
-
-        <Link
-          href={`/parties/${partyId}`}
-          className="text-xs font-bold text-[#38bdf8] hover:underline"
-        >
-          View Profile &rarr;
-        </Link>
-      </div>
-
-      {/* Main Container */}
+  return createPortal(
+    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+      {/* Modal Container */}
       <div
-        className="bg-[#0f172a] border border-[#1e293b] rounded-2xl shadow-2xl overflow-hidden"
+        className="w-full max-w-2xl bg-[#0f172a] border border-[#1e293b] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] transition-all"
         style={{
           boxShadow: '0 0 40px rgba(15, 23, 42, 0.9), 0 0 20px rgba(56, 189, 248, 0.08)'
         }}
       >
+        {/* Header */}
+        <div className="px-6 py-4.5 border-b border-[#1e293b] flex items-center justify-between bg-[#0f172a]/90">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 rounded-xl bg-[#38bdf8]/10 text-[#38bdf8] border border-[#38bdf8]/20">
+              <Building2 size={18} />
+            </div>
+            <div>
+              <h2 className="text-sm font-black text-white tracking-wide uppercase">
+                Edit Party Details
+              </h2>
+              <p className="text-[11px] text-slate-400 font-mono">
+                {party?.name || 'Wholesale Client'} &bull; ID: {party?.id?.slice(0, 8)}...
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
         {/* Tab Navigation */}
         <div className="flex border-b border-[#1e293b] bg-[#0b1120] px-6">
           <button
             type="button"
             onClick={() => setActiveTab('basic')}
-            className={`py-3.5 px-5 text-xs font-black uppercase tracking-wider flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+            className={`py-3 px-4 text-xs font-black uppercase tracking-wider flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
               activeTab === 'basic'
                 ? 'text-[#38bdf8] border-[#38bdf8] bg-[#38bdf8]/5'
                 : 'text-slate-400 border-transparent hover:text-slate-200'
@@ -383,7 +365,7 @@ export default function EditPartyPage() {
           <button
             type="button"
             onClick={() => setActiveTab('commercial')}
-            className={`py-3.5 px-5 text-xs font-black uppercase tracking-wider flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+            className={`py-3 px-4 text-xs font-black uppercase tracking-wider flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
               activeTab === 'commercial'
                 ? 'text-[#38bdf8] border-[#38bdf8] bg-[#38bdf8]/5'
                 : 'text-slate-400 border-transparent hover:text-slate-200'
@@ -395,10 +377,11 @@ export default function EditPartyPage() {
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSave} className="p-6 md:p-8 space-y-5">
+        <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-6 space-y-5">
           {/* TAB 1: BASIC INFO */}
           {activeTab === 'basic' && (
             <div className="space-y-4">
+              {/* Party Name & Type */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="sm:col-span-2 space-y-1.5">
                   <label className="text-[10px] font-black uppercase tracking-wider text-slate-300 flex items-center gap-1">
@@ -433,6 +416,7 @@ export default function EditPartyPage() {
                 </div>
               </div>
 
+              {/* Primary Phone & Munshi Contact */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase tracking-wider text-slate-300 flex items-center gap-1">
@@ -469,6 +453,7 @@ export default function EditPartyPage() {
                 </div>
               </div>
 
+              {/* Email & City Hub */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase tracking-wider text-slate-300 flex items-center gap-1">
@@ -503,6 +488,7 @@ export default function EditPartyPage() {
                 </div>
               </div>
 
+              {/* Custom City text input if "Other (Custom)" chosen */}
               {form.city === 'Other (Custom)' && (
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase tracking-wider text-slate-300">
@@ -512,12 +498,13 @@ export default function EditPartyPage() {
                     type="text"
                     value={form.customCity}
                     onChange={e => setForm(p => ({ ...p, customCity: e.target.value }))}
-                    placeholder="Enter city or industrial zone..."
+                    placeholder="Enter city or textile industrial zone..."
                     className={inputClass('customCity')}
                   />
                 </div>
               )}
 
+              {/* Physical Address */}
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black uppercase tracking-wider text-slate-300 flex items-center gap-1">
                   <MapPin size={11} className="text-[#38bdf8]" />
@@ -538,7 +525,7 @@ export default function EditPartyPage() {
           {activeTab === 'commercial' && (
             <div className="space-y-4">
               {/* Opening Balance Card & Toggle */}
-              <div className="p-4.5 rounded-xl bg-[#0b1120] border border-[#1e293b] space-y-3">
+              <div className="p-4 rounded-xl bg-[#0b1120] border border-[#1e293b] space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <label className="text-[10px] font-black uppercase tracking-wider text-slate-200 flex items-center gap-1">
@@ -590,7 +577,7 @@ export default function EditPartyPage() {
                 />
               </div>
 
-              {/* Wholesale Credit Limit & Terms */}
+              {/* Wholesale Credit Limit & Credit Terms */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
@@ -640,7 +627,7 @@ export default function EditPartyPage() {
                 </div>
               </div>
 
-              {/* Goods Adda & CNIC/NTN */}
+              {/* Preferred Transport (Goods Adda) & CNIC/NTN */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase tracking-wider text-slate-300 flex items-center gap-1">
@@ -677,6 +664,7 @@ export default function EditPartyPage() {
                 </div>
               </div>
 
+              {/* Internal Notes */}
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black uppercase tracking-wider text-slate-300 flex items-center gap-1">
                   Internal Remarks / Notes
@@ -692,25 +680,11 @@ export default function EditPartyPage() {
             </div>
           )}
 
-          {generalError && (
-            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-400 font-bold flex items-center gap-2">
-              <AlertCircle size={16} />
-              <span>{generalError}</span>
-            </div>
-          )}
-
-          {successMsg && (
-            <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-400 font-bold flex items-center gap-2">
-              <CheckCircle2 size={16} />
-              <span>{successMsg}</span>
-            </div>
-          )}
-
           {/* Footer Actions */}
           <div className="pt-4 border-t border-[#1e293b] flex items-center justify-between gap-3">
             <button
               type="button"
-              onClick={() => router.back()}
+              onClick={onClose}
               className="px-5 py-2.5 text-xs font-bold text-slate-400 hover:text-white border border-white/10 hover:border-white/20 rounded-xl transition-all cursor-pointer"
             >
               Cancel
@@ -746,6 +720,7 @@ export default function EditPartyPage() {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

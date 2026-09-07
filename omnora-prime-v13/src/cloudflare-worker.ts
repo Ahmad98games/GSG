@@ -43,31 +43,34 @@ export default {
 
     // 0. Electron Auto-Updater Endpoint
     if (url.pathname.startsWith('/updates/')) {
-      const key = url.pathname.replace(/^\//, ''); // e.g. "updates/stable/stable.yml"
-      if (key.endsWith('.yml') || key.endsWith('.yaml') || key.endsWith('.json')) {
-        try {
-          const command = new GetObjectCommand({
-            Bucket: R2_BUCKET_NAME,
-            Key: key,
-          });
-          const res = await r2Client.send(command);
-          const body = await res.Body?.transformToString();
-          return new Response(body, {
-            headers: {
-              'Content-Type': 'text/yaml; charset=utf-8',
-              'Access-Control-Allow-Origin': '*',
-              'Cache-Control': 'no-cache',
-            },
-          });
-        } catch {
-          return new Response('Update manifest not found', { status: 404 });
-        }
-      }
+      const key = decodeURIComponent(url.pathname.replace(/^\//, '')); // e.g. "updates/stable/Noxis Hub Setup 13.1.0.exe"
       try {
-        const downloadUrl = await generateDownloadUrl(key, 3600);
-        return Response.redirect(downloadUrl, 302);
-      } catch {
-        return new Response('File not found', { status: 404 });
+        const command = new GetObjectCommand({
+          Bucket: R2_BUCKET_NAME,
+          Key: key,
+        });
+        const res = await r2Client.send(command);
+        const headers: Record<string, string> = {
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'no-cache',
+        };
+        if (key.endsWith('.yml') || key.endsWith('.yaml') || key.endsWith('.json')) {
+          const body = await res.Body?.transformToString();
+          headers['Content-Type'] = 'text/yaml; charset=utf-8';
+          return new Response(body, { headers });
+        }
+        if (key.endsWith('.exe')) {
+          headers['Content-Type'] = 'application/x-msdownload';
+        } else if (key.endsWith('.blockmap')) {
+          headers['Content-Type'] = 'application/octet-stream';
+        }
+        if (res.ContentLength) {
+          headers['Content-Length'] = String(res.ContentLength);
+        }
+        const stream = (res.Body as any)?.transformToWebStream?.() || (res.Body as any);
+        return new Response(stream, { headers });
+      } catch (err: any) {
+        return new Response('Update file not found: ' + (err?.message || ''), { status: 404 });
       }
     }
 

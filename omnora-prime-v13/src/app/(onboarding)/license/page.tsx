@@ -334,8 +334,7 @@ export default function LicensePage() {
       </div>
       
       <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
-        .font-sans { font-family: 'Outfit', sans-serif; }
+        .font-sans { font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif; }
       `}</style>
     </div>
   )

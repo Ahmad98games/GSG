@@ -20,8 +20,11 @@ export function LicenseInitializer() {
       const hasCookie = document.cookie.includes('noxis_license_active=true');
       if (!hasCookie) {
         try {
-          const res = await fetch('/api/settings');
-          if (!res.ok) return;
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 1500);
+          const res = await fetch('/api/settings', { signal: controller.signal }).catch(() => null);
+          clearTimeout(timeout);
+          if (!res || !res.ok) return;
           
           const data = await res.json();
           const licenseKey = data.localConfig?.find((c: any) => c.key === 'license_key');

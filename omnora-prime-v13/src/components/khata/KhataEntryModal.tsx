@@ -36,6 +36,7 @@ interface KhataEntryModalProps {
   accounts: any[];
   parties: any[];
   editingEntry?: any;
+  preselectedPartyId?: string | null;
 }
 
 export function KhataEntryModal({
@@ -45,6 +46,7 @@ export function KhataEntryModal({
   accounts,
   parties: initialParties = [],
   editingEntry = null,
+  preselectedPartyId = null,
 }: KhataEntryModalProps) {
   const { profile } = useBusinessProfile();
   const { businessId, fmt } = usePersona();
@@ -59,8 +61,37 @@ export function KhataEntryModal({
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
 
   useEffect(() => {
-    setPartiesList(initialParties);
-  }, [initialParties]);
+    if (initialParties && initialParties.length > 0) {
+      setPartiesList(initialParties);
+    } else if (typeof window !== 'undefined') {
+      const keys = [
+        businessId ? `noxis_cached_parties_${businessId}` : null,
+        `noxis_cached_parties_00000000-0000-0000-0000-000000000000`,
+        `noxis_cached_parties`
+      ].filter(Boolean) as string[];
+      for (const k of keys) {
+        try {
+          const raw = localStorage.getItem(k);
+          if (raw) {
+            const list = JSON.parse(raw);
+            if (Array.isArray(list) && list.length > 0) {
+              setPartiesList(list);
+              break;
+            }
+          }
+        } catch {}
+      }
+    }
+  }, [initialParties, businessId]);
+
+  useEffect(() => {
+    if (preselectedPartyId && partiesList.length > 0) {
+      const found = partiesList.find(p => p.id === preselectedPartyId);
+      if (found) {
+        setSelectedParty(found);
+      }
+    }
+  }, [preselectedPartyId, partiesList]);
 
   const {
     register,
@@ -89,9 +120,13 @@ export function KhataEntryModal({
   // Filter parties by search
   const filteredParties = useMemo(() => {
     if (!partySearch.trim()) return partiesList;
+    const q = partySearch.toLowerCase();
     return partiesList.filter(p =>
-      p.name?.toLowerCase().includes(partySearch.toLowerCase()) ||
-      p.phone?.includes(partySearch)
+      p.name?.toLowerCase().includes(q) ||
+      p.phone?.includes(q) ||
+      p.secondary_phone?.includes(q) ||
+      p.secondaryPhone?.includes(q) ||
+      p.city?.toLowerCase().includes(q)
     );
   }, [partiesList, partySearch]);
 

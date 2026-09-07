@@ -64,6 +64,7 @@ import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import Image from "next/image";
 import QuickProductionModal from "@/components/production/QuickProductionModal";
 import { TierBadge } from "../ui/TierBadge";
+import { TrialCountdownBanner } from "@/components/trial/TrialCountdownBanner";
 import { createClient } from "@/lib/supabase/client";
 import { resetAllStores } from "@/stores";
 
@@ -468,7 +469,9 @@ export default React.memo(function IndustrialSidebar() {
           </div>
         </nav>
 
-        <div className="p-4 border-t border-noxis-border bg-noxis-overlay/10">
+        <div className="p-3 sm:p-4 border-t border-noxis-border bg-noxis-overlay/10 space-y-3">
+          <TrialCountdownBanner isCollapsed={isCollapsed} />
+
           {!isCollapsed ? (
             <div className="flex items-center space-x-3 mb-4 px-2">
               {renderSidebarAvatar()}

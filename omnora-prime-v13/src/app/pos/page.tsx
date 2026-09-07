@@ -29,6 +29,7 @@ import { useBusinessProfile } from '@/hooks/useBusinessProfile'
 import { useLicense } from '@/hooks/useLicense'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { useConversionTrigger } from '@/hooks/useConversionTrigger'
 import { useFormDraft }
   from '@/hooks/useFormDraft'
 import {
@@ -80,6 +81,7 @@ export default function POSPage() {
   const router = useRouter()
   const { profile } = useBusinessProfile()
   const { can, effectiveTier } = useLicense()
+  const { onSaleComplete } = useConversionTrigger()
 
   const [cart, setCart] =
     useState<POSCart>(createEmptyCart())
@@ -406,6 +408,7 @@ export default function POSPage() {
           result.invoice_number
         }`
       )
+      onSaleComplete()
 
     } catch (err: any) {
       toast.error(

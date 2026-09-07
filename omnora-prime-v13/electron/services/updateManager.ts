@@ -22,7 +22,10 @@ export function initAutoUpdater(win: BrowserWindow): void {
   // We handle the install manually so we can save state first
 
   autoUpdater.allowPrerelease = false
-  // Only stable releases by default
+  autoUpdater.setFeedURL({
+    provider: 'generic',
+    url: 'https://noxishub.app/updates/stable',
+  })
 
   // Check for updates every 4 hours while the app is running
   setInterval(() => {

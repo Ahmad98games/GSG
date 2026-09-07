@@ -151,7 +151,7 @@ export type ResourceKey = 'max_skus' | 'max_parties' | 'max_karigars' | 'max_dev
 export const TIER_LIMITS: Record<Tier, Record<ResourceKey, number>> = {
   //                         skus   parties  karigars  devices  cameras  branches
   free_trial: { max_skus: -1,    max_parties: -1,    max_karigars: -1,    max_devices: 1,  max_cameras: 4,  max_branches: 1  },
-  free:       { max_skus: 200,   max_parties: 50,    max_karigars: 25,    max_devices: 1,  max_cameras: 0,  max_branches: 1  },
+  free:       { max_skus: 100,   max_parties: 30,    max_karigars: 25,    max_devices: 1,  max_cameras: 0,  max_branches: 1  },
   lite:       { max_skus: -1,    max_parties: -1,    max_karigars: -1,    max_devices: 5,  max_cameras: 2,  max_branches: 1  },
   pro:        { max_skus: -1,    max_parties: -1,    max_karigars: -1,    max_devices: 15, max_cameras: 4,  max_branches: 5  },
   elite:      { max_skus: -1,    max_parties: -1,    max_karigars: -1,    max_devices: 50, max_cameras: 6,  max_branches: 99 },

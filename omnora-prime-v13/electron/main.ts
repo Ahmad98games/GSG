@@ -87,6 +87,10 @@ autoUpdater.channel = 'stable'
 autoUpdater.autoDownload = false
 // We download manually so we can show progress to the user
 autoUpdater.allowPrerelease = false
+autoUpdater.setFeedURL({
+  provider: 'generic',
+  url: 'https://noxishub.app/updates/stable',
+})
 
 // Track update state for IPC
 let updateAvailable = false

@@ -32,7 +32,9 @@ import { useGlobalKeyboardShortcuts } from "@/hooks/useGlobalKeyboardShortcuts";
 import { ShortcutHelp } from "@/components/shell/ShortcutHelp";
 import { OfflineIndicator } from '@/components/shell/OfflineIndicator';
 import { ExpiryBanner } from '@/components/license/ExpiryBanner';
+import { TopUrgencyBanner } from '@/components/trial/TrialCountdownBanner';
 import { LicenseReminderModal } from '@/components/license/LicenseReminderModal';
+import { ActivationCelebration } from '@/components/license/ActivationCelebration';
 import HWIDActivationModal from "@/components/pricing/HWIDActivationModal";
 
 
@@ -278,64 +280,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       )}
       {isElectron && <TitleBar />}
       
-      {isTrial && bannerData.text && (
-        <div className={cn(
-          "w-full py-2.5 px-6 border-b text-[11px] font-bold tracking-wide transition-all duration-300 flex items-center justify-between z-[40]",
-          bannerData.isRed 
-            ? "bg-red-500/10 border-red-500/20 text-red-400" 
-            : "bg-amber-500/10 border-amber-500/20 text-amber-400"
-        )}>
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0 animate-pulse" />
-            <span>{bannerData.text}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            {!isTrialExpired ? (
-              <>
-                <a 
-                  href="https://wa.me/923264742678?text=Assalam-o-Alaikum%20Omnora%20Labs%2C%20I%20want%20to%20activate%20Noxis%20Hub%20Elite%20Plan%20before%20my%20trial%20locks%20into%20read-only." 
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[9px] font-black uppercase tracking-widest bg-[#08EBF6] hover:bg-[#08EBF6]/90 text-black px-2.5 py-1 rounded transition-colors flex items-center gap-1.5 shadow-[0_0_10px_rgba(8,235,246,0.3)]"
-                >
-                  <MessageSquare size={11} />
-                  Activate WhatsApp
-                </a>
-                <button
-                  onClick={() => setShowHwidModal(true)}
-                  className="text-[9px] font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 text-white px-2.5 py-1 rounded transition-colors border border-white/10 cursor-pointer"
-                >
-                  Enter HWID / Key
-                </button>
-                <a 
-                  href="https://noxishub.app/pricing" 
-                  target="_blank"
-                  className="text-[9px] font-black uppercase tracking-widest bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 px-2.5 py-1 rounded transition-colors border border-amber-500/30"
-                >
-                  Pricing
-                </a>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => setShowHwidModal(true)}
-                  className="text-[9px] font-black uppercase tracking-widest bg-[#08EBF6] hover:bg-[#08EBF6]/90 text-black px-3 py-1 rounded transition-colors font-bold cursor-pointer"
-                >
-                  Activate License Now
-                </button>
-                <button 
-                  onClick={handleExportData}
-                  disabled={isExporting}
-                  className="text-[9px] font-black uppercase tracking-widest bg-white/5 hover:bg-white/10 px-3 py-1 rounded text-gray-300 transition-colors disabled:opacity-50 cursor-pointer"
-                >
-                  {isExporting ? "Exporting..." : "Export Data"}
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
+      <TopUrgencyBanner />
+      <ExpiryBanner />
       <UpdateBanner />
       <ToastContainer />
       <QuickActions />
@@ -393,16 +339,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <HWIDActivationModal
-        isOpen={showHwidModal || (isTrialExpired && !dismissedExpired)}
+        isOpen={showHwidModal}
         onClose={() => {
           setShowHwidModal(false);
-          setDismissedExpired(true);
         }}
         initialTier="elite"
-        isNonDismissible={isTrialExpired}
+        isNonDismissible={false}
       />
 
       <LicenseReminderModal />
+      <ActivationCelebration />
       <OfflineIndicator />
     </>
   );

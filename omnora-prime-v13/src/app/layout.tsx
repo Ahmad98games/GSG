@@ -181,41 +181,70 @@ export default async function RootLayout({
           }}
         />
         
+        {/* Non-blocking web fonts with instant system-ui fallback */}
         <link
-          rel="preload"
-          href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap"
-          as="style"
+          rel="preconnect"
+          href="https://fonts.googleapis.com"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
         />
         <link
           href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap"
           rel="stylesheet"
+          media="print"
+          // @ts-ignore
+          onLoad="this.media='all'"
         />
-        {/* Dynamic Font Loading */}
+        {/* Dynamic Font Loading (non-blocking) */}
         {(locale === 'ar' || locale === 'fa') && (
-          <link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&display=swap" rel="stylesheet" />
+          <link
+            href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&display=swap"
+            rel="stylesheet"
+            media="print"
+            // @ts-ignore
+            onLoad="this.media='all'"
+          />
         )}
         {locale === 'hi' && (
-          <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet" />
+          <link
+            href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;700&display=swap"
+            rel="stylesheet"
+            media="print"
+            // @ts-ignore
+            onLoad="this.media='all'"
+          />
         )}
         {locale === 'zh' && (
-          <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet" />
+          <link
+            href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap"
+            rel="stylesheet"
+            media="print"
+            // @ts-ignore
+            onLoad="this.media='all'"
+          />
         )}
         <style dangerouslySetInnerHTML={{ __html: `
           :root {
             --font-ui-override: ${getFontFamily(locale)};
           }
           body {
-            font-family: var(--font-ui-override), Inter, system-ui, sans-serif !important;
+            font-family: var(--font-ui-override), Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif !important;
           }
         `}} />
       </head>
       <body className="antialiased">
-        <Script
-          id="adsense-loader"
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8531123967455923"
-          crossOrigin="anonymous"
-          strategy="afterInteractive"
-        />
+        {process.env.NEXT_PUBLIC_CLOUDFLARE_DEPLOY === 'true' && (
+          <Script
+            id="adsense-loader"
+            src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8531123967455923"
+            crossOrigin="anonymous"
+            strategy="afterInteractive"
+          />
+        )}
         <ElectronMotionWrapper>
         <ClientI18nProvider initialLocale={locale} initialMessages={messages}>
           <AuthProvider>

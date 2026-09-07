@@ -36,8 +36,8 @@ export function createClient() {
       }
       const urlStr = typeof url === 'string' ? url : (url?.url || '');
       const isUpload = urlStr.includes('/storage/') || urlStr.includes('/upload') || options?.body instanceof FormData || options?.body instanceof Blob;
-      // 45s for file uploads, 15s for cloud database mutations/queries
-      const timeoutMs = isUpload ? 45000 : 15000;
+      // 30s for file uploads, 3.5s for cloud database queries so UI stays super-snappy and never freezes
+      const timeoutMs = isUpload ? 30000 : 3500;
       const controller = new AbortController();
       const id = setTimeout(() => controller.abort(), timeoutMs);
       return fetch(url, {

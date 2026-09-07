@@ -356,7 +356,12 @@ exports.db = new Proxy({}, {
                 }
             }
             catch (err) {
-                console.error("Local Database Initialization Warning:", err);
+                if (err?.code === 'ERR_DLOPEN_FAILED' || err?.message?.includes('NODE_MODULE_VERSION')) {
+                    console.warn('[DB] Native SQLite addon compiled for Electron ABI (non-fatal in Web Dev mode, fallback active)');
+                }
+                else {
+                    console.error("Local Database Initialization Warning:", err);
+                }
                 return undefined;
             }
         }

@@ -42,6 +42,26 @@ export function SyncProvider({
     receivedAt: number
   }>>([])
 
+  const [isOnline, setIsOnline] = useState<boolean>(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  )
+
+  // Listen to network status changes
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true)
+    const handleOffline = () => {
+      setIsOnline(false)
+      setIsSyncing(false)
+    }
+
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
+
   useEffect(() => {
     // Every 30 minutes: remove unused queries from memory
     const t = setInterval(() => {
@@ -56,10 +76,11 @@ export function SyncProvider({
   }, [])
 
   useEffect(() => {
-    if (!profile?.id) return
+    if (!profile?.id || !isOnline) return
 
-    // Run delta sync once on mount
+    // Run delta sync once on mount (only when online)
     const runSync = async () => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) return
       setIsSyncing(true)
       try {
         const result = await bootDeltaSync(profile.id)
@@ -77,91 +98,99 @@ export function SyncProvider({
             )
           }
         }
+      } catch (e) {
+        console.warn('[SyncProvider] Delta sync paused (offline/unreachable):', e)
       } finally {
         setIsSyncing(false)
       }
     }
 
     // Small delay — let UI render first, then sync in background
-    const timer = setTimeout(runSync, 800)
+    const timer = setTimeout(runSync, 1200)
     return () => clearTimeout(timer)
-  }, [profile?.id])
+  }, [profile?.id, isOnline])
 
-  // Start CDC after profile loads
+  // Start CDC after profile loads and when online
   useEffect(() => {
-    if (!profile?.id) return
+    if (!profile?.id || !isOnline) return
 
-    const stopCDC = startRealtimeCDC({
-      businessId: profile.id,
+    let stopCDC: (() => void) | null = null
 
-      onAttendance: (data) => {
-        setMobileEvents(prev => [...prev, {
-          id: crypto.randomUUID(),
-          table: 'attendance_logs',
-          data,
-          receivedAt: Date.now(),
-        }])
+    try {
+      stopCDC = startRealtimeCDC({
+        businessId: profile.id,
 
-        // Emit for toast system
-        window.dispatchEvent(
-          new CustomEvent('noxis:mobile-event', {
-            detail: {
-              type: 'ATTENDANCE_LOGGED',
-              data,
-            },
-          })
-        )
-      },
+        onAttendance: (data) => {
+          setMobileEvents(prev => [...prev, {
+            id: crypto.randomUUID(),
+            table: 'attendance_logs',
+            data,
+            receivedAt: Date.now(),
+          }])
 
-      onProduction: (data) => {
-        window.dispatchEvent(
-          new CustomEvent('noxis:mobile-event', {
-            detail: {
-              type: 'PRODUCTION_LOGGED',
-              data,
-            },
-          })
-        )
-      },
+          // Emit for toast system
+          window.dispatchEvent(
+            new CustomEvent('noxis:mobile-event', {
+              detail: {
+                type: 'ATTENDANCE_LOGGED',
+                data,
+              },
+            })
+          )
+        },
 
-      onAdvance: (data) => {
-        window.dispatchEvent(
-          new CustomEvent('noxis:mobile-event', {
-            detail: {
-              type: 'ADVANCE_GIVEN',
-              data,
-            },
-          })
-        )
-      },
+        onProduction: (data) => {
+          window.dispatchEvent(
+            new CustomEvent('noxis:mobile-event', {
+              detail: {
+                type: 'PRODUCTION_LOGGED',
+                data,
+              },
+            })
+          )
+        },
 
-      onInvoice: (data) => {
-        window.dispatchEvent(
-          new CustomEvent('noxis:mobile-event', {
-            detail: {
-              type: 'INVOICE_CREATED',
-              data,
-            },
-          })
-        )
-      },
+        onAdvance: (data) => {
+          window.dispatchEvent(
+            new CustomEvent('noxis:mobile-event', {
+              detail: {
+                type: 'ADVANCE_GIVEN',
+                data,
+              },
+            })
+          )
+        },
 
-      onPayment: (data) => {
-        window.dispatchEvent(
-          new CustomEvent('noxis:mobile-event', {
-            detail: {
-              type: 'PAYMENT_RECEIVED',
-              data,
-            },
-          })
-        )
-      },
-    })
+        onInvoice: (data) => {
+          window.dispatchEvent(
+            new CustomEvent('noxis:mobile-event', {
+              detail: {
+                type: 'INVOICE_CREATED',
+                data,
+              },
+            })
+          )
+        },
+
+        onPayment: (data) => {
+          window.dispatchEvent(
+            new CustomEvent('noxis:mobile-event', {
+              detail: {
+                type: 'PAYMENT_RECEIVED',
+                data,
+              },
+            })
+          )
+        },
+      })
+    } catch (e) {
+      console.warn('[SyncProvider] Realtime CDC start skipped:', e)
+    }
 
     return () => {
-      stopCDC()
+      if (stopCDC) stopCDC()
     }
-  }, [profile?.id])
+  }, [profile?.id, isOnline])
 
   return (
     <SyncContext.Provider value={{
