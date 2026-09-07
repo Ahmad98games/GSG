@@ -34,6 +34,8 @@
         "electron:rebuild": "electron-builder install-app-deps",
         "electron:publish": "npm run compile:electron && node scripts/build-electron.mjs && npm run clean:standalone:sqlite && npm run electron:rebuild:sqlite && npm run verify:build && electron-builder --config.npmRebuild=false --publish always",
         "electron:release": "npm run compile:electron && node scripts/build-electron.mjs && npm run clean:standalone:sqlite && npm run electron:rebuild:sqlite && npm run verify:build && electron-builder --config.npmRebuild=false --publish onTag",
+        "update:push": "node scripts/upload-update-to-r2.js",
+        "release:push": "npm run electron:build && node scripts/upload-update-to-r2.js",
         "postinstall": "node -e \"if (!process.env.CI && !process.env.CF_PAGES && !process.env.CLOUDFLARE_DEPLOY) { require('child_process').execSync('electron-builder install-app-deps', { stdio: 'inherit' }); } else { console.log('Skipping Electron native dependency rebuilds on Cloudflare/CI environment'); }\"",
         "license:generate": "npx ts-node scripts/generate-license.ts",
         "license:trial": "npx ts-node --compiler-options \"{\\\"module\\\": \\\"commonjs\\\"}\" scripts/generate-license.ts --trial",
