@@ -26,8 +26,7 @@ const R2_SECRET_ACCESS_KEY = '24dcd73108b450b53eb12e2a0152a610f135cea14c60f114c6
 const R2_BUCKET_NAME = 'noxishub';
 
 const agent = new https.Agent({
-  keepAlive: true,
-  maxSockets: 25,
+  keepAlive: false,
 });
 
 const client = new S3Client({
@@ -38,8 +37,8 @@ const client = new S3Client({
     secretAccessKey: R2_SECRET_ACCESS_KEY,
   },
   requestHandler: new NodeHttpHandler({
-    requestTimeout: 180000,
-    connectionTimeout: 15000,
+    requestTimeout: 300000,
+    connectionTimeout: 30000,
     httpsAgent: agent,
   }),
 });
@@ -101,7 +100,7 @@ async function uploadLargeMultipart(localPath, r2Key, contentType = 'application
               PartNumber: partNumber,
               Body: buffer,
             }),
-            { abortSignal: AbortSignal.timeout(180000) }
+            { abortSignal: AbortSignal.timeout(300000) }
           );
           break;
         } catch (partErr) {
@@ -167,7 +166,32 @@ async function main() {
   const version = pkg.version;
   console.log(`\n📦 Target release version: v${version}`);
 
-  // 1. Upload manifests (BOTH latest.yml and stable.yml so auto-updater sees update immediately)
+  // 1. Upload the setup .exe using multipart with retry resilience
+  const exeName = `Noxis Hub Setup ${version}.exe`;
+  const exePath = path.join(distDir, exeName);
+  if (fs.existsSync(exePath)) {
+    const mainTargetKey = `updates/stable/${exeName}`;
+    await uploadLargeMultipart(exePath, mainTargetKey, 'application/x-msdownload');
+
+    // 1b. Upload .blockmap if available
+    const blockmapName = `${exeName}.blockmap`;
+    const blockmapPath = path.join(distDir, blockmapName);
+    if (fs.existsSync(blockmapPath)) {
+      await uploadSmall(blockmapPath, `updates/stable/${blockmapName}`, 'application/octet-stream');
+    }
+
+    // 2. Instant server-side copies to root download paths (instantaneous, 0 bandwidth!)
+    await copyObjectServerSide(mainTargetKey, `Noxis Setup ${version}.exe`);
+    await copyObjectServerSide(mainTargetKey, 'Noxis Setup.exe');
+    await copyObjectServerSide(mainTargetKey, 'Noxis Setup 13.0.1.exe');
+    await copyObjectServerSide(mainTargetKey, 'Noxis Setup 13.0.0.exe');
+  } else {
+    console.error(`❌ Could not find ${exePath}`);
+    console.error('Make sure you have run npm run electron:build first.');
+    process.exit(1);
+  }
+
+  // 3. Upload manifests (BOTH latest.yml and stable.yml so auto-updater sees update immediately)
   const availableManifest = fs.existsSync(path.join(distDir, 'latest.yml'))
     ? path.join(distDir, 'latest.yml')
     : path.join(distDir, 'stable.yml');
@@ -178,31 +202,6 @@ async function main() {
     await uploadSmall(availableManifest, 'updates/stable/stable.yml', 'text/yaml');
   } else {
     console.warn('⚠️ No latest.yml or stable.yml found in dist/');
-  }
-
-  // 2. Upload the setup .exe using multipart with retry resilience
-  const exeName = `Noxis Hub Setup ${version}.exe`;
-  const exePath = path.join(distDir, exeName);
-  if (fs.existsSync(exePath)) {
-    const mainTargetKey = `updates/stable/${exeName}`;
-    await uploadLargeMultipart(exePath, mainTargetKey, 'application/x-msdownload');
-
-    // 2b. Upload .blockmap if available
-    const blockmapName = `${exeName}.blockmap`;
-    const blockmapPath = path.join(distDir, blockmapName);
-    if (fs.existsSync(blockmapPath)) {
-      await uploadSmall(blockmapPath, `updates/stable/${blockmapName}`, 'application/octet-stream');
-    }
-
-    // 3. Instant server-side copies to root download paths (instantaneous, 0 bandwidth!)
-    await copyObjectServerSide(mainTargetKey, `Noxis Setup ${version}.exe`);
-    await copyObjectServerSide(mainTargetKey, 'Noxis Setup.exe');
-    await copyObjectServerSide(mainTargetKey, 'Noxis Setup 13.0.1.exe');
-    await copyObjectServerSide(mainTargetKey, 'Noxis Setup 13.0.0.exe');
-  } else {
-    console.error(`❌ Could not find ${exePath}`);
-    console.error('Make sure you have run npm run electron:build first.');
-    process.exit(1);
   }
 
   // 4. Verify bucket contents

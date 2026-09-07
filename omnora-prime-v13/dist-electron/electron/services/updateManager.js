@@ -26,7 +26,10 @@ function initAutoUpdater(win) {
     electron_updater_1.autoUpdater.autoInstallOnAppQuit = false;
     // We handle the install manually so we can save state first
     electron_updater_1.autoUpdater.allowPrerelease = false;
-    // Only stable releases by default
+    electron_updater_1.autoUpdater.setFeedURL({
+        provider: 'generic',
+        url: 'https://noxishub.app/updates/stable',
+    });
     // Check for updates every 4 hours while the app is running
     setInterval(() => {
         checkForUpdates();

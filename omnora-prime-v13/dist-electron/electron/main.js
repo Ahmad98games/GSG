@@ -94,6 +94,10 @@ electron_updater_1.autoUpdater.channel = 'stable';
 electron_updater_1.autoUpdater.autoDownload = false;
 // We download manually so we can show progress to the user
 electron_updater_1.autoUpdater.allowPrerelease = false;
+electron_updater_1.autoUpdater.setFeedURL({
+    provider: 'generic',
+    url: 'https://noxishub.app/updates/stable',
+});
 // Track update state for IPC
 let updateAvailable = false;
 let updateDownloaded = false;
