@@ -137,13 +137,16 @@ export default function BackupPage() {
 
   // ── Download Backup ──
   const handleDownloadBackup = async () => {
-    if (!profile?.id) return;
+    const businessId = profile?.id || '';
     setBackupLoading(true);
     setBackupSuccess(false);
 
     try {
-      const res = await fetch(`/api/internal/backup?business_id=${profile.id}`);
-      if (!res.ok) throw new Error("Failed to generate backup");
+      const res = await fetch(`/api/internal/backup${businessId ? `?business_id=${encodeURIComponent(businessId)}` : ''}`);
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || "Failed to generate backup");
+      }
 
       const data = await res.json();
       const jsonString = JSON.stringify(data, null, 2);
@@ -161,7 +164,7 @@ export default function BackupPage() {
         extension = "json";
       }
 
-      const businessName = (profile.business_name || "noxis")
+      const businessName = (profile?.business_name || "noxis")
         .replace(/[^a-zA-Z0-9]/g, "_")
         .toLowerCase();
       const date = new Date().toISOString().split("T")[0];
@@ -187,13 +190,16 @@ export default function BackupPage() {
 
   // ── Download Excel Backup ──
   const handleDownloadBackupExcel = async () => {
-    if (!profile?.id) return;
+    const businessId = profile?.id || '';
     setExcelBackupLoading(true);
     setExcelBackupSuccess(false);
 
     try {
-      const res = await fetch(`/api/internal/backup?business_id=${profile.id}`);
-      if (!res.ok) throw new Error("Failed to generate backup data");
+      const res = await fetch(`/api/internal/backup${businessId ? `?business_id=${encodeURIComponent(businessId)}` : ''}`);
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || "Failed to generate backup data");
+      }
 
       const data = await res.json();
       const backupObj = data.backup || {};
@@ -276,7 +282,7 @@ export default function BackupPage() {
       const wsLedger = XLSX.utils.json_to_sheet(ledgerData);
       XLSX.utils.book_append_sheet(wb, wsLedger, 'Ledger');
 
-      const businessName = (profile.business_name || "noxis")
+      const businessName = (profile?.business_name || "noxis")
         .replace(/[^a-zA-Z0-9]/g, "_")
         .toLowerCase();
       const dateStr = new Date().toISOString().split("T")[0];

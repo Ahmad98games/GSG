@@ -38,6 +38,15 @@ export function startHubServer(onActivity?: () => void) {
     logger.info(`[NSP] Industrial TCP Server listening on port ${tcpPort}`);
   });
 
+  // 1b. Mobile WebSocket Bridge for Handheld Devices
+  try {
+    const { attachMobileBridge } = require('../lib/mobile-bridge/server');
+    attachMobileBridge(undefined, 7447);
+    logger.info('[Bridge] Mobile WebSocket Bridge active on port 7447');
+  } catch (bridgeErr: any) {
+    logger.warn('[Bridge] Mobile bridge init warning: ' + (bridgeErr?.message || bridgeErr));
+  }
+
   // 2. Automated Schedules (Elite Tier Features)
   // Check every minute for custom scheduled summaries
   cron.schedule('* * * * *', async () => {

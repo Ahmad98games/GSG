@@ -81,6 +81,7 @@ const TIER_FEATURES = {
         exports.FEATURES.INVOICES,
         exports.FEATURES.PARTIES, // capped at 50 parties
         exports.FEATURES.KHATA,
+        exports.FEATURES.MOBILE_PAIRING,
         exports.FEATURES.REPORTS_BASIC,
         exports.FEATURES.PURCHASE_ORDERS,
     ],
@@ -199,6 +200,7 @@ function getActiveTierInfo() {
                 exports.FEATURES.INVOICES,
                 exports.FEATURES.PARTIES,
                 exports.FEATURES.KHATA,
+                exports.FEATURES.MOBILE_PAIRING,
                 exports.FEATURES.REPORTS_BASIC,
                 exports.FEATURES.PURCHASE_ORDERS,
             ],

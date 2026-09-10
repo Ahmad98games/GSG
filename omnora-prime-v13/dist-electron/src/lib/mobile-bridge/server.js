@@ -1,14 +1,14 @@
 "use strict";
 /**
- * Mobile WebSocket Bridge — Hardened Security Edition (v13.1)
+ * Mobile WebSocket Bridge â€” Hardened Security Edition (v13.1)
  *
  * Security model:
  *   1. Every client gets a 30-second pairing timeout; unpaired = disconnected
- *   2. PAIR_REQUEST validates deviceId format (8–64 chars, alphanumeric/dash/underscore)
+ *   2. PAIR_REQUEST validates deviceId format (8â€“64 chars, alphanumeric/dash/underscore)
  *   3. Tier-based device limits read from local SQLite (not Zustand renderer store)
  *   4. All device registrations persisted in authorized_devices table
  *   5. Pre-pairing gate: only PAIR_REQUEST and HEARTBEAT_RESPONSE allowed before paired
- *   6. DATA_REQUEST handler: scoped to the paired business_id — no cross-tenant reads
+ *   6. DATA_REQUEST handler: scoped to the paired business_id â€” no cross-tenant reads
  *   7. 90-second heartbeat timeout drops dead connections
  *   8. disconnectDevice() and getBridgeStatus() for Hub UI integration
  *
@@ -76,18 +76,18 @@ function getAdmin() {
 }
 const clients = new Map();
 let wss = null;
-// Tier → max devices. Must mirror the Hub license system exactly.
+// Tier â†’ max devices. Must mirror the Hub license system exactly.
 const TIER_LIMITS = {
     lite: 5,
     pro: 15,
     elite: 50,
     trial: 3,
 };
-// Valid deviceId: 8–64 chars, alphanumeric, dashes, underscores only
+// Valid deviceId: 8â€“64 chars, alphanumeric, dashes, underscores only
 const DEVICE_ID_RE = /^[a-zA-Z0-9_-]{8,64}$/;
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function send(ws, payload) {
     if (ws.readyState === ws_1.WebSocket.OPEN) {
         ws.send(JSON.stringify(payload));
@@ -132,11 +132,14 @@ async function getLocalProfile() {
         return null;
     }
 }
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // ATTACH TO HTTP SERVER
-// ─────────────────────────────────────────────────────────────────────────────
-function attachMobileBridge(httpServer) {
-    wss = new ws_1.WebSocketServer({ server: httpServer, path: '/mobile-bridge' });
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function attachMobileBridge(httpServer, customPort) {
+    if (wss)
+        return wss;
+    const options = customPort ? { port: customPort } : httpServer ? { server: httpServer, path: '/mobile-bridge' } : { port: 7447 };
+    wss = new ws_1.WebSocketServer(options);
     wss.on('connection', (ws, req) => {
         const clientId = (0, crypto_1.randomUUID)();
         const clientIp = req.socket.remoteAddress || 'unknown';
@@ -156,7 +159,7 @@ function attachMobileBridge(httpServer) {
         const pairingTimeout = setTimeout(() => {
             const client = clients.get(clientId);
             if (client && !client.paired) {
-                console.log(`[Bridge] Pairing timeout — dropping ${clientId}`);
+                console.log(`[Bridge] Pairing timeout â€” dropping ${clientId}`);
                 ws.close(1008, 'Pairing timeout: send PAIR_REQUEST within 30s');
                 clients.delete(clientId);
             }
@@ -201,7 +204,7 @@ function attachMobileBridge(httpServer) {
             });
         });
     });
-    // ── Heartbeat monitor ─────────────────────────────────────────────────────
+    // â”€â”€ Heartbeat monitor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // Runs every 30s: pushes HEARTBEAT to all paired clients,
     // drops clients that haven't responded in 90s.
     setInterval(() => {
@@ -215,7 +218,7 @@ function attachMobileBridge(httpServer) {
             if (client.paired) {
                 const elapsed = (now.getTime() - client.lastHeartbeat.getTime()) / 1000;
                 if (elapsed > 90) {
-                    console.log(`[Bridge] Heartbeat timeout — dropping ${client.deviceLabel}`);
+                    console.log(`[Bridge] Heartbeat timeout â€” dropping ${client.deviceLabel}`);
                     client.ws.close(1001, 'Heartbeat timeout');
                     clients.delete(id);
                     return;
@@ -232,14 +235,14 @@ function attachMobileBridge(httpServer) {
     console.log('[Bridge] Mobile bridge attached on /mobile-bridge');
     return wss;
 }
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // MESSAGE HANDLER
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function handleMessage(clientId, msg, ws, pairingTimeout) {
     const client = clients.get(clientId);
     if (!client)
         return;
-    // ── Security gate ─────────────────────────────────────────────────────────
+    // â”€â”€ Security gate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // Before pairing completes only PAIR_REQUEST and HEARTBEAT_RESPONSE are legal.
     if (!client.paired &&
         msg.type !== 'PAIR_REQUEST' &&
@@ -251,7 +254,7 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
         return;
     }
     switch (msg.type) {
-        // ── Pairing handshake ──────────────────────────────────────────────────
+        // â”€â”€ Pairing handshake â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         case 'PAIR_REQUEST': {
             const rawDeviceId = String(msg.deviceId ?? '');
             const rawLabel = String(msg.deviceLabel ?? msg.label ?? 'Mobile Device').slice(0, 80);
@@ -259,7 +262,7 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
             if (!DEVICE_ID_RE.test(rawDeviceId)) {
                 send(ws, {
                     type: 'PAIRING_REJECTED',
-                    reason: 'Invalid device identifier. Must be 8–64 alphanumeric characters.',
+                    reason: 'Invalid device identifier. Must be 8â€“64 alphanumeric characters.',
                 });
                 return;
             }
@@ -346,7 +349,7 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
             }
             catch (dbErr) {
                 console.error('[Bridge] Device registration error:', dbErr.message);
-                // Non-fatal — proceed with in-memory pairing
+                // Non-fatal â€” proceed with in-memory pairing
             }
             // 7. Update in-memory client state
             clearTimeout(pairingTimeout);
@@ -356,7 +359,7 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
             client.paired = true;
             client.tier = profile.tier;
             client.lastHeartbeat = new Date();
-            console.log(`[Bridge] Paired: ${rawLabel} (${rawDeviceId}) — tier: ${profile.tier} — business: ${profile.business_name}`);
+            console.log(`[Bridge] Paired: ${rawLabel} (${rawDeviceId}) â€” tier: ${profile.tier} â€” business: ${profile.business_name}`);
             // Verify sub-user PIN if provided
             let canMarkAttendance = true;
             let canLogProduction = true;
@@ -420,7 +423,7 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
                 tier: profile.tier,
                 maxDevices: profile.maxDevices,
                 isTrialActive: profile.tier === 'trial',
-                // Feature gates — mirror Hub tier logic exactly
+                // Feature gates â€” mirror Hub tier logic exactly
                 canViewFinance: ['pro', 'elite'].includes(profile.tier),
                 canViewIntelligence: ['pro', 'elite'].includes(profile.tier),
                 canAccessApi: profile.tier === 'elite',
@@ -449,7 +452,7 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
             });
             break;
         }
-        // ── Heartbeat response ─────────────────────────────────────────────────
+        // â”€â”€ Heartbeat response â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         case 'HEARTBEAT_RESPONSE': {
             client.lastHeartbeat = new Date();
             // Update last_seen in DB (best-effort, non-blocking)
@@ -461,7 +464,7 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
             }
             break;
         }
-        // ── Data requests — scoped strictly to paired businessId ───────────────
+        // â”€â”€ Data requests â€” scoped strictly to paired businessId â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         case 'DATA_REQUEST': {
             const { requestId, resource } = msg;
             if (!requestId || !resource) {
@@ -679,9 +682,9 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
             });
             break;
         }
-        // ── Mobile-originated events ───────────────────────────────────────────
+        // â”€â”€ Mobile-originated events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // Mobile writes directly to Supabase; these events notify the Hub UI
-        // to refresh — the actual data comes via Supabase realtime subscription.
+        // to refresh â€” the actual data comes via Supabase realtime subscription.
         case 'ATTENDANCE_LOGGED':
         case 'PRODUCTION_LOGGED':
         case 'ADVANCE_GIVEN':
@@ -761,9 +764,9 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
         }
     }
 }
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // HUB RENDERER IPC BRIDGE
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let ipcEmitter = null;
 /** Call this from electron/main.ts to forward bridge events to the renderer */
 function setIpcEmitter(fn) {
@@ -779,10 +782,10 @@ function broadcastToHubRenderer(event, data) {
         }
     }
 }
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // PUBLIC API
-// ─────────────────────────────────────────────────────────────────────────────
-/** Returns live stats — used by /api/hub/info */
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+/** Returns live stats â€” used by /api/hub/info */
 function getBridgeStatus() {
     const pairedDevices = [];
     clients.forEach((c) => {
@@ -798,7 +801,7 @@ function getBridgeStatus() {
     });
     return { connected: clients.size, paired: getPairedCount(), pairedDevices };
 }
-/** Disconnect a specific device by deviceId — called from Hub UI revoke flow */
+/** Disconnect a specific device by deviceId â€” called from Hub UI revoke flow */
 function disconnectDevice(deviceId) {
     let found = false;
     clients.forEach((client, id) => {

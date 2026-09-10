@@ -1204,9 +1204,35 @@ export default function SettingsPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <button 
-                        onClick={() => {
-                          toastSuccess("Export Master Data", "Preparing database backup archive...");
-                          window.location.href = '/api/internal/backup';
+                        onClick={async () => {
+                          try {
+                            toastSuccess("Export Master Data", "Preparing database backup archive...");
+                            const businessId = profile?.id || '';
+                            const res = await fetch(`/api/internal/backup${businessId ? `?business_id=${encodeURIComponent(businessId)}` : ''}`);
+                            if (!res.ok) {
+                              const errData = await res.json().catch(() => ({}));
+                              throw new Error(errData.error || `Export failed (HTTP ${res.status})`);
+                            }
+                            const data = await res.json();
+                            const jsonString = JSON.stringify(data, null, 2);
+                            const blob = new Blob([jsonString], { type: "application/json" });
+                            const businessName = (profile?.business_name || "noxis")
+                              .replace(/[^a-zA-Z0-9]/g, "_")
+                              .toLowerCase();
+                            const date = new Date().toISOString().split("T")[0];
+                            const filename = `noxis_master_backup_${businessName}_${date}.json`;
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = filename;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                            toastSuccess("Export Complete", "Master data backup downloaded successfully.");
+                          } catch (err: any) {
+                            toastError("Export Failed", err.message || "Failed to generate backup");
+                          }
                         }}
                         className="p-8 bg-surface border border-white/5 rounded-2xl text-left hover:border-electric-blue/30 transition-all group"
                       >

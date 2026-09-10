@@ -72,11 +72,11 @@ export default function DownloadPage() {
           </a>
 
           <p className="text-xs text-zinc-400 font-mono">
-            Version 13.0.1 · 86MB · Windows 10/11 64-bit
+            Version 13.0.1 · 217Mb setup only · Windows 10/11 64-bit
           </p>
 
           <p className="text-[11px] text-zinc-600 font-mono">
-            Mac and Linux versions coming Q3 2026
+            Mac and Linux versions will come only after success in Windows 
           </p>
         </div>
       </section>
@@ -313,6 +313,9 @@ export default function DownloadPage() {
           <span>Download Noxis Hub (Windows)</span>
         </a>
       </section>
+      <footer className="border-t border-white/5 bg-[#07090B] py-6 text-center text-[10px] font-mono text-zinc-600">
+            <p>© {new Date().getFullYear()} Omnora Labs. All rights reserved.</p>
+      </footer>
     </div>
   );
 }

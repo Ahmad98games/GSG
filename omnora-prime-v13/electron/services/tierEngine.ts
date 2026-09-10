@@ -83,6 +83,7 @@ const TIER_FEATURES: Record<LicenseTier | 'free_forever' | 'trial', FeatureKey[]
     FEATURES.INVOICES,
     FEATURES.PARTIES,            // capped at 50 parties
     FEATURES.KHATA,
+    FEATURES.MOBILE_PAIRING,
     FEATURES.REPORTS_BASIC,
     FEATURES.PURCHASE_ORDERS,
   ],
@@ -238,6 +239,7 @@ export function getActiveTierInfo(): TierInfo {
         FEATURES.INVOICES,
         FEATURES.PARTIES,
         FEATURES.KHATA,
+        FEATURES.MOBILE_PAIRING,
         FEATURES.REPORTS_BASIC,
         FEATURES.PURCHASE_ORDERS,
       ],

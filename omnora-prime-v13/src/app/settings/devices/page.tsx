@@ -36,6 +36,7 @@ export default function DevicesPage() {
   const [error, setError] = useState<string | null>(null);
   const [localUrl, setLocalUrl] = useState<string>('');
   const [tunnelUrl, setTunnelUrl] = useState<string | null>(null);
+  const [hubBridgeUrl, setHubBridgeUrl] = useState<string>('');
 
   const load = useCallback(async () => {
     setError(null);
