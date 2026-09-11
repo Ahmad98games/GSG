@@ -54,7 +54,7 @@ export async function GET(req: Request) {
 
       if (tableExists('invoices') || tableExists('karigars')) {
         const attendanceRow = tableExists('attendance_logs')
-          ? client.prepare("SELECT count(*) as count FROM attendance_logs WHERE (business_id = ? OR ? = '00000000-0000-0000-0000-000000000000') AND log_date = ? AND status = 'present'").get(biz, biz, today)
+          ? client.prepare("SELECT count(*) as count FROM attendance_logs WHERE (business_id = ? OR ? = '00000000-0000-0000-0000-000000000000') AND attendance_date = ? AND status = 'present'").get(biz, biz, today)
           : { count: 0 }
 
         const karigarRow = tableExists('karigars')
@@ -94,7 +94,7 @@ export async function GET(req: Request) {
           : []
 
         const recentAttendanceRows = tableExists('attendance_logs')
-          ? client.prepare("SELECT karigar_id, status, log_date FROM attendance_logs WHERE (business_id = ? OR ? = '00000000-0000-0000-0000-000000000000') AND log_date = ? LIMIT 10").all(biz, biz, today)
+          ? client.prepare("SELECT karigar_id, status, attendance_date as log_date FROM attendance_logs WHERE (business_id = ? OR ? = '00000000-0000-0000-0000-000000000000') AND attendance_date = ? LIMIT 10").all(biz, biz, today)
           : []
 
         const promisesRows = tableExists('payment_promises')
