@@ -10,20 +10,29 @@ export function IntroAnimation({
   const [phase, setPhase] = useState(0)
   
   useEffect(() => {
+    const handleSkip = () => onComplete()
+    window.addEventListener('keydown', handleSkip)
+    window.addEventListener('click', handleSkip)
+
     const timers = [
-      setTimeout(() => setPhase(1), 500),
-      setTimeout(() => setPhase(2), 1800),
-      setTimeout(() => setPhase(3), 2300),
-      setTimeout(() => setPhase(4), 2600),
-      setTimeout(() => onComplete(), 3000),
+      setTimeout(() => setPhase(1), 100),
+      setTimeout(() => setPhase(2), 350),
+      setTimeout(() => setPhase(3), 600),
+      setTimeout(() => setPhase(4), 850),
+      setTimeout(() => onComplete(), 1050),
     ]
-    return () => timers.forEach(clearTimeout)
+    return () => {
+      window.removeEventListener('keydown', handleSkip)
+      window.removeEventListener('click', handleSkip)
+      timers.forEach(clearTimeout)
+    }
   }, [onComplete])
-  
+
   return (
     <motion.div
+      onClick={onComplete}
       className="fixed inset-0 z-[9999] flex flex-col
-        items-center justify-center bg-[#080A0C]"
+        items-center justify-center bg-[#080A0C] cursor-pointer"
       animate={{ opacity: phase >= 4 ? 0 : 1 }}
       transition={{ duration: 0.4 }}
     >
@@ -113,7 +122,7 @@ export function IntroAnimation({
             className="h-full bg-electric-blue"
             initial={{ width: '0%' }}
             animate={{ width: '100%' }}
-            transition={{ duration: 2.5, ease: 'linear' }}
+            transition={{ duration: 0.9, ease: 'linear' }}
           />
         </motion.div>
       )}

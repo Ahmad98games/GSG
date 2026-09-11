@@ -106,9 +106,9 @@ export default function OwnerDashboard() {
       return true;
     },
     enabled: true,
-    staleTime: 5000,
-    refetchInterval: 10000,
-    refetchOnWindowFocus: true,
+    staleTime: 30000,
+    refetchInterval: 60000,
+    refetchOnWindowFocus: false,
   })
 
   const isElectron = typeof window !== 'undefined' && (
@@ -118,17 +118,26 @@ export default function OwnerDashboard() {
   )
   const { t, features, fmt, fmtCompact } = useIndustryConfig()
   const { tier: activeTier } = useTierStore()
-  const [data, setData] = useState<DashboardData | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState<DashboardData | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('noxis_dashboard_cache')
+        if (cached) return JSON.parse(cached)
+      } catch {}
+    }
+    return null
+  })
+  const [loading, setLoading] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return !localStorage.getItem('noxis_dashboard_cache')
+    }
+    return true
+  })
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
   const [activeTab, setActiveTab] = useState<'overview' | 'people' | 'finance' | 'stock'>('overview')
 
   const loadDashboard = useCallback(async () => {
     try {
-      setData(prev => {
-        if (!prev) setLoading(true)
-        return prev
-      })
 
       let activeProfile = profile
       if (!activeProfile && typeof window !== 'undefined') {

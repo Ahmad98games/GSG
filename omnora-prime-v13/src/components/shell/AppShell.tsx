@@ -167,19 +167,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [profile?.visual_theme]);
 
   React.useEffect(() => {
-    // Show intro if user has completed onboarding
+    // Show intro only once per day if user has completed onboarding, avoiding repeated startup delays
     const hasOnboarded = localStorage.getItem('noxis_onboarded');
     const sessionIntroShown = sessionStorage.getItem('noxis_session_intro_shown');
-    
-    // Administrators always see it once per session
-    // Regular users see it once per day (or per session if preferred)
-    const isAdmin = true; // This would ideally come from an auth hook, but user identified as admin
+    const introSeenDate = localStorage.getItem('noxis_intro_seen_date');
+    const today = new Date().toISOString().slice(0, 10);
 
-    if (hasOnboarded && !sessionIntroShown) {
-      setTimeout(() => setShowIntro(true), 0);
+    if (hasOnboarded && !sessionIntroShown && introSeenDate !== today) {
+      setShowIntro(true);
       sessionStorage.setItem('noxis_session_intro_shown', 'true');
+      localStorage.setItem('noxis_intro_seen_date', today);
     }
-    setTimeout(() => setIntroChecked(true), 0);
+    setIntroChecked(true);
   }, []);
 
   React.useEffect(() => {

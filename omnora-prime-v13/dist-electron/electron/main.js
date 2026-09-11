@@ -323,19 +323,20 @@ if (process.platform === 'win32') {
         // Non-fatal — app still works
     }
 }
-// Force disable GPU acceleration and sandbox on Windows to resolve KERNELBASE.dll 0x80000003 crashes
+// High-Performance GPU Acceleration & Hardware Rasterization
 if (process.platform === 'win32') {
-    electron_1.app.disableHardwareAcceleration();
-    electron_1.app.commandLine.appendSwitch('disable-gpu');
-    electron_1.app.commandLine.appendSwitch('disable-gpu-sandbox');
-    electron_1.app.commandLine.appendSwitch('no-sandbox');
-    startupLog('[Win] GPU acceleration and Sandbox disabled defensively to prevent KERNELBASE.dll crashes');
+    electron_1.app.commandLine.appendSwitch('enable-gpu-rasterization');
+    electron_1.app.commandLine.appendSwitch('enable-zero-copy');
+    electron_1.app.commandLine.appendSwitch('ignore-gpu-blocklist');
+    electron_1.app.commandLine.appendSwitch('enable-accelerated-2d-canvas');
+    electron_1.app.commandLine.appendSwitch('force_high_performance_gpu');
+    electron_1.app.commandLine.appendSwitch('enable-features', 'CanvasOopRasterization,VaapiVideoDecoder');
+    startupLog('[Win] High-performance GPU hardware acceleration and rasterization enabled');
 }
-// On older GPUs/drivers, disable hardware acceleration entirely or features
-// to prevent black screen issues
+// Disable unneeded background media key handling
 electron_1.app.commandLine.appendSwitch('disable-features', 'HardwareMediaKeyHandling,MediaSessionService');
-// V8 heap space flags to prevent memory pressure freezes after prolonged use:
-electron_1.app.commandLine.appendSwitch('js-flags', '--max-old-space-size=512 --expose-gc');
+// V8 heap space expanded to 4GB to completely eliminate synchronous stop-the-world GC UI stutter
+electron_1.app.commandLine.appendSwitch('js-flags', '--max-old-space-size=4096');
 startupLog('════════════ NOXIS STARTUP ════════════');
 startupLog(`Platform: ${process.platform} | Arch: ${process.arch} | isDev: ${isDev}`);
 function killProcess(child, name) {
@@ -475,6 +476,7 @@ else {
                         // Pre-warm dashboard route in background for instant first render
                         try {
                             http.get(`${url}/dashboard`, () => { }).on('error', () => { });
+                            http.get(`${url}/api/dashboard/kpis`, () => { }).on('error', () => { });
                         }
                         catch { }
                         resolve();
@@ -1431,22 +1433,11 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             // Destroy splash with fade
             destroySplash();
             // Show main window maximized — works on all screen sizes
-            mainWindow.setOpacity(0);
+            // Show main window maximized immediately — zero lag
+            mainWindow.setOpacity(1);
             mainWindow.maximize();
             mainWindow.show();
             mainWindow.focus();
-            // Fade in over 300ms
-            let opacity = 0;
-            const fadeIn = setInterval(() => {
-                opacity += 0.08;
-                if (opacity >= 1) {
-                    opacity = 1;
-                    clearInterval(fadeIn);
-                }
-                if (mainWindow && !mainWindow.isDestroyed()) {
-                    mainWindow.setOpacity(opacity);
-                }
-            }, 16); // ~60fps
         });
         mainWindow.on('maximize', () => mainWindow?.webContents.send('maximize-changed', true));
         mainWindow.on('unmaximize', () => mainWindow?.webContents.send('maximize-changed', false));

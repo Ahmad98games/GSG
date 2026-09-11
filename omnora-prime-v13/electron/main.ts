@@ -382,26 +382,27 @@ if (process.platform === 'win32') {
   }
 }
 
-// Force disable GPU acceleration and sandbox on Windows to resolve KERNELBASE.dll 0x80000003 crashes
+// High-Performance GPU Acceleration & Hardware Rasterization
 if (process.platform === 'win32') {
-  app.disableHardwareAcceleration();
-  app.commandLine.appendSwitch('disable-gpu');
-  app.commandLine.appendSwitch('disable-gpu-sandbox');
-  app.commandLine.appendSwitch('no-sandbox');
-  startupLog('[Win] GPU acceleration and Sandbox disabled defensively to prevent KERNELBASE.dll crashes');
+  app.commandLine.appendSwitch('enable-gpu-rasterization');
+  app.commandLine.appendSwitch('enable-zero-copy');
+  app.commandLine.appendSwitch('ignore-gpu-blocklist');
+  app.commandLine.appendSwitch('enable-accelerated-2d-canvas');
+  app.commandLine.appendSwitch('force_high_performance_gpu');
+  app.commandLine.appendSwitch('enable-features', 'CanvasOopRasterization,VaapiVideoDecoder');
+  startupLog('[Win] High-performance GPU hardware acceleration and rasterization enabled');
 }
 
-// On older GPUs/drivers, disable hardware acceleration entirely or features
-// to prevent black screen issues
+// Disable unneeded background media key handling
 app.commandLine.appendSwitch(
   'disable-features',
   'HardwareMediaKeyHandling,MediaSessionService'
 )
 
-// V8 heap space flags to prevent memory pressure freezes after prolonged use:
+// V8 heap space expanded to 4GB to completely eliminate synchronous stop-the-world GC UI stutter
 app.commandLine.appendSwitch(
   'js-flags',
-  '--max-old-space-size=512 --expose-gc'
+  '--max-old-space-size=4096'
 )
 
 startupLog('════════════ NOXIS STARTUP ════════════');
@@ -546,6 +547,7 @@ if (!gotTheLock) {
             // Pre-warm dashboard route in background for instant first render
             try {
               http.get(`${url}/dashboard`, () => {}).on('error', () => {});
+              http.get(`${url}/api/dashboard/kpis`, () => {}).on('error', () => {});
             } catch {}
             resolve();
           } else {
@@ -1633,23 +1635,11 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       destroySplash();
 
       // Show main window maximized — works on all screen sizes
-      mainWindow!.setOpacity(0);
+      // Show main window maximized immediately — zero lag
+      mainWindow!.setOpacity(1);
       mainWindow!.maximize();
       mainWindow!.show();
       mainWindow!.focus();
-
-      // Fade in over 300ms
-      let opacity = 0;
-      const fadeIn = setInterval(() => {
-        opacity += 0.08;
-        if (opacity >= 1) {
-          opacity = 1;
-          clearInterval(fadeIn);
-        }
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.setOpacity(opacity);
-        }
-      }, 16); // ~60fps
     });
 
     mainWindow.on('maximize', () => mainWindow?.webContents.send('maximize-changed', true));
