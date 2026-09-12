@@ -382,15 +382,13 @@ if (process.platform === 'win32') {
   }
 }
 
-// High-Performance GPU Acceleration & Hardware Rasterization
+// Force disable GPU acceleration and sandbox on Windows to resolve KERNELBASE.dll 0x80000003 crashes
 if (process.platform === 'win32') {
-  app.commandLine.appendSwitch('enable-gpu-rasterization');
-  app.commandLine.appendSwitch('enable-zero-copy');
-  app.commandLine.appendSwitch('ignore-gpu-blocklist');
-  app.commandLine.appendSwitch('enable-accelerated-2d-canvas');
-  app.commandLine.appendSwitch('force_high_performance_gpu');
-  app.commandLine.appendSwitch('enable-features', 'CanvasOopRasterization,VaapiVideoDecoder');
-  startupLog('[Win] High-performance GPU hardware acceleration and rasterization enabled');
+  app.disableHardwareAcceleration();
+  app.commandLine.appendSwitch('disable-gpu');
+  app.commandLine.appendSwitch('disable-gpu-sandbox');
+  app.commandLine.appendSwitch('no-sandbox');
+  startupLog('[Win] GPU acceleration and Sandbox disabled defensively to prevent KERNELBASE.dll crashes');
 }
 
 // Disable unneeded background media key handling
