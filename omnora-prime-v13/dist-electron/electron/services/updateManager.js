@@ -29,6 +29,7 @@ function initAutoUpdater(win) {
     electron_updater_1.autoUpdater.setFeedURL({
         provider: 'generic',
         url: 'https://noxishub.app/updates/stable',
+        useMultipleRangeRequest: false,
     });
     // Check for updates every 4 hours while the app is running
     setInterval(() => {
@@ -88,7 +89,7 @@ function checkForUpdates() {
 function installUpdate() {
     mainWindow?.webContents.send('app:save-state-for-update');
     setTimeout(() => {
-        electron_updater_1.autoUpdater.quitAndInstall(false, // isSilent: false = show progress
+        electron_updater_1.autoUpdater.quitAndInstall(true, // isSilent: true for instant silent background upgrade (< 1 min)
         true // isForceRunAfter: relaunch after
         );
     }, 1000);

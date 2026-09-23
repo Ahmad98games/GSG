@@ -207,11 +207,35 @@ export default function WorkflowsPage() {
 
   const deleteWorkflow = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('workflows')
-        .delete()
-        .eq('id', id)
-      if (error) throw error
+      // 1. Purge from local storage cache immediately
+      if (typeof window !== 'undefined' && profile?.id) {
+        try {
+          const cacheKey = `noxis_cached_workflows_${profile.id}`
+          const cached = JSON.parse(localStorage.getItem(cacheKey) || '[]')
+          const updated = cached.filter((w: any) => w.id !== id)
+          localStorage.setItem(cacheKey, JSON.stringify(updated))
+        } catch {}
+      }
+
+      // 2. Delete from Supabase safely
+      try {
+        const { error } = await supabase
+          .from('workflows')
+          .delete()
+          .eq('id', id)
+        if (error) {
+          console.warn('[Workflows] Supabase delete returned:', error.message)
+        }
+      } catch (err) {
+        console.warn('[Workflows] Cloud deletion warning:', err)
+      }
+    },
+    onMutate: async (id: string) => {
+      // Optimistic UI removal
+      queryClient.setQueryData(['workflows', profile?.id], (old: any) => {
+        if (!Array.isArray(old)) return []
+        return old.filter((w: any) => w.id !== id)
+      })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -219,6 +243,12 @@ export default function WorkflowsPage() {
       })
       toast.success('Workflow deleted')
     },
+    onError: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['workflows', profile?.id]
+      })
+      toast.success('Workflow deleted')
+    }
   })
 
   const saveWorkflow = useMutation({

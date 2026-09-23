@@ -173,12 +173,14 @@ async function main() {
     const mainTargetKey = `updates/stable/${exeName}`;
     await uploadLargeMultipart(exePath, mainTargetKey, 'application/x-msdownload');
 
-    // 1b. Upload .blockmap if available
-    const blockmapName = `${exeName}.blockmap`;
-    const blockmapPath = path.join(distDir, blockmapName);
-    if (fs.existsSync(blockmapPath)) {
-      await uploadSmall(blockmapPath, `updates/stable/${blockmapName}`, 'application/octet-stream');
-    }
+    // 1b. Delete any lingering blockmap files from R2 to prevent range download loops
+    try {
+      const { DeleteObjectCommand } = require('@aws-sdk/client-s3');
+      await client.send(new DeleteObjectCommand({
+        Bucket: R2_BUCKET_NAME,
+        Key: `updates/stable/${exeName}.blockmap`,
+      }));
+    } catch {}
 
     // 2. Instant server-side copies to root download paths (instantaneous, 0 bandwidth!)
     await copyObjectServerSide(mainTargetKey, `Noxis Setup ${version}.exe`);
@@ -191,27 +193,27 @@ async function main() {
     process.exit(1);
   }
 
-  // 3. Ensure manifests exist (generate if electron-builder ran without --publish)
+  // 3. Ensure manifests exist WITHOUT blockMapSize for rock-solid full package downloads
   const latestYmlPath = path.join(distDir, 'latest.yml');
   const stableYmlPath = path.join(distDir, 'stable.yml');
-  if (!fs.existsSync(latestYmlPath)) {
-    const crypto = require('crypto');
-    const stat = fs.statSync(exePath);
-    const buf = fs.readFileSync(exePath);
-    const sha512 = crypto.createHash('sha512').update(buf).digest('base64');
-    const isoDate = new Date().toISOString();
-    const yaml = `version: ${version}\n` +
-      `files:\n` +
-      `  - url: ${exeName}\n` +
-      `    sha512: ${sha512}\n` +
-      `    size: ${stat.size}\n` +
-      `path: ${exeName}\n` +
-      `sha512: ${sha512}\n` +
-      `releaseDate: '${isoDate}'\n`;
-    fs.writeFileSync(latestYmlPath, yaml, 'utf8');
-    fs.writeFileSync(stableYmlPath, yaml, 'utf8');
-    console.log(`📄 Generated fresh latest.yml and stable.yml for v${version}`);
-  }
+  const crypto = require('crypto');
+  const stat = fs.statSync(exePath);
+  const buf = fs.readFileSync(exePath);
+  const sha512 = crypto.createHash('sha512').update(buf).digest('base64');
+  const isoDate = new Date().toISOString();
+
+  const yaml = `version: ${version}\n` +
+    `files:\n` +
+    `  - url: ${exeName}\n` +
+    `    sha512: ${sha512}\n` +
+    `    size: ${stat.size}\n` +
+    `path: ${exeName}\n` +
+    `sha512: ${sha512}\n` +
+    `releaseDate: '${isoDate}'\n`;
+
+  fs.writeFileSync(latestYmlPath, yaml, 'utf8');
+  fs.writeFileSync(stableYmlPath, yaml, 'utf8');
+  console.log(`📄 Generated clean latest.yml and stable.yml for v${version} (clean single-stream binary: ${stat.size} bytes)`);
 
   // Upload manifests (BOTH latest.yml and stable.yml so auto-updater sees update immediately)
   console.log(`📄 Uploading manifests for v${version}...`);

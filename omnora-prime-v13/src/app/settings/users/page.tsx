@@ -63,41 +63,36 @@ export default function UsersPage() {
       }
 
       const payload = {
-        business_id: profile.id,
+        businessId: profile.id,
         name: newUser.name.trim(),
         email: newUser.email.trim().toLowerCase(),
         role: newUser.role,
-        is_active: true,
       }
 
-      // Try sub_users first
-      const { error: subErr } = await supabase
-        .from('sub_users')
-        .insert(payload)
+      // Route through service-role API first to prevent RLS permission denial
+      const res = await fetch('/api/staff/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
 
-      if (subErr) {
-        console.warn('sub_users insert error, trying staff_users:', subErr)
-        // Fallback to staff_users table
-        const { error: staffErr } = await supabase
+      if (!res.ok) {
+        const resData = await res.json().catch(() => ({}))
+        // Direct fallback attempt if API failed
+        const { error: directErr } = await supabase
           .from('staff_users')
-          .insert(payload)
-
-        if (staffErr) {
-          // Send via staff invite API endpoint fallback
-          const res = await fetch('/api/staff/invite', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              businessId: profile.id,
-              name: newUser.name.trim(),
-              email: newUser.email.trim().toLowerCase(),
-              role: newUser.role,
-            }),
+          .insert({
+            business_id: profile.id,
+            name: payload.name,
+            email: payload.email,
+            role: payload.role,
+            is_active: true
           })
-          if (!res.ok) {
-            const resData = await res.json().catch(() => ({}))
-            throw new Error(resData.error || staffErr.message || subErr.message)
-          }
+        if (directErr && !resData.error) {
+          throw new Error(directErr.message)
+        }
+        if (resData.error) {
+          throw new Error(resData.error)
         }
       }
     },
@@ -115,7 +110,7 @@ export default function UsersPage() {
     onError: (err: any) => {
       toast.error(
         'Failed',
-        err.message?.includes('duplicate')
+        err.message?.includes('duplicate') || err.message?.includes('already a team member')
           ? 'This email is already a team member'
           : (err.message || 'Could not add team member')
       )
@@ -124,12 +119,25 @@ export default function UsersPage() {
 
   const removeUser = useMutation({
     mutationFn: async (userId: string) => {
-      const { error } = await supabase
+      // Deactivate via service role API
+      await fetch('/api/staff/invite', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, businessId: profile!.id }),
+      }).catch(() => null)
+
+      // Also attempt direct update
+      await supabase
         .from('sub_users')
         .update({ is_active: false })
         .eq('id', userId)
         .eq('business_id', profile!.id)
-      if (error) throw error
+
+      await supabase
+        .from('staff_users')
+        .update({ is_active: false })
+        .eq('id', userId)
+        .eq('business_id', profile!.id)
     },
     onSuccess: (_, userId) => {
       queryClient.invalidateQueries({

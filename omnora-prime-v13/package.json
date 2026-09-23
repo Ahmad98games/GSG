@@ -1,7 +1,7 @@
 {
-    "name": "noxis-hub",
-    "version": "13.1.6",
-    "description": "Noxis Industrial ERP Hub",
+  "name": "noxis-hub",
+  "version": "13.1.15",
+  "description": "Noxis Industrial ERP Hub",
     "author": "NOXIS Labs",
     "private": true,
     "main": "dist-electron/electron/main.js",

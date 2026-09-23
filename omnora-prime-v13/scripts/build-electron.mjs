@@ -107,7 +107,67 @@ function prepareStandaloneBundle() {
     console.warn('[Electron Build] ⚠ Warning running generate-icons.js:', e.message);
   }
 
+  // 7. Prune redundant source maps, docs, and test files so installer extracts in < 1 minute
+  pruneStandaloneNodeModules();
+
   console.log('\n[Electron Build] ✓ Bundle assembly complete\n');
+}
+
+// ── Prune loose development/typing/test files for instant NSIS installer extraction ──
+function pruneStandaloneNodeModules() {
+  const nmDir = path.join(STANDALONE, 'node_modules');
+  if (!fs.existsSync(nmDir)) return;
+  console.log('[Electron Build] Pruning redundant source maps, docs, and test files for instant installer extraction...');
+  let prunedCount = 0;
+  function walk(dir) {
+    let entries;
+    try {
+      entries = fs.readdirSync(dir);
+    } catch {
+      return;
+    }
+    for (const file of entries) {
+      const fullPath = path.join(dir, file);
+      let stat;
+      try {
+        stat = fs.statSync(fullPath);
+      } catch {
+        continue;
+      }
+      if (stat.isDirectory()) {
+        const lower = file.toLowerCase();
+        if (['test', 'tests', '__tests__', 'docs', 'doc', 'examples', 'example', '.github'].includes(lower)) {
+          try {
+            fs.rmSync(fullPath, { recursive: true, force: true });
+            prunedCount++;
+          } catch {}
+        } else {
+          walk(fullPath);
+        }
+      } else {
+        const ext = path.extname(file).toLowerCase();
+        if (
+          ext === '.map' ||
+          file.endsWith('.d.ts') ||
+          file.endsWith('.d.cts') ||
+          file.endsWith('.d.mts') ||
+          ext === '.ts' ||
+          ext === '.cts' ||
+          ext === '.md' ||
+          ext === '.markdown' ||
+          file === 'CHANGELOG' ||
+          file === 'README'
+        ) {
+          try {
+            fs.unlinkSync(fullPath);
+            prunedCount++;
+          } catch {}
+        }
+      }
+    }
+  }
+  walk(nmDir);
+  console.log(`[Electron Build] ✓ Pruned ${prunedCount} redundant files/folders from standalone node_modules.`);
 }
 
 // ── Main build ────────────────────────────────────────────────────────────────

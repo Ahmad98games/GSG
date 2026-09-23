@@ -3,11 +3,12 @@
 import { useState, useRef, useCallback } from 'react';
 import {
   Upload, Download, ArrowRight,
-  FileText, FileSpreadsheet, Image as ImageIcon, ScanLine,
-  Scissors, RotateCw, Lock, Unlock, Zap, X, Loader2,
+  FileText, Image as ImageIcon,
+  Scissors, RotateCw, Lock, Unlock, Zap, Loader2,
   CheckCircle2, ShieldCheck, Sliders, Layers, EyeOff, Sparkles, RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '@/lib/utils';
 
 import {
   mergePdfs, splitPdf, rotatePdf, encryptPdf, unlockPdf,
@@ -33,7 +34,6 @@ type ConversionTool = {
   inputLabel: string;
   outputLabel: string;
   multiFile?: boolean;
-  color: string;
   icon: React.ReactNode;
   action: (
     files: File[],
@@ -51,13 +51,11 @@ function DropZone({
   multiple,
   onFiles,
   label,
-  color,
 }: {
   accept: string;
   multiple: boolean;
   onFiles: (files: File[]) => void;
   label: string;
-  color: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -78,17 +76,18 @@ function DropZone({
       onDragLeave={() => setDragging(false)}
       onDrop={handleDrop}
       onClick={() => inputRef.current?.click()}
-      className={`border-2 border-dashed rounded-xl py-12 px-6 text-center cursor-pointer transition-all duration-200 group ${
+      className={cn(
+        'border border-dashed rounded-[6px] py-8 px-4 text-center cursor-pointer transition-colors duration-100',
         dragging
-          ? 'border-[#08EBF6] bg-[#08EBF6]/10 shadow-[0_0_25px_rgba(8,235,246,0.2)]'
-          : 'border-white/10 hover:border-[#08EBF6]/40 hover:bg-white/[0.02]'
-      }`}
+          ? 'border-white/30 bg-white/[0.04]'
+          : 'border-white/[0.12] bg-[#0B0E14]/40 hover:border-white/20 hover:bg-white/[0.02]'
+      )}
     >
-      <div className="w-14 h-14 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform group-hover:border-[#08EBF6]/50">
-        <Upload size={22} className="text-[#08EBF6]" />
+      <div className="w-10 h-10 rounded-[6px] bg-white/[0.03] border border-white/[0.08] flex items-center justify-center mx-auto mb-2.5">
+        <Upload size={16} strokeWidth={1.5} className="text-slate-400" />
       </div>
-      <p className="text-sm font-bold text-white mb-1">Drop {label} here</p>
-      <p className="text-xs text-slate-400">or click to browse local files (100% offline client processing)</p>
+      <p className="text-xs font-medium text-slate-200 mb-0.5">Drop {label} here</p>
+      <p className="text-[11px] text-slate-500 font-normal">or click to browse local files (processed 100% in-browser)</p>
       <input
         ref={inputRef}
         type="file"
@@ -107,23 +106,18 @@ function DropZone({
 
 function ProgressBar({ progress, status }: { progress: number; status: string }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 4 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="mt-5 space-y-2"
-    >
-      <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+    <div className="mt-4 space-y-1.5">
+      <div className="flex justify-between text-[11px] text-slate-400 font-mono tabular-nums">
         <span>{status}</span>
-        <span className="text-[#08EBF6]">{progress}%</span>
+        <span className="text-slate-200">{progress}%</span>
       </div>
-      <div className="h-2 bg-black/60 border border-white/10 rounded-full overflow-hidden">
-        <motion.div
-          className="h-full bg-gradient-to-r from-[#08EBF6] via-[#5FA5FA] to-[#FFFFFF] rounded-full shadow-[0_0_12px_#08EBF6]"
-          animate={{ width: `${progress}%` }}
-          transition={{ duration: 0.3, ease: 'easeOut' }}
+      <div className="h-1.5 bg-[#0B0E14] border border-white/[0.08] rounded-full overflow-hidden">
+        <div
+          className="h-full bg-white transition-all duration-100"
+          style={{ width: `${progress}%` }}
         />
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -142,15 +136,20 @@ function DownloadButton({ result }: { result: { name: string; blob: Blob } }) {
         setClicked(true);
         setTimeout(() => setClicked(false), 2000);
       }}
-      className={`flex items-center gap-2.5 w-full py-3.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
+      className={cn(
+        'flex items-center gap-2 w-full h-9 px-3 rounded-[4px] text-xs font-medium transition-colors duration-100 cursor-pointer border',
         clicked
-          ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-400'
-          : 'bg-[#08EBF6]/10 border border-[#08EBF6]/40 text-white hover:bg-[#08EBF6] hover:text-black shadow-[0_0_15px_rgba(8,235,246,0.15)]'
-      }`}
+          ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+          : 'bg-[#0B0E14] border-white/[0.08] text-slate-200 hover:bg-white/[0.04] hover:border-white/20'
+      )}
     >
-      {clicked ? <CheckCircle2 size={15} className="text-emerald-400 flex-shrink-0" /> : <Download size={15} className="flex-shrink-0" />}
+      {clicked ? (
+        <CheckCircle2 size={14} strokeWidth={1.5} className="text-emerald-400 flex-shrink-0" />
+      ) : (
+        <Download size={14} strokeWidth={1.5} className="text-slate-400 flex-shrink-0" />
+      )}
       <span className="truncate">{result.name}</span>
-      <span className="ml-auto text-[10px] font-mono opacity-80 flex-shrink-0">
+      <span className="ml-auto text-[10px] font-mono tabular-nums text-slate-500 flex-shrink-0">
         {(result.blob.size / 1024).toFixed(0)} KB
       </span>
     </button>
@@ -180,28 +179,30 @@ export function DocumentConverter() {
     watermarkOpacity: '0.2',
     watermarkRotation: '-45',
     watermarkFontSize: '48',
-    splitRange: '1-3',
+    splitRange: '',
     rotation: '90',
+    pageSize: 'A4',
     resizePercent: '50',
-    resizeWidth: '1920',
-    resizeHeight: '1080',
-    resizeFormat: 'png',
+    resizeWidth: '',
+    resizeHeight: '',
     keepAspect: true,
+    resizeFormat: 'png',
+    targetImgFormat: 'webp',
     bgTolerance: '25',
+    imgFormat: 'png',
   });
 
   const TOOLS: ConversionTool[] = [
-    // 🔐 Security Tools
+    // 🔒 PDF Security
     {
       id: 'pdf-encrypt',
       label: 'Encrypt & Password Lock',
       category: 'security',
-      description: 'AES-128/256-bit encryption with User & Owner passwords and granular rights (Disable Printing, Copying, Modifying).',
+      description: 'AES-128/256-bit encryption with User & Owner passwords and granular document rights.',
       inputAccept: '.pdf',
       inputLabel: 'PDF File to Encrypt',
       outputLabel: 'Encrypted PDF',
-      color: '#08EBF6',
-      icon: <Lock size={15} />,
+      icon: <Lock size={14} strokeWidth={1.5} />,
       action: async (files, opts, onProgress) => {
         if (!opts.userPassword) throw new Error('Enter a user password to encrypt');
         const arrayBuffer = await files[0].arrayBuffer();
@@ -224,12 +225,11 @@ export function DocumentConverter() {
       id: 'pdf-unlock',
       label: 'Decrypt / Unlock PDF',
       category: 'security',
-      description: 'Unlock password-protected PDFs and export an unencrypted clone instantly.',
+      description: 'Unlock password-protected PDFs and export an unencrypted copy instantly.',
       inputAccept: '.pdf',
       inputLabel: 'Encrypted PDF',
       outputLabel: 'Unlocked PDF',
-      color: '#5FA5FA',
-      icon: <Unlock size={15} />,
+      icon: <Unlock size={14} strokeWidth={1.5} />,
       action: async (files, opts, onProgress) => {
         const arrayBuffer = await files[0].arrayBuffer();
         const bytes = await unlockPdf(arrayBuffer, opts.userPassword || '', onProgress);
@@ -241,12 +241,11 @@ export function DocumentConverter() {
       id: 'pdf-watermark',
       label: 'Digital Watermarking',
       category: 'security',
-      description: 'Embed custom text or image logo watermarks with opacity, rotation angle (-45°), and custom styling.',
+      description: 'Embed custom text or image logo watermarks with opacity and angle controls.',
       inputAccept: '.pdf',
       inputLabel: 'PDF File',
       outputLabel: 'Watermarked PDF',
-      color: '#08EBF6',
-      icon: <ShieldCheck size={15} />,
+      icon: <ShieldCheck size={14} strokeWidth={1.5} />,
       action: async (files, opts, onProgress) => {
         const arrayBuffer = await files[0].arrayBuffer();
         let bytes: Uint8Array;
@@ -267,7 +266,7 @@ export function DocumentConverter() {
         } else {
           bytes = await watermarkPdfText(
             arrayBuffer,
-            opts.watermarkText || 'NOXIS CONFIDENTIAL',
+            opts.watermarkText || 'CONFIDENTIAL',
             {
               opacity: parseFloat(opts.watermarkOpacity || '0.2'),
               fontSize: parseInt(opts.watermarkFontSize || '48', 10),
@@ -291,8 +290,7 @@ export function DocumentConverter() {
       inputLabel: 'PDF Files (Select Multiple)',
       outputLabel: 'Merged PDF',
       multiFile: true,
-      color: '#5FA5FA',
-      icon: <Layers size={15} />,
+      icon: <Layers size={14} strokeWidth={1.5} />,
       action: async (files, _opts, onProgress) => {
         const buffers = await Promise.all(files.map(f => f.arrayBuffer()));
         const bytes = await mergePdfs(buffers, onProgress);
@@ -308,8 +306,7 @@ export function DocumentConverter() {
       inputAccept: '.pdf',
       inputLabel: 'PDF File',
       outputLabel: 'Extracted PDF',
-      color: '#5FA5FA',
-      icon: <Scissors size={15} />,
+      icon: <Scissors size={14} strokeWidth={1.5} />,
       action: async (files, opts, onProgress) => {
         const arrayBuffer = await files[0].arrayBuffer();
         const outputs = await splitPdf(arrayBuffer, opts.splitRange, onProgress);
@@ -327,8 +324,7 @@ export function DocumentConverter() {
       inputAccept: '.pdf',
       inputLabel: 'PDF File',
       outputLabel: 'Rotated PDF',
-      color: '#5FA5FA',
-      icon: <RotateCw size={15} />,
+      icon: <RotateCw size={14} strokeWidth={1.5} />,
       action: async (files, opts, onProgress) => {
         const arrayBuffer = await files[0].arrayBuffer();
         const deg = parseInt(opts.rotation || '90', 10) as 90 | 180 | 270;
@@ -341,12 +337,11 @@ export function DocumentConverter() {
       id: 'pdf-compress',
       label: 'Compress & Optimize',
       category: 'pdf-editing',
-      description: 'Compress PDF structure and object streams to reduce file size up to 80%.',
+      description: 'Compress PDF structure and object streams to reduce file size.',
       inputAccept: '.pdf',
       inputLabel: 'PDF File',
       outputLabel: 'Compressed PDF',
-      color: '#08EBF6',
-      icon: <Zap size={15} />,
+      icon: <Zap size={14} strokeWidth={1.5} />,
       action: async (files, _opts, onProgress) => {
         const arrayBuffer = await files[0].arrayBuffer();
         const bytes = await compressPdf(arrayBuffer, onProgress);
@@ -358,15 +353,13 @@ export function DocumentConverter() {
       id: 'pdf-redact',
       label: 'Redact & Blackout',
       category: 'pdf-editing',
-      description: 'Blackout sensitive page header/footer regions or text coordinates.',
+      description: 'Blackout sensitive header/footer regions or text coordinates.',
       inputAccept: '.pdf',
       inputLabel: 'PDF File',
       outputLabel: 'Redacted PDF',
-      color: '#5FA5FA',
-      icon: <EyeOff size={15} />,
+      icon: <EyeOff size={14} strokeWidth={1.5} />,
       action: async (files, _opts, onProgress) => {
         const arrayBuffer = await files[0].arrayBuffer();
-        // Default top header blackout region for page 1
         const bytes = await redactPdf(
           arrayBuffer,
           [{ pageIndex: 0, x: 50, y: 750, width: 500, height: 40 }],
@@ -382,12 +375,11 @@ export function DocumentConverter() {
       id: 'pdf-to-images',
       label: 'PDF → Images (PNG/JPG)',
       category: 'conversion',
-      description: 'Render each PDF page as high-resolution 300 DPI images with 1-click ZIP archive download.',
+      description: 'Render each PDF page as high-resolution image with 1-click ZIP archive download.',
       inputAccept: '.pdf',
       inputLabel: 'PDF File',
       outputLabel: 'High-Res Images / ZIP',
-      color: '#08EBF6',
-      icon: <ImageIcon size={15} />,
+      icon: <ImageIcon size={14} strokeWidth={1.5} />,
       action: async (files, opts, onProgress) => {
         return await convertPdfToImages(files[0], opts.imgFormat || 'png', 2.0, onProgress);
       },
@@ -401,8 +393,7 @@ export function DocumentConverter() {
       inputLabel: 'Images (Select Multiple)',
       outputLabel: 'Combined PDF',
       multiFile: true,
-      color: '#5FA5FA',
-      icon: <FileText size={15} />,
+      icon: <FileText size={14} strokeWidth={1.5} />,
       action: async (files, opts, onProgress) => {
         const bytes = await imagesToPdf(files, { pageSize: opts.pageSize || 'A4' }, onProgress);
         const blob = new Blob([bytes as any], { type: 'application/pdf' });
@@ -417,8 +408,7 @@ export function DocumentConverter() {
       inputAccept: '.docx,.txt',
       inputLabel: 'Word or Text File',
       outputLabel: 'Converted PDF',
-      color: '#08EBF6',
-      icon: <FileText size={15} />,
+      icon: <FileText size={14} strokeWidth={1.5} />,
       action: async (files, _opts, onProgress) => {
         const bytes = await docxToPdf(files[0], onProgress);
         const blob = new Blob([bytes as any], { type: 'application/pdf' });
@@ -433,8 +423,7 @@ export function DocumentConverter() {
       inputAccept: '.pdf',
       inputLabel: 'PDF File',
       outputLabel: 'Word (.docx) Document',
-      color: '#5FA5FA',
-      icon: <FileText size={15} />,
+      icon: <FileText size={14} strokeWidth={1.5} />,
       action: async (files, _opts, onProgress) => {
         const { text } = await docxToHtml(files[0], onProgress);
         const blob = await textToDocx(text, files[0].name.replace(/\.pdf$/i, ''), onProgress);
@@ -447,12 +436,11 @@ export function DocumentConverter() {
       id: 'image-resize',
       label: 'Image Resizer & Scale',
       category: 'image-tools',
-      description: 'Pixel (WxH) or Percentage (25%, 50%, 75%, 200%) aspect-ratio scaling.',
+      description: 'Pixel (WxH) or percentage aspect-ratio scaling.',
       inputAccept: '.jpg,.jpeg,.png,.webp,.bmp',
       inputLabel: 'Image File',
       outputLabel: 'Resized Image',
-      color: '#08EBF6',
-      icon: <Sliders size={15} />,
+      icon: <Sliders size={14} strokeWidth={1.5} />,
       action: async (files, opts, onProgress) => {
         const result = await resizeImage(
           files[0],
@@ -472,12 +460,11 @@ export function DocumentConverter() {
       id: 'image-convert',
       label: 'Format Converter',
       category: 'image-tools',
-      description: 'Seamless format conversion between PNG, JPG, WebP, BMP, and ICO.',
+      description: 'Format conversion between PNG, JPG, WebP, BMP, and ICO.',
       inputAccept: '.jpg,.jpeg,.png,.webp,.bmp,.ico',
       inputLabel: 'Source Image',
       outputLabel: 'Converted Image',
-      color: '#5FA5FA',
-      icon: <RefreshCw size={15} />,
+      icon: <RefreshCw size={14} strokeWidth={1.5} />,
       action: async (files, opts, onProgress) => {
         const result = await convertImageFormat(
           files[0],
@@ -492,12 +479,11 @@ export function DocumentConverter() {
       id: 'image-bg-remove',
       label: 'Background Remover',
       category: 'image-tools',
-      description: 'Client-side edge detection & color tolerance background removal to transparent PNG.',
+      description: 'Edge detection & color tolerance background removal to transparent PNG.',
       inputAccept: '.jpg,.jpeg,.png,.webp',
       inputLabel: 'Source Image',
       outputLabel: 'Transparent PNG',
-      color: '#08EBF6',
-      icon: <Sparkles size={15} />,
+      icon: <Sparkles size={14} strokeWidth={1.5} />,
       action: async (files, opts, onProgress) => {
         const tolerance = parseInt(opts.bgTolerance || '25', 10);
         const result = await removeImageBackground(files[0], tolerance, 'auto', onProgress);
@@ -508,12 +494,11 @@ export function DocumentConverter() {
       id: 'metadata-clean',
       label: 'EXIF Metadata Cleaner',
       category: 'image-tools',
-      description: 'Strip EXIF metadata (GPS location, device camera, capture date) for privacy compliance.',
+      description: 'Strip EXIF metadata (GPS location, device camera, capture date) for privacy.',
       inputAccept: '.jpg,.jpeg,.png,.webp',
       inputLabel: 'Image File',
       outputLabel: 'Clean Image',
-      color: '#5FA5FA',
-      icon: <ShieldCheck size={15} />,
+      icon: <ShieldCheck size={14} strokeWidth={1.5} />,
       action: async (files, _opts, onProgress) => {
         const result = await stripImageMetadata(files[0], onProgress);
         return [result];
@@ -539,7 +524,7 @@ export function DocumentConverter() {
         );
       });
       setResults(output);
-      setStatus('Processing complete!');
+      setStatus('Processing complete');
     } catch (err: any) {
       setError(err.message || 'Operation failed. Please verify input file format.');
     } finally {
@@ -557,301 +542,290 @@ export function DocumentConverter() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Category Tabs & Tool Selector Grid */}
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
-          {TOOLS.map(tool => {
-            const active = activeToolId === tool.id;
-            return (
-              <button
-                key={tool.id}
-                onClick={() => { setActiveToolId(tool.id); reset(); }}
-                className={`flex flex-col items-start gap-1.5 p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                  active
-                    ? 'bg-[#0B0F17] border-[#08EBF6] text-white shadow-[0_0_20px_rgba(8,235,246,0.25)]'
-                    : 'bg-[#030712] border-white/10 text-slate-400 hover:border-[#08EBF6]/40 hover:text-white'
-                }`}
-              >
-                <div className={`p-1.5 rounded-lg ${active ? 'bg-[#08EBF6]/20 text-[#08EBF6]' : 'bg-white/5 text-slate-400'}`}>
-                  {tool.icon}
-                </div>
-                <span className="text-[11px] font-black tracking-tight leading-tight truncate w-full">{tool.label}</span>
-              </button>
-            );
-          })}
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-1.5">
+        {TOOLS.map(tool => {
+          const active = activeToolId === tool.id;
+          return (
+            <button
+              key={tool.id}
+              onClick={() => { setActiveToolId(tool.id); reset(); }}
+              className={cn(
+                'h-[64px] p-2.5 rounded-[6px] border text-left transition-colors duration-100 flex flex-col justify-between cursor-pointer',
+                active
+                  ? 'bg-white/[0.08] border-white/20 text-white'
+                  : 'bg-[#131823] border-white/[0.08] text-slate-400 hover:bg-white/[0.04] hover:text-slate-200'
+              )}
+            >
+              <div className={active ? 'text-slate-200' : 'text-slate-500'}>
+                {tool.icon}
+              </div>
+              <span className="text-[11px] font-medium leading-tight truncate w-full">{tool.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Main Interactive Tool Console */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeToolId}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.2 }}
-          className="bg-[#0B0F17] border border-[#08EBF6]/30 rounded-2xl p-6 sm:p-8 space-y-6 shadow-[0_0_30px_rgba(8,235,246,0.08)] relative overflow-hidden"
-        >
-          {/* Active Tool Header */}
-          <div className="flex items-start justify-between border-b border-white/10 pb-5">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="text-[#08EBF6]">{activeTool.icon}</span>
-                <h3 className="text-lg font-black text-white uppercase tracking-tight">{activeTool.label}</h3>
-              </div>
-              <p className="text-xs text-slate-400 font-medium max-w-xl">{activeTool.description}</p>
+      <div className="bg-[#131823] border border-white/[0.08] rounded-[6px] p-5 space-y-4 relative">
+        {/* Active Tool Header */}
+        <div className="flex items-start justify-between border-b border-white/[0.08] pb-4">
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2">
+              <span className="text-slate-300">{activeTool.icon}</span>
+              <h3 className="text-sm font-medium text-white">{activeTool.label}</h3>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-[#08EBF6]/10 border border-[#08EBF6]/30 rounded-full shrink-0 shadow-[0_0_12px_rgba(8,235,246,0.2)]">
-              <ShieldCheck size={14} className="text-[#08EBF6]" />
-              <span className="text-[10px] text-[#08EBF6] font-black uppercase tracking-widest">
-                100% Client-Side Engine
-              </span>
-            </div>
+            <p className="text-xs text-slate-400 font-normal max-w-xl">{activeTool.description}</p>
           </div>
+          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-white/[0.03] border border-white/[0.08] rounded-[4px] shrink-0">
+            <ShieldCheck size={12} strokeWidth={1.5} className="text-slate-400" />
+            <span className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">
+              Local Engine
+            </span>
+          </div>
+        </div>
 
-          {/* Granular Tool Parameters */}
-          {activeToolId === 'pdf-encrypt' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-black/40 p-4 rounded-xl border border-white/10">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">User Open Password *</label>
-                <input
-                  type="password"
-                  value={options.userPassword}
-                  onChange={e => setOptions(p => ({ ...p, userPassword: e.target.value }))}
-                  placeholder="Enter password required to open PDF"
-                  className="w-full bg-[#030712] border border-white/15 p-2.5 text-xs text-white rounded-lg outline-none focus:border-[#08EBF6]"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Owner Permissions Password (Optional)</label>
-                <input
-                  type="password"
-                  value={options.ownerPassword}
-                  onChange={e => setOptions(p => ({ ...p, ownerPassword: e.target.value }))}
-                  placeholder="Master password to modify permissions"
-                  className="w-full bg-[#030712] border border-white/15 p-2.5 text-xs text-white rounded-lg outline-none focus:border-[#08EBF6]"
-                />
-              </div>
-              <div className="md:col-span-2 flex flex-wrap gap-6 pt-2">
-                {[
-                  ['disablePrinting', 'Disable Printing Rights'],
-                  ['disableCopying', 'Disable Text/Content Copying'],
-                  ['disableModifying', 'Disable Document Modification'],
-                ].map(([key, label]) => (
-                  <label key={key} className="flex items-center gap-2 text-xs font-bold text-slate-300 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={!!options[key]}
-                      onChange={e => setOptions(p => ({ ...p, [key]: e.target.checked }))}
-                      className="accent-[#08EBF6] w-4 h-4 rounded"
-                    />
-                    {label}
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeToolId === 'pdf-unlock' && (
-            <div className="space-y-1.5 bg-black/40 p-4 rounded-xl border border-white/10 max-w-md">
-              <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Current PDF Password</label>
+        {/* Granular Tool Parameters */}
+        {activeToolId === 'pdf-encrypt' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-[#0B0E14] p-3.5 rounded-[4px] border border-white/[0.08]">
+            <div className="space-y-1">
+              <label className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">User Open Password *</label>
               <input
                 type="password"
                 value={options.userPassword}
                 onChange={e => setOptions(p => ({ ...p, userPassword: e.target.value }))}
-                placeholder="Enter password to decrypt PDF"
-                className="w-full bg-[#030712] border border-white/15 p-2.5 text-xs text-white rounded-lg outline-none focus:border-[#08EBF6]"
+                placeholder="Enter password required to open PDF"
+                className="w-full h-8 bg-[#131823] border border-white/[0.08] px-2.5 text-xs text-slate-200 rounded-[4px] outline-none focus:border-white/20 font-normal"
               />
             </div>
-          )}
-
-          {activeToolId === 'pdf-watermark' && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-black/40 p-4 rounded-xl border border-white/10">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Watermark Text</label>
-                <input
-                  type="text"
-                  value={options.watermarkText}
-                  onChange={e => setOptions(p => ({ ...p, watermarkText: e.target.value }))}
-                  placeholder="e.g. CONFIDENTIAL / INTERNAL ONLY"
-                  className="w-full bg-[#030712] border border-white/15 p-2.5 text-xs text-white rounded-lg outline-none focus:border-[#08EBF6]"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Opacity (0.05 to 1.0)</label>
-                <input
-                  type="number"
-                  step="0.05"
-                  min="0.05"
-                  max="1.0"
-                  value={options.watermarkOpacity}
-                  onChange={e => setOptions(p => ({ ...p, watermarkOpacity: e.target.value }))}
-                  className="w-full bg-[#030712] border border-white/15 p-2.5 text-xs text-white rounded-lg outline-none focus:border-[#08EBF6]"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Rotation Angle (°)</label>
-                <input
-                  type="number"
-                  value={options.watermarkRotation}
-                  onChange={e => setOptions(p => ({ ...p, watermarkRotation: e.target.value }))}
-                  className="w-full bg-[#030712] border border-white/15 p-2.5 text-xs text-white rounded-lg outline-none focus:border-[#08EBF6]"
-                />
-              </div>
-            </div>
-          )}
-
-          {activeToolId === 'pdf-split' && (
-            <div className="space-y-1.5 bg-black/40 p-4 rounded-xl border border-white/10 max-w-md">
-              <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Extract Page Ranges</label>
+            <div className="space-y-1">
+              <label className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Owner Permissions Password (Optional)</label>
               <input
-                type="text"
-                value={options.splitRange}
-                onChange={e => setOptions(p => ({ ...p, splitRange: e.target.value }))}
-                placeholder="e.g. 1-3, 5, 8-10 (leave empty for single-page files)"
-                className="w-full bg-[#030712] border border-white/15 p-2.5 text-xs text-white rounded-lg outline-none focus:border-[#08EBF6]"
+                type="password"
+                value={options.ownerPassword}
+                onChange={e => setOptions(p => ({ ...p, ownerPassword: e.target.value }))}
+                placeholder="Master password to modify permissions"
+                className="w-full h-8 bg-[#131823] border border-white/[0.08] px-2.5 text-xs text-slate-200 rounded-[4px] outline-none focus:border-white/20 font-normal"
               />
             </div>
-          )}
-
-          {activeToolId === 'pdf-rotate' && (
-            <div className="flex gap-4 bg-black/40 p-4 rounded-xl border border-white/10 w-fit">
-              {['90', '180', '270'].map(deg => (
-                <label key={deg} className="flex items-center gap-2 text-xs font-bold text-slate-300 cursor-pointer">
+            <div className="md:col-span-2 flex flex-wrap gap-4 pt-1">
+              {[
+                ['disablePrinting', 'Disable Printing Rights'],
+                ['disableCopying', 'Disable Text/Content Copying'],
+                ['disableModifying', 'Disable Document Modification'],
+              ].map(([key, label]) => (
+                <label key={key} className="flex items-center gap-1.5 text-xs font-normal text-slate-300 cursor-pointer">
                   <input
-                    type="radio"
-                    name="rot"
-                    value={deg}
-                    checked={options.rotation === deg}
-                    onChange={() => setOptions(p => ({ ...p, rotation: deg }))}
-                    className="accent-[#08EBF6]"
-                  />
-                  {deg}° Clockwise
-                </label>
-              ))}
-            </div>
-          )}
-
-          {activeToolId === 'image-resize' && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-black/40 p-4 rounded-xl border border-white/10">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Resize Percentage (%)</label>
-                <input
-                  type="number"
-                  value={options.resizePercent}
-                  onChange={e => setOptions(p => ({ ...p, resizePercent: e.target.value }))}
-                  placeholder="e.g. 50 = 50% scaling"
-                  className="w-full bg-[#030712] border border-white/15 p-2.5 text-xs text-white rounded-lg outline-none focus:border-[#08EBF6]"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Target Width (Px)</label>
-                <input
-                  type="number"
-                  value={options.resizeWidth}
-                  onChange={e => setOptions(p => ({ ...p, resizeWidth: e.target.value }))}
-                  className="w-full bg-[#030712] border border-white/15 p-2.5 text-xs text-white rounded-lg outline-none focus:border-[#08EBF6]"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Target Height (Px)</label>
-                <input
-                  type="number"
-                  value={options.resizeHeight}
-                  onChange={e => setOptions(p => ({ ...p, resizeHeight: e.target.value }))}
-                  className="w-full bg-[#030712] border border-white/15 p-2.5 text-xs text-white rounded-lg outline-none focus:border-[#08EBF6]"
-                />
-              </div>
-            </div>
-          )}
-
-          {activeToolId === 'image-convert' && (
-            <div className="flex gap-4 bg-black/40 p-4 rounded-xl border border-white/10 w-fit">
-              {[['png', 'PNG'], ['jpeg', 'JPG'], ['webp', 'WebP'], ['ico', 'ICO']].map(([val, label]) => (
-                <label key={val} className="flex items-center gap-2 text-xs font-bold text-slate-300 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="fmt"
-                    value={val}
-                    checked={(options.targetImgFormat || 'webp') === val}
-                    onChange={() => setOptions(p => ({ ...p, targetImgFormat: val }))}
-                    className="accent-[#08EBF6]"
+                    type="checkbox"
+                    checked={!!options[key]}
+                    onChange={e => setOptions(p => ({ ...p, [key]: e.target.checked }))}
+                    className="accent-blue-500 w-3.5 h-3.5 rounded-[3px]"
                   />
                   {label}
                 </label>
               ))}
             </div>
-          )}
+          </div>
+        )}
 
-          {/* File Drag and Drop Workspace */}
-          <DropZone
-            accept={activeTool.inputAccept}
-            multiple={!!activeTool.multiFile}
-            onFiles={newFiles => { setFiles(newFiles); setResults([]); setError(''); }}
-            label={activeTool.inputLabel}
-            color={activeTool.color}
-          />
+        {activeToolId === 'pdf-unlock' && (
+          <div className="space-y-1 bg-[#0B0E14] p-3.5 rounded-[4px] border border-white/[0.08] max-w-md">
+            <label className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Current PDF Password</label>
+            <input
+              type="password"
+              value={options.userPassword}
+              onChange={e => setOptions(p => ({ ...p, userPassword: e.target.value }))}
+              placeholder="Enter password to decrypt PDF"
+              className="w-full h-8 bg-[#131823] border border-white/[0.08] px-2.5 text-xs text-slate-200 rounded-[4px] outline-none focus:border-white/20 font-normal"
+            />
+          </div>
+        )}
 
-          {/* Selected File Badges */}
-          {files.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-400">
-                <span>Selected ({files.length} file{files.length > 1 ? 's' : ''}):</span>
-                <button onClick={reset} className="text-slate-500 hover:text-red-400 transition-colors">Clear</button>
-              </div>
-              <div className="space-y-1.5">
-                {files.map((f, i) => (
-                  <div key={i} className="flex items-center justify-between bg-black/40 p-3 rounded-xl border border-white/10 text-xs">
-                    <span className="truncate text-white font-medium max-w-md">{f.name}</span>
-                    <span className="text-[10px] font-mono text-slate-400">{(f.size / 1024).toFixed(0)} KB</span>
-                  </div>
-                ))}
-              </div>
+        {activeToolId === 'pdf-watermark' && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-[#0B0E14] p-3.5 rounded-[4px] border border-white/[0.08]">
+            <div className="space-y-1">
+              <label className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Watermark Text</label>
+              <input
+                type="text"
+                value={options.watermarkText}
+                onChange={e => setOptions(p => ({ ...p, watermarkText: e.target.value }))}
+                placeholder="e.g. CONFIDENTIAL"
+                className="w-full h-8 bg-[#131823] border border-white/[0.08] px-2.5 text-xs text-slate-200 rounded-[4px] outline-none focus:border-white/20 font-normal"
+              />
             </div>
-          )}
-
-          {/* Action Trigger Button */}
-          {files.length > 0 && !results.length && (
-            <button
-              onClick={handleConvert}
-              disabled={converting}
-              className="w-full py-4 bg-gradient-to-r from-[#08EBF6] via-[#FFFFFF] to-[#5FA5FA] text-black font-black uppercase tracking-widest text-xs rounded-xl shadow-[0_0_25px_rgba(8,235,246,0.35)] hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              {converting ? (
-                <><Loader2 size={16} className="animate-spin" /> <span>{status || 'Processing...'}</span></>
-              ) : (
-                <><span>Execute {activeTool.label}</span> <ArrowRight size={16} /></>
-              )}
-            </button>
-          )}
-
-          {/* Execution Progress Bar */}
-          {converting && <ProgressBar progress={progress} status={status} />}
-
-          {/* Error Message Alert */}
-          {error && (
-            <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs font-semibold leading-relaxed">
-              ⚠️ {error}
+            <div className="space-y-1">
+              <label className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Opacity (0.05 to 1.0)</label>
+              <input
+                type="number"
+                step="0.05"
+                min="0.05"
+                max="1.0"
+                value={options.watermarkOpacity}
+                onChange={e => setOptions(p => ({ ...p, watermarkOpacity: e.target.value }))}
+                className="w-full h-8 bg-[#131823] border border-white/[0.08] px-2.5 text-xs text-slate-200 rounded-[4px] outline-none focus:border-white/20 font-mono tabular-nums"
+              />
             </div>
-          )}
-
-          {/* Download Results List */}
-          {results.length > 0 && (
-            <div className="space-y-3 pt-2 border-t border-white/10">
-              <div className="flex items-center justify-between text-xs font-black uppercase tracking-widest text-[#08EBF6]">
-                <span>Generated Output Files ({results.length}):</span>
-                <span className="text-slate-400 text-[10px]">100% Verified Local Export</span>
-              </div>
-              <div className="space-y-2">
-                {results.map((res, idx) => (
-                  <DownloadButton key={idx} result={res} />
-                ))}
-              </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Rotation Angle (°)</label>
+              <input
+                type="number"
+                value={options.watermarkRotation}
+                onChange={e => setOptions(p => ({ ...p, watermarkRotation: e.target.value }))}
+                className="w-full h-8 bg-[#131823] border border-white/[0.08] px-2.5 text-xs text-slate-200 rounded-[4px] outline-none focus:border-white/20 font-mono tabular-nums"
+              />
             </div>
-          )}
-        </motion.div>
-      </AnimatePresence>
+          </div>
+        )}
+
+        {activeToolId === 'pdf-split' && (
+          <div className="space-y-1 bg-[#0B0E14] p-3.5 rounded-[4px] border border-white/[0.08] max-w-md">
+            <label className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Extract Page Ranges</label>
+            <input
+              type="text"
+              value={options.splitRange}
+              onChange={e => setOptions(p => ({ ...p, splitRange: e.target.value }))}
+              placeholder="e.g. 1-3, 5, 8-10 (leave empty for single-page files)"
+              className="w-full h-8 bg-[#131823] border border-white/[0.08] px-2.5 text-xs text-slate-200 rounded-[4px] outline-none focus:border-white/20 font-mono tabular-nums"
+            />
+          </div>
+        )}
+
+        {activeToolId === 'pdf-rotate' && (
+          <div className="flex gap-3 bg-[#0B0E14] p-3.5 rounded-[4px] border border-white/[0.08] w-fit">
+            {['90', '180', '270'].map(deg => (
+              <label key={deg} className="flex items-center gap-1.5 text-xs font-normal text-slate-300 cursor-pointer">
+                <input
+                  type="radio"
+                  name="rot"
+                  value={deg}
+                  checked={options.rotation === deg}
+                  onChange={() => setOptions(p => ({ ...p, rotation: deg }))}
+                  className="accent-blue-500"
+                />
+                {deg}° Clockwise
+              </label>
+            ))}
+          </div>
+        )}
+
+        {activeToolId === 'image-resize' && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-[#0B0E14] p-3.5 rounded-[4px] border border-white/[0.08]">
+            <div className="space-y-1">
+              <label className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Resize Percentage (%)</label>
+              <input
+                type="number"
+                value={options.resizePercent}
+                onChange={e => setOptions(p => ({ ...p, resizePercent: e.target.value }))}
+                placeholder="50 = 50% scaling"
+                className="w-full h-8 bg-[#131823] border border-white/[0.08] px-2.5 text-xs text-slate-200 rounded-[4px] outline-none focus:border-white/20 font-mono tabular-nums"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Target Width (px)</label>
+              <input
+                type="number"
+                value={options.resizeWidth}
+                onChange={e => setOptions(p => ({ ...p, resizeWidth: e.target.value }))}
+                className="w-full h-8 bg-[#131823] border border-white/[0.08] px-2.5 text-xs text-slate-200 rounded-[4px] outline-none focus:border-white/20 font-mono tabular-nums"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Target Height (px)</label>
+              <input
+                type="number"
+                value={options.resizeHeight}
+                onChange={e => setOptions(p => ({ ...p, resizeHeight: e.target.value }))}
+                className="w-full h-8 bg-[#131823] border border-white/[0.08] px-2.5 text-xs text-slate-200 rounded-[4px] outline-none focus:border-white/20 font-mono tabular-nums"
+              />
+            </div>
+          </div>
+        )}
+
+        {activeToolId === 'image-convert' && (
+          <div className="flex gap-3 bg-[#0B0E14] p-3.5 rounded-[4px] border border-white/[0.08] w-fit">
+            {[['png', 'PNG'], ['jpeg', 'JPG'], ['webp', 'WebP'], ['ico', 'ICO']].map(([val, label]) => (
+              <label key={val} className="flex items-center gap-1.5 text-xs font-normal text-slate-300 cursor-pointer">
+                <input
+                  type="radio"
+                  name="fmt"
+                  value={val}
+                  checked={(options.targetImgFormat || 'webp') === val}
+                  onChange={() => setOptions(p => ({ ...p, targetImgFormat: val }))}
+                  className="accent-blue-500"
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+        )}
+
+        {/* File Drag and Drop Workspace */}
+        <DropZone
+          accept={activeTool.inputAccept}
+          multiple={!!activeTool.multiFile}
+          onFiles={newFiles => { setFiles(newFiles); setResults([]); setError(''); }}
+          label={activeTool.inputLabel}
+        />
+
+        {/* Selected File List */}
+        {files.length > 0 && (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-xs text-slate-400 font-normal">
+              <span>Selected ({files.length} file{files.length > 1 ? 's' : ''}):</span>
+              <button onClick={reset} className="text-slate-500 hover:text-rose-400 transition-colors duration-100 cursor-pointer">Clear</button>
+            </div>
+            <div className="space-y-1">
+              {files.map((f, i) => (
+                <div key={i} className="flex items-center justify-between bg-[#0B0E14] h-8 px-2.5 rounded-[4px] border border-white/[0.08] text-xs">
+                  <span className="truncate text-slate-200 font-normal max-w-md">{f.name}</span>
+                  <span className="text-[10px] font-mono tabular-nums text-slate-500">{(f.size / 1024).toFixed(0)} KB</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Action Trigger Button */}
+        {files.length > 0 && !results.length && (
+          <button
+            onClick={handleConvert}
+            disabled={converting}
+            className="w-full h-9 bg-white text-slate-950 font-medium text-xs rounded-[4px] hover:bg-slate-100 transition-colors duration-100 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+          >
+            {converting ? (
+              <><Loader2 size={14} strokeWidth={1.5} className="animate-spin" /> <span>{status || 'Processing...'}</span></>
+            ) : (
+              <><span>Execute {activeTool.label}</span> <ArrowRight size={14} strokeWidth={1.5} /></>
+            )}
+          </button>
+        )}
+
+        {/* Execution Progress Bar */}
+        {converting && <ProgressBar progress={progress} status={status} />}
+
+        {/* Error Message Alert */}
+        {error && (
+          <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-[4px] text-rose-400 text-xs font-normal">
+            {error}
+          </div>
+        )}
+
+        {/* Download Results List */}
+        {results.length > 0 && (
+          <div className="space-y-2 pt-2 border-t border-white/[0.08]">
+            <div className="flex items-center justify-between text-xs text-slate-300 font-medium">
+              <span>Generated Output Files ({results.length}):</span>
+              <span className="text-slate-500 text-[10px] font-mono">100% Local Export</span>
+            </div>
+            <div className="space-y-1.5">
+              {results.map((res, idx) => (
+                <DownloadButton key={idx} result={res} />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

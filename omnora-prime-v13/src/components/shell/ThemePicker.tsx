@@ -47,9 +47,13 @@ export default function ThemePicker({ hideTrigger = false }: { hideTrigger?: boo
   const handleThemeSelect = async (id: ThemeId) => {
     setTheme(id);
     
-    // Save to local profile store immediately to prevent AppShell reverting it
+    // Save to local profile store and localStorage immediately to persist across reloads
     if (profile) {
-      setProfile({ ...profile, visual_theme: id } as any);
+      const updated = { ...profile, visual_theme: id };
+      setProfile(updated as any);
+      try {
+        localStorage.setItem('noxis-business-profile', JSON.stringify(updated));
+      } catch {}
     }
     
     // Save to Database if profile exists
@@ -239,13 +243,14 @@ function ThemeCard({
 }) {
   return (
     <motion.button
+      type="button"
       onClick={onSelect}
       onMouseEnter={onHover}
       onMouseLeave={onLeave}
       whileTap={{ scale: 0.98 }}
       animate={isActive ? { scale: 1.02 } : { scale: 1 }}
       className={cn(
-        "w-full text-left rounded-sm border transition-all overflow-hidden group",
+        "w-full text-left rounded-sm border transition-all overflow-hidden group cursor-pointer",
         isActive 
           ? "border-electric-blue bg-electric-blue/5 shadow-[0_10px_30px_rgba(45,185,255,0.1)]" 
           : "border-white/5 bg-white/2 hover:bg-white/5 hover:border-white/10"
@@ -253,9 +258,9 @@ function ThemeCard({
     >
       <div className="h-20 w-full relative bg-[#0F1113] overflow-hidden p-2">
         <ThemePreview theme={theme} />
-        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
           <p className="text-[9px] font-black uppercase tracking-widest text-white flex items-center space-x-2">
-            <span>Apply Preview</span>
+            <span>Apply Theme</span>
             <Activity size={10} className="text-electric-blue" />
           </p>
         </div>

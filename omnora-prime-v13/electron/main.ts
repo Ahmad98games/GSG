@@ -4,6 +4,9 @@ import * as fs from 'fs';
 import { spawn, ChildProcess, exec } from 'child_process';
 import * as Sentry from '@sentry/electron/main';
 import * as http from 'http';
+import * as https from 'https';
+import * as crypto from 'crypto';
+import { execFile } from 'child_process';
 import * as net from 'net';
 import { autoUpdater } from 'electron-updater'
 import log from 'electron-log'
@@ -84,18 +87,25 @@ autoUpdater.logger = log
 
 // Update channel — can be changed per license tier (Pro/Elite get beta channel)
 autoUpdater.channel = 'stable'
-autoUpdater.autoDownload = false
+autoUpdater.autoDownload = false;
+autoUpdater.disableDifferentialDownload = true;
 // We download manually so we can show progress to the user
 autoUpdater.allowPrerelease = false
 autoUpdater.setFeedURL({
   provider: 'generic',
   url: 'https://noxishub.app/updates/stable',
-})
+  useMultipleRangeRequest: false,
+} as any)
 
 // Track update state for IPC
-let updateAvailable = false
-let updateDownloaded = false
-let downloadProgress = 0
+let updateAvailable = false;
+let updateDownloaded = false;
+let downloadProgress = 0;
+let latestUpdateInfo: any = null;
+let downloadedInstallerPath: string | null = null;
+let isCustomDownloading = false;
+let customTransferred = 0;
+let customTotal = 0;
 
 // ─────────────────────────────────────────────
 // 1. LOGGER
@@ -687,6 +697,195 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   // ─────────────────────────────────────────────
   // 6. AUTO UPDATER
   // ─────────────────────────────────────────────
+
+  // ── RESUMABLE HTTP RANGE DOWNLOADER (Power-Cut & Offline Safe) ──
+  async function downloadUpdateResumable(win: BrowserWindow): Promise<void> {
+    if (isCustomDownloading) return;
+    if (!latestUpdateInfo) {
+      startupLog('[Update] No update info found to download');
+      return;
+    }
+
+    isCustomDownloading = true;
+    const targetVersion = latestUpdateInfo.version;
+    const fileName = latestUpdateInfo.files?.[0]?.url || `Noxis Hub Setup ${targetVersion}.exe`;
+    const encodedFileName = encodeURIComponent(fileName);
+    const downloadUrl = `https://noxishub.app/updates/stable/${encodedFileName}`;
+    const totalSize = latestUpdateInfo.files?.[0]?.size || 281243319;
+    const targetSha512 = latestUpdateInfo.files?.[0]?.sha512 || latestUpdateInfo.sha512;
+
+    const updatesDir = path.join(app.getPath('userData'), 'updates');
+    if (!fs.existsSync(updatesDir)) {
+      fs.mkdirSync(updatesDir, { recursive: true });
+    }
+
+    const finalFilePath = path.join(updatesDir, `Noxis-Hub-Setup-${targetVersion}.exe`);
+    const partFilePath = path.join(updatesDir, `Noxis-Hub-Setup-${targetVersion}.exe.part`);
+
+    // 1. If final verified installer already exists, complete immediately
+    if (fs.existsSync(finalFilePath)) {
+      try {
+        const existingBuf = fs.readFileSync(finalFilePath);
+        const hash = crypto.createHash('sha512').update(existingBuf).digest('base64');
+        if (!targetSha512 || hash === targetSha512) {
+          startupLog(`[Update] Verified v${targetVersion} installer already on disk!`);
+          updateDownloaded = true;
+          downloadedInstallerPath = finalFilePath;
+          isCustomDownloading = false;
+          win.webContents.send('update-status', {
+            status: 'ready',
+            version: targetVersion,
+          });
+          return;
+        }
+      } catch {}
+    }
+
+    // 2. Check partial download for Byte-Range resumption
+    let startByte = 0;
+    if (fs.existsSync(partFilePath)) {
+      try {
+        const stats = fs.statSync(partFilePath);
+        if (stats.size > 0 && stats.size < totalSize) {
+          startByte = stats.size;
+          startupLog(`[Update] Resuming partial download at ${(startByte / (1024 * 1024)).toFixed(1)} MB / ${(totalSize / (1024 * 1024)).toFixed(1)} MB`);
+        } else if (stats.size >= totalSize) {
+          fs.renameSync(partFilePath, finalFilePath);
+          updateDownloaded = true;
+          downloadedInstallerPath = finalFilePath;
+          isCustomDownloading = false;
+          win.webContents.send('update-status', {
+            status: 'ready',
+            version: targetVersion,
+          });
+          return;
+        }
+      } catch {}
+    }
+
+    customTotal = totalSize;
+    customTransferred = startByte;
+
+    const headers: Record<string, string> = {
+      'User-Agent': 'Noxis-Hub-Updater/13.1',
+    };
+    if (startByte > 0) {
+      headers['Range'] = `bytes=${startByte}-`;
+    }
+
+    return new Promise((resolve) => {
+      let lastBytes = startByte;
+      let lastTime = Date.now();
+      let speed = 0;
+
+      const req = https.get(downloadUrl, { headers }, (res) => {
+        if (res.statusCode !== 200 && res.statusCode !== 206) {
+          isCustomDownloading = false;
+          startupLog(`[Update] Server returned HTTP ${res.statusCode}`);
+          win.webContents.send('update-status', {
+            status: 'error',
+            message: `Server returned HTTP ${res.statusCode}`,
+          });
+          return resolve();
+        }
+
+        const isAppend = res.statusCode === 206 && startByte > 0;
+        const fileStream = fs.createWriteStream(partFilePath, { flags: isAppend ? 'a' : 'w' });
+        if (!isAppend) {
+          customTransferred = 0;
+          startByte = 0;
+        }
+
+        res.on('data', (chunk: Buffer) => {
+          customTransferred += chunk.length;
+          const now = Date.now();
+          if (now - lastTime >= 400) {
+            const deltaBytes = customTransferred - lastBytes;
+            const deltaTime = (now - lastTime) / 1000;
+            speed = Math.round(deltaBytes / deltaTime);
+            lastBytes = customTransferred;
+            lastTime = now;
+
+            const pct = Math.min(100, Math.round((customTransferred / totalSize) * 100));
+            win.webContents.send('update-status', {
+              status: 'downloading',
+              percent: pct,
+              transferred: customTransferred,
+              total: totalSize,
+              bytesPerSecond: speed,
+              resumed: startByte > 0,
+              resumedFrom: startByte,
+            });
+          }
+        });
+
+        res.pipe(fileStream);
+
+        fileStream.on('finish', () => {
+          fileStream.close(async () => {
+            isCustomDownloading = false;
+            startupLog('[Update] Download finished. Verifying SHA-512 checksum...');
+
+            try {
+              const fileData = fs.readFileSync(partFilePath);
+              const computedSha512 = crypto.createHash('sha512').update(fileData).digest('base64');
+              if (targetSha512 && computedSha512 !== targetSha512) {
+                startupLog(`[Update] Checksum mismatch! Expected ${targetSha512}, got ${computedSha512}`);
+                try { fs.unlinkSync(partFilePath); } catch {}
+                win.webContents.send('update-status', {
+                  status: 'error',
+                  message: 'Checksum verification mismatch. Corrupted partial download cleaned.',
+                });
+                return resolve();
+              }
+
+              if (fs.existsSync(finalFilePath)) {
+                try { fs.unlinkSync(finalFilePath); } catch {}
+              }
+              fs.renameSync(partFilePath, finalFilePath);
+              startupLog(`[Update] Verified package ready: ${finalFilePath}`);
+              updateDownloaded = true;
+              downloadedInstallerPath = finalFilePath;
+
+              win.webContents.send('update-status', {
+                status: 'ready',
+                version: targetVersion,
+              });
+              resolve();
+            } catch (err: any) {
+              startupLog(`[Update] Checksum verification exception: ${err.message}`);
+              win.webContents.send('update-status', {
+                status: 'error',
+                message: `Verification error: ${err.message}`,
+              });
+              resolve();
+            }
+          });
+        });
+
+        fileStream.on('error', (err) => {
+          isCustomDownloading = false;
+          startupLog(`[Update] File stream error: ${err.message}`);
+          win.webContents.send('update-status', {
+            status: 'error',
+            message: err.message,
+          });
+          resolve();
+        });
+      });
+
+      req.on('error', (err) => {
+        isCustomDownloading = false;
+        startupLog(`[Update] Network request error: ${err.message}`);
+        win.webContents.send('update-status', {
+          status: 'error',
+          message: err.message,
+        });
+        resolve();
+      });
+    });
+  }
+
   function setupAutoUpdater(win: BrowserWindow): void {
     // ── AUTO-UPDATER EVENT HANDLERS ──
 
@@ -704,6 +903,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     autoUpdater.on('update-available', (info) => {
       startupLog(`[Update] Update available: v${info.version}`);
       updateAvailable = true;
+      latestUpdateInfo = info;
 
       win.webContents.send(
         'update-status',
@@ -729,15 +929,22 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     });
 
     autoUpdater.on('download-progress', (progress) => {
-      downloadProgress = progress.percent;
-      startupLog(`[Update] Download: ${progress.percent.toFixed(1)}%`);
+      const fullSize = latestUpdateInfo?.files?.[0]?.size || 281255992;
+      const total = progress.total && progress.total > 0 ? progress.total : fullSize;
+      const transferred = Math.min(total, Math.max(0, progress.transferred));
+      const pct = Math.min(100, Math.max(0, Math.round(progress.percent ?? (total > 0 ? (transferred / total) * 100 : 0))));
+
+      downloadProgress = pct;
+      startupLog(`[Update] Download: ${pct}% (${(transferred / 1048576).toFixed(1)}MB / ${(total / 1048576).toFixed(1)}MB)`);
+
       win.webContents.send(
         'update-status',
         {
           status: 'downloading',
-          percent: progress.percent,
-          transferred: progress.transferred,
-          total: progress.total,
+          version: latestUpdateInfo?.version || '13.1.14',
+          percent: pct,
+          transferred,
+          total,
           bytesPerSecond: progress.bytesPerSecond,
         }
       );
@@ -777,12 +984,13 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
     if (isDev) return;
 
-    // Initial check — 5 seconds after launch
+    // Initial check — immediate (500ms) after launch
     setTimeout(async () => {
       try {
-        await autoUpdater.checkForUpdates();
-      } catch { /* non-fatal */ }
-    }, 5000);
+        const res = await autoUpdater.checkForUpdates();
+        if (res?.updateInfo) { latestUpdateInfo = res.updateInfo; updateAvailable = true; }
+      } catch (err: any) { startupLog(`[Update] Initial check error: ${err.message}`); }
+    }, 500);
 
     // Periodic check — every 4 hours
     setInterval(async () => {
@@ -972,8 +1180,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     // Let app finish current operations then quit and install
     setImmediate(() => {
       autoUpdater.quitAndInstall(
-        false, // don't run installer silently
-        true   // restart after install
+        true, // run installer silently for instant background update (< 1 min)
+        true  // restart after install
       );
     });
   });
@@ -982,13 +1190,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     updateAvailable,
     updateDownloaded,
     downloadProgress,
+    version: latestUpdateInfo?.version,
+    releaseName: latestUpdateInfo?.releaseName,
+    releaseNotes: latestUpdateInfo?.releaseNotes,
+    releaseDate: latestUpdateInfo?.releaseDate,
     currentVersion: app.getVersion(),
   }));
-
-  ipcMain.handle('set-update-channel', (_, channel: 'stable' | 'beta') => {
-    autoUpdater.channel = channel;
-    startupLog(`[Update] Channel changed to: ${channel}`);
-  });
   ipcMain.handle('get-bridge-status', () => lastBridgeStatus);
   ipcMain.handle('get-tunnel-url', () => ({
     url: tunnelUrl,

@@ -139,7 +139,6 @@ function ApiPlatformContent() {
       <div className="absolute top-0 right-0 w-[500px] h-[250px] bg-electric-blue/5 rounded-full blur-[140px] pointer-events-none" />
       
       <main className="max-w-4xl mx-auto space-y-10">
-        
         {/* Header */}
         <div className="border-b border-white/5 pb-6">
           <div className="inline-flex items-center gap-2 bg-electric-blue/5 border border-electric-blue/20 px-3 py-1 rounded-full mb-3">

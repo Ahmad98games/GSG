@@ -25,7 +25,8 @@ export function initAutoUpdater(win: BrowserWindow): void {
   autoUpdater.setFeedURL({
     provider: 'generic',
     url: 'https://noxishub.app/updates/stable',
-  })
+    useMultipleRangeRequest: false,
+  } as any)
 
   // Check for updates every 4 hours while the app is running
   setInterval(() => {
@@ -96,8 +97,8 @@ export function installUpdate(): void {
 
   setTimeout(() => {
     autoUpdater.quitAndInstall(
-      false, // isSilent: false = show progress
-      true   // isForceRunAfter: relaunch after
+      true, // isSilent: true for instant silent background upgrade (< 1 min)
+      true  // isForceRunAfter: relaunch after
     )
   }, 1000)
 }

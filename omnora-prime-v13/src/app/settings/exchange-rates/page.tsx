@@ -65,7 +65,7 @@ export default function ExchangeRatesPage() {
         </header>
 
         <div className="p-8 max-w-[1200px] mx-auto w-full space-y-8">
-           <section className="bg-[#1A1D21] border border-white/5 overflow-hidden">
+          <section className="bg-[#1A1D21] border border-white/5 overflow-hidden">
               <div className="p-6 border-b border-white/5 flex items-center justify-between">
                  <h2 className="text-[10px] uppercase font-black text-gray-500 tracking-widest text-white">Historical Currency Pairs</h2>
                  <div className="flex items-center space-x-2 text-[9px] font-bold text-gray-600 uppercase">

@@ -6,10 +6,10 @@ import { createClient } from '@/lib/supabase/client';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
 import { usePersona } from '@/hooks/usePersona';
 import {
-  FileText, Plus, Search, BookOpen, Layers, History,
+  FileText, Plus, Search, BookOpen, Layers,
   ArrowUpRight, ArrowDownLeft, Wallet,
   Printer, CheckCircle2, X, Trash2, Edit3, MessageSquare,
-  Building2, Phone, MapPin, CreditCard, ChevronRight, UserPlus
+  MapPin, UserPlus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Decimal } from 'decimal.js';
@@ -89,7 +89,7 @@ interface GroupedTransaction {
 
 export default function KhataPage() {
   const { profile } = useBusinessProfile();
-  const { businessId, t, fmt } = usePersona();
+  const { businessId, t } = usePersona();
   const supabase = createClient();
   const queryClient = useQueryClient();
 
@@ -98,20 +98,22 @@ export default function KhataPage() {
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isPartyModalOpen, setIsPartyModalOpen] = useState(false);
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
-  const [deletingTx, setDeletingTx] = useState<GroupedTransaction | null>(null);
-  const [editingTx, setEditingTx] = useState<GroupedTransaction | null>(null);
   const [editingParty, setEditingParty] = useState<Party | null>(null);
+
   const [selectedPartyForTx, setSelectedPartyForTx] = useState<string | null>(null);
-  const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [editingTx, setEditingTx] = useState<GroupedTransaction | null>(null);
+  const [deletingTx, setDeletingTx] = useState<GroupedTransaction | null>(null);
   const [printingTx, setPrintingTx] = useState<GroupedTransaction | null>(null);
 
-  // Filters State
   const [searchTerm, setSearchTerm] = useState('');
   const [datePreset, setDatePreset] = useState<'all' | 'today' | 'yesterday' | 'week' | 'month'>('all');
   const [partyTypeFilter, setPartyTypeFilter] = useState<'all' | 'customer' | 'supplier'>('all');
+  const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
-  // 1. ACCOUNTS QUERY (Instant offline cache + remote sync)
-  const { data: accounts = [], isLoading: accountsLoading } = useQuery({
+  // 1. ACCOUNTS QUERY
+  const { data: accounts = [], isLoading: accountsLoading } = useQuery<Account[]>({
     queryKey: ['accounts', businessId],
     queryFn: async () => {
       try {
@@ -149,8 +151,8 @@ export default function KhataPage() {
     staleTime: 60_000,
   });
 
-  // 2. PARTIES QUERY (Instant offline cache + remote sync + graceful fallback)
-  const { data: parties = [] } = useQuery({
+  // 2. PARTIES QUERY
+  const { data: parties = [] } = useQuery<Party[]>({
     queryKey: ['parties', businessId],
     queryFn: async () => {
       let cached: Party[] = [];
@@ -192,7 +194,6 @@ export default function KhataPage() {
       } catch (err) {
         console.warn('[KhataPage] Remote parties fetch notice:', err);
       }
-
       return cached;
     },
     initialData: () => {
@@ -218,8 +219,8 @@ export default function KhataPage() {
     staleTime: 60_000,
   });
 
-  // 3. LEDGER ENTRIES QUERY (Instant offline cache + remote sync)
-  const { data: rawEntries = [], isLoading: entriesLoading, error: entriesError, refetch: refetchEntries } = useQuery({
+  // 3. LEDGER ENTRIES QUERY
+  const { data: rawEntries = [], isLoading: entriesLoading, error: entriesError, refetch: refetchEntries } = useQuery<LedgerEntry[]>({
     queryKey: ['ledger_entries', businessId],
     queryFn: async () => {
       let localEntries: any[] = [];
@@ -262,10 +263,9 @@ export default function KhataPage() {
           if (plainEntries) remoteEntries = plainEntries;
         }
       } catch (err) {
-        console.warn('Supabase ledger fetch notice (using local entries):', err);
+        console.warn('Supabase ledger fetch notice:', err);
       }
 
-      // O(1) Hash Map lookups for fast indexing
       const accMap = new Map<string, any>(accounts.map(a => [a.id, a]));
       const partyMap = new Map<string, any>(parties.map(p => [p.id, p]));
 
@@ -277,7 +277,7 @@ export default function KhataPage() {
           const party = partyMap.get(entry.party_id);
           map.set(key, {
             ...entry,
-            accounts: entry.accounts || (acc ? { name: acc.name, type: acc.type } : { name: entry.entry_type === 'debit' ? 'Cash / Asset Account' : 'Revenue Account', type: 'asset' }),
+            accounts: entry.accounts || (acc ? { name: acc.name, type: acc.type } : { name: entry.entry_type === 'debit' ? 'Cash Account' : 'Sales Account', type: 'asset' }),
             parties: entry.parties || (party ? { name: party.name, phone: party.phone || party.secondary_phone, current_balance: party.current_balance } : null),
           });
         }
@@ -306,14 +306,14 @@ export default function KhataPage() {
     staleTime: 30_000,
   });
 
-  // Real-time listener for party updates
+  // Real-time listener for party events
   useEffect(() => {
     const handlePartyEvent = (e: any) => {
       const partyData = e.detail;
       if (partyData) {
         queryClient.setQueryData(['parties', businessId], (old: any) => {
           const arr = Array.isArray(old) ? old : [];
-          return [partyData, ...arr.filter((p: any) => p.id !== partyData.id)];
+          return [partyData, ...arr.filter((p: Party) => p.id !== partyData.id)];
         });
       }
       queryClient.invalidateQueries({ queryKey: ['parties'] });
@@ -328,17 +328,18 @@ export default function KhataPage() {
     };
   }, [businessId, queryClient]);
 
-  // Grouping & Running balance logic for transactions (optimized O(N))
+  // Group ledger entries by tx_ref
   const groupedTransactions = useMemo(() => {
-    const groups: Record<string, GroupedTransaction> = {};
-    rawEntries.forEach((entry: any) => {
+    const groups: { [key: string]: GroupedTransaction } = {};
+
+    rawEntries.forEach((entry: LedgerEntry) => {
       if (!groups[entry.tx_ref]) {
         groups[entry.tx_ref] = {
           tx_ref: entry.tx_ref,
           date: entry.posted_at,
           description: entry.description,
-          party: entry.parties?.name || '—',
-          party_phone: entry.parties?.phone || '',
+          party: entry.parties?.name || 'Walk-in Party',
+          party_phone: entry.parties?.phone,
           party_id: entry.party_id,
           party_balance: entry.parties?.current_balance || 0,
           debitAccount: '—',
@@ -404,9 +405,21 @@ export default function KhataPage() {
     });
   }, [groupedTransactions, debouncedSearch, datePreset]);
 
+  // Auto-reset page on search / filter / tab switch
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, datePreset, partyTypeFilter, activeTab]);
+
+  const totalEntries = filteredTransactions.length;
+  const totalPages = Math.max(1, Math.ceil(totalEntries / pageSize));
+  const paginatedTransactions = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredTransactions.slice(start, start + pageSize);
+  }, [filteredTransactions, currentPage, pageSize]);
+
   // Filtered Parties for Party Accounts Tab
   const filteredPartiesList = useMemo(() => {
-    return parties.filter(p => {
+    return parties.filter((p: Party) => {
       const q = debouncedSearch.toLowerCase();
       const matchesSearch =
         !q ||
@@ -428,7 +441,7 @@ export default function KhataPage() {
   const summary = useMemo(() => {
     let debits = new Decimal(0);
     let credits = new Decimal(0);
-    rawEntries.forEach((e: any) => {
+    rawEntries.forEach((e: LedgerEntry) => {
       if (e.status === 'posted') {
         if (e.entry_type === 'debit') debits = debits.plus(new Decimal(e.amount));
         else credits = credits.plus(new Decimal(e.amount));
@@ -477,37 +490,32 @@ export default function KhataPage() {
         party_id: deletingTx.party_id,
         debitAmount: deletingTx.debitAmount,
         creditAmount: deletingTx.creditAmount,
-        currentPartyBalance: parties.find(p => p.id === deletingTx.party_id)?.current_balance || 0,
-        businessId: profile?.id
+        currentPartyBalance: parties.find((p: Party) => p.id === deletingTx.party_id)?.current_balance || 0,
       });
 
-      if (!result.success) throw new Error("Could not void transaction");
-
-      setSuccessToast(`Transaction ${deletingTx.tx_ref} successfully voided and balances reverted.`);
-      queryClient.invalidateQueries({ queryKey: ['ledger_entries'] });
-      queryClient.invalidateQueries({ queryKey: ['parties'] });
-    } catch (err: any) {
-      try {
-        await supabase.from('ledger_entries').delete().eq('tx_ref', deletingTx.tx_ref);
-        setSuccessToast(`Transaction ${deletingTx.tx_ref} successfully voided.`);
+      if (result.success) {
+        setSuccessToast(`Transaction ${deletingTx.tx_ref} voided and reversed`);
         queryClient.invalidateQueries({ queryKey: ['ledger_entries'] });
         queryClient.invalidateQueries({ queryKey: ['parties'] });
-      } catch (fallbackErr: any) {
-        alert(`Error voiding transaction: ${fallbackErr.message || err.message}`);
+        queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
       }
+    } catch (err: any) {
+      alert(`Could not void transaction: ${err.message}`);
     } finally {
       setDeletingTx(null);
+      setIsPinModalOpen(false);
     }
   };
 
-  // Only show full loading skeleton if we have NO cached data at all
+  // Loading skeleton
   const hasNoData = accounts.length === 0 && parties.length === 0 && rawEntries.length === 0;
   if (accountsLoading && entriesLoading && hasNoData) {
     return (
-      <div className="p-8 bg-[#030712] min-h-screen space-y-6">
+      <div className="p-6 bg-[#0B0E14] min-h-screen space-y-4">
         <div className="flex justify-between items-center">
-          <Skeleton className="h-10 w-48 rounded-xl" />
-          <Skeleton className="h-10 w-32 rounded-xl" />
+          <Skeleton className="h-8 w-40 rounded-[4px]" />
+          <Skeleton className="h-8 w-28 rounded-[4px]" />
         </div>
         <TableSkeleton rows={8} cols={6} />
       </div>
@@ -516,7 +524,7 @@ export default function KhataPage() {
 
   if (entriesError && hasNoData) {
     return (
-      <div className="min-h-screen bg-[#030712] flex items-center justify-center p-8">
+      <div className="min-h-screen bg-[#0B0E14] flex items-center justify-center p-6">
         <ErrorState
           message="Could not load Khata registry"
           detail={(entriesError as Error).message}
@@ -527,22 +535,22 @@ export default function KhataPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#030712] text-slate-200 font-sans selection:bg-[#08EBF6] selection:text-black">
+    <div className="min-h-screen bg-[#0B0E14] text-slate-300 font-sans selection:bg-white/10 selection:text-white">
       {/* Thermal / PDF Receipt Component */}
       {printingTx && <LedgerReceipt transaction={printingTx} />}
 
-      <main className="transition-all duration-300 min-h-screen flex flex-col">
+      <main className="min-h-screen flex flex-col">
         {/* Header Banner */}
-        <header className="h-16 border-b border-white/10 flex items-center px-6 md:px-8 bg-[#0B0F17] sticky top-0 z-40">
-          <div className="flex items-center space-x-3">
-            <BookOpen className="text-[#08EBF6]" size={20} />
-            <h1 className="text-xl font-black tracking-tight text-white uppercase">
+        <header className="h-14 border-b border-white/[0.08] flex items-center px-6 bg-[#0E121B] sticky top-0 z-40">
+          <div className="flex items-center gap-2.5">
+            <BookOpen className="text-slate-400" size={16} strokeWidth={1.5} />
+            <h1 className="text-sm font-semibold tracking-tight text-white">
               {t('ledger') || 'Khata Dual-Entry Ledger'}
             </h1>
           </div>
 
-          <div className="ml-auto flex items-center space-x-4">
-            <nav className="flex h-16 items-center">
+          <div className="ml-auto flex items-center gap-3">
+            <nav className="flex h-14 items-center mr-2">
               {[
                 { id: 'entries', label: 'Ledger Entries', icon: FileText },
                 { id: 'parties', label: `Party Accounts (${parties.length})`, icon: Wallet },
@@ -552,13 +560,13 @@ export default function KhataPage() {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
                   className={cn(
-                    'px-5 h-full flex items-center space-x-2 text-[10px] uppercase tracking-widest font-black transition-all border-b-2 cursor-pointer',
+                    'px-3.5 h-full flex items-center gap-2 text-xs font-medium transition-colors duration-100 border-b-2 cursor-pointer',
                     activeTab === tab.id
-                      ? 'text-[#08EBF6] border-[#08EBF6] bg-white/5'
-                      : 'text-slate-500 border-transparent hover:text-white hover:bg-white/[0.02]'
+                      ? 'text-white border-white bg-white/[0.03]'
+                      : 'text-slate-400 border-transparent hover:text-slate-200 hover:bg-white/[0.02]'
                   )}
                 >
-                  <tab.icon size={14} />
+                  <tab.icon size={14} strokeWidth={1.5} className={activeTab === tab.id ? 'text-slate-200' : 'text-slate-500'} />
                   <span>{tab.label}</span>
                 </button>
               ))}
@@ -566,84 +574,89 @@ export default function KhataPage() {
 
             <button
               onClick={() => setIsPartyModalOpen(true)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-white/5 border border-white/15 text-white text-[10px] uppercase tracking-widest font-bold hover:bg-white/10 rounded-xl transition-all cursor-pointer"
+              className="h-8 px-2.5 flex items-center gap-1.5 bg-white/[0.03] border border-white/[0.08] text-slate-300 text-xs font-medium hover:bg-white/[0.06] hover:text-white rounded-[4px] transition-colors duration-100 cursor-pointer"
             >
-              <UserPlus size={13} className="text-[#08EBF6]" />
-              <span>+ Add Party</span>
+              <UserPlus size={14} strokeWidth={1.5} className="text-slate-400" />
+              <span>Add Party</span>
             </button>
 
             <button
               onClick={() => { setSelectedPartyForTx(null); setEditingTx(null); setIsEntryModalOpen(true); }}
-              className="flex items-center space-x-2 px-5 py-2.5 bg-gradient-to-r from-[#08EBF6] to-[#5FA5FA] text-black text-[10px] uppercase tracking-widest font-black rounded-xl hover:brightness-110 shadow-[0_0_20px_rgba(8,235,246,0.3)] transition-all cursor-pointer"
+              className="h-8 px-3 flex items-center gap-1.5 bg-white text-slate-950 text-xs font-medium rounded-[4px] hover:bg-slate-100 transition-colors duration-100 cursor-pointer"
             >
-              <Plus size={14} />
+              <Plus size={14} strokeWidth={1.5} />
               <span>Post Transaction</span>
             </button>
           </div>
         </header>
 
-        <div className="p-6 md:p-8 max-w-[1600px] mx-auto space-y-8 w-full flex-1">
+        <div className="p-6 max-w-[1600px] mx-auto space-y-6 w-full flex-1">
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            <div className="p-5 bg-[#0B0F17] border border-white/10 rounded-2xl space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="p-4 bg-[#131823] border border-white/[0.08] rounded-[6px] space-y-1">
               <div className="flex justify-between items-center text-slate-400">
-                <span className="text-[10px] font-black uppercase tracking-wider">Total Debits</span>
-                <ArrowUpRight size={18} className="text-emerald-400" />
+                <span className="text-[11px] font-medium text-slate-400">Total Debits</span>
+                <ArrowUpRight size={15} strokeWidth={1.5} className="text-emerald-400" />
               </div>
-              <p className="text-2xl font-black font-mono text-white">PKR {summary.totalDebits.toNumber().toLocaleString()}</p>
+              <p className="text-lg font-medium font-mono tabular-nums text-slate-100">
+                PKR {summary.totalDebits.toNumber().toLocaleString()}
+              </p>
             </div>
 
-            <div className="p-5 bg-[#0B0F17] border border-white/10 rounded-2xl space-y-2">
+            <div className="p-4 bg-[#131823] border border-white/[0.08] rounded-[6px] space-y-1">
               <div className="flex justify-between items-center text-slate-400">
-                <span className="text-[10px] font-black uppercase tracking-wider">Total Credits</span>
-                <ArrowDownLeft size={18} className="text-amber-400" />
+                <span className="text-[11px] font-medium text-slate-400">Total Credits</span>
+                <ArrowDownLeft size={15} strokeWidth={1.5} className="text-amber-400" />
               </div>
-              <p className="text-2xl font-black font-mono text-white">PKR {summary.totalCredits.toNumber().toLocaleString()}</p>
+              <p className="text-lg font-medium font-mono tabular-nums text-slate-100">
+                PKR {summary.totalCredits.toNumber().toLocaleString()}
+              </p>
             </div>
 
-            <div className="p-5 bg-[#0B0F17] border border-white/10 rounded-2xl space-y-2">
+            <div className="p-4 bg-[#131823] border border-white/[0.08] rounded-[6px] space-y-1">
               <div className="flex justify-between items-center text-slate-400">
-                <span className="text-[10px] font-black uppercase tracking-wider">Net Position</span>
-                <Wallet size={18} className="text-[#08EBF6]" />
+                <span className="text-[11px] font-medium text-slate-400">Net Position</span>
+                <Wallet size={15} strokeWidth={1.5} className="text-slate-400" />
               </div>
-              <p className={`text-2xl font-black font-mono ${summary.netBalance.toNumber() >= 0 ? 'text-[#08EBF6]' : 'text-red-400'}`}>
+              <p className={`text-lg font-medium font-mono tabular-nums ${summary.netBalance.toNumber() >= 0 ? 'text-slate-100' : 'text-rose-400'}`}>
                 PKR {summary.netBalance.toNumber().toLocaleString()}
               </p>
             </div>
 
-            <div className="p-5 bg-[#0B0F17] border border-white/10 rounded-2xl space-y-2">
+            <div className="p-4 bg-[#131823] border border-white/[0.08] rounded-[6px] space-y-1">
               <div className="flex justify-between items-center text-slate-400">
-                <span className="text-[10px] font-black uppercase tracking-wider">Linked Parties</span>
-                <History size={18} className="text-[#38bdf8]" />
+                <span className="text-[11px] font-medium text-slate-400">Linked Parties</span>
+                <span className="text-[10px] font-mono text-slate-500">REGISTRY</span>
               </div>
-              <p className="text-2xl font-black font-mono text-white">{parties.length}</p>
+              <p className="text-lg font-medium font-mono tabular-nums text-slate-100">{parties.length}</p>
             </div>
           </div>
 
           {/* Search & Filter Toolbar */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#0B0F17] p-4 rounded-2xl border border-white/10">
-            <div className="relative w-full sm:w-96">
-              <Search size={16} className="absolute left-3 top-3 text-slate-400" />
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#131823] p-2.5 rounded-[6px] border border-white/[0.08]">
+            <div className="relative w-full sm:w-80">
+              <Search size={14} strokeWidth={1.5} className="absolute left-2.5 top-2.5 text-slate-500" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                placeholder={activeTab === 'parties' ? "Search party by name, city, phone..." : "Search party, phone, ref, or memo..."}
-                className="w-full bg-[#030712] border border-white/15 p-2.5 pl-10 text-xs text-white rounded-xl outline-none focus:border-[#08EBF6]"
+                placeholder={activeTab === 'parties' ? "Search by party name, city, phone..." : "Search party, phone, ref, or memo..."}
+                className="w-full h-8 bg-[#0B0E14] border border-white/[0.08] pl-8 pr-2.5 text-xs text-slate-200 rounded-[4px] outline-none focus:border-white/20 placeholder:text-slate-500 transition-colors duration-100"
               />
             </div>
 
             {activeTab === 'entries' && (
-              <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="flex items-center gap-1 w-full sm:w-auto">
                 {['all', 'today', 'yesterday', 'week', 'month'].map(p => (
                   <button
                     key={p}
                     onClick={() => setDatePreset(p as any)}
-                    className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg border transition-all cursor-pointer ${
+                    className={cn(
+                      'h-7 px-2.5 text-xs rounded-[4px] border transition-colors duration-100 capitalize cursor-pointer',
                       datePreset === p
-                        ? 'bg-[#08EBF6]/10 border-[#08EBF6] text-[#08EBF6]'
-                        : 'bg-[#030712] border-white/10 text-slate-400 hover:text-white'
-                    }`}
+                        ? 'bg-white/[0.08] border-white/20 text-white font-medium'
+                        : 'bg-transparent border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/[0.03]'
+                    )}
                   >
                     {p}
                   </button>
@@ -652,20 +665,21 @@ export default function KhataPage() {
             )}
 
             {activeTab === 'parties' && (
-              <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="flex items-center gap-1 w-full sm:w-auto">
                 {[
-                  { val: 'all', label: 'All Parties' },
-                  { val: 'customer', label: 'Buyers / Customers' },
-                  { val: 'supplier', label: 'Suppliers / Mills' }
+                  { val: 'all', label: 'All' },
+                  { val: 'customer', label: 'Customers' },
+                  { val: 'supplier', label: 'Suppliers' }
                 ].map(f => (
                   <button
                     key={f.val}
                     onClick={() => setPartyTypeFilter(f.val as any)}
-                    className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg border transition-all cursor-pointer ${
+                    className={cn(
+                      'h-7 px-2.5 text-xs rounded-[4px] border transition-colors duration-100 cursor-pointer',
                       partyTypeFilter === f.val
-                        ? 'bg-[#08EBF6]/10 border-[#08EBF6] text-[#08EBF6]'
-                        : 'bg-[#030712] border-white/10 text-slate-400 hover:text-white'
-                    }`}
+                        ? 'bg-white/[0.08] border-white/20 text-white font-medium'
+                        : 'bg-transparent border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/[0.03]'
+                    )}
                   >
                     {f.label}
                   </button>
@@ -676,174 +690,225 @@ export default function KhataPage() {
 
           {/* TAB CONTENT: 1. LEDGER ENTRIES */}
           {activeTab === 'entries' && (
-            <div className="bg-[#0B0F17] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+            <div className="bg-[#0E131F]/50 border border-white/[0.08] rounded-[8px] overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-[#030712] text-slate-400 uppercase font-black tracking-widest text-[10px] border-b border-white/10">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-[#0E121B] text-slate-400 font-medium text-[11px] border-b border-white/[0.08]">
                     <tr>
-                      <th className="p-4">Date &amp; Time</th>
-                      <th className="p-4">Party &amp; Phone</th>
-                      <th className="p-4">Type</th>
-                      <th className="p-4">Description / Memo</th>
-                      <th className="p-4">Accounts / Ref</th>
-                      <th className="p-4 text-right">Amount (PKR)</th>
-                      <th className="p-4 text-right">Running Bal</th>
-                      <th className="p-4 text-center">Actions</th>
+                      <th className="px-3.5 py-2 font-medium">Date &amp; Time</th>
+                      <th className="px-3.5 py-2 font-medium">Party &amp; Phone</th>
+                      <th className="px-3.5 py-2 font-medium">Type</th>
+                      <th className="px-3.5 py-2 font-medium">Description</th>
+                      <th className="px-3.5 py-2 font-medium">Accounts / Ref</th>
+                      <th className="px-3.5 py-2 text-right font-medium">Amount (PKR)</th>
+                      <th className="px-3.5 py-2 text-right font-medium">Running Bal</th>
+                      <th className="px-3.5 py-2 text-center font-medium">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5 font-medium">
+                  <tbody className="divide-y divide-white/[0.04] font-normal">
                     {filteredTransactions.length === 0 ? (
-                      <tr>
-                        <td colSpan={8} className="p-12 text-center text-slate-500 font-bold">
-                          No transactions found matching search criteria.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredTransactions.map(tx => {
-                        const isMoneyIn = tx.debitAmount > 0;
-                        const amount = tx.debitAmount || tx.creditAmount;
-                        const isReversed = tx.status === 'reversed';
-
-                        return (
-                          <tr key={tx.tx_ref} className={`hover:bg-white/[0.02] transition-colors ${isReversed ? 'opacity-40 line-through' : ''}`}>
-                            <td className="p-4 text-slate-400 font-mono text-[11px] whitespace-nowrap">
-                              {format(new Date(tx.date), 'dd MMM yyyy, HH:mm')}
-                            </td>
-                            <td className="p-4">
-                              <span className="font-bold text-white block">{tx.party}</span>
-                              {tx.party_phone && <span className="text-[10px] text-slate-400 font-mono">{tx.party_phone}</span>}
-                            </td>
-                            <td className="p-4">
-                              <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                                isMoneyIn
-                                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                                  : 'bg-red-500/10 text-red-400 border border-red-500/30'
-                              }`}>
-                                {isMoneyIn ? 'Money In' : 'Money Out'}
-                              </span>
-                            </td>
-                            <td className="p-4 text-slate-300 max-w-xs truncate">{tx.description}</td>
-                            <td className="p-4 text-[10px] text-slate-400 font-mono">
-                              <div>Dr: {tx.debitAccount}</div>
-                              <div>Cr: {tx.creditAccount}</div>
-                            </td>
-                            <td className={`p-4 text-right font-black font-mono text-sm ${isMoneyIn ? 'text-emerald-400' : 'text-red-400'}`}>
-                              PKR {amount.toLocaleString()}
-                            </td>
-                            <td className="p-4 text-right font-black font-mono text-slate-300">
-                              PKR {(tx.runningBalance || 0).toLocaleString()}
-                            </td>
-                            <td className="p-4 text-center whitespace-nowrap">
-                              <div className="flex items-center justify-center gap-1">
-                                <button
-                                  onClick={() => sendWhatsAppReminder(tx)}
-                                  title="Send WhatsApp Summary"
-                                  className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 cursor-pointer"
-                                >
-                                  <MessageSquare size={14} />
-                                </button>
-                                <button
-                                  onClick={() => handlePrint(tx)}
-                                  title="Print Voucher Slip"
-                                  className="p-1.5 rounded-lg bg-white/5 text-slate-300 hover:bg-white/10 cursor-pointer"
-                                >
-                                  <Printer size={14} />
-                                </button>
-                                <button
-                                  onClick={() => { setDeletingTx(tx); setIsPinModalOpen(true); }}
-                                  title="Void &amp; Revert Transaction"
-                                  className="p-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 cursor-pointer"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </div>
-                            </td>
+                      <>
+                        <tr className="h-10 border-b border-white/[0.04]">
+                          <td colSpan={8} className="py-8 text-center text-slate-500 font-normal">
+                            No transactions found matching search criteria.
+                          </td>
+                        </tr>
+                        {Array.from({ length: 5 }).map((_, idx) => (
+                          <tr key={`ghost-empty-${idx}`} className="h-10 border-b border-white/[0.04] select-none pointer-events-none">
+                            <td colSpan={8} className="px-3.5 py-2 text-transparent font-mono text-[11px]">—</td>
                           </tr>
-                        );
-                      })
+                        ))}
+                      </>
+                    ) : (
+                      <>
+                        {paginatedTransactions.map(tx => {
+                          const isMoneyIn = tx.debitAmount > 0;
+                          const amount = tx.debitAmount || tx.creditAmount;
+                          const isReversed = tx.status === 'reversed';
+
+                          return (
+                            <tr key={tx.tx_ref} className={cn('h-10 border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors duration-100', isReversed && 'opacity-40 line-through')}>
+                              <td className="px-3.5 py-2 text-slate-400 font-mono tabular-nums text-[11px] whitespace-nowrap">
+                                {format(new Date(tx.date), 'dd MMM yyyy, HH:mm')}
+                              </td>
+                              <td className="px-3.5 py-2">
+                                <span className="font-medium text-slate-200 block truncate max-w-[180px]">{tx.party}</span>
+                                {tx.party_phone && <span className="text-[10px] text-slate-500 font-mono tabular-nums">{tx.party_phone}</span>}
+                              </td>
+                              <td className="px-3.5 py-2 whitespace-nowrap">
+                                <span className={cn(
+                                  'px-1.5 py-0.5 rounded-[4px] text-[10px] font-mono border',
+                                  isMoneyIn
+                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                    : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                                )}>
+                                  {isMoneyIn ? 'Money In' : 'Money Out'}
+                                </span>
+                              </td>
+                              <td className="px-3.5 py-2 text-slate-300 max-w-xs truncate">{tx.description}</td>
+                              <td className="px-3.5 py-2 text-[11px] text-slate-400 font-mono tabular-nums">
+                                <div>Dr: {tx.debitAccount}</div>
+                                <div>Cr: {tx.creditAccount}</div>
+                              </td>
+                              <td className={cn('px-3.5 py-2 text-right font-mono tabular-nums text-xs font-medium', isMoneyIn ? 'text-emerald-400' : 'text-slate-200')}>
+                                PKR {amount.toLocaleString()}
+                              </td>
+                              <td className="px-3.5 py-2 text-right font-mono tabular-nums text-xs text-slate-400">
+                                PKR {(tx.runningBalance || 0).toLocaleString()}
+                              </td>
+                              <td className="px-3.5 py-2 text-center whitespace-nowrap">
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    onClick={() => sendWhatsAppReminder(tx)}
+                                    title="Send WhatsApp Summary"
+                                    className="p-1 rounded-[4px] text-slate-400 hover:text-emerald-400 hover:bg-white/[0.04] transition-colors duration-100 cursor-pointer"
+                                  >
+                                    <MessageSquare size={14} strokeWidth={1.5} />
+                                  </button>
+                                  <button
+                                    onClick={() => handlePrint(tx)}
+                                    title="Print Voucher Slip"
+                                    className="p-1 rounded-[4px] text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] transition-colors duration-100 cursor-pointer"
+                                  >
+                                    <Printer size={14} strokeWidth={1.5} />
+                                  </button>
+                                  <button
+                                    onClick={() => { setDeletingTx(tx); setIsPinModalOpen(true); }}
+                                    title="Void &amp; Revert Transaction"
+                                    className="p-1 rounded-[4px] text-slate-400 hover:text-rose-400 hover:bg-white/[0.04] transition-colors duration-100 cursor-pointer"
+                                  >
+                                    <Trash2 size={14} strokeWidth={1.5} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+
+                        {/* Empty canvas mitigation: subtle muted placeholder grid lines if records < 6 */}
+                        {paginatedTransactions.length < 6 && (
+                          Array.from({ length: 6 - paginatedTransactions.length }).map((_, idx) => (
+                            <tr key={`ghost-row-${idx}`} className="h-10 border-b border-white/[0.04] select-none pointer-events-none">
+                              <td className="px-3.5 py-2 text-transparent font-mono text-[11px]">—</td>
+                              <td className="px-3.5 py-2 text-transparent">—</td>
+                              <td className="px-3.5 py-2 text-transparent">—</td>
+                              <td className="px-3.5 py-2 text-transparent">—</td>
+                              <td className="px-3.5 py-2 text-transparent">—</td>
+                              <td className="px-3.5 py-2 text-transparent">—</td>
+                              <td className="px-3.5 py-2 text-transparent">—</td>
+                              <td className="px-3.5 py-2 text-transparent">—</td>
+                            </tr>
+                          ))
+                        )}
+                      </>
                     )}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Compact bottom pagination / status bar */}
+              <div className="px-3.5 py-2.5 bg-[#0E121B] border-t border-white/[0.08] flex items-center justify-between">
+                <span className="text-xs font-mono text-slate-500">
+                  Showing {totalEntries > 0 ? (currentPage - 1) * pageSize + 1 : 0} of {totalEntries} entries
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={currentPage <= 1}
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    className="h-7 px-2.5 text-xs font-mono border border-white/[0.08] rounded-[4px] bg-white/[0.02] hover:bg-white/[0.06] text-slate-300 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    className="h-7 px-2.5 text-xs font-mono border border-white/[0.08] rounded-[4px] bg-white/[0.02] hover:bg-white/[0.06] text-slate-300 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             </div>
           )}
 
           {/* TAB CONTENT: 2. PARTY ACCOUNTS */}
           {activeTab === 'parties' && (
-            <div className="bg-[#0B0F17] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+            <div className="bg-[#0E131F]/50 border border-white/[0.08] rounded-[8px] overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-[#030712] text-slate-400 uppercase font-black tracking-widest text-[10px] border-b border-white/10">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-[#0E121B] text-slate-400 font-medium text-[11px] border-b border-white/[0.08]">
                     <tr>
-                      <th className="p-4">Party Name</th>
-                      <th className="p-4">Role</th>
-                      <th className="p-4">City / Hub</th>
-                      <th className="p-4">Contacts</th>
-                      <th className="p-4 text-right">Balance (PKR)</th>
-                      <th className="p-4 text-right">Credit Limit</th>
-                      <th className="p-4 text-center">Actions</th>
+                      <th className="px-3.5 py-2 font-medium">Party Name</th>
+                      <th className="px-3.5 py-2 font-medium">Role</th>
+                      <th className="px-3.5 py-2 font-medium">City / Hub</th>
+                      <th className="px-3.5 py-2 font-medium">Contacts</th>
+                      <th className="px-3.5 py-2 text-right font-medium">Balance (PKR)</th>
+                      <th className="px-3.5 py-2 text-right font-medium">Credit Limit</th>
+                      <th className="px-3.5 py-2 text-center font-medium">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5 font-medium">
+                  <tbody className="divide-y divide-white/[0.04] font-normal">
                     {filteredPartiesList.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="p-12 text-center text-slate-500 font-bold">
+                        <td colSpan={7} className="p-8 text-center text-slate-500 font-normal">
                           No parties found. Click "+ Add Party" above to create one.
                         </td>
                       </tr>
                     ) : (
-                      filteredPartiesList.map(p => {
+                      filteredPartiesList.map((p: Party) => {
                         const bal = Number(p.current_balance || 0);
                         const isReceivable = bal >= 0;
                         const creditLimit = Number(p.credit_limit || 0);
                         const isExceeded = creditLimit > 0 && Math.abs(bal) > creditLimit;
 
                         return (
-                          <tr key={p.id} className="hover:bg-white/[0.02] transition-colors">
-                            <td className="p-4">
-                              <span className="font-bold text-white text-sm block">{p.name}</span>
+                          <tr key={p.id} className="h-10 hover:bg-white/[0.02] transition-colors duration-100">
+                            <td className="px-3.5 py-2">
+                              <span className="font-medium text-slate-200 block truncate max-w-[200px]">{p.name}</span>
                               {p.preferred_transport && (
-                                <span className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
-                                  <span>Adda:</span> {p.preferred_transport}
+                                <span className="text-[10px] text-slate-500 flex items-center gap-1">
+                                  <span>Transport:</span> {p.preferred_transport}
                                 </span>
                               )}
                             </td>
-                            <td className="p-4">
-                              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-white/5 text-[#08EBF6] border border-[#08EBF6]/30">
+                            <td className="px-3.5 py-2 whitespace-nowrap">
+                              <span className="px-1.5 py-0.5 rounded-[4px] text-[10px] font-mono border bg-white/[0.04] text-slate-300 border-white/[0.08] capitalize">
                                 {p.party_type}
                               </span>
                             </td>
-                            <td className="p-4 text-slate-300">
-                              <span className="flex items-center gap-1 text-[11px]">
-                                <MapPin size={11} className="text-[#08EBF6]" />
-                                {p.city || 'Textile Hub'}
+                            <td className="px-3.5 py-2 text-slate-300">
+                              <span className="flex items-center gap-1 text-xs">
+                                <MapPin size={12} strokeWidth={1.5} className="text-slate-500" />
+                                {p.city || '—'}
                               </span>
                             </td>
-                            <td className="p-4 text-[11px] font-mono text-slate-400">
-                              <div>{p.phone || 'No phone'}</div>
+                            <td className="px-3.5 py-2 text-xs font-mono tabular-nums text-slate-400">
+                              <div>{p.phone || '—'}</div>
                               {p.secondary_phone && (
                                 <div className="text-[10px] text-slate-500">Munshi: {p.secondary_phone}</div>
                               )}
                             </td>
-                            <td className="p-4 text-right">
-                              <span className={`font-black font-mono text-sm block ${isReceivable ? 'text-emerald-400' : 'text-amber-400'}`}>
+                            <td className="px-3.5 py-2 text-right">
+                              <span className={cn('font-mono tabular-nums text-xs font-medium block', isReceivable ? 'text-emerald-400' : 'text-amber-400')}>
                                 PKR {Math.abs(bal).toLocaleString()}
                               </span>
-                              <span className="text-[9px] uppercase tracking-wider text-slate-500">
-                                {isReceivable ? 'Receivable (Lena Hai)' : 'Payable (Dena Hai)'}
+                              <span className="text-[10px] text-slate-500">
+                                {isReceivable ? 'Receivable' : 'Payable'}
                               </span>
                             </td>
-                            <td className="p-4 text-right font-mono text-[11px]">
+                            <td className="px-3.5 py-2 text-right font-mono tabular-nums text-xs">
                               {creditLimit > 0 ? (
-                                <span className={isExceeded ? 'text-red-400 font-bold' : 'text-slate-400'}>
+                                <span className={isExceeded ? 'text-rose-400 font-medium' : 'text-slate-400'}>
                                   PKR {creditLimit.toLocaleString()}
-                                  {isExceeded && <span className="block text-[9px] text-red-400">BREACHED</span>}
+                                  {isExceeded && <span className="block text-[9px] text-rose-400 font-mono">BREACHED</span>}
                                 </span>
                               ) : (
                                 <span className="text-slate-600">No Limit</span>
                               )}
                             </td>
-                            <td className="p-4 text-center whitespace-nowrap">
+                            <td className="px-3.5 py-2 text-center whitespace-nowrap">
                               <div className="flex items-center justify-center gap-1.5">
                                 <button
                                   onClick={() => {
@@ -851,16 +916,16 @@ export default function KhataPage() {
                                     setEditingTx(null);
                                     setIsEntryModalOpen(true);
                                   }}
-                                  className="px-2.5 py-1 rounded-lg bg-[#08EBF6]/10 text-[#08EBF6] hover:bg-[#08EBF6]/20 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer"
+                                  className="h-7 px-2 rounded-[4px] bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-slate-300 text-xs font-medium transition-colors duration-100 cursor-pointer"
                                 >
-                                  + Post Entry
+                                  Post Entry
                                 </button>
                                 <button
                                   onClick={() => setEditingParty(p)}
                                   title="Edit Wholesale Details"
-                                  className="p-1.5 rounded-lg bg-white/5 text-slate-300 hover:bg-white/10 cursor-pointer"
+                                  className="p-1 rounded-[4px] text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] transition-colors duration-100 cursor-pointer"
                                 >
-                                  <Edit3 size={13} />
+                                  <Edit3 size={13} strokeWidth={1.5} />
                                 </button>
                               </div>
                             </td>
@@ -876,41 +941,41 @@ export default function KhataPage() {
 
           {/* TAB CONTENT: 3. CHART OF ACCOUNTS */}
           {activeTab === 'accounts' && (
-            <div className="bg-[#0B0F17] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
-              <div className="p-4 border-b border-white/10 flex justify-between items-center">
-                <h3 className="text-xs font-black uppercase tracking-wider text-white">General Ledger Accounts</h3>
+            <div className="bg-[#0E131F]/50 border border-white/[0.08] rounded-[8px] overflow-hidden">
+              <div className="p-3 border-b border-white/[0.08] flex justify-between items-center bg-[#0E121B]">
+                <h3 className="text-xs font-medium text-slate-200">General Ledger Accounts</h3>
                 <button
                   onClick={() => setIsAccountModalOpen(true)}
-                  className="px-3 py-1.5 bg-[#08EBF6]/10 border border-[#08EBF6]/30 text-[#08EBF6] text-[10px] font-black uppercase rounded-lg hover:bg-[#08EBF6]/20 cursor-pointer"
+                  className="h-7 px-2.5 bg-white/[0.04] border border-white/[0.08] text-slate-300 text-xs font-medium rounded-[4px] hover:bg-white/[0.08] hover:text-white transition-colors duration-100 cursor-pointer"
                 >
                   + Add Account
                 </button>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-[#030712] text-slate-400 uppercase font-black tracking-widest text-[10px] border-b border-white/10">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-[#0E121B] text-slate-400 font-medium text-[11px] border-b border-white/[0.08]">
                     <tr>
-                      <th className="p-4">Code</th>
-                      <th className="p-4">Account Name</th>
-                      <th className="p-4">Account Type</th>
-                      <th className="p-4">Status</th>
+                      <th className="px-3.5 py-2 font-medium">Code</th>
+                      <th className="px-3.5 py-2 font-medium">Account Name</th>
+                      <th className="px-3.5 py-2 font-medium">Account Type</th>
+                      <th className="px-3.5 py-2 font-medium">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5 font-medium">
+                  <tbody className="divide-y divide-white/[0.04] font-normal">
                     {accounts.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="p-12 text-center text-slate-500 font-bold">
+                        <td colSpan={4} className="p-8 text-center text-slate-500 font-normal">
                           No custom accounts configured. Default cash/bank accounts active.
                         </td>
                       </tr>
                     ) : (
-                      accounts.map(acc => (
-                        <tr key={acc.id} className="hover:bg-white/[0.02]">
-                          <td className="p-4 font-mono text-[#08EBF6]">{acc.account_code}</td>
-                          <td className="p-4 font-bold text-white">{acc.name}</td>
-                          <td className="p-4 text-slate-400 uppercase text-[10px]">{acc.type}</td>
-                          <td className="p-4">
-                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      accounts.map((acc: Account) => (
+                        <tr key={acc.id} className="h-10 hover:bg-white/[0.02] transition-colors duration-100">
+                          <td className="px-3.5 py-2 font-mono tabular-nums text-slate-400">{acc.account_code}</td>
+                          <td className="px-3.5 py-2 font-medium text-slate-200">{acc.name}</td>
+                          <td className="px-3.5 py-2 text-slate-400 capitalize text-xs">{acc.type}</td>
+                          <td className="px-3.5 py-2">
+                            <span className="px-1.5 py-0.5 rounded-[4px] text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                               Active
                             </span>
                           </td>
@@ -949,7 +1014,7 @@ export default function KhataPage() {
           setSuccessToast(`Party ${newParty?.name || ''} created successfully`);
           queryClient.setQueryData(['parties', businessId], (old: any) => {
             const arr = Array.isArray(old) ? old : [];
-            return [newParty, ...arr.filter((p: any) => p.id !== newParty.id)];
+            return [newParty, ...arr.filter((p: Party) => p.id !== newParty.id)];
           });
           queryClient.invalidateQueries({ queryKey: ['parties'] });
           queryClient.invalidateQueries({ queryKey: ['parties_registry'] });
@@ -990,15 +1055,16 @@ export default function KhataPage() {
       <AnimatePresence>
         {successToast && (
           <motion.div
-            initial={{ y: 50, opacity: 0 }}
+            initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 50, opacity: 0 }}
-            className="fixed bottom-8 right-8 z-[100] bg-[#08EBF6] text-black px-6 py-3.5 flex items-center space-x-3 shadow-2xl rounded-xl font-black uppercase text-xs tracking-widest"
+            exit={{ y: 20, opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed bottom-6 right-6 z-[100] bg-[#131823] border border-white/[0.12] text-slate-200 px-4 py-2.5 flex items-center gap-2.5 rounded-[6px] shadow-lg text-xs"
           >
-            <CheckCircle2 size={18} />
+            <CheckCircle2 size={15} strokeWidth={1.5} className="text-emerald-400" />
             <span>{successToast}</span>
-            <button onClick={() => setSuccessToast(null)} className="ml-4 opacity-70 hover:opacity-100 cursor-pointer">
-              <X size={16} />
+            <button onClick={() => setSuccessToast(null)} className="ml-3 text-slate-500 hover:text-slate-300 cursor-pointer">
+              <X size={14} strokeWidth={1.5} />
             </button>
           </motion.div>
         )}

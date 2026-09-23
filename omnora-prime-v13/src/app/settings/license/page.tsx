@@ -196,6 +196,8 @@ export default function LicenseUpgradePage() {
   return (
     <div className="min-h-screen bg-[#07090B] text-slate-300 p-4 sm:p-8 font-inter">
       <div className="max-w-5xl mx-auto space-y-10">
+        <div>
+        </div>
         
         {/* Header section */}
         <div className="text-center space-y-2 pt-4">

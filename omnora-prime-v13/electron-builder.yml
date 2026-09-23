@@ -27,7 +27,7 @@ files:
 # Extra resources copied to resources/
 # These are accessible via process.resourcesPath
 extraResources:
-  # The Next.js standalone bundle (already fully assembled with static, public, migrations, node_modules by build-electron.mjs)
+  # The Next.js standalone bundle
   - from: ".next/standalone"
     to: "standalone"
     filter:
@@ -76,6 +76,7 @@ win:
   forceCodeSigning: false
 
 nsis:
+  include: "assets/installer.nsh"
   oneClick: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
@@ -88,7 +89,7 @@ nsis:
   uninstallDisplayName: "Noxis Hub"
   allowElevation: true
   perMachine: false
-  differentialPackage: true
+  differentialPackage: false
 
 mac:
   icon: "build/icon.icns"
@@ -102,6 +103,7 @@ publish:
   provider: generic
   url: https://noxishub.app/updates/stable
   channel: stable
+  useMultipleRangeRequest: false
 
 # Rebuild native modules for the correct
 # Electron Node.js ABI version

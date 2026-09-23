@@ -32,8 +32,13 @@ export const useThemeStore = create<ThemeStore>()(
       setTheme: (themeId, enableTransition = true) => {
         const theme = themes.find(t => t.id === themeId)
           || themes[0]
-        set({ activeThemeId: themeId, activeTheme: theme })
-        applyThemeToDOM(theme, get().customAccentColor, get().customFinancialColor, enableTransition)
+        set({ 
+          activeThemeId: themeId, 
+          activeTheme: theme,
+          customAccentColor: null,
+          customFinancialColor: null
+        })
+        applyThemeToDOM(theme, null, null, enableTransition)
       },
 
       setMode: (mode) => {
@@ -50,9 +55,11 @@ export const useThemeStore = create<ThemeStore>()(
         const theme = getThemeForIndustry(industry)
         set({
           activeThemeId: theme.id,
-          activeTheme: theme
+          activeTheme: theme,
+          customAccentColor: null,
+          customFinancialColor: null
         })
-        applyThemeToDOM(theme, get().customAccentColor, get().customFinancialColor, enableTransition)
+        applyThemeToDOM(theme, null, null, enableTransition)
       },
 
       setIsPanelOpen: (isOpen) => set({ isPanelOpen: isOpen }),
@@ -103,16 +110,53 @@ export function applyThemeToDOM(
     root.classList.add('theme-transitioning')
   }
   
-  root.style.setProperty('--color-bg', theme.colors.background)
-  root.style.setProperty('--color-surface', theme.colors.surface)
-  root.style.setProperty('--color-primary', customAccent || theme.colors.primary)
-  root.style.setProperty('--color-financial', customFinancial || theme.colors.financial)
+  const primary = customAccent || theme.colors.primary
+  const financial = customFinancial || theme.colors.financial
+  const bg = theme.colors.background
+  const surface = theme.colors.surface
+  const text = theme.colors.text
+  const textMuted = theme.colors.textMuted
+  const border = theme.colors.border
+
+  root.style.setProperty('--color-bg', bg)
+  root.style.setProperty('--background', bg)
+  root.style.setProperty('--color-surface', surface)
+  root.style.setProperty('--surface', surface)
+  root.style.setProperty('--color-primary', primary)
+  root.style.setProperty('--primary', primary)
+  root.style.setProperty('--accent', primary)
+  root.style.setProperty('--color-accent', primary)
+  root.style.setProperty('--color-financial', financial)
+  root.style.setProperty('--financial', financial)
   root.style.setProperty('--color-success', theme.colors.success)
   root.style.setProperty('--color-danger', theme.colors.danger)
-  root.style.setProperty('--color-text', theme.colors.text)
-  root.style.setProperty('--color-text-muted', theme.colors.textMuted)
-  root.style.setProperty('--color-border', theme.colors.border)
-  root.style.setProperty('--color-noxis-accent', theme.colors.primary)
+  root.style.setProperty('--color-text', text)
+  root.style.setProperty('--foreground', text)
+  root.style.setProperty('--color-text-muted', textMuted)
+  root.style.setProperty('--color-border', border)
+  root.style.setProperty('--color-overlay', `color-mix(in srgb, ${primary} 5%, transparent)`)
+  root.style.setProperty('--color-overlay-hover', `color-mix(in srgb, ${primary} 10%, transparent)`)
+  root.style.setProperty('--color-noxis-accent', primary)
+  root.style.setProperty('--color-noxis-financial', financial)
+  root.style.setProperty('--color-noxis-bg', bg)
+  root.style.setProperty('--color-noxis-surface', surface)
+  root.style.setProperty('--color-noxis-text', text)
+  root.style.setProperty('--color-noxis-text-muted', textMuted)
+  root.style.setProperty('--color-noxis-border', border)
+  root.style.setProperty('--color-electric-blue', financial || primary)
+  root.style.setProperty('--color-sandstone-gold', primary)
+  root.style.setProperty('--theme-accent', primary)
+  root.style.setProperty('--theme-financial', financial)
+  root.style.setProperty('--theme-bg', bg)
+  root.style.setProperty('--theme-surface', surface)
+
+  // Direct element style overrides to guarantee instant visual response
+  root.style.backgroundColor = bg
+  root.style.color = text
+  if (typeof document !== 'undefined' && document.body) {
+    document.body.style.backgroundColor = bg
+    document.body.style.color = text
+  }
 
   // Toggle Dark/Light Classes for Framework Consistency
   if (theme.id === 'light-slate') {

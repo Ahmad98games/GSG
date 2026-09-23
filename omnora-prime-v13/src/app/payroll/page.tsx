@@ -159,13 +159,33 @@ export default function PayrollPage() {
     if (pin !== "1234") return alert("Unauthorized PIN Access Denied.");
 
     try {
-      // 1. Update period status
-      const { error: periodError } = await supabase
-        .from('payroll_periods')
-        .update({ status: 'locked', locked_at: new Date().toISOString() })
-        .eq('id', periodId);
+      // 1. Update period status via service role API
+      let lockedViaApi = false;
+      try {
+        const res = await fetch('/api/payroll', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            operation: 'lock_period',
+            business_id: businessId,
+            period_id: periodId
+          })
+        });
+        if (res.ok) {
+          lockedViaApi = true;
+        }
+      } catch (e) {
+        console.warn('[Payroll] Lock API notice:', e);
+      }
 
-      if (periodError) throw periodError;
+      if (!lockedViaApi) {
+        const { error: periodError } = await supabase
+          .from('payroll_periods')
+          .update({ status: 'locked', locked_at: new Date().toISOString() })
+          .eq('id', periodId);
+
+        if (periodError) throw periodError;
+      }
 
       // 2. Fetch all slips in the locked period to know advance deductions
       const { data: currentSlips, error: fetchError } = await supabase
@@ -421,20 +441,47 @@ function RunPayrollModal({ onClose, onSuccess }: { onClose: () => void, onSucces
   const onSubmit = async (values: RunPayrollValues) => {
     setIsCalculating(true);
     try {
-      // 1. Create Period
-      const { data: period, error: pError } = await supabase
-        .from('payroll_periods')
-        .insert({
-          business_id: businessId,
-          period_label: values.period_label,
-          period_start: values.period_start,
-          period_end: values.period_end,
-          status: 'open'
-        })
-        .select()
-        .single();
-      
-      if (pError) throw pError;
+      // 1. Create Period via secure API route (avoids RLS permission denied)
+      let period: any = null;
+      try {
+        const res = await fetch('/api/payroll', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            operation: 'create_period',
+            business_id: businessId,
+            period_data: {
+              period_label: values.period_label,
+              period_start: values.period_start,
+              period_end: values.period_end,
+            }
+          })
+        });
+        const resJson = await res.json().catch(() => ({}));
+        if (res.ok && resJson.success && resJson.period) {
+          period = resJson.period;
+        } else if (resJson.error) {
+          console.warn('[Payroll] API create warning:', resJson.error);
+        }
+      } catch (apiErr) {
+        console.warn('[Payroll] API fetch failed, trying direct:', apiErr);
+      }
+
+      if (!period) {
+        const { data: pData, error: pError } = await supabase
+          .from('payroll_periods')
+          .insert({
+            business_id: businessId,
+            period_label: values.period_label,
+            period_start: values.period_start,
+            period_end: values.period_end,
+            status: 'open'
+          })
+          .select()
+          .single();
+        if (pError) throw pError;
+        period = pData;
+      }
 
       // 2. Fetch Karigars
       const { data: karigars } = await supabase
@@ -503,14 +550,33 @@ function RunPayrollModal({ onClose, onSuccess }: { onClose: () => void, onSucces
         totalPeriodPayroll = totalPeriodPayroll.plus(net);
       }
 
-      // 4. Batch Insert Slips
-      const { error: slipsError } = await supabase.from('payroll_slips').insert(slips);
-      if (slipsError) throw slipsError;
+      // 4. Batch Insert Slips & Update Period Total via secure API route
+      let savedViaApi = false;
+      try {
+        const res = await fetch('/api/payroll', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            operation: 'save_slips',
+            business_id: businessId,
+            period_id: period.id,
+            slips_data: slips,
+            total_payroll: totalPeriodPayroll.toNumber()
+          })
+        });
+        if (res.ok) savedViaApi = true;
+      } catch (err) {
+        console.warn('[Payroll] API save slips notice:', err);
+      }
 
-      // 5. Update Period Total
-      await supabase.from('payroll_periods').update({ 
-        total_payroll: totalPeriodPayroll.toNumber() 
-      }).eq('id', period.id);
+      if (!savedViaApi) {
+        const { error: slipsError } = await supabase.from('payroll_slips').insert(slips);
+        if (slipsError) throw slipsError;
+
+        await supabase.from('payroll_periods').update({ 
+          total_payroll: totalPeriodPayroll.toNumber() 
+        }).eq('id', period.id);
+      }
 
       onSuccess(`Mesh Scanned: Generated ${slips.length} slips. Found ${totalProductionLogsFound} production sessions and ${totalAttendanceLogsFound} attendance logs.`);
     } catch (err: any) {

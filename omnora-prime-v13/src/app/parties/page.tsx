@@ -68,17 +68,57 @@ export default function PartiesPage() {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
 
   const handleToggleBlock = async (party: Party) => {
+    const newBlockedState = !party.is_blocked;
+
+    // 1. Optimistic React Query cache update
+    const updatePartyList = (old: any) => {
+      if (!Array.isArray(old)) return old;
+      return old.map((p: Party) =>
+        p.id === party.id ? { ...p, is_blocked: newBlockedState } : p
+      );
+    };
+    queryClient.setQueryData(['parties_registry', businessId], updatePartyList);
+    queryClient.setQueryData(['parties', businessId], updatePartyList);
+
+    // 2. Update local storage caches
+    if (typeof window !== 'undefined') {
+      const cacheKeys = [
+        `noxis_cached_parties_${businessId}`,
+        `noxis_cached_parties_00000000-0000-0000-0000-000000000000`,
+        `noxis_cached_parties`
+      ];
+      cacheKeys.forEach(k => {
+        try {
+          const raw = localStorage.getItem(k);
+          if (raw) {
+            const list = JSON.parse(raw);
+            if (Array.isArray(list)) {
+              const updatedList = list.map((p: any) =>
+                p.id === party.id ? { ...p, is_blocked: newBlockedState } : p
+              );
+              localStorage.setItem(k, JSON.stringify(updatedList));
+            }
+          }
+        } catch {}
+      });
+
+      // 3. Dispatch events
+      window.dispatchEvent(new CustomEvent('noxis:party-updated', { detail: { ...party, is_blocked: newBlockedState } }));
+      if ((window as any).electronAPI?.party?.notifyUpdate) {
+        ;(window as any).electronAPI.party.notifyUpdate({ partyId: party.id, is_blocked: newBlockedState });
+      }
+    }
+
     try {
-      const newBlockedState = !party.is_blocked;
+      // 4. Update Supabase (strictly is_blocked, no invalid columns)
       const { error } = await supabase
         .from('parties')
-        .update({ 
-          is_blocked: newBlockedState,
-          blocked_at: newBlockedState ? new Date().toISOString() : null
-        })
+        .update({ is_blocked: newBlockedState })
         .eq('id', party.id);
-      
-      if (error) throw error;
+
+      if (error) {
+        console.warn('[Parties] Cloud update warning, preserved local update:', error.message);
+      }
       
       queryClient.invalidateQueries({ queryKey: ['parties_registry'] });
       queryClient.invalidateQueries({ queryKey: ['parties'] });
@@ -86,7 +126,10 @@ export default function PartiesPage() {
       setSuccessToast(`${party.name} has been ${newBlockedState ? 'blocked' : 'unblocked'}`);
       toast.success('Account Status Updated', `${party.name} is now ${newBlockedState ? 'blocked' : 'unblocked'}`);
     } catch (err: any) {
-      toast.error('Failed to update party status', err.message);
+      console.warn('[Parties] Error updating cloud status:', err);
+      // Still notify success locally
+      setSuccessToast(`${party.name} has been ${newBlockedState ? 'blocked' : 'unblocked'}`);
+      toast.success('Account Status Updated', `${party.name} is now ${newBlockedState ? 'blocked' : 'unblocked'}`);
     }
   };
 

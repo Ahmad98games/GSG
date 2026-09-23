@@ -38,8 +38,10 @@ export default function AboutPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className="w-full max-w-3xl px-8 py-20 space-y-24"
+          className="w-full max-w-3xl px-8 py-12 space-y-16"
         >
+          <div className="w-full flex justify-start">
+          </div>
           
           {/* SECTION 1: Product Identity */}
           <section className="flex flex-col items-center text-center space-y-8">

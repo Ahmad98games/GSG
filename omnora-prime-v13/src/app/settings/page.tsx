@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { 
   Settings2, 
   Upload, 
@@ -59,18 +60,7 @@ interface LocalConfig {
   [key: string]: string | number | undefined;
 }
 
-const PRESET_AVATARS = [
-  { id: 1, src: '/images/presets/preset-1.png', label: 'Textile Loom', border: '#22d3ee' },
-  { id: 2, src: '/images/presets/preset-2.png', label: 'Factory Floor', border: '#22d3ee' },
-  { id: 3, src: '/images/presets/preset-3.png', label: 'Robotic Assembly', border: '#22d3ee' },
-  { id: 4, src: '/images/presets/preset-4.png', label: 'Apparel Warehouse', border: '#22d3ee' },
-  { id: 5, src: '/images/presets/preset-5.png', label: 'CNC Milling', border: '#22d3ee' },
-  { id: 6, src: '/images/presets/preset-6.png', label: 'SMT Circuit Line', border: '#22d3ee' },
-  { id: 7, src: '/images/presets/preset-7.png', label: 'Logistics Drones', border: '#22d3ee' },
-  { id: 8, src: '/images/presets/preset-8.png', label: 'Spinning Cotton', border: '#22d3ee' },
-  { id: 9, src: '/images/presets/preset-9.png', label: 'Laser Cutting', border: '#22d3ee' },
-  { id: 10, src: '/images/presets/preset-10.png', label: 'Sorting Conveyor', border: '#22d3ee' },
-];
+
 
 const TABS = [
   { id: 'general', label: 'General', icon: Monitor, href: '/settings/general' },
@@ -100,7 +90,15 @@ export default function SettingsPage() {
    const { success: toastSuccess, error: toastError, warning: toastWarning, info: toastInfo } = useToast();
   
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('profile');
+  const searchParams = useSearchParams();
+  const tabFromUrl = searchParams?.get('tab') || 'profile';
+  const [activeTab, setActiveTab] = useState(tabFromUrl);
+
+  useEffect(() => {
+    if (tabFromUrl) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
   const [localConfig, setLocalConfig] = useState<LocalConfig>({});
   const [sessionCount, setSessionCount] = useState(0);
   const [hubInfo, setHubInfo] = useState<HubInfo | null>(null);
@@ -305,7 +303,7 @@ export default function SettingsPage() {
   const handleSaveProfile = async () => {
     setIsSaving(true);
     try {
-      let logoUrl = profile?.logo_url;
+      let logoUrl = profile?.logo_url || profile?.avatar_url || '';
 
       if (logoFile && profile?.id) {
         const ext = logoFile.name.split('.').pop();
@@ -322,21 +320,21 @@ export default function SettingsPage() {
 
       if (!profile) return;
 
-      const avatarType = profile.avatar_type || 'preset';
-      const avatarPresetId = profile.avatar_preset_id ? Number(profile.avatar_preset_id) : 1;
-      const avatarUrl = profile.avatar_url || logoUrl || '';
+      const avatarType = 'custom';
+      const avatarUrl = logoUrl;
       const avatarLastChanged = new Date().toISOString();
 
       // Layer 1: localStorage immediately
       localStorage.setItem('noxis_avatar', JSON.stringify({
         type: avatarType,
-        preset_id: avatarPresetId,
         url: avatarUrl || null,
         saved_at: avatarLastChanged,
       }));
-
-      // Persist the 14-day lock date in localStorage
-      localStorage.setItem('noxis_avatar_lock', avatarLastChanged);
+      localStorage.setItem('noxis-business-profile', JSON.stringify({
+        ...profile,
+        logo_url: logoUrl,
+        avatar_url: avatarUrl,
+      }));
 
       // Layer 2: SQLite local config via window.electronAPI
       if ((window as any).electronAPI?.setConfig) {
@@ -345,7 +343,6 @@ export default function SettingsPage() {
             'avatar',
             JSON.stringify({
               type: avatarType,
-              preset_id: avatarPresetId,
               url: avatarUrl || null,
             })
           );
@@ -368,7 +365,6 @@ export default function SettingsPage() {
           worker_term: profile.worker_term,
           logo_url: logoUrl,
           avatar_type: avatarType,
-          avatar_preset_id: avatarPresetId,
           avatar_url: avatarUrl,
           avatar_last_changed: avatarLastChanged
         })
@@ -390,7 +386,6 @@ export default function SettingsPage() {
             business_name: profile.business_name || '',
             owner_name: (profile as any).owner_name || '',
             avatar_type: avatarType,
-            avatar_preset_id: avatarPresetId,
             avatar_url: avatarUrl,
             avatar_last_changed: avatarLastChanged
           }
@@ -402,7 +397,7 @@ export default function SettingsPage() {
         ...profile, 
         logo_url: logoUrl,
         avatar_type: avatarType,
-        avatar_preset_id: avatarPresetId,
+        avatar_preset_id: undefined,
         avatar_url: avatarUrl,
         avatar_last_changed: avatarLastChanged
       };
@@ -474,61 +469,8 @@ export default function SettingsPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-black text-slate-200 font-inter flex">
-      
-      <main className={cn( "flex-1 transition-all duration-300 flex flex-col h-screen overflow-hidden")}>
-        <div className="flex items-center justify-between mb-6 px-6 pt-6">
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight text-white">
-              System Configuration
-            </h1>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Industrial Hub Parameters
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-             <div className="px-3 py-1 bg-white/5 border border-white/10 rounded-sm">
-                <span className="text-[10px] font-mono text-gray-500 uppercase">Ver {hubInfo?.version || "1.0.0"}</span>
-             </div>
-          </div>
-        </div>
-
-        <div className="flex-1 flex overflow-hidden">
-          {/* Settings Sidebar */}
-          <div className="w-64 border-r border-white/5 bg-[#0A0A0B]/50 p-4 space-y-1">
-            {TABS.map(tab => (
-              (tab as any).href ? (
-                <Link
-                  key={tab.id}
-                  href={(tab as any).href}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-slate-500 hover:bg-white/5 hover:text-slate-300 transition-all group"
-                >
-                  <tab.icon size={18} className="text-slate-600 group-hover:text-slate-400" />
-                  {tab.label}
-                </Link>
-              ) : (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-all group",
-                    activeTab === tab.id 
-                      ? "bg-electric-blue/10 text-electric-blue font-bold shadow-[inset_0_0_20px_rgba(45,185,255,0.05)]" 
-                      : "text-slate-500 hover:bg-white/5 hover:text-slate-300"
-                  )}
-                >
-                  <tab.icon size={18} className={cn(activeTab === tab.id ? "text-electric-blue" : "text-slate-600 group-hover:text-slate-400")} />
-                  {tab.label}
-                </button>
-              )
-            ))}
-          </div>
-
-          {/* Main Content Area */}
-          <div className="flex-1 overflow-y-auto p-12 custom-scrollbar bg-[radial-gradient(circle_at_top_right,rgba(45,185,255,0.03),transparent_40%)]">
-            <div className="max-w-3xl mx-auto space-y-12">
-              
-              <AnimatePresence mode="wait">
+      <div className="p-8 lg:p-12 max-w-4xl mx-auto space-y-12">
+        <AnimatePresence mode="wait">
                 {activeTab === 'profile' && (
                   <motion.div
                     key="profile"
@@ -543,169 +485,167 @@ export default function SettingsPage() {
                     </div>
 
                     {(() => {
-                      const initials = (() => {
-                        const name = (profile as any)?.owner_name?.trim() || profile?.business_name?.trim() || 'N';
+                      const clientBrandMark = profile?.logo_url || profile?.avatar_url || manualLogoPreview || logoPreview;
+                      const brandInitials = (() => {
+                        const name = profile?.business_name?.trim() || (profile as any)?.owner_name?.trim() || 'GS';
                         const parts = name.split(/\s+/).filter(Boolean);
                         if (parts.length >= 2) {
                           return (parts[0][0] + parts[1][0]).toUpperCase();
                         }
-                        return name.substring(0, Math.min(name.length, 2)).toUpperCase();
+                        return name.substring(0, Math.min(name.length, 2)).toUpperCase() || 'GS';
                       })();
 
-                      const lastChangedStr = profile?.avatar_last_changed || (typeof window !== 'undefined' ? localStorage.getItem('noxis_avatar_lock') : null);
-                      const lastChanged = lastChangedStr ? new Date(lastChangedStr) : null;
-                      const now = new Date();
-                      const diffTime = lastChanged ? now.getTime() - lastChanged.getTime() : null;
-                      const diffDays = diffTime !== null ? diffTime / (1000 * 60 * 60 * 24) : null;
-                      const isAvatarLocked = diffDays !== null && diffDays < 14;
-                      const lockExpiryDate = lastChanged ? new Date(lastChanged.getTime() + 14 * 24 * 60 * 60 * 1000) : null;
-
                       return (
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <label className="text-[10px] uppercase font-black text-gray-500 tracking-[0.2em] block">
-                              Profile Avatar Selector
-                            </label>
-                            {isAvatarLocked && lockExpiryDate && (
-                              <div className="flex items-center gap-1.5 text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded text-[9px] font-black uppercase tracking-wider">
-                                <Lock size={10} />
-                                <span>Locked until {lockExpiryDate.toLocaleDateString()}</span>
-                              </div>
-                            )}
-                          </div>
+                        <div className="space-y-3">
+                          <label className="text-[11px] font-medium text-slate-400 uppercase tracking-wider block">
+                            Organization Brand Mark
+                          </label>
 
-                          <div className="grid grid-cols-6 sm:grid-cols-11 gap-3 p-6 bg-zinc-950/40 border border-zinc-800 rounded-sm relative overflow-hidden">
-                            {/* 10 Preset Corporate Industry Images */}
-                            {PRESET_AVATARS.map((preset) => {
-                              const isSelected = profile?.avatar_type === 'preset' && Number(profile?.avatar_preset_id) === preset.id;
-                              return (
-                                <button
-                                  key={preset.id}
-                                  type="button"
-                                  disabled={isAvatarLocked}
-                                  onClick={() => {
-                                    if (profile) {
-                                      setProfile({
-                                        ...profile,
-                                        avatar_type: 'preset',
-                                        avatar_preset_id: preset.id,
-                                        avatar_url: '',
-                                        avatar_last_changed: new Date().toISOString()
-                                      });
-                                    }
-                                  }}
-                                  className={cn(
-                                    "aspect-square rounded-sm overflow-hidden border flex items-center justify-center relative transition-all duration-200 group cursor-pointer hover:scale-105 disabled:cursor-not-allowed disabled:opacity-40",
-                                    isSelected 
-                                      ? "border-[#00e5ff] ring-1 ring-[#00e5ff] shadow-[0_0_15px_rgba(0,229,255,0.6)]" 
-                                      : "border-zinc-800 opacity-60 hover:opacity-100 hover:border-zinc-500"
-                                  )}
-                                  title={preset.label}
-                                >
-                                  <Image src={preset.src} alt={preset.label || 'Avatar'} width={40} height={40} className="w-full h-full object-cover" />
-                                  {isSelected && (
-                                    <div className="absolute top-1 right-1 bg-cyan-500 text-black rounded-full p-0.5 shadow">
-                                      <CheckCircle2 size={10} className="fill-cyan-500 stroke-black" />
-                                    </div>
-                                  )}
-                                </button>
-                              );
-                            })}
-
-                            {/* 11th Custom Photo Camera Upload */}
-                            <div className="relative aspect-square">
-                              <label className={cn(
-                                "w-full h-full rounded-sm border border-dashed border-zinc-800 flex flex-col items-center justify-center cursor-pointer transition-all hover:bg-white/5 hover:border-zinc-650",
-                                profile?.avatar_type === 'custom' ? "bg-white/10 border-[#00e5ff] border-solid" : "",
-                                isAvatarLocked && "pointer-events-none opacity-30"
-                              )}>
-                                {profile?.avatar_type === 'custom' && (profile?.avatar_url || logoPreview) ? (
-                                  <Image 
-                                    src={profile.avatar_url || logoPreview || ''} 
-                                    alt="Custom" 
-                                    width={40} 
-                                    height={40}
-                                    className="w-full h-full object-cover rounded-sm p-0.5" 
-                                  />
-                                ) : (
-                                  <Upload size={14} className="text-gray-500 group-hover:text-white" />
-                                )}
-                                <input
-                                  type="file"
-                                  disabled={isAvatarLocked}
-                                  className="hidden"
-                                  accept="image/*"
-                                  onChange={async (e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file && profile) {
-                                      setIsSaving(true);
-                                      try {
-                                        const ext = file.name.split('.').pop();
-                                        const path = `avatars/${profile.id}-${Date.now()}.${ext}`;
-                                        const { error: uploadError } = await supabase.storage
-                                          .from('logos')
-                                          .upload(path, file, { upsert: true });
-
-                                        if (uploadError) throw uploadError;
-
-                                        const { data: { publicUrl } } = supabase.storage.from('logos').getPublicUrl(path);
-                                        
-                                        setProfile({
-                                          ...profile,
-                                          avatar_type: 'custom',
-                                          avatar_preset_id: undefined,
-                                          avatar_url: publicUrl,
-                                          avatar_last_changed: new Date().toISOString()
-                                        });
-                                        setManualLogoPreview(publicUrl);
-                                        toastSuccess("Photo uploaded successfully!", "Please save changes to persist.");
-                                      } catch (err: any) {
-                                        toastError("Upload failed", err.message);
-                                      } finally {
-                                        setIsSaving(false);
-                                      }
-                                    }
-                                  }}
+                          <div className="flex items-center gap-4">
+                            {/* Left: 64px x 64px square container */}
+                            <div className="w-16 h-16 rounded-[8px] bg-[#0E131F] border border-white/[0.1] flex items-center justify-center overflow-hidden relative flex-shrink-0">
+                              {clientBrandMark ? (
+                                <img
+                                  src={clientBrandMark}
+                                  alt={profile?.business_name || 'Brand Mark'}
+                                  className="w-full h-full object-contain p-1.5"
                                 />
-                              </label>
+                              ) : (
+                                <span className="text-base font-semibold text-slate-200 tracking-wider font-mono">
+                                  {brandInitials}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Right: Clean inline action cluster */}
+                            <div className="flex flex-col justify-center space-y-1.5">
+                              <div className="flex items-center gap-3">
+                                <label className="h-8 px-3 text-xs font-medium border border-white/[0.1] bg-white/[0.03] hover:bg-white/[0.06] text-slate-200 rounded-[6px] transition-colors flex items-center gap-1.5 cursor-pointer">
+                                  <Upload size={13} className="text-slate-400" />
+                                  <span>Upload Brand Logo</span>
+                                  <input
+                                    type="file"
+                                    className="hidden"
+                                    accept="image/svg+xml,image/png,image/webp,image/jpeg"
+                                    onChange={async (e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file && profile) {
+                                        setIsSaving(true);
+                                        try {
+                                          const ext = file.name.split('.').pop();
+                                          const path = `logos/${profile.id || 'brand'}-${Date.now()}.${ext}`;
+                                          const { error: uploadError } = await supabase.storage
+                                            .from('logos')
+                                            .upload(path, file, { upsert: true });
+
+                                          let publicUrl = '';
+                                          if (!uploadError) {
+                                            const res = supabase.storage.from('logos').getPublicUrl(path);
+                                            publicUrl = res.data.publicUrl;
+                                          } else {
+                                            publicUrl = await new Promise((resolve) => {
+                                              const reader = new FileReader();
+                                              reader.onload = () => resolve(reader.result as string);
+                                              reader.readAsDataURL(file);
+                                            });
+                                          }
+
+                                          const nowIso = new Date().toISOString();
+                                          const updated = {
+                                            ...profile,
+                                            logo_url: publicUrl,
+                                            avatar_url: publicUrl,
+                                            avatar_type: 'custom' as const,
+                                            avatar_preset_id: undefined,
+                                            avatar_last_changed: nowIso
+                                          };
+                                          setProfile(updated as any);
+                                          setManualLogoPreview(publicUrl);
+                                          setLogoFile(file);
+
+                                          localStorage.setItem('noxis_avatar', JSON.stringify({
+                                            type: 'custom',
+                                            url: publicUrl,
+                                            saved_at: nowIso,
+                                          }));
+                                          localStorage.setItem('noxis-business-profile', JSON.stringify(updated));
+
+                                          toastSuccess("Brand logo updated", "Updated across sidebar and workspace headers.");
+                                        } catch (err: any) {
+                                          toastError("Upload failed", err.message || "Could not upload brand logo");
+                                        } finally {
+                                          setIsSaving(false);
+                                        }
+                                      }
+                                    }}
+                                  />
+                                </label>
+
+                                {clientBrandMark && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (profile) {
+                                        const updated = {
+                                          ...profile,
+                                          logo_url: '',
+                                          avatar_url: '',
+                                          avatar_type: undefined,
+                                          avatar_preset_id: undefined,
+                                        };
+                                        setProfile(updated as any);
+                                        setManualLogoPreview('');
+                                        setLogoFile(null);
+                                        localStorage.removeItem('noxis_avatar');
+                                        localStorage.setItem('noxis-business-profile', JSON.stringify(updated));
+                                        toastSuccess("Brand logo removed", "Reverted to company initials.");
+                                      }
+                                    }}
+                                    className="text-xs text-rose-400 hover:text-rose-300 transition-colors cursor-pointer bg-transparent border-0 p-0 font-medium"
+                                  >
+                                    Remove
+                                  </button>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-slate-500">
+                                Recommended size: 512x512px. Formats: SVG, PNG, WebP (Max 2MB).
+                              </p>
                             </div>
                           </div>
-                          
-                          {isAvatarLocked ? (
-                            <p className="text-[10px] text-amber-500/80 font-bold uppercase tracking-wide">
-                              * Avatar settings are locked to maintain corporate identity. You can change your avatar again on {lockExpiryDate?.toLocaleDateString()}.
-                            </p>
-                          ) : (
-                            <p className="text-[9px] text-gray-500 uppercase tracking-tighter">
-                              Select one of the 10 colored identity presets or upload a custom company logo/photo.
-                            </p>
-                          )}
                         </div>
                       );
                     })()}
 
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Business Name</label>
+                    <div className="grid grid-cols-2 gap-5">
+                      <div className="space-y-0">
+                        <label className="text-[11px] font-medium text-slate-400 uppercase tracking-wider mb-1.5 block">
+                          Business Name
+                        </label>
                         <input 
                           value={profile?.business_name || ''}
                           onChange={(e) => profile && setProfile({ ...profile, business_name: e.target.value })}
-                          className="w-full bg-zinc-900 border border-zinc-800 rounded-sm px-4 py-3 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400 transition-all duration-200 text-white"
+                          placeholder="e.g. Gold She Garments"
+                          className="w-full bg-[#0E131F] border border-white/[0.09] text-slate-100 text-xs rounded-[6px] h-9 px-3 placeholder:text-slate-600 focus:outline-none focus:border-blue-500/70 focus:ring-1 focus:ring-blue-500/30 transition-all duration-100"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Owner Name</label>
+                      <div className="space-y-0">
+                        <label className="text-[11px] font-medium text-slate-400 uppercase tracking-wider mb-1.5 block">
+                          Owner Name
+                        </label>
                         <input 
                           value={(profile as any)?.owner_name || ''}
                           onChange={(e) => profile && setProfile({ ...profile, owner_name: e.target.value } as any)}
-                          className="w-full bg-zinc-900 border border-zinc-800 rounded-sm px-4 py-3 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400 transition-all duration-200 text-white"
+                          placeholder="e.g. Ahmad"
+                          className="w-full bg-[#0E131F] border border-white/[0.09] text-slate-100 text-xs rounded-[6px] h-9 px-3 placeholder:text-slate-600 focus:outline-none focus:border-blue-500/70 focus:ring-1 focus:ring-blue-500/30 transition-all duration-100"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest flex items-center gap-1.5">
-                          Owner WhatsApp
-                          <span className="text-[9px] text-[#25D366] font-black normal-case">(daily summaries)</span>
-                        </label>
+                      <div className="space-y-0">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+                            Owner WhatsApp
+                          </label>
+                          <span className="text-[10px] text-emerald-400/80 font-mono">(daily summaries)</span>
+                        </div>
                         {(() => {
                           const callingCode = getRegionConfig(profile?.country_code).callingCode;
                           return (
@@ -714,19 +654,21 @@ export default function SettingsPage() {
                               value={(profile as any)?.owner_phone || ''}
                               onChange={(e) => profile && setProfile({ ...profile, owner_phone: e.target.value } as any)}
                               placeholder={`e.g. ${callingCode}3001234567`}
-                              className="w-full bg-zinc-900 border border-zinc-800 rounded-sm px-4 py-3 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400 transition-all duration-200 text-white"
+                              className="w-full bg-[#0E131F] border border-white/[0.09] text-slate-100 text-xs rounded-[6px] h-9 px-3 placeholder:text-slate-600 focus:outline-none focus:border-blue-500/70 focus:ring-1 focus:ring-blue-500/30 transition-all duration-100"
                             />
                           );
                         })()}
-                        <p className="text-[10px] text-gray-650 font-medium">Used when you press &quot;Send Daily Summary&quot; on Dashboard &amp; Reports.</p>
+                        <p className="text-[10px] text-slate-500 mt-1">Used when you press &quot;Send Daily Summary&quot; on Dashboard &amp; Reports.</p>
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Industry Key</label>
+                      <div className="space-y-0">
+                        <label className="text-[11px] font-medium text-slate-400 uppercase tracking-wider mb-1.5 block">
+                          Industry Key
+                        </label>
                         <div className="relative">
                           <select 
                             value={profile?.industry_key || ''}
                             onChange={(e) => profile && setProfile({ ...profile, industry_key: e.target.value })}
-                            className="w-full bg-zinc-900 border border-zinc-800 rounded-sm px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400 transition-all duration-200 text-white appearance-none [&>option]:bg-[#1A1D21]"
+                            className="w-full bg-[#0E131F] border border-white/[0.09] text-slate-100 text-xs rounded-[6px] h-9 px-3 focus:outline-none focus:border-blue-500/70 focus:ring-1 focus:ring-blue-500/30 transition-all duration-100 cursor-pointer [&>option]:bg-[#0E131F] [&>option]:text-slate-100"
                           >
                             <option value="textile">Textile Mill</option>
                             <option value="garment">Garment Factory</option>
@@ -738,22 +680,26 @@ export default function SettingsPage() {
                           </select>
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Tax Number (NTN/VAT)</label>
+                      <div className="space-y-0">
+                        <label className="text-[11px] font-medium text-slate-400 uppercase tracking-wider mb-1.5 block">
+                          Tax Number (NTN/VAT)
+                        </label>
                         <input 
                           value={profile?.tax_number || ''}
                           onChange={(e) => profile && setProfile({ ...profile, tax_number: e.target.value })}
                           placeholder="e.g. 1234567-8"
-                          className="w-full bg-zinc-900 border border-zinc-800 rounded-sm px-4 py-3 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400 transition-all duration-200 text-white"
+                          className="w-full bg-[#0E131F] border border-white/[0.09] text-slate-100 text-xs rounded-[6px] h-9 px-3 placeholder:text-slate-600 focus:outline-none focus:border-blue-500/70 focus:ring-1 focus:ring-blue-500/30 transition-all duration-100 font-mono"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Default Currency</label>
+                      <div className="space-y-0">
+                        <label className="text-[11px] font-medium text-slate-400 uppercase tracking-wider mb-1.5 block">
+                          Default Currency
+                        </label>
                         <div className="relative">
                           <select 
                             value={profile?.currency || 'PKR'}
                             onChange={(e) => profile && setProfile({ ...profile, currency: e.target.value })}
-                            className="w-full bg-zinc-900 border border-zinc-800 rounded-sm px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400 transition-all duration-200 text-white appearance-none [&>option]:bg-[#1A1D21]"
+                            className="w-full bg-[#0E131F] border border-white/[0.09] text-slate-100 text-xs rounded-[6px] h-9 px-3 focus:outline-none focus:border-blue-500/70 focus:ring-1 focus:ring-blue-500/30 transition-all duration-100 cursor-pointer [&>option]:bg-[#0E131F] [&>option]:text-slate-100"
                           >
                             <option value="PKR">PKR — Pakistani Rupee</option>
                             <option value="USD">USD — US Dollar</option>
@@ -764,23 +710,27 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Primary Address</label>
+                    <div className="space-y-0">
+                      <label className="text-[11px] font-medium text-slate-400 uppercase tracking-wider mb-1.5 block">
+                        Primary Address
+                      </label>
                       <textarea 
                         value={profile?.address || ''}
                         onChange={(e) => profile && setProfile({ ...profile, address: e.target.value })}
                         rows={3}
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-sm px-4 py-3 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400 transition-all duration-200 text-white resize-none"
+                        placeholder="e.g. Factory #4, Industrial Estate, Sector 12"
+                        className="w-full bg-[#0E131F] border border-white/[0.09] text-slate-100 text-xs rounded-[6px] p-3 placeholder:text-slate-600 focus:outline-none focus:border-blue-500/70 focus:ring-1 focus:ring-blue-500/30 transition-all duration-100 resize-none min-h-[72px]"
                       />
                     </div>
 
-                    <div className="pt-4">
+                    <div className="pt-2">
                       <button 
                         onClick={handleSaveProfile}
                         disabled={isSaving}
-                        className="bg-[#60A5FA] text-white px-6 py-2.5 text-sm font-medium hover:bg-blue-400 transition-colors flex items-center gap-2 rounded disabled:opacity-50"
+                        style={{ backgroundColor: 'var(--color-primary, #2563eb)' }}
+                        className="h-9 px-4 hover:brightness-110 text-white text-xs font-medium rounded-[6px] transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                       >
-                        {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                        {isSaving ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />}
                         <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
                       </button>
                     </div>
@@ -1602,11 +1552,7 @@ export default function SettingsPage() {
 
               </AnimatePresence>
 
-            </div>
-          </div>
-        </div>
-      </main>
-    </div>
+      </div>
 
       {/* License Activation Modal */}
       <AnimatePresence>

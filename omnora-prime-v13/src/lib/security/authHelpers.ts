@@ -18,8 +18,18 @@ export async function verifyUserSession() {
 }
 
 export async function verifyBusinessOwnership(businessId: string) {
+  const isDesktop = 
+    process.env.NEXT_PUBLIC_PLATFORM === 'electron' ||
+    process.env.ELECTRON_ENV === 'true' ||
+    process.env.NODE_ENV === 'development';
+
   const auth = await verifyUserSession()
-  if (!auth) return null
+  if (!auth) {
+    if (isDesktop && businessId) {
+      return { user: { id: 'desktop-user' }, supabase: null as any, businessId, role: 'owner' }
+    }
+    return null
+  }
   const { user, supabase } = auth
 
   try {

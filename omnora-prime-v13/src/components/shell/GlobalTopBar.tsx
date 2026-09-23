@@ -28,19 +28,6 @@ import Image from 'next/image'
 import { CloudSyncIndicator } from './CloudSyncIndicator'
 import { NotificationBell } from './NotificationBell'
 
-const PRESET_AVATARS = [
-  { id: 1, src: '/images/presets/preset-1.png', border: '#22d3ee' },
-  { id: 2, src: '/images/presets/preset-2.png', border: '#22d3ee' },
-  { id: 3, src: '/images/presets/preset-3.png', border: '#22d3ee' },
-  { id: 4, src: '/images/presets/preset-4.png', border: '#22d3ee' },
-  { id: 5, src: '/images/presets/preset-5.png', border: '#22d3ee' },
-  { id: 6, src: '/images/presets/preset-6.png', border: '#22d3ee' },
-  { id: 7, src: '/images/presets/preset-7.png', border: '#22d3ee' },
-  { id: 8, src: '/images/presets/preset-8.png', border: '#22d3ee' },
-  { id: 9, src: '/images/presets/preset-9.png', border: '#22d3ee' },
-  { id: 10, src: '/images/presets/preset-10.png', border: '#22d3ee' },
-];
-
 export default React.memo(function GlobalTopBar() {
   const pathname = usePathname()
   const router = useRouter()
@@ -86,6 +73,7 @@ export default React.memo(function GlobalTopBar() {
   })
   
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [statusFlyoutOpen, setStatusFlyoutOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [isOnline, setIsOnline] = useState(() => 
     typeof navigator !== 'undefined' ? navigator.onLine : true
@@ -186,131 +174,135 @@ export default React.memo(function GlobalTopBar() {
 
   const isElectron = typeof window !== 'undefined' && !!(window as any).electronWindow;
 
+  const activeDeviceCount = bridgeDeviceCount !== null ? bridgeDeviceCount : deviceCount;
+
   return (
     <>
-      <header className={cn(
-        "h-14 border-b border-noxis-border flex items-center px-6 bg-[#0B0F17] sticky z-40 w-full",
-        isElectron ? "top-10" : "top-0"
-      )}>
-        {/* LEFT: Search */}
-        <div className="flex-1 flex items-center">
-          <div className="relative group w-[240px]" data-tour="search-bar">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-noxis-text-muted group-focus-within:text-noxis-accent transition-colors" />
+      <header 
+        className={cn(
+          "h-12 border-b border-white/[0.06] flex items-center justify-between px-4 sticky z-40 w-full select-none font-inter transition-colors duration-200",
+          isElectron ? "top-10" : "top-0"
+        )}
+        style={{
+          backgroundColor: 'color-mix(in srgb, var(--color-bg, #0B0E14) 95%, #000000)'
+        }}
+      >
+        {/* ── ZONE 1 (LEFT): Search & Shortcut Trigger ── */}
+        <div className="flex items-center gap-2">
+          <div className="relative group w-[220px]" data-tour="search-bar">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-slate-200 transition-colors" />
             <input 
               type="text"
               placeholder="Search anything..."
               onClick={() => window.dispatchEvent(new CustomEvent('open-global-search'))}
               readOnly
-              className="w-full h-9 pl-9 pr-4 bg-noxis-overlay border border-noxis-border rounded-full text-[11px] text-noxis-text placeholder:text-noxis-text-muted focus:outline-none focus:border-noxis-accent transition-all cursor-pointer"
+              className="w-full h-8 pl-8 pr-12 bg-[#131823] border border-white/[0.08] rounded-[4px] text-xs text-slate-300 placeholder:text-slate-500 focus:outline-none focus:border-white/[0.16] transition-colors cursor-pointer"
             />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded border border-noxis-border bg-noxis-overlay text-[9px] text-noxis-text-muted font-mono">
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 px-1 py-0.2 rounded-[2px] border border-white/[0.08] bg-white/[0.03] text-[9px] text-slate-400 font-mono">
               Ctrl+K
             </div>
           </div>
           
-          <motion.button 
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
+          <button 
             onClick={() => window.dispatchEvent(new CustomEvent('sentinel:open'))}
-            className="ml-4 p-2 bg-noxis-overlay border border-noxis-border rounded-full text-noxis-accent hover:bg-noxis-accent/10 transition-all group relative"
+            className="h-8 w-8 flex items-center justify-center bg-[#131823] border border-white/[0.08] rounded-[4px] text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] transition-colors relative cursor-pointer"
             title="Sentinel AI Assistant (Ctrl+Shift+S)"
           >
-            <Mic size={14} className="group-hover:animate-pulse" />
-            <div className="absolute -top-1 -right-1 w-2 h-2 bg-noxis-accent rounded-full border border-noxis-bg animate-ping" />
-          </motion.button>
+            <Mic size={14} />
+          </button>
         </div>
 
-        {/* CENTER: The Pulse */}
-        <div className="flex items-center space-x-8" data-tour="hub-status">
-          {/* Hub Connection */}
-          <div className="flex items-center space-x-2">
-            <div className="relative flex items-center justify-center w-1.5 h-1.5 flex-shrink-0">
-              <div className={cn("w-1.5 h-1.5 rounded-full z-10 transition-all duration-300", isOnline ? "bg-[#39FF14] shadow-[0_0_8px_#39FF14]" : "bg-red-500 shadow-[0_0_8px_#EF4444]")} />
-              {isOnline && (
-                <motion.div 
-                  animate={{ scale: [1, 1.8, 1], opacity: [0.8, 0.2, 0.8] }}
-                  transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                  className="absolute inset-0 bg-[#39FF14] rounded-full"
-                />
-              )}
-            </div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-noxis-text-muted">
-              {isOnline ? 'Hub Online' : 'Hub Offline'}
-            </span>
-          </div>
-
-          {/* Connected Devices */}
-          <div className="flex items-center space-x-2 px-6 border-x border-noxis-border">
-            <Smartphone size={14} className="text-gray-500" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-noxis-text">
-              {bridgeDeviceCount !== null ? bridgeDeviceCount : deviceCount} {(bridgeDeviceCount !== null ? bridgeDeviceCount : deviceCount) === 1 ? 'Device' : 'Devices'}
-            </span>
-          </div>
-
-          {/* Sync Status */}
-          <div className="flex items-center space-x-2">
-            <div className="relative flex items-center justify-center w-1.5 h-1.5 flex-shrink-0">
-              <div className={cn(
-                "w-1.5 h-1.5 rounded-full z-10 transition-all duration-300", 
-                syncState === 'synced' ? 'bg-[#00E5FF] shadow-[0_0_8px_#00E5FF]' : 
-                syncState === 'syncing' ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]' : 'bg-red-500 shadow-[0_0_8px_#EF4444]'
-              )} />
-              {syncState === 'synced' && (
-                <motion.div 
-                  animate={{ scale: [1, 1.8, 1], opacity: [0.8, 0.2, 0.8] }}
-                  transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                  className="absolute inset-0 bg-[#00E5FF] rounded-full"
-                />
-              )}
-              {syncState === 'syncing' && (
-                <motion.div 
-                  animate={{ scale: [1, 1.8, 1], opacity: [0.8, 0.2, 0.8] }}
-                  transition={{ duration: 1.0, repeat: Infinity, ease: "easeInOut" }}
-                  className="absolute inset-0 bg-amber-400 rounded-full"
-                />
-              )}
-            </div>
+        {/* ── ZONE 2 (CENTER): Consolidated Operational Status Pill ── */}
+        <div className="relative" data-tour="hub-status">
+          <button
+            onClick={() => setStatusFlyoutOpen(!statusFlyoutOpen)}
+            className="flex items-center gap-2 px-2.5 py-1 rounded-[4px] bg-[#131823] border border-white/[0.08] hover:border-white/[0.14] transition-colors text-xs cursor-pointer select-none"
+          >
             <span className={cn(
-              "text-[10px] font-black uppercase tracking-widest",
-              syncState === 'synced' ? 'text-[#00E5FF]' : 
-              syncState === 'syncing' ? 'text-amber-500' : 'text-red-500'
-            )}>
-              {syncState === 'synced' ? 'Synced' : syncState === 'syncing' ? 'Syncing...' : 'Offline'}
+              "w-1.5 h-1.5 rounded-full flex-shrink-0",
+              !isOnline ? "bg-red-400" : syncState === 'syncing' ? "bg-amber-400" : "bg-emerald-400"
+            )} />
+            <span className="font-medium text-slate-200 text-[12px]">
+              {!isOnline ? 'Offline Mode' : syncState === 'syncing' ? 'Syncing...' : 'All Systems Normal'}
             </span>
-          </div>
+            <span className="text-slate-600 font-mono text-[11px]">|</span>
+            <span className="text-slate-400 font-mono text-[11px]">
+              {activeDeviceCount} {activeDeviceCount === 1 ? 'Device' : 'Devices'}
+            </span>
+            <span className="text-slate-600 font-mono text-[11px]">|</span>
+            <span className={cn(
+              "font-mono text-[11px]",
+              syncState === 'synced' ? "text-emerald-400/90" : syncState === 'syncing' ? "text-amber-400" : "text-red-400"
+            )}>
+              {syncState === 'synced' ? 'Sync 100%' : syncState === 'syncing' ? `Queue ${localQueueCount}` : 'Offline'}
+            </span>
+          </button>
 
-          <CloudSyncIndicator />
+          {/* Interactive Popover for Detailed Telemetry */}
+          <AnimatePresence>
+            {statusFlyoutOpen && (
+              <>
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setStatusFlyoutOpen(false)} 
+                />
+                <motion.div
+                  initial={{ opacity: 0, y: 4, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 4, scale: 0.98 }}
+                  transition={{ duration: 0.1 }}
+                  className="absolute left-1/2 -translate-x-1/2 mt-1.5 w-72 bg-[#131823] border border-white/[0.08] rounded-[6px] shadow-2xl z-50 p-3 space-y-2.5 text-xs select-none"
+                >
+                  <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
+                    <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">System Telemetry</span>
+                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded-[3px] border border-emerald-500/20">
+                      Operational
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 text-[11px]">
+                    <div className="flex items-center justify-between text-slate-300">
+                      <span className="text-slate-400">Hub Connectivity</span>
+                      <span className="font-mono text-slate-200">{isOnline ? 'Active (WebSocket Mesh)' : 'Disconnected'}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-slate-300">
+                      <span className="text-slate-400">Paired Hardware</span>
+                      <span className="font-mono text-slate-200">{activeDeviceCount} Online Nodes</span>
+                    </div>
+                    <div className="flex items-center justify-between text-slate-300">
+                      <span className="text-slate-400">Local Buffer Queue</span>
+                      <span className="font-mono text-slate-200">{localQueueCount} pending items</span>
+                    </div>
+                    <div className="flex items-center justify-between text-slate-300">
+                      <span className="text-slate-400">Cloud Sync Engine</span>
+                      <span className="font-mono text-slate-200">{syncState === 'synced' ? 'Synchronized (0ms latency)' : 'Sync In Progress'}</span>
+                    </div>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+        </div>
 
+        {/* ── ZONE 3 (RIGHT): System Telemetry, Notifications & User ── */}
+        <div className="flex items-center gap-2.5">
           {updateReady && (
             <Link href="/settings/updates" prefetch={true}>
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold animate-pulse hover:bg-emerald-500/25 transition-colors cursor-pointer ml-3">
-                <Zap size={10} />
-                v{updateVersion} ready
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[11px] font-mono hover:bg-blue-500/15 transition-colors cursor-pointer">
+                <Zap size={11} />
+                <span>v{updateVersion} ready</span>
               </div>
             </Link>
           )}
-        </div>
-
-        {/* RIGHT: Notifications & User */}
-        <div className="flex-1 flex items-center justify-end space-x-4">
-          <button
-            onClick={() => setFeedbackOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-[#C5A059]/30 text-[#C5A059] hover:bg-[#C5A059]/10 transition-colors"
-            title="Share feedback"
-          >
-            ★ Feedback
-          </button>
 
           <NotificationBell />
 
-          <div className="h-6 w-[1px] bg-noxis-border mx-2" />
+          <div className="h-4 w-[1px] bg-white/[0.08]" />
 
           <LanguageSwitcher />
 
-          <div className="h-6 w-[1px] bg-noxis-border mx-2" />
-
           {branches.length > 1 && (
-            <div className="relative flex items-center">
+            <>
+              <div className="h-4 w-[1px] bg-white/[0.08]" />
               <select
                 value={currentBranchId || 'all'}
                 onChange={e => {
@@ -328,11 +320,9 @@ export default React.memo(function GlobalTopBar() {
                     }
                   }
                 }}
-                className="bg-[#0F1114] border border-white/8 text-white text-xs px-3 py-1.5 outline-none focus:border-[#60A5FA]/40 cursor-pointer rounded-sm"
+                className="bg-[#131823] border border-white/[0.08] text-slate-300 text-xs px-2 py-1 outline-none focus:border-white/[0.16] cursor-pointer rounded-[4px]"
               >
-                <option value="all">
-                  All Branches
-                </option>
+                <option value="all">All Branches</option>
                 {branches.map((b: any) => (
                   <option key={b.id} value={b.id}>
                     {b.name}
@@ -340,55 +330,33 @@ export default React.memo(function GlobalTopBar() {
                   </option>
                 ))}
               </select>
-              <div className="h-6 w-[1px] bg-noxis-border mx-2" />
-            </div>
+            </>
           )}
 
+          <div className="h-4 w-[1px] bg-white/[0.08]" />
+
+          {/* User Workspace Dropdown */}
           <div className="relative">
             <button 
               onClick={() => setIsProfileOpen(!isProfileOpen)}
               data-tour="user-menu"
-              className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
+              className="flex items-center gap-2 p-1 rounded-[4px] hover:bg-white/[0.04] transition-colors border border-transparent hover:border-white/[0.06] cursor-pointer"
             >
-              {(() => {
-                const initials = (() => {
-                  const name = (profile as any)?.owner_name?.trim() || profile?.business_name?.trim() || 'N';
-                  const parts = name.split(/\s+/).filter(Boolean);
-                  if (parts.length >= 2) {
-                    return (parts[0][0] + parts[1][0]).toUpperCase();
-                  }
-                  return name.substring(0, Math.min(name.length, 2)).toUpperCase();
-                })();
-
-                if (profile?.avatar_type === 'custom' && profile?.avatar_url) {
-                  return (
-                    <div className="w-8 h-8 rounded-full border border-noxis-border bg-noxis-overlay overflow-hidden flex items-center justify-center relative">
-                      <Image src={profile.avatar_url} alt="Profile" width={32} height={32} className="w-full h-full object-cover" />
-                    </div>
-                  );
-                }
-
-                // Fallback to preset
-                const presetId = Number(profile?.avatar_preset_id || 1);
-                const preset = PRESET_AVATARS.find(p => p.id === presetId) || PRESET_AVATARS[0];
-
-                return (
-                  <div 
-                    style={{ borderColor: preset.border }}
-                    className="w-8 h-8 rounded-full border flex items-center justify-center overflow-hidden bg-black/40 shadow-[0_0_8px_rgba(34,211,238,0.2)] relative"
-                  >
-                    <Image src={preset.src} alt="Preset Avatar" width={32} height={32} className="w-full h-full object-cover" />
-                  </div>
-                );
-              })()}
+              <div className="w-6 h-6 rounded-[4px] bg-slate-900 border border-white/[0.08] flex items-center justify-center text-[10px] font-mono text-slate-300 overflow-hidden flex-shrink-0">
+                {(profile?.logo_url || profile?.avatar_url) ? (
+                  <img
+                    src={profile.logo_url || profile.avatar_url}
+                    alt="Brand"
+                    className="w-full h-full object-contain p-0.5"
+                  />
+                ) : (
+                  (profile?.owner_name || profile?.business_name || 'G')[0].toUpperCase()
+                )}
+              </div>
               <div className="text-left hidden md:block">
-                <div className="flex items-center gap-2">
-                  <p className="text-[10px] font-black text-noxis-text uppercase tracking-tight truncate max-w-[120px]">
-                    {profile?.business_name || 'Noxis Hub'}
-                  </p>
-                  <TierBadge />
-                </div>
-                <p className="text-[9px] text-noxis-text-muted font-bold uppercase tracking-widest">Administrator</p>
+                <p className="text-[12px] font-medium text-slate-200 truncate max-w-[120px]">
+                  {profile?.business_name || 'Gold She Garments'}
+                </p>
               </div>
             </button>
 
@@ -400,18 +368,18 @@ export default React.memo(function GlobalTopBar() {
                     onClick={() => setIsProfileOpen(false)} 
                   />
                   <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    initial={{ opacity: 0, y: 4, scale: 0.98 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute right-0 mt-2 w-48 bg-noxis-surface border border-noxis-border rounded-sm shadow-2xl z-50 py-1"
+                    exit={{ opacity: 0, y: 4, scale: 0.98 }}
+                    transition={{ duration: 0.1 }}
+                    className="absolute right-0 mt-1.5 w-48 bg-[#131823] border border-white/[0.08] rounded-[6px] shadow-2xl z-50 py-1"
                   >
-                    <div className="px-4 py-2 border-b border-noxis-border">
-                      <p className="text-[10px] font-bold text-noxis-text uppercase tracking-tight truncate">
-                        {profile?.business_name || 'Noxis Hub'}
+                    <div className="px-3 py-2 border-b border-white/[0.06]">
+                      <p className="text-[12px] font-medium text-slate-200 truncate">
+                        {profile?.business_name || 'Gold She Garments'}
                       </p>
-                      <p className="text-[8px] text-noxis-text-muted font-mono uppercase tracking-widest mt-0.5">
-                        Administrator
+                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                        {profile?.owner_name || 'Administrator'}
                       </p>
                     </div>
                     
@@ -419,10 +387,10 @@ export default React.memo(function GlobalTopBar() {
                       href="/settings"
                       prefetch={true}
                       onClick={() => setIsProfileOpen(false)}
-                      className="flex items-center w-full px-4 py-2 text-[10px] font-bold text-noxis-text-muted hover:text-noxis-text hover:bg-noxis-overlay transition-colors uppercase tracking-wider"
+                      className="flex items-center w-full px-3 py-1.5 text-xs text-slate-300 hover:text-white hover:bg-white/[0.04] transition-colors"
                     >
-                      <Settings className="w-3.5 h-3.5 mr-2" />
-                      Settings
+                      <Settings className="w-3.5 h-3.5 mr-2 text-slate-400" />
+                      Settings & Hub
                     </Link>
                     <button 
                       onClick={async () => {
@@ -439,7 +407,7 @@ export default React.memo(function GlobalTopBar() {
                           toast.error('Could not sign out. Please try again.');
                         }
                       }}
-                      className="flex items-center w-full px-4 py-2 text-[10px] font-bold text-noxis-danger hover:bg-noxis-danger/10 transition-colors text-left uppercase tracking-wider border-t border-noxis-border"
+                      className="flex items-center w-full px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 transition-colors text-left border-t border-white/[0.06] cursor-pointer"
                     >
                       <LogOut className="w-3.5 h-3.5 mr-2" />
                       Log Out

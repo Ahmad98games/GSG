@@ -206,81 +206,121 @@ export default function BackupPage() {
 
       const wb = XLSX.utils.book_new();
 
+      const defaultColWidths = [
+        { wch: 18 }, { wch: 28 }, { wch: 18 }, { wch: 12 },
+        { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }
+      ];
+
       // Sheet 1: Inventory
       const skusList = backupObj.skus || [];
       const skusData = skusList.map((sku: any) => ({
-        'SKU Code': sku.sku_code,
-        'Product Name': sku.name,
-        'Category': sku.category || '',
-        'Unit': sku.unit,
-        'Qty on Hand': sku.qty_on_hand,
-        'Cost Price': sku.cost_price,
-        'Sale Price': sku.sale_price,
-        'Reorder Level': sku.reorder_level || 0,
-        'Status': sku.is_active ? 'Active' : 'Inactive',
+        'SKU Code': sku.sku_code || sku.barcode || '',
+        'Product Name': sku.name || '',
+        'Category': sku.category || 'General',
+        'Unit': sku.unit || 'Piece',
+        'Qty on Hand': Number(sku.qty_on_hand || 0),
+        'Cost Price': Number(sku.cost_price || 0),
+        'Sale Price': Number(sku.sale_price || 0),
+        'Reorder Level': Number(sku.reorder_level || 0),
+        'Status': sku.is_active === false ? 'Inactive' : 'Active',
       }));
-      const wsSkus = XLSX.utils.json_to_sheet(skusData);
+      const wsSkus = skusData.length > 0 
+        ? XLSX.utils.json_to_sheet(skusData)
+        : XLSX.utils.aoa_to_sheet([['SKU Code', 'Product Name', 'Category', 'Unit', 'Qty on Hand', 'Cost Price', 'Sale Price', 'Reorder Level', 'Status']]);
+      wsSkus['!cols'] = defaultColWidths;
       XLSX.utils.book_append_sheet(wb, wsSkus, 'Inventory');
 
       // Sheet 2: Parties
       const partiesList = backupObj.parties || [];
       const partiesData = partiesList.map((party: any) => ({
-        'Party Name': party.name,
-        'Classification': party.party_type,
-        'Phone': party.phone || '',
-        'Address': party.address || '',
-        'Credit Limit': party.credit_limit || 0,
-        'Credit Days': party.credit_days || 0,
-        'Current Balance': party.current_balance || 0,
-        'Status': party.is_blocked ? 'Blocked' : 'Active',
+        'Party Name': party.name || '',
+        'Classification': party.party_type || 'Customer',
+        'Phone': party.phone || party.secondary_phone || '',
+        'Address': party.address || party.city || '',
+        'Credit Limit': Number(party.credit_limit || 0),
+        'Credit Days': Number(party.credit_terms_days ?? party.credit_days ?? 0),
+        'Current Balance': Number(party.current_balance || 0),
+        'Status': (party.is_blocked || party.is_active === false) ? 'Blocked' : 'Active',
       }));
-      const wsParties = XLSX.utils.json_to_sheet(partiesData);
+      const wsParties = partiesData.length > 0
+        ? XLSX.utils.json_to_sheet(partiesData)
+        : XLSX.utils.aoa_to_sheet([['Party Name', 'Classification', 'Phone', 'Address', 'Credit Limit', 'Credit Days', 'Current Balance', 'Status']]);
+      wsParties['!cols'] = defaultColWidths;
       XLSX.utils.book_append_sheet(wb, wsParties, 'Parties');
 
       // Sheet 3: Karigars
       const karigarsList = backupObj.karigars || [];
       const karigarsData = karigarsList.map((k: any) => ({
-        'Karigar Code': k.karigar_code,
-        'Name': k.name,
+        'Karigar Code': k.karigar_code || '',
+        'Name': k.name || '',
         'Phone': k.phone || '',
-        'Wage Type': k.wage_type,
-        'Piece Rate': k.piece_rate || 0,
-        'Daily Rate': k.daily_rate || 0,
-        'Monthly Salary': k.monthly_salary || 0,
-        'Current Advance': k.current_advance || 0,
-        'Status': k.status,
-        'Skill Type': k.skill_type || '',
+        'Wage Type': k.wage_type || 'piece_rate',
+        'Piece Rate': Number(k.piece_rate || 0),
+        'Daily Rate': Number(k.daily_wage ?? k.daily_rate ?? 0),
+        'Monthly Salary': Number(k.monthly_salary || 0),
+        'Current Advance': Number(k.peshgi_balance ?? k.current_advance ?? 0),
+        'Status': k.status || 'Active',
+        'Skill Type': k.skill_type || k.department || '',
         'Joining Date': k.joining_date || '',
       }));
-      const wsKarigars = XLSX.utils.json_to_sheet(karigarsData);
+      const wsKarigars = karigarsData.length > 0
+        ? XLSX.utils.json_to_sheet(karigarsData)
+        : XLSX.utils.aoa_to_sheet([['Karigar Code', 'Name', 'Phone', 'Wage Type', 'Piece Rate', 'Daily Rate', 'Monthly Salary', 'Current Advance', 'Status', 'Skill Type', 'Joining Date']]);
+      wsKarigars['!cols'] = defaultColWidths;
       XLSX.utils.book_append_sheet(wb, wsKarigars, 'Karigars');
 
       // Sheet 4: Invoices
       const invoicesList = backupObj.invoices || [];
       const invoicesData = invoicesList.map((inv: any) => ({
-        'Invoice No': inv.invoice_no,
-        'Issue Date': inv.issue_date || inv.created_at?.split('T')[0],
-        'Total Amount': inv.total || 0,
-        'Balance Due': inv.balance_due || 0,
-        'Status': inv.status,
+        'Invoice No': inv.invoice_number || inv.invoice_no || '',
+        'Issue Date': inv.issue_date || inv.created_at?.split('T')[0] || '',
+        'Total Amount': Number(inv.total ?? inv.grand_total ?? inv.total_amount ?? 0),
+        'Balance Due': Number(inv.balance_due ?? inv.remaining_amount ?? 0),
+        'Status': inv.status || 'pending',
         'Due Date': inv.due_date || '',
       }));
-      const wsInvoices = XLSX.utils.json_to_sheet(invoicesData);
+      const wsInvoices = invoicesData.length > 0
+        ? XLSX.utils.json_to_sheet(invoicesData)
+        : XLSX.utils.aoa_to_sheet([['Invoice No', 'Issue Date', 'Total Amount', 'Balance Due', 'Status', 'Due Date']]);
+      wsInvoices['!cols'] = defaultColWidths;
       XLSX.utils.book_append_sheet(wb, wsInvoices, 'Invoices');
 
       // Sheet 5: Ledger
       const ledgerList = backupObj.ledger_entries || [];
       const ledgerData = ledgerList.map((entry: any) => ({
-        'Date': entry.posted_at || entry.created_at?.split('T')[0],
-        'Tx Ref': entry.tx_ref || '',
-        'Debit': entry.debit || 0,
-        'Credit': entry.credit || 0,
-        'Type': entry.entry_type || '',
-        'Amount': entry.amount || 0,
+        'Date': entry.posted_at || entry.date || entry.created_at?.split('T')[0] || '',
+        'Tx Ref': entry.tx_ref || entry.reference || '',
+        'Debit': Number(entry.debit || 0),
+        'Credit': Number(entry.credit || 0),
+        'Type': entry.entry_type || entry.type || '',
+        'Amount': Number(entry.amount ?? (entry.debit || entry.credit) ?? 0),
         'Description': entry.description || '',
       }));
-      const wsLedger = XLSX.utils.json_to_sheet(ledgerData);
+      const wsLedger = ledgerData.length > 0
+        ? XLSX.utils.json_to_sheet(ledgerData)
+        : XLSX.utils.aoa_to_sheet([['Date', 'Tx Ref', 'Debit', 'Credit', 'Type', 'Amount', 'Description']]);
+      wsLedger['!cols'] = defaultColWidths;
       XLSX.utils.book_append_sheet(wb, wsLedger, 'Ledger');
+
+      // Sheet 6: Summary
+      const bizInfo = backupObj.business_profiles?.[0] || profile || {};
+      const summaryRows = [
+        ['NOXIS INDUSTRIAL ERP - DATA EXPORT SUMMARY'],
+        [''],
+        ['Business Name', bizInfo.business_name || 'Noxis Business'],
+        ['Export Timestamp', new Date().toISOString()],
+        [''],
+        ['TABLE NAME', 'RECORD COUNT'],
+        ['Inventory / SKUs', skusData.length],
+        ['Parties / Customers / Suppliers', partiesData.length],
+        ['Karigars / Workers', karigarsData.length],
+        ['Invoices', invoicesData.length],
+        ['Ledger Transactions', ledgerData.length],
+        ['Total Records Exported', skusData.length + partiesData.length + karigarsData.length + invoicesData.length + ledgerData.length]
+      ];
+      const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
+      wsSummary['!cols'] = [{ wch: 35 }, { wch: 25 }];
+      XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
 
       const businessName = (profile?.business_name || "noxis")
         .replace(/[^a-zA-Z0-9]/g, "_")

@@ -8,6 +8,7 @@ import ActionTrail from "@/components/ui/ActionTrail";
 import GlobalSearch from "@/components/shell/GlobalSearch";
 import { CommandPalette } from '@/components/shell/CommandPalette';
 import KeyboardShortcuts from "@/components/shell/KeyboardShortcuts";
+import ReleaseNotesModal from "@/components/shell/ReleaseNotesModal";
 import { ToastContainer } from "@/components/ui/Toast";
 
 import GlobalTopBar from "@/components/shell/GlobalTopBar";
@@ -159,10 +160,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
 
+  const hasInitializedTheme = React.useRef(false);
   React.useEffect(() => {
-    const currentThemeId = useThemeStore.getState().activeThemeId;
-    if (profile?.visual_theme && profile.visual_theme !== currentThemeId) {
-      useThemeStore.getState().setTheme(profile.visual_theme as any);
+    if (hasInitializedTheme.current) return;
+    hasInitializedTheme.current = true;
+    // Only adopt profile theme on initial load if user has never explicitly set a local theme
+    if (typeof window !== 'undefined' && profile?.visual_theme) {
+      const savedTheme = localStorage.getItem('noxis-theme');
+      if (!savedTheme) {
+        useThemeStore.getState().setTheme(profile.visual_theme as any, false);
+      }
     }
   }, [profile?.visual_theme]);
 
@@ -282,21 +289,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <ExpiryBanner />
       <UpdateBanner />
       <ToastContainer />
-      <QuickActions />
       <ActionTrail />
       <GlobalSearch />
       <CommandPalette />
       <KeyboardShortcuts />
+      <ReleaseNotesModal />
       <ThemePicker hideTrigger={true} />
       <SentinelAssistant />
       <ShortcutHelp />
       <div 
         className={cn(
           "relative min-h-screen flex flex-col transition-all duration-300",
-          isElectron ? "pt-10" : "pt-0",
           isCollapsed ? "sidebar-collapsed ps-[64px]" : "sidebar-expanded ps-[240px]"
         )}
-        style={{ "--sidebar-width": isCollapsed ? "64px" : "240px" } as React.CSSProperties}
+        style={{
+          "--sidebar-width": isCollapsed ? "64px" : "240px",
+          backgroundColor: "var(--color-bg, #0B0E14)"
+        } as React.CSSProperties}
       >
         <GlobalTopBar />
         <IndustrialSidebar />

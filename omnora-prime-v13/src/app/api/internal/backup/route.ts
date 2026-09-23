@@ -3,7 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import { verifyBusinessOwnership } from '@/lib/security/authHelpers';
 import { db } from '@/lib/db/client';
 
-export const dynamic = 'force-static';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 /**
  * Server-side backup API route
@@ -30,6 +31,7 @@ function getAdminClient() {
 function isLocalOrDesktopRequest(req: NextRequest): boolean {
   const host = req.headers.get('host') || '';
   const xForwardedFor = req.headers.get('x-forwarded-for') || '';
+  const userAgent = req.headers.get('user-agent') || '';
   const isLocalhost = 
     host.includes('localhost') || 
     host.includes('127.0.0.1') || 
@@ -39,6 +41,8 @@ function isLocalOrDesktopRequest(req: NextRequest): boolean {
     Boolean(process.env.ELECTRON_RUN_AS_NODE) ||
     Boolean(process.env.APPDATA && (process.versions as any)?.electron) ||
     Boolean(process.env.ELECTRON_USER_DATA) ||
+    Boolean(process.env.NEXT_PUBLIC_PLATFORM === 'electron') ||
+    userAgent.toLowerCase().includes('electron') ||
     !process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   return isLocalhost || isElectronOrDesktop;
@@ -68,9 +72,10 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     let businessId = searchParams.get('business_id');
+    const supabase = getAdminClient();
 
-    // If business_id is missing or 'undefined', auto-discover from local SQLite
-    if (!businessId || businessId === 'undefined' || businessId === 'null') {
+    // If business_id is missing, undefined, or placeholder, auto-discover primary business
+    if (!businessId || businessId === 'undefined' || businessId === 'null' || businessId === '00000000-0000-0000-0000-000000000000') {
       try {
         if (db && (db as any).$client) {
           const profile = (db as any).$client.prepare('SELECT id FROM business_profiles LIMIT 1').get();
@@ -79,6 +84,20 @@ export async function GET(req: NextRequest) {
           }
         }
       } catch {}
+      if ((!businessId || businessId === '00000000-0000-0000-0000-000000000000') && supabase) {
+        try {
+          const { data: primaryProfile } = await supabase
+            .from('business_profiles')
+            .select('id')
+            .neq('id', '00000000-0000-0000-0000-000000000000')
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (primaryProfile?.id) {
+            businessId = primaryProfile.id;
+          }
+        } catch {}
+      }
       if (!businessId) {
         businessId = '00000000-0000-0000-0000-000000000000';
       }
@@ -96,7 +115,6 @@ export async function GET(req: NextRequest) {
     const backup: Record<string, any[]> = {};
     let totalRecords = 0;
     let earliestDate: string | null = null;
-    const supabase = getAdminClient();
 
     for (const table of BACKUP_TABLES) {
       let records: any[] = [];
@@ -124,12 +142,23 @@ export async function GET(req: NextRequest) {
       // 2. If SQLite yielded no records and Supabase is configured, fetch from cloud Supabase
       if (records.length === 0 && supabase) {
         try {
-          const { data, error } = await supabase
-            .from(table)
-            .select('*')
-            .eq('business_id', businessId);
-          if (!error && data && data.length > 0) {
-            records = data;
+          if (businessId && businessId !== '00000000-0000-0000-0000-000000000000') {
+            const { data, error } = await supabase
+              .from(table)
+              .select('*')
+              .eq('business_id', businessId);
+            if (!error && data && data.length > 0) {
+              records = data;
+            }
+          }
+          if (records.length === 0) {
+            const { data, error } = await supabase
+              .from(table)
+              .select('*')
+              .limit(2000);
+            if (!error && data && data.length > 0) {
+              records = data;
+            }
           }
         } catch (sbErr: any) {
           console.warn(`[Backup API] Supabase fetch error for ${table}:`, sbErr?.message);

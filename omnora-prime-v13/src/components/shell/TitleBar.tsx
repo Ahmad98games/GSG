@@ -39,7 +39,10 @@ export default React.memo(function TitleBar() {
   }
 
   return (
-    <div className="h-10 w-full bg-[#0A0C0F] border-b border-white/5 flex items-center justify-between z-[100] select-none sticky top-0">
+    <div 
+      className="h-10 w-full border-b border-white/5 flex items-center justify-between z-[100] select-none sticky top-0 transition-colors duration-200"
+      style={{ backgroundColor: 'color-mix(in srgb, var(--color-bg, #0B0E14) 98%, #000000)' }}
+    >
       {/* Draggable Area */}
       <div 
         className="flex-1 h-full flex items-center px-4 space-x-4 cursor-default"

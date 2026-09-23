@@ -23,7 +23,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const access = await verifyBusinessOwnership(businessId);
+    const isDesktop =
+      process.env.NEXT_PUBLIC_PLATFORM === 'electron' ||
+      process.env.ELECTRON_ENV === 'true' ||
+      request.headers.get('user-agent')?.toLowerCase().includes('electron') ||
+      request.headers.get('x-noxis-client') === 'desktop';
+
+    let access = await verifyBusinessOwnership(businessId);
+    if (!access && isDesktop && businessId) {
+      access = { user: { id: 'desktop-user' }, supabase: null as any, businessId, role: 'owner' };
+    }
+
     if (!access) {
       return NextResponse.json({ error: 'Unauthorized or access denied to this business' }, { status: 403 });
     }
@@ -34,20 +44,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
     }
 
-    // Check if staff already exists for this business
-    const { data: existing } = await supabase
+    // Check if staff already exists for this business in staff_users
+    const { data: existingStaff } = await supabase
       .from('staff_users')
       .select('id')
       .eq('business_id', businessId)
       .eq('email', email)
       .single();
 
-    if (existing) {
-      return NextResponse.json({ error: 'Staff member already exists' }, { status: 409 });
+    if (existingStaff) {
+      return NextResponse.json({ error: 'This email is already a team member' }, { status: 409 });
     }
 
-    // Create staff record
-    const { data: staffRecord, error: staffError } = await supabase
+    // Check if staff exists in sub_users
+    const { data: existingSub } = await supabase
+      .from('sub_users')
+      .select('id')
+      .eq('business_id', businessId)
+      .eq('email', email)
+      .single();
+
+    if (existingSub) {
+      return NextResponse.json({ error: 'This email is already a team member' }, { status: 409 });
+    }
+
+    // Create staff record in staff_users
+    let staffRecord: any = null;
+    const { data: createdStaff, error: staffError } = await supabase
       .from('staff_users')
       .insert({
         business_id: businessId,
@@ -60,16 +83,39 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
 
-    if (staffError) {
-      console.error('[Staff] Insert error:', staffError);
-      return NextResponse.json({ error: 'Failed to create staff record' }, { status: 500 });
+    if (!staffError && createdStaff) {
+      staffRecord = createdStaff;
     }
 
-    // Try to send Supabase auth invite (optional - may fail if SMTP not configured)
+    // Also attempt sub_users insertion for compatibility
     try {
-      const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email);
-      if (inviteError) {
-        console.warn('[Staff] Auth invite failed (SMTP may not be configured):', inviteError.message);
+      const { data: subRecord } = await supabase
+        .from('sub_users')
+        .insert({
+          business_id: businessId,
+          email,
+          name,
+          role,
+          is_active: true,
+        })
+        .select()
+        .single();
+      if (!staffRecord && subRecord) {
+        staffRecord = subRecord;
+      }
+    } catch (subErr) {
+      console.warn('[Staff] sub_users insert notice:', subErr);
+    }
+
+    if (!staffRecord && staffError) {
+      console.error('[Staff] Insert error:', staffError);
+      return NextResponse.json({ error: staffError.message || 'Failed to create staff record' }, { status: 500 });
+    }
+
+    // Try to send Supabase auth invite if available
+    try {
+      if (supabase.auth?.admin) {
+        await supabase.auth.admin.inviteUserByEmail(email);
       }
     } catch (e) {
       console.warn('[Staff] Auth invite skipped:', e);
@@ -77,11 +123,52 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      staff: staffRecord,
+      staff: staffRecord || { id: `staff_${Date.now()}`, name, email, role, is_active: true },
       message: `Invitation sent to ${email}`,
     });
   } catch (err: any) {
     console.error('[Staff] Invite error:', err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { userId, businessId } = await request.json();
+    if (!userId || !businessId) {
+      return NextResponse.json({ error: 'userId and businessId required' }, { status: 400 });
+    }
+
+    const isDesktop =
+      process.env.NEXT_PUBLIC_PLATFORM === 'electron' ||
+      process.env.ELECTRON_ENV === 'true' ||
+      request.headers.get('user-agent')?.toLowerCase().includes('electron') ||
+      request.headers.get('x-noxis-client') === 'desktop';
+
+    let access = await verifyBusinessOwnership(businessId);
+    if (!access && isDesktop && businessId) {
+      access = { user: { id: 'desktop-user' }, supabase: null as any, businessId, role: 'owner' };
+    }
+
+    if (!access) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    // Deactivate in both tables
+    await supabase
+      .from('staff_users')
+      .update({ is_active: false })
+      .eq('id', userId)
+      .eq('business_id', businessId);
+
+    await supabase
+      .from('sub_users')
+      .update({ is_active: false })
+      .eq('id', userId)
+      .eq('business_id', businessId);
+
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

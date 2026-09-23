@@ -51,6 +51,8 @@ export default function WebhookManagementPage() {
   return (
     <div className="bg-onyx min-h-screen text-gray-300 font-inter p-12">
       <div className="max-w-6xl mx-auto space-y-12">
+        <div>
+        </div>
         {/* Header */}
         <div className="flex justify-between items-end">
            <div>
