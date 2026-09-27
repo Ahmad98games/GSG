@@ -330,6 +330,9 @@ export default function SettingsPage() {
         url: avatarUrl || null,
         saved_at: avatarLastChanged,
       }));
+      if (logoUrl) {
+        localStorage.setItem('noxis_logo', logoUrl);
+      }
       localStorage.setItem('noxis-business-profile', JSON.stringify({
         ...profile,
         logo_url: logoUrl,
@@ -346,6 +349,9 @@ export default function SettingsPage() {
               url: avatarUrl || null,
             })
           );
+          if (logoUrl) {
+            await (window as any).electronAPI.setConfig('logo_url', logoUrl);
+          }
         } catch (err) {
           console.error('Failed to set local SQLite config via electronAPI:', err);
         }
@@ -385,8 +391,12 @@ export default function SettingsPage() {
             business_id: profile.id,
             business_name: profile.business_name || '',
             owner_name: (profile as any).owner_name || '',
+            tax_number: profile.tax_number || '',
+            currency: profile.currency || 'PKR',
+            address: profile.address || '',
+            logo_url: logoUrl || '',
             avatar_type: avatarType,
-            avatar_url: avatarUrl,
+            avatar_url: avatarUrl || '',
             avatar_last_changed: avatarLastChanged
           }
         })
@@ -532,23 +542,27 @@ export default function SettingsPage() {
                                       if (file && profile) {
                                         setIsSaving(true);
                                         try {
-                                          const ext = file.name.split('.').pop();
-                                          const path = `logos/${profile.id || 'brand'}-${Date.now()}.${ext}`;
-                                          const { error: uploadError } = await supabase.storage
-                                            .from('logos')
-                                            .upload(path, file, { upsert: true });
+                                          const dataUrl = await new Promise<string>((resolve) => {
+                                            const reader = new FileReader();
+                                            reader.onload = () => resolve(reader.result as string);
+                                            reader.readAsDataURL(file);
+                                          });
 
-                                          let publicUrl = '';
-                                          if (!uploadError) {
-                                            const res = supabase.storage.from('logos').getPublicUrl(path);
-                                            publicUrl = res.data.publicUrl;
-                                          } else {
-                                            publicUrl = await new Promise((resolve) => {
-                                              const reader = new FileReader();
-                                              reader.onload = () => resolve(reader.result as string);
-                                              reader.readAsDataURL(file);
-                                            });
-                                          }
+                                          let publicUrl = dataUrl;
+                                          try {
+                                            const ext = file.name.split('.').pop();
+                                            const path = `logos/${profile.id || 'brand'}-${Date.now()}.${ext}`;
+                                            const { error: uploadError } = await supabase.storage
+                                              .from('logos')
+                                              .upload(path, file, { upsert: true });
+
+                                            if (!uploadError) {
+                                              const res = supabase.storage.from('logos').getPublicUrl(path);
+                                              if (res.data?.publicUrl) {
+                                                publicUrl = res.data.publicUrl;
+                                              }
+                                            }
+                                          } catch {}
 
                                           const nowIso = new Date().toISOString();
                                           const updated = {
@@ -568,7 +582,31 @@ export default function SettingsPage() {
                                             url: publicUrl,
                                             saved_at: nowIso,
                                           }));
+                                          localStorage.setItem('noxis_logo', publicUrl);
                                           localStorage.setItem('noxis-business-profile', JSON.stringify(updated));
+
+                                          if ((window as any).electronAPI?.setConfig) {
+                                            try {
+                                              await (window as any).electronAPI.setConfig('logo_url', publicUrl);
+                                              await (window as any).electronAPI.setConfig('avatar', JSON.stringify({ type: 'custom', url: publicUrl }));
+                                            } catch {}
+                                          }
+
+                                          // Also sync to local SQLite table localConfig
+                                          fetch('/api/settings', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({
+                                              type: 'local_config',
+                                              data: {
+                                                business_id: profile.id,
+                                                logo_url: publicUrl,
+                                                avatar_url: publicUrl,
+                                                avatar_type: 'custom',
+                                                avatar_last_changed: nowIso
+                                              }
+                                            })
+                                          }).catch(() => {});
 
                                           toastSuccess("Brand logo updated", "Updated across sidebar and workspace headers.");
                                         } catch (err: any) {

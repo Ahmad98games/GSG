@@ -22,6 +22,7 @@ export function initAutoUpdater(win: BrowserWindow): void {
   // We handle the install manually so we can save state first
 
   autoUpdater.allowPrerelease = false
+  autoUpdater.allowDowngrade = true
   autoUpdater.setFeedURL({
     provider: 'generic',
     url: 'https://noxishub.app/updates/stable',

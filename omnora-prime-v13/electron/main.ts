@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, utilityProcess, UtilityProcess } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, utilityProcess, UtilityProcess, powerSaveBlocker } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { spawn, ChildProcess, exec } from 'child_process';
@@ -10,6 +10,7 @@ import { execFile } from 'child_process';
 import * as net from 'net';
 import { autoUpdater } from 'electron-updater'
 import log from 'electron-log'
+import * as os from 'os'
 import { release } from 'os'
 import { deriveDbKey } from '../src/lib/security/dbKeyManager'
 import { registerOnvifHandlers } from './services/onvifService'
@@ -30,6 +31,11 @@ import store, {
   getPinHash,
   isAppLockEnabled,
   setAppLockEnabled,
+  isLocked,
+  setLocked,
+  getLockState,
+  recordFailedAttempt,
+  clearLockAttempts,
   getLockTimeout,
   setLockTimeout,
   saveLastRoute,
@@ -45,6 +51,8 @@ import store, {
   setLastSyncAt,
   getAutoStartEnabled,
   setAutoStartEnabled,
+  getKeepAwakeEnabled,
+  setKeepAwakeEnabled,
   getExitFlag,
   setExitFlag,
   getLastSeenVersion,
@@ -181,6 +189,28 @@ function getAutoStartStatus(): { enabled: boolean; registeredWithOS: boolean } {
   return {
     enabled: stored,
     registeredWithOS,
+  }
+}
+
+// ── POWER & HARDWARE MANAGEMENT (Industrial 24/7 Keep-Awake) ──
+let powerBlockerId: number | null = null
+
+function applyKeepAwake(enabled: boolean): void {
+  try {
+    if (enabled) {
+      if (powerBlockerId === null || !powerSaveBlocker.isStarted(powerBlockerId)) {
+        powerBlockerId = powerSaveBlocker.start('prevent-app-suspension')
+        startupLog(`[PowerSave] Industrial Keep-Awake active (id: ${powerBlockerId}) — Windows sleep suspended`)
+      }
+    } else {
+      if (powerBlockerId !== null && powerSaveBlocker.isStarted(powerBlockerId)) {
+        powerSaveBlocker.stop(powerBlockerId)
+        startupLog(`[PowerSave] Keep-awake stopped (id: ${powerBlockerId})`)
+        powerBlockerId = null
+      }
+    }
+  } catch (err: any) {
+    startupLog(`[PowerSave] Failed: ${err.message}`)
   }
 }
 
@@ -1641,6 +1671,22 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     return { ok: true }
   })
 
+  ipcMain.handle('store:isLocked', () => isLocked())
+
+  ipcMain.handle('store:setLocked', (_, locked: boolean) => {
+    setLocked(locked)
+    return { ok: true }
+  })
+
+  ipcMain.handle('store:getLockState', () => getLockState())
+
+  ipcMain.handle('store:recordFailedAttempt', () => recordFailedAttempt())
+
+  ipcMain.handle('store:clearLockAttempts', () => {
+    clearLockAttempts()
+    return { ok: true }
+  })
+
   // ── SESSION RESUME ──
   ipcMain.handle('store:saveLastRoute', (_, route: string) => {
     saveLastRoute(route)
@@ -1676,22 +1722,69 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   ipcMain.handle('store:getScrollPosition', (_, route: string) => getScrollPosition(route))
 
   ipcMain.handle('autostart:get', () => {
-    try {
-      return app.getLoginItemSettings().openAtLogin
-    } catch {
-      return false
-    }
+    return getAutoStartStatus()
   })
 
   ipcMain.handle('autostart:set', (_, enabled: boolean) => {
     try {
-      app.setLoginItemSettings({
-        openAtLogin: enabled,
-        openAsHidden: false,
-      })
-      return { ok: true }
+      setAutoStartEnabled(enabled)
+      applyAutoStart(enabled)
+      return { ok: true, ...getAutoStartStatus() }
     } catch (err: any) {
       return { ok: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('system:getKeepAwake', () => {
+    const enabled = getKeepAwakeEnabled()
+    const active = powerBlockerId !== null && powerSaveBlocker.isStarted(powerBlockerId)
+    return { enabled, active }
+  })
+
+  ipcMain.handle('system:setKeepAwake', (_, enabled: boolean) => {
+    try {
+      setKeepAwakeEnabled(enabled)
+      applyKeepAwake(enabled)
+      const active = powerBlockerId !== null && powerSaveBlocker.isStarted(powerBlockerId)
+      return { ok: true, enabled, active }
+    } catch (err: any) {
+      return { ok: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('system:getHardwareInfo', () => {
+    try {
+      const cpus = os.cpus() || []
+      const totalMem = os.totalmem()
+      const freeMem = os.freemem()
+      const usedMem = totalMem - freeMem
+      const heapUsed = process.memoryUsage().heapUsed
+
+      return {
+        platform: process.platform,
+        osType: os.type(),
+        osRelease: os.release(),
+        arch: os.arch(),
+        hostname: os.hostname(),
+        cpuModel: cpus[0]?.model || 'Generic Processor',
+        cpuCores: cpus.length,
+        cpuSpeedMHz: cpus[0]?.speed || 0,
+        totalMemoryGB: (totalMem / (1024 ** 3)).toFixed(2),
+        freeMemoryGB: (freeMem / (1024 ** 3)).toFixed(2),
+        usedMemoryGB: (usedMem / (1024 ** 3)).toFixed(2),
+        processMemoryMB: (heapUsed / (1024 ** 2)).toFixed(1),
+        uptimeHours: (os.uptime() / 3600).toFixed(1),
+        hwid: getCachedHWIDOrGenerate(),
+        isPackaged: app.isPackaged,
+        electronVersion: process.versions.electron,
+        nodeVersion: process.versions.node,
+        chromeVersion: process.versions.chrome,
+      }
+    } catch (err: any) {
+      return {
+        platform: process.platform,
+        error: err.message,
+      }
     }
   })
 
@@ -1852,7 +1945,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     mainWindow.on('closed', () => { mainWindow = null; });
 
     const serverUrl = `http://127.0.0.1:${PORT}`;
-    const targetUrl = `http://127.0.0.1:${PORT}/dashboard`;
+    const lockOn = isAppLockEnabled() || isLocked();
+    const targetPath = lockOn ? '/lock' : (getLastRoute() || '/dashboard');
+    const targetUrl = `http://127.0.0.1:${PORT}${targetPath}`;
 
     try {
       startupLog('[Electron] Waiting for Next.js server...');
@@ -2269,9 +2364,14 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       // ready-to-show event handles the transition.
       await createMainWindow();
 
-      if (app.isPackaged) {
-        const autoStartOn = getAutoStartEnabled()
-        applyAutoStart(autoStartOn)
+      const autoStartOn = getAutoStartEnabled()
+      if (autoStartOn) {
+        applyAutoStart(true)
+      }
+
+      const keepAwakeOn = getKeepAwakeEnabled()
+      if (keepAwakeOn) {
+        applyKeepAwake(true)
       }
 
       const wasAutoStarted = process.argv.includes('--autostart')

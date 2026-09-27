@@ -1,11 +1,14 @@
 'use client'
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 
 export function useGlobalKeyboardShortcuts() {
   const router = useRouter()
+  const pathname = usePathname()
 
   useEffect(() => {
+    if (pathname === '/lock' || pathname?.startsWith('/lock')) return
+
     const handler = (e: KeyboardEvent) => {
       // Skip if typing in an input
       const target = e.target as HTMLElement

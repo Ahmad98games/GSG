@@ -15,7 +15,7 @@ import {
   ArrowUpRight
 } from 'lucide-react'
 
-const CURRENT_VERSION = '13.1.13'
+const CURRENT_VERSION = '13.0.1'
 const STORAGE_KEY = 'noxis_last_viewed_version'
 
 interface FixItem {
@@ -27,6 +27,13 @@ interface FixItem {
 }
 
 const FIXES: FixItem[] = [
+  {
+    icon: <Sparkles className="text-emerald-400" size={18} />,
+    tag: 'Production Release',
+    tagColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    title: 'Noxis Hub v13.0.1 — Official Production Gold Master',
+    description: 'Initial production rollout featuring full industrial ERP dual-entry Khata ledger with interactive voucher print preview, offline cache persistence, and hardware-bound security.'
+  },
   {
     icon: <Zap className="text-cyan-400" size={18} />,
     tag: 'OTA Pipeline',

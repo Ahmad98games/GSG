@@ -456,13 +456,9 @@ export default function KhataPage() {
     };
   }, [rawEntries, groupedTransactions]);
 
-  // Handle Printing Thermal / PDF Slip
+  // Handle Printing Thermal / PDF Slip Preview
   const handlePrint = (tx: GroupedTransaction) => {
     setPrintingTx(tx);
-    setTimeout(() => {
-      window.print();
-      setPrintingTx(null);
-    }, 150);
   };
 
   // WhatsApp Reminder Generator
@@ -536,8 +532,14 @@ export default function KhataPage() {
 
   return (
     <div className="min-h-screen bg-[#0B0E14] text-slate-300 font-sans selection:bg-white/10 selection:text-white">
-      {/* Thermal / PDF Receipt Component */}
-      {printingTx && <LedgerReceipt transaction={printingTx} />}
+      {/* Voucher Slip Preview & Print Modal */}
+      {printingTx && (
+        <LedgerReceipt
+          transaction={printingTx}
+          isOpen={!!printingTx}
+          onClose={() => setPrintingTx(null)}
+        />
+      )}
 
       <main className="min-h-screen flex flex-col">
         {/* Header Banner */}

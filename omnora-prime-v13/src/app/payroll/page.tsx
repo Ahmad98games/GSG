@@ -122,16 +122,50 @@ export default function PayrollPage() {
   const { data: periods = [], isLoading: periodsLoading, error: periodsError } = useQuery({
     queryKey: ['payroll_periods', businessId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('payroll_periods')
-        .select(`
-          *,
-          slips_count:payroll_slips(count)
-        `)
-        .eq('business_id', businessId)
-        .order('period_start', { ascending: false });
-      if (error) throw error;
-      return data;
+      let localPeriods: any[] = [];
+      if (typeof window !== 'undefined') {
+        const cacheKey = `noxis_cached_payroll_periods_${businessId}`;
+        const raw = localStorage.getItem(cacheKey);
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) localPeriods = parsed;
+          } catch {}
+        }
+      }
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        return localPeriods;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('payroll_periods')
+          .select(`
+            *,
+            slips_count:payroll_slips(count)
+          `)
+          .eq('business_id', businessId)
+          .order('period_start', { ascending: false });
+
+        if (!error && data) {
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem(`noxis_cached_payroll_periods_${businessId}`, JSON.stringify(data));
+            } catch {}
+          }
+          return data;
+        }
+
+        if (error) {
+          console.warn('[Payroll] Remote fetch error, falling back to cache:', error);
+          return localPeriods;
+        }
+        return data || [];
+      } catch (err) {
+        console.warn('[Payroll] Network failed (offline mode):', err);
+        return localPeriods;
+      }
     },
     enabled: !!businessId
   });
@@ -139,9 +173,47 @@ export default function PayrollPage() {
   const { data: karigarStats } = useQuery({
     queryKey: ['karigar_payroll_stats', businessId],
     queryFn: async () => {
-      const { data: karigars } = await supabase.from('karigars').select('id, current_advance').eq('business_id', businessId).eq('status', 'active');
-      const totalAdvances = (karigars || []).reduce((acc: Decimal, k: { current_advance: number }) => acc.plus(new Decimal(k.current_advance)), new Decimal(0));
-      return { count: karigars?.length || 0, advances: totalAdvances };
+      let cachedCount = 0;
+      let cachedAdvances = new Decimal(0);
+      if (typeof window !== 'undefined') {
+        const raw = localStorage.getItem(`noxis_cached_karigar_stats_${businessId}`);
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            cachedCount = parsed.count || 0;
+            cachedAdvances = new Decimal(parsed.advances || 0);
+          } catch {}
+        }
+      }
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        return { count: cachedCount, advances: cachedAdvances };
+      }
+
+      try {
+        const { data: karigars, error } = await supabase
+          .from('karigars')
+          .select('id, current_advance')
+          .eq('business_id', businessId)
+          .eq('status', 'active');
+
+        if (!error && karigars) {
+          const totalAdvances = karigars.reduce((acc: Decimal, k: { current_advance: number }) => acc.plus(new Decimal(k.current_advance || 0)), new Decimal(0));
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem(`noxis_cached_karigar_stats_${businessId}`, JSON.stringify({
+                count: karigars.length,
+                advances: totalAdvances.toNumber()
+              }));
+            } catch {}
+          }
+          return { count: karigars.length, advances: totalAdvances };
+        }
+        return { count: cachedCount, advances: cachedAdvances };
+      } catch (err) {
+        console.warn('[Payroll] Karigar stats fetch failed, falling back to cache:', err);
+        return { count: cachedCount, advances: cachedAdvances };
+      }
     },
     enabled: !!businessId
   });
@@ -277,7 +349,7 @@ export default function PayrollPage() {
                  </div>
               </div>
 
-              {periodsError ? (
+              {periodsError && (!periods || periods.length === 0) ? (
                 <div className="p-20 flex flex-col items-center justify-center text-red-500 space-y-4">
                   <AlertCircle size={40} />
                   <p className="text-xs uppercase font-black tracking-widest">Error Loading Mesh: {periodsError.message}</p>

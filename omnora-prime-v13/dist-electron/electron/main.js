@@ -47,6 +47,7 @@ const crypto = __importStar(require("crypto"));
 const net = __importStar(require("net"));
 const electron_updater_1 = require("electron-updater");
 const electron_log_1 = __importDefault(require("electron-log"));
+const os = __importStar(require("os"));
 const os_1 = require("os");
 const dbKeyManager_1 = require("../src/lib/security/dbKeyManager");
 const onvifService_1 = require("./services/onvifService");
@@ -187,6 +188,28 @@ function getAutoStartStatus() {
         enabled: stored,
         registeredWithOS,
     };
+}
+// ── POWER & HARDWARE MANAGEMENT (Industrial 24/7 Keep-Awake) ──
+let powerBlockerId = null;
+function applyKeepAwake(enabled) {
+    try {
+        if (enabled) {
+            if (powerBlockerId === null || !electron_1.powerSaveBlocker.isStarted(powerBlockerId)) {
+                powerBlockerId = electron_1.powerSaveBlocker.start('prevent-app-suspension');
+                startupLog(`[PowerSave] Industrial Keep-Awake active (id: ${powerBlockerId}) — Windows sleep suspended`);
+            }
+        }
+        else {
+            if (powerBlockerId !== null && electron_1.powerSaveBlocker.isStarted(powerBlockerId)) {
+                electron_1.powerSaveBlocker.stop(powerBlockerId);
+                startupLog(`[PowerSave] Keep-awake stopped (id: ${powerBlockerId})`);
+                powerBlockerId = null;
+            }
+        }
+    }
+    catch (err) {
+        startupLog(`[PowerSave] Failed: ${err.message}`);
+    }
 }
 function startCloudflaredTunnel() {
     const cloudflaredPath = path.join(process.env['ProgramFiles'] || 'C:\\Program Files', 'Cloudflare', 'cloudflared.exe');
@@ -1461,6 +1484,17 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         (0, store_1.setLockTimeout)(minutes);
         return { ok: true };
     });
+    electron_1.ipcMain.handle('store:isLocked', () => (0, store_1.isLocked)());
+    electron_1.ipcMain.handle('store:setLocked', (_, locked) => {
+        (0, store_1.setLocked)(locked);
+        return { ok: true };
+    });
+    electron_1.ipcMain.handle('store:getLockState', () => (0, store_1.getLockState)());
+    electron_1.ipcMain.handle('store:recordFailedAttempt', () => (0, store_1.recordFailedAttempt)());
+    electron_1.ipcMain.handle('store:clearLockAttempts', () => {
+        (0, store_1.clearLockAttempts)();
+        return { ok: true };
+    });
     // ── SESSION RESUME ──
     electron_1.ipcMain.handle('store:saveLastRoute', (_, route) => {
         (0, store_1.saveLastRoute)(route);
@@ -1487,23 +1521,67 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     });
     electron_1.ipcMain.handle('store:getScrollPosition', (_, route) => (0, store_1.getScrollPosition)(route));
     electron_1.ipcMain.handle('autostart:get', () => {
-        try {
-            return electron_1.app.getLoginItemSettings().openAtLogin;
-        }
-        catch {
-            return false;
-        }
+        return getAutoStartStatus();
     });
     electron_1.ipcMain.handle('autostart:set', (_, enabled) => {
         try {
-            electron_1.app.setLoginItemSettings({
-                openAtLogin: enabled,
-                openAsHidden: false,
-            });
-            return { ok: true };
+            (0, store_1.setAutoStartEnabled)(enabled);
+            applyAutoStart(enabled);
+            return { ok: true, ...getAutoStartStatus() };
         }
         catch (err) {
             return { ok: false, error: err.message };
+        }
+    });
+    electron_1.ipcMain.handle('system:getKeepAwake', () => {
+        const enabled = (0, store_1.getKeepAwakeEnabled)();
+        const active = powerBlockerId !== null && electron_1.powerSaveBlocker.isStarted(powerBlockerId);
+        return { enabled, active };
+    });
+    electron_1.ipcMain.handle('system:setKeepAwake', (_, enabled) => {
+        try {
+            (0, store_1.setKeepAwakeEnabled)(enabled);
+            applyKeepAwake(enabled);
+            const active = powerBlockerId !== null && electron_1.powerSaveBlocker.isStarted(powerBlockerId);
+            return { ok: true, enabled, active };
+        }
+        catch (err) {
+            return { ok: false, error: err.message };
+        }
+    });
+    electron_1.ipcMain.handle('system:getHardwareInfo', () => {
+        try {
+            const cpus = os.cpus() || [];
+            const totalMem = os.totalmem();
+            const freeMem = os.freemem();
+            const usedMem = totalMem - freeMem;
+            const heapUsed = process.memoryUsage().heapUsed;
+            return {
+                platform: process.platform,
+                osType: os.type(),
+                osRelease: os.release(),
+                arch: os.arch(),
+                hostname: os.hostname(),
+                cpuModel: cpus[0]?.model || 'Generic Processor',
+                cpuCores: cpus.length,
+                cpuSpeedMHz: cpus[0]?.speed || 0,
+                totalMemoryGB: (totalMem / (1024 ** 3)).toFixed(2),
+                freeMemoryGB: (freeMem / (1024 ** 3)).toFixed(2),
+                usedMemoryGB: (usedMem / (1024 ** 3)).toFixed(2),
+                processMemoryMB: (heapUsed / (1024 ** 2)).toFixed(1),
+                uptimeHours: (os.uptime() / 3600).toFixed(1),
+                hwid: (0, hwid_1.getCachedHWIDOrGenerate)(),
+                isPackaged: electron_1.app.isPackaged,
+                electronVersion: process.versions.electron,
+                nodeVersion: process.versions.node,
+                chromeVersion: process.versions.chrome,
+            };
+        }
+        catch (err) {
+            return {
+                platform: process.platform,
+                error: err.message,
+            };
         }
     });
     electron_1.ipcMain.handle('sync:getLastSyncAt', () => {
@@ -1641,7 +1719,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         mainWindow.on('unmaximize', () => mainWindow?.webContents.send('maximize-changed', false));
         mainWindow.on('closed', () => { mainWindow = null; });
         const serverUrl = `http://127.0.0.1:${PORT}`;
-        const targetUrl = `http://127.0.0.1:${PORT}/dashboard`;
+        const lockOn = (0, store_1.isAppLockEnabled)() || (0, store_1.isLocked)();
+        const targetPath = lockOn ? '/lock' : ((0, store_1.getLastRoute)() || '/dashboard');
+        const targetUrl = `http://127.0.0.1:${PORT}${targetPath}`;
         try {
             startupLog('[Electron] Waiting for Next.js server...');
             await waitForServer(serverUrl, 90000, 300);
@@ -2007,9 +2087,13 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             // Splash stays visible while this loads.
             // ready-to-show event handles the transition.
             await createMainWindow();
-            if (electron_1.app.isPackaged) {
-                const autoStartOn = (0, store_1.getAutoStartEnabled)();
-                applyAutoStart(autoStartOn);
+            const autoStartOn = (0, store_1.getAutoStartEnabled)();
+            if (autoStartOn) {
+                applyAutoStart(true);
+            }
+            const keepAwakeOn = (0, store_1.getKeepAwakeEnabled)();
+            if (keepAwakeOn) {
+                applyKeepAwake(true);
             }
             const wasAutoStarted = process.argv.includes('--autostart');
             if (wasAutoStarted) {

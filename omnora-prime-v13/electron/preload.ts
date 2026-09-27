@@ -97,6 +97,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('store:getLockTimeout'),
     setLockTimeout: (m: number) =>
       ipcRenderer.invoke('store:setLockTimeout', m),
+    isLocked: () =>
+      ipcRenderer.invoke('store:isLocked'),
+    setLocked: (locked: boolean) =>
+      ipcRenderer.invoke('store:setLocked', locked),
+    getLockState: () =>
+      ipcRenderer.invoke('store:getLockState'),
+    recordFailedAttempt: () =>
+      ipcRenderer.invoke('store:recordFailedAttempt'),
+    clearLockAttempts: () =>
+      ipcRenderer.invoke('store:clearLockAttempts'),
     saveLastRoute: (r: string) =>
       ipcRenderer.invoke('store:saveLastRoute', r),
     getLastRoute: () =>
@@ -142,6 +152,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.on('app:autostarted', listener);
       return () => ipcRenderer.removeListener('app:autostarted', listener);
     },
+  },
+  system: {
+    getKeepAwake: () =>
+      ipcRenderer.invoke('system:getKeepAwake'),
+    setKeepAwake: (enabled: boolean) =>
+      ipcRenderer.invoke('system:setKeepAwake', enabled),
+    getHardwareInfo: () =>
+      ipcRenderer.invoke('system:getHardwareInfo'),
   },
 
   // ── Licensing & HWID ────────────────────────────────────────────────────────

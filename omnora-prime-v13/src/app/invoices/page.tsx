@@ -46,26 +46,76 @@ export default function InvoiceListPage() {
   const { data: invoices, isLoading, error: invoicesError, refetch: refetchInvoices } = useQuery({
     queryKey: ['invoices', businessId, debouncedSearch, statusFilter],
     queryFn: async () => {
-      let query = supabase
-          .from('invoices')
-          .select(`
-          *,
-          party:parties(name, phone)
-        `)
-          .eq('business_id', businessId)
-          .order('created_at', { ascending: false });
-
-      if (debouncedSearch) {
-        query = query.or(`invoice_no.ilike.%${debouncedSearch}%, party.name.ilike.%${debouncedSearch}%`);
-      }
-      if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
+      // 1. Read local cache
+      let localInvoices: any[] = [];
+      if (typeof window !== 'undefined') {
+        const cacheKey = `noxis_cached_invoices_${businessId}`;
+        const raw = localStorage.getItem(cacheKey);
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) localInvoices = parsed;
+          } catch {}
+        }
       }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      setLastFetchedAt(new Date());
-      return data;
+      const applyFilters = (list: any[]) => {
+        let res = list;
+        if (debouncedSearch) {
+          const q = debouncedSearch.toLowerCase();
+          res = res.filter((inv: any) =>
+            (inv.invoice_no && inv.invoice_no.toLowerCase().includes(q)) ||
+            (inv.party?.name && inv.party.name.toLowerCase().includes(q))
+          );
+        }
+        if (statusFilter !== 'all') {
+          res = res.filter((inv: any) => inv.status === statusFilter);
+        }
+        return res;
+      };
+
+      // If offline, immediately return local cached invoices without network errors
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        return applyFilters(localInvoices);
+      }
+
+      try {
+        let query = supabase
+            .from('invoices')
+            .select(`
+            *,
+            party:parties(name, phone)
+          `)
+            .eq('business_id', businessId)
+            .order('created_at', { ascending: false });
+
+        if (debouncedSearch) {
+          query = query.or(`invoice_no.ilike.%${debouncedSearch}%, party.name.ilike.%${debouncedSearch}%`);
+        }
+        if (statusFilter !== 'all') {
+          query = query.eq('status', statusFilter);
+        }
+
+        const { data, error } = await query;
+        if (!error && data) {
+          if (typeof window !== 'undefined' && !debouncedSearch && statusFilter === 'all') {
+            try {
+              localStorage.setItem(`noxis_cached_invoices_${businessId}`, JSON.stringify(data));
+            } catch {}
+          }
+          setLastFetchedAt(new Date());
+          return data;
+        }
+
+        if (error) {
+          console.warn('[Invoices] Remote fetch error, falling back to cache:', error);
+          return applyFilters(localInvoices);
+        }
+        return data || [];
+      } catch (err) {
+        console.warn('[Invoices] Network failed (offline mode):', err);
+        return applyFilters(localInvoices);
+      }
     },
     enabled: !!businessId && (debouncedSearch.length >= 2 || debouncedSearch.length === 0)
   });
@@ -130,7 +180,7 @@ export default function InvoiceListPage() {
     </div>
   );
 
-  if (invoicesError) return (
+  if (invoicesError && (!invoices || invoices.length === 0)) return (
     <div className="min-h-screen bg-[#0F1113] flex items-center justify-center p-8">
       <ErrorState
         message="Could not load invoices registry"

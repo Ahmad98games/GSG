@@ -79,6 +79,11 @@ electron_1.contextBridge.exposeInMainWorld('electronAPI', {
         isAppLockEnabled: () => electron_1.ipcRenderer.invoke('store:isAppLockEnabled'),
         getLockTimeout: () => electron_1.ipcRenderer.invoke('store:getLockTimeout'),
         setLockTimeout: (m) => electron_1.ipcRenderer.invoke('store:setLockTimeout', m),
+        isLocked: () => electron_1.ipcRenderer.invoke('store:isLocked'),
+        setLocked: (locked) => electron_1.ipcRenderer.invoke('store:setLocked', locked),
+        getLockState: () => electron_1.ipcRenderer.invoke('store:getLockState'),
+        recordFailedAttempt: () => electron_1.ipcRenderer.invoke('store:recordFailedAttempt'),
+        clearLockAttempts: () => electron_1.ipcRenderer.invoke('store:clearLockAttempts'),
         saveLastRoute: (r) => electron_1.ipcRenderer.invoke('store:saveLastRoute', r),
         getLastRoute: () => electron_1.ipcRenderer.invoke('store:getLastRoute'),
         saveLastActive: () => electron_1.ipcRenderer.invoke('store:saveLastActive'),
@@ -110,6 +115,11 @@ electron_1.contextBridge.exposeInMainWorld('electronAPI', {
             electron_1.ipcRenderer.on('app:autostarted', listener);
             return () => electron_1.ipcRenderer.removeListener('app:autostarted', listener);
         },
+    },
+    system: {
+        getKeepAwake: () => electron_1.ipcRenderer.invoke('system:getKeepAwake'),
+        setKeepAwake: (enabled) => electron_1.ipcRenderer.invoke('system:setKeepAwake', enabled),
+        getHardwareInfo: () => electron_1.ipcRenderer.invoke('system:getHardwareInfo'),
     },
     // ── Licensing & HWID ────────────────────────────────────────────────────────
     license: {

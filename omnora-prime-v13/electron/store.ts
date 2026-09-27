@@ -36,6 +36,9 @@ interface StoreSchema {
   appLockEnabled: boolean
   appLockPin: string // SHA-256 hashed
   appLockTimeout: number // minutes
+  isLocked: boolean
+  lockAttempts: number
+  lockedUntil: number
 
   // Session resume
   lastRoute: string
@@ -53,6 +56,7 @@ interface StoreSchema {
   autoStartConfigured: boolean
   lastSyncAt: number
   autoStartEnabled: boolean
+  keepAwakeEnabled: boolean
 
   // HWID fingerprinting
   hwid_cached: string
@@ -85,6 +89,9 @@ const store: any = new (ElectronStore as any)({
     appLockEnabled: false,
     appLockPin: '',
     appLockTimeout: 5,
+    isLocked: false,
+    lockAttempts: 0,
+    lockedUntil: 0,
     lastRoute: '/dashboard',
     lastScrollPositions: {},
     lastFormDrafts: {},
@@ -96,6 +103,7 @@ const store: any = new (ElectronStore as any)({
     autoStartConfigured: false,
     lastSyncAt: 0,
     autoStartEnabled: true,
+    keepAwakeEnabled: false,
     // HWID
     hwid_cached: '',
     hwid_mismatch_count: 0,
@@ -177,6 +185,43 @@ export function setLockTimeout(minutes: number) {
   store.set('appLockTimeout', minutes)
 }
 
+export function isLocked(): boolean {
+  return store.get('isLocked') || false
+}
+
+export function setLocked(locked: boolean): void {
+  store.set('isLocked', locked)
+}
+
+export function getLockState(): { isLocked: boolean; attempts: number; lockedUntil: number } {
+  return {
+    isLocked: store.get('isLocked') || false,
+    attempts: store.get('lockAttempts') || 0,
+    lockedUntil: store.get('lockedUntil') || 0,
+  }
+}
+
+export function recordFailedAttempt(): { attempts: number; lockedUntil: number } {
+  const currentAttempts = (store.get('lockAttempts') || 0) + 1
+  let lockedUntil = store.get('lockedUntil') || 0
+  
+  if (currentAttempts >= 5) {
+    lockedUntil = Date.now() + 60000 // 60 seconds lockout
+  }
+  
+  store.set('isLocked', true)
+  store.set('lockAttempts', currentAttempts)
+  store.set('lockedUntil', lockedUntil)
+  
+  return { attempts: currentAttempts, lockedUntil }
+}
+
+export function clearLockAttempts(): void {
+  store.set('isLocked', false)
+  store.set('lockAttempts', 0)
+  store.set('lockedUntil', 0)
+}
+
 export function saveLastRoute(route: string) {
   if (
     route.includes('/login') ||
@@ -246,6 +291,14 @@ export function getAutoStartEnabled(): boolean {
 
 export function setAutoStartEnabled(enabled: boolean): void {
   store.set('autoStartEnabled', enabled)
+}
+
+export function getKeepAwakeEnabled(): boolean {
+  return store.get('keepAwakeEnabled') ?? false
+}
+
+export function setKeepAwakeEnabled(enabled: boolean): void {
+  store.set('keepAwakeEnabled', enabled)
 }
 
 // ── HWID ──

@@ -56,7 +56,7 @@ const SETTINGS_SECTIONS: NavSection[] = [
   {
     title: 'Maintenance & System',
     items: [
-      { id: 'updates', label: 'Software Updates', href: '/settings/updates', icon: RefreshCw, badge: 'v13.1.13', badgeColor: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+      { id: 'updates', label: 'Software Updates', href: '/settings/updates', icon: RefreshCw, badge: 'v13.0.1', badgeColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
       { id: 'backup', label: 'Backup & Restore', href: '/settings/backup', icon: Download },
       { id: 'data', label: 'Data Management', href: '/settings?tab=data', icon: Database },
       { id: 'devices', label: 'Devices & Bridges', href: '/settings/devices', icon: Cpu },
@@ -149,7 +149,7 @@ export default function SettingsLayout({
               <p className="text-[10px] text-slate-500 truncate font-mono">Parameters & Hub</p>
             </div>
             <span className="text-[9px] font-mono px-1.5 py-0.5 bg-white/[0.04] border border-white/[0.08] rounded-[4px] text-slate-400">
-              v13.1.14
+              v13.0.1
             </span>
           </div>
         </div>

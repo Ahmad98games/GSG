@@ -398,7 +398,7 @@ export default React.memo(function IndustrialSidebar() {
             </div>
             {!isCollapsed && (
               <span className="text-[9px] font-mono text-slate-500 bg-white/[0.03] px-1 py-0.2 rounded-[2px] border border-white/[0.06]">
-                v13.1.14
+                v13.0.1
               </span>
             )}
           </div>
@@ -412,9 +412,9 @@ export default React.memo(function IndustrialSidebar() {
             >
               {/* Brand Logo Slot: Dynamic 28px x 28px square with rounded-[6px] border border-white/[0.08] bg-slate-900 hosting client logo/monogram */}
               <div className="w-7 h-7 rounded-[6px] bg-slate-900 border border-white/[0.08] flex items-center justify-center flex-shrink-0 overflow-hidden relative">
-                {(profile?.logo_url || profile?.avatar_url) ? (
+                {((profile?.logo_url || profile?.avatar_url) || (typeof window !== 'undefined' && localStorage.getItem('noxis_logo'))) ? (
                   <img
-                    src={profile?.logo_url || profile?.avatar_url}
+                    src={profile?.logo_url || profile?.avatar_url || (typeof window !== 'undefined' ? (localStorage.getItem('noxis_logo') || '') : '')}
                     alt={profile?.business_name || "Brand Logo"}
                     className="w-full h-full object-contain p-0.5"
                   />

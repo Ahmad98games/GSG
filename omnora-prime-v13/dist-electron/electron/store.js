@@ -45,6 +45,11 @@ exports.isAppLockEnabled = isAppLockEnabled;
 exports.setAppLockEnabled = setAppLockEnabled;
 exports.getLockTimeout = getLockTimeout;
 exports.setLockTimeout = setLockTimeout;
+exports.isLocked = isLocked;
+exports.setLocked = setLocked;
+exports.getLockState = getLockState;
+exports.recordFailedAttempt = recordFailedAttempt;
+exports.clearLockAttempts = clearLockAttempts;
 exports.saveLastRoute = saveLastRoute;
 exports.getLastRoute = getLastRoute;
 exports.saveLastActive = saveLastActive;
@@ -58,6 +63,8 @@ exports.getLastSyncAt = getLastSyncAt;
 exports.setLastSyncAt = setLastSyncAt;
 exports.getAutoStartEnabled = getAutoStartEnabled;
 exports.setAutoStartEnabled = setAutoStartEnabled;
+exports.getKeepAwakeEnabled = getKeepAwakeEnabled;
+exports.setKeepAwakeEnabled = setKeepAwakeEnabled;
 exports.getCachedHWID = getCachedHWID;
 exports.setCachedHWID = setCachedHWID;
 exports.getHWIDMismatchCount = getHWIDMismatchCount;
@@ -112,6 +119,9 @@ const store = new electron_store_1.default({
         appLockEnabled: false,
         appLockPin: '',
         appLockTimeout: 5,
+        isLocked: false,
+        lockAttempts: 0,
+        lockedUntil: 0,
         lastRoute: '/dashboard',
         lastScrollPositions: {},
         lastFormDrafts: {},
@@ -123,6 +133,7 @@ const store = new electron_store_1.default({
         autoStartConfigured: false,
         lastSyncAt: 0,
         autoStartEnabled: true,
+        keepAwakeEnabled: false,
         // HWID
         hwid_cached: '',
         hwid_mismatch_count: 0,
@@ -185,6 +196,35 @@ function getLockTimeout() {
 function setLockTimeout(minutes) {
     store.set('appLockTimeout', minutes);
 }
+function isLocked() {
+    return store.get('isLocked') || false;
+}
+function setLocked(locked) {
+    store.set('isLocked', locked);
+}
+function getLockState() {
+    return {
+        isLocked: store.get('isLocked') || false,
+        attempts: store.get('lockAttempts') || 0,
+        lockedUntil: store.get('lockedUntil') || 0,
+    };
+}
+function recordFailedAttempt() {
+    const currentAttempts = (store.get('lockAttempts') || 0) + 1;
+    let lockedUntil = store.get('lockedUntil') || 0;
+    if (currentAttempts >= 5) {
+        lockedUntil = Date.now() + 60000; // 60 seconds lockout
+    }
+    store.set('isLocked', true);
+    store.set('lockAttempts', currentAttempts);
+    store.set('lockedUntil', lockedUntil);
+    return { attempts: currentAttempts, lockedUntil };
+}
+function clearLockAttempts() {
+    store.set('isLocked', false);
+    store.set('lockAttempts', 0);
+    store.set('lockedUntil', 0);
+}
 function saveLastRoute(route) {
     if (route.includes('/login') ||
         route.includes('/setup') ||
@@ -242,6 +282,12 @@ function getAutoStartEnabled() {
 }
 function setAutoStartEnabled(enabled) {
     store.set('autoStartEnabled', enabled);
+}
+function getKeepAwakeEnabled() {
+    return store.get('keepAwakeEnabled') ?? false;
+}
+function setKeepAwakeEnabled(enabled) {
+    store.set('keepAwakeEnabled', enabled);
 }
 // ── HWID ──
 function getCachedHWID() {

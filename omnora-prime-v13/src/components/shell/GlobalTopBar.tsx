@@ -343,9 +343,9 @@ export default React.memo(function GlobalTopBar() {
               className="flex items-center gap-2 p-1 rounded-[4px] hover:bg-white/[0.04] transition-colors border border-transparent hover:border-white/[0.06] cursor-pointer"
             >
               <div className="w-6 h-6 rounded-[4px] bg-slate-900 border border-white/[0.08] flex items-center justify-center text-[10px] font-mono text-slate-300 overflow-hidden flex-shrink-0">
-                {(profile?.logo_url || profile?.avatar_url) ? (
+                {(profile?.logo_url || profile?.avatar_url || (typeof window !== 'undefined' && localStorage.getItem('noxis_logo'))) ? (
                   <img
-                    src={profile.logo_url || profile.avatar_url}
+                    src={profile?.logo_url || profile?.avatar_url || (typeof window !== 'undefined' ? (localStorage.getItem('noxis_logo') || '') : '')}
                     alt="Brand"
                     className="w-full h-full object-contain p-0.5"
                   />

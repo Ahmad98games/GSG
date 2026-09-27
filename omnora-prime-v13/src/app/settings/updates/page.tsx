@@ -49,6 +49,17 @@ interface ChangelogItem {
 
 const HISTORICAL_CHANGELOGS: ChangelogItem[] = [
   {
+    version: '13.0.1',
+    date: 'September 2026',
+    type: 'major',
+    title: 'Initial Production Release (Gold Master)',
+    highlights: [
+      { tag: 'Production Master', text: 'Full industrial ERP engine with Khata dual-entry ledger and interactive voucher print preview', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      { tag: 'Offline First', text: 'Resilient local database cache across Invoices, Payroll, and Ledger', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
+      { tag: 'Security & Licensing', text: 'Hardware-bound licensing, enterprise access control, and branded workspace profile', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
+    ],
+  },
+  {
     version: '13.1.13',
     date: 'September 2026',
     type: 'patch',
@@ -117,7 +128,7 @@ export default function UpdatesPage() {
 
   useEffect(() => {
     if (!isElectron) {
-      setCurrentVersion('13.1.12')
+      setCurrentVersion('13.0.1')
       return
     }
 
@@ -126,7 +137,7 @@ export default function UpdatesPage() {
       .getUpdateStatus()
       .then((s: any) => {
         if (!s) return
-        setCurrentVersion(s.currentVersion || '13.1.10')
+        setCurrentVersion(s.currentVersion || '13.0.1')
         setChannel((window as any).electronAPI.channel || 'stable')
 
         if (s.updateDownloaded) {

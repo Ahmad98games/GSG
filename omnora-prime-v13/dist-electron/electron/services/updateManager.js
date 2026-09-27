@@ -26,6 +26,7 @@ function initAutoUpdater(win) {
     electron_updater_1.autoUpdater.autoInstallOnAppQuit = false;
     // We handle the install manually so we can save state first
     electron_updater_1.autoUpdater.allowPrerelease = false;
+    electron_updater_1.autoUpdater.allowDowngrade = true;
     electron_updater_1.autoUpdater.setFeedURL({
         provider: 'generic',
         url: 'https://noxishub.app/updates/stable',

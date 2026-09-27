@@ -100,6 +100,24 @@ export function AuthProvider({
         if (!localStorage.getItem('noxis_session_started')) {
           localStorage.setItem('noxis_session_started', 'true')
         }
+
+        // Strict security barrier: enforce lock check on cold boot
+        const sessionLocked = sessionStorage.getItem('noxis_locked') === 'true'
+        const localLocked = localStorage.getItem('noxis_locked') === 'true'
+        let electronLocked = false
+        if (isElectron) {
+          try {
+            const api = (window as any).electronAPI
+            const isL = await api?.store?.isLocked?.()
+            const appLockEnabled = await api?.store?.isAppLockEnabled?.()
+            electronLocked = !!(isL || appLockEnabled)
+          } catch {}
+        }
+
+        if ((sessionLocked || localLocked || electronLocked) && pathname && !pathname.startsWith('/lock') && !pathname.startsWith('/login')) {
+          router.replace('/lock')
+        }
+
         return
       }
 

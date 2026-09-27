@@ -102,23 +102,44 @@ export const useBusinessProfile = () => {
             
             const rawBizId = configMap.business_id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null);
             const bizId = isUuid(rawBizId) ? rawBizId : DEFAULT_BIZ_ID;
+            const existing = useBusinessProfileStore.getState().profile || ({} as any);
+            const cachedLogo = typeof window !== 'undefined' ? (localStorage.getItem('noxis_logo') || localStorage.getItem('noxis_avatar_url')) : null;
+            const resolvedLogo = configMap.logo_url || configMap.avatar_url || cachedLogo || existing.logo_url || existing.avatar_url || '';
+            const resolvedAvatar = configMap.avatar_url || resolvedLogo || existing.avatar_url || '';
+
             setProfile({
               id: bizId,
-              business_name: configMap.business_name || 'Noxis Business',
-              owner_name: configMap.owner_name || 'Noxis Owner',
-              tier: configMap.tier || 'lite',
-              industry_type: configMap.industry_type || 'general',
-              industry_key: configMap.industry_key || 'general',
-              role: configMap.role || 'retailer',
-              currency: configMap.currency || 'PKR',
-              region: configMap.region || 'south_asian',
-              country_code: configMap.country_code || 'PK',
-              tax_name: configMap.tax_name || 'GST',
-              tax_rate: Number(configMap.tax_rate || 0),
-              preferred_locale: configMap.preferred_locale || 'en',
+              business_name: configMap.business_name || existing.business_name || 'Noxis Business',
+              owner_name: configMap.owner_name || existing.owner_name || 'Noxis Owner',
+              tier: configMap.tier || existing.tier || 'lite',
+              industry_type: configMap.industry_type || existing.industry_type || 'general',
+              industry_key: configMap.industry_key || existing.industry_key || 'general',
+              role: configMap.role || existing.role || 'retailer',
+              currency: configMap.currency || existing.currency || 'PKR',
+              region: configMap.region || existing.region || 'south_asian',
+              country_code: configMap.country_code || existing.country_code || 'PK',
+              tax_name: configMap.tax_name || existing.tax_name || 'GST',
+              tax_number: configMap.tax_number || existing.tax_number || '',
+              tax_rate: Number(configMap.tax_rate ?? existing.tax_rate ?? 0),
+              address: configMap.address || existing.address || '',
+              phone: configMap.phone || existing.phone || '',
+              logo_url: resolvedLogo,
+              avatar_url: resolvedAvatar,
+              avatar_type: (configMap.avatar_type || existing.avatar_type || 'custom') as any,
+              avatar_last_changed: configMap.avatar_last_changed || existing.avatar_last_changed || '',
+              preferred_locale: configMap.preferred_locale || existing.preferred_locale || 'en',
+              visual_theme: configMap.visual_theme || existing.visual_theme,
             } as any);
           } catch {
-            setProfile({ id: DEFAULT_BIZ_ID, business_name: 'Noxis Business', role: 'retailer', currency: 'PKR' } as any);
+            const existing = useBusinessProfileStore.getState().profile || ({} as any);
+            setProfile({ 
+              id: DEFAULT_BIZ_ID, 
+              business_name: existing.business_name || 'Noxis Business', 
+              role: 'retailer', 
+              currency: 'PKR',
+              logo_url: existing.logo_url || (typeof window !== 'undefined' ? localStorage.getItem('noxis_logo') : '') || '',
+              avatar_url: existing.avatar_url || '',
+            } as any);
           }
           setLoaded(true);
           return;
@@ -145,24 +166,32 @@ export const useBusinessProfile = () => {
               const configMap = (localData.localConfig || []).reduce((acc: any, c: any) => ({ ...acc, [c.key]: c.value }), {});
               
               const bizId = isUuid(configMap.business_id) ? configMap.business_id : DEFAULT_BIZ_ID;
+              const existing = useBusinessProfileStore.getState().profile || ({} as any);
+              const cachedLogo = typeof window !== 'undefined' ? (localStorage.getItem('noxis_logo') || localStorage.getItem('noxis_avatar_url')) : null;
+              const resolvedLogo = configMap.logo_url || configMap.avatar_url || cachedLogo || existing.logo_url || existing.avatar_url || '';
+              const resolvedAvatar = configMap.avatar_url || resolvedLogo || existing.avatar_url || '';
+
               const fallbackProfile: any = {
                 id: bizId,
-                business_name: configMap.business_name || 'Noxis Business',
-                owner_name: configMap.owner_name || 'Noxis Owner',
-                avatar_type: (configMap.avatar_type || 'preset') as any,
+                business_name: configMap.business_name || existing.business_name || 'Noxis Business',
+                owner_name: configMap.owner_name || existing.owner_name || 'Noxis Owner',
+                avatar_type: (configMap.avatar_type || existing.avatar_type || 'custom') as any,
                 avatar_preset_id: Number(configMap.avatar_preset_id || 1),
-                avatar_url: configMap.avatar_url || '',
-                avatar_last_changed: configMap.avatar_last_changed || '',
-                tier: configMap.tier || 'lite',
-                industry_type: configMap.industry_type || 'general',
-                industry_key: configMap.industry_key || 'general',
-                role: configMap.role || 'retailer',
-                currency: configMap.currency || 'PKR',
-                region: configMap.region || 'south_asian',
-                country_code: configMap.country_code || 'PK',
-                tax_name: configMap.tax_name || 'GST',
-                tax_rate: Number(configMap.tax_rate || 0),
-                preferred_locale: configMap.preferred_locale || 'en',
+                logo_url: resolvedLogo,
+                avatar_url: resolvedAvatar,
+                avatar_last_changed: configMap.avatar_last_changed || existing.avatar_last_changed || '',
+                tier: configMap.tier || existing.tier || 'lite',
+                industry_type: configMap.industry_type || existing.industry_type || 'general',
+                industry_key: configMap.industry_key || existing.industry_key || 'general',
+                role: configMap.role || existing.role || 'retailer',
+                currency: configMap.currency || existing.currency || 'PKR',
+                region: configMap.region || existing.region || 'south_asian',
+                country_code: configMap.country_code || existing.country_code || 'PK',
+                tax_name: configMap.tax_name || existing.tax_name || 'GST',
+                tax_number: configMap.tax_number || existing.tax_number || '',
+                tax_rate: Number(configMap.tax_rate ?? existing.tax_rate ?? 0),
+                address: configMap.address || existing.address || '',
+                preferred_locale: configMap.preferred_locale || existing.preferred_locale || 'en',
               };
               setProfile(fallbackProfile);
             } catch (localErr) {
@@ -170,8 +199,14 @@ export const useBusinessProfile = () => {
             }
           }
         } else {
+          const existing = useBusinessProfileStore.getState().profile || ({} as any);
+          const cachedLogo = typeof window !== 'undefined' ? (localStorage.getItem('noxis_logo') || localStorage.getItem('noxis_avatar_url')) : null;
+          const finalLogo = (data as any).logo_url || existing.logo_url || cachedLogo || (data as any).avatar_url || '';
+
           setProfile({
             ...data,
+            logo_url: finalLogo,
+            avatar_url: (data as any).avatar_url || finalLogo,
             owner_phone: (data as any).owner_phone || (data as any).phone || ""
           });
           setOffline(false);
@@ -189,7 +224,8 @@ export const useBusinessProfile = () => {
                   owner_name: (data as any).owner_name || '',
                   avatar_type: data.avatar_type || 'preset',
                   avatar_preset_id: data.avatar_preset_id || 1,
-                  avatar_url: data.avatar_url || '',
+                  avatar_url: (data as any).avatar_url || finalLogo,
+                  logo_url: finalLogo,
                   avatar_last_changed: data.avatar_last_changed || '',
                   tier: data.tier || 'lite',
                   industry_type: data.industry_type || 'general',

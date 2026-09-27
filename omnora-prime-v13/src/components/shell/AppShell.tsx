@@ -135,6 +135,36 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const enforceLockBarrier = async () => {
+      const sessionLocked = sessionStorage.getItem('noxis_locked') === 'true';
+      const localLocked = localStorage.getItem('noxis_locked') === 'true';
+
+      let electronLocked = false;
+      const api = (window as any).electronAPI;
+      if (api?.store) {
+        try {
+          const isL = await api.store.isLocked?.();
+          const appLockEnabled = await api.store.isAppLockEnabled?.();
+          electronLocked = !!(isL || appLockEnabled);
+        } catch {}
+      }
+
+      if (
+        (sessionLocked || localLocked || electronLocked) &&
+        pathname &&
+        !pathname.startsWith('/lock') &&
+        !pathname.startsWith('/login')
+      ) {
+        window.location.replace('/lock');
+      }
+    };
+
+    enforceLockBarrier();
+  }, [pathname]);
+
+  React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         const activeEl = document.activeElement;
@@ -265,6 +295,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             Return to Home
           </a>
         </div>
+      </div>
+    );
+  }
+
+  const isLockScreen = pathname === '/lock' || pathname?.startsWith('/lock');
+
+  // Impenetrable Security Barrier: Isolate lock screen from the entire shell
+  if (isLockScreen) {
+    return (
+      <div 
+        className="fixed inset-0 min-h-screen w-screen flex flex-col bg-[#060708] select-none z-[99999] overflow-hidden"
+        style={{ backgroundColor: 'var(--color-bg, #060708)' }}
+      >
+        {isElectron && <TitleBar />}
+        <ToastContainer />
+        <main className="flex-1 w-full flex items-center justify-center relative overflow-hidden">
+          {children}
+        </main>
       </div>
     );
   }
