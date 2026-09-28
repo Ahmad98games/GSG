@@ -4,10 +4,11 @@ import { useState } from 'react';
 import PublicNavbar from '@/components/shell/PublicNavbar';
 import { 
   Download, Check, MessageCircle, ChevronDown, 
-  Sparkles, CheckCircle2, ShieldCheck, Terminal, Cpu, HardDrive, Wifi, Lock
+  Sparkles, CheckCircle2, ShieldCheck, Terminal, Cpu, HardDrive, Wifi, Lock,
+  FolderArchive, MousePointerClick
 } from 'lucide-react';
 
-const DOWNLOAD_EXE_URL = '/api/download-software?trial=true&redirect=true';
+const DOWNLOAD_ZIP_URL = '/api/download-software?format=zip&trial=true&redirect=true';
 const WHATSAPP_SUPPORT_URL = 'https://wa.me/923264742678?text=Salam%20Omnora,%20I%20have%20installed%20Noxis%20Hub%20and%20want%20to%20activate%20my%20license.%20My%20Machine%20ID%20is:%20';
 
 const FAQS = [
@@ -65,23 +66,58 @@ export default function DownloadPage() {
         {/* Primary CTA */}
         <div className="pt-4 flex flex-col items-center space-y-3">
           <a
-            href={DOWNLOAD_EXE_URL}
+            href={DOWNLOAD_ZIP_URL}
             className="inline-flex items-center justify-center gap-3 px-10 py-4.5 bg-[#08EBF6] hover:bg-[#5FA5FA] text-black font-mono font-black uppercase tracking-wider text-xs rounded transition-all shadow-[0_0_25px_rgba(8,235,246,0.3)] hover:scale-[1.02]"
           >
             <Download size={18} />
-            <span>Download for Windows (.exe)</span>
+            <span>Download for Windows (.zip)</span>
           </a>
 
           <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] font-mono text-gray-400">
-            <span>v13.0.1 Stable</span>
+            <span>v13.0.2 Stable</span>
             <span>•</span>
-            <span>210 MB Standalone Installer</span>
+            <span>210 MB Portable Archive</span>
             <span>•</span>
             <span className="text-[#08EBF6]">Windows 10 / 11 (64-bit)</span>
           </div>
           <p className="text-[10px] text-gray-400 font-mono">
             Local SQLite File Stored on Your Hard Drive · 100% Private by Default
           </p>
+        </div>
+
+        {/* 2-Step Extraction Micro-Guide */}
+        <div className="pt-6 max-w-md mx-auto">
+          <div className="p-4 bg-[#080A0F] border border-white/10 rounded-lg space-y-3">
+            <p className="text-[10px] font-mono font-bold text-zinc-400 uppercase tracking-widest text-center">After Download — 2 Steps</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-start gap-2.5">
+                <div className="w-6 h-6 rounded bg-[#08EBF6]/10 border border-[#08EBF6]/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <FolderArchive size={12} className="text-[#08EBF6]" />
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold text-white font-mono">Step 1</p>
+                  <p className="text-[10px] text-zinc-400 leading-relaxed">Right-click the .zip → Extract All</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <div className="w-6 h-6 rounded bg-[#08EBF6]/10 border border-[#08EBF6]/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <MousePointerClick size={12} className="text-[#08EBF6]" />
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold text-white font-mono">Step 2</p>
+                  <p className="text-[10px] text-zinc-400 leading-relaxed">Open folder → Double-click NoxisHub.exe</p>
+                </div>
+              </div>
+            </div>
+            <div className="pt-1 border-t border-white/5 space-y-1">
+              <p className="text-[9px] text-zinc-500 font-mono text-center">
+                Runs directly from folder · Windows Defender stays 100% active
+              </p>
+              <p className="text-[9px] text-[#08EBF6]/80 font-mono text-center">
+                Smart App Control tip: If prompted, right-click file → Properties → check &quot;Unblock&quot; → OK
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -151,7 +187,7 @@ export default function DownloadPage() {
             </span>
             <h3 className="text-base font-bold text-white uppercase font-mono">Free Trial (Day 1–14)</h3>
             <p className="text-xs text-zinc-400 leading-relaxed font-sans">
-              Download the .exe, run the installer, and start using immediately. No credit card, no email registration, and no internet required. All features are fully unlocked so you can test piece-rate wages, Khata entries, and inventory tracking on your actual factory floor.
+              Download the .zip, extract to any folder, and run NoxisHub.exe directly — no installer needed. No credit card, no email registration, and no internet required. All features are fully unlocked so you can test piece-rate wages, Khata entries, and inventory tracking on your actual factory floor.
             </p>
           </div>
 
@@ -273,11 +309,11 @@ export default function DownloadPage() {
           Start your 14-day full evaluation immediately. No sign-up, no credit card, and completely offline.
         </p>
         <a
-          href={DOWNLOAD_EXE_URL}
+          href={DOWNLOAD_ZIP_URL}
           className="inline-flex items-center gap-2 px-8 py-3.5 bg-[#08EBF6] hover:bg-[#5FA5FA] text-black font-mono font-bold uppercase tracking-wider text-xs rounded transition-all shadow-[0_0_20px_rgba(8,235,246,0.25)]"
         >
           <Download size={16} />
-          <span>Download Noxis Hub (.exe)</span>
+          <span>Download Noxis Hub (.zip)</span>
         </a>
       </section>
 

@@ -14,7 +14,15 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const orderId = searchParams.get('orderId') || searchParams.get('order_id');
     const licenseKey = searchParams.get('licenseKey') || searchParams.get('key');
-    const fileName = searchParams.get('fileName') || 'Noxis Setup 13.0.1.exe';
+    const format = searchParams.get('format') || '';
+    let fileName = searchParams.get('fileName');
+    if (!fileName) {
+      if (format.toLowerCase() === 'zip') {
+        fileName = 'Noxis-Setup-13.0.2.zip';
+      } else {
+        fileName = 'Noxis Setup 13.0.2.exe';
+      }
+    }
 
     let isAuthorized = false;
     let verifiedTier = '';
@@ -175,7 +183,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const orderId = body.orderId || body.order_id;
     const licenseKey = body.licenseKey || body.key;
-    const fileName = body.fileName || 'Noxis Setup 13.0.0.exe';
+    const format = body.format || '';
+    let fileName = body.fileName;
+    if (!fileName) {
+      if (format.toLowerCase() === 'zip') {
+        fileName = 'Noxis-Setup-13.0.2.zip';
+      } else {
+        fileName = 'Noxis Setup 13.0.2.exe';
+      }
+    }
 
     let isAuthorized = false;
     let verifiedTier = '';

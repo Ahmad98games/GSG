@@ -1,5 +1,6 @@
 import { useBranchStore } from './branchStore';
 import { useBusinessProfileStore } from '@/store/BusinessProfileStore';
+import { useBusinessModeStore } from './businessModeStore';
 
 /**
  * Global Store Reset Orchestrator
@@ -11,6 +12,7 @@ export const resetAllStores = () => {
   // 1. Hub Core Stores
   useBranchStore.getState().reset();
   useBusinessProfileStore.getState().reset();
+  useBusinessModeStore.getState().reset();
 
   // 2. Placeholder for upcoming industrial modules
   // licenseStore.getState().reset();

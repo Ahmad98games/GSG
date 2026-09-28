@@ -61,6 +61,7 @@ import Image from 'next/image'
 import QuickProductionModal from '@/components/production/QuickProductionModal'
 import { TierBadge } from '../ui/TierBadge'
 import { TrialCountdownBanner } from '@/components/trial/TrialCountdownBanner'
+import { useBusinessModeStore } from '@/stores/businessModeStore'
 
 interface SidebarNavItem {
   id: string
@@ -87,6 +88,7 @@ export default React.memo(function IndustrialSidebar() {
   const { businessId } = usePersona()
   const { role } = useStaff(businessId)
   const { nav, features, industry } = useIndustryConfig()
+  const { mode: businessMode, flags: modeFlags } = useBusinessModeStore()
   const [mounted, setMounted] = useState(false)
   const [isProductionModalOpen, setIsProductionModalOpen] = useState(false)
   const supabase = createClient()
@@ -343,12 +345,44 @@ export default React.memo(function IndustrialSidebar() {
       },
     ]
 
+    // ── BUSINESS MODE FILTERING ─────────────────────────────────────────
+    // Filter nav items based on selected business mode
+    const filterByMode = (items: SidebarNavItem[]): SidebarNavItem[] => {
+      if (!businessMode || !modeFlags) return items // No mode set = show everything
+
+      return items.filter((item) => {
+        // Always show these core items regardless of mode
+        const alwaysShow = ['dashboard', 'pos', 'inventory', 'configuration', 'reports', 'cctv', 'pairing', 'messaging']
+        if (alwaysShow.includes(item.id)) return true
+
+        // Mode-specific filtering
+        switch (businessMode) {
+          case 'retail':
+            // Retail hides: production, workers, dispatch, foresight, purchase, batch, yield, cold-chain, workflows, audit
+            const retailHide = ['production', 'workers', 'dispatch', 'foresight', 'batch-recall', 'yield', 'cold-chain', 'workflows', 'audit']
+            return !retailHide.includes(item.id)
+
+          case 'wholesale':
+            // Wholesale hides: production, workers (karigar-specific), foresight, batch, yield, cold-chain, weight-entry
+            const wholesaleHide = ['production', 'workers', 'foresight', 'batch-recall', 'yield', 'cold-chain', 'weight-entry']
+            return !wholesaleHide.includes(item.id)
+
+          case 'textile':
+            // Textile shows everything (it's the most feature-complete mode)
+            return true
+
+          default:
+            return true
+        }
+      })
+    }
+
     return [
-      { id: 'operations', title: 'Operations', items: operationsItems },
-      { id: 'finance', title: 'Finance & Admin', items: financeItems },
-      { id: 'system', title: 'System & Telemetry', items: systemItems },
+      { id: 'operations', title: 'Operations', items: filterByMode(operationsItems) },
+      { id: 'finance', title: 'Finance & Admin', items: filterByMode(financeItems) },
+      { id: 'system', title: 'System & Telemetry', items: filterByMode(systemItems) },
     ]
-  }, [nav, features, industry])
+  }, [nav, features, industry, businessMode, modeFlags])
 
   const isElectron = typeof window !== 'undefined' && !!(window as any).electronWindow
 

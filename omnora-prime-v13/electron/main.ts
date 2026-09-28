@@ -99,6 +99,7 @@ autoUpdater.autoDownload = false;
 autoUpdater.disableDifferentialDownload = true;
 // We download manually so we can show progress to the user
 autoUpdater.allowPrerelease = false
+autoUpdater.allowDowngrade = true
 autoUpdater.setFeedURL({
   provider: 'generic',
   url: 'https://noxishub.app/updates/stable',

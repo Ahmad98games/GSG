@@ -37,11 +37,14 @@ import { TopUrgencyBanner } from '@/components/trial/TrialCountdownBanner';
 import { LicenseReminderModal } from '@/components/license/LicenseReminderModal';
 import { ActivationCelebration } from '@/components/license/ActivationCelebration';
 import HWIDActivationModal from "@/components/pricing/HWIDActivationModal";
+import BusinessModeSelector from '@/components/onboarding/BusinessModeSelector';
+import { useBusinessModeStore } from '@/stores/businessModeStore';
 
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { license } = useLicenseValidation();
   const pathname = usePathname();
+  const { isConfigured: isBusinessModeConfigured } = useBusinessModeStore();
   const [mounted, setMounted] = React.useState(false);
   const { isCollapsed } = useSidebarState();
   const { isRTL } = useLanguageStore();
@@ -328,6 +331,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      {/* First-Run Business Mode Selector */}
+      {!isBusinessModeConfigured && (
+        <BusinessModeSelector />
+      )}
+
       {introChecked && showIntro && (
         <IntroAnimation onComplete={handleIntroComplete} />
       )}
