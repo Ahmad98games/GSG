@@ -58,7 +58,7 @@ export default function HWIDActivationModal({
       return;
     }
     if (!hwid.trim()) {
-      setError('Please enter your Hardware ID (HWID)');
+      setError('Please enter your Machine ID (HWID)');
       return;
     }
 
@@ -71,8 +71,8 @@ export default function HWIDActivationModal({
       `Assalam-o-Alaikum Omnora Labs,\n\n` +
       `I want to activate Noxis Hub *${tierName} Plan*.\n` +
       `🏢 Business: ${businessName.trim()}\n` +
-      `💻 Machine HWID: ${hwid.trim()}\n\n` +
-      `Please issue my cryptographically verified offline activation license key.`;
+      `💻 Machine ID: ${hwid.trim()}\n\n` +
+      `Please issue my offline permanent license key for this computer.`;
 
     const waUrl = `https://wa.me/923264742678?text=${encodeURIComponent(textMessage)}`;
     window.open(waUrl, '_blank');
@@ -102,14 +102,14 @@ export default function HWIDActivationModal({
                   Activate {initialTier.toUpperCase()} License
                 </h3>
                 <p className="text-[10px] text-slate-400 font-mono">
-                  100% Offline Cryptographic Hardware Registration
+                  License key locked to your PC&apos;s motherboard · Works without an internet connection
                 </p>
               </div>
             </div>
             {!isNonDismissible && (
               <button
                 onClick={onClose}
-                className="text-slate-400 hover:text-white p-1 transition-colors"
+                className="text-slate-400 hover:text-white p-1 transition-colors cursor-pointer"
               >
                 <X size={20} />
               </button>
@@ -138,7 +138,7 @@ export default function HWIDActivationModal({
                 type="text"
                 value={businessName}
                 onChange={(e) => { setError(''); setBusinessName(e.target.value); }}
-                placeholder="e.g. Al-Hamid Textiles"
+                placeholder="e.g. Al-Hamid Textiles / Faisalabad Fabric Co."
                 className="w-full bg-[#040608] border border-white/10 text-white text-xs px-4 py-3 rounded-sm focus:border-[#08EBF6] outline-none"
               />
             </div>
@@ -146,7 +146,7 @@ export default function HWIDActivationModal({
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                  Hardware ID (HWID) <span className="text-red-400">*</span>
+                  Machine ID (Hardware ID) <span className="text-red-400">*</span>
                 </label>
                 {hwid && (
                   <button
@@ -155,7 +155,7 @@ export default function HWIDActivationModal({
                     className="text-[10px] font-mono text-[#08EBF6] hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     {copied ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
-                    <span>{copied ? 'Copied!' : 'Copy HWID'}</span>
+                    <span>{copied ? 'Copied!' : 'Copy Machine ID'}</span>
                   </button>
                 )}
               </div>
@@ -167,7 +167,7 @@ export default function HWIDActivationModal({
                 className="w-full bg-[#040608] border border-white/10 text-emerald-400 font-mono text-xs px-4 py-3 rounded-sm focus:border-[#08EBF6] outline-none"
               />
               <p className="text-[10px] text-slate-500 mt-1 font-medium">
-                💡 Located in Noxis Hub Desktop → Settings → License & System
+                💡 Located in Noxis Hub Desktop → Settings → License &amp; System
               </p>
             </div>
 
@@ -183,13 +183,13 @@ export default function HWIDActivationModal({
                 className="w-full flex items-center justify-center gap-2 bg-[#08EBF6] hover:bg-[#08EBF6]/90 text-black font-black text-xs uppercase tracking-wider py-4 rounded-sm transition-all shadow-[0_0_25px_rgba(8,235,246,0.35)] cursor-pointer"
               >
                 <MessageSquare size={16} />
-                <span>Activate via WhatsApp (1-Click)</span>
+                <span>Send via WhatsApp (+92 326 4742678)</span>
               </button>
             </div>
 
             <div className="text-[10px] text-center text-slate-500 flex items-center justify-center gap-1.5">
               <ShieldCheck size={12} className="text-emerald-400" />
-              <span>Offline RSA-2048 Signed Key Delivery via Official Support (+92 326 4742678)</span>
+              <span>Offline permanent license key delivered via WhatsApp (+92 326 4742678)</span>
             </div>
           </form>
         </motion.div>

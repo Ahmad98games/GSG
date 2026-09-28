@@ -4,32 +4,32 @@ import { useState } from 'react';
 import PublicNavbar from '@/components/shell/PublicNavbar';
 import { 
   Download, Check, MessageCircle, ChevronDown, 
-  Sparkles, CheckCircle2, ShieldCheck, Terminal, Cpu
+  Sparkles, CheckCircle2, ShieldCheck, Terminal, Cpu, HardDrive, Wifi, Lock
 } from 'lucide-react';
 
 const DOWNLOAD_EXE_URL = '/api/download-software?trial=true&redirect=true';
-const WHATSAPP_SUPPORT_URL = 'https://wa.me/923000000000?text=Salam%20Omnora,%20I%20have%20installed%20Noxis%20Hub%20and%20want%20to%20activate%20my%20license.%20My%20HWID%20is:%20';
+const WHATSAPP_SUPPORT_URL = 'https://wa.me/923264742678?text=Salam%20Omnora,%20I%20have%20installed%20Noxis%20Hub%20and%20want%20to%20activate%20my%20license.%20My%20Machine%20ID%20is:%20';
 
 const FAQS = [
   {
-    q: "Do I need internet to use Noxis Hub?",
-    a: "No. Noxis Hub writes directly to your local partition. Internet is only required if you choose to enable cloud disaster recovery snapshots."
+    q: "Do I need an internet connection to run Noxis Hub?",
+    a: "No. Noxis Hub is a standalone desktop application that reads and writes directly to a local SQLite database file stored on your computer's hard drive. You can record sales, log daily Karigar production, and print vouchers with zero internet."
   },
   {
-    q: "Is my historical data accessible if the trial ends?",
-    a: "Yes. Your data remains in your local SQLite engine forever. The Free tier continues to allow search, historical lookups, and basic POS operation."
+    q: "What happens to my data after the 14-day trial ends?",
+    a: "Your data stays on your PC forever. We never lock or delete your files. After 14 days, you can continue using the Free tier (POS counter, customer balance search, and full Excel/PDF export) or WhatsApp us to activate an offline permanent license key."
   },
   {
-    q: "Can I use one license on multiple computers?",
-    a: "Each license key signs against the machine's individual Hardware ID (HWID). Additional PC nodes within the local mesh can be provisioned via multi-seat packs."
+    q: "How do Android phones connect to the office PC without internet?",
+    a: "Your workstation PC hosts a local server over your workshop's Wi-Fi router. Floor supervisors connect their phones to the same Wi-Fi network and log worker outputs and attendance directly into the PC without using mobile data."
   },
   {
-    q: "How do mobile devices connect to the workstation offline?",
-    a: "The PC workstation initializes a WebSocket listener over your local subnet router. Companion devices transmit piece-rate updates across LAN without cellular or external WAN traffic."
+    q: "Can I move my license if my PC gets damaged or replaced?",
+    a: "Yes. Simply install Noxis Hub on your new PC, restore your database backup from your USB drive, and WhatsApp our support team (+92 326 4742678) to re-bind your license key to your new computer's motherboard."
   },
   {
-    q: "What happens if our office PC fails or needs replacement?",
-    a: "Export your database backup or pull from your encrypted snapshot. HWID re-binding for your new PC takes under 5 minutes via support."
+    q: "Is this suitable for textile mills and wholesale traders?",
+    a: "Yes. Noxis Hub was built from the ground up for physical manufacturing and trade: piece-rate Karigar payroll (per meter, yard, suit, or maund), Peshgi advance tracking, yarn/fabric stock batches, and double-entry wholesale Khata."
   }
 ];
 
@@ -46,15 +46,15 @@ export default function DownloadPage() {
 
         <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#08EBF6]/10 border border-[#08EBF6]/30 text-[#08EBF6] text-[10px] font-mono font-bold uppercase tracking-widest">
           <Sparkles size={12} />
-          <span>Complete 14-Day Free Evaluation</span>
+          <span>Free 14-Day Full Trial · No Registration Needed</span>
         </div>
 
         <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight max-w-3xl mx-auto uppercase leading-tight">
-          DOWNLOAD NOXIS HUB <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#08EBF6] via-white to-[#5FA5FA]">DESKTOP</span>
+          DOWNLOAD NOXIS HUB <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#08EBF6] via-white to-[#5FA5FA]">FOR WINDOWS</span>
         </h1>
 
-        <p className="text-sm sm:text-base text-zinc-400 max-w-xl mx-auto leading-relaxed">
-          Full offline industrial operating suite. Zero registration, no credit cards, and deterministic database isolation on your local hardware.
+        <p className="text-sm sm:text-base text-zinc-400 max-w-2xl mx-auto leading-relaxed font-normal">
+          Industrial ERP software built specifically for textile mills, garment manufacturers, and wholesale traders. Download the installer, run setup, and start working immediately on your local PC — no credit card, no email signup, and no internet connection required.
         </p>
 
         {/* Primary CTA */}
@@ -67,15 +67,15 @@ export default function DownloadPage() {
             <span>Download for Windows (.exe)</span>
           </a>
 
-          <div className="flex items-center gap-2 text-[11px] font-mono text-gray-400">
+          <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] font-mono text-gray-400">
             <span>v13.0.1 Stable</span>
             <span>•</span>
-            <span>217MB Standalone Installer</span>
+            <span>210 MB Standalone Installer</span>
             <span>•</span>
             <span className="text-[#08EBF6]">Windows 10 / 11 (64-bit)</span>
           </div>
           <p className="text-[10px] text-gray-400 font-mono">
-            SHA-256 Verified Binary · Local SQLite 3 Architecture
+            Local SQLite File Stored on Your Hard Drive · Works Without an Internet Connection
           </p>
         </div>
       </section>
@@ -84,10 +84,10 @@ export default function DownloadPage() {
       <section className="py-14 px-6 sm:px-12 max-w-6xl mx-auto space-y-6">
         <div className="space-y-1">
           <h2 className="text-xl sm:text-2xl font-bold font-mono text-white uppercase tracking-wider">
-            Evaluation Matrix & Modules
+            Feature Comparison & Modules
           </h2>
           <p className="text-xs text-gray-400">
-            Compare features across operational tiers. The evaluation build grants complete Elite access for 14 days.
+            Compare functionality across operational tiers. The download includes full Elite access for your first 14 days.
           </p>
         </div>
 
@@ -95,9 +95,9 @@ export default function DownloadPage() {
           <table className="w-full text-left border-collapse text-xs font-mono">
             <thead>
               <tr className="border-b border-white/10 bg-[#040507]">
-                <th className="p-4 text-gray-400 font-bold uppercase tracking-wider">Operational Engine</th>
-                <th className="p-4 text-gray-400 font-bold uppercase tracking-wider">Free Tier</th>
-                <th className="p-4 text-gray-400 font-bold uppercase tracking-wider">Lite Deployment</th>
+                <th className="p-4 text-gray-400 font-bold uppercase tracking-wider">Operational Feature</th>
+                <th className="p-4 text-gray-400 font-bold uppercase tracking-wider">Free Forever (Post-Trial)</th>
+                <th className="p-4 text-gray-400 font-bold uppercase tracking-wider">Lite License</th>
                 <th className="p-4 bg-[#08EBF6]/10 text-[#08EBF6] border-x border-[#08EBF6]/30 font-bold uppercase tracking-wider">
                   Elite / 14-Day Trial
                 </th>
@@ -105,16 +105,16 @@ export default function DownloadPage() {
             </thead>
             <tbody className="divide-y divide-white/5 font-sans">
               {[
-                { feature: 'POS Counter & Thermal Printing', free: 'Basic Native', lite: 'Full Hardware Hooks', elite: 'Full Hardware Hooks' },
-                { feature: 'Inventory SKU Relational Ledger', free: 'Up to 100 SKUs', lite: 'Unlimited', elite: 'Unlimited' },
-                { feature: 'Customer & Supplier Accounts', free: '30 Accounts', lite: 'Unlimited', elite: 'Unlimited' },
-                { feature: 'Karigar Piece-Rate Wage Pipeline', free: 'Manual Ledger Entry', lite: 'Automated Rates', elite: 'Automated Rates' },
-                { feature: 'WhatsApp Invoice Dispatch', free: '—', lite: 'Enabled', elite: 'Enabled' },
-                { feature: 'Audit, PDF & Excel Exports', free: '—', lite: 'Enabled', elite: 'Enabled' },
-                { feature: 'RTSP CCTV Input Streams', free: '—', lite: '2 RTSP Feeds', elite: '6 Streams + AI Vision Alerts' },
-                { feature: 'Foresight AI Projections', free: '—', lite: '—', elite: 'Active Model Pipeline' },
-                { feature: 'Floor Companion Phone Mesh', free: '1 Device', lite: '5 Devices', elite: '50 Connected Nodes' },
-                { feature: 'Disk Data Sovereignty', free: 'Permanent Local Lock', lite: 'Permanent Local Lock', elite: 'Permanent Local Lock' },
+                { feature: 'POS Counter & Thermal Printing (58mm/80mm)', free: 'Full POS Access', lite: 'Full Hardware Support', elite: 'Full Hardware Support' },
+                { feature: 'Raw Material & Fabric Stock Tracking', free: 'Up to 200 SKUs', lite: 'Unlimited SKUs', elite: 'Unlimited SKUs + Batch Yield' },
+                { feature: 'Wholesale Customer & Supplier Khata', free: 'Up to 50 Accounts', lite: 'Unlimited Accounts', elite: 'Unlimited Accounts' },
+                { feature: 'Karigar Piece-Rate Wage Log & Peshgi Advances', free: 'Manual Ledger Only', lite: 'Automatic Calculations', elite: 'Automatic Rates & Payslip Prints' },
+                { feature: 'WhatsApp Invoice & Statement Sharing', free: '—', lite: 'Included', elite: 'Included' },
+                { feature: 'PDF & Excel Accounting Ledger Exports', free: 'Standard Export', lite: 'Detailed Reports', elite: 'Detailed Reports + P&L' },
+                { feature: 'On-Site RTSP IP Camera Video Feeds', free: '—', lite: '2 Camera Feeds', elite: 'Connect up to 6 on-site IP cameras via RTSP with motion tripwire alerts' },
+                { feature: 'Inventory Demand Forecasting', free: '—', lite: 'Low-Stock Alerts', elite: 'Automatic reorder alerts & 30-day raw material demand forecasting' },
+                { feature: 'Floor Companion Phone Connection', free: '1 Android Device', lite: 'Up to 5 Devices', elite: 'Up to 50 Android devices logging output & attendance over office Wi-Fi' },
+                { feature: 'Database Storage Location', free: 'Local SQLite on Hard Drive', lite: 'Local SQLite on Hard Drive', elite: 'Local SQLite on Hard Drive (+ optional cloud backup)' },
               ].map((row, idx) => (
                 <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
                   <td className="p-4 font-semibold text-white font-mono text-xs">{row.feature}</td>
@@ -133,10 +133,10 @@ export default function DownloadPage() {
         </div>
       </section>
 
-      {/* Trial Expiry Protocol */}
+      {/* Trial vs License Activation Protocol */}
       <section className="py-14 px-6 sm:px-12 max-w-5xl mx-auto space-y-6">
         <h2 className="text-xl sm:text-2xl font-bold font-mono text-white uppercase tracking-wider text-center">
-          Lifecycle After 14 Days
+          How Evaluation & Activation Works
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -144,9 +144,9 @@ export default function DownloadPage() {
             <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#08EBF6] bg-[#08EBF6]/10 px-2 py-0.5 rounded">
               Days 1–14
             </span>
-            <h3 className="text-base font-bold text-white uppercase font-mono">Full Elite Runtime</h3>
+            <h3 className="text-base font-bold text-white uppercase font-mono">Free Trial (Day 1–14)</h3>
             <p className="text-xs text-zinc-400 leading-relaxed font-sans">
-              All native modules operational: high-speed POS, real-time Karigar wage calculations, localized RTSP feeds, and floor mesh pairing.
+              Download the .exe, run the installer, and start using immediately. No credit card, no email registration, and no internet required. All features are fully unlocked so you can test piece-rate wages, Khata entries, and inventory tracking on your actual factory floor.
             </p>
           </div>
 
@@ -154,21 +154,21 @@ export default function DownloadPage() {
             <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded">
               Day 14+
             </span>
-            <h3 className="text-base font-bold text-white uppercase font-mono">Automated Free Mode</h3>
+            <h3 className="text-base font-bold text-white uppercase font-mono">Paid Activation (After Day 14)</h3>
             <p className="text-xs text-zinc-400 leading-relaxed font-sans">
-              No database lockouts. Your ledger balances, customer lists, and raw operational history remain queryable directly from your hard drive.
+              To keep using premium features after 14 days, copy your machine's ID from Settings and WhatsApp us to receive your offline permanent license key. If you choose not to activate, your data is never locked — the Free Forever tier keeps POS counter and search permanently active.
             </p>
           </div>
         </div>
       </section>
 
-      {/* Licensing Conduit */}
+      {/* Licensing Activation Steps */}
       <section className="py-14 px-6 sm:px-12 max-w-5xl mx-auto space-y-6">
         <div className="text-center space-y-1">
           <h2 className="text-xl sm:text-2xl font-bold font-mono text-white uppercase tracking-wider">
-            License Activation Pipeline
+            3-Step Offline License Activation
           </h2>
-          <p className="text-xs text-zinc-400 font-mono">Cryptographic HWID validation · Zero cloud round-trips</p>
+          <p className="text-xs text-zinc-400 font-mono">License key locked to your PC's motherboard · Works without an internet connection</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono">
@@ -176,9 +176,9 @@ export default function DownloadPage() {
             <div className="w-7 h-7 rounded bg-white/5 border border-white/15 flex items-center justify-center font-bold text-xs text-white">
               01
             </div>
-            <h4 className="text-xs font-bold text-white uppercase">Copy Unique HWID</h4>
+            <h4 className="text-xs font-bold text-white uppercase">Copy Machine ID</h4>
             <p className="text-[11px] text-zinc-400 leading-relaxed font-sans">
-              Open Noxis Hub on your workstation, navigate to Settings → License, and click Copy Machine HWID.
+              Open Noxis Hub on your office computer, navigate to Settings → License, and click &quot;Copy Machine ID&quot;.
             </p>
           </div>
 
@@ -186,9 +186,9 @@ export default function DownloadPage() {
             <div className="w-7 h-7 rounded bg-[#25D366]/10 border border-[#25D366]/30 flex items-center justify-center font-bold text-xs text-[#25D366]">
               02
             </div>
-            <h4 className="text-xs font-bold text-white uppercase">Dispatch HWID</h4>
+            <h4 className="text-xs font-bold text-white uppercase">WhatsApp Us</h4>
             <p className="text-[11px] text-zinc-400 leading-relaxed font-sans">
-              Forward your generated HWID to support for tier authorization and RSA license generation.
+              Send your Machine ID and business name to our official WhatsApp support (+92 326 4742678) to generate your license.
             </p>
             <a
               href={WHATSAPP_SUPPORT_URL}
@@ -197,7 +197,7 @@ export default function DownloadPage() {
               className="inline-flex items-center gap-1.5 text-[10px] text-[#25D366] font-bold uppercase tracking-wider hover:underline pt-1"
             >
               <MessageCircle size={12} />
-              <span>Open Support Dispatch</span>
+              <span>WhatsApp Support (+92 326 4742678)</span>
             </a>
           </div>
 
@@ -205,9 +205,9 @@ export default function DownloadPage() {
             <div className="w-7 h-7 rounded bg-white/5 border border-white/15 flex items-center justify-center font-bold text-xs text-white">
               03
             </div>
-            <h4 className="text-xs font-bold text-white uppercase">Inject Cryptographic Key</h4>
+            <h4 className="text-xs font-bold text-white uppercase">Paste License Key</h4>
             <p className="text-[11px] text-zinc-400 leading-relaxed font-sans">
-              Paste the signed license key into the desktop interface. Cryptographic unlocking commits locally in &lt;1 second.
+              Paste your offline license key directly into the software. Premium features unlock permanently on your PC in under one second.
             </p>
           </div>
         </div>
@@ -218,15 +218,15 @@ export default function DownloadPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 p-6 bg-[#06080C] border border-white/10 rounded-lg text-center font-mono">
           <div className="space-y-1">
             <p className="text-3xl font-bold text-white">140+</p>
-            <p className="text-[10px] text-zinc-400 uppercase tracking-widest">Active Industrial Deployments</p>
+            <p className="text-[10px] text-zinc-400 uppercase tracking-widest">Mills & Factory Workstations</p>
           </div>
           <div className="space-y-1 sm:border-x sm:border-white/10">
             <p className="text-3xl font-bold text-[#08EBF6]">1,200+</p>
-            <p className="text-[10px] text-zinc-400 uppercase tracking-widest">Karigar Nodes Tracked Monthly</p>
+            <p className="text-[10px] text-zinc-400 uppercase tracking-widest">Karigars & Weavers Managed</p>
           </div>
           <div className="space-y-1">
             <p className="text-3xl font-bold text-[#5FA5FA]">45,000+</p>
-            <p className="text-[10px] text-zinc-400 uppercase tracking-widest">Invoices Processed Locally</p>
+            <p className="text-[10px] text-zinc-400 uppercase tracking-widest">Wholesale Invoices Recorded</p>
           </div>
         </div>
       </section>
@@ -234,7 +234,7 @@ export default function DownloadPage() {
       {/* FAQ */}
       <section className="py-14 px-6 sm:px-12 max-w-4xl mx-auto space-y-4">
         <h2 className="text-xl sm:text-2xl font-bold font-mono text-white uppercase tracking-wider text-center">
-          Engineering & Storage FAQ
+          Frequently Asked Questions
         </h2>
 
         <div className="space-y-2">
@@ -245,7 +245,7 @@ export default function DownloadPage() {
                 <button
                   type="button"
                   onClick={() => setOpenFaq(isOpen ? null : idx)}
-                  className="w-full p-4 text-left flex items-center justify-between text-xs font-mono font-bold text-white hover:bg-white/[0.02] transition-colors uppercase tracking-wide"
+                  className="w-full p-4 text-left flex items-center justify-between text-xs font-mono font-bold text-white hover:bg-white/[0.02] transition-colors uppercase tracking-wide cursor-pointer"
                 >
                   <span>{faq.q}</span>
                   <ChevronDown size={14} className={`transform transition-transform ${isOpen ? 'rotate-180 text-[#08EBF6]' : 'text-zinc-500'}`} />
@@ -263,9 +263,9 @@ export default function DownloadPage() {
 
       {/* Footer CTA */}
       <section className="py-16 px-6 text-center border-t border-white/10 max-w-4xl mx-auto space-y-4">
-        <h3 className="text-2xl font-bold font-mono text-white uppercase">Initialize Production Evaluation</h3>
+        <h3 className="text-2xl font-bold font-mono text-white uppercase">Download and Test on Your Factory PC</h3>
         <p className="text-xs text-zinc-400 max-w-md mx-auto">
-          Start your 14-day fully featured evaluation runtime on your Windows workstation.
+          Start your 14-day full evaluation immediately. No sign-up, no credit card, and completely offline.
         </p>
         <a
           href={DOWNLOAD_EXE_URL}
@@ -277,7 +277,7 @@ export default function DownloadPage() {
       </section>
 
       <footer className="border-t border-white/5 bg-[#020304] py-6 text-center text-[10px] font-mono text-zinc-500">
-        <p>© {new Date().getFullYear()} Omnora. Industrial Runtime Engineering.</p>
+        <p>© {new Date().getFullYear()} Omnora. Industrial ERP for Textile Mills & Wholesale Traders.</p>
       </footer>
     </div>
   );

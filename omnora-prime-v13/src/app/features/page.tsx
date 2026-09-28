@@ -151,16 +151,16 @@ export default function FeaturesPage() {
     },
     {
       id: 'cctv',
-      title: 'CCTV Sentinel AI Monitoring',
-      badge: 'Elite AI Feature',
-      desc: 'Connect factory IP cameras for AI face check-in attendance and automated perimeter security breach alerts.',
+      title: 'On-Site RTSP Camera Video Feeds',
+      badge: 'RTSP Video Feeds',
+      desc: 'Connect up to 6 on-site IP cameras via RTSP. Draw boundary tripwires to alert staff when restricted inventory areas are accessed.',
       image: '/software-images/cctv.png',
       items: [
         'RTSP & ONVIF stream integration for up to 6 camera channels',
-        'AI face recognition matching karigars at loom floor doors',
-        'Intruder & unauthorized zone breach detection',
-        'Live timeline incident log & CSV event export',
-        'Instant PC alarm siren & mobile push notifications'
+        'Direct local video stream rendering on your PC',
+        'Motion tripwire alerts when restricted areas are accessed',
+        'Live incident timeline log & CSV event export',
+        'Instant PC speaker alert & staff notification'
       ],
       icon: ShieldAlert,
       color: 'text-red-400',
@@ -169,12 +169,12 @@ export default function FeaturesPage() {
     },
     {
       id: 'mobile',
-      title: 'Local WiFi Mobile Mesh Nodes',
+      title: 'Shop-Floor Android Phone Logging',
       badge: 'No Internet Needed',
-      desc: 'Pair floor supervisor Android smartphones over local office WiFi in under 60 seconds without cloud dependency.',
+      desc: 'Up to 50 Android devices can log piece-rate output and attendance over your workshop\'s Wi-Fi router without using external mobile data.',
       image: '/software-images/device pair.png',
       items: [
-        'QR code instant device pairing via local IP subnet',
+        'QR code pairing for Android phones over local Wi-Fi router',
         'Floor attendance marking & Peshgi advance logging',
         'Stock scanning & batch production entry from phone',
         'Sub-2-second local synchronization with PC Hub',
@@ -193,11 +193,11 @@ export default function FeaturesPage() {
     { title: 'Double-Entry Khata Ledger', src: '/software-images/party.png', desc: 'Party accounts receivable & debit/credit balance ledger' },
     { title: 'File Morph Security Suite', src: '/software-images/file morph.png', desc: 'Local PDF conversion, compression, & watermark utilities' },
     { title: 'Batch Production & Loom Control', src: '/software-images/batch.png', desc: 'Fabric purchasing, stitching job slips & yield tracking' },
-    { title: 'CCTV Sentinel AI Monitoring', src: '/software-images/cctv.png', desc: 'ONVIF IP camera stream integration & intruder alarms' },
+    { title: 'On-Site RTSP Camera Video Feeds', src: '/software-images/cctv.png', desc: 'Connect up to 6 IP cameras via RTSP with motion tripwire alerts' },
     { title: 'Corporate CRM & Deal Pipeline', src: '/software-images/crm.png', desc: 'Wholesale buyer pipeline & automated WhatsApp notifications' },
     { title: 'Workflow Automation Rules', src: '/software-images/workflows.png', desc: 'Trigger-based alert rules & automated scheduled tasks' },
     { title: 'Local WiFi Device Pairing', src: '/software-images/device pair.png', desc: 'QR code pairing for Android floor supervisor smartphones' },
-    { title: 'Audit Trail & Compliance Logs', src: '/software-images/audit logs.png', desc: 'Cryptographic security logs & tamper-evident audit history' },
+    { title: 'Audit Trail & Compliance Logs', src: '/software-images/audit logs.png', desc: 'Local security audit logs & tamper-evident history' },
   ]
 
   const tierComparison = [
@@ -210,8 +210,8 @@ export default function FeaturesPage() {
     { feature: 'CCTV IP Camera Channels (Max)', free: '0', lite: '2', pro: '4', elite: '6' },
     { feature: 'Cloud Backup & Auto-Sync', free: false, lite: false, pro: true, elite: true },
     { feature: 'Multi-Branch Location Management', free: false, lite: false, pro: true, elite: true },
-    { feature: 'Foresight AI Predictions', free: false, lite: false, pro: true, elite: true },
-    { feature: 'Sentinel AI CCTV Detection & API', free: false, lite: false, pro: false, elite: true },
+    { feature: 'Stock Demand & Reorder Alerts', free: false, lite: false, pro: true, elite: true },
+    { feature: 'RTSP Motion Tripwire Alerts & Alarms', free: false, lite: false, pro: false, elite: true },
   ]
 
   return (

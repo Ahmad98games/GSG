@@ -54,7 +54,7 @@ export default function AboutPage() {
             LOCAL-FIRST INDUSTRIAL <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#08EBF6] via-white to-[#5FA5FA]">ERP ENGINE</span>
           </h1>
           <p className="text-slate-300 text-sm sm:text-base leading-relaxed max-w-2xl mx-auto font-normal">
-            Noxis Hub runs a distributed master-node architecture over isolated LAN topologies. It handles piece-rate Karigar wage reconciliation, relational inventory ledgers, and on-premise CCTV computer vision without continuous external WAN dependencies.
+            Noxis Hub runs locally on your PC hard drive and office Wi-Fi network. It handles piece-rate Karigar wage calculations, yarn and fabric inventory tracking, and on-site RTSP camera streams without requiring an active internet connection.
           </p>
           <div className="text-[10px] text-gray-400 font-mono tracking-widest uppercase flex items-center gap-3">
             <span>CORE: v13.0-STABLE</span>
@@ -66,14 +66,14 @@ export default function AboutPage() {
         {/* Section 2: Technical Metrics */}
         <SectionReveal delay={0.05}>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 font-mono">
-            <StatCard value="0.00ms" label="WAN Dependency" sub="100% On-Premise Execution" />
-            <StatCard value="SQLite" label="Primary Storage" sub="ACID Compliant Local DB" />
-            <StatCard value="LAN Mesh" label="Protocol Bus" sub="Binary WebSockets / Raw TCP" />
-            <StatCard value="WASM/YOLO" label="Edge Inference" sub="Local Frame Buffer Pipeline" />
+            <StatCard value="Offline" label="Network Dependency" sub="Runs Without Internet" />
+            <StatCard value="SQLite" label="Primary Storage" sub="Local Database on Hard Drive" />
+            <StatCard value="Office Wi-Fi" label="Mobile Connection" sub="Direct LAN Socket Streaming" />
+            <StatCard value="RTSP / IP" label="Camera Video" sub="On-Premise Stream Decoding" />
           </div>
         </SectionReveal>
 
-        {/* Section 3: Engineering Spec & Conduits */}
+        {/* Section 3: Engineering Specifications */}
         <SectionReveal delay={0.1}>
           <div className="border border-white/10 p-8 md:p-12 rounded-xl bg-[#090A0E]/80 backdrop-blur-md relative overflow-hidden">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
@@ -83,10 +83,10 @@ export default function AboutPage() {
                   Fault-Tolerant Floor Engineering
                 </h2>
                 <p className="text-gray-300 text-sm leading-relaxed">
-                  Industrial manufacturing environments experience frequent power disruptions, electrical noise, and unstable ISP infrastructure. Cloud-dependent ERP architectures lock or drop uncommitted transactions during disconnects.
+                  Industrial manufacturing environments experience frequent power disruptions, electrical noise, and unstable ISP infrastructure. Cloud-dependent ERP software freezes or drops uncommitted records during internet drops.
                 </p>
                 <p className="text-gray-400 text-xs leading-relaxed">
-                  Noxis implements write-ahead logging (WAL) on local partitions. Mobile floor nodes synchronize differential operational delta records over local AP broadcast packets. In the event of total network drops, transactions queue in memory and flush immediately upon socket reconnect.
+                  Noxis writes directly to your hard drive using SQLite with Write-Ahead Logging (WAL). Mobile floor supervisor phones synchronize production entries across your office Wi-Fi router. If internet or power cuts out, your data remains safe and available on your local computer.
                 </p>
               </div>
               <div className="lg:col-span-4 bg-[#030406] border border-white/10 p-6 rounded-lg space-y-3 font-mono">
@@ -198,13 +198,13 @@ export default function AboutPage() {
             />
             <PillarCard 
               icon={Shield} 
-              title="Deterministic Financial Core" 
-              desc="Float precision issues are eliminated through fixed-precision arithmetic units. Karigar piece-rates calculate against verified delivery manifests and weight records."
+              title="Fixed-Precision Accounting Core" 
+              desc="Float calculation rounding errors are eliminated using integer/fixed-precision arithmetic. Karigar piece-rates calculate accurately against actual delivery manifests and weighbridge scale readings."
             />
             <PillarCard 
               icon={Eye} 
-              title="Sentinel Vision Pipeline" 
-              desc="Ingests RTSP/H.264 camera streams directly into a memory frame buffer. OpenCV filters and local ML bounding boxes compute perimeter alerts without third-party APIs."
+              title="On-Site RTSP Video Stream Pipeline" 
+              desc="Connect up to 6 on-site IP cameras via RTSP. Draw boundary tripwires to alert staff when restricted inventory areas are accessed without third-party cloud fees."
             />
           </div>
         </SectionReveal>
@@ -232,11 +232,11 @@ export default function AboutPage() {
                 <div className="flex flex-wrap gap-2">
                   <Pill>Local-First Systems</Pill>
                   <Pill>Electron / Node Native Hooks</Pill>
-                  <Pill>SQLite Internal Schema</Pill>
-                  <Pill>RTSP / OpenCV Pipelines</Pill>
+                  <Pill>SQLite Database Architecture</Pill>
+                  <Pill>RTSP Camera Streaming</Pill>
                 </div>
                 <p className="text-gray-400 text-xs leading-relaxed font-mono">
-                  Responsible for core runtime packaging, low-latency IPC bridges between the Electron main process and renderer, native database indexing, and the local mesh synchronization protocol.
+                  Responsible for desktop runtime packaging, low-latency IPC bridges between the Electron main process and renderer, native database indexing, and local Wi-Fi device synchronization.
                 </p>
               </div>
             </div>
@@ -261,11 +261,11 @@ export default function AboutPage() {
               </thead>
               <tbody className="divide-y divide-white/5">
                 <SpecRow param="Persistence Layer" detail="Embedded relational database with WAL enabled" tech="SQLite 3.x" />
-                <SpecRow param="Local Mesh Protocol" detail="Bidirectional event conduits via JSON/Binary Frames" tech="ws / TCP Sockets" />
+                <SpecRow param="Local Network Protocol" detail="Bidirectional local event streaming over office Wi-Fi" tech="ws / TCP Sockets" />
                 <SpecRow param="Vision Frame Pipeline" detail="Decoded RTSP byte arrays via hardware acceleration" tech="OpenCV / WebAssembly" />
-                <SpecRow param="Desktop Container" detail="Sandboxed isolated renderer with secure preload bridges" tech="Electron / Node.js" />
+                <SpecRow param="Desktop Container" detail="Standalone isolated renderer with secure preload bridges" tech="Electron / Node.js" />
                 <SpecRow param="State Management" detail="Normalized unidirectional in-memory store" tech="Zustand / Reactive Store" />
-                <SpecRow param="Backup Conduit" detail="Delta-only snapshots over TLS 1.3" tech="AES-256 Encrypted Sync" />
+                <SpecRow param="Backup System" detail="Encrypted snapshots stored locally or synced over TLS 1.3" tech="AES-256 Encrypted Sync" />
               </tbody>
             </table>
           </div>

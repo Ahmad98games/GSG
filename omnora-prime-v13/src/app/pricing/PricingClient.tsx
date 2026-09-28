@@ -8,18 +8,35 @@ import { formatCurrency } from "@/lib/currency/currencyEngine";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { FloatingOrb } from "@/components/ui/AnimatedComponents";
-
-const FAQS = [
-  { q: "Why do I have to pay manually instead of using an automated gateway?", a: "Since we are in an early stage, we prioritize minimizing overhead costs. Manual processing allows us to pass maximum pricing value directly to industrial operations without gateway processing fee cuts." },
-  { q: "Can I use it without internet?", a: "Yes, fully offline. All core industrial logic and CCTV AI human detection analytics run 100% locally on your local machine. Cloud sync is optional for remote data backups." },
-  { q: "What happens if I stop paying?", a: "Your data stays completely safe on your local drive. You retain read-only access to all historical logs and can export everything to CSV/PDF. Active transactions and live CCTV streams require an active subscription." },
-  { q: "Can I switch from Lite to Pro?", a: "Yes. You can upgrade your tier configuration at any time through the workspace. Your internal data schemas automatically migrate to include the expanded multi-device tracking features." },
-  { q: "Does it work on all Windows versions?", a: "Noxis Hub is optimized for Windows 10 and 11 (64-bit). It requires a minimum of 4GB RAM, though 8GB is highly recommended when running concurrent CCTV camera feeds." },
-  { q: "Is my data safe?", a: "Your financial and industrial data is stored natively on your own hard drive, never on our servers. We maintain a zero-access posture to your private logs, payroll, and stock parameters." }
-];
-
 import PublicNavbar from "@/components/shell/PublicNavbar";
 import HWIDActivationModal from "@/components/pricing/HWIDActivationModal";
+
+const FAQS = [
+  { 
+    q: "Why do I pay manually via WhatsApp instead of automated card checkout?", 
+    a: "Most textile mill and factory owners prefer direct bank transfers (NayaPay, Raast, JazzCash, or bank wire) without third-party card processing fees. Once payment is confirmed, we issue your permanent offline license key locked to your PC's motherboard within 30 minutes." 
+  },
+  { 
+    q: "Can I use Noxis Hub without an internet connection?", 
+    a: "Yes, 100% offline. All core ERP logic, Karigar piece-rate calculations, inventory ledgers, and on-site RTSP camera feeds run directly on your computer's local SQLite database. Cloud backup is completely optional." 
+  },
+  { 
+    q: "What happens after the 14-day trial finishes?", 
+    a: "Your data stays on your hard drive forever. We never delete or lock your records. You can continue using the Free tier (POS counter, basic ledger, and full Excel/PDF export) or WhatsApp us to activate an offline permanent license key." 
+  },
+  { 
+    q: "Can I upgrade from Lite to Pro later?", 
+    a: "Yes. You can upgrade your license tier at any time by messaging our support line. Your existing customer Khata, raw material inventory, and worker payroll records remain completely intact." 
+  },
+  { 
+    q: "What computer hardware do I need?", 
+    a: "Noxis Hub is built for standard Windows 10 and 11 (64-bit) computers. A computer with at least 4GB RAM is required (8GB recommended if viewing multiple on-site RTSP camera streams simultaneously)." 
+  },
+  { 
+    q: "Is my factory data safe and private?", 
+    a: "Yes. All your records are stored in a local SQLite file on your office computer's hard drive, never on public servers. We have zero access to your sales, pricing, or worker wage logs." 
+  }
+];
 
 export default function PricingClient() {
   const router = useRouter();
@@ -87,10 +104,10 @@ export default function PricingClient() {
       `Assalam o Alaikum Omnora Labs,\n\n` +
       `I have sent the payment of ${selectedPlan.price} for the Noxis *${selectedPlan.tier} Plan*.\n\n` +
       `🏢 Business: ${cleanBiz || 'Not provided'}\n` +
-      `💻 Machine HWID: ${cleanHwid || 'Not provided'}\n` +
+      `💻 Machine ID: ${cleanHwid || 'Not provided'}\n` +
       `💳 Payment Method: ${formattedMethodName} (${methodDetails})\n` +
       `🧾 Transaction ID (TID): ${txId || 'N/A'}\n\n` +
-      `Please issue my verified offline license key.`
+      `Please issue my verified offline permanent license key.`
     );
     window.open(`https://wa.me/923264742678?text=${msg}`, '_blank');
     setCheckoutModalOpen(false);
@@ -167,15 +184,15 @@ export default function PricingClient() {
           <div className="inline-flex items-center gap-2 bg-[#08EBF6]/10 border border-[#08EBF6]/30 px-4 py-1.5 rounded-full mb-6 shadow-[0_0_15px_rgba(8,235,246,0.15)]">
             <ShieldCheck size={14} className="text-[#08EBF6]" />
             <span className="text-[10px] font-black text-[#08EBF6] uppercase tracking-widest">
-              100% Local-First Architecture · Anti-Tamper Licensing
+              Built for Textile Mills &amp; Manufacturing · Local SQLite File Stored on Your Hard Drive
             </span>
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-tighter mb-4 uppercase">
             Noxis<span className="text-[#08EBF6]">Hub</span> Pricing
           </h1>
-          <p className="text-[#5FA5FA] uppercase tracking-[0.3em] text-[9px] sm:text-[10px] font-black max-w-xl mx-auto">
-            Industrial Scalability. Predictable Growth. Zero Cloud Lock-In.
+          <p className="text-[#5FA5FA] uppercase tracking-[0.25em] text-[10px] sm:text-xs font-bold max-w-2xl mx-auto">
+            Local-first software for textile mills, garment factories, and wholesale traders. Works without an internet connection.
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mt-8">
@@ -184,7 +201,7 @@ export default function PricingClient() {
               <button 
                 onClick={() => setBillingCycle('monthly')}
                 className={cn(
-                  "px-6 sm:px-8 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all rounded-md",
+                  "px-6 sm:px-8 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all rounded-md cursor-pointer",
                   billingCycle === 'monthly' ? 'bg-[#08EBF6] text-black shadow-[0_0_15px_rgba(8,235,246,0.4)]' : 'text-slate-400 hover:text-white'
                 )}
               >
@@ -193,7 +210,7 @@ export default function PricingClient() {
               <button 
                 onClick={() => setBillingCycle('annual')}
                 className={cn(
-                  "px-6 sm:px-8 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all relative rounded-md",
+                  "px-6 sm:px-8 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all relative rounded-md cursor-pointer",
                   billingCycle === 'annual' ? 'bg-[#08EBF6] text-black shadow-[0_0_15px_rgba(8,235,246,0.4)]' : 'text-slate-400 hover:text-white'
                 )}
               >
@@ -208,7 +225,7 @@ export default function PricingClient() {
                 <button 
                   onClick={() => setDisplayCurrency('LOCAL')}
                   className={cn(
-                    "px-4 sm:px-6 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all rounded-sm",
+                    "px-4 sm:px-6 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all rounded-sm cursor-pointer",
                     displayCurrency === 'LOCAL' ? 'bg-white/10 text-white' : 'text-gray-600'
                   )}
                 >
@@ -217,7 +234,7 @@ export default function PricingClient() {
                 <button 
                   onClick={() => setDisplayCurrency('USD')}
                   className={cn(
-                    "px-4 sm:px-6 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all rounded-sm",
+                    "px-4 sm:px-6 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all rounded-sm cursor-pointer",
                     displayCurrency === 'USD' ? 'bg-white/10 text-white' : 'text-gray-600'
                   )}
                 >
@@ -241,35 +258,34 @@ export default function PricingClient() {
               <div className="flex items-center gap-2">
                 <Zap size={16} className="text-amber-400" />
                 <span className="text-xs font-black uppercase tracking-widest text-amber-400">
-                  14-Day Anti-Tamper Trial + Free Forever Fallback
+                  Free 14-Day Evaluation + Free Forever Fallback
                 </span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight">
-                Try Every Feature Unlocked. <span className="text-blue-400">Zero Risk. Zero Lock-Out.</span>
+                Test Every Feature on Your Factory PC. <span className="text-blue-400">Zero Risk of Data Loss.</span>
               </h2>
-              <p className="text-xs text-slate-400 leading-relaxed max-w-2xl">
-                Noxis Hub initialises with an anti-tamper 14-day trial powered by 3 independent time sources (NTP, Monotonic process runtime, and local database birthtime). When your trial finishes, your system automatically transitions to <strong className="text-white">Free Forever</strong> mode — POS checkout stays 100% unlocked with 200 SKU & 50 Party caps. <strong className="text-emerald-400">Zero data deletion, guaranteed.</strong>
+              <p className="text-xs text-slate-400 leading-relaxed max-w-2xl font-normal">
+                Download the installer, run setup, and start using immediately. No credit card, no email registration, and no internet required. After 14 days, your data stays completely safe on your hard drive — continue using the <strong className="text-white">Free Forever</strong> tier (POS counter, basic ledger, and full data access forever) or WhatsApp us to activate an offline permanent license key locked to your PC&apos;s motherboard.
               </p>
             </div>
             <div className="lg:col-span-4 flex flex-col sm:flex-row lg:flex-col gap-3 justify-center">
               <div className="bg-white/5 border border-white/10 p-4 rounded-sm space-y-1">
                 <div className="flex items-center justify-between text-[11px] font-bold text-white uppercase tracking-wider">
-                  <span>14-Day Full Access Trial</span>
-                  <span className="text-emerald-400">100% Unlocked</span>
+                  <span>14-Day Free Evaluation</span>
+                  <span className="text-emerald-400">All Features Unlocked</span>
                 </div>
-                <p className="text-[10px] text-slate-400">POS, Inventory, Invoices, Khata, CCTV, AI Vision, Mobile Pairing</p>
+                <p className="text-[10px] text-slate-400">Karigar Piece-Rates, Fabric Inventory, Khata, Vouchers &amp; Phone Pairing</p>
               </div>
               <div className="bg-white/5 border border-white/10 p-4 rounded-sm space-y-1">
                 <div className="flex items-center justify-between text-[11px] font-bold text-white uppercase tracking-wider">
-                  <span>Post-Trial Transition</span>
+                  <span>After Day 14</span>
                   <span className="text-blue-400">Free Forever Tier</span>
                 </div>
-                <p className="text-[10px] text-slate-400">POS Checkout Open Forever · 200 SKUs · 50 Parties · Full PDF/CSV Export</p>
+                <p className="text-[10px] text-slate-400">POS Counter Open Forever · 200 SKUs · 50 Parties · Full PDF/Excel Export</p>
               </div>
             </div>
           </div>
         </motion.div>
-
 
         {/* Pricing Cards Grid */}
         <motion.div 
@@ -287,13 +303,13 @@ export default function PricingClient() {
             localCurrency={localCurrency}
             pricePKR={0}
             priceUSD={0}
-            sub="Capped at 200 SKUs, 1 PC, POS Unlocked forever."
+            sub="Capped at 200 SKUs, 50 Parties, POS counter unlocked forever."
             features={[
               { label: "100% POS Counter Unlocked", included: true, highlight: true },
-              { label: "Capped at 200 Inventory SKUs", included: true },
+              { label: "Up to 200 Inventory SKUs", included: true },
               { label: "Up to 50 Party Accounts", included: true },
               { label: "1 Local Workstation PC", included: true },
-              { label: "Full PDF/CSV Ledger Export", included: true },
+              { label: "Full PDF/Excel Ledger Export", included: true },
               { label: "Zero Data Deletion Guarantee", included: true },
             ]}
             cta="Download Free Version"
@@ -310,16 +326,16 @@ export default function PricingClient() {
             pricePKR={25000}
             priceUSD={150}
             period="yr"
-            sub="5 PCs, 5 Mobile, Local WiFi Backup."
+            sub="5 PCs on local network, 5 phones on office Wi-Fi."
             features={[
-              { label: "Up to 5 Workstation PCs", included: true, highlight: true },
-              { label: "5 Mobile Companion Pairings", included: true },
-              { label: "Local WiFi Database Backup", included: true },
-              { label: "Unlimited Inventory SKUs", included: true },
-              { label: "Double-Entry Khata Ledger", included: true },
-              { label: "Dynamic PDF Invoice Printing", included: true },
+              { label: "Up to 5 Workstation PCs on Local Network", included: true, highlight: true },
+              { label: "5 Android Phones on Office Wi-Fi", included: true },
+              { label: "Local SQLite File Stored on Your Hard Drive", included: true },
+              { label: "Unlimited Raw Material & Fabric SKUs", included: true },
+              { label: "Double-Entry Wholesale Khata Ledger", included: true },
+              { label: "PDF Invoices & Thermal Slip Printing", included: true },
             ]}
-            cta="Activate Tier"
+            cta="Activate License"
             onPurchase={() => handleActivateHwid('lite')}
             variant={fadeInUp}
           />
@@ -334,16 +350,16 @@ export default function PricingClient() {
             pricePKR={60000}
             priceUSD={360}
             period="yr"
-            sub="15 PCs, 15 Mobile, Auto Cloud Sync, Karigar Payroll, CCTV."
+            sub="15 PCs, 15 phones on office Wi-Fi, Karigar piece-rate payroll, on-site IP cameras."
             features={[
-              { label: "Up to 15 Workstation PCs", included: true, highlight: true },
-              { label: "15 Mobile Companion Pairings", included: true },
-              { label: "Automatic Cloud Mirroring", included: true },
-              { label: "Karigar Piece-Rate Payroll", included: true, highlight: true },
-              { label: "CCTV universal camera compatibility AI Alerts Feed", included: true, highlight: true },
-              { label: "WhatsApp Automated Receipts", included: true },
+              { label: "Up to 15 Workstation PCs on Local Network", included: true, highlight: true },
+              { label: "15 Android Phones on Office Wi-Fi", included: true },
+              { label: "Karigar Piece-Rate Payroll & Peshgi Ledger", included: true, highlight: true },
+              { label: "Connect up to 4 on-site IP cameras via RTSP", included: true, highlight: true },
+              { label: "Automatic Reorder Alerts for Raw Materials", included: true },
+              { label: "Automated WhatsApp Invoices & Payment Slips", included: true },
             ]}
-            cta="Activate Tier"
+            cta="Activate License"
             onPurchase={() => handleActivateHwid('pro')}
             variant={fadeInUp}
           />
@@ -357,16 +373,16 @@ export default function PricingClient() {
             pricePKR={120000}
             priceUSD={720}
             period="yr"
-            sub="50 PCs, 50 Mobile, Multi-Branch, Priority API."
+            sub="50 PCs, 50 phones on office Wi-Fi, multi-branch, tripwire camera alerts."
             features={[
-              { label: "Up to 50 Workstation PCs", included: true, highlight: true },
-              { label: "50 Mobile Companion Pairings", included: true },
-              { label: "Multi-Branch Operations Engine", included: true, highlight: true },
-              { label: "Priority REST API Webhooks", included: true },
-              { label: "24/7 Priority Support Matrix", included: true },
-              { label: "Custom Domain Client Portal", included: true },
+              { label: "Up to 50 Workstation PCs on Local Network", included: true, highlight: true },
+              { label: "Up to 50 Android devices logging output over Wi-Fi", included: true },
+              { label: "Connect up to 6 on-site IP cameras via RTSP with motion tripwires", included: true, highlight: true },
+              { label: "Automatic reorder alerts & 30-day raw material demand forecasting", included: true },
+              { label: "Multi-Branch Factory Operations & Stock Transfer", included: true, highlight: true },
+              { label: "Dedicated WhatsApp Support Desk (+92 326 4742678)", included: true },
             ]}
-            cta="Activate Tier"
+            cta="Activate License"
             onPurchase={() => handleActivateHwid('elite')}
             primary
             variant={fadeInUp}
@@ -397,18 +413,18 @@ export default function PricingClient() {
                     setCheckoutModalOpen(false);
                     setTxId('');
                   }}
-                  className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors"
+                  className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors cursor-pointer"
                 >
                   <X size={18} />
                 </button>
 
                 <div className="p-6 pb-4 border-b border-white/5">
-                  <span className="text-[9px] font-black uppercase tracking-widest text-[#C5A059]">Checkout Workspace</span>
+                  <span className="text-[9px] font-black uppercase tracking-widest text-[#C5A059]">Order Details</span>
                   <h3 className="text-xl font-black text-white uppercase italic tracking-tighter mt-1">
                     Activate Noxis {selectedPlan.tier}
                   </h3>
                   <p className="text-xs text-gray-400 mt-2 font-medium">
-                    Plan pricing: <span className="text-white font-bold">{selectedPlan.price}</span>
+                    Plan amount: <span className="text-white font-bold">{selectedPlan.price}</span>
                   </p>
                 </div>
 
@@ -423,7 +439,7 @@ export default function PricingClient() {
                         key={tab.id}
                         onClick={() => setPaymentMethod(tab.id as any)}
                         className={cn(
-                          "flex-1 py-2 text-[9px] font-black uppercase tracking-widest transition-all rounded-sm",
+                          "flex-1 py-2 text-[9px] font-black uppercase tracking-widest transition-all rounded-sm cursor-pointer",
                           paymentMethod === tab.id ? 'bg-[#C5A059] text-black font-black shadow-[0_0_12px_rgba(197,160,89,0.2)]' : 'text-gray-500 hover:text-gray-300'
                         )}
                       >
@@ -449,7 +465,7 @@ export default function PricingClient() {
                             <code className="text-xs font-mono text-gray-300 break-all">PK74NAYA1234503218338768</code>
                             <button
                               onClick={() => handleCopy('PK74NAYA1234503218338768')}
-                              className="text-[#C5A059] hover:text-[#D4B06A] ml-2 shrink-0 transition-colors"
+                              className="text-[#C5A059] hover:text-[#D4B06A] ml-2 shrink-0 transition-colors cursor-pointer"
                             >
                               {copied ? 'Copied' : <Copy size={14} />}
                             </button>
@@ -474,7 +490,7 @@ export default function PricingClient() {
                             <code className="text-xs font-mono text-gray-300">03218338768</code>
                             <button
                               onClick={() => handleCopy('03218338768')}
-                              className="text-[#C5A059] hover:text-[#D4B06A] ml-2 shrink-0 transition-colors"
+                              className="text-[#C5A059] hover:text-[#D4B06A] ml-2 shrink-0 transition-colors cursor-pointer"
                             >
                               {copied ? 'Copied' : <Copy size={14} />}
                             </button>
@@ -487,7 +503,7 @@ export default function PricingClient() {
                       <div className="space-y-3">
                         <div className="flex justify-between items-center text-xs">
                           <span className="text-gray-500 uppercase tracking-wider text-[10px]">Provider</span>
-                          <span className="text-[#39B54A] font-bold">EasyPaisa Mobile</span>
+                          <span className="text-[#00A859] font-bold">EasyPaisa Mobile</span>
                         </div>
                         <div className="flex justify-between items-center text-xs">
                           <span className="text-gray-500 uppercase tracking-wider text-[10px]">Account Title</span>
@@ -499,7 +515,7 @@ export default function PricingClient() {
                             <code className="text-xs font-mono text-gray-300">03218338768</code>
                             <button
                               onClick={() => handleCopy('03218338768')}
-                              className="text-[#C5A059] hover:text-[#D4B06A] ml-2 shrink-0 transition-colors"
+                              className="text-[#C5A059] hover:text-[#D4B06A] ml-2 shrink-0 transition-colors cursor-pointer"
                             >
                               {copied ? 'Copied' : <Copy size={14} />}
                             </button>
@@ -509,10 +525,10 @@ export default function PricingClient() {
                     )}
                   </div>
 
-                  <div className="space-y-4 pt-2">
+                  <div className="space-y-4">
                     <div>
                       <label className="text-[10px] font-black uppercase tracking-wider text-gray-400 block mb-1">
-                        Business / Company Name <span className="text-red-400">*</span>
+                        Business / Mill Name <span className="text-red-400">*</span>
                       </label>
                       <input
                         type="text"
@@ -524,11 +540,9 @@ export default function PricingClient() {
                     </div>
 
                     <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="text-[10px] font-black uppercase tracking-wider text-gray-400">
-                          Machine Hardware ID (HWID) <span className="text-gray-500 font-normal">(Optional for Instant Binding)</span>
-                        </label>
-                      </div>
+                      <label className="text-[10px] font-black uppercase tracking-wider text-gray-400 block mb-1">
+                        Machine ID (Hardware ID)
+                      </label>
                       <input
                         type="text"
                         value={hwidInput}
@@ -536,24 +550,24 @@ export default function PricingClient() {
                         placeholder="e.g. A1B2-C3D4-E5F6-7890"
                         className="w-full bg-[#121417] border border-white/10 p-3 text-xs text-emerald-400 font-mono placeholder-gray-600 rounded-sm focus:border-[#08EBF6] outline-none transition-colors"
                       />
-                      <p className="text-[10px] text-gray-500 mt-1 font-medium">
-                        💡 Found in Noxis Hub Desktop → Settings → License & System
+                      <p className="text-[10px] text-gray-500 mt-1">
+                        💡 Found in Noxis Hub Desktop → Settings → License &amp; System
                       </p>
                     </div>
 
                     <div>
                       <label className="text-[10px] font-black uppercase tracking-wider text-gray-400 block mb-1">
-                        Transaction ID (TID) / Ref Number
+                        Transaction ID (TID) / Payment Reference
                       </label>
                       <input
                         type="text"
                         value={txId}
                         onChange={(e) => setTxId(e.target.value)}
-                        placeholder="Enter TID from payment receipt"
+                        placeholder="Enter TID from bank payment slip"
                         className="w-full bg-[#121417] border border-white/10 p-3 text-xs text-white font-mono placeholder-gray-600 rounded-sm focus:border-[#08EBF6] outline-none transition-colors"
                       />
                       <p className="text-[10px] text-gray-500 mt-1 leading-relaxed">
-                        Transfer the exact billing amount to the selected account, then verify via WhatsApp or generate key instantly.
+                        Transfer the fee to the selected account, then send your confirmation to WhatsApp to receive your key.
                       </p>
                     </div>
 
@@ -574,12 +588,12 @@ export default function PricingClient() {
                     {isGeneratingKey ? (
                       <>
                         <Loader size={15} className="animate-spin" />
-                        <span>Generating Official Key...</span>
+                        <span>Verifying &amp; Unlocking...</span>
                       </>
                     ) : (
                       <>
                         <Sparkles size={15} />
-                        <span>Generate & Unlock License Instantly</span>
+                        <span>Generate &amp; Unlock License</span>
                       </>
                     )}
                   </button>
@@ -589,7 +603,7 @@ export default function PricingClient() {
                     className="w-full py-3 bg-white/10 text-white hover:bg-white/20 transition-all text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 border border-white/10 cursor-pointer"
                   >
                     <ExternalLink size={14} />
-                    <span>Activate via WhatsApp (1-Click)</span>
+                    <span>Activate via WhatsApp (+92 326 4742678)</span>
                   </button>
                 </div>
               </motion.div>
@@ -597,47 +611,38 @@ export default function PricingClient() {
           )}
         </AnimatePresence>
         
-        {/* Storage Bonus Banner */}
-        <div className="mt-8 p-6 bg-[#0F1114] border border-white/5 rounded-sm max-w-xl mx-auto mb-16 text-center">
-          <p className="text-[10px] font-black uppercase tracking-widest text-blue-400 mb-1">
-            ⚡ Annual Deployment Bonus
-          </p>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 leading-relaxed">
-            Annual registration doubles the local document secure storage threshold allocation instantly. Camera channel locks and paired peripheral devices match global standard limits.
-          </p>
-        </div> 
-
-        {/* Payment Methods Info Box */}
-        <div className="p-6 bg-[#0F1114] border border-white/5 rounded-sm max-w-md mx-auto mb-24">
-          <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-3">
-            Offline Billing Channels
+        {/* Payment Channels Info Box */}
+        <div className="p-6 bg-[#0F1114] border border-white/5 rounded-sm max-w-lg mx-auto mb-20">
+          <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 text-center">
+            Accepted Local Payment Methods
           </p>
           <div className="space-y-2">
             {[
-              { method: 'NayaPay IBAN (Raast)', number: 'PK74NAYA1234503218338768', note: 'Ahmad Mahboob • Direct Wire' },
-              { method: 'JazzCash Mobile', number: '0326-4742678', numberRaw: '03264742678', note: 'Ahmad Mahboob • Wallet Transfer' },
-              { method: 'EasyPaisa Mobile', number: '0326-4742678', numberRaw: '03264742678', note: '(Prefer JazzCash Allocation Channel)' },
+              { method: 'NayaPay IBAN (Raast)', number: 'PK74NAYA1234503218338768', note: 'Ahmad Mahboob • Direct Bank Transfer' },
+              { method: 'JazzCash Mobile', number: '0321-8338768', numberRaw: '03218338768', note: 'Razia Sultana • Wallet Transfer' },
+              { method: 'EasyPaisa Mobile', number: '0321-8338768', numberRaw: '03218338768', note: 'Razia Sultana • Wallet Transfer' },
             ].map(p => (
               <div key={p.method} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
                 <div>
                   <p className="text-xs font-medium text-white">{p.method}</p>
-                  <p className="text-[10px] text-gray-600">{p.note}</p>
+                  <p className="text-[10px] text-gray-500">{p.note}</p>
                 </div>
                 <p 
                   onClick={() => handleCopy(p.numberRaw || p.number)}
                   className="text-xs font-mono text-gray-400 break-all cursor-pointer hover:text-white transition-colors select-all"
+                  title="Click to copy"
                 >
                   {p.number}
                 </p>
               </div>
             ))}
           </div>
-          <p className="text-[10px] text-gray-700 mt-3 leading-relaxed">
-            After submitting via the checkout console, route your operational asset confirmation receipt to our WhatsApp pipeline. System activation keys resolve within a 30-minute matrix.
+          <p className="text-[10px] text-gray-500 mt-3 leading-relaxed text-center font-normal">
+            Send your payment screenshot and Machine ID via WhatsApp (+92 326 4742678). Your permanent offline license key will be issued within 30 minutes.
           </p>
         </div>
 
-        {/* Global Infrastructure Banner */}
+        {/* Localized Infrastructure Banner */}
         <motion.div 
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -649,38 +654,38 @@ export default function PricingClient() {
           <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
               <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tighter uppercase italic mb-4">
-                Localized Infrastructure
+                Built for Physical Manufacturing Realities
               </h2>
-              <p className="text-gray-400 text-xs sm:text-sm leading-relaxed mb-6 font-medium">
-                Noxis Hub runs localized architectural configurations. We seamlessly parse regional metrics, native monetary systems (Lakh/Crore matrices vs Global Millions), and compliance formatting parameters automatically.
+              <p className="text-gray-400 text-xs sm:text-sm leading-relaxed mb-6 font-normal">
+                Noxis Hub is tailored for local trade and factory floor conditions: Lakh and Crore accounting formats, maund and yard measurement units, piece-rate Karigar wage calculations, and double-entry Khata statements ready to print or WhatsApp.
               </p>
               <div className="flex gap-6">
                 <div className="flex items-center gap-2 text-[10px] font-black uppercase text-gray-300">
                   <ShieldCheck size={14} className="text-emerald-400" />
-                  PCI Engine Verified
+                  Audit-Verified Accounting
                 </div>
                 <div className="flex items-center gap-2 text-[10px] font-black uppercase text-gray-300">
                   <Globe size={14} className="text-blue-400" />
-                  Multi-Currency Parsers
+                  Multi-Currency &amp; Tax Ready
                 </div>
               </div>
             </div>
             
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 bg-black/40 border border-white/5 space-y-4 rounded-sm">
-                <p className="text-[8px] font-black text-gray-600 uppercase tracking-widest">South Asia Core</p>
-                <div className="space-y-2 opacity-50 font-mono text-[9px] text-gray-400">
-                  <p>✔ JazzCash Integrations</p>
-                  <p>✔ EasyPaisa Endpoints</p>
-                  <p>✔ Localized Invoicing Matrix</p>
+                <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Local Manufacturing</p>
+                <div className="space-y-2 font-mono text-[10px] text-gray-400">
+                  <p>✔ Karigar Piece-Rate Wage Logs</p>
+                  <p>✔ Yarn &amp; Fabric Batch Tracking</p>
+                  <p>✔ Local Wi-Fi Android Floor Logging</p>
                 </div>
               </div>
               <div className="p-4 bg-black/40 border border-white/5 space-y-4 rounded-sm">
-                <p className="text-[8px] font-black text-gray-600 uppercase tracking-widest">International Core</p>
-                <div className="space-y-2 opacity-50 font-mono text-[9px] text-gray-400">
-                  <p>✔ Stripe Elements Pipeline</p>
-                  <p>✔ Paddle Unified Checkouts</p>
-                  <p>✔ SWIFT Settlement Arrays</p>
+                <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Wholesale &amp; Retail</p>
+                <div className="space-y-2 font-mono text-[10px] text-gray-400">
+                  <p>✔ Double-Entry Wholesale Khata</p>
+                  <p>✔ 58mm/80mm Thermal Receipt Printing</p>
+                  <p>✔ Automated WhatsApp Billing</p>
                 </div>
               </div>
             </div>
@@ -703,7 +708,7 @@ export default function PricingClient() {
                 className="bg-[#121417]/50 border border-white/5 p-6 rounded-sm hover:border-white/10 transition-colors"
               >
                 <h4 className="text-xs sm:text-sm font-bold text-white mb-2 uppercase tracking-wide">{faq.q}</h4>
-                <p className="text-[11px] sm:text-xs text-gray-500 leading-relaxed font-medium">{faq.a}</p>
+                <p className="text-[11px] sm:text-xs text-gray-400 leading-relaxed font-normal">{faq.a}</p>
               </motion.div>
             ))}
           </div>
@@ -739,7 +744,7 @@ function PricingCard({
     >
       {popular && (
         <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#08EBF6] text-black text-[9px] font-black uppercase tracking-[0.25em] px-4 py-1 whitespace-nowrap rounded-md shadow-[0_0_12px_#08EBF6]">
-          Industrial Standard
+          Most Popular for Mills
         </div>
       )}
 
