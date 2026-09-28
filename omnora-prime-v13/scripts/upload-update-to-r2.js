@@ -194,6 +194,7 @@ async function main() {
   }
 
   // 2b. Handle ZIP archive for Smart App Control bypass
+  const skipZip = process.argv.includes('--exe-only') || process.env.EXE_ONLY === 'true';
   const possibleZipNames = [
     `Noxis-Setup-${version}.zip`,
     `Noxis-Hub-${version}-win.zip`,
@@ -201,66 +202,68 @@ async function main() {
     `Noxis-Setup.zip`
   ];
   let zipPath = null;
-  for (const name of possibleZipNames) {
-    const p = path.join(distDir, name);
-    if (fs.existsSync(p)) {
-      zipPath = p;
-      break;
+  if (!skipZip) {
+    for (const name of possibleZipNames) {
+      const p = path.join(distDir, name);
+      if (fs.existsSync(p)) {
+        zipPath = p;
+        break;
+      }
     }
-  }
 
-  // If no pre-existing zip found, package installer + unblock launcher into ZIP
-  if (!zipPath && fs.existsSync(exePath)) {
-    const zipName = `Noxis-Setup-${version}.zip`;
-    zipPath = path.join(distDir, zipName);
-    console.log(`\n📦 Creating Smart App Control bypass ZIP archive: ${zipName}...`);
-    const { execSync } = require('child_process');
-    const tempDir = path.join(distDir, 'zip-staging');
-    if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true, force: true });
-    fs.mkdirSync(tempDir, { recursive: true });
+    // If no pre-existing zip found, package installer + unblock launcher into ZIP
+    if (!zipPath && fs.existsSync(exePath)) {
+      const zipName = `Noxis-Setup-${version}.zip`;
+      zipPath = path.join(distDir, zipName);
+      console.log(`\n📦 Creating Smart App Control bypass ZIP archive: ${zipName}...`);
+      const { execSync } = require('child_process');
+      const tempDir = path.join(distDir, 'zip-staging');
+      if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true, force: true });
+      fs.mkdirSync(tempDir, { recursive: true });
 
-    fs.copyFileSync(exePath, path.join(tempDir, `Noxis Setup ${version}.exe`));
+      fs.copyFileSync(exePath, path.join(tempDir, `Noxis Setup ${version}.exe`));
 
-    const batContent = `@echo off\r\n` +
-      `title Noxis Hub v${version} Installer\r\n` +
-      `echo ========================================================\r\n` +
-      `echo  Noxis Hub v${version} Setup Launcher\r\n` +
-      `echo  Windows Smart App Control Bypass Helper\r\n` +
-      `echo ========================================================\r\n` +
-      `echo.\r\n` +
-      `echo Unblocking installer from Windows Smart App Control...\r\n` +
-      `powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-ChildItem -Path '%~dp0' -Recurse | Unblock-File" >nul 2>&1\r\n` +
-      `echo Starting installation with full Windows Defender protection...\r\n` +
-      `start "" "%~dp0Noxis Setup ${version}.exe"\r\n`;
-    fs.writeFileSync(path.join(tempDir, 'Install-Noxis.bat'), batContent, 'utf8');
+      const batContent = `@echo off\r\n` +
+        `title Noxis Hub v${version} Installer\r\n` +
+        `echo ========================================================\r\n` +
+        `echo  Noxis Hub v${version} Setup Launcher\r\n` +
+        `echo  Windows Smart App Control Bypass Helper\r\n` +
+        `echo ========================================================\r\n` +
+        `echo.\r\n` +
+        `echo Unblocking installer from Windows Smart App Control...\r\n` +
+        `powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-ChildItem -Path '%~dp0' -Recurse | Unblock-File" >nul 2>&1\r\n` +
+        `echo Starting installation with full Windows Defender protection...\r\n` +
+        `start "" "%~dp0Noxis Setup ${version}.exe"\r\n`;
+      fs.writeFileSync(path.join(tempDir, 'Install-Noxis.bat'), batContent, 'utf8');
 
-    const readmeContent = `NOXIS HUB v${version} - INSTALLATION GUIDE\r\n` +
-      `============================================\r\n\r\n` +
-      `This ZIP archive bypasses Windows 11 Smart App Control without needing to disable Windows Defender.\r\n\r\n` +
-      `METHOD 1 (EASIEST):\r\n` +
-      `1. Double-click "Install-Noxis.bat" inside this folder.\r\n` +
-      `2. It automatically unblocks the installer and starts setup.\r\n\r\n` +
-      `METHOD 2 (MANUAL):\r\n` +
-      `1. Right-click "Noxis Setup ${version}.exe"\r\n` +
-      `2. Select Properties\r\n` +
-      `3. At the bottom, check the "Unblock" box\r\n` +
-      `4. Click Apply, then OK\r\n` +
-      `5. Double-click "Noxis Setup ${version}.exe" to install.\r\n\r\n` +
-      `Support WhatsApp: +92 326 4742678\r\n`;
-    fs.writeFileSync(path.join(tempDir, 'README-UNBLOCK.txt'), readmeContent, 'utf8');
+      const readmeContent = `NOXIS HUB v${version} - INSTALLATION GUIDE\r\n` +
+        `============================================\r\n\r\n` +
+        `This ZIP archive bypasses Windows 11 Smart App Control without needing to disable Windows Defender.\r\n\r\n` +
+        `METHOD 1 (EASIEST):\r\n` +
+        `1. Double-click "Install-Noxis.bat" inside this folder.\r\n` +
+        `2. It automatically unblocks the installer and starts setup.\r\n\r\n` +
+        `METHOD 2 (MANUAL):\r\n` +
+        `1. Right-click "Noxis Setup ${version}.exe"\r\n` +
+        `2. Select Properties\r\n` +
+        `3. At the bottom, check the "Unblock" box\r\n` +
+        `4. Click Apply, then OK\r\n` +
+        `5. Double-click "Noxis Setup ${version}.exe" to install.\r\n\r\n` +
+        `Support WhatsApp: +92 326 4742678\r\n`;
+      fs.writeFileSync(path.join(tempDir, 'README-UNBLOCK.txt'), readmeContent, 'utf8');
 
-    execSync(`powershell -NoProfile -Command "Compress-Archive -Path '${tempDir}\\*' -DestinationPath '${zipPath}' -Force"`, { stdio: 'inherit' });
-    fs.rmSync(tempDir, { recursive: true, force: true });
-    console.log(`✓ Smart App Control bypass ZIP created: ${(fs.statSync(zipPath).size / (1024*1024)).toFixed(2)} MB`);
-  }
+      execSync(`powershell -NoProfile -Command "Compress-Archive -Path '${tempDir}\\*' -DestinationPath '${zipPath}' -Force"`, { stdio: 'inherit' });
+      fs.rmSync(tempDir, { recursive: true, force: true });
+      console.log(`✓ Smart App Control bypass ZIP created: ${(fs.statSync(zipPath).size / (1024*1024)).toFixed(2)} MB`);
+    }
 
-  if (zipPath && fs.existsSync(zipPath)) {
-    const zipName = path.basename(zipPath);
-    const zipTargetKey = `updates/stable/${zipName}`;
-    await uploadLargeMultipart(zipPath, zipTargetKey, 'application/zip');
-    await copyObjectServerSide(zipTargetKey, `Noxis-Setup-${version}.zip`);
-    await copyObjectServerSide(zipTargetKey, `Noxis-Setup.zip`);
-    await copyObjectServerSide(zipTargetKey, `Noxis-Hub-${version}-win.zip`);
+    if (zipPath && fs.existsSync(zipPath)) {
+      const zipName = path.basename(zipPath);
+      const zipTargetKey = `updates/stable/${zipName}`;
+      await uploadLargeMultipart(zipPath, zipTargetKey, 'application/zip');
+      await copyObjectServerSide(zipTargetKey, `Noxis-Setup-${version}.zip`);
+      await copyObjectServerSide(zipTargetKey, `Noxis-Setup.zip`);
+      await copyObjectServerSide(zipTargetKey, `Noxis-Hub-${version}-win.zip`);
+    }
   }
 
   // 3. Ensure manifests exist WITHOUT blockMapSize for rock-solid full package downloads

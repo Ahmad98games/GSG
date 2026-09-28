@@ -98,6 +98,7 @@ electron_updater_1.autoUpdater.autoDownload = false;
 electron_updater_1.autoUpdater.disableDifferentialDownload = true;
 // We download manually so we can show progress to the user
 electron_updater_1.autoUpdater.allowPrerelease = false;
+electron_updater_1.autoUpdater.allowDowngrade = true;
 electron_updater_1.autoUpdater.setFeedURL({
     provider: 'generic',
     url: 'https://noxishub.app/updates/stable',
