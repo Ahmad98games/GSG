@@ -122,7 +122,7 @@ export default function LicenseUpgradePage() {
     navigator.clipboard.writeText(hwid);
     setCopiedHwid(true);
     setTimeout(() => setCopiedHwid(false), 2500);
-    toast.success("HWID Copied", "Machine HWID copied to clipboard");
+    toast.success("Machine ID Copied", "Your Machine ID has been copied to clipboard");
   };
 
   const getWhatsAppUpgradeUrl = (planKey: string) => {
@@ -130,7 +130,7 @@ export default function LicenseUpgradePage() {
     const bizName = profile?.business_name || 'My Business';
     const message = 
       `Assalam o Alaikum, I want to upgrade Noxis Hub to ${planName} Plan.\n` +
-      `My HWID is: ${hwid || 'Checking machine...'}\n` +
+      `My Machine ID is: ${hwid || 'Checking machine...'}\n` +
       `Business Name: ${bizName}`;
     return `https://wa.me/923264742678?text=${encodeURIComponent(message)}`;
   };
@@ -315,24 +315,24 @@ export default function LicenseUpgradePage() {
             </p>
           </div>
 
-          {/* STEP 1: Copy HWID */}
+          {/* STEP 1: Copy Machine ID */}
           <div className="flex items-start gap-4">
             <div className="w-8 h-8 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-mono font-bold text-xs flex-shrink-0">
               1
             </div>
             <div className="flex-1 space-y-2">
               <h4 className="text-sm font-bold text-white">
-                Step 1 — Copy Your Machine HWID
+                Step 1 — Copy Your Machine ID
               </h4>
               <p className="text-xs text-zinc-400 leading-relaxed">
-                This is your machine's unique ID. We need it to make your license work only on your computer.
+                This is your computer&apos;s unique Machine ID (hardware identifier). Your offline license key is permanently locked to this hardware.
               </p>
 
               <div className="flex items-center gap-2 max-w-md">
                 <input
                   type="text"
                   readOnly
-                  value={hwid || 'Loading Hardware ID...'}
+                  value={hwid || 'Loading Machine ID...'}
                   className="flex-1 bg-black/60 border border-white/10 px-3 py-2 text-xs font-mono text-cyan-400 rounded-sm outline-none"
                 />
                 <button
@@ -341,7 +341,7 @@ export default function LicenseUpgradePage() {
                   className="px-4 py-2 bg-white/10 hover:bg-white/15 text-white text-xs font-bold rounded-sm transition-colors flex items-center gap-1.5"
                 >
                   <Copy size={13} />
-                  <span>{copiedHwid ? 'Copied!' : 'Copy HWID'}</span>
+                  <span>{copiedHwid ? 'Copied!' : 'Copy Machine ID'}</span>
                 </button>
               </div>
             </div>
@@ -357,7 +357,7 @@ export default function LicenseUpgradePage() {
                 Step 2 — Contact Omnora Labs
               </h4>
               <p className="text-xs text-zinc-400 leading-relaxed">
-                Share your HWID and chosen plan directly via WhatsApp for instant verification.
+                Share your Machine ID and chosen plan directly via WhatsApp for instant license generation.
               </p>
 
               <div className="flex flex-wrap items-center gap-3 pt-1">
@@ -457,7 +457,7 @@ export default function LicenseUpgradePage() {
               </div>
 
               <p className="text-[11px] text-zinc-500 pt-1">
-                Activated on a new computer? Contact us on WhatsApp with your new HWID. Transfer takes 5 minutes.
+                Activated on a new computer? Contact us on WhatsApp with your new Machine ID. Re-binding to new hardware takes 5 minutes.
               </p>
             </div>
           </div>

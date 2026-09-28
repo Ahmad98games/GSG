@@ -12,29 +12,29 @@ const WHATSAPP_SUPPORT_URL = 'https://wa.me/923264742678?text=Salam%20Omnora,%20
 
 const FAQS = [
   {
-    q: "Do I need an internet connection to run Noxis Hub?",
-    a: "No. Noxis Hub is a standalone desktop application that reads and writes directly to a local SQLite database file stored on your computer's hard drive. You can record sales, log daily Karigar production, and print vouchers with zero internet."
+    q: "DO I NEED AN INTERNET CONNECTION TO RUN NOXIS HUB?",
+    a: "No. The core software works completely offline. You only need internet for WhatsApp invoicing, cloud backup, or software updates."
   },
   {
-    q: "What happens to my data after the 14-day trial ends?",
+    q: "HOW DO ANDROID PHONES CONNECT TO THE OFFICE PC WITHOUT INTERNET?",
+    a: "They connect via your local office Wi-Fi router. No external internet access is required for the phone-to-PC mesh."
+  },
+  {
+    q: "WHAT HAPPENS TO MY DATA AFTER THE 14-DAY TRIAL ENDS?",
     a: "Your data stays on your PC forever. We never lock or delete your files. After 14 days, you can continue using the Free tier (POS counter, customer balance search, and full Excel/PDF export) or WhatsApp us to activate an offline permanent license key."
   },
   {
-    q: "How do Android phones connect to the office PC without internet?",
-    a: "Your workstation PC hosts a local server over your workshop's Wi-Fi router. Floor supervisors connect their phones to the same Wi-Fi network and log worker outputs and attendance directly into the PC without using mobile data."
+    q: "IS MY FACTORY DATA KEPT PRIVATE?",
+    a: "Yes, 100%. All invoices, ledger books, worker salaries, and inventory records are stored in a local SQLite file directly on your hard drive. We do not upload your data anywhere. Optional cloud backup is strictly opt-in and under your control."
   },
   {
-    q: "Can I move my license if my PC gets damaged or replaced?",
-    a: "Yes. Simply install Noxis Hub on your new PC, restore your database backup from your USB drive, and WhatsApp our support team (+92 326 4742678) to re-bind your license key to your new computer's motherboard."
-  },
-  {
-    q: "Is this suitable for textile mills and wholesale traders?",
-    a: "Yes. Noxis Hub was built from the ground up for physical manufacturing and trade: piece-rate Karigar payroll (per meter, yard, suit, or maund), Peshgi advance tracking, yarn/fabric stock batches, and double-entry wholesale Khata."
+    q: "CAN I MOVE MY LICENSE IF MY PC GETS DAMAGED OR REPLACED?",
+    a: "Yes. Simply install Noxis Hub on your new PC, restore your database backup from your USB drive, and WhatsApp our support team (+92 326 4742678) with your new Machine ID to re-bind your license key to your new computer's motherboard."
   }
 ];
 
 export default function DownloadPage() {
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   return (
     <div className="min-h-screen bg-[#030712] text-slate-300 font-sans selection:bg-[#08EBF6]/30 selection:text-white">
@@ -53,9 +53,14 @@ export default function DownloadPage() {
           DOWNLOAD NOXIS HUB <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#08EBF6] via-white to-[#5FA5FA]">FOR WINDOWS</span>
         </h1>
 
-        <p className="text-sm sm:text-base text-zinc-400 max-w-2xl mx-auto leading-relaxed font-normal">
-          Industrial ERP software built specifically for textile mills, garment manufacturers, and wholesale traders. Download the installer, run setup, and start working immediately on your local PC — no credit card, no email signup, and no internet connection required.
-        </p>
+        <div className="space-y-3 max-w-2xl mx-auto">
+          <p className="text-sm sm:text-base text-white font-semibold leading-relaxed">
+            Works Offline for Daily Operations. Connect to WhatsApp/Internet Only When Needed.
+          </p>
+          <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed font-normal">
+            Core functions (POS, Inventory, Karigar Wages, Khata, CCTV) work 100% offline from your local hard drive. Features like WhatsApp invoice sharing, optional cloud backup, and software updates connect only when internet is available.
+          </p>
+        </div>
 
         {/* Primary CTA */}
         <div className="pt-4 flex flex-col items-center space-y-3">
@@ -75,7 +80,7 @@ export default function DownloadPage() {
             <span className="text-[#08EBF6]">Windows 10 / 11 (64-bit)</span>
           </div>
           <p className="text-[10px] text-gray-400 font-mono">
-            Local SQLite File Stored on Your Hard Drive · Works Without an Internet Connection
+            Local SQLite File Stored on Your Hard Drive · 100% Private by Default
           </p>
         </div>
       </section>
@@ -109,12 +114,12 @@ export default function DownloadPage() {
                 { feature: 'Raw Material & Fabric Stock Tracking', free: 'Up to 200 SKUs', lite: 'Unlimited SKUs', elite: 'Unlimited SKUs + Batch Yield' },
                 { feature: 'Wholesale Customer & Supplier Khata', free: 'Up to 50 Accounts', lite: 'Unlimited Accounts', elite: 'Unlimited Accounts' },
                 { feature: 'Karigar Piece-Rate Wage Log & Peshgi Advances', free: 'Manual Ledger Only', lite: 'Automatic Calculations', elite: 'Automatic Rates & Payslip Prints' },
-                { feature: 'WhatsApp Invoice & Statement Sharing', free: '—', lite: 'Included', elite: 'Included' },
+                { feature: 'WhatsApp Invoice & Statement Sharing', free: '—', lite: 'Included (requires internet)', elite: 'Included (requires internet)' },
                 { feature: 'PDF & Excel Accounting Ledger Exports', free: 'Standard Export', lite: 'Detailed Reports', elite: 'Detailed Reports + P&L' },
                 { feature: 'On-Site RTSP IP Camera Video Feeds', free: '—', lite: '2 Camera Feeds', elite: 'Connect up to 6 on-site IP cameras via RTSP with motion tripwire alerts' },
                 { feature: 'Inventory Demand Forecasting', free: '—', lite: 'Low-Stock Alerts', elite: 'Automatic reorder alerts & 30-day raw material demand forecasting' },
                 { feature: 'Floor Companion Phone Connection', free: '1 Android Device', lite: 'Up to 5 Devices', elite: 'Up to 50 Android devices logging output & attendance over office Wi-Fi' },
-                { feature: 'Database Storage Location', free: 'Local SQLite on Hard Drive', lite: 'Local SQLite on Hard Drive', elite: 'Local SQLite on Hard Drive (+ optional cloud backup)' },
+                { feature: 'Database Storage Location', free: 'Local Hard Drive (100% Offline)', lite: 'Local Hard Drive (100% Offline)', elite: 'Local Hard Drive (100% Private by default · Cloud backup is strictly optional)' },
               ].map((row, idx) => (
                 <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
                   <td className="p-4 font-semibold text-white font-mono text-xs">{row.feature}</td>
@@ -237,21 +242,21 @@ export default function DownloadPage() {
           Frequently Asked Questions
         </h2>
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           {FAQS.map((faq, idx) => {
-            const isOpen = openFaq === idx;
+            const isOpen = openFaq === null || openFaq === idx;
             return (
-              <div key={idx} className="border border-white/10 rounded bg-[#07090E] overflow-hidden">
+              <div key={idx} className="border border-white/10 rounded-lg bg-[#07090E] overflow-hidden">
                 <button
                   type="button"
-                  onClick={() => setOpenFaq(isOpen ? null : idx)}
+                  onClick={() => setOpenFaq(openFaq === idx ? -1 : idx)}
                   className="w-full p-4 text-left flex items-center justify-between text-xs font-mono font-bold text-white hover:bg-white/[0.02] transition-colors uppercase tracking-wide cursor-pointer"
                 >
-                  <span>{faq.q}</span>
-                  <ChevronDown size={14} className={`transform transition-transform ${isOpen ? 'rotate-180 text-[#08EBF6]' : 'text-zinc-500'}`} />
+                  <span className="text-[#08EBF6]">{faq.q}</span>
+                  <ChevronDown size={14} className={`transform transition-transform ${openFaq === idx || openFaq === null ? 'rotate-180 text-[#08EBF6]' : 'text-zinc-500'}`} />
                 </button>
-                {isOpen && (
-                  <div className="p-4 pt-0 text-xs text-zinc-400 leading-relaxed font-sans border-t border-white/5 bg-black/20">
+                {(openFaq === null || openFaq === idx) && (
+                  <div className="p-4 pt-0 text-xs text-zinc-300 leading-relaxed font-sans border-t border-white/5 bg-black/30">
                     {faq.a}
                   </div>
                 )}

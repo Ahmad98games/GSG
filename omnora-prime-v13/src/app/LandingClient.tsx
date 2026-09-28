@@ -257,7 +257,7 @@ export default function LandingClient() {
               />
 
               <p className="text-[#94A3B8] text-sm sm:text-base lg:text-lg leading-relaxed max-w-2xl mx-auto mt-8 font-medium">
-                Eliminate calculation disputes and paper registers. Noxis Hub runs locally on your computer&apos;s hard drive without internet — calculating Karigar piece-rates, tracking raw fabric inventory, and managing wholesale Khata.
+                Works offline for daily operations. Connect to WhatsApp/internet only when needed. Core functions (POS, Karigar piece-rates, fabric inventory, Khata, CCTV) run 100% offline from your local hard drive.
               </p>
 
               <div className="w-full mt-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-4">
