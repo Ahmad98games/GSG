@@ -48,9 +48,25 @@ export async function queueFailedOperation(params: {
         QUEUE_KEY,
         JSON.stringify(queue.slice(-100))
       )
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('noxis:queue-updated', { detail: { count: queue.length } }))
+      }
     }
   } catch {
     // Queue write failure is non-fatal
+  }
+}
+
+export async function clearOfflineQueue(): Promise<void> {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(QUEUE_KEY)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('noxis:queue-updated', { detail: { count: 0 } }))
+      }
+    }
+  } catch {
+    // ignore
   }
 }
 
@@ -147,6 +163,10 @@ export async function drainOfflineQueue(): Promise<{ drained: number; failed: nu
       JSON.stringify(remaining)
     )
 
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('noxis:queue-updated', { detail: { count: remaining.length } }))
+    }
+
     if (drained > 0) {
       notify.success(
         'Sync complete',
@@ -178,6 +198,6 @@ if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {
     setTimeout(() => {
       drainOfflineQueue()
-    }, 1000)
+    }, 500)
   })
 }

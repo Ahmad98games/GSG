@@ -78,19 +78,93 @@ export default React.memo(function GlobalTopBar() {
   const [isOnline, setIsOnline] = useState(() => 
     typeof navigator !== 'undefined' ? navigator.onLine : true
   )
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [localQueueCount, setLocalQueueCount] = useState(0)
 
+  // 1. Connectivity checking: both navigator events and active ping check
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true)
-    const handleOffline = () => setIsOnline(false)
+    let mounted = true
+    const checkConnection = async () => {
+      const online = typeof navigator !== 'undefined' ? navigator.onLine : true
+      if (!online) {
+        if (mounted) setIsOnline(false)
+        return
+      }
+      if (mounted) setIsOnline(true)
+    }
+
+    const handleOnline = () => {
+      setIsOnline(true)
+      checkConnection()
+      // Immediately drain offline queue upon reconnection
+      const { drainOfflineQueue, getQueuedCount } = require('@/lib/sync/offlineQueue')
+      setIsSyncing(true)
+      drainOfflineQueue().finally(() => {
+        if (mounted) {
+          setIsSyncing(false)
+          setLocalQueueCount(getQueuedCount())
+        }
+      })
+    }
+    const handleOffline = () => {
+      setIsOnline(false)
+      setIsSyncing(false)
+    }
+
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
+    
+    // Heartbeat check every 15 seconds
+    const interval = setInterval(checkConnection, 15000)
+
     return () => {
+      mounted = false
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('offline', handleOffline)
+      clearInterval(interval)
     }
   }, [])
 
-  // 1. Connected Devices Query
+  // 2. Sync Status Local Polling & Instant Event Listener
+  useEffect(() => {
+    const { getQueuedCount, drainOfflineQueue } = require('@/lib/sync/offlineQueue')
+    
+    const updateQueue = () => {
+      const count = getQueuedCount()
+      setLocalQueueCount(count)
+      if (count > 0 && isOnline) {
+        setIsSyncing(true)
+        drainOfflineQueue().finally(() => {
+          setIsSyncing(false)
+          setLocalQueueCount(getQueuedCount())
+        })
+      }
+    }
+
+    updateQueue()
+
+    const handleQueueUpdated = (e: any) => {
+      const count = e?.detail?.count ?? getQueuedCount()
+      setLocalQueueCount(count)
+      if (count > 0 && isOnline) {
+        setIsSyncing(true)
+        drainOfflineQueue().finally(() => {
+          setIsSyncing(false)
+          setLocalQueueCount(getQueuedCount())
+        })
+      }
+    }
+
+    window.addEventListener('noxis:queue-updated', handleQueueUpdated)
+    const interval = setInterval(updateQueue, 5000)
+
+    return () => {
+      window.removeEventListener('noxis:queue-updated', handleQueueUpdated)
+      clearInterval(interval)
+    }
+  }, [isOnline])
+
+  // 3. Connected Devices Query
   const { data: deviceCount = 0 } = useQuery({
     queryKey: ['connected-devices', businessId],
     queryFn: async () => {
@@ -102,7 +176,7 @@ export default React.memo(function GlobalTopBar() {
       if (error) return 0
       return count || 0
     },
-    enabled: !!businessId,
+    enabled: !!businessId && isOnline,
   })
 
   const [bridgeDeviceCount, setBridgeDeviceCount] = useState<number | null>(null);
@@ -137,20 +211,7 @@ export default React.memo(function GlobalTopBar() {
     };
   }, [queryClient]);
 
-  // 2. Sync Status Local Polling
-  const [localQueueCount, setLocalQueueCount] = useState(0)
-
-  useEffect(() => {
-    const { getQueuedCount } = require('@/lib/sync/offlineQueue')
-    const check = () => {
-      setLocalQueueCount(getQueuedCount())
-    }
-    check()
-    const interval = setInterval(check, 60000)
-    return () => clearInterval(interval)
-  }, [])
-
-  // 3. Alerts Query
+  // 4. Alerts Query
   const { data: alerts = [] } = useQuery({
     queryKey: ['unresolved-alerts', businessId],
     queryFn: async () => {
@@ -163,10 +224,16 @@ export default React.memo(function GlobalTopBar() {
       if (error) return []
       return data
     },
-    enabled: !!businessId,
+    enabled: !!businessId && isOnline,
   })
 
-  const syncState = !isOnline ? 'offline' : (localQueueCount > 0 ? 'syncing' : 'synced')
+  // Determine true sync status
+  // When offline: ALWAYS shows Offline, never shows 'Syncing...'
+  // When online with active sync running: shows 'Syncing...'
+  // When online and idle: shows 'Operational' or 'Synced'
+  const syncState: 'offline' | 'syncing' | 'synced' = !isOnline 
+    ? 'offline' 
+    : (isSyncing || localQueueCount > 0 ? 'syncing' : 'synced')
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -220,10 +287,18 @@ export default React.memo(function GlobalTopBar() {
           >
             <span className={cn(
               "w-1.5 h-1.5 rounded-full flex-shrink-0",
-              !isOnline ? "bg-red-400" : syncState === 'syncing' ? "bg-amber-400" : "bg-emerald-400"
+              !isOnline 
+                ? "bg-slate-400" 
+                : syncState === 'syncing' 
+                  ? "bg-amber-400 animate-pulse" 
+                  : "bg-emerald-400"
             )} />
             <span className="font-medium text-slate-200 text-[12px]">
-              {!isOnline ? 'Offline Mode' : syncState === 'syncing' ? 'Syncing...' : 'All Systems Normal'}
+              {!isOnline 
+                ? 'Offline Mode' 
+                : syncState === 'syncing' 
+                  ? 'Syncing Cloud...' 
+                  : 'Local Hub Active'}
             </span>
             <span className="text-slate-600 font-mono text-[11px]">|</span>
             <span className="text-slate-400 font-mono text-[11px]">
@@ -232,9 +307,17 @@ export default React.memo(function GlobalTopBar() {
             <span className="text-slate-600 font-mono text-[11px]">|</span>
             <span className={cn(
               "font-mono text-[11px]",
-              syncState === 'synced' ? "text-emerald-400/90" : syncState === 'syncing' ? "text-amber-400" : "text-red-400"
+              !isOnline
+                ? (localQueueCount > 0 ? "text-amber-400" : "text-slate-400")
+                : syncState === 'syncing'
+                  ? "text-amber-400"
+                  : "text-emerald-400/90"
             )}>
-              {syncState === 'synced' ? 'Sync 100%' : syncState === 'syncing' ? `Queue ${localQueueCount}` : 'Offline'}
+              {!isOnline 
+                ? (localQueueCount > 0 ? `Queue ${localQueueCount}` : 'Offline')
+                : syncState === 'syncing'
+                  ? (localQueueCount > 0 ? `Queue ${localQueueCount}` : 'Syncing...')
+                  : 'Sync 100%'}
             </span>
           </button>
 
@@ -251,32 +334,77 @@ export default React.memo(function GlobalTopBar() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 4, scale: 0.98 }}
                   transition={{ duration: 0.1 }}
-                  className="absolute left-1/2 -translate-x-1/2 mt-1.5 w-72 bg-[#131823] border border-white/[0.08] rounded-[6px] shadow-2xl z-50 p-3 space-y-2.5 text-xs select-none"
+                  className="absolute left-1/2 -translate-x-1/2 mt-1.5 w-76 bg-[#131823] border border-white/[0.08] rounded-[6px] shadow-2xl z-50 p-3.5 space-y-3 text-xs select-none"
                 >
                   <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
                     <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">System Telemetry</span>
-                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded-[3px] border border-emerald-500/20">
-                      Operational
+                    <span className={cn(
+                      "text-[10px] font-mono px-1.5 py-0.5 rounded-[3px] border",
+                      isOnline ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" : "text-amber-400 bg-amber-500/10 border-amber-500/20"
+                    )}>
+                      {isOnline ? 'Online (Local First)' : '100% Offline (Local SQLite)'}
                     </span>
                   </div>
                   <div className="space-y-1.5 text-[11px]">
                     <div className="flex items-center justify-between text-slate-300">
-                      <span className="text-slate-400">Hub Connectivity</span>
-                      <span className="font-mono text-slate-200">{isOnline ? 'Active (WebSocket Mesh)' : 'Disconnected'}</span>
+                      <span className="text-slate-400">Network State</span>
+                      <span className="font-mono text-slate-200">
+                        {isOnline ? 'Connected to Internet' : 'No Internet (Local Operations Only)'}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between text-slate-300">
-                      <span className="text-slate-400">Paired Hardware</span>
-                      <span className="font-mono text-slate-200">{activeDeviceCount} Online Nodes</span>
+                      <span className="text-slate-400">Local Wi-Fi Mesh</span>
+                      <span className="font-mono text-slate-200">{activeDeviceCount} Paired Handsets</span>
                     </div>
                     <div className="flex items-center justify-between text-slate-300">
                       <span className="text-slate-400">Local Buffer Queue</span>
                       <span className="font-mono text-slate-200">{localQueueCount} pending items</span>
                     </div>
                     <div className="flex items-center justify-between text-slate-300">
-                      <span className="text-slate-400">Cloud Sync Engine</span>
-                      <span className="font-mono text-slate-200">{syncState === 'synced' ? 'Synchronized (0ms latency)' : 'Sync In Progress'}</span>
+                      <span className="text-slate-400">Cloud Sync</span>
+                      <span className="font-mono text-slate-200">
+                        {!isOnline 
+                          ? 'Paused (Will sync when reconnected)' 
+                          : syncState === 'synced' 
+                            ? 'All changes synchronized' 
+                            : 'Syncing to cloud...'}
+                      </span>
                     </div>
                   </div>
+
+                  {localQueueCount > 0 && (
+                    <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const { drainOfflineQueue, getQueuedCount } = require('@/lib/sync/offlineQueue')
+                          setIsSyncing(true)
+                          try {
+                            await drainOfflineQueue()
+                          } finally {
+                            setIsSyncing(false)
+                            setLocalQueueCount(getQueuedCount())
+                          }
+                        }}
+                        disabled={!isOnline || isSyncing}
+                        className="w-full py-1.5 px-2 bg-blue-500/20 hover:bg-blue-500/30 disabled:opacity-40 text-blue-300 rounded text-[11px] font-mono font-bold transition-colors cursor-pointer"
+                      >
+                        {isSyncing ? 'Syncing Now...' : 'Force Sync Now'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const { clearOfflineQueue } = require('@/lib/sync/offlineQueue')
+                          await clearOfflineQueue()
+                          setLocalQueueCount(0)
+                        }}
+                        className="py-1.5 px-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded text-[11px] font-mono transition-colors cursor-pointer whitespace-nowrap"
+                        title="Clear queue if outdated"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  )}
                 </motion.div>
               </>
             )}

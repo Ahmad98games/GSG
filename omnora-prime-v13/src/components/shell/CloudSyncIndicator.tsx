@@ -11,12 +11,15 @@ export function CloudSyncIndicator() {
     }
     check()
 
+    // Listen to custom queue update events
+    window.addEventListener('noxis:queue-updated', check)
     // Listen to storage events (if modified in other tabs)
     window.addEventListener('storage', check)
-    // Check local queue count every 15 seconds
-    const interval = setInterval(check, 15000)
+    // Check local queue count every 5 seconds
+    const interval = setInterval(check, 5000)
 
     return () => {
+      window.removeEventListener('noxis:queue-updated', check)
       window.removeEventListener('storage', check)
       clearInterval(interval)
     }
