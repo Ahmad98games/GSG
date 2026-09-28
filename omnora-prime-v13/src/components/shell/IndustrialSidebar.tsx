@@ -93,9 +93,9 @@ export default React.memo(function IndustrialSidebar() {
   const [isProductionModalOpen, setIsProductionModalOpen] = useState(false)
   const supabase = createClient()
 
-  // Tenant monogram fallback (e.g., "GS" for "Gold She Garments")
+  // Tenant monogram fallback (e.g., "MB" for "My Business")
   const clientMonogram = useMemo(() => {
-    const name = profile?.business_name?.trim() || 'Gold She Garments'
+    const name = profile?.business_name?.trim() || 'My Business'
     const parts = name.split(/\s+/).filter(Boolean)
     if (parts.length >= 2) {
       return (parts[0][0] + parts[1][0]).toUpperCase()
@@ -465,10 +465,10 @@ export default React.memo(function IndustrialSidebar() {
                 <>
                   <div className="min-w-0 flex-1 flex flex-col leading-tight">
                     <span className="text-[13px] font-medium text-slate-100 truncate group-hover:text-white transition-colors">
-                      {profile?.business_name || 'Gold She Garments'}
+                      {profile?.business_name || 'My Business'}
                     </span>
                     <span className="text-[11px] text-slate-400 truncate font-mono">
-                      {industry.displayName || 'Garment Factory'} ERP
+                      {industry.displayName || 'Industrial ERP'}
                     </span>
                   </div>
                   <ChevronsUpDown size={14} className="text-slate-500 group-hover:text-slate-300 flex-shrink-0 transition-colors" />
@@ -563,7 +563,7 @@ export default React.memo(function IndustrialSidebar() {
               {!isCollapsed && (
                 <div className="min-w-0 flex flex-col leading-tight">
                   <span className="text-[12px] font-medium text-slate-200 truncate">
-                    {profile?.owner_name || 'Ahmad Mahboob'}
+                    {profile?.owner_name || 'Administrator'}
                   </span>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className="text-[10px] text-slate-400 capitalize">

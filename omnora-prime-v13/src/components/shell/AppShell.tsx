@@ -64,7 +64,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // Auto-mark as configured if established business exists
   React.useEffect(() => {
     if (hasExistingBusiness && !isBusinessModeConfigured) {
-      setMode('textile', profile?.business_name || 'Gold She Garments', profile?.phone || '');
+      setMode('textile', profile?.business_name || 'My Business', profile?.phone || '');
     }
   }, [hasExistingBusiness, isBusinessModeConfigured, profile?.business_name, profile?.phone, setMode]);
 

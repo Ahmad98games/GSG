@@ -110,6 +110,18 @@ function prepareStandaloneBundle() {
   // 7. Prune redundant source maps, docs, and test files so installer extracts in < 1 minute
   pruneStandaloneNodeModules();
 
+  // 8. CRITICAL: Remove any development SQLite databases from standalone so fresh users get a 100% clean new account
+  const devDbFiles = ['noxis-local.db', 'noxis-local.db-wal', 'noxis-local.db-shm', 'noxis-local-fallback.db'];
+  for (const f of devDbFiles) {
+    const p = path.join(STANDALONE, f);
+    if (fs.existsSync(p)) {
+      try {
+        fs.unlinkSync(p);
+        console.log(`[Electron Build] ✓ Removed dev database to ensure fresh user installs: ${f}`);
+      } catch {}
+    }
+  }
+
   console.log('\n[Electron Build] ✓ Bundle assembly complete\n');
 }
 

@@ -289,7 +289,7 @@ export default function BusinessModeSelector() {
                   type="text"
                   value={shopName}
                   onChange={(e) => setShopName(e.target.value)}
-                  placeholder="e.g. Gold She Garments"
+                  placeholder="e.g. Al-Rehman Fabrics, Lahore Traders, etc."
                   className="w-full px-4 py-3 bg-[#080A0F] border border-white/10 rounded-lg text-sm text-white placeholder:text-zinc-600 font-mono focus:outline-none focus:border-[#08EBF6]/50 transition-colors"
                   autoFocus
                   maxLength={100}

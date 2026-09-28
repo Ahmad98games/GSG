@@ -483,7 +483,7 @@ export default React.memo(function GlobalTopBar() {
               </div>
               <div className="text-left hidden md:block">
                 <p className="text-[12px] font-medium text-slate-200 truncate max-w-[120px]">
-                  {profile?.business_name || 'Gold She Garments'}
+                  {profile?.business_name || 'My Business'}
                 </p>
               </div>
             </button>
@@ -504,7 +504,7 @@ export default React.memo(function GlobalTopBar() {
                   >
                     <div className="px-3 py-2 border-b border-white/[0.06]">
                       <p className="text-[12px] font-medium text-slate-200 truncate">
-                        {profile?.business_name || 'Gold She Garments'}
+                        {profile?.business_name || 'My Business'}
                       </p>
                       <p className="text-[10px] text-slate-400 font-mono mt-0.5">
                         {profile?.owner_name || 'Administrator'}

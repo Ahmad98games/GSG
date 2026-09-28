@@ -32,6 +32,11 @@ extraResources:
     to: "standalone"
     filter:
       - "**/*"
+      - "!*.db"
+      - "!*.db-shm"
+      - "!*.db-wal"
+      - "!*.sqlite"
+      - "!*.sqlite3"
 
   # Next.js standalone dependencies (required by server.js at runtime)
   - from: ".next/standalone/node_modules"
