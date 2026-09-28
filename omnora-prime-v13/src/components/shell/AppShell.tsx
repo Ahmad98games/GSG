@@ -44,11 +44,29 @@ import { useBusinessModeStore } from '@/stores/businessModeStore';
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { license } = useLicenseValidation();
   const pathname = usePathname();
-  const { isConfigured: isBusinessModeConfigured } = useBusinessModeStore();
+  const { isConfigured: isBusinessModeConfigured, setMode } = useBusinessModeStore();
   const [mounted, setMounted] = React.useState(false);
   const { isCollapsed } = useSidebarState();
   const { isRTL } = useLanguageStore();
   const { profile } = useBusinessProfile();
+
+  // If user already has an established business or existing license, don't trap them in first-run modal
+  const hasExistingBusiness = Boolean(
+    profile?.business_name ||
+    profile?.id ||
+    (typeof window !== 'undefined' && (
+      localStorage.getItem('noxis_onboarded') === 'true' ||
+      localStorage.getItem('noxis_license') !== null
+    ))
+  );
+  const shouldShowModeSelector = !isBusinessModeConfigured && !hasExistingBusiness;
+
+  // Auto-mark as configured if established business exists
+  React.useEffect(() => {
+    if (hasExistingBusiness && !isBusinessModeConfigured) {
+      setMode('textile', profile?.business_name || 'Gold She Garments', profile?.phone || '');
+    }
+  }, [hasExistingBusiness, isBusinessModeConfigured, profile?.business_name, profile?.phone, setMode]);
 
   useGlobalKeyboardShortcuts();
 
@@ -331,12 +349,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      {/* First-Run Business Mode Selector */}
-      {!isBusinessModeConfigured && (
+      {/* First-Run Business Mode Selector (New installations only - bypassed for owner / active license) */}
+      {shouldShowModeSelector && (
         <BusinessModeSelector />
       )}
 
-      {introChecked && showIntro && (
+      {!shouldShowModeSelector && introChecked && showIntro && (
         <IntroAnimation onComplete={handleIntroComplete} />
       )}
       {isElectron && <TitleBar />}

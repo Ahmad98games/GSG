@@ -105,9 +105,14 @@ export async function GET(req: Request) {
           ? client.prepare("SELECT count(*) as count FROM skus WHERE (business_id = ? OR ? = '00000000-0000-0000-0000-000000000000') AND is_active = 1 AND expiry_date IS NOT NULL AND expiry_date <= ? AND qty_on_hand > 0").get(biz, biz, thirtyDaysStr)
           : { count: 0 }
 
-        const ledgerRows = tableExists('ledger_entries')
-          ? client.prepare("SELECT entry_type, amount, party_id FROM ledger_entries WHERE (business_id = ? OR ? = '00000000-0000-0000-0000-000000000000') AND status = 'posted'").all(biz, biz)
-          : []
+        let ledgerRows: any[] = []
+        if (tableExists('ledger_entries')) {
+          try {
+            ledgerRows = client.prepare("SELECT entry_type, amount FROM ledger_entries WHERE (business_id = ? OR ? = '00000000-0000-0000-0000-000000000000')").all(biz, biz)
+          } catch {
+            ledgerRows = []
+          }
+        }
 
         return NextResponse.json({
           attendanceToday: attendanceRow?.count || 0,
