@@ -166,8 +166,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   license: {
     getInfo: () =>
       ipcRenderer.invoke('license:getInfo'),
-    activate: (keyString: string) =>
-      ipcRenderer.invoke('license:activate', keyString),
+    activate: (keyOrData: any) =>
+      ipcRenderer.invoke('license:activate', keyOrData),
+    verify: (keyOrData: any) =>
+      ipcRenderer.invoke('license:activate', keyOrData),
     getHWID: () =>
       ipcRenderer.invoke('license:getHWID'),
   },

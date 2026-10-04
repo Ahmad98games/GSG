@@ -1053,6 +1053,7 @@ async function generateLicense() {
 
   const { error } = await sb.from('licenses').insert({
     license_key: key, tier: activePlan, is_trial: false, is_deactivated: false,
+    is_active: true,
     max_devices: maxDev, expires_at: expiry.toISOString(),
     customer_name: name, customer_whatsapp: wa||null,
     payment_method: pay, amount_paid: amt, currency: 'PKR', months
@@ -1070,7 +1071,7 @@ async function generateLicense() {
   if (wa) {
     const phone = wa.replace(/\D/g,'').replace(/^0/,'92');
     const msg = encodeURIComponent(
-      `Assalam o Alaikum ${name},\n\nShukriya for choosing Noxis!\n\nYour license key:\n*${key}*\n\nPlan: ${activePlan.toUpperCase()}\nDuration: ${months} month${months>1?'s':''}\nDevices: ${maxDev}\n\nTo activate:\n1. noxishub.app/download\n2. Enter this key\n3. Install and open Noxis Hub\n\nFor help: reply to this message.\n\n_Omnora Labs | Noxis Hub_`
+      `Assalam o Alaikum ${name},\n\nShukriya for choosing Noxis!\n\nYour license key:\n*${key}*\n\nPlan: ${activePlan.toUpperCase()}\nDuration: ${months} month${months>1?'s':''}\nDevices: ${maxDev}\n\nTo activate:\n1. Open Noxis Hub -> Settings -> License\n2. Paste this key: ${key}\n3. Click "Activate Now" to instantly unlock ${activePlan.toUpperCase()} Plan!\n\nFor help: reply to this message.\n\n_Omnora Labs | Noxis Hub_`
     );
     window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
   }

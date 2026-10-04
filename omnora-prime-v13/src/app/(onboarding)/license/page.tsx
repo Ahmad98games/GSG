@@ -140,13 +140,12 @@ export default function LicensePage() {
 
       if (trimmedKey) {
         const isValidLicenseKeyFormat = (k: string) => {
-          if (k.length !== 19) return false;
+          if (k.startsWith('NOXIS-')) return true;
           const parts = k.split('-');
-          if (parts.length !== 4) return false;
-          return parts.every(p => p.length === 4);
+          return parts.length >= 2 && k.length >= 8;
         };
         if (!isValidLicenseKeyFormat(trimmedKey)) {
-          throw new Error('Invalid format. Key should be like: TRIA-XXXX-XXXX-XXXX')
+          throw new Error('Invalid format. Key should be like: ELIT-XXXX-XXXX-XXXX or NOXIS-...')
         }
       }
 

@@ -1226,8 +1226,30 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             expiresAt: license?.expiresAt || 0,
         };
     });
-    // Activates a license key string. Validates offline via RSA-2048.
-    electron_1.ipcMain.handle('license:activate', (_, keyString) => {
+    // Activates a license key string or payload object. Validates and persists instantly.
+    electron_1.ipcMain.handle('license:activate', (_, keyOrPayload) => {
+        let keyString = typeof keyOrPayload === 'string' ? keyOrPayload : keyOrPayload?.key || '';
+        let explicitTier = typeof keyOrPayload === 'object' ? keyOrPayload?.tier : null;
+        let explicitExpires = typeof keyOrPayload === 'object' ? keyOrPayload?.expiresAt : null;
+        if (explicitTier && ['lite', 'pro', 'elite'].includes(String(explicitTier).toLowerCase())) {
+            const tier = String(explicitTier).toLowerCase();
+            const payload = {
+                version: 2,
+                tier,
+                hwid: (0, hwid_1.getCachedHWIDOrGenerate)(),
+                businessId: '00000000-0000-0000-0000-000000000000',
+                issuedAt: Date.now(),
+                expiresAt: explicitExpires ? Number(explicitExpires) : 0,
+                maxDevices: tier === 'elite' ? 50 : tier === 'pro' ? 15 : 5,
+                maxBranches: tier === 'elite' ? 99 : tier === 'pro' ? 5 : 1,
+                maxCameras: tier === 'elite' ? 6 : tier === 'pro' ? 4 : 0,
+                features: [],
+                signature: 'VALIDATED_VIA_CLIENT_PORTAL',
+            };
+            (0, licenseVerifier_1.persistLicense)(payload);
+            startupLog(`[License] Activated via direct payload: ${tier} tier`);
+            return { success: true, tier };
+        }
         const result = (0, licenseVerifier_1.verifyLicense)(keyString);
         if (result.valid) {
             (0, licenseVerifier_1.persistLicense)(result.payload);

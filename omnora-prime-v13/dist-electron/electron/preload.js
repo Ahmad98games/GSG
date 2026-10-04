@@ -124,7 +124,8 @@ electron_1.contextBridge.exposeInMainWorld('electronAPI', {
     // ── Licensing & HWID ────────────────────────────────────────────────────────
     license: {
         getInfo: () => electron_1.ipcRenderer.invoke('license:getInfo'),
-        activate: (keyString) => electron_1.ipcRenderer.invoke('license:activate', keyString),
+        activate: (keyOrData) => electron_1.ipcRenderer.invoke('license:activate', keyOrData),
+        verify: (keyOrData) => electron_1.ipcRenderer.invoke('license:activate', keyOrData),
         getHWID: () => electron_1.ipcRenderer.invoke('license:getHWID'),
     },
     // ── Trial Engine ────────────────────────────────────────────────────────────

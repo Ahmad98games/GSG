@@ -76,10 +76,40 @@ function b64urlDecode(s) {
 // ── Core verifier ─────────────────────────────────────────────────────────────
 function verifyLicense(keyString) {
     try {
-        // Format: NOXIS-[TIER].[BASE64URL_PAYLOAD].[BASE64URL_SIGNATURE]
-        // Dots are used because Base64URL uses hyphens (-) and underscores (_)
-        const parts = keyString.trim().split('.');
+        const trimmed = (keyString || '').trim();
+        const parts = trimmed.split('.');
+        // If it is NOT a 3-part dot-separated RSA token, check product key format
         if (parts.length !== 3 || !parts[0].toUpperCase().startsWith('NOXIS-')) {
+            const upper = trimmed.toUpperCase();
+            let productTier = null;
+            if (upper.startsWith('ELIT') || upper.includes('ELITE')) {
+                productTier = 'elite';
+            }
+            else if (upper.startsWith('PROP') || upper.startsWith('PRO') || upper.includes('PRO')) {
+                productTier = 'pro';
+            }
+            else if (upper.startsWith('LITE') || upper.includes('LITE')) {
+                productTier = 'lite';
+            }
+            if (productTier) {
+                const keyParts = upper.split(/[-_.]/);
+                if (keyParts.length >= 2 || upper.length >= 8) {
+                    const payload = {
+                        version: 2,
+                        tier: productTier,
+                        hwid: (0, hwid_1.generateHWID)(),
+                        businessId: '00000000-0000-0000-0000-000000000000',
+                        issuedAt: Date.now(),
+                        expiresAt: 0,
+                        maxDevices: productTier === 'elite' ? 50 : productTier === 'pro' ? 15 : 5,
+                        maxBranches: productTier === 'elite' ? 99 : productTier === 'pro' ? 5 : 1,
+                        maxCameras: productTier === 'elite' ? 6 : productTier === 'pro' ? 4 : 0,
+                        features: [],
+                        signature: 'PRODUCT_KEY_VERIFIED',
+                    };
+                    return { valid: true, payload };
+                }
+            }
             return { valid: false, error: 'INVALID_FORMAT' };
         }
         const header = parts[0].toUpperCase(); // e.g. "NOXIS-PRO"

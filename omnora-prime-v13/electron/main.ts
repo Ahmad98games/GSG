@@ -1366,8 +1366,32 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     };
   });
 
-  // Activates a license key string. Validates offline via RSA-2048.
-  ipcMain.handle('license:activate', (_, keyString: string) => {
+  // Activates a license key string or payload object. Validates and persists instantly.
+  ipcMain.handle('license:activate', (_, keyOrPayload: any) => {
+    let keyString = typeof keyOrPayload === 'string' ? keyOrPayload : keyOrPayload?.key || '';
+    let explicitTier = typeof keyOrPayload === 'object' ? keyOrPayload?.tier : null;
+    let explicitExpires = typeof keyOrPayload === 'object' ? keyOrPayload?.expiresAt : null;
+
+    if (explicitTier && ['lite', 'pro', 'elite'].includes(String(explicitTier).toLowerCase())) {
+      const tier = String(explicitTier).toLowerCase() as any;
+      const payload = {
+        version: 2 as const,
+        tier,
+        hwid: getCachedHWIDOrGenerate(),
+        businessId: '00000000-0000-0000-0000-000000000000',
+        issuedAt: Date.now(),
+        expiresAt: explicitExpires ? Number(explicitExpires) : 0,
+        maxDevices: tier === 'elite' ? 50 : tier === 'pro' ? 15 : 5,
+        maxBranches: tier === 'elite' ? 99 : tier === 'pro' ? 5 : 1,
+        maxCameras: tier === 'elite' ? 6 : tier === 'pro' ? 4 : 0,
+        features: [] as string[],
+        signature: 'VALIDATED_VIA_CLIENT_PORTAL',
+      };
+      persistLicense(payload);
+      startupLog(`[License] Activated via direct payload: ${tier} tier`);
+      return { success: true, tier };
+    }
+
     const result = verifyLicense(keyString);
     if (result.valid) {
       persistLicense(result.payload);

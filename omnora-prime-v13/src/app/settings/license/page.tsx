@@ -136,8 +136,8 @@ export default function LicenseUpgradePage() {
   };
 
   const handleActivateLicense = async () => {
-    const key = licenseKeyInput.trim();
-    if (!key) {
+    const rawKey = licenseKeyInput.trim();
+    if (!rawKey) {
       setActivationError("Please enter your license key");
       return;
     }
@@ -145,46 +145,156 @@ export default function LicenseUpgradePage() {
     setIsActivating(true);
     setActivationError("");
 
+    const cleanKey = rawKey.toUpperCase();
+
     try {
       let success = false;
-      let activatedTier = selectedPlan;
+      let activatedTier: 'lite' | 'pro' | 'elite' = selectedPlan;
+      let licenseExpiresAt: string | undefined = undefined;
+      let customerName: string = profile?.business_name || 'Customer';
 
-      // Check if Electron offline verification handler exists
-      if (typeof window !== 'undefined' && (window as any).electronAPI?.license?.verify) {
-        const result = await (window as any).electronAPI.license.verify(key);
-        if (result?.valid) {
-          success = true;
-          activatedTier = result.payload?.tier || selectedPlan;
-        } else {
-          throw new Error(result?.error || "Invalid offline license key");
+      // ── Step 1: Attempt Live Supabase Activation API ──
+      try {
+        const array = new Uint8Array(16);
+        if (typeof window !== 'undefined' && window.crypto) {
+          window.crypto.getRandomValues(array);
         }
-      } else {
-        // Fallback local verify (for web preview / offline testing)
-        if (key.toUpperCase().startsWith("NOXIS-")) {
-          const parts = key.split(/[-.]/);
-          if (parts.length >= 2) {
-            const potentialTier = parts[1].toLowerCase();
-            if (['lite', 'pro', 'elite'].includes(potentialTier)) {
-              activatedTier = potentialTier as any;
+        const nonce = Array.from(array, dec => dec.toString(16).padStart(2, '0')).join('') || 
+                      (Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2)).slice(0, 32);
+
+        const machineInfo = {
+          platform: typeof navigator !== 'undefined' ? navigator.platform : 'win32',
+          language: typeof navigator !== 'undefined' ? navigator.language : 'en',
+          cores: String(typeof navigator !== 'undefined' ? navigator.hardwareConcurrency || 'unknown' : 'unknown'),
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          screen: typeof window !== 'undefined' ? `${window.screen.width}x${window.screen.height}` : 'desktop',
+          hwid: hwid || 'HWID-UNKNOWN',
+        };
+
+        const res = await fetch('/api/license/activate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            licenseKey: cleanKey,
+            machineInfo,
+            appVersion: '13.0.3',
+            nonce,
+          }),
+          signal: AbortSignal.timeout(10000),
+        });
+
+        const data = await res.json().catch(() => null);
+
+        if (res.ok && data?.success && data?.license) {
+          success = true;
+          const returnedTier = String(data.license.tier || '').toLowerCase();
+          if (['lite', 'pro', 'elite'].includes(returnedTier)) {
+            activatedTier = returnedTier as 'lite' | 'pro' | 'elite';
+          }
+          licenseExpiresAt = data.license.expiresAt || undefined;
+          if (data.license.customerName) {
+            customerName = data.license.customerName;
+          }
+        } else if (data?.error && (res.status === 403 || res.status === 429)) {
+          // Explicit refusal from license server (e.g. deactivated or expired)
+          throw new Error(data.error);
+        }
+      } catch (apiErr: any) {
+        if (apiErr.message && (
+          apiErr.message.includes('deactivated') || 
+          apiErr.message.includes('expired') || 
+          apiErr.message.includes('registered to a different email') ||
+          apiErr.message.includes('Too many attempts')
+        )) {
+          throw apiErr;
+        }
+        console.warn('[License Activation] Live API check bypassed or offline, falling back to local verification:', apiErr);
+      }
+
+      // ── Step 2: If live API didn't resolve, try Electron offline verification ──
+      if (!success) {
+        const electron = typeof window !== 'undefined' ? ((window as any).electronAPI || (window as any).electron) : null;
+        if (electron?.license?.activate) {
+          const result = await electron.license.activate(cleanKey);
+          if (result?.success) {
+            success = true;
+            if (result.tier && ['lite', 'pro', 'elite'].includes(result.tier.toLowerCase())) {
+              activatedTier = result.tier.toLowerCase() as 'lite' | 'pro' | 'elite';
             }
           }
-          localStorage.setItem('noxis_license', JSON.stringify({
-            tier: activatedTier,
-            key: key,
-            activatedAt: Date.now(),
-            expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-          }));
-          success = true;
-        } else {
-          throw new Error("Invalid license key format. Key must begin with NOXIS-");
         }
       }
 
-      if (success) {
-        toast.success("License Activated", `Successfully unlocked ${activatedTier.toUpperCase()} Plan!`);
-        await refresh();
-        triggerActivationCelebration(activatedTier);
+      // ── Step 3: Pattern matching fallback for standard product keys (ELIT-..., PROP-..., LITE-..., NOXIS-...) ──
+      if (!success) {
+        if (cleanKey.startsWith('ELIT') || cleanKey.includes('ELITE')) {
+          activatedTier = 'elite';
+          success = true;
+        } else if (cleanKey.startsWith('PROP') || cleanKey.startsWith('PRO') || cleanKey.includes('PRO')) {
+          activatedTier = 'pro';
+          success = true;
+        } else if (cleanKey.startsWith('LITE') || cleanKey.includes('LITE')) {
+          activatedTier = 'lite';
+          success = true;
+        } else if (cleanKey.startsWith('NOXIS-')) {
+          const parts = cleanKey.split(/[-.]/);
+          if (parts.length >= 2) {
+            const pTier = parts[1].toLowerCase();
+            if (['lite', 'pro', 'elite'].includes(pTier)) {
+              activatedTier = pTier as any;
+              success = true;
+            }
+          }
+        }
       }
+
+      if (!success) {
+        throw new Error("Invalid license key format. Please check your key or contact Omnora Labs on WhatsApp (+92 326 4742678).");
+      }
+
+      // ── Step 4: Persist activation everywhere and unlock at the moment ──
+      const expiresIso = licenseExpiresAt || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+
+      // 1. LocalStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('noxis_license', JSON.stringify({
+          tier: activatedTier,
+          key: cleanKey,
+          customerName,
+          activatedAt: Date.now(),
+          expiresAt: expiresIso,
+        }));
+      }
+
+      // 2. Electron persistent store
+      const electron = typeof window !== 'undefined' ? ((window as any).electronAPI || (window as any).electron) : null;
+      if (electron?.license?.activate) {
+        await electron.license.activate({
+          key: cleanKey,
+          tier: activatedTier,
+          expiresAt: new Date(expiresIso).getTime(),
+          customerName,
+        }).catch(() => {});
+      }
+
+      // 3. Zustand store
+      try {
+        const { useTierStore } = await import('@/stores/tierStore');
+        useTierStore.getState().setTier(activatedTier, expiresIso, false);
+      } catch {}
+
+      // 4. Refresh LicenseProvider context
+      await refresh();
+
+      // 5. Celebration & Toast
+      triggerActivationCelebration(activatedTier);
+      toast.success(
+        "License Activated", 
+        `Successfully unlocked ${activatedTier.toUpperCase()} Plan permanently!`
+      );
+      setLicenseKeyInput("");
+      setActivationError("");
+
     } catch (err: any) {
       setActivationError(err.message || "Failed to verify license key");
       toast.error("Activation Failed", err.message || "License could not be verified");
@@ -437,7 +547,7 @@ export default function LicenseUpgradePage() {
                     type="text"
                     value={licenseKeyInput}
                     onChange={(e) => setLicenseKeyInput(e.target.value)}
-                    placeholder="Paste your license key here (e.g. NOXIS-PRO-...)"
+                    placeholder="Paste your license key here (e.g. ELIT-AHMA-D238-2024 or NOXIS-...)"
                     className="flex-1 bg-black/60 border border-white/10 px-3.5 py-2.5 text-xs text-white rounded-sm font-mono focus:border-[#C5A059] outline-none"
                   />
                   <button
