@@ -1348,7 +1348,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     const tierInfo = getActiveTierInfo();
     const trialState = getTrialState();
     const license = getActiveLicensePayload();
-    const activeTier = license?.tier || (tierInfo.name === 'free_forever' || tierInfo.name === 'trial' || tierInfo.name === 'lite' ? 'elite' : tierInfo.name);
+    const hasPaidLicense = Boolean(license);
+    const activeTier = license?.tier || (trialState.status === 'expired' ? 'free_forever' : 'elite');
     return {
       tier: activeTier,
       caps: tierInfo.caps,
@@ -1356,11 +1357,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       maxDevices: tierInfo.maxDevices,
       maxBranches: tierInfo.maxBranches,
       maxCameras: tierInfo.maxCameras,
-      trialStatus: trialState.status,
-      trialDaysLeft: trialState.daysLeft,
-      graceDaysLeft: trialState.graceDaysLeft,
+      trialStatus: hasPaidLicense ? null : trialState.status,
+      trialDaysLeft: hasPaidLicense ? 0 : trialState.daysLeft,
+      graceDaysLeft: hasPaidLicense ? 0 : trialState.graceDaysLeft,
       hwid: generateHWID(),
-      licenseActive: true,
+      licenseActive: hasPaidLicense,
+      isPermanent: hasPaidLicense && (!license?.expiresAt || license.expiresAt === 0),
       businessId: license?.businessId || '00000000-0000-0000-0000-000000000000',
       expiresAt: license?.expiresAt || 0,
     };

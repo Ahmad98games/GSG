@@ -58,53 +58,50 @@ export function useLicenseValidation() {
         let raw = localStorage.getItem('noxis_license')
 
         if (!raw) {
-          // Auto-seed Freemium / Trial License so the user is never blocked or redirected
-          const defaultLicense: CachedLicense = {
-            id: 'elite-perpetual-node',
-            key: 'NOXIS-ELITE-PERPETUAL-2026',
+          // Fresh installation without an entered license key: initialize clean 14-Day Trial
+          const trialExpiry = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+          const trialLicense: CachedLicense = {
+            id: 'trial-workstation',
+            key: 'TRIAL-14DAYS',
             tier: 'elite',
-            customerName: 'Workstation Operator',
-            expiresAt: '2030-01-01',
+            customerName: 'Trial Workstation',
+            expiresAt: trialExpiry,
             maxDevices: 50,
             activatedAt: Date.now(),
-            cacheExpires: Date.now() + 365 * 24 * 60 * 60 * 1000,
+            cacheExpires: Date.now() + 14 * 24 * 60 * 60 * 1000,
             isValid: true,
-          }
-          localStorage.setItem('noxis_license', JSON.stringify(defaultLicense))
-          localStorage.setItem('noxis_tier', 'elite')
-          if (typeof document !== 'undefined') {
-            document.cookie = `noxis_license_active=true; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Strict`
-          }
-          raw = JSON.stringify(defaultLicense)
+          };
+          setLicense(trialLicense);
+          setLoading(false);
+          return;
         }
 
-        const cached: CachedLicense = JSON.parse(raw)
-        setLicense(cached)
-        setLoading(false)
+        const cached: CachedLicense = JSON.parse(raw);
+        setLicense(cached);
+        setLoading(false);
 
-        const isStale = Date.now() > cached.cacheExpires
+        const isStale = Date.now() > cached.cacheExpires;
         if (isStale && !validatedRef.current && !cached.key?.includes('ELITE') && !cached.key?.includes('PERPETUAL')) {
           setTimeout(() => {
-            silentRevalidate(cached.key)
-          }, 5000)
+            silentRevalidate(cached.key);
+          }, 5000);
         }
 
       } catch {
-        const defaultLicense: CachedLicense = {
-          id: 'elite-perpetual-node',
-          key: 'NOXIS-ELITE-PERPETUAL-2026',
+        const trialExpiry = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+        const trialLicense: CachedLicense = {
+          id: 'trial-workstation',
+          key: 'TRIAL-14DAYS',
           tier: 'elite',
-          customerName: 'Workstation Operator',
-          expiresAt: '2030-01-01',
+          customerName: 'Trial Workstation',
+          expiresAt: trialExpiry,
           maxDevices: 50,
           activatedAt: Date.now(),
-          cacheExpires: Date.now() + 365 * 24 * 60 * 60 * 1000,
+          cacheExpires: Date.now() + 14 * 24 * 60 * 60 * 1000,
           isValid: true,
-        }
-        localStorage.setItem('noxis_license', JSON.stringify(defaultLicense))
-        localStorage.setItem('noxis_tier', 'elite')
-        setLicense(defaultLicense)
-        setLoading(false)
+        };
+        setLicense(trialLicense);
+        setLoading(false);
       }
     }
 

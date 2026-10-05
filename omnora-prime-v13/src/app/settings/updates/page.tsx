@@ -49,14 +49,24 @@ interface ChangelogItem {
 
 const HISTORICAL_CHANGELOGS: ChangelogItem[] = [
   {
-    version: '13.0.1',
-    date: 'September 2026',
-    type: 'major',
-    title: 'Initial Production Release (Gold Master)',
+    version: '13.0.5',
+    date: 'October 2026',
+    type: 'patch',
+    title: 'Clean First-Run Onboarding & Production License Hardening',
     highlights: [
-      { tag: 'Production Master', text: 'Full industrial ERP engine with Khata dual-entry ledger and interactive voucher print preview', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
-      { tag: 'Offline First', text: 'Resilient local database cache across Invoices, Payroll, and Ledger', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
-      { tag: 'Security & Licensing', text: 'Hardware-bound licensing, enterprise access control, and branded workspace profile', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
+      { tag: 'Onboarding Engine', text: 'Interactive first-run wizard tailored for Textile, Wholesale, and Retail modes', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      { tag: 'Trial Architecture', text: '14-day full Elite trial without artificial account inheritance', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
+      { tag: 'License Verifier', text: 'Offline hardware-bound key verification with instantaneous activation', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
+    ],
+  },
+  {
+    version: '13.0.4',
+    date: 'October 2026',
+    type: 'patch',
+    title: 'License Activation Architecture & Offline Sync Resolution',
+    highlights: [
+      { tag: 'Licensing', text: 'Instant offline RSA product key validation and hardware ID binding', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      { tag: 'Admin Portal', text: 'Streamlined license generation with one-click WhatsApp dispatch', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
     ],
   },
   {
@@ -225,7 +235,7 @@ export default function UpdatesPage() {
 
   const installUpdate = () => {
     if (!isElectron) return
-    if (confirm('Noxis Hub will restart seamlessly to finalize the installation (< 45s). Proceed?')) {
+    if (confirm('Noxis Hub will restart seamlessly and will take 2 minutes in background to finalize the installation. Proceed?')) {
       ;(window as any).electronAPI.installUpdate()
     }
   }
@@ -277,7 +287,7 @@ export default function UpdatesPage() {
                 Software & Engine Updates
               </h1>
               <p className="text-xs text-slate-400 mt-0.5">
-                Industrial OTA Pipeline • Differential Blockmap Sync • Resumable Range Engine
+                Industrial Auto Update Pipeline • Built for Professionals • Fast & Reliable Updates
               </p>
             </div>
           </div>
@@ -327,7 +337,7 @@ export default function UpdatesPage() {
                 </div>
                 <p className="text-xs text-slate-400 leading-relaxed max-w-xl">
                   Running Noxis Hub <span className="font-mono text-slate-200 font-medium">v{currentVersion}</span>. All
-                  enterprise modules, local database schemas, and differential updates are synchronized.
+                  Features , Bugs and fixes are updated.
                 </p>
                 <div className="flex items-center gap-3 pt-1 text-[11px] text-slate-500 font-mono">
                   <span>Last verified: {lastCheckedAt}</span>
@@ -556,40 +566,40 @@ export default function UpdatesPage() {
         )}
       </div>
 
-      {/* ── UPDATE DIAGNOSTICS & SYSTEM READINESS (4 CARDS) ── */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3.5">
-        <div className="p-4 rounded-[6px] bg-[#131823] border border-white/[0.08] space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500">Differential Sync</span>
-            <Layers size={14} className="text-slate-400" />
-          </div>
-          <p className="text-[13px] font-medium text-slate-200">Blockmap Delta Engine</p>
-          <p className="text-[11px] text-slate-400 leading-normal">
-            Downloads only modified binary segments, saving up to 90% bandwidth.
-          </p>
-        </div>
+     {/* ── UPDATE DIAGNOSTICS & SYSTEM READINESS (4 CARDS) ── */}
+<div className="grid grid-cols-1 md:grid-cols-4 gap-3.5">
+  <div className="p-4 rounded-[6px] bg-[#131823] border border-white/[0.08] space-y-1.5">
+    <div className="flex items-center justify-between">
+      <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500">Data Saver</span>
+      <Layers size={14} className="text-slate-400" />
+    </div>
+    <p className="text-[13px] font-medium text-slate-200">Smart Downloads</p>
+    <p className="text-[11px] text-slate-400 leading-normal">
+      Downloads only what changed instead of the whole file, saving time and internet data.
+    </p>
+  </div>
 
-        <div className="p-4 rounded-[6px] bg-[#131823] border border-white/[0.08] space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500">Interruption Safety</span>
-            <Zap size={14} className="text-slate-400" />
-          </div>
-          <p className="text-[13px] font-medium text-slate-200">HTTP 206 Byte-Resume</p>
-          <p className="text-[11px] text-slate-400 leading-normal">
-            Power cuts and Wi-Fi drops automatically pick up byte-for-byte where they left off.
-          </p>
-        </div>
+  <div className="p-4 rounded-[6px] bg-[#131823] border border-white/[0.08] space-y-1.5">
+    <div className="flex items-center justify-between">
+      <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500">Auto Resume</span>
+      <Zap size={14} className="text-slate-400" />
+    </div>
+    <p className="text-[13px] font-medium text-slate-200">Cut-Off Protection</p>
+    <p className="text-[11px] text-slate-400 leading-normal">
+      If power cuts or internet drops, updates continue exactly where they stopped.
+    </p>
+  </div>
 
-        <div className="p-4 rounded-[6px] bg-[#131823] border border-white/[0.08] space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500">Install Latency</span>
-            <Clock size={14} className="text-slate-400" />
-          </div>
-          <p className="text-[13px] font-medium text-slate-200">Ultra-Fast Silent Mode</p>
-          <p className="text-[11px] text-slate-400 leading-normal">
-            Eliminates multi-step wizards; upgrades take less than 45 seconds to reboot.
-          </p>
-        </div>
+  <div className="p-4 rounded-[6px] bg-[#131823] border border-white/[0.08] space-y-1.5">
+    <div className="flex items-center justify-between">
+      <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500">Speed</span>
+      <Clock size={14} className="text-slate-400" />
+    </div>
+    <p className="text-[13px] font-medium text-slate-200">1-Click Fast Update</p>
+    <p className="text-[11px] text-slate-400 leading-normal">
+      No complicated setup screens—updates finish and restart the app in under 45 seconds.
+    </p>
+  </div>
 
         <div className="p-4 rounded-[6px] bg-[#131823] border border-white/[0.08] space-y-1.5">
           <div className="flex items-center justify-between">
@@ -598,7 +608,7 @@ export default function UpdatesPage() {
           </div>
           <p className="text-[13px] font-medium text-slate-200">Universal x64 Native</p>
           <p className="text-[11px] text-slate-400 leading-normal">
-            Fully compatible across Windows 7, 8, 10, and Windows 11 64-bit systems.
+            Fully compatible across Windows 7, 8, 10, and Windows 11 (64-bit systems only).
           </p>
         </div>
       </div>
@@ -639,16 +649,29 @@ export default function UpdatesPage() {
           </div>
         </div>
 
-        <div className="p-3 rounded-[4px] bg-white/[0.02] border border-white/[0.06] text-[11px] text-slate-400 flex items-center justify-between">
+        <div className="p-3 rounded-[4px] bg-white/[0.02] border border-white/[0.06] text-[11px] text-slate-400 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           <div className="flex items-center gap-2">
-            <ShieldCheck size={14} className="text-slate-400" />
+            <ShieldCheck size={14} className="text-emerald-400 shrink-0" />
             <span>
               {channel === 'stable'
                 ? 'Stable ring receives thoroughly vetted security, accounting, and factory synchronization updates.'
                 : 'Beta ring receives pre-release AI camera and edge-mesh features prior to general deployment.'}
             </span>
           </div>
-          <span className="font-mono text-slate-500 text-[10px]">https://noxishub.app/updates/{channel}</span>
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="font-mono text-slate-400 text-[10px] bg-white/[0.04] px-2 py-0.5 rounded border border-white/10 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Auto-Sync Feed: /updates/{channel}
+            </span>
+            <a
+              href="https://noxishub.app/updates/stable/Noxis%20Hub%20Setup%2013.0.5.exe"
+              target="_blank"
+              rel="noreferrer"
+              className="text-[11px] font-medium text-cyan-400 hover:text-cyan-300 underline underline-offset-2 flex items-center gap-1 cursor-pointer"
+            >
+              Standalone .exe
+            </a>
+          </div>
         </div>
       </div>
 

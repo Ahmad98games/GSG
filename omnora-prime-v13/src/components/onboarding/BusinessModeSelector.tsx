@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Factory, Package, Store, ArrowRight,
   MessageCircle, X, Sparkles, Check, Crown, ShieldCheck
@@ -12,6 +12,7 @@ import {
   useBusinessModeStore,
 } from '@/stores/businessModeStore'
 import { useTierStore } from '@/stores/tierStore'
+import { useBusinessProfileStore } from '@/store/BusinessProfileStore'
 
 const MODE_ICONS: Record<BusinessMode, React.ComponentType<{ size?: number; className?: string }>> = {
   textile: Factory,
@@ -54,23 +55,31 @@ export default function BusinessModeSelector() {
     if (typeof window === 'undefined') return
 
     const storedLicense = localStorage.getItem('noxis_license')
-    const isPerpetual = !isTrial && (
-      tier === 'elite' ||
-      storedLicense?.includes('PERPETUAL') ||
-      storedLicense?.includes('ELITE') ||
-      localStorage.getItem('noxis_tier') === 'elite'
-    )
+    let hasRealPerpetual = false
+    if (storedLicense) {
+      try {
+        const parsed = JSON.parse(storedLicense)
+        if (
+          !parsed.isTrial &&
+          (parsed.key?.includes('PERPETUAL') ||
+           parsed.key?.startsWith('ELIT') ||
+           (parsed.tier === 'elite' && parsed.isValid && (!parsed.expiresAt || new Date(parsed.expiresAt).getFullYear() > 2028)))
+        ) {
+          hasRealPerpetual = true
+        }
+      } catch {}
+    }
 
-    if (isPerpetual) {
+    if (hasRealPerpetual) {
       setIsOwnerPermanent(true)
     }
 
-    // Check Electron HWID
+    // Check Electron HWID & verified license status
     const api = (window as any).electronAPI
     if (api?.license?.getInfo) {
       api.license.getInfo().then((res: any) => {
         if (res?.hwid) setHwid(res.hwid)
-        if (res?.licenseActive && (res?.tier === 'elite' || !res?.trialStatus)) {
+        if (res?.licenseActive && (res?.isPermanent || !res?.trialStatus)) {
           setIsOwnerPermanent(true)
         }
       }).catch(() => {})
@@ -79,7 +88,7 @@ export default function BusinessModeSelector() {
         if (id) setHwid(id)
       }).catch(() => {})
     }
-  }, [isTrial, tier])
+  }, [])
 
   const handleModeSelect = (mode: BusinessMode) => {
     setSelectedMode(mode)
@@ -92,8 +101,9 @@ export default function BusinessModeSelector() {
   }
 
   const handleDismiss = () => {
-    // Quick exit: keep owner permanent elite and mark configured
-    setMode(selectedMode || 'textile', shopName.trim() || 'My Business', whatsApp.trim())
+    // Quick exit: apply fallback profile and mark configured
+    const finalShopName = shopName.trim() || 'My Business'
+    setMode(selectedMode || 'textile', finalShopName, whatsApp.trim())
     if (typeof window !== 'undefined') {
       localStorage.setItem('noxis_onboarded', 'true')
     }
@@ -106,8 +116,23 @@ export default function BusinessModeSelector() {
     // Save mode configuration
     setMode(selectedMode, finalShopName, whatsApp.trim())
 
-    // If NOT owner and is a true trial user, set 14-day trial
-    if (!isOwnerPermanent && isTrial) {
+    // Update business profile with custom shop name and contact
+    const existing = useBusinessProfileStore.getState().profile || ({} as any)
+    const updatedProfile = {
+      ...existing,
+      id: existing.id || '00000000-0000-0000-0000-000000000000',
+      business_name: finalShopName,
+      owner_name: finalShopName,
+      phone: whatsApp.trim(),
+      industry_key: selectedMode,
+      industry_type: selectedMode,
+      onboarding_done: true,
+      onboarding_complete: true,
+    }
+    useBusinessProfileStore.getState().setProfile(updatedProfile)
+
+    // If NOT owner and is a fresh trial user, set 14-day trial
+    if (!isOwnerPermanent) {
       const trialExpiry = new Date()
       trialExpiry.setDate(trialExpiry.getDate() + 14)
       setTier('elite', trialExpiry.toISOString(), true)
@@ -117,6 +142,7 @@ export default function BusinessModeSelector() {
     }
 
     if (typeof window !== 'undefined') {
+      localStorage.setItem('noxis-business-profile', JSON.stringify(updatedProfile))
       localStorage.setItem('noxis_onboarded', 'true')
       localStorage.setItem('noxis_first_run_complete', 'true')
     }

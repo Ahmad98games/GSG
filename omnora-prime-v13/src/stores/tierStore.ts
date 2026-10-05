@@ -119,6 +119,21 @@ const getInitialTier = (): Tier => {
   return 'elite';
 };
 
+const getInitialTrialState = (): boolean => {
+  if (typeof window !== 'undefined') {
+    const savedLicense = localStorage.getItem('noxis_license');
+    if (savedLicense) {
+      try {
+        const parsed = JSON.parse(savedLicense);
+        if (parsed.key?.includes('PERPETUAL') || (parsed.tier && !parsed.isTrial && (!parsed.expiresAt || new Date(parsed.expiresAt).getFullYear() > 2028))) {
+          return false;
+        }
+      } catch {}
+    }
+  }
+  return true;
+};
+
 const initialTier = getInitialTier();
 
 export const useTierStore = create<TierStore>()(
@@ -127,7 +142,7 @@ export const useTierStore = create<TierStore>()(
       tier: initialTier,
       limits: TIER_LIMITS[initialTier] || TIER_LIMITS.elite,
       expiresAt: null,
-      isTrial: false,
+      isTrial: getInitialTrialState(),
       
       setTier: (tier, expiresAt, isTrial) => {
         set({

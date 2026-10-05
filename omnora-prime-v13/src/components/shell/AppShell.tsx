@@ -50,23 +50,27 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const { isRTL } = useLanguageStore();
   const { profile } = useBusinessProfile();
 
-  // If user already has an established business or existing license, don't trap them in first-run modal
-  const hasExistingBusiness = Boolean(
-    profile?.business_name ||
-    profile?.id ||
-    (typeof window !== 'undefined' && (
-      localStorage.getItem('noxis_onboarded') === 'true' ||
-      localStorage.getItem('noxis_license') !== null
-    ))
+  // First-run detection: User needs mode selection if they haven't configured their business mode
+  // and haven't previously completed onboarding.
+  const hasOnboarded = typeof window !== 'undefined' && (
+    localStorage.getItem('noxis_onboarded') === 'true' ||
+    localStorage.getItem('noxis_first_run_complete') === 'true'
   );
+  const isCustomBusiness = Boolean(
+    profile?.business_name &&
+    profile.business_name !== 'Noxis Business' &&
+    profile.business_name !== 'Noxis Factory Workstation' &&
+    profile.business_name !== 'My Business'
+  );
+  const hasExistingBusiness = hasOnboarded || isCustomBusiness;
   const shouldShowModeSelector = !isBusinessModeConfigured && !hasExistingBusiness;
 
-  // Auto-mark as configured if established business exists
+  // Auto-mark as configured only if a genuine custom established business exists
   React.useEffect(() => {
-    if (hasExistingBusiness && !isBusinessModeConfigured) {
+    if (hasExistingBusiness && !isBusinessModeConfigured && isCustomBusiness) {
       setMode('textile', profile?.business_name || 'My Business', profile?.phone || '');
     }
-  }, [hasExistingBusiness, isBusinessModeConfigured, profile?.business_name, profile?.phone, setMode]);
+  }, [hasExistingBusiness, isBusinessModeConfigured, isCustomBusiness, profile?.business_name, profile?.phone, setMode]);
 
   useGlobalKeyboardShortcuts();
 
