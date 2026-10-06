@@ -408,30 +408,77 @@ export default React.memo(function IndustrialSidebar() {
         animate={{ width: isCollapsed ? 64 : 240 }}
         transition={{ type: 'spring', stiffness: 350, damping: 35 }}
         className={cn(
-          'fixed bottom-0 start-0 border-r border-white/[0.06] z-[60] flex flex-col select-none text-slate-300 font-inter antialiased',
+          'fixed bottom-0 start-0 z-[60] flex flex-col select-none font-inter antialiased transition-colors duration-200',
           isElectron ? 'top-10' : 'top-0'
         )}
         style={{
-          backgroundColor: 'color-mix(in srgb, var(--color-bg, #0B0E14) 95%, #000000)'
+          backgroundColor: 'var(--color-sidebar-bg, #0B0E14)',
+          borderColor: 'var(--color-card-border, rgba(255,255,255,0.06))',
+          borderRightWidth: '1px',
+          borderRightStyle: 'solid',
+          color: 'var(--color-text, #cbd5e1)'
         }}
       >
         {/* ── 1. PLATFORM ANCHOR & TENANT WORKSPACE SELECTOR ── */}
-        <div className="flex-shrink-0 border-b border-white/[0.06] bg-[#090D14]/80">
+        <div 
+          className="flex-shrink-0 border-b"
+          style={{
+            borderColor: 'var(--color-card-border, rgba(255,255,255,0.06))',
+            backgroundColor: 'var(--color-sidebar-bg, #090D14)'
+          }}
+        >
           {/* Top-Left Master Anchor: Minimal NOXIS Engine Identity */}
-          <div className="h-8 px-3 flex items-center justify-between border-b border-white/[0.04]">
+          <div 
+            className="h-8 px-3 flex items-center justify-between border-b"
+            style={{
+              borderColor: 'var(--color-card-border, rgba(255,255,255,0.04))'
+            }}
+          >
             <div className="flex items-center gap-2">
-              <div className="w-[18px] h-[18px] rounded-[3px] bg-white/[0.08] border border-white/[0.12] flex items-center justify-center flex-shrink-0">
-                <span className="text-[10px] font-mono font-semibold text-slate-300">N</span>
+              <div 
+                className="w-[18px] h-[18px] rounded-[3px] flex items-center justify-center flex-shrink-0"
+                style={{
+                  backgroundColor: 'var(--color-input-bg, rgba(255,255,255,0.08))',
+                  borderColor: 'var(--color-card-border, rgba(255,255,255,0.12))',
+                  borderWidth: '1px',
+                  borderStyle: 'solid'
+                }}
+              >
+                <span 
+                  className="text-[10px] font-mono font-semibold"
+                  style={{ color: 'var(--color-text, #cbd5e1)' }}
+                >
+                  N
+                </span>
               </div>
               {!isCollapsed && (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] font-mono font-medium tracking-widest text-slate-400 uppercase">NOXIS</span>
-                  <span className="text-[9px] font-mono text-slate-600 tracking-wider">CORE</span>
+                  <span 
+                    className="text-[11px] font-mono font-medium tracking-widest uppercase"
+                    style={{ color: 'var(--color-text, #cbd5e1)' }}
+                  >
+                    NOXIS
+                  </span>
+                  <span 
+                    className="text-[9px] font-mono tracking-wider"
+                    style={{ color: 'var(--color-text-muted, #64748b)' }}
+                  >
+                    CORE
+                  </span>
                 </div>
               )}
             </div>
             {!isCollapsed && (
-              <span className="text-[9px] font-mono text-slate-500 bg-white/[0.03] px-1 py-0.2 rounded-[2px] border border-white/[0.06]">
+              <span 
+                className="text-[9px] font-mono px-1 py-0.2 rounded-[2px]"
+                style={{
+                  color: 'var(--color-text-muted, #64748b)',
+                  backgroundColor: 'var(--color-input-bg, rgba(255,255,255,0.03))',
+                  borderColor: 'var(--color-card-border, rgba(255,255,255,0.06))',
+                  borderWidth: '1px',
+                  borderStyle: 'solid'
+                }}
+              >
                 v13.0.1
               </span>
             )}
@@ -442,10 +489,18 @@ export default React.memo(function IndustrialSidebar() {
             <button
               onClick={() => setIsProductionModalOpen(true)}
               title="Switch Workspace / Quick Production (N)"
-              className="flex items-center gap-2.5 min-w-0 text-left w-full group rounded-[6px] p-1.5 hover:bg-white/[0.04] border border-transparent hover:border-white/[0.06] transition-colors cursor-pointer"
+              className="flex items-center gap-2.5 min-w-0 text-left w-full group rounded-[6px] p-1.5 hover:bg-black/5 dark:hover:bg-white/[0.04] border border-transparent transition-colors cursor-pointer"
             >
-              {/* Brand Logo Slot: Dynamic 28px x 28px square with rounded-[6px] border border-white/[0.08] bg-slate-900 hosting client logo/monogram */}
-              <div className="w-7 h-7 rounded-[6px] bg-slate-900 border border-white/[0.08] flex items-center justify-center flex-shrink-0 overflow-hidden relative">
+              {/* Brand Logo Slot */}
+              <div 
+                className="w-7 h-7 rounded-[6px] flex items-center justify-center flex-shrink-0 overflow-hidden relative"
+                style={{
+                  backgroundColor: 'var(--color-input-bg, #0f172a)',
+                  borderColor: 'var(--color-card-border, rgba(255,255,255,0.08))',
+                  borderWidth: '1px',
+                  borderStyle: 'solid'
+                }}
+              >
                 {((profile?.logo_url || profile?.avatar_url) || (typeof window !== 'undefined' && localStorage.getItem('noxis_logo'))) ? (
                   <img
                     src={profile?.logo_url || profile?.avatar_url || (typeof window !== 'undefined' ? (localStorage.getItem('noxis_logo') || '') : '')}
@@ -538,19 +593,34 @@ export default React.memo(function IndustrialSidebar() {
         </nav>
 
         {/* ── 3. USER PROFILE & FOOTER ── */}
-        <div className="border-t border-slate-800/80 bg-[#090D14] p-2 space-y-1.5 flex-shrink-0">
+        <div 
+          className="border-t p-2 space-y-1.5 flex-shrink-0"
+          style={{
+            borderColor: 'var(--color-card-border, rgba(255,255,255,0.06))',
+            backgroundColor: 'var(--color-sidebar-bg, #090D14)'
+          }}
+        >
           <TrialCountdownBanner isCollapsed={isCollapsed} />
 
           {/* User Tile */}
           <div
             className={cn(
               'flex items-center rounded-md p-1.5 transition-colors',
-              isCollapsed ? 'justify-center' : 'justify-between hover:bg-white/[0.03]'
+              isCollapsed ? 'justify-center' : 'justify-between hover:bg-black/5 dark:hover:bg-white/[0.03]'
             )}
           >
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="relative flex-shrink-0">
-                <div className="w-7 h-7 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[11px] font-semibold text-slate-200 overflow-hidden">
+                <div 
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold overflow-hidden"
+                  style={{
+                    backgroundColor: 'var(--color-input-bg, #1e293b)',
+                    borderColor: 'var(--color-card-border, rgba(255,255,255,0.1))',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    color: 'var(--color-text, #cbd5e1)'
+                  }}
+                >
                   {profile?.avatar_url ? (
                     <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
@@ -562,11 +632,17 @@ export default React.memo(function IndustrialSidebar() {
 
               {!isCollapsed && (
                 <div className="min-w-0 flex flex-col leading-tight">
-                  <span className="text-[12px] font-medium text-slate-200 truncate">
+                  <span 
+                    className="text-[12px] font-medium truncate"
+                    style={{ color: 'var(--color-text, #e2e8f0)' }}
+                  >
                     {profile?.owner_name || 'Administrator'}
                   </span>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[10px] text-slate-400 capitalize">
+                    <span 
+                      className="text-[10px] capitalize"
+                      style={{ color: 'var(--color-text-muted, #94a3b8)' }}
+                    >
                       {role || 'Administrator'}
                     </span>
                     <span className="text-slate-600">•</span>
@@ -580,7 +656,8 @@ export default React.memo(function IndustrialSidebar() {
               <button
                 onClick={handleLogout}
                 title="Sign Out"
-                className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] rounded-md transition-colors cursor-pointer"
+                className="p-1.5 hover:bg-black/5 dark:hover:bg-white/[0.06] rounded-md transition-colors cursor-pointer"
+                style={{ color: 'var(--color-text-muted, #94a3b8)' }}
               >
                 <LogOut size={15} strokeWidth={1.75} />
               </button>
@@ -590,7 +667,8 @@ export default React.memo(function IndustrialSidebar() {
           {/* Collapse Trigger Button */}
           <button
             onClick={toggle}
-            className="w-full h-8 flex items-center justify-center gap-2 rounded-md text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] transition-colors text-[11px] font-medium cursor-pointer"
+            className="w-full h-8 flex items-center justify-center gap-2 rounded-md hover:bg-black/5 dark:hover:bg-white/[0.04] transition-colors text-[11px] font-medium cursor-pointer"
+            style={{ color: 'var(--color-text-muted, #94a3b8)' }}
           >
             <ChevronRight
               size={14}
@@ -630,12 +708,15 @@ const EnterpriseSidebarItem = React.memo(function EnterpriseSidebarItem({
         'group relative flex items-center rounded-md px-2.5 py-1.5 text-[13px] font-normal transition-colors duration-150 ease-in-out cursor-pointer',
         isCollapsed ? 'justify-center px-0' : 'gap-2.5',
         isActive
-          ? 'text-white font-medium shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]'
-          : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.04]'
+          ? 'font-medium'
+          : 'hover:bg-black/5 dark:hover:bg-white/[0.04]'
       )}
-      style={isActive ? {
-        backgroundColor: 'color-mix(in srgb, var(--color-primary, #3b82f6) 12%, rgba(255,255,255,0.04))',
-      } : undefined}
+      style={{
+        color: isActive ? 'var(--color-text, #ffffff)' : 'var(--color-text-muted, #94a3b8)',
+        backgroundColor: isActive 
+          ? 'color-mix(in srgb, var(--color-primary, #3b82f6) 15%, transparent)' 
+          : undefined,
+      }}
     >
       {/* Refined 2px Left Accent Indicator for Active Item */}
       {isActive && (

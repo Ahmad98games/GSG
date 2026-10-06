@@ -247,11 +247,12 @@ export default React.memo(function GlobalTopBar() {
     <>
       <header 
         className={cn(
-          "h-12 border-b border-white/[0.06] flex items-center justify-between px-4 sticky z-40 w-full select-none font-inter transition-colors duration-200",
+          "h-12 border-b flex items-center justify-between px-4 sticky z-40 w-full select-none font-inter transition-colors duration-200",
           isElectron ? "top-10" : "top-0"
         )}
         style={{
-          backgroundColor: 'color-mix(in srgb, var(--color-bg, #0B0E14) 95%, #000000)'
+          backgroundColor: 'var(--color-topbar-bg, #0B0E14)',
+          borderColor: 'var(--color-card-border, rgba(255,255,255,0.06))'
         }}
       >
         {/* ── ZONE 1 (LEFT): Search & Shortcut Trigger ── */}
@@ -263,7 +264,14 @@ export default React.memo(function GlobalTopBar() {
               placeholder="Search anything..."
               onClick={() => window.dispatchEvent(new CustomEvent('open-global-search'))}
               readOnly
-              className="w-full h-8 pl-8 pr-12 bg-[#131823] border border-white/[0.08] rounded-[4px] text-xs text-slate-300 placeholder:text-slate-500 focus:outline-none focus:border-white/[0.16] transition-colors cursor-pointer"
+              className="w-full h-8 pl-8 pr-12 rounded-[4px] text-xs transition-colors cursor-pointer"
+              style={{
+                backgroundColor: 'var(--color-input-bg, #131823)',
+                borderColor: 'var(--color-card-border, rgba(255,255,255,0.08))',
+                color: 'var(--color-text, #cbd5e1)',
+                borderWidth: '1px',
+                borderStyle: 'solid'
+              }}
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 px-1 py-0.2 rounded-[2px] border border-white/[0.08] bg-white/[0.03] text-[9px] text-slate-400 font-mono">
               Ctrl+K
@@ -272,7 +280,14 @@ export default React.memo(function GlobalTopBar() {
           
           <button 
             onClick={() => window.dispatchEvent(new CustomEvent('sentinel:open'))}
-            className="h-8 w-8 flex items-center justify-center bg-[#131823] border border-white/[0.08] rounded-[4px] text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] transition-colors relative cursor-pointer"
+            className="h-8 w-8 flex items-center justify-center rounded-[4px] transition-colors relative cursor-pointer"
+            style={{
+              backgroundColor: 'var(--color-input-bg, #131823)',
+              borderColor: 'var(--color-card-border, rgba(255,255,255,0.08))',
+              color: 'var(--color-text-muted, #94a3b8)',
+              borderWidth: '1px',
+              borderStyle: 'solid'
+            }}
             title="Sentinel AI Assistant (Ctrl+Shift+S)"
           >
             <Mic size={14} />
@@ -283,7 +298,13 @@ export default React.memo(function GlobalTopBar() {
         <div className="relative" data-tour="hub-status">
           <button
             onClick={() => setStatusFlyoutOpen(!statusFlyoutOpen)}
-            className="flex items-center gap-2 px-2.5 py-1 rounded-[4px] bg-[#131823] border border-white/[0.08] hover:border-white/[0.14] transition-colors text-xs cursor-pointer select-none"
+            className="flex items-center gap-2 px-2.5 py-1 rounded-[4px] transition-colors text-xs cursor-pointer select-none"
+            style={{
+              backgroundColor: 'var(--color-pill-bg, #131823)',
+              borderColor: 'var(--color-card-border, rgba(255,255,255,0.08))',
+              borderWidth: '1px',
+              borderStyle: 'solid'
+            }}
           >
             <span className={cn(
               "w-1.5 h-1.5 rounded-full flex-shrink-0",
@@ -293,7 +314,10 @@ export default React.memo(function GlobalTopBar() {
                   ? "bg-amber-400 animate-pulse" 
                   : "bg-emerald-400"
             )} />
-            <span className="font-medium text-slate-200 text-[12px]">
+            <span 
+              className="font-medium text-[12px]"
+              style={{ color: 'var(--color-text, #e2e8f0)' }}
+            >
               {!isOnline 
                 ? 'Offline Mode' 
                 : syncState === 'syncing' 
@@ -301,7 +325,10 @@ export default React.memo(function GlobalTopBar() {
                   : 'Local Hub Active'}
             </span>
             <span className="text-slate-600 font-mono text-[11px]">|</span>
-            <span className="text-slate-400 font-mono text-[11px]">
+            <span 
+              className="font-mono text-[11px]"
+              style={{ color: 'var(--color-text-muted, #94a3b8)' }}
+            >
               {activeDeviceCount} {activeDeviceCount === 1 ? 'Device' : 'Devices'}
             </span>
             <span className="text-slate-600 font-mono text-[11px]">|</span>
@@ -334,9 +361,19 @@ export default React.memo(function GlobalTopBar() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 4, scale: 0.98 }}
                   transition={{ duration: 0.1 }}
-                  className="absolute left-1/2 -translate-x-1/2 mt-1.5 w-76 bg-[#131823] border border-white/[0.08] rounded-[6px] shadow-2xl z-50 p-3.5 space-y-3 text-xs select-none"
+                  className="absolute left-1/2 -translate-x-1/2 mt-1.5 w-76 rounded-[6px] shadow-2xl z-50 p-3.5 space-y-3 text-xs select-none"
+                  style={{
+                    backgroundColor: 'var(--color-card-bg, #131823)',
+                    borderColor: 'var(--color-card-border, rgba(255,255,255,0.08))',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    color: 'var(--color-text, #cbd5e1)'
+                  }}
                 >
-                  <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
+                  <div 
+                    className="flex items-center justify-between pb-2 border-b"
+                    style={{ borderColor: 'var(--color-card-border, rgba(255,255,255,0.06))' }}
+                  >
                     <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">System Telemetry</span>
                     <span className={cn(
                       "text-[10px] font-mono px-1.5 py-0.5 rounded-[3px] border",
@@ -448,7 +485,14 @@ export default React.memo(function GlobalTopBar() {
                     }
                   }
                 }}
-                className="bg-[#131823] border border-white/[0.08] text-slate-300 text-xs px-2 py-1 outline-none focus:border-white/[0.16] cursor-pointer rounded-[4px]"
+                className="text-xs px-2 py-1 outline-none cursor-pointer rounded-[4px]"
+                style={{
+                  backgroundColor: 'var(--color-input-bg, #131823)',
+                  borderColor: 'var(--color-card-border, rgba(255,255,255,0.08))',
+                  color: 'var(--color-text, #cbd5e1)',
+                  borderWidth: '1px',
+                  borderStyle: 'solid'
+                }}
               >
                 <option value="all">All Branches</option>
                 {branches.map((b: any) => (
@@ -468,9 +512,18 @@ export default React.memo(function GlobalTopBar() {
             <button 
               onClick={() => setIsProfileOpen(!isProfileOpen)}
               data-tour="user-menu"
-              className="flex items-center gap-2 p-1 rounded-[4px] hover:bg-white/[0.04] transition-colors border border-transparent hover:border-white/[0.06] cursor-pointer"
+              className="flex items-center gap-2 p-1 rounded-[4px] hover:bg-black/5 dark:hover:bg-white/[0.04] transition-colors border border-transparent cursor-pointer"
             >
-              <div className="w-6 h-6 rounded-[4px] bg-slate-900 border border-white/[0.08] flex items-center justify-center text-[10px] font-mono text-slate-300 overflow-hidden flex-shrink-0">
+              <div 
+                className="w-6 h-6 rounded-[4px] flex items-center justify-center text-[10px] font-mono overflow-hidden flex-shrink-0"
+                style={{
+                  backgroundColor: 'var(--color-input-bg, #0f172a)',
+                  borderColor: 'var(--color-card-border, rgba(255,255,255,0.08))',
+                  borderWidth: '1px',
+                  borderStyle: 'solid',
+                  color: 'var(--color-text, #cbd5e1)'
+                }}
+              >
                 {(profile?.logo_url || profile?.avatar_url || (typeof window !== 'undefined' && localStorage.getItem('noxis_logo'))) ? (
                   <img
                     src={profile?.logo_url || profile?.avatar_url || (typeof window !== 'undefined' ? (localStorage.getItem('noxis_logo') || '') : '')}
@@ -482,7 +535,10 @@ export default React.memo(function GlobalTopBar() {
                 )}
               </div>
               <div className="text-left hidden md:block">
-                <p className="text-[12px] font-medium text-slate-200 truncate max-w-[120px]">
+                <p 
+                  className="text-[12px] font-medium truncate max-w-[120px]"
+                  style={{ color: 'var(--color-text, #e2e8f0)' }}
+                >
                   {profile?.business_name || 'My Business'}
                 </p>
               </div>
@@ -500,13 +556,29 @@ export default React.memo(function GlobalTopBar() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 4, scale: 0.98 }}
                     transition={{ duration: 0.1 }}
-                    className="absolute right-0 mt-1.5 w-48 bg-[#131823] border border-white/[0.08] rounded-[6px] shadow-2xl z-50 py-1"
+                    className="absolute right-0 mt-1.5 w-48 rounded-[6px] shadow-2xl z-50 py-1"
+                    style={{
+                      backgroundColor: 'var(--color-card-bg, #131823)',
+                      borderColor: 'var(--color-card-border, rgba(255,255,255,0.08))',
+                      borderWidth: '1px',
+                      borderStyle: 'solid',
+                      color: 'var(--color-text, #cbd5e1)'
+                    }}
                   >
-                    <div className="px-3 py-2 border-b border-white/[0.06]">
-                      <p className="text-[12px] font-medium text-slate-200 truncate">
+                    <div 
+                      className="px-3 py-2 border-b"
+                      style={{ borderColor: 'var(--color-card-border, rgba(255,255,255,0.06))' }}
+                    >
+                      <p 
+                        className="text-[12px] font-medium truncate"
+                        style={{ color: 'var(--color-text, #e2e8f0)' }}
+                      >
                         {profile?.business_name || 'My Business'}
                       </p>
-                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                      <p 
+                        className="text-[10px] font-mono mt-0.5"
+                        style={{ color: 'var(--color-text-muted, #94a3b8)' }}
+                      >
                         {profile?.owner_name || 'Administrator'}
                       </p>
                     </div>
@@ -515,7 +587,8 @@ export default React.memo(function GlobalTopBar() {
                       href="/settings"
                       prefetch={true}
                       onClick={() => setIsProfileOpen(false)}
-                      className="flex items-center w-full px-3 py-1.5 text-xs text-slate-300 hover:text-white hover:bg-white/[0.04] transition-colors"
+                      className="flex items-center w-full px-3 py-1.5 text-xs hover:bg-black/5 dark:hover:bg-white/[0.04] transition-colors"
+                      style={{ color: 'var(--color-text, #cbd5e1)' }}
                     >
                       <Settings className="w-3.5 h-3.5 mr-2 text-slate-400" />
                       Settings & Hub

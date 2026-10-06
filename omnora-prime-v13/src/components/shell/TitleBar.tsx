@@ -40,8 +40,11 @@ export default React.memo(function TitleBar() {
 
   return (
     <div 
-      className="h-10 w-full border-b border-white/5 flex items-center justify-between z-[100] select-none sticky top-0 transition-colors duration-200"
-      style={{ backgroundColor: 'color-mix(in srgb, var(--color-bg, #0B0E14) 98%, #000000)' }}
+      className="h-10 w-full border-b flex items-center justify-between z-[100] select-none sticky top-0 transition-colors duration-200"
+      style={{ 
+        backgroundColor: 'var(--color-topbar-bg, #0B0E14)',
+        borderColor: 'var(--color-card-border, rgba(255,255,255,0.06))'
+      }}
     >
       {/* Draggable Area */}
       <div 
@@ -50,23 +53,33 @@ export default React.memo(function TitleBar() {
       >
         <div className="flex items-center space-x-3">
           <Image src="/logos/noxis.png" alt="Noxis" width={24} height={24} />
-          <span className="text-[11px] font-black tracking-[0.25em] text-white">NOXIS</span>
+          <span 
+            className="text-[11px] font-black tracking-[0.25em]"
+            style={{ color: 'var(--color-text, #ffffff)' }}
+          >
+            NOXIS
+          </span>
         </div>
         
-        <div className="h-4 w-[1px] bg-white/10 mx-2" />
+        <div 
+          className="h-4 w-[1px] mx-2"
+          style={{ backgroundColor: 'var(--color-card-border, rgba(255,255,255,0.1))' }}
+        />
         
-        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest truncate">
+        <span 
+          className="text-[10px] font-bold uppercase tracking-widest truncate"
+          style={{ color: 'var(--color-text-muted, #94a3b8)' }}
+        >
           {getPageTitle()}
         </span>
       </div>
 
       {/* Help & About */}
       <div className="flex items-center space-x-4 px-4 h-full" style={{ WebkitAppRegion: 'no-drag' } as any}>
-
-        
         <Link 
           href="/settings/about"
-          className="w-8 h-full flex items-center justify-center text-gray-600 hover:bg-white/5 hover:text-white transition-all"
+          className="w-8 h-full flex items-center justify-center transition-all opacity-70 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5 rounded-[3px]"
+          style={{ color: 'var(--color-text-muted, #94a3b8)' }}
           title="Help & About Noxis"
         >
           <span className="text-[11px] font-black font-mono">?</span>
@@ -78,7 +91,8 @@ export default React.memo(function TitleBar() {
         <div className="flex items-center h-full" style={{ WebkitAppRegion: 'no-drag' } as any}>
           <button 
             onClick={handleMinimize}
-            className="w-10 h-full flex items-center justify-center text-gray-400 hover:bg-[#1A1D21] hover:text-white transition-colors"
+            className="w-10 h-full flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+            style={{ color: 'var(--color-text, #cbd5e1)' }}
             title="Minimize"
           >
             <span className="text-lg">−</span>
@@ -86,7 +100,8 @@ export default React.memo(function TitleBar() {
           
           <button 
             onClick={handleMaximize}
-            className="w-10 h-full flex items-center justify-center text-gray-400 hover:bg-[#1A1D21] hover:text-white transition-colors"
+            className="w-10 h-full flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+            style={{ color: 'var(--color-text, #cbd5e1)' }}
             title={isMaximized ? "Restore" : "Maximize"}
           >
             <span className="text-sm">{isMaximized ? '❐' : '□'}</span>
@@ -94,7 +109,8 @@ export default React.memo(function TitleBar() {
           
           <button 
             onClick={handleClose}
-            className="w-10 h-full flex items-center justify-center text-gray-400 hover:bg-[#EF4444] hover:text-white transition-colors"
+            className="w-10 h-full flex items-center justify-center hover:bg-[#EF4444] hover:text-white transition-colors"
+            style={{ color: 'var(--color-text, #cbd5e1)' }}
             title="Close"
           >
             <span className="text-lg">×</span>

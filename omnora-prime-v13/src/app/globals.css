@@ -140,8 +140,97 @@ button, a, [role="button"] {
   --font-chinese: 'Noto Sans SC', sans-serif;
   --font-cyrillic: 'Noto Sans', sans-serif;
 
+  --color-topbar-bg: var(--color-topbar-bg);
+  --color-sidebar-bg: var(--color-sidebar-bg);
+  --color-card-bg: var(--color-card-bg);
+  --color-card-border: var(--color-card-border);
+  --color-input-bg: var(--color-input-bg);
+  --color-pill-bg: var(--color-pill-bg);
+
   --background: var(--color-bg);
   --foreground: var(--color-text);
+}
+
+/* =========================================================================
+   UNIVERSAL THEME ADAPTER (Ensures all 23 themes fit every part of the software)
+   ========================================================================= */
+
+/* Maps legacy and hardcoded card backgrounds directly to the dynamic theme tokens */
+[class*="bg-[#131823]"],
+[class*="bg-[#10141D]"],
+[class*="bg-[#0D0E13]"],
+[class*="bg-[#0E121A]"],
+[class*="bg-[#12161F]"],
+[class*="bg-[#1A1E29]"],
+[class*="bg-[#111622]"] {
+  background-color: var(--color-card-bg, var(--color-surface, #131823)) !important;
+  border-color: var(--color-card-border, var(--color-border, rgba(255, 255, 255, 0.08))) !important;
+}
+
+/* Master canvas backgrounds */
+[class*="bg-[#0B0E14]"],
+[class*="bg-[#07090E]"],
+[class*="bg-[#08090A]"],
+[class*="bg-[#060708]"] {
+  background-color: var(--color-bg, #0B0E14) !important;
+}
+
+/* Sidebar and drawer surfaces */
+[class*="bg-[#0D121D]"],
+[class*="bg-[#090D14]"],
+[class*="bg-[#0A0E17]"] {
+  background-color: var(--color-sidebar-bg, var(--color-surface, #0D121D)) !important;
+  border-color: var(--color-card-border, var(--color-border, rgba(255, 255, 255, 0.06))) !important;
+}
+
+/* Light Mode Global Text & Border Contrast Alignment */
+:root[data-theme-mode="light"] body,
+:root.light body,
+:root[data-theme-mode="light"] .text-slate-200,
+:root.light .text-slate-200,
+:root[data-theme-mode="light"] .text-slate-100,
+:root.light .text-slate-100,
+:root[data-theme-mode="light"] .text-white,
+:root.light .text-white {
+  color: var(--color-text, #111827) !important;
+}
+
+:root[data-theme-mode="light"] .text-slate-400,
+:root.light .text-slate-400,
+:root[data-theme-mode="light"] .text-slate-500,
+:root.light .text-slate-500,
+:root[data-theme-mode="light"] .text-gray-400,
+:root.light .text-gray-400,
+:root[data-theme-mode="light"] .text-gray-500,
+:root.light .text-gray-500 {
+  color: var(--color-text-muted, #475569) !important;
+}
+
+:root[data-theme-mode="light"] [class*="border-white/"],
+:root.light [class*="border-white/"],
+:root[data-theme-mode="light"] [class*="border-white\\["],
+:root.light [class*="border-white\\["] {
+  border-color: var(--color-card-border, rgba(0, 0, 0, 0.08)) !important;
+}
+
+:root[data-theme-mode="light"] [class*="hover:bg-white/"],
+:root.light [class*="hover:bg-white/"] {
+  background-color: transparent;
+}
+:root[data-theme-mode="light"] [class*="hover:bg-white/"]:hover,
+:root.light [class*="hover:bg-white/"]:hover {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+:root[data-theme-mode="light"] input,
+:root.light input,
+:root[data-theme-mode="light"] textarea,
+:root.light textarea,
+:root[data-theme-mode="light"] select,
+:root.light select {
+  background-color: var(--color-input-bg, #FFFFFF) !important;
+  color: var(--color-text, #111827) !important;
+  border-color: var(--color-card-border, rgba(0, 0, 0, 0.15)) !important;
 }
 
 :root.theme-transitioning,

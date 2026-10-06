@@ -96,6 +96,17 @@ export const useThemeStore = create<ThemeStore>()(
   )
 )
 
+function isLightHex(hex: string): boolean {
+  if (!hex || !hex.startsWith('#')) return false
+  const clean = hex.replace('#', '')
+  if (clean.length < 6) return false
+  const r = parseInt(clean.substring(0, 2), 16) || 0
+  const g = parseInt(clean.substring(2, 4), 16) || 0
+  const b = parseInt(clean.substring(4, 6), 16) || 0
+  const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b
+  return luma > 140
+}
+
 export function applyThemeToDOM(
   theme: Theme, 
   customAccent?: string | null, 
@@ -106,7 +117,6 @@ export function applyThemeToDOM(
   const root = document.documentElement
   
   if (enableTransition) {
-    // Add temporary transition class to root
     root.classList.add('theme-transitioning')
   }
   
@@ -117,6 +127,28 @@ export function applyThemeToDOM(
   const text = theme.colors.text
   const textMuted = theme.colors.textMuted
   const border = theme.colors.border
+
+  const isLight = theme.id === 'light-slate' || isLightHex(bg)
+
+  // Derive unified structural tokens for all UI sections
+  const topbarBg = isLight
+    ? '#FFFFFF'
+    : `color-mix(in srgb, ${surface} 40%, ${bg} 60%)`
+  const sidebarBg = isLight
+    ? `color-mix(in srgb, ${bg} 50%, #F1F5F9 50%)`
+    : `color-mix(in srgb, ${surface} 30%, ${bg} 70%)`
+  const cardBg = isLight
+    ? '#FFFFFF'
+    : `color-mix(in srgb, ${surface} 85%, ${bg} 15%)`
+  const cardBorder = isLight
+    ? 'rgba(0, 0, 0, 0.08)'
+    : (border || 'rgba(255, 255, 255, 0.08)')
+  const inputBg = isLight
+    ? `color-mix(in srgb, ${bg} 60%, #FFFFFF 40%)`
+    : `color-mix(in srgb, ${surface} 75%, #000000 25%)`
+  const pillBg = isLight
+    ? `color-mix(in srgb, #FFFFFF 85%, ${primary} 15%)`
+    : `color-mix(in srgb, ${surface} 85%, ${primary} 15%)`
 
   root.style.setProperty('--color-bg', bg)
   root.style.setProperty('--background', bg)
@@ -150,7 +182,15 @@ export function applyThemeToDOM(
   root.style.setProperty('--theme-bg', bg)
   root.style.setProperty('--theme-surface', surface)
 
-  // Direct element style overrides to guarantee instant visual response
+  // Structural surface tokens
+  root.style.setProperty('--color-topbar-bg', topbarBg)
+  root.style.setProperty('--color-sidebar-bg', sidebarBg)
+  root.style.setProperty('--color-card-bg', cardBg)
+  root.style.setProperty('--color-card-border', cardBorder)
+  root.style.setProperty('--color-input-bg', inputBg)
+  root.style.setProperty('--color-pill-bg', pillBg)
+
+  // Direct element style overrides
   root.style.backgroundColor = bg
   root.style.color = text
   if (typeof document !== 'undefined' && document.body) {
@@ -158,8 +198,12 @@ export function applyThemeToDOM(
     document.body.style.color = text
   }
 
+  // Set data attributes for global CSS matching
+  root.setAttribute('data-theme-id', theme.id)
+  root.setAttribute('data-theme-mode', isLight ? 'light' : 'dark')
+
   // Toggle Dark/Light Classes for Framework Consistency
-  if (theme.id === 'light-slate') {
+  if (isLight) {
     root.classList.remove('dark')
     root.classList.add('light')
   } else {
@@ -175,7 +219,6 @@ export function applyThemeToDOM(
   }
 
   if (enableTransition) {
-    // Remove transition class after animation completes
     setTimeout(() => {
       root.classList.remove('theme-transitioning')
     }, 500)
