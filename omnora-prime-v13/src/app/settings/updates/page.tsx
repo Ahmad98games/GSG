@@ -49,6 +49,17 @@ interface ChangelogItem {
 
 const HISTORICAL_CHANGELOGS: ChangelogItem[] = [
   {
+    version: '13.0.6',
+    date: 'October 2026',
+    type: 'patch',
+    title: 'Universal Theme Precision & Complete Multi-Theme Styling',
+    highlights: [
+      { tag: 'Universal Themes', text: 'All 23 system themes dynamically adapt across headers, sidebars, cards, and dialogs', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      { tag: 'Light Mode Contrast', text: 'Automatic luminance detection with sharp dark-slate typography and inverted inputs', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
+      { tag: 'Native Windows Shell', text: 'TitleBar and window control buttons dynamically match active theme tokens', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
+    ],
+  },
+  {
     version: '13.0.5',
     date: 'October 2026',
     type: 'patch',
@@ -664,7 +675,7 @@ export default function UpdatesPage() {
               Auto-Sync Feed: /updates/{channel}
             </span>
             <a
-              href="https://noxishub.app/updates/stable/Noxis%20Hub%20Setup%2013.0.5.exe"
+              href="https://noxishub.app/updates/stable/Noxis%20Hub%20Setup%2013.0.6.exe"
               target="_blank"
               rel="noreferrer"
               className="text-[11px] font-medium text-cyan-400 hover:text-cyan-300 underline underline-offset-2 flex items-center gap-1 cursor-pointer"
