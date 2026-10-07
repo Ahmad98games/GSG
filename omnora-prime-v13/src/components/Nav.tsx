@@ -38,12 +38,6 @@ export function Nav() {
     return () => window.removeEventListener('scroll', handler)
   }, [])
 
-  const isPublic = pathname === '/' || PUBLIC_ROUTES.some(r => r !== '/' && pathname?.startsWith(r))
-
-  if (!isPublic) {
-    return null
-  }
-
   return (
     <header className={`
       fixed top-0 left-0 right-0 z-50 transition-all duration-200

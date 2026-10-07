@@ -39,6 +39,7 @@ import { ActivationCelebration } from '@/components/license/ActivationCelebratio
 import HWIDActivationModal from "@/components/pricing/HWIDActivationModal";
 import BusinessModeSelector from '@/components/onboarding/BusinessModeSelector';
 import { useBusinessModeStore } from '@/stores/businessModeStore';
+import { PublicNavProvider } from '@/components/shell/PublicNavbar';
 
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -296,6 +297,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/who-is-it-for") ||
     pathname.startsWith("/technology") ||
     pathname.startsWith("/whats-new") ||
+    pathname.startsWith("/purchase") ||
+    pathname.startsWith("/success") ||
+    pathname.startsWith("/settings/license") ||
+    pathname.startsWith("/calculators") ||
+    pathname.startsWith("/converters") ||
+    pathname.startsWith("/specs") ||
     pathname.startsWith("/portal") ||
     pathname.startsWith("/admin");
 
@@ -304,23 +311,25 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   if (!isPublicRoute && !isElectron && process.env.NODE_ENV !== 'development') {
     return (
-      <div className="min-h-screen bg-[#121417] flex items-center justify-center p-8 select-none">
-        <div className="text-center">
-          <p className="text-[#C5A059] font-mono text-6xl font-bold mb-4">404</p>
-          <h2 className="text-white text-xl font-semibold mb-2">
-            Page not found
-          </h2>
-          <p className="text-gray-400 text-sm mb-6">
-            This page does not exist or has been moved.
-          </p>
-          <a
-            href="/"
-            className="px-6 py-2.5 bg-white/5 border border-white/10 text-gray-300 text-sm hover:bg-white/10 hover:text-white transition-colors rounded-sm inline-block"
-          >
-            Return to Home
-          </a>
+      <PublicNavProvider>
+        <div className="min-h-screen bg-[#121417] flex items-center justify-center p-8 select-none">
+          <div className="text-center">
+            <p className="text-[#C5A059] font-mono text-6xl font-bold mb-4">404</p>
+            <h2 className="text-white text-xl font-semibold mb-2">
+              Page not found
+            </h2>
+            <p className="text-gray-400 text-sm mb-6">
+              This page does not exist or has been moved.
+            </p>
+            <a
+              href="/"
+              className="px-6 py-2.5 bg-white/5 border border-white/10 text-gray-300 text-sm hover:bg-white/10 hover:text-white transition-colors rounded-sm inline-block"
+            >
+              Return to Home
+            </a>
+          </div>
         </div>
-      </div>
+      </PublicNavProvider>
     );
   }
 
@@ -343,11 +352,28 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   if (shouldHideShell) {
+    const isAuthOrSpecial = 
+      pathname.startsWith("/login") || 
+      pathname.startsWith("/signup") || 
+      pathname.startsWith("/setup") ||
+      pathname.startsWith("/portal") || 
+      pathname.startsWith("/admin") ||
+      isLockScreen;
+
+    if (isAuthOrSpecial) {
+      return (
+        <>
+          <ToastContainer />
+          {children}
+        </>
+      );
+    }
+
     return (
-      <>
+      <PublicNavProvider>
         <ToastContainer />
         {children}
-      </>
+      </PublicNavProvider>
     );
   }
 

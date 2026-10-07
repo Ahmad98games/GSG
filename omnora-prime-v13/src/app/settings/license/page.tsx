@@ -500,18 +500,16 @@ export default function LicenseUpgradePage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="p-3 bg-black/40 border border-white/5 rounded-sm">
                   <p className="text-[10px] uppercase font-bold text-zinc-500">JazzCash</p>
-                  <p className="text-xs font-bold text-white font-mono mt-0.5">0321-8338768</p>
+                  <p className="text-xs font-bold text-white font-mono mt-0.5">0326-4742678</p>
                   <p className="text-[10px] text-zinc-400">Title: Ahmad Mahboob</p>
                 </div>
-                <div className="p-3 bg-black/40 border border-white/5 rounded-sm">
-                  <p className="text-[10px] uppercase font-bold text-zinc-500">Easypaisa</p>
-                  <p className="text-xs font-bold text-white font-mono mt-0.5">0321-8338768</p>
-                  <p className="text-[10px] text-zinc-400">Title: Ahmad Mahboob</p>
-                </div>
+              
                 <div className="p-3 bg-black/40 border border-white/5 rounded-sm">
                   <p className="text-[10px] uppercase font-bold text-zinc-500">Bank Transfer / Raast</p>
-                  <p className="text-xs font-bold text-white font-mono mt-0.5 truncate">PK74NAYA1234503218338768</p>
-                  <p className="text-[10px] text-zinc-400">NayaPay / Raast</p>
+                  <p className="text-xs font-bold text-white font-mono mt-0.5 truncate">PK09RQMI0000023005156748</p>
+                  <p className="text-[10px] text-zinc-400">Account Number: 023005156748</p>
+                  <p className="text-[10px] text-zinc-400">Bank: Raqami Islamic Digital Bank</p>
+                  <p className="text-[10px] text-zinc-400">Title: AHMED MEHBOOB</p>
                 </div>
               </div>
 
