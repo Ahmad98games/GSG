@@ -36,9 +36,12 @@
     ".next",
     "out",
     "dist",
+    "dist-electron",
+    "build",
     "supabase",
     "src/tests",
-    "app-temp"
+    "app-temp",
+    "noxis-video"
   ]
 }
 
