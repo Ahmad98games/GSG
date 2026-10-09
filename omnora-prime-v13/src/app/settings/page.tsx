@@ -43,6 +43,7 @@ import { useTierStore } from "@/stores/tierStore";
 import { saveLicenseToLocal } from "../(onboarding)/license/actions";
 import { getRegionConfig } from "@/lib/industry/regionConfigs";
 import { humanizeError } from '@/lib/utils/errors';
+import { getIndustryLockStatus } from "@/store/BusinessProfileStore";
 
 interface HubInfo {
   ip: string;
@@ -117,6 +118,92 @@ export default function SettingsPage() {
   const [cloudSyncEnabled, setCloudSyncEnabled] = useState(true);
   const [autoStartEnabled, setAutoStartEnabled] = useState(false);
   const [hwid, setHwid] = useState<string>('');
+  const [showIndustryChangeModal, setShowIndustryChangeModal] = useState(false);
+  const [pendingIndustryKey, setPendingIndustryKey] = useState<string | null>(null);
+
+  const industryLock = getIndustryLockStatus(profile?.industry_last_changed_at);
+
+  const handleIndustrySelect = (newKey: string) => {
+    if (!profile) return;
+    if (newKey === profile.industry_key) return;
+
+    if (industryLock.isLocked) {
+      toastWarning(
+        'Industry Category Locked',
+        `You changed your industry category on ${profile.industry_last_changed_at ? new Date(profile.industry_last_changed_at).toLocaleDateString() : 'recently'}. It is locked for another ${industryLock.remainingDays} days.`
+      );
+      return;
+    }
+
+    setPendingIndustryKey(newKey);
+    setShowIndustryChangeModal(true);
+  };
+
+  const handleConfirmIndustryChange = async () => {
+    if (!profile || !pendingIndustryKey) return;
+
+    const nowIso = new Date().toISOString();
+    const updatedProfile = {
+      ...profile,
+      industry_key: pendingIndustryKey,
+      industry_last_changed_at: nowIso,
+    };
+
+    // 1. Memory State
+    setProfile(updatedProfile);
+
+    // 2. Local Storage
+    localStorage.setItem('noxis-business-profile', JSON.stringify(updatedProfile));
+    localStorage.setItem('noxis_industry_key', pendingIndustryKey);
+    localStorage.setItem('noxis_industry_last_changed_at', nowIso);
+
+    // 3. Theme update
+    try {
+      useThemeStore.getState().setThemeByIndustry(pendingIndustryKey);
+    } catch {}
+
+    // 4. Electron & Local SQLite
+    if ((window as any).electronAPI?.setConfig) {
+      try {
+        await (window as any).electronAPI.setConfig('industry_key', pendingIndustryKey);
+        await (window as any).electronAPI.setConfig('industry_last_changed_at', nowIso);
+      } catch (err) {
+        console.error('Failed to set industry in electronAPI:', err);
+      }
+    }
+
+    // 5. Local SQLite API
+    try {
+      await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'local_config',
+          data: {
+            industry_key: pendingIndustryKey,
+            industry_last_changed_at: nowIso,
+          },
+        }),
+      });
+    } catch {}
+
+    // 6. Supabase background
+    supabase
+      .from('business_profiles')
+      .update({
+        industry_key: pendingIndustryKey,
+        industry_last_changed_at: nowIso,
+      } as any)
+      .eq('id', profile.id)
+      .catch(() => {});
+
+    setShowIndustryChangeModal(false);
+    setPendingIndustryKey(null);
+    toastSuccess(
+      'Industry Category Updated',
+      `Switched to ${pendingIndustryKey.toUpperCase()}. Category is now locked for 7 days.`
+    );
+  };
 
   // Owner master keys — bypass Supabase verification for offline/personal use
   const OWNER_KEYS: Record<string, { tier: string; expires_at: string; is_trial: boolean }> = {
@@ -352,6 +439,12 @@ export default function SettingsPage() {
           if (logoUrl) {
             await (window as any).electronAPI.setConfig('logo_url', logoUrl);
           }
+          if (profile.industry_key) {
+            await (window as any).electronAPI.setConfig('industry_key', profile.industry_key);
+          }
+          if (profile.industry_last_changed_at) {
+            await (window as any).electronAPI.setConfig('industry_last_changed_at', profile.industry_last_changed_at);
+          }
         } catch (err) {
           console.error('Failed to set local SQLite config via electronAPI:', err);
         }
@@ -368,12 +461,13 @@ export default function SettingsPage() {
           address: profile.address,
           currency: profile.currency,
           industry_key: profile.industry_key,
+          industry_last_changed_at: profile.industry_last_changed_at,
           worker_term: profile.worker_term,
           logo_url: logoUrl,
           avatar_type: avatarType,
           avatar_url: avatarUrl,
           avatar_last_changed: avatarLastChanged
-        })
+        } as any)
         .eq('id', profile.id)
         .then(({ error }: { error: any }) => {
           if (error) {
@@ -394,6 +488,8 @@ export default function SettingsPage() {
             tax_number: profile.tax_number || '',
             currency: profile.currency || 'PKR',
             address: profile.address || '',
+            industry_key: profile.industry_key || 'general',
+            industry_last_changed_at: profile.industry_last_changed_at || '',
             logo_url: logoUrl || '',
             avatar_type: avatarType,
             avatar_url: avatarUrl || '',
@@ -699,14 +795,39 @@ export default function SettingsPage() {
                         <p className="text-[10px] text-slate-500 mt-1">Used when you press &quot;Send Daily Summary&quot; on Dashboard &amp; Reports.</p>
                       </div>
                       <div className="space-y-0">
-                        <label className="text-[11px] font-medium text-slate-400 uppercase tracking-wider mb-1.5 block">
-                          Industry Key
-                        </label>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+                            Industry Key
+                          </label>
+                          {industryLock.isLocked ? (
+                            <span className="text-[10px] text-amber-400 font-mono flex items-center gap-1 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded font-bold">
+                              <Lock size={10} /> Locked ({industryLock.remainingDays}d left)
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-500 font-mono">
+                              (7-day lock on change)
+                            </span>
+                          )}
+                        </div>
+
+                        {industryLock.isLocked && (
+                          <div className="mb-2 p-2.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] leading-relaxed flex items-start gap-2">
+                            <AlertTriangle size={14} className="shrink-0 text-amber-400 mt-0.5" />
+                            <span>
+                              Industry category is locked until <strong>{industryLock.lockedUntil?.toLocaleDateString()}</strong> ({industryLock.remainingDays} days remaining). Category changes are restricted to once every 7 days to protect accounting batches and terminology.
+                            </span>
+                          </div>
+                        )}
+
                         <div className="relative">
                           <select 
                             value={profile?.industry_key || ''}
-                            onChange={(e) => profile && setProfile({ ...profile, industry_key: e.target.value })}
-                            className="w-full bg-[#0E131F] border border-white/[0.09] text-slate-100 text-xs rounded-[6px] h-9 px-3 focus:outline-none focus:border-blue-500/70 focus:ring-1 focus:ring-blue-500/30 transition-all duration-100 cursor-pointer [&>option]:bg-[#0E131F] [&>option]:text-slate-100"
+                            disabled={industryLock.isLocked}
+                            onChange={(e) => handleIndustrySelect(e.target.value)}
+                            className={cn(
+                              "w-full bg-[#0E131F] border border-white/[0.09] text-slate-100 text-xs rounded-[6px] h-9 px-3 focus:outline-none focus:border-blue-500/70 focus:ring-1 focus:ring-blue-500/30 transition-all duration-100 cursor-pointer [&>option]:bg-[#0E131F] [&>option]:text-slate-100",
+                              industryLock.isLocked && "opacity-60 cursor-not-allowed bg-slate-900/50 border-amber-500/30 text-slate-400"
+                            )}
                           >
                             <option value="textile">Textile Mill</option>
                             <option value="garment">Garment Factory</option>
@@ -1704,6 +1825,78 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ═══ 7-DAY INDUSTRY CATEGORY WARNING & CONFIRMATION MODAL ═══ */}
+      <AnimatePresence>
+        {showIndustryChangeModal && pendingIndustryKey && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-[#0E131F] border border-amber-500/30 rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400">
+                  <AlertTriangle size={24} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white uppercase tracking-tight">
+                    Change Industry Category?
+                  </h3>
+                  <p className="text-xs text-amber-400 font-mono font-bold">
+                    7-Day Lockout Notice
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-lg space-y-2 text-xs">
+                <p className="text-amber-200 font-bold leading-snug text-xs">
+                  ⚠️ Warning: If you change your category, you will not be able to change your industry again for 7 days.
+                </p>
+                <p className="text-slate-300 text-[11px] leading-relaxed">
+                  Switching to <strong className="text-white uppercase font-bold">{pendingIndustryKey}</strong> will immediately adapt your factory terminology, floor units, active sidebar modules, and accounting registers.
+                </p>
+              </div>
+
+              <div className="bg-black/40 border border-white/5 p-3 rounded text-[11px] space-y-1.5 font-mono">
+                <div className="flex items-center justify-between text-slate-400">
+                  <span>Current Category:</span>
+                  <span className="text-white font-bold uppercase">{profile?.industry_key || 'General'}</span>
+                </div>
+                <div className="flex items-center justify-between text-amber-400">
+                  <span>New Category:</span>
+                  <span className="text-amber-300 font-bold uppercase">{pendingIndustryKey}</span>
+                </div>
+                <div className="flex items-center justify-between text-slate-500 border-t border-white/5 pt-1.5 mt-1.5">
+                  <span>Lockout Window:</span>
+                  <span className="text-amber-400 font-bold">7 Days (Strict Enforcement)</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowIndustryChangeModal(false);
+                    setPendingIndustryKey(null);
+                  }}
+                  className="px-4 py-2.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmIndustryChange}
+                  className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black text-xs uppercase tracking-wider rounded-lg transition-all cursor-pointer shadow-lg shadow-amber-500/20"
+                >
+                  Confirm &amp; Lock for 7 Days
+                </button>
               </div>
             </motion.div>
           </div>

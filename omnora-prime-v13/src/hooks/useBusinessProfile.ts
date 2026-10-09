@@ -129,6 +129,7 @@ export const useBusinessProfile = () => {
               avatar_last_changed: configMap.avatar_last_changed || existing.avatar_last_changed || '',
               preferred_locale: configMap.preferred_locale || existing.preferred_locale || 'en',
               visual_theme: configMap.visual_theme || existing.visual_theme,
+              industry_last_changed_at: configMap.industry_last_changed_at || (typeof window !== 'undefined' ? localStorage.getItem('noxis_industry_last_changed_at') : null) || existing.industry_last_changed_at || undefined,
             } as any);
           } catch {
             const existing = useBusinessProfileStore.getState().profile || ({} as any);
@@ -192,6 +193,7 @@ export const useBusinessProfile = () => {
                 tax_rate: Number(configMap.tax_rate ?? existing.tax_rate ?? 0),
                 address: configMap.address || existing.address || '',
                 preferred_locale: configMap.preferred_locale || existing.preferred_locale || 'en',
+                industry_last_changed_at: configMap.industry_last_changed_at || (typeof window !== 'undefined' ? localStorage.getItem('noxis_industry_last_changed_at') : null) || existing.industry_last_changed_at || undefined,
               };
               setProfile(fallbackProfile);
             } catch (localErr) {

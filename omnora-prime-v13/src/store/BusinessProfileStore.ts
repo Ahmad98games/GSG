@@ -51,6 +51,46 @@ export interface BusinessProfile {
   summary_frequency?: number;
   summary_time?: string;
   summary_includes?: Record<string, boolean>;
+  industry_last_changed_at?: string;
+}
+
+export const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+export interface IndustryLockStatus {
+  isLocked: boolean;
+  remainingMs: number;
+  remainingDays: number;
+  remainingHours: number;
+  lockedUntil: Date | null;
+}
+
+export function getIndustryLockStatus(lastChangedAt?: string | null): IndustryLockStatus {
+  if (!lastChangedAt) {
+    return { isLocked: false, remainingMs: 0, remainingDays: 0, remainingHours: 0, lockedUntil: null };
+  }
+  const lastChangedTime = new Date(lastChangedAt).getTime();
+  if (isNaN(lastChangedTime)) {
+    return { isLocked: false, remainingMs: 0, remainingDays: 0, remainingHours: 0, lockedUntil: null };
+  }
+  const now = Date.now();
+  const elapsedMs = now - lastChangedTime;
+  const remainingMs = SEVEN_DAYS_MS - elapsedMs;
+
+  if (remainingMs <= 0) {
+    return { isLocked: false, remainingMs: 0, remainingDays: 0, remainingHours: 0, lockedUntil: null };
+  }
+
+  const remainingDays = Math.max(1, Math.ceil(remainingMs / (24 * 60 * 60 * 1000)));
+  const remainingHours = Math.max(1, Math.ceil(remainingMs / (60 * 60 * 1000)));
+  const lockedUntil = new Date(lastChangedTime + SEVEN_DAYS_MS);
+
+  return {
+    isLocked: true,
+    remainingMs,
+    remainingDays,
+    remainingHours,
+    lockedUntil,
+  };
 }
 
 

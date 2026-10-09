@@ -209,7 +209,7 @@ export default React.memo(function IndustrialSidebar() {
       operationsItems.push({
         id: 'expiry',
         label: 'Expiry Alerts',
-        href: industry.key === 'medical' ? '/expiry' : '/inventory/expiry',
+        href: '/inventory/expiry',
         icon: AlertTriangle,
       })
     }
@@ -218,7 +218,7 @@ export default React.memo(function IndustrialSidebar() {
       operationsItems.push({
         id: 'batch-recall',
         label: 'Batch Tracking',
-        href: industry.key === 'medical' ? '/expiry?status=recalled' : '/production/batches',
+        href: industry.key === 'medical' ? '/inventory/expiry?status=recalled' : '/production/batches',
         icon: AlertOctagon,
       })
     }
@@ -354,6 +354,14 @@ export default React.memo(function IndustrialSidebar() {
         // Always show these core items regardless of mode
         const alwaysShow = ['dashboard', 'pos', 'inventory', 'configuration', 'reports', 'cctv', 'pairing', 'messaging']
         if (alwaysShow.includes(item.id)) return true
+
+        // Ensure active industry-specific operational features are never stripped out
+        if (item.id === 'yield' && features.yieldTracking) return true
+        if (item.id === 'weight-entry' && (industry.key === 'rice' || industry.key === 'food')) return true
+        if (item.id === 'expiry' && features.expiryManagement) return true
+        if (item.id === 'batch-recall' && features.batchTracking) return true
+        if (item.id === 'cold-chain' && features.coldChainLogging) return true
+        if (item.id === 'production' && nav.production) return true
 
         // Mode-specific filtering
         switch (businessMode) {
