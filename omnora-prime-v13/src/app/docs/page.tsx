@@ -26,7 +26,7 @@ export default function DocsPage() {
 
   const sections = [
     { id: 'install', icon: <Terminal size={14} />, title: '1. Easy Setup & Instant Launch' },
-    { id: 'trial', icon: <Zap size={14} />, title: '2. 14-Day Full Access & Free Mode' },
+    { id: 'trial', icon: <Zap size={14} />, title: '2. 7-Day Free Evaluation & Free Mode' },
     { id: 'license', icon: <KeyRound size={14} />, title: '3. Machine Security & Lifetime License' },
     { id: 'sqlite', icon: <Database size={14} />, title: '4. 100% Offline Database & Auto Sync' },
     { id: 'mobile', icon: <Smartphone size={14} />, title: '5. Mobile App & Staff Permissions' },
@@ -196,28 +196,23 @@ export default function DocsPage() {
             >
               <ScrollReveal3D className="space-y-6">
                 <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
-                  <span className="text-[#C5A059] font-mono text-base">02.</span> 14-Day Free Trial & Permanent Free Mode
+                  <span className="text-[#C5A059] font-mono text-base">02.</span> 7-Day Free Evaluation & Permanent Free Mode
                 </h2>
                 <p className="text-sm text-slate-400 leading-relaxed font-medium pl-6 border-l border-white/[0.02]">
-                  Experience every feature without paying upfront. Even if your trial finishes, your sales counter never stops and your data is never locked.
+                  Experience every feature without paying upfront. Even if your 7-day evaluation finishes, your sales counter never stops and your data is never locked.
                 </p>
 
                 <div className="bg-[#0A0D10] border border-white/[0.04] p-6 rounded-sm space-y-4 ml-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="bg-white/5 p-4 rounded-sm border border-white/5 space-y-1.5">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Days 1 to 14 (Trial)</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Days 1–7 (Full Pro Access)</span>
                       <p className="text-xs text-white font-semibold">All Features Unlocked</p>
                       <p className="text-[11px] text-slate-400">Unlimited items, mobile apps, multi-branch, and CCTV feeds enabled.</p>
                     </div>
                     <div className="bg-white/5 p-4 rounded-sm border border-white/5 space-y-1.5">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">Days 15 to 17 (Grace Period)</span>
-                      <p className="text-xs text-white font-semibold">Counter Stays Open</p>
-                      <p className="text-[11px] text-slate-400">Your cashier can still create bills and print receipts while you arrange license activation.</p>
-                    </div>
-                    <div className="bg-white/5 p-4 rounded-sm border border-white/5 space-y-1.5">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400">Day 18+ (Free Forever)</span>
-                      <p className="text-xs text-white font-semibold">Zero Data Loss</p>
-                      <p className="text-[11px] text-slate-400">Standard billing stays open forever for up to 200 items and 50 parties with no fees.</p>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400">Day 8+ (Free Forever Fallback)</span>
+                      <p className="text-xs text-white font-semibold">Zero Data Loss &amp; Open Counter</p>
+                      <p className="text-[11px] text-slate-400">Standard billing stays open forever for up to 200 items and 50 parties with zero fees.</p>
                     </div>
                   </div>
                 </div>

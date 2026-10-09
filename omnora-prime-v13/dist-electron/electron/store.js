@@ -76,6 +76,8 @@ exports.getTrialElapsedMs = getTrialElapsedMs;
 exports.setTrialElapsedMs = setTrialElapsedMs;
 exports.getTrialMonoCheckpoint = getTrialMonoCheckpoint;
 exports.setTrialMonoCheckpoint = setTrialMonoCheckpoint;
+exports.getTrialCompleted = getTrialCompleted;
+exports.setTrialCompleted = setTrialCompleted;
 exports.getLicensePayload = getLicensePayload;
 exports.setLicensePayload = setLicensePayload;
 exports.clearLicensePayload = clearLicensePayload;
@@ -141,6 +143,7 @@ const store = new electron_store_1.default({
         trial_ntp_start: 0,
         trial_elapsed_ms: 0,
         trial_mono_checkpoint: 0,
+        trial_completed: false,
         // License
         license_payload: '',
         // Power-cut
@@ -325,6 +328,12 @@ function getTrialMonoCheckpoint() {
 }
 function setTrialMonoCheckpoint(ts) {
     store.set('trial_mono_checkpoint', ts);
+}
+function getTrialCompleted() {
+    return store.get('trial_completed') || false;
+}
+function setTrialCompleted(completed) {
+    store.set('trial_completed', completed);
 }
 // ── LICENSE PAYLOAD ──
 function getLicensePayload() {

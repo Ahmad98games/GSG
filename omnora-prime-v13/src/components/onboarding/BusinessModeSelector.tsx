@@ -131,10 +131,10 @@ export default function BusinessModeSelector() {
     }
     useBusinessProfileStore.getState().setProfile(updatedProfile)
 
-    // If NOT owner and is a fresh trial user, set 14-day trial
+    // If NOT owner and is a fresh trial user, set 7-day trial
     if (!isOwnerPermanent) {
       const trialExpiry = new Date()
-      trialExpiry.setDate(trialExpiry.getDate() + 14)
+      trialExpiry.setDate(trialExpiry.getDate() + 7)
       setTier('elite', trialExpiry.toISOString(), true)
     } else {
       // Retain Permanent Elite license!
@@ -351,7 +351,7 @@ export default function BusinessModeSelector() {
                   <p className="text-[10px] text-zinc-400">
                     {isOwnerPermanent
                       ? '👑 Permanent Elite License · Unlimited karigars, cameras & workstations'
-                      : '14-Day Full Elite Trial included'}
+                      : '7-Day Free Evaluation included'}
                   </p>
                 </div>
               </div>
@@ -369,7 +369,7 @@ export default function BusinessModeSelector() {
                   <span>Applying Settings...</span>
                 ) : (
                   <>
-                    <span>{isOwnerPermanent ? 'Open Workspace (Permanent Elite)' : 'Start 14-Day Elite Trial'}</span>
+                    <span>{isOwnerPermanent ? 'Open Workspace (Permanent Elite)' : 'Start 7-Day Free Evaluation'}</span>
                     <ArrowRight size={14} />
                   </>
                 )}

@@ -58,14 +58,14 @@ export function useConversionTrigger() {
     action();
   }, []);
 
-  // TRIGGER 1 — After first completed sale (Trial days 1-13)
+  // TRIGGER 1 — After first completed sale (Trial days 1-6)
   const onSaleComplete = useCallback(() => {
     const isTrialActive = isTrial || effectiveTier === 'free_trial';
     if (!isTrialActive && isPaid) return;
 
     fire('first_sale', () => {
-      const days = trialDaysLeft > 0 ? trialDaysLeft : 14;
-      toast.success(`✓ First sale recorded in Noxis! ${days} days of Elite access remaining.`);
+      const days = trialDaysLeft > 0 ? trialDaysLeft : 7;
+      toast.success(`✓ First sale recorded in Noxis! ${days} days of Pro access remaining.`);
     });
   }, [isTrial, effectiveTier, isPaid, trialDaysLeft, fire]);
 
@@ -76,7 +76,7 @@ export function useConversionTrigger() {
 
     if (count >= 50) {
       fire('item_50_reached', () => {
-        toast.info("50 items loaded. Free plan allows 100. Lite plan: unlimited.");
+        toast.info("50 items loaded. Free plan allows 200. Lite plan: unlimited.");
       });
     }
   }, [effectiveTier, isTrial, isPaid, fire]);

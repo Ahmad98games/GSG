@@ -180,7 +180,7 @@ export const S13_Pricing: React.FC<{ from: number }> = ({ from }) => {
 
                   <div className="mt-6 pt-3 border-t border-white/[0.06]">
                     <span className="text-[10px] font-mono text-gray-400 text-center block">
-                      No credit card required · 14-day Elite Trial
+                      No credit card required · 7-Day Free Evaluation
                     </span>
                   </div>
                 </div>
@@ -231,7 +231,7 @@ export const S13_Pricing: React.FC<{ from: number }> = ({ from }) => {
             <div className="flex items-center gap-4 text-xs text-gray-300">
               <span>Direct Support & On-Site Deployment</span>
               <span>·</span>
-              <span>Free 14-Day Full Elite Trial</span>
+              <span>7-Day Free Evaluation</span>
             </div>
             <span className="text-[10px] text-gray-500 uppercase tracking-widest mt-2">
               BUILT BY OMNORA LABS · LAHORE, PAKISTAN
@@ -246,7 +246,7 @@ export const S13_Pricing: React.FC<{ from: number }> = ({ from }) => {
       {/* Customer Pitch HUD */}
       <PitchHUD
         badge="13 · INVESTMENT & ROI"
-        title="SCHEDULE YOUR FACTORY ONBOARDING TODAY · FREE 14-DAY TRIAL"
+        title="SCHEDULE YOUR FACTORY ONBOARDING TODAY · 7-DAY FREE EVALUATION"
         explanation="Deploy on your existing factory PCs within 15 minutes. Includes complete staff training, free data migration from Excel/Tally, and dedicated engineer assistance."
         roiPoints={['Zero Hardware Replacement', 'Free Excel Migration', 'Instant Activation']}
         accentColor="#06B6D4"

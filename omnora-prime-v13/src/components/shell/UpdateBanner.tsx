@@ -1,34 +1,47 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Download, RefreshCw, Sparkles, X, ArrowRight, CheckCircle2 } from 'lucide-react'
 
 export function UpdateBanner() {
   const [updateInfo, setUpdateInfo] = useState<{
     version: string
+    releaseNotes?: string
   } | null>(null)
   const [progress, setProgress] = useState<number | null>(null)
   const [readyToInstall, setReadyToInstall] = useState(false)
   const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
-    // Only in Electron
-    const electron = (window as any).electronWindow
-    if (!electron || !electron.onUpdateAvailable) return
+    if (typeof window === 'undefined') return
+    const electron = (window as any).electronWindow || (window as any).electronAPI
 
-    const unsubAvailable = electron.onUpdateAvailable((info: any) => {
-      setUpdateInfo(info)
-    })
+    if (!electron) return
 
-    const unsubProgress = electron.onUpdateProgress((p: any) => {
-      setProgress(Math.round(p.percent))
-    })
+    let unsubAvailable: (() => void) | undefined
+    let unsubProgress: (() => void) | undefined
+    let unsubDownloaded: (() => void) | undefined
 
-    const unsubDownloaded = electron.onUpdateDownloaded((info: any) => {
-      setUpdateInfo(info)
-      setReadyToInstall(true)
-      setProgress(null)
-    })
+    if (electron.onUpdateAvailable) {
+      unsubAvailable = electron.onUpdateAvailable((info: any) => {
+        setUpdateInfo(info)
+      })
+    }
+
+    if (electron.onUpdateProgress) {
+      unsubProgress = electron.onUpdateProgress((p: any) => {
+        setProgress(Math.round(p.percent))
+      })
+    }
+
+    if (electron.onUpdateDownloaded) {
+      unsubDownloaded = electron.onUpdateDownloaded((info: any) => {
+        setUpdateInfo(info)
+        setReadyToInstall(true)
+        setProgress(null)
+      })
+    }
 
     return () => {
       unsubAvailable?.()
@@ -37,48 +50,83 @@ export function UpdateBanner() {
     }
   }, [])
 
+  const handleInstall = () => {
+    const electron = (window as any).electronWindow || (window as any).electronAPI
+    if (electron?.installUpdate) {
+      electron.installUpdate()
+    }
+  }
+
   if (!updateInfo || dismissed) return null
+
+  const isV13Series = updateInfo.version?.startsWith('13.')
 
   return (
     <AnimatePresence>
       <motion.div
         initial={{ height: 0, opacity: 0 }}
-        animate={{ height: 40, opacity: 1 }}
+        animate={{ height: 'auto', opacity: 1 }}
         exit={{ height: 0, opacity: 0 }}
-        className="relative w-full flex items-center justify-between px-4 text-xs bg-[#1a2010] border-b border-green-900/50 z-50"
+        className="relative w-full bg-[#0E1520] border-b border-cyan-500/30 px-4 py-2.5 text-xs z-[60] shadow-lg flex items-center justify-between"
       >
-        <span className="text-green-400 font-medium">
-          {readyToInstall
-            ? `Noxis v${updateInfo.version} ready to install`
-            : progress !== null
-            ? `Downloading update... ${progress}%`
-            : `Noxis v${updateInfo.version} available`
-          }
-        </span>
-        
-        <div className="flex items-center gap-3">
-          {readyToInstall && (
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-6 h-6 rounded-md bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center flex-shrink-0 text-cyan-400">
+            {readyToInstall ? (
+              <CheckCircle2 size={13} className="text-emerald-400" />
+            ) : progress !== null ? (
+              <RefreshCw size={13} className="animate-spin text-cyan-400" />
+            ) : (
+              <Sparkles size={13} className="text-amber-400" />
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-bold text-white uppercase tracking-wider text-[11px]">
+              {readyToInstall
+                ? `Noxis Hub v${updateInfo.version} Ready to Apply`
+                : progress !== null
+                ? `Downloading Noxis Hub v${updateInfo.version}... (${progress}%)`
+                : `New Software Update: Noxis Hub v${updateInfo.version} Available`}
+            </span>
+
+            {isV13Series && (
+              <span className="text-[9px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 px-1.5 py-0.5 rounded uppercase">
+                v13 Core Engine
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5 flex-shrink-0">
+          {readyToInstall ? (
             <button
-              onClick={() => {
-                ;(window as any).electronWindow.installUpdate()
-              }}
-              className="px-3 py-1 bg-green-600 text-white text-[10px] uppercase tracking-wider font-bold hover:bg-green-500 transition-colors rounded-sm"
+              type="button"
+              onClick={handleInstall}
+              className="px-3 py-1 bg-gradient-to-r from-emerald-500 to-teal-400 text-black text-[10px] uppercase tracking-wider font-black hover:brightness-110 transition-all rounded shadow-[0_0_12px_rgba(16,185,129,0.3)] flex items-center gap-1 cursor-pointer"
             >
-              Restart & Install
+              <span>Restart &amp; Install Now</span>
+              <ArrowRight size={11} />
             </button>
-          )}
+          ) : progress === null ? (
+            <span className="text-[10px] text-slate-400 hidden sm:inline-block">
+              Downloading background patch...
+            </span>
+          ) : null}
+
           <button
+            type="button"
             onClick={() => setDismissed(true)}
-            className="text-gray-500 hover:text-white transition-colors text-lg leading-none"
+            title="Dismiss update notice"
+            className="text-slate-400 hover:text-white transition-colors p-1 rounded hover:bg-white/5"
           >
-            ×
+            <X size={14} />
           </button>
         </div>
-        
+
         {/* Download progress bar */}
         {progress !== null && (
           <motion.div
-            className="absolute bottom-0 left-0 h-[2px] bg-green-500"
+            className="absolute bottom-0 left-0 h-[2px] bg-gradient-to-r from-cyan-500 to-emerald-400"
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
             transition={{ duration: 0.3 }}

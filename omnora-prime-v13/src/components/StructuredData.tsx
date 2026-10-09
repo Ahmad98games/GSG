@@ -119,7 +119,7 @@ export function FAQSchema() {
               'name': 'Is there a free version of Noxis Hub?',
               'acceptedAnswer': {
                 '@type': 'Answer',
-                'text': 'Yes. Noxis Hub Free Forever has no expiry date and includes full POS, 200 inventory items, 50 customers, and offline operation. There is also a 14-day free trial with full Pro access.',
+                'text': 'Yes. Noxis Hub Free Forever has no expiry date and includes full POS, 200 inventory items, 50 customers, and offline operation. There is also a 7-day free evaluation with full Pro access.',
               },
             },
             {

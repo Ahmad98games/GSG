@@ -8,8 +8,8 @@
  * the tier down as a string; every component calls canUse(feature, tier).
  *
  * Tier hierarchy: free_trial > elite > pro > lite > free
- *   free_trial = all Pro features for 14 days
- *   free       = POS + 200 SKU + 50 parties + basic ledger only
+ *   free_trial = all Pro/Enterprise features for 7 days
+ *   free       = POS + 200 SKU + 50 parties + basic ledger only (Free Forever Fallback)
  */
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -151,7 +151,7 @@ export type ResourceKey = 'max_skus' | 'max_parties' | 'max_karigars' | 'max_dev
 export const TIER_LIMITS: Record<Tier, Record<ResourceKey, number>> = {
   //                         skus   parties  karigars  devices  cameras  branches
   free_trial: { max_skus: -1,    max_parties: -1,    max_karigars: -1,    max_devices: 1,  max_cameras: 4,  max_branches: 1  },
-  free:       { max_skus: 100,   max_parties: 30,    max_karigars: 25,    max_devices: 1,  max_cameras: 0,  max_branches: 1  },
+  free:       { max_skus: 200,   max_parties: 50,    max_karigars: 25,    max_devices: 1,  max_cameras: 0,  max_branches: 1  },
   lite:       { max_skus: -1,    max_parties: -1,    max_karigars: -1,    max_devices: 5,  max_cameras: 2,  max_branches: 1  },
   pro:        { max_skus: -1,    max_parties: -1,    max_karigars: -1,    max_devices: 15, max_cameras: 4,  max_branches: 5  },
   elite:      { max_skus: -1,    max_parties: -1,    max_karigars: -1,    max_devices: 50, max_cameras: 6,  max_branches: 99 },
@@ -293,7 +293,7 @@ export function getEffectiveTier(tier: Tier, isExpired: boolean = false): Tier {
 
 /**
  * Check if a feature is available for the given tier.
- * free_trial gets all features that pro gets (full 14-day trial).
+ * free_trial gets all features that pro gets (full 7-day evaluation).
  * Expired paid license = Free tier (never blocks).
  */
 export function canUse(feature: FeatureKey, tier: Tier, isExpired: boolean = false): boolean {

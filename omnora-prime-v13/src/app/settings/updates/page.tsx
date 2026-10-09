@@ -49,6 +49,17 @@ interface ChangelogItem {
 
 const HISTORICAL_CHANGELOGS: ChangelogItem[] = [
   {
+    version: '13.0.7',
+    date: 'October 2026',
+    type: 'patch',
+    title: '7-Day Pro Evaluation Engine & Free Forever Cap Alignment',
+    highlights: [
+      { tag: 'Evaluation Engine', text: 'Calibrated strict 7-day Pro evaluation with multi-source anti-tamper persistence', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      { tag: 'Free Forever', text: 'Seamless transition to Free Forever mode (200 SKUs, 50 Parties) with 100% data preservation', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
+      { tag: 'Update Pipeline', text: 'Real-time v13 Core Engine background streaming and one-click install', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
+    ],
+  },
+  {
     version: '13.0.6',
     date: 'October 2026',
     type: 'patch',
@@ -66,7 +77,7 @@ const HISTORICAL_CHANGELOGS: ChangelogItem[] = [
     title: 'Clean First-Run Onboarding & Production License Hardening',
     highlights: [
       { tag: 'Onboarding Engine', text: 'Interactive first-run wizard tailored for Textile, Wholesale, and Retail modes', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
-      { tag: 'Trial Architecture', text: '14-day full Elite trial without artificial account inheritance', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
+      { tag: 'Trial Architecture', text: '7-day full evaluation without artificial account inheritance', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
       { tag: 'License Verifier', text: 'Offline hardware-bound key verification with instantaneous activation', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
     ],
   },
@@ -675,7 +686,7 @@ export default function UpdatesPage() {
               Auto-Sync Feed: /updates/{channel}
             </span>
             <a
-              href="https://noxishub.app/updates/stable/Noxis%20Hub%20Setup%2013.0.6.exe"
+              href="https://noxishub.app/updates/stable/Noxis%20Hub%20Setup%2013.0.7.exe"
               target="_blank"
               rel="noreferrer"
               className="text-[11px] font-medium text-cyan-400 hover:text-cyan-300 underline underline-offset-2 flex items-center gap-1 cursor-pointer"

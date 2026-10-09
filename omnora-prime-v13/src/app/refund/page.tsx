@@ -44,7 +44,7 @@ function RefundContent() {
             If Noxis Hub does not meet your business expectations, or if you experience technical issues that we cannot resolve, you can request a full refund of your software purchase price within 14 calendar days of your initial payment.
           </p>
           <p className="text-slate-400">
-            No refund requests will be accepted after the 14-day period has expired. We encourage you to utilize our 14-day free trial before purchasing to ensure the software matches your hardware and workflow.
+            No refund requests will be accepted after the 14-day period has expired. We encourage you to utilize our 7-day free evaluation before purchasing to ensure the software matches your hardware and workflow.
           </p>
         </div>
       ),

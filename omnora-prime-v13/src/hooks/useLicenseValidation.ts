@@ -58,17 +58,17 @@ export function useLicenseValidation() {
         let raw = localStorage.getItem('noxis_license')
 
         if (!raw) {
-          // Fresh installation without an entered license key: initialize clean 14-Day Trial
-          const trialExpiry = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+          // Fresh installation without an entered license key: initialize clean 7-Day Free Evaluation
+          const trialExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
           const trialLicense: CachedLicense = {
             id: 'trial-workstation',
-            key: 'TRIAL-14DAYS',
+            key: 'TRIAL-7DAYS',
             tier: 'elite',
             customerName: 'Trial Workstation',
             expiresAt: trialExpiry,
             maxDevices: 50,
             activatedAt: Date.now(),
-            cacheExpires: Date.now() + 14 * 24 * 60 * 60 * 1000,
+            cacheExpires: Date.now() + 7 * 24 * 60 * 60 * 1000,
             isValid: true,
           };
           setLicense(trialLicense);
@@ -88,16 +88,16 @@ export function useLicenseValidation() {
         }
 
       } catch {
-        const trialExpiry = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+        const trialExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
         const trialLicense: CachedLicense = {
           id: 'trial-workstation',
-          key: 'TRIAL-14DAYS',
+          key: 'TRIAL-7DAYS',
           tier: 'elite',
           customerName: 'Trial Workstation',
           expiresAt: trialExpiry,
           maxDevices: 50,
           activatedAt: Date.now(),
-          cacheExpires: Date.now() + 14 * 24 * 60 * 60 * 1000,
+          cacheExpires: Date.now() + 7 * 24 * 60 * 60 * 1000,
           isValid: true,
         };
         setLicense(trialLicense);

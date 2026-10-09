@@ -48,10 +48,10 @@ export function ExpiryBanner() {
         {/* Message */}
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-white mb-1">
-            Your Elite trial has ended. You are now on Free plan.
+            Your 7-Day Pro Evaluation has ended. You are now on Free Forever mode.
           </p>
           <p className="text-xs text-gray-400 leading-relaxed">
-            Your existing data is safe and POS counter is fully active. Upgrade to Lite or Pro to restore unlimited items, WhatsApp automation, CCTV, and AI predictions.
+            Your existing data is preserved with zero data loss, and your POS counter remains fully active forever. Capped to 200 SKUs and 50 Parties. Cloud Sync, multi-branch, CCTV, and mobile pairing are locked.
           </p>
         </div>
 

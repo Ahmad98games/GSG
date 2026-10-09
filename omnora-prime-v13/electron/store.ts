@@ -66,6 +66,7 @@ interface StoreSchema {
   trial_ntp_start: number        // UTC ms from Cloudflare NTP on first run
   trial_elapsed_ms: number       // monotonic accumulated runtime ms
   trial_mono_checkpoint: number  // hrtime snapshot saved at last checkpoint
+  trial_completed: boolean       // true when 7-day trial has reached expiration
 
   // License
   license_payload: string        // JSON-stringified LicensePayload, encrypted by store
@@ -111,6 +112,7 @@ const store: any = new (ElectronStore as any)({
     trial_ntp_start: 0,
     trial_elapsed_ms: 0,
     trial_mono_checkpoint: 0,
+    trial_completed: false,
     // License
     license_payload: '',
     // Power-cut
@@ -349,6 +351,14 @@ export function getTrialMonoCheckpoint(): number {
 
 export function setTrialMonoCheckpoint(ts: number): void {
   store.set('trial_mono_checkpoint', ts)
+}
+
+export function getTrialCompleted(): boolean {
+  return store.get('trial_completed') || false
+}
+
+export function setTrialCompleted(completed: boolean): void {
+  store.set('trial_completed', completed)
 }
 
 // ── LICENSE PAYLOAD ──

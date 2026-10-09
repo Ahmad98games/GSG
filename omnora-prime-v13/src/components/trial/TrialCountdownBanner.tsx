@@ -12,8 +12,9 @@ interface TrialCountdownBannerProps {
 }
 
 /**
+/**
  * Sidebar Footer Trial Countdown Chip
- * Renders in IndustrialSidebar footer during active 14-day trial
+ * Renders in IndustrialSidebar footer during active 7-day evaluation
  */
 export function TrialCountdownBanner({ isCollapsed = false }: TrialCountdownBannerProps) {
   const router = useRouter();
@@ -25,14 +26,14 @@ export function TrialCountdownBanner({ isCollapsed = false }: TrialCountdownBann
 
   const daysLeft = Math.max(0, trialDaysLeft);
 
-  // DAYS 13-14 (Strong Urgency / Trial End)
+  // DAY 7 (Strong Urgency / Last Day of 7-Day Cycle)
   if (daysLeft <= 1) {
     return (
       <div className={cn("px-2 py-2", isCollapsed && "flex justify-center")}>
         <button
           type="button"
           onClick={() => router.push('/settings/license?upgrade=true')}
-          title="Last day of Elite access — Click to upgrade"
+          title="Last day of Pro evaluation — Click to upgrade"
           className={cn(
             "w-full text-left transition-all duration-300 rounded-sm border",
             "bg-red-500/15 border-red-500/40 hover:bg-red-500/25 hover:border-red-400 text-red-300 shadow-[0_0_12px_rgba(239,68,68,0.2)]",
@@ -43,7 +44,7 @@ export function TrialCountdownBanner({ isCollapsed = false }: TrialCountdownBann
           {!isCollapsed && (
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-black uppercase tracking-wider text-red-200 truncate">
-                🔴 Last day of Elite access
+                🔴 Last day of Pro Evaluation
               </p>
               <p className="text-[9px] text-red-400/90 font-mono truncate">
                 Keep all features active →
@@ -55,7 +56,7 @@ export function TrialCountdownBanner({ isCollapsed = false }: TrialCountdownBann
     );
   }
 
-  // DAY 12 (Second urgency signal: 2 days left with pulsing glow)
+  // DAY 6 (Second urgency signal: 2 days left with pulsing glow)
   if (daysLeft === 2) {
     return (
       <div className={cn("px-2 py-2", isCollapsed && "flex justify-center")}>
@@ -85,43 +86,13 @@ export function TrialCountdownBanner({ isCollapsed = false }: TrialCountdownBann
     );
   }
 
-  // DAY 11 (First urgency signal: 3 days remain)
-  if (daysLeft === 3) {
-    return (
-      <div className={cn("px-2 py-2", isCollapsed && "flex justify-center")}>
-        <button
-          type="button"
-          onClick={() => router.push('/settings/license?upgrade=true')}
-          title="3 days of Elite remain"
-          className={cn(
-            "w-full text-left transition-all duration-200 rounded-sm border",
-            "bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20 text-amber-300",
-            isCollapsed ? "p-2 flex items-center justify-center" : "px-3 py-2 flex items-center gap-2"
-          )}
-        >
-          <Zap className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
-          {!isCollapsed && (
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-black uppercase tracking-wider text-amber-200 truncate">
-                ⚡ 3 days of Elite remain
-              </p>
-              <p className="text-[9px] text-amber-400/70 font-mono truncate">
-                Click to explore plans
-              </p>
-            </div>
-          )}
-        </button>
-      </div>
-    );
-  }
-
-  // DAYS 1-10 (Early trial — curiosity)
+  // DAYS 1-5 (Active 7-Day Evaluation)
   return (
     <div className={cn("px-2 py-2", isCollapsed && "flex justify-center")}>
       <button
         type="button"
         onClick={() => router.push('/settings/license?upgrade=true')}
-        title={`Elite Trial — ${daysLeft} days left`}
+        title={`Pro Evaluation — ${daysLeft} days left`}
         className={cn(
           "w-full text-left transition-all duration-200 rounded-sm border",
           "bg-emerald-500/10 border-emerald-500/25 hover:bg-emerald-500/20 text-emerald-300",
@@ -132,7 +103,7 @@ export function TrialCountdownBanner({ isCollapsed = false }: TrialCountdownBann
         {!isCollapsed && (
           <div className="min-w-0 flex-1 flex items-center justify-between">
             <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300 truncate">
-              ✦ Elite Trial — {daysLeft} days left
+              ✦ Pro Trial — {daysLeft} days left
             </span>
             <span className="text-[8px] font-mono text-emerald-400/60 bg-emerald-500/10 px-1 py-0.5 rounded">
               Active
@@ -145,7 +116,7 @@ export function TrialCountdownBanner({ isCollapsed = false }: TrialCountdownBann
 }
 
 /**
- * Non-blocking Top Bar Banner for Days 13 and 14
+ * Non-blocking Top Bar Banner for Days 6 and 7 of the 7-day cycle
  * Positioned under navbar without blocking the POS or user workflow.
  */
 export function TopUrgencyBanner() {
@@ -167,19 +138,19 @@ export function TopUrgencyBanner() {
 
   const daysLeft = Math.max(0, trialDaysLeft);
 
-  // Only shows on Day 13 and Day 14 (<= 1 day left)
-  if (daysLeft > 1) return null;
+  // Only shows on Day 6 and Day 7 (<= 2 days left)
+  if (daysLeft > 2) return null;
 
-  const isDay14 = daysLeft === 0;
+  const isLastDay = daysLeft <= 1;
   const now = Date.now();
 
-  // Day 13 is dismissible for 4 hours; Day 14 CANNOT be dismissed today
-  if (!isDay14 && dismissedUntil && now < dismissedUntil) {
+  // Day 6 is dismissible for 4 hours; Last day (Day 7) CANNOT be dismissed today
+  if (!isLastDay && dismissedUntil && now < dismissedUntil) {
     return null;
   }
 
   const handleDismiss = () => {
-    if (isDay14) return; // Cannot dismiss on trial end day
+    if (isLastDay) return; // Cannot dismiss on trial end day
     const fourHoursFromNow = Date.now() + 4 * 60 * 60 * 1000;
     setDismissedUntil(fourHoursFromNow);
     try {
@@ -192,13 +163,13 @@ export function TopUrgencyBanner() {
       <div className="flex items-center gap-3">
         <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse flex-shrink-0 shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
         <div>
-          {isDay14 ? (
+          {isLastDay ? (
             <p className="text-xs font-bold text-red-200">
-              Elite trial ends today at midnight. <span className="text-red-400 font-normal">Upgrade now to keep all features active.</span>
+              Pro evaluation ends today at midnight. <span className="text-red-400 font-normal">Upgrade now to keep Cloud Sync, CCTV, and AI active.</span>
             </p>
           ) : (
             <p className="text-xs font-bold text-red-200">
-              🔴 Elite trial ends tomorrow. <span className="text-red-400 font-normal">Your POS, CCTV, Mobile Companion, and Foresight AI will pause.</span>
+              🔴 2 days remaining in Pro evaluation. <span className="text-red-400 font-normal">Your POS remains active forever, but Cloud Sync, CCTV, and Mobile Companion will pause after Day 7.</span>
             </p>
           )}
         </div>
@@ -213,7 +184,7 @@ export function TopUrgencyBanner() {
           <ArrowRight size={11} />
         </Link>
 
-        {!isDay14 && (
+        {!isLastDay && (
           <button
             type="button"
             onClick={handleDismiss}

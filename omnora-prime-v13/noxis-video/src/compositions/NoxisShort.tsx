@@ -176,7 +176,7 @@ export const NoxisShort: React.FC = () => {
               ✦ noxishub.app
             </div>
             <p className="text-xs text-gray-500 font-mono">
-              Free 14-Day Full Elite Trial · Engineered by Omnora Labs
+              7-Day Free Evaluation · Engineered by Omnora Labs
             </p>
           </div>
         )}

@@ -252,7 +252,7 @@ export default function FeaturesPage() {
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-gradient-to-r from-[#C5A059] via-[#E8D5B5] to-[#C5A059] text-black font-black text-sm uppercase tracking-wider px-8 py-4 rounded-sm hover:brightness-110 transition-all shadow-[0_0_30px_rgba(197,160,89,0.3)]"
               >
                 <Download size={18} />
-                <span>Download Free 14-Day Trial</span>
+                <span>Download Free 7-Day Evaluation</span>
               </Link>
             )}
             <Link

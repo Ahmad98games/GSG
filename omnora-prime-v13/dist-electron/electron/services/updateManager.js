@@ -47,36 +47,44 @@ function initAutoUpdater(win) {
     });
     electron_updater_1.autoUpdater.on('update-available', (info) => {
         startupLog(`[UPDATE] Available: v${info.version}`);
-        mainWindow?.webContents.send('update:available', {
+        const payload = {
             version: info.version,
             releaseNotes: info.releaseNotes,
             releaseDate: info.releaseDate,
-        });
+        };
+        mainWindow?.webContents.send('update:available', payload);
+        mainWindow?.webContents.send('update-available', payload);
     });
     electron_updater_1.autoUpdater.on('update-not-available', () => {
         startupLog('[UPDATE] Already up to date');
         mainWindow?.webContents.send('update:not-available');
+        mainWindow?.webContents.send('update-not-available');
     });
     electron_updater_1.autoUpdater.on('download-progress', (progress) => {
         const pct = Math.round(progress.percent);
         startupLog(`[UPDATE] Downloading: ${pct}%`);
-        mainWindow?.webContents.send('update:progress', {
+        const payload = {
             percent: pct,
             transferred: progress.transferred,
             total: progress.total,
             bytesPerSecond: progress.bytesPerSecond,
-        });
+        };
+        mainWindow?.webContents.send('update:progress', payload);
+        mainWindow?.webContents.send('update-progress', payload);
     });
     electron_updater_1.autoUpdater.on('update-downloaded', (info) => {
         startupLog(`[UPDATE] Downloaded: v${info.version}`);
-        mainWindow?.webContents.send('update:downloaded', {
+        const payload = {
             version: info.version,
             releaseNotes: info.releaseNotes,
-        });
+        };
+        mainWindow?.webContents.send('update:downloaded', payload);
+        mainWindow?.webContents.send('update-downloaded', payload);
     });
     electron_updater_1.autoUpdater.on('error', (err) => {
         startupLog(`[UPDATE] Error: ${err.message}`);
         mainWindow?.webContents.send('update:error', err.message);
+        mainWindow?.webContents.send('update-error', err.message);
     });
 }
 function checkForUpdates() {
@@ -97,13 +105,17 @@ function installUpdate() {
 }
 // IPC handlers
 function registerUpdateIPC() {
-    electron_1.ipcMain.handle('update:check', () => {
+    const handleCheck = () => {
         checkForUpdates();
         return { ok: true };
-    });
-    electron_1.ipcMain.handle('update:install', () => {
+    };
+    const handleInstall = () => {
         installUpdate();
-    });
+    };
+    electron_1.ipcMain.handle('update:check', handleCheck);
+    electron_1.ipcMain.handle('check-for-updates', handleCheck);
+    electron_1.ipcMain.handle('update:install', handleInstall);
+    electron_1.ipcMain.handle('install-update', handleInstall);
     electron_1.ipcMain.handle('update:getChannel', () => {
         return electron_updater_1.autoUpdater.channel || 'stable';
     });

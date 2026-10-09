@@ -166,7 +166,7 @@ export const S12_Pricing: React.FC<{ from: number }> = ({ from }) => {
 
                   <div className="mt-6 pt-3 border-t border-white/[0.06]">
                     <span className="text-[10px] font-mono text-gray-400 text-center block">
-                      No credit card required · 14-day Elite Trial
+                      No credit card required · 7-Day Free Evaluation
                     </span>
                   </div>
                 </div>

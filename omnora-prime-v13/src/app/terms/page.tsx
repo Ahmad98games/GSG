@@ -58,7 +58,7 @@ function TermsContent() {
           <p>Noxis Hub is sold as a perpetual software license with an optional annual maintenance subscription. The following tiers are available:</p>
           <div className="space-y-3">
             {[
-              { tier: "Trial", desc: "14-day free trial with full feature access. No payment required. Trial data is preserved if you upgrade.", limit: "1 device, watermarked exports" },
+              { tier: "Trial", desc: "7-Day Free Evaluation with full Pro feature access. No payment required. Trial data is preserved if you upgrade.", limit: "1 device, watermarked exports" },
               { tier: "Lite", desc: "Core ERP features: Invoicing, Ledger (Khata), basic Inventory, and Karigar attendance.", limit: "1 device, up to 2 staff accounts" },
               { tier: "Pro", desc: "All Lite features plus: Advanced Inventory, Production Tracking, Payroll, Client Portal, and WhatsApp Messaging.", limit: "Up to 3 devices, up to 10 staff accounts" },
               { tier: "Elite", desc: "All Pro features plus: Multi-branch support, CCTV Sentinel module, custom report builder, and priority support SLA.", limit: "Up to 10 devices, unlimited staff accounts" },

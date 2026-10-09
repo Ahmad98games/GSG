@@ -74,14 +74,13 @@ const TIER_FEATURES = {
         exports.FEATURES.PURCHASE_ORDERS,
         exports.FEATURES.AUDIT_LOG,
     ],
-    // After 17 days — POS stays, everything cloud/AI locked, caps enforced
+    // Day 8+ (Trial Expired) — POS stays, cloud/CCTV/sync/mobile/AI locked, caps enforced
     free_forever: [
         exports.FEATURES.POS,
         exports.FEATURES.INVENTORY, // capped at 200 SKUs
         exports.FEATURES.INVOICES,
         exports.FEATURES.PARTIES, // capped at 50 parties
         exports.FEATURES.KHATA,
-        exports.FEATURES.MOBILE_PAIRING,
         exports.FEATURES.REPORTS_BASIC,
         exports.FEATURES.PURCHASE_ORDERS,
     ],
@@ -141,7 +140,7 @@ const TIER_FEATURES = {
 };
 const TIER_CAPS = {
     trial: { maxDevices: 5, maxBranches: 1, maxCameras: 4, maxSkus: -1, maxParties: -1 },
-    free_forever: { maxDevices: 1, maxBranches: 1, maxCameras: 0, maxSkus: 100, maxParties: 30 },
+    free_forever: { maxDevices: 1, maxBranches: 1, maxCameras: 0, maxSkus: 200, maxParties: 50 },
     lite: { maxDevices: 2, maxBranches: 1, maxCameras: 1, maxSkus: -1, maxParties: -1 },
     pro: { maxDevices: 10, maxBranches: 3, maxCameras: 8, maxSkus: -1, maxParties: -1 },
     elite: { maxDevices: -1, maxBranches: -1, maxCameras: -1, maxSkus: -1, maxParties: -1 },
@@ -169,9 +168,9 @@ function getActiveTierInfo() {
             features: TIER_FEATURES[name],
         };
     }
-    // No paid license — resolve from trial state
+    // No paid license — resolve from trial state (strict 7-day active trial or free forever)
     const trialState = (0, trialEngine_1.getTrialState)();
-    if (trialState.status === 'active') {
+    if (trialState.status === 'active' || trialState.statusCode === 'ACTIVE_TRIAL') {
         return {
             name: 'trial',
             caps: TIER_CAPS.trial,
@@ -183,30 +182,7 @@ function getActiveTierInfo() {
             features: TIER_FEATURES.trial,
         };
     }
-    if (trialState.status === 'grace') {
-        return {
-            name: 'trial',
-            caps: TIER_CAPS.trial,
-            trialStatus: 'grace',
-            trialDaysLeft: 0,
-            graceDaysLeft: trialState.graceDaysLeft,
-            maxDevices: 1, // grace: lock to 1 device
-            maxBranches: 1,
-            maxCameras: 0,
-            features: [
-                // Grace: POS stays; cloud/CCTV/AI/multi-device locked
-                exports.FEATURES.POS,
-                exports.FEATURES.INVENTORY,
-                exports.FEATURES.INVOICES,
-                exports.FEATURES.PARTIES,
-                exports.FEATURES.KHATA,
-                exports.FEATURES.MOBILE_PAIRING,
-                exports.FEATURES.REPORTS_BASIC,
-                exports.FEATURES.PURCHASE_ORDERS,
-            ],
-        };
-    }
-    // Expired — Free Forever
+    // Day 8+: Expired — Free Forever (POS Counter unlocked, 200 SKU / 50 Party caps, zero data loss)
     return {
         name: 'free_forever',
         caps: TIER_CAPS.free_forever,

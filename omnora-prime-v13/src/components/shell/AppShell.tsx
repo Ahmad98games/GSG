@@ -34,6 +34,7 @@ import { ShortcutHelp } from "@/components/shell/ShortcutHelp";
 import { OfflineIndicator } from '@/components/shell/OfflineIndicator';
 import { ExpiryBanner } from '@/components/license/ExpiryBanner';
 import { TopUrgencyBanner } from '@/components/trial/TrialCountdownBanner';
+import { TrialExpirationModal } from '@/components/trial/TrialExpirationModal';
 import { LicenseReminderModal } from '@/components/license/LicenseReminderModal';
 import { ActivationCelebration } from '@/components/license/ActivationCelebration';
 import HWIDActivationModal from "@/components/pricing/HWIDActivationModal";
@@ -458,6 +459,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         isNonDismissible={false}
       />
 
+      <TrialExpirationModal />
       <LicenseReminderModal />
       <ActivationCelebration />
       <OfflineIndicator />

@@ -1022,7 +1022,7 @@ export default function OnboardingPage() {
                 Noxis Hub is Ready
               </h1>
               <p className="text-sm font-semibold text-zinc-300">
-                Your 14-day Elite trial has started.
+                Your 7-day Pro evaluation has started.
               </p>
               <p className="text-xs text-zinc-500 max-w-sm mx-auto leading-relaxed">
                 Full access to every feature — POS, Karigar Payroll, CCTV, Mobile Companion, AI Foresight.
@@ -1032,7 +1032,7 @@ export default function OnboardingPage() {
             {/* Trial Countdown Chip in Gold */}
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#C5A059]/15 border border-[#C5A059]/40 text-[#C5A059] font-mono font-bold text-xs shadow-[0_0_15px_rgba(197,160,89,0.2)]">
               <span className="w-2 h-2 rounded-full bg-[#C5A059] animate-ping" />
-              <span>14 days remaining</span>
+              <span>7 days remaining</span>
             </div>
 
             {/* Action Buttons */}

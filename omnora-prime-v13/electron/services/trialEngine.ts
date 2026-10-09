@@ -1,5 +1,5 @@
 /**
- * 3-Source Anti-Tampering 14-Day Trial Engine
+ * 3-Source Anti-Tampering 7-Day Trial Engine
  *
  * Three independent time sources are used. The maximum age wins —
  * rolling back any single clock cannot extend the trial.
@@ -8,10 +8,10 @@
  * Source 2 — Monotonic: process.hrtime.bigint() accumulation checkpointed every 30s.
  * Source 3 — FS Birthtime: creation time of the SQLite database file.
  *
- * States:
- *   active   — days 0..14        — full access per tier
- *   grace    — days 14..17       — POS stays on, sync/CCTV/AI/Mobile>1 locked
- *   expired  — day 17+           — Free Forever (POS + 200 SKU + 50 Party cap, no deletion)
+ * Transition Lifecycle:
+ *   ACTIVE_TRIAL  (active)       — Days 1..7  — 100% Pro/Elite features unlocked
+ *   TRIAL_EXPIRED (expired)      — Day 8+     — Trigger Expiration Intercept Modal
+ *   FREE_FOREVER  (free_forever) — Fallback   — POS counter + 200 SKU + 50 Party cap (no data loss)
  */
 
 import * as https from 'https'
@@ -23,21 +23,24 @@ import {
   setTrialElapsedMs,
   getTrialMonoCheckpoint,
   setTrialMonoCheckpoint,
+  getTrialCompleted,
+  setTrialCompleted,
 } from '../store'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const TRIAL_DURATION_MS = 14 * 24 * 60 * 60 * 1000   // 14 days
-const GRACE_DURATION_MS =  3 * 24 * 60 * 60 * 1000   //  3 days extra
-const TOTAL_CUTOFF_MS   = TRIAL_DURATION_MS + GRACE_DURATION_MS // 17 days
+export const TRIAL_MAX_DAYS = 7
+export const TRIAL_DURATION_MS = TRIAL_MAX_DAYS * 24 * 60 * 60 * 1000 // 7 days (604,800,000 ms)
 
-export type TrialStatus = 'active' | 'grace' | 'expired'
+export type TrialStatus = 'active' | 'expired' | 'grace' | 'ACTIVE_TRIAL' | 'TRIAL_EXPIRED' | 'FREE_FOREVER'
 
 export interface TrialState {
-  status: TrialStatus
-  daysLeft: number       // days until trial expires (0 during grace / expired)
-  graceDaysLeft: number  // days left in grace window (0 if active / expired)
+  status: 'active' | 'expired' | 'grace'
+  statusCode: 'ACTIVE_TRIAL' | 'TRIAL_EXPIRED' | 'FREE_FOREVER'
+  daysLeft: number       // days until trial expires (0 if expired)
+  graceDaysLeft: number  // 0 (strict 7-day cycle, no extended grace)
   trialAgeMs: number     // actual computed age
+  trialCompleted: boolean
   sources: {
     ntpAgeMs: number
     monoAgeMs: number
@@ -171,39 +174,50 @@ export function computeTrialAge(): {
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export function getTrialState(): TrialState {
+  const isAlreadyCompleted = getTrialCompleted()
   const { trialAgeMs, ntpAgeMs, monoAgeMs, fsAgeMs } = computeTrialAge()
 
-  let status: TrialStatus
+  let status: 'active' | 'expired' | 'grace' = 'active'
+  let statusCode: 'ACTIVE_TRIAL' | 'TRIAL_EXPIRED' | 'FREE_FOREVER' = 'ACTIVE_TRIAL'
   let daysLeft = 0
-  let graceDaysLeft = 0
+  const graceDaysLeft = 0
 
-  if (trialAgeMs < TRIAL_DURATION_MS) {
-    status = 'active'
-    daysLeft = Math.ceil((TRIAL_DURATION_MS - trialAgeMs) / (24 * 60 * 60 * 1000))
-  } else if (trialAgeMs < TOTAL_CUTOFF_MS) {
-    status = 'grace'
-    graceDaysLeft = Math.ceil((TOTAL_CUTOFF_MS - trialAgeMs) / (24 * 60 * 60 * 1000))
-  } else {
+  // If already flagged completed in persistent store, or if max age is >= 7 days, evaluate trial expiration strictly
+  if (isAlreadyCompleted || trialAgeMs >= TRIAL_DURATION_MS) {
+    if (!isAlreadyCompleted) {
+      setTrialCompleted(true)
+    }
     status = 'expired'
+    statusCode = 'TRIAL_EXPIRED'
+    daysLeft = 0
+  } else {
+    // Days 1 to 7: Active Trial (status: 'ACTIVE_TRIAL' / 'active'). 100% Pro/Elite features unlocked
+    status = 'active'
+    statusCode = 'ACTIVE_TRIAL'
+    daysLeft = Math.max(1, Math.ceil((TRIAL_DURATION_MS - trialAgeMs) / (24 * 60 * 60 * 1000)))
   }
 
   return {
     status,
+    statusCode,
     daysLeft,
     graceDaysLeft,
     trialAgeMs,
+    trialCompleted: isAlreadyCompleted || trialAgeMs >= TRIAL_DURATION_MS,
     sources: { ntpAgeMs, monoAgeMs, fsAgeMs },
   }
 }
 
 export function isTrialActive(): boolean {
-  return getTrialState().status === 'active'
+  const state = getTrialState()
+  return state.status === 'active' || state.statusCode === 'ACTIVE_TRIAL'
 }
 
 export function isInGrace(): boolean {
-  return getTrialState().status === 'grace'
+  return false
 }
 
 export function isTrialExpired(): boolean {
-  return getTrialState().status === 'expired'
+  const state = getTrialState()
+  return state.status === 'expired' || state.statusCode === 'TRIAL_EXPIRED'
 }

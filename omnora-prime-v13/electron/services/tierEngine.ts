@@ -76,14 +76,13 @@ const TIER_FEATURES: Record<LicenseTier | 'free_forever' | 'trial', FeatureKey[]
     FEATURES.AUDIT_LOG,
   ],
 
-  // After 17 days — POS stays, everything cloud/AI locked, caps enforced
+  // Day 8+ (Trial Expired) — POS stays, cloud/CCTV/sync/mobile/AI locked, caps enforced
   free_forever: [
     FEATURES.POS,
     FEATURES.INVENTORY,          // capped at 200 SKUs
     FEATURES.INVOICES,
     FEATURES.PARTIES,            // capped at 50 parties
     FEATURES.KHATA,
-    FEATURES.MOBILE_PAIRING,
     FEATURES.REPORTS_BASIC,
     FEATURES.PURCHASE_ORDERS,
   ],
@@ -157,7 +156,7 @@ export interface TierCaps {
 
 const TIER_CAPS: Record<LicenseTier | 'free_forever' | 'trial', TierCaps> = {
   trial:        { maxDevices: 5,  maxBranches: 1, maxCameras: 4,  maxSkus: -1,  maxParties: -1  },
-  free_forever: { maxDevices: 1,  maxBranches: 1, maxCameras: 0,  maxSkus: 100, maxParties: 30  },
+  free_forever: { maxDevices: 1,  maxBranches: 1, maxCameras: 0,  maxSkus: 200, maxParties: 50  },
   lite:         { maxDevices: 2,  maxBranches: 1, maxCameras: 1,  maxSkus: -1,  maxParties: -1  },
   pro:          { maxDevices: 10, maxBranches: 3, maxCameras: 8,  maxSkus: -1,  maxParties: -1  },
   elite:        { maxDevices: -1, maxBranches: -1, maxCameras: -1, maxSkus: -1, maxParties: -1  },
@@ -206,10 +205,10 @@ export function getActiveTierInfo(): TierInfo {
     }
   }
 
-  // No paid license — resolve from trial state
+  // No paid license — resolve from trial state (strict 7-day active trial or free forever)
   const trialState = getTrialState()
 
-  if (trialState.status === 'active') {
+  if (trialState.status === 'active' || trialState.statusCode === 'ACTIVE_TRIAL') {
     return {
       name: 'trial',
       caps: TIER_CAPS.trial,
@@ -222,31 +221,7 @@ export function getActiveTierInfo(): TierInfo {
     }
   }
 
-  if (trialState.status === 'grace') {
-    return {
-      name: 'trial',
-      caps: TIER_CAPS.trial,
-      trialStatus: 'grace',
-      trialDaysLeft: 0,
-      graceDaysLeft: trialState.graceDaysLeft,
-      maxDevices:  1,       // grace: lock to 1 device
-      maxBranches: 1,
-      maxCameras:  0,
-      features: [
-        // Grace: POS stays; cloud/CCTV/AI/multi-device locked
-        FEATURES.POS,
-        FEATURES.INVENTORY,
-        FEATURES.INVOICES,
-        FEATURES.PARTIES,
-        FEATURES.KHATA,
-        FEATURES.MOBILE_PAIRING,
-        FEATURES.REPORTS_BASIC,
-        FEATURES.PURCHASE_ORDERS,
-      ],
-    }
-  }
-
-  // Expired — Free Forever
+  // Day 8+: Expired — Free Forever (POS Counter unlocked, 200 SKU / 50 Party caps, zero data loss)
   return {
     name: 'free_forever',
     caps: TIER_CAPS.free_forever,

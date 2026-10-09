@@ -77,7 +77,7 @@ export const S11_AutoUpdate: React.FC<{ from: number }> = ({ from }) => {
 
             <div className="bg-[#0B0E14] border border-cyan-500/20 p-4 rounded-sm">
               <span className="text-[10px] text-gray-500 uppercase">LATEST DELTA RELEASE</span>
-              <p className="text-lg font-bold text-cyan-400 mt-1">v13.0.6 (Patch Release)</p>
+              <p className="text-lg font-bold text-cyan-400 mt-1">v13.0.7 (Patch Release)</p>
               <span className="text-[9px] text-gray-400">Universal Theme System</span>
             </div>
 
@@ -145,7 +145,7 @@ export const S11_AutoUpdate: React.FC<{ from: number }> = ({ from }) => {
               <div className="text-center space-y-2 font-mono">
                 <span className="w-8 h-8 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin inline-block" />
                 <p className="text-sm font-bold text-white">Seamless Hot Reload Complete (0.12s)</p>
-                <p className="text-[10px] text-cyan-400">Zero data loss · Running v13.0.6</p>
+                <p className="text-[10px] text-cyan-400">Zero data loss · Running v13.0.7</p>
               </div>
             </div>
           )}

@@ -48,40 +48,48 @@ export function initAutoUpdater(win: BrowserWindow): void {
 
   autoUpdater.on('update-available', (info: UpdateInfo) => {
     startupLog(`[UPDATE] Available: v${info.version}`)
-    mainWindow?.webContents.send('update:available', {
+    const payload = {
       version: info.version,
       releaseNotes: info.releaseNotes,
       releaseDate: info.releaseDate,
-    })
+    }
+    mainWindow?.webContents.send('update:available', payload)
+    mainWindow?.webContents.send('update-available', payload)
   })
 
   autoUpdater.on('update-not-available', () => {
     startupLog('[UPDATE] Already up to date')
     mainWindow?.webContents.send('update:not-available')
+    mainWindow?.webContents.send('update-not-available')
   })
 
   autoUpdater.on('download-progress', (progress) => {
     const pct = Math.round(progress.percent)
     startupLog(`[UPDATE] Downloading: ${pct}%`)
-    mainWindow?.webContents.send('update:progress', {
+    const payload = {
       percent: pct,
       transferred: progress.transferred,
       total: progress.total,
       bytesPerSecond: progress.bytesPerSecond,
-    })
+    }
+    mainWindow?.webContents.send('update:progress', payload)
+    mainWindow?.webContents.send('update-progress', payload)
   })
 
   autoUpdater.on('update-downloaded', (info: UpdateInfo) => {
     startupLog(`[UPDATE] Downloaded: v${info.version}`)
-    mainWindow?.webContents.send('update:downloaded', {
+    const payload = {
       version: info.version,
       releaseNotes: info.releaseNotes,
-    })
+    }
+    mainWindow?.webContents.send('update:downloaded', payload)
+    mainWindow?.webContents.send('update-downloaded', payload)
   })
 
   autoUpdater.on('error', (err) => {
     startupLog(`[UPDATE] Error: ${err.message}`)
     mainWindow?.webContents.send('update:error', err.message)
+    mainWindow?.webContents.send('update-error', err.message)
   })
 }
 
@@ -106,14 +114,20 @@ export function installUpdate(): void {
 
 // IPC handlers
 export function registerUpdateIPC(): void {
-  ipcMain.handle('update:check', () => {
+  const handleCheck = () => {
     checkForUpdates()
     return { ok: true }
-  })
+  }
 
-  ipcMain.handle('update:install', () => {
+  const handleInstall = () => {
     installUpdate()
-  })
+  }
+
+  ipcMain.handle('update:check', handleCheck)
+  ipcMain.handle('check-for-updates', handleCheck)
+
+  ipcMain.handle('update:install', handleInstall)
+  ipcMain.handle('install-update', handleInstall)
 
   ipcMain.handle('update:getChannel', () => {
     return autoUpdater.channel || 'stable'

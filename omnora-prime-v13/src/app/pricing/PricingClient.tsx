@@ -29,8 +29,8 @@ const FAQS = [
     a: "Yes, 100% offline. All core ERP logic, Karigar piece-rate calculations, inventory ledgers, and on-site RTSP camera feeds run directly on your computer's local SQLite database. Cloud backup is completely optional." 
   },
   { 
-    q: "What happens after the 14-day trial finishes?", 
-    a: "Your data stays on your hard drive forever. We never delete or lock your records. You can continue using the Free tier (POS counter, basic ledger, and full Excel/PDF export) or WhatsApp us to activate an offline permanent license key." 
+    q: "What happens after the 7-day trial finishes?", 
+    a: "Your data stays on your hard drive forever. We never delete or lock your records. After 7 days, you can continue using the Free tier (POS counter, basic ledger, and full Excel/PDF export) or WhatsApp us to activate an offline permanent license key." 
   },
   { 
     q: "Can I upgrade from Lite to Pro or Elite later?", 
@@ -432,7 +432,7 @@ export default function PricingClient() {
           </p>
         </motion.div>
 
-        {/* ═══ 14-DAY TRIAL & FREEMIUM GUARANTEE BANNER ═══ */}
+        {/* ═══ 7-DAY EVALUATION & FREEMIUM GUARANTEE BANNER ═══ */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -445,27 +445,27 @@ export default function PricingClient() {
               <div className="flex items-center gap-2">
                 <Zap size={16} className="text-amber-400" />
                 <span className="text-xs font-black uppercase tracking-widest text-amber-400">
-                  Free 14-Day Evaluation + Free Forever Fallback
+                  7-Day Free Evaluation + Free Forever Fallback
                 </span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight">
                 Test Every Feature on Your Factory PC. <span className="text-blue-400">Zero Risk of Data Loss.</span>
               </h2>
               <p className="text-xs text-slate-400 leading-relaxed max-w-2xl font-normal">
-                Download the installer, run setup, and start using immediately. No credit card, no email registration, and no internet required. After 14 days, your data stays completely safe on your hard drive — continue using the <strong className="text-white">Free Forever</strong> tier (POS counter, basic ledger, and full data access forever) or activate your license via Raqami Islamic Digital Bank or JazzCash.
+                Download the installer, run setup, and start using immediately. No credit card, no email registration, and no internet required. After 7 days, your data stays completely safe on your hard drive — continue using the <strong className="text-white">Free Forever</strong> tier (POS counter, basic ledger, and full data access forever) or activate your license via Raqami Islamic Digital Bank or JazzCash.
               </p>
             </div>
             <div className="lg:col-span-4 flex flex-col sm:flex-row lg:flex-col gap-3 justify-center">
               <div className="bg-white/5 border border-white/10 p-4 rounded-sm space-y-1">
                 <div className="flex items-center justify-between text-[11px] font-bold text-white uppercase tracking-wider">
-                  <span>14-Day Free Evaluation</span>
+                  <span>Days 1–7 (Full Pro Access)</span>
                   <span className="text-emerald-400">All Features Unlocked</span>
                 </div>
                 <p className="text-[10px] text-slate-400">Karigar Piece-Rates, Fabric Inventory, Khata, Vouchers &amp; Phone Pairing</p>
               </div>
               <div className="bg-white/5 border border-white/10 p-4 rounded-sm space-y-1">
                 <div className="flex items-center justify-between text-[11px] font-bold text-white uppercase tracking-wider">
-                  <span>After Day 14</span>
+                  <span>Day 8+ (Free Forever Fallback)</span>
                   <span className="text-blue-400">Free Forever Tier</span>
                 </div>
                 <p className="text-[10px] text-slate-400">POS Counter Open Forever · 200 SKUs · 50 Parties · Full PDF/Excel Export</p>
@@ -648,7 +648,7 @@ export default function PricingClient() {
               <div className="p-3.5 bg-black/40 border border-white/5 rounded-sm space-y-1 text-xs">
                 <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">💡 Recommended Setup:</span>
                 <p className="text-gray-300">
-                  For {karigarCount} workers, our <strong className="text-white">Pro Tier (15 Looms)</strong> or <strong className="text-cyan-400">Elite Tier (50 Looms)</strong> pays for itself within the first 14 days of operation.
+                  For {karigarCount} workers, our <strong className="text-white">Pro Tier (15 Looms)</strong> or <strong className="text-cyan-400">Elite Tier (50 Looms)</strong> pays for itself within the first 7 days of operation.
                 </p>
               </div>
             </div>

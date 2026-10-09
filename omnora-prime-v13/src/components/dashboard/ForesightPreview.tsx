@@ -20,7 +20,7 @@ export function ForesightPreview() {
       </div>
 
       <p className="text-xs text-gray-400 leading-relaxed">
-        Cash flow projection for next 14 days shows optimal liquidity. Peak payroll demand expected on Friday.
+        Cash flow projection for next 7 days shows optimal liquidity. Peak payroll demand expected on Friday.
       </p>
 
       <button

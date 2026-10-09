@@ -270,7 +270,7 @@ export default function LandingClient() {
                     boxShadow: `0 12px 40px ${CHAMPAGNE}33`,
                   }}
                 >
-                  <Download size={14} /> Download Free 14-Day Trial (.exe)
+                  <Download size={14} /> Download 7-Day Free Evaluation (.exe)
                 </Link>
                 <a
                   href="https://wa.me/923264742678?text=Salam%20Omnora,%20I%20want%20a%20live%20demo%20of%20Noxis%20Hub"
@@ -824,7 +824,7 @@ export default function LandingClient() {
                       href="/download"
                       className="w-full sm:w-auto inline-flex items-center justify-center gap-2 border border-white/20 font-extrabold text-[10px] tracking-[0.2em] uppercase py-4 px-8 rounded-sm text-white hover:bg-white/5 transition-colors cursor-pointer"
                     >
-                      <Download size={14} /> Download Free 14-Day Trial
+                      <Download size={14} /> Download 7-Day Free Evaluation
                     </Link>
                   </div>
                 </div>

@@ -21,8 +21,8 @@ const FAQS = [
     a: "They connect via your local office Wi-Fi router. No external internet access is required for the phone-to-PC mesh."
   },
   {
-    q: "WHAT HAPPENS TO MY DATA AFTER THE 14-DAY TRIAL ENDS?",
-    a: "Your data stays on your PC forever. We never lock or delete your files. After 14 days, you can continue using the Free tier (POS counter, customer balance search, and full Excel/PDF export) or WhatsApp us to activate an offline permanent license key."
+    q: "WHAT HAPPENS TO MY DATA AFTER THE 7-DAY TRIAL ENDS?",
+    a: "Your data stays on your PC forever. We never lock or delete your files. After 7 days, you can continue using the Free tier (POS counter, customer balance search, and full Excel/PDF export) or WhatsApp us to activate an offline permanent license key."
   },
   {
     q: "IS MY FACTORY DATA KEPT PRIVATE?",
@@ -47,7 +47,7 @@ export default function DownloadPage() {
 
         <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#08EBF6]/10 border border-[#08EBF6]/30 text-[#08EBF6] text-[10px] font-mono font-bold uppercase tracking-widest">
           <Sparkles size={12} />
-          <span>Free 14-Day Full Trial · No Registration Needed</span>
+          <span>7-Day Free Evaluation · No Registration Needed</span>
         </div>
 
         <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight max-w-3xl mx-auto uppercase leading-tight">
@@ -128,7 +128,7 @@ export default function DownloadPage() {
             Feature Comparison & Modules
           </h2>
           <p className="text-xs text-gray-400">
-            Compare functionality across operational tiers. The download includes full Elite access for your first 14 days.
+            Compare functionality across operational tiers. The download includes full Pro/Elite access for your first 7 days.
           </p>
         </div>
 
@@ -140,7 +140,7 @@ export default function DownloadPage() {
                 <th className="p-4 text-gray-400 font-bold uppercase tracking-wider">Free Forever (Post-Trial)</th>
                 <th className="p-4 text-gray-400 font-bold uppercase tracking-wider">Lite License</th>
                 <th className="p-4 bg-[#08EBF6]/10 text-[#08EBF6] border-x border-[#08EBF6]/30 font-bold uppercase tracking-wider">
-                  Elite / 14-Day Trial
+                  Pro / 7-Day Free Evaluation
                 </th>
               </tr>
             </thead>
@@ -183,9 +183,9 @@ export default function DownloadPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="p-6 bg-[#080A0F] border border-[#08EBF6]/30 rounded-lg space-y-2">
             <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#08EBF6] bg-[#08EBF6]/10 px-2 py-0.5 rounded">
-              Days 1–14
+              Days 1–7 (Full Pro Access)
             </span>
-            <h3 className="text-base font-bold text-white uppercase font-mono">Free Trial (Day 1–14)</h3>
+            <h3 className="text-base font-bold text-white uppercase font-mono">7-Day Free Evaluation (Days 1–7)</h3>
             <p className="text-xs text-zinc-400 leading-relaxed font-sans">
               Download the .zip, extract to any folder, and run NoxisHub.exe directly — no installer needed. No credit card, no email registration, and no internet required. All features are fully unlocked so you can test piece-rate wages, Khata entries, and inventory tracking on your actual factory floor.
             </p>
@@ -193,11 +193,11 @@ export default function DownloadPage() {
 
           <div className="p-6 bg-[#080A0F] border border-white/10 rounded-lg space-y-2">
             <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded">
-              Day 14+
+              Day 8+ (Free Forever Fallback)
             </span>
-            <h3 className="text-base font-bold text-white uppercase font-mono">Paid Activation (After Day 14)</h3>
+            <h3 className="text-base font-bold text-white uppercase font-mono">Paid Activation (Day 8+)</h3>
             <p className="text-xs text-zinc-400 leading-relaxed font-sans">
-              To keep using premium features after 14 days, copy your machine's ID from Settings and WhatsApp us to receive your offline permanent license key. If you choose not to activate, your data is never locked — the Free Forever tier keeps POS counter and search permanently active.
+              To keep using premium features after 7 days, copy your machine's ID from Settings and WhatsApp us to receive your offline permanent license key. If you choose not to activate, your data is never locked — the Free Forever tier keeps POS counter and search permanently active.
             </p>
           </div>
         </div>
@@ -306,7 +306,7 @@ export default function DownloadPage() {
       <section className="py-16 px-6 text-center border-t border-white/10 max-w-4xl mx-auto space-y-4">
         <h3 className="text-2xl font-bold font-mono text-white uppercase">Download and Test on Your Factory PC</h3>
         <p className="text-xs text-zinc-400 max-w-md mx-auto">
-          Start your 14-day full evaluation immediately. No sign-up, no credit card, and completely offline.
+          Start your 7-Day Free Evaluation immediately. No sign-up, no credit card, and completely offline.
         </p>
         <a
           href={DOWNLOAD_ZIP_URL}
