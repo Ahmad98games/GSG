@@ -800,17 +800,37 @@ function GiveAdvanceForm({ onSuccess }: { onSuccess: () => void }) {
 
     setIsSubmitting(true);
     try {
-      const { error } = await supabase.from('karigar_advances').insert({
-        business_id: businessId,
-        karigar_id: selectedKarigar.id,
-        amount: Number(amount),
-        reason: reason,
-        status: 'approved',
-        approved_at: new Date().toISOString(),
-        posted_at: new Date().toISOString()
+      const res = await fetch('/api/karigars', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          operation: 'advance',
+          karigar_id: selectedKarigar.id,
+          advance_data: {
+            business_id: businessId,
+            karigar_id: selectedKarigar.id,
+            amount: Number(amount),
+            reason: reason,
+            status: 'approved',
+            approved_at: new Date().toISOString(),
+            posted_at: new Date().toISOString()
+          }
+        })
       });
 
-      if (error) throw error;
+      const resData = await res.json().catch(() => ({}));
+      if (!res.ok || resData.error) {
+        const { error } = await supabase.from('karigar_advances').insert({
+          business_id: businessId,
+          karigar_id: selectedKarigar.id,
+          amount: Number(amount),
+          reason: reason,
+          status: 'approved',
+          approved_at: new Date().toISOString(),
+          posted_at: new Date().toISOString()
+        });
+        if (error) throw new Error(resData.error || error.message);
+      }
 
       showSuccess(`PKR ${amount} advance given to ${selectedKarigar.name} ✓`);
       queryClient.invalidateQueries({ queryKey: ['karigar_advances'] });

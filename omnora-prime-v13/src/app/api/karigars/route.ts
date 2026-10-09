@@ -114,18 +114,22 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'karigar_id and advance_data are required' }, { status: 400 });
       }
 
+      const { new_advance_balance, ...insertPayload } = advance_data;
+
       const { error: advErr } = await supabase
         .from('karigar_advances')
-        .insert(advance_data);
+        .insert(insertPayload);
 
       if (advErr) {
         return NextResponse.json({ error: advErr.message }, { status: 400 });
       }
 
+      const newBalance = new_advance_balance !== undefined ? new_advance_balance : advance_data.amount;
+
       const { error: updateErr } = await supabase
         .from('karigars')
         .update({
-          current_advance: advance_data.new_advance_balance,
+          current_advance: newBalance,
           updated_at: new Date().toISOString()
         })
         .eq('id', karigar_id);

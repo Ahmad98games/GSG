@@ -81,7 +81,12 @@ export function usePersona() {
     workerTermPlural: industryConfig.t.workers,
     // Legacy compatibility
     persona: profile,
-    can: (feature: string) => industryConfig.features[feature as keyof typeof industryConfig.features] ?? PersonaEngine.hasModule(feature),
+    can: (feature: string) => {
+      if (feature === 'medical_pharma_features' || feature === 'kitchen_features' || feature === 'logistics_features') return true;
+      const featVal = (industryConfig.features as any)[feature];
+      if (featVal !== undefined) return Boolean(featVal);
+      return PersonaEngine.hasModule(feature) ?? true;
+    },
     isSA: profile?.region === 'south_asian',
     taxRate: industryConfig.region.taxRate,
     taxLabel: industryConfig.region.taxLabel,

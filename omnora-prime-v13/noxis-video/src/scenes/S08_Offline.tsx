@@ -189,7 +189,7 @@ export const S08_Offline: React.FC<{ from: number }> = ({ from }) => {
             </div>
 
             <div className="text-center text-[10px] text-gray-500 font-mono">
-              Noxis Hardware Bridge v13.0.7
+              Noxis Hardware Bridge v13.0.8
             </div>
           </div>
         </div>

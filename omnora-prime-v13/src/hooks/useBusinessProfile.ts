@@ -205,8 +205,13 @@ export const useBusinessProfile = () => {
           const cachedLogo = typeof window !== 'undefined' ? (localStorage.getItem('noxis_logo') || localStorage.getItem('noxis_avatar_url')) : null;
           const finalLogo = (data as any).logo_url || existing.logo_url || cachedLogo || (data as any).avatar_url || '';
 
+          const resolvedIndustryKey = (data as any).industry_key || (data as any).industry || existing.industry_key || (typeof window !== 'undefined' ? localStorage.getItem('noxis_industry_key') : null) || 'general';
+          const resolvedIndustryLastChangedAt = (data as any).industry_last_changed_at || existing.industry_last_changed_at || (typeof window !== 'undefined' ? localStorage.getItem('noxis_industry_last_changed_at') : null) || undefined;
+
           setProfile({
             ...data,
+            industry_key: resolvedIndustryKey,
+            industry_last_changed_at: resolvedIndustryLastChangedAt,
             logo_url: finalLogo,
             avatar_url: (data as any).avatar_url || finalLogo,
             owner_phone: (data as any).owner_phone || (data as any).phone || ""
@@ -231,7 +236,8 @@ export const useBusinessProfile = () => {
                   avatar_last_changed: data.avatar_last_changed || '',
                   tier: data.tier || 'lite',
                   industry_type: data.industry_type || 'general',
-                  industry_key: data.industry_key || data.industry || 'general',
+                  industry_key: resolvedIndustryKey,
+                  industry_last_changed_at: resolvedIndustryLastChangedAt || '',
                   role: data.role || 'retailer',
                   currency: data.currency || 'PKR',
                   region: data.region || 'south_asian',

@@ -49,6 +49,17 @@ interface ChangelogItem {
 
 const HISTORICAL_CHANGELOGS: ChangelogItem[] = [
   {
+    version: '13.0.8',
+    date: 'October 2026',
+    type: 'patch',
+    title: 'Peshgi Advance RLS Fix, Multi-Industry Sidebar Routing & 7-Day Category Lock',
+    highlights: [
+      { tag: 'Payroll & Peshgi', text: 'Routed advance disbursements through privileged service handler, resolving RLS permission denied errors', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      { tag: 'Multi-Industry Routing', text: 'Built missing Rice Mill yield recovery & Cold Chain telemetry dashboards; resolved layout route drops', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
+      { tag: 'Category Lock', text: 'Enforced 7-day category lock with confirmation modal and multi-layer persistence preventing unintended reverts', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+    ],
+  },
+  {
     version: '13.0.7',
     date: 'October 2026',
     type: 'patch',
@@ -686,7 +697,7 @@ export default function UpdatesPage() {
               Auto-Sync Feed: /updates/{channel}
             </span>
             <a
-              href="https://noxishub.app/updates/stable/Noxis%20Hub%20Setup%2013.0.7.exe"
+              href="https://noxishub.app/updates/stable/Noxis%20Hub%20Setup%2013.0.8.exe"
               target="_blank"
               rel="noreferrer"
               className="text-[11px] font-medium text-cyan-400 hover:text-cyan-300 underline underline-offset-2 flex items-center gap-1 cursor-pointer"

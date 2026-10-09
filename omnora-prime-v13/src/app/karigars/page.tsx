@@ -553,19 +553,40 @@ function AdvanceModal({ karigar, onClose, onSuccess }: { karigar: Karigar, onClo
   const onSubmit = async (values: z.infer<typeof advanceSchema>) => {
     setIsSubmitting(true);
     try {
-      const { error: advError } = await supabase.from('karigar_advances').insert({
-        business_id: profile?.id,
-        karigar_id: karigar.id,
-        amount: values.amount,
-        reason: values.reason,
-        status: 'pending'
+      const res = await fetch('/api/karigars', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          operation: 'advance',
+          karigar_id: karigar.id,
+          advance_data: {
+            business_id: profile?.id,
+            karigar_id: karigar.id,
+            amount: Number(values.amount),
+            reason: values.reason,
+            status: 'pending',
+            advance_date: new Date().toISOString().split('T')[0],
+            new_advance_balance: Number(karigar.current_advance || 0) + Number(values.amount)
+          }
+        })
       });
-      if (advError) throw advError;
 
-      const { error: updateError } = await supabase.from('karigars').update({
-        current_advance: Number(karigar.current_advance) + Number(values.amount)
-      }).eq('id', karigar.id);
-      if (updateError) throw updateError;
+      const resData = await res.json().catch(() => ({}));
+      if (!res.ok || resData.error) {
+        // Fallback: Attempt direct client update if API unavailable
+        const { error: advError } = await supabase.from('karigar_advances').insert({
+          business_id: profile?.id,
+          karigar_id: karigar.id,
+          amount: values.amount,
+          reason: values.reason,
+          status: 'pending'
+        });
+        if (advError) throw new Error(resData.error || advError.message);
+
+        await supabase.from('karigars').update({
+          current_advance: Number(karigar.current_advance) + Number(values.amount)
+        }).eq('id', karigar.id);
+      }
 
       onSuccess(`Advance of ${fmt(values.amount)} issued to ${karigar.name}`);
     } catch (err: unknown) {
