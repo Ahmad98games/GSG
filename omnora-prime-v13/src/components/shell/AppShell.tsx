@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
 "use client";
 
-import React, { Suspense } from "react";
+import React, { Suspense, useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import QuickActions from "@/components/shell/QuickActions";
 import ActionTrail from "@/components/ui/ActionTrail";
