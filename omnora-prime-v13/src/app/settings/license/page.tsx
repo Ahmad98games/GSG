@@ -41,9 +41,9 @@ const PLANS: PlanDetails[] = [
   {
     key: 'pro',
     name: 'Pro Tier',
-    pkrPrice: 'Rs. 6,999 / mo (PKR 45k/yr)',
-    aedPrice: 'AED 600 / year',
-    usdPrice: '$160 / year',
+    pkrPrice: 'Rs. 6,999 / mo (PKR 60k/yr)',
+    aedPrice: 'AED 750 / year',
+    usdPrice: '$205 / year',
     popular: true,
     features: [
       'Up to 15 workstation PCs & 15 Android phones on Wi-Fi',
@@ -57,9 +57,9 @@ const PLANS: PlanDetails[] = [
   {
     key: 'elite',
     name: 'Elite Tier',
-    pkrPrice: 'Rs. 13,999 / mo (PKR 75k/yr)',
-    aedPrice: 'AED 1,000 / year',
-    usdPrice: '$270 / year',
+    pkrPrice: 'Rs. 13,999 / mo (PKR 120k/yr)',
+    aedPrice: 'AED 1,499 / year',
+    usdPrice: '$410 / year',
     features: [
       'Up to 50 workstation PCs & 50 Android devices on Wi-Fi',
       'Connect up to 6 IP cameras with AI Sentinel tripwires',

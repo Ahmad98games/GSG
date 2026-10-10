@@ -1140,6 +1140,43 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   ipcMain.on('window-close', () => mainWindow?.close());
   ipcMain.handle('window-is-maximized', () => mainWindow?.isMaximized() ?? false);
 
+  // ─────────────────────────────────────────────
+  // 8B. DISPLAY & ZOOM CONTROLS (Ctrl+0 Reset)
+  // ─────────────────────────────────────────────
+  ipcMain.handle('app:reset-zoom', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.setZoomLevel(0);
+      mainWindow.webContents.setZoomFactor(1.0);
+      startupLog('[Zoom] Reset display scale to 100% (Ctrl+0)');
+      return 1.0;
+    }
+    return 1.0;
+  });
+
+  ipcMain.handle('app:zoom-in', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      const current = mainWindow.webContents.getZoomFactor();
+      const next = Math.min(2.0, Number((current + 0.1).toFixed(2)));
+      mainWindow.webContents.setZoomFactor(next);
+      return next;
+    }
+    return 1.0;
+  });
+
+  ipcMain.handle('app:zoom-out', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      const current = mainWindow.webContents.getZoomFactor();
+      const next = Math.max(0.8, Number((current - 0.1).toFixed(2)));
+      mainWindow.webContents.setZoomFactor(next);
+      return next;
+    }
+    return 1.0;
+  });
+
+  ipcMain.handle('app:get-zoom-factor', () => {
+    return mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents.getZoomFactor() : 1.0;
+  });
+
   // Serial port for weighbridge
   ipcMain.handle('fetchScaleWeight', async () => {
     try {
@@ -1929,6 +1966,29 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       const wasAutoStarted = process.argv.includes('--autostart')
       if (wasAutoStarted) {
         mainWindow?.webContents.send('app:autostarted', { timestamp: Date.now() })
+      }
+    });
+
+    // ── Input & Display Scale Safeguards (Prevents Accidental Micro-Zoom) ──
+    mainWindow.webContents.setVisualZoomLevelLimits(1, 2);
+
+    mainWindow.webContents.on('before-input-event', (event, input) => {
+      if (input.control || input.meta) {
+        // Ctrl + 0: Reset zoom to 100% immediately
+        if (input.key === '0' || input.code === 'Digit0' || input.code === 'Numpad0') {
+          event.preventDefault();
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.setZoomLevel(0);
+            mainWindow.webContents.setZoomFactor(1.0);
+            mainWindow.webContents.send('app:zoom-changed', 1.0);
+            startupLog('[Display] Hotkey Ctrl+0 pressed: display zoom reset to 100%');
+          }
+        } else if (input.key === '-' || input.code === 'Minus' || input.code === 'NumpadSubtract') {
+          const current = mainWindow?.webContents.getZoomFactor() || 1.0;
+          if (current <= 0.8) {
+            event.preventDefault(); // Safeguard: never zoom below 80% to prevent micro-screen glitch
+          }
+        }
       }
     });
 

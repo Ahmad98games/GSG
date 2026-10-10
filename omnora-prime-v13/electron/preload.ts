@@ -281,4 +281,14 @@ contextBridge.exposeInMainWorld('cctv', {
   // Check if mediamtx is currently running
   isStreamingActive: () =>
     ipcRenderer.invoke('cctv:isStreamingActive'),
+
+  // Display Scale & Zoom (Ctrl+0 reset)
+  resetZoom: () =>
+    ipcRenderer.invoke('app:reset-zoom'),
+  zoomIn: () =>
+    ipcRenderer.invoke('app:zoom-in'),
+  zoomOut: () =>
+    ipcRenderer.invoke('app:zoom-out'),
+  getZoomFactor: () =>
+    ipcRenderer.invoke('app:get-zoom-factor'),
 });

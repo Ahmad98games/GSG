@@ -36,7 +36,9 @@ export default function DocsPage() {
     { id: 'karigar', icon: <Banknote size={14} />, title: '9. Karigar Work, Attendance & Peshgi' },
     { id: 'cctv', icon: <ShieldCheck size={14} />, title: '10. Factory CCTV & Live Camera Feeds' },
     { id: 'fault-recovery', icon: <HelpCircle size={14} />, title: '11. Load-Shedding & Power Cut Protection' },
-    { id: 'troubleshoot', icon: <Sparkles size={14} />, title: '12. System Health & Quick Help' }
+    { id: 'troubleshoot', icon: <Sparkles size={14} />, title: '12. System Health & Quick Help' },
+    { id: 'shortcuts-zoom', icon: <Terminal size={14} />, title: '13. Shortcuts & Zoom Glitch Fix (Ctrl+0)' },
+    { id: 'feature-guide', icon: <BookOpen size={14} />, title: '14. Complete Feature Guide for New Users' }
   ]
 
   useEffect(() => {
@@ -549,6 +551,318 @@ export default function DocsPage() {
                   <p>• <strong className="text-white">Daily Backups:</strong> Use the one-click backup button in Settings to save a copy of your records to a USB thumb drive.</p>
                   <p>• <strong className="text-white">Direct Support:</strong> If any error banner appears, share the on-screen error code with our support team on WhatsApp for prompt resolution.</p>
                 </div>
+              </ScrollReveal3D>
+            </motion.section>
+
+            {/* 13. SHORTCUTS & DISPLAY ZOOM GLITCH FIX (CTRL + 0) */}
+            <motion.section 
+              id="shortcuts-zoom"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true, margin: '-100px' }}
+              className="pt-12 border-t border-white/[0.05] scroll-mt-28"
+            >
+              <ScrollReveal3D className="space-y-6">
+                <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
+                  <span className="text-[#C5A059] font-mono text-base">13.</span> Master Keyboard Shortcuts & Zoom Glitch Fix
+                </h2>
+
+                {/* EMERGENCY DISPLAY ZOOM CALLOUT */}
+                <div className="p-6 bg-gradient-to-r from-amber-500/10 via-cyan-500/10 to-transparent border border-amber-500/30 rounded-sm space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded bg-amber-500 text-black text-[10px] font-black uppercase font-mono tracking-wider">CRITICAL FIX</span>
+                    <h3 className="text-sm font-bold text-white">Screen looks tiny, shrunken, or zoomed out? (Accidental Zoom Out)</h3>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    If your software appears tiny in the center of the screen surrounded by a black empty background (caused by holding <strong>Ctrl</strong> and scrolling the mouse wheel or pressing <strong>Ctrl + -</strong>), press <kbd className="px-2 py-0.5 bg-black border border-cyan-400/50 rounded font-mono text-cyan-400 font-bold">Ctrl + 0</kbd> on your keyboard. This immediately resets the visual scale back to 100% normal view!
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs font-mono">
+                    <div className="p-2.5 bg-black/40 border border-white/5 rounded">
+                      <span className="text-cyan-400 font-bold">Ctrl + 0</span>
+                      <p className="text-[11px] text-slate-400 mt-0.5 font-sans">Reset Display Zoom to 100%</p>
+                    </div>
+                    <div className="p-2.5 bg-black/40 border border-white/5 rounded">
+                      <span className="text-cyan-400 font-bold">Ctrl + +</span>
+                      <p className="text-[11px] text-slate-400 mt-0.5 font-sans">Zoom In (+10% Scaling)</p>
+                    </div>
+                    <div className="p-2.5 bg-black/40 border border-white/5 rounded">
+                      <span className="text-cyan-400 font-bold">Ctrl + -</span>
+                      <p className="text-[11px] text-slate-400 mt-0.5 font-sans">Zoom Out (-10% Scaling)</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ALL SHORTCUT KEYS TABLE */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200">
+                    Industrial Keyboard Shortcuts Cheat Sheet
+                  </h3>
+                  <div className="overflow-x-auto border border-white/10 rounded-sm">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-[#0B0E14] text-slate-400 uppercase font-mono text-[10px] border-b border-white/10">
+                        <tr>
+                          <th className="p-3">Action / Operation</th>
+                          <th className="p-3">Shortcut Key</th>
+                          <th className="p-3">Category</th>
+                          <th className="p-3">Notes</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5 font-mono text-[11px]">
+                        <tr className="hover:bg-white/[0.02]">
+                          <td className="p-3 text-white font-sans font-medium">Reset Zoom to 100%</td>
+                          <td className="p-3 text-cyan-300 font-bold">Ctrl + 0</td>
+                          <td className="p-3 text-amber-400">Display</td>
+                          <td className="p-3 text-slate-400 font-sans">Fixes shrunken window glitch instantly</td>
+                        </tr>
+                        <tr className="hover:bg-white/[0.02]">
+                          <td className="p-3 text-white font-sans font-medium">Global Command Palette</td>
+                          <td className="p-3 text-cyan-300 font-bold">Ctrl + K</td>
+                          <td className="p-3 text-blue-400">Navigation</td>
+                          <td className="p-3 text-slate-400 font-sans">Search bills, parties, SKUs, and settings</td>
+                        </tr>
+                        <tr className="hover:bg-white/[0.02]">
+                          <td className="p-3 text-white font-sans font-medium">POS Counter / Quick Bill</td>
+                          <td className="p-3 text-cyan-300 font-bold">Ctrl + P / F2</td>
+                          <td className="p-3 text-emerald-400">Sales</td>
+                          <td className="p-3 text-slate-400 font-sans">Opens checkout counter or clears basket</td>
+                        </tr>
+                        <tr className="hover:bg-white/[0.02]">
+                          <td className="p-3 text-white font-sans font-medium">Select Customer / Party</td>
+                          <td className="p-3 text-cyan-300 font-bold">F4</td>
+                          <td className="p-3 text-emerald-400">Sales</td>
+                          <td className="p-3 text-slate-400 font-sans">Focuses customer search on POS</td>
+                        </tr>
+                        <tr className="hover:bg-white/[0.02]">
+                          <td className="p-3 text-white font-sans font-medium">Cash Payment Tender</td>
+                          <td className="p-3 text-cyan-300 font-bold">F7</td>
+                          <td className="p-3 text-emerald-400">Sales</td>
+                          <td className="p-3 text-slate-400 font-sans">Direct cash payment entry</td>
+                        </tr>
+                        <tr className="hover:bg-white/[0.02]">
+                          <td className="p-3 text-white font-sans font-medium">Khata Credit Tender</td>
+                          <td className="p-3 text-cyan-300 font-bold">F8</td>
+                          <td className="p-3 text-emerald-400">Sales</td>
+                          <td className="p-3 text-slate-400 font-sans">Books invoice to wholesale ledger</td>
+                        </tr>
+                        <tr className="hover:bg-white/[0.02]">
+                          <td className="p-3 text-white font-sans font-medium">Print Thermal Receipt</td>
+                          <td className="p-3 text-cyan-300 font-bold">F9</td>
+                          <td className="p-3 text-emerald-400">Sales</td>
+                          <td className="p-3 text-slate-400 font-sans">Sends 58mm/80mm slip to default printer</td>
+                        </tr>
+                        <tr className="hover:bg-white/[0.02]">
+                          <td className="p-3 text-white font-sans font-medium">Commit & Save Invoice</td>
+                          <td className="p-3 text-cyan-300 font-bold">F10</td>
+                          <td className="p-3 text-emerald-400">Sales</td>
+                          <td className="p-3 text-slate-400 font-sans">Instant save and inventory deduction</td>
+                        </tr>
+                        <tr className="hover:bg-white/[0.02]">
+                          <td className="p-3 text-white font-sans font-medium">Inventory & SKUs</td>
+                          <td className="p-3 text-cyan-300 font-bold">Ctrl + I</td>
+                          <td className="p-3 text-purple-400">Operations</td>
+                          <td className="p-3 text-slate-400 font-sans">Raw materials & finished goods list</td>
+                        </tr>
+                        <tr className="hover:bg-white/[0.02]">
+                          <td className="p-3 text-white font-sans font-medium">Wholesale Khata & Parties</td>
+                          <td className="p-3 text-cyan-300 font-bold">Ctrl + Shift + P</td>
+                          <td className="p-3 text-purple-400">Finance</td>
+                          <td className="p-3 text-slate-400 font-sans">Customer/Supplier double-entry ledgers</td>
+                        </tr>
+                        <tr className="hover:bg-white/[0.02]">
+                          <td className="p-3 text-white font-sans font-medium">Karigar Piece-Rate Payroll</td>
+                          <td className="p-3 text-cyan-300 font-bold">Ctrl + Shift + K</td>
+                          <td className="p-3 text-purple-400">Workforce</td>
+                          <td className="p-3 text-slate-400 font-sans">Artisan wages, attendance & advances</td>
+                        </tr>
+                        <tr className="hover:bg-white/[0.02]">
+                          <td className="p-3 text-white font-sans font-medium">Roznamcha & Financial Reports</td>
+                          <td className="p-3 text-cyan-300 font-bold">Ctrl + Shift + R</td>
+                          <td className="p-3 text-purple-400">Finance</td>
+                          <td className="p-3 text-slate-400 font-sans">Daily cash book & P&L summaries</td>
+                        </tr>
+                        <tr className="hover:bg-white/[0.02]">
+                          <td className="p-3 text-white font-sans font-medium">RTSP CCTV Live Feeds</td>
+                          <td className="p-3 text-cyan-300 font-bold">Ctrl + Shift + C</td>
+                          <td className="p-3 text-red-400">Security</td>
+                          <td className="p-3 text-slate-400 font-sans">Camera matrix & tripwire monitoring</td>
+                        </tr>
+                        <tr className="hover:bg-white/[0.02]">
+                          <td className="p-3 text-white font-sans font-medium">Exchange Rates Ledger</td>
+                          <td className="p-3 text-cyan-300 font-bold">Ctrl + Shift + E</td>
+                          <td className="p-3 text-yellow-400">Finance</td>
+                          <td className="p-3 text-slate-400 font-sans">Multi-currency matrix & live sync</td>
+                        </tr>
+                        <tr className="hover:bg-white/[0.02]">
+                          <td className="p-3 text-white font-sans font-medium">Universal Data Importer</td>
+                          <td className="p-3 text-cyan-300 font-bold">Ctrl + Shift + M</td>
+                          <td className="p-3 text-cyan-400">System</td>
+                          <td className="p-3 text-slate-400 font-sans">XLSX/CSV smart entity batch ingestion</td>
+                        </tr>
+                        <tr className="hover:bg-white/[0.02]">
+                          <td className="p-3 text-white font-sans font-medium">Toggle Sidebar</td>
+                          <td className="p-3 text-cyan-300 font-bold">Ctrl + B</td>
+                          <td className="p-3 text-slate-400">View</td>
+                          <td className="p-3 text-slate-400 font-sans">Collapses left menu for maximum screen</td>
+                        </tr>
+                        <tr className="hover:bg-white/[0.02]">
+                          <td className="p-3 text-white font-sans font-medium">Open Shortcuts Modal</td>
+                          <td className="p-3 text-cyan-300 font-bold">? or F1</td>
+                          <td className="p-3 text-slate-400">Help</td>
+                          <td className="p-3 text-slate-400 font-sans">Interactive helper with 1-click zoom reset</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </ScrollReveal3D>
+            </motion.section>
+
+            {/* 14. COMPLETE STEP-BY-STEP FEATURE GUIDE FOR NEW USERS */}
+            <motion.section 
+              id="feature-guide"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true, margin: '-100px' }}
+              className="pt-12 border-t border-white/[0.05] scroll-mt-28"
+            >
+              <ScrollReveal3D className="space-y-8">
+                <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-3">
+                  <span className="text-[#C5A059] font-mono text-base">14.</span> Complete Step-by-Step Feature Guide for New Users
+                </h2>
+                <p className="text-sm text-slate-400 leading-relaxed font-medium pl-6 border-l border-white/[0.02]">
+                  New to Noxis Hub? Here is the complete operational guide for every single core feature to help your factory or trading business get running smoothly.
+                </p>
+
+                {/* FEATURE 1: POS COUNTER */}
+                <div className="bg-[#0A0D10] border border-white/10 p-6 rounded-sm space-y-4">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    <h3 className="text-base font-bold text-white uppercase tracking-wider">1. POS Counter & Rapid Billing</h3>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Designed for fast counter sales in wholesale cloth markets, yarn mandis, and retail counters.
+                  </p>
+                  <div className="space-y-2 text-xs text-slate-400">
+                    <p><strong className="text-white">Step 1 — Start Bill:</strong> Press <kbd className="text-cyan-400 font-mono">F2</kbd> or click <em>Sales → POS</em>.</p>
+                    <p><strong className="text-white">Step 2 — Add Items:</strong> Scan barcodes directly with any USB handheld scanner or search by SKU name/code.</p>
+                    <p><strong className="text-white">Step 3 — Customer Assignment:</strong> Press <kbd className="text-cyan-400 font-mono">F4</kbd> to pick an existing Khata party or type a walk-in name.</p>
+                    <p><strong className="text-white">Step 4 — Payment Settlement:</strong> Press <kbd className="text-cyan-400 font-mono">F7</kbd> for instant cash, or <kbd className="text-cyan-400 font-mono">F8</kbd> to add directly to the customer's Khata credit balance.</p>
+                    <p><strong className="text-white">Step 5 — Print & Dispatch:</strong> Press <kbd className="text-cyan-400 font-mono">F9</kbd> for 58mm/80mm thermal slip, or <kbd className="text-cyan-400 font-mono">F10</kbd> to commit and automatically dispatch a WhatsApp PDF slip.</p>
+                  </div>
+                </div>
+
+                {/* FEATURE 2: INVENTORY & SKUs */}
+                <div className="bg-[#0A0D10] border border-white/10 p-6 rounded-sm space-y-4">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-blue-400" />
+                    <h3 className="text-base font-bold text-white uppercase tracking-wider">2. Inventory, Raw Materials & Finished Goods</h3>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Manage unlimited SKUs, fabric rolls, yarn cones, and packaged products with precise unit conversions.
+                  </p>
+                  <div className="space-y-2 text-xs text-slate-400">
+                    <p><strong className="text-white">Creating SKUs:</strong> Navigate to <em>Inventory → New Item</em>. Enter SKU code, title, purchase cost, retail/wholesale price, and unit (meters, suits, kg, boxes).</p>
+                    <p><strong className="text-white">Reorder Point Alerts:</strong> Specify a minimum safe stock level. When your warehouse dips below this threshold, Noxis Hub alerts you on the dashboard.</p>
+                    <p><strong className="text-white">Batch & Lot Tracking (Pro+):</strong> Track yarn batches and dyeing lots to prevent shade variation across production runs.</p>
+                  </div>
+                </div>
+
+                {/* FEATURE 3: WHOLESALE KHATA & PARTIES */}
+                <div className="bg-[#0A0D10] border border-white/10 p-6 rounded-sm space-y-4">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-purple-400" />
+                    <h3 className="text-base font-bold text-white uppercase tracking-wider">3. Wholesale Khata & Double-Entry Party Ledgers</h3>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Automated Pakistani-style Khata ledger with Debit (Udhaar Diya), Credit (Wasooli Aayi), and rolling balance calculations in Lakhs & Crores.
+                  </p>
+                  <div className="space-y-2 text-xs text-slate-400">
+                    <p><strong className="text-white">Opening Balance:</strong> When creating a party, enter their starting receivable or payable balance.</p>
+                    <p><strong className="text-white">Automated Entry:</strong> Every invoice or payment slip made on the counter automatically posts to the party's ledger without double-entry manual bookkeeping.</p>
+                    <p><strong className="text-white">WhatsApp Ledger Statement:</strong> Click <em>Send WhatsApp Statement</em> from the party page to deliver a formatted Urdu/English PDF balance summary directly to their phone.</p>
+                  </div>
+                </div>
+
+                {/* FEATURE 4: KARIGAR PAYROLL */}
+                <div className="bg-[#0A0D10] border border-white/10 p-6 rounded-sm space-y-4">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-amber-400" />
+                    <h3 className="text-base font-bold text-white uppercase tracking-wider">4. Karigar Piece-Rate Wage Calculations & Peshgi (Pro / Elite)</h3>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Eliminates manual wage notebooks and disputed piece counts for embroidery, stitching, weaving, and cutting karigars.
+                  </p>
+                  <div className="space-y-2 text-xs text-slate-400">
+                    <p><strong className="text-white">Artisan Grades:</strong> Categorize artisans as Master (Ustaad), Grade A (Expert), Grade B (Standard), or Grade C (Apprentice).</p>
+                    <p><strong className="text-white">Log Piece Output:</strong> Open <em>Karigars → Log Production</em>. Record pieces completed, meters stitched, or suits cut with quality grading (A, B, C, or Rejected).</p>
+                    <p><strong className="text-white">Peshgi (Advance) Ledger:</strong> Disburse worker cash advances with recorded reasons (medical, festival, emergency). The balance automatically deducts on payroll closing day.</p>
+                    <p><strong className="text-white">One-Click Pay Slips:</strong> Click <em>Run Payroll Period</em> to compute gross pieces minus advance deductions, producing printable payment slips.</p>
+                  </div>
+                </div>
+
+                {/* FEATURE 5: UNIVERSAL BULK DATA IMPORTER */}
+                <div className="bg-[#0A0D10] border border-white/10 p-6 rounded-sm space-y-4">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-cyan-400" />
+                    <h3 className="text-base font-bold text-white uppercase tracking-wider">5. Universal Excel (.xlsx) & CSV Data Importer</h3>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Easily migrate your existing business records from Excel, Google Sheets, or other software without manual data entry.
+                  </p>
+                  <div className="space-y-2 text-xs text-slate-400">
+                    <p><strong className="text-white">Smart Auto-Detection:</strong> Drag and drop any <code>.xlsx</code> or <code>.csv</code> file into <em>Settings → Import Data</em>. The engine scans your columns and automatically determines whether the spreadsheet is for Inventory SKUs, Wholesale Parties, or Karigar Workers.</p>
+                    <p><strong className="text-white">Fuzzy Column Mapping:</strong> Header names like <em>"Rate"</em>, <em>"Cost"</em>, <em>"Item Name"</em>, or <em>"Customer Phone"</em> are paired automatically. You can adjust mappings via clear dropdowns.</p>
+                    <p><strong className="text-white">Instant Validation & Ingestion:</strong> Preview the first 5 rows, review row totals, and click <em>Execute Import</em> for direct database storage.</p>
+                  </div>
+                </div>
+
+                {/* FEATURE 6: MULTI-CURRENCY EXCHANGE RATES */}
+                <div className="bg-[#0A0D10] border border-white/10 p-6 rounded-sm space-y-4">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-yellow-400" />
+                    <h3 className="text-base font-bold text-white uppercase tracking-wider">6. Multi-Currency Exchange Rates & Conversion</h3>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    For yarn importers, fabric exporters, and cross-border businesses dealing in USD, AED, EUR, SAR, GBP, or CNY.
+                  </p>
+                  <div className="space-y-2 text-xs text-slate-400">
+                    <p><strong className="text-white">Setting Benchmark Rates:</strong> Go to <em>Settings → Exchange Rates</em>. Easily type or update decimal rates for any target currency.</p>
+                    <p><strong className="text-white">Live Interbank Sync:</strong> Click <em>Sync Live Interbank Rates</em> to automatically fetch latest central bank market rates with 1-click update.</p>
+                    <p><strong className="text-white">Live Currency Calculator:</strong> Instantly convert any sum between foreign currencies and Pakistani Rupees right from the settings panel.</p>
+                  </div>
+                </div>
+
+                {/* FEATURE 7: CCTV RTSP CAMERAS */}
+                <div className="bg-[#0A0D10] border border-white/10 p-6 rounded-sm space-y-4">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-red-400" />
+                    <h3 className="text-base font-bold text-white uppercase tracking-wider">7. CCTV RTSP IP Camera Live Streaming (Pro / Elite)</h3>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Integrate your existing factory IP cameras (Hikvision, Dahua, Uniview, generic ONVIF) directly onto your desktop screen.
+                  </p>
+                  <div className="space-y-2 text-xs text-slate-400">
+                    <p><strong className="text-white">Adding a Camera:</strong> Navigate to <em>CCTV Surveillance</em>. Enter the local IP (e.g. <code>192.168.1.100</code>), port (<code>554</code>), username, and camera password.</p>
+                    <p><strong className="text-white">Live Monitoring:</strong> Up to 4 camera feeds stream simultaneously on Pro tier, and up to 6 cameras with AI Sentinel tripwires stream on Elite tier.</p>
+                  </div>
+                </div>
+
+                {/* FEATURE 8: 100% OFFLINE & BACKUPS */}
+                <div className="bg-[#0A0D10] border border-white/10 p-6 rounded-sm space-y-4">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    <h3 className="text-base font-bold text-white uppercase tracking-wider">8. 100% Offline Database & USB Backups</h3>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Your business data belongs to you. It is stored on your local computer hard drive in an industrial SQLite database.
+                  </p>
+                  <div className="space-y-2 text-xs text-slate-400">
+                    <p><strong className="text-white">Zero Cloud Lock-in:</strong> Internet disconnection never stops your cash counter, billing, or production tracking.</p>
+                    <p><strong className="text-white">Local Wi-Fi Pairing:</strong> Workstation PCs and mobile devices communicate over your office router Wi-Fi without needing external broadband.</p>
+                    <p><strong className="text-white">Daily USB Backup:</strong> Go to <em>Settings → Backup & Restore</em> to create daily copies for complete disaster immunity.</p>
+                  </div>
+                </div>
+
               </ScrollReveal3D>
             </motion.section>
 

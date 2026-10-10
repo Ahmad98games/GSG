@@ -202,4 +202,9 @@ electron_1.contextBridge.exposeInMainWorld('cctv', {
     stopStreams: () => electron_1.ipcRenderer.invoke('cctv:stopStreams'),
     // Check if mediamtx is currently running
     isStreamingActive: () => electron_1.ipcRenderer.invoke('cctv:isStreamingActive'),
+    // Display Scale & Zoom (Ctrl+0 reset)
+    resetZoom: () => electron_1.ipcRenderer.invoke('app:reset-zoom'),
+    zoomIn: () => electron_1.ipcRenderer.invoke('app:zoom-in'),
+    zoomOut: () => electron_1.ipcRenderer.invoke('app:zoom-out'),
+    getZoomFactor: () => electron_1.ipcRenderer.invoke('app:get-zoom-factor'),
 });

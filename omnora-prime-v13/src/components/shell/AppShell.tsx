@@ -397,6 +397,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <ThemePicker hideTrigger={true} />
       <SentinelAssistant />
       <ShortcutHelp />
+      <ZoomSafetyPill />
       <div 
         className={cn(
           "relative min-h-screen flex flex-col transition-all duration-300",
@@ -472,6 +473,53 @@ function PageSkeleton() {
         ))}
       </div>
       <div className="h-64 bg-white/[0.04] rounded-sm" />
+    </div>
+  );
+}
+
+function ZoomSafetyPill() {
+  const [isZoomedOut, setIsZoomedOut] = useState(false);
+
+  useEffect(() => {
+    const checkZoom = () => {
+      if (typeof window !== 'undefined') {
+        const ratio = window.outerWidth / window.innerWidth;
+        if (ratio < 0.82) {
+          setIsZoomedOut(true);
+        } else {
+          setIsZoomedOut(false);
+        }
+      }
+    };
+
+    window.addEventListener('resize', checkZoom);
+    window.addEventListener('noxis:zoom-reset', () => setIsZoomedOut(false));
+    checkZoom();
+
+    return () => {
+      window.removeEventListener('resize', checkZoom);
+    };
+  }, []);
+
+  if (!isZoomedOut) return null;
+
+  return (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[999] bg-[#0A0D14] border border-cyan-500/50 shadow-[0_0_30px_rgba(8,235,246,0.3)] px-4 py-2 rounded-full flex items-center gap-3 text-xs text-white">
+      <span className="text-amber-400 font-bold">🔍 Display Shrunken / Zoomed Out</span>
+      <button
+        onClick={() => {
+          if ((window as any).electronAPI?.resetZoom) {
+            (window as any).electronAPI.resetZoom();
+          }
+          document.documentElement.style.zoom = '100%';
+          document.body.style.zoom = '100%';
+          setIsZoomedOut(false);
+        }}
+        className="px-2.5 py-1 bg-cyan-500 hover:bg-cyan-400 text-black font-bold rounded-full text-[11px] transition-all shadow-sm"
+      >
+        Reset to 100% (Ctrl+0)
+      </button>
+      <button onClick={() => setIsZoomedOut(false)} className="text-zinc-400 hover:text-white text-xs ml-1">✕</button>
     </div>
   );
 }
