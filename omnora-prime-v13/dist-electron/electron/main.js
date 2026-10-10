@@ -540,16 +540,16 @@ else {
         startupLog(`[Icon] Splash Path: ${iconPath}`);
         startupLog(`[Icon] Splash Exists: ${fs.existsSync(iconPath)}`);
         splashWindow = new electron_1.BrowserWindow({
-            width: 420,
-            height: 300,
+            width: 540,
+            height: 380,
             frame: false,
             transparent: false,
             resizable: false,
-            movable: false,
+            movable: true,
             center: true,
             alwaysOnTop: true,
-            skipTaskbar: true,
-            backgroundColor: '#070809',
+            skipTaskbar: false,
+            backgroundColor: '#07090E',
             webPreferences: {
                 nodeIntegration: false,
                 contextIsolation: true,
@@ -563,35 +563,66 @@ else {
 <meta charset="utf-8">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
-html,body{width:100%;height:100%;background:#070809;overflow:hidden;}
-body{display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;}
-.logo-ring{width:72px;height:72px;border-radius:18px;background:linear-gradient(135deg,#1A1D21 0%,#0F1114 100%);border:1.5px solid rgba(96,165,250,0.25);display:flex;align-items:center;justify-content:center;margin-bottom:22px;box-shadow:0 0 40px rgba(96,165,250,0.12);}
-.logo-ring img{width:42px;height:42px;object-fit:contain;}
-.logo-fallback{width:42px;height:42px;display:flex;align-items:center;justify-content:center;color:#60A5FA;font-size:22px;font-weight:800;letter-spacing:-1px;}
-.wordmark{color:#FFFFFF;font-size:18px;font-weight:700;letter-spacing:6px;text-transform:uppercase;margin-bottom:6px;}
-.tagline{color:#374151;font-size:10px;letter-spacing:3px;text-transform:uppercase;margin-bottom:32px;}
-.progress-track{width:160px;height:2px;background:#111418;border-radius:1px;overflow:hidden;}
-.progress-bar{height:100%;background:linear-gradient(90deg,#3B82F6,#60A5FA);border-radius:1px;animation:prog 2s cubic-bezier(0.4,0,0.2,1) infinite;}
-@keyframes prog{0%{width:0%;margin-left:0%;}50%{width:60%;margin-left:20%;}100%{width:0%;margin-left:100%;}}
-.version{position:absolute;bottom:18px;color:#1F2937;font-size:9px;letter-spacing:2px;text-transform:uppercase;}
-.dots{display:flex;gap:4px;margin-top:16px;}
-.dot{width:4px;height:4px;border-radius:50%;background:#1F2937;animation:dot 1.4s ease-in-out infinite;}
-.dot:nth-child(1){animation-delay:0s;}
-.dot:nth-child(2){animation-delay:0.2s;}
-.dot:nth-child(3){animation-delay:0.4s;}
-@keyframes dot{0%,80%,100%{background:#1F2937;}40%{background:#3B82F6;}}
+html,body{width:100%;height:100%;background:#07090E;overflow:hidden;user-select:none;-webkit-app-region:drag;}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border:1px solid rgba(6,182,212,0.3);box-shadow:inset 0 0 40px rgba(6,182,212,0.06);}
+
+.glow-bg{position:absolute;width:240px;height:240px;background:radial-gradient(circle,rgba(6,182,212,0.18) 0%,rgba(59,130,246,0.08) 50%,transparent 70%);border-radius:50%;filter:blur(30px);pointer-events:none;animation:pulse 3s ease-in-out infinite alternate;}
+
+.logo-container{position:relative;width:96px;height:96px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;}
+.orbit-ring{position:absolute;inset:-6px;border:1.5px dashed rgba(6,182,212,0.35);border-radius:50%;animation:spin 12s linear infinite;}
+.orbit-ring-inner{position:absolute;inset:2px;border:1px solid rgba(59,130,246,0.3);border-radius:24px;transform:rotate(45deg);animation:spin-reverse 18s linear infinite;}
+
+.noxis-hexagon{width:76px;height:76px;border-radius:20px;background:linear-gradient(135deg,#0E1626 0%,#080C14 100%);border:1.5px solid rgba(6,182,212,0.5);display:flex;align-items:center;justify-content:center;box-shadow:0 0 30px rgba(6,182,212,0.25);position:relative;z-index:2;}
+
+.brand-title{font-size:24px;font-weight:900;letter-spacing:7px;text-transform:uppercase;background:linear-gradient(90deg,#FFFFFF 0%,#38BDF8 60%,#06B6D4 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px;}
+.brand-sub{font-size:9px;font-weight:700;letter-spacing:4px;color:#94A3B8;text-transform:uppercase;margin-bottom:26px;}
+
+.progress-track{width:240px;height:3px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;position:relative;margin-bottom:14px;}
+.progress-bar{position:absolute;top:0;left:0;height:100%;background:linear-gradient(90deg,#06B6D4,#3B82F6,#60A5FA);border-radius:2px;box-shadow:0 0 10px #06B6D4;animation:load 2.2s cubic-bezier(0.4,0,0.2,1) infinite;}
+
+.status-text{font-size:10px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;color:#38BDF8;letter-spacing:1px;font-weight:600;display:flex;align-items:center;gap:6px;}
+.status-dot{width:5px;height:5px;border-radius:50%;background:#06B6D4;box-shadow:0 0 8px #06B6D4;animation:blink 1s ease-in-out infinite;}
+
+.footer-meta{position:absolute;bottom:14px;display:flex;align-items:center;justify-content:space-between;width:100%;padding:0 24px;font-size:9px;font-family:ui-monospace,monospace;color:#64748B;letter-spacing:1px;}
+
+@keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+@keyframes spin-reverse{from{transform:rotate(45deg);}to{transform:rotate(-315deg);}}
+@keyframes pulse{0%{opacity:0.6;transform:scale(0.95);}100%{opacity:1;transform:scale(1.15);}}
+@keyframes load{0%{width:0%;left:0%;}50%{width:70%;left:20%;}100%{width:10%;left:100%;}}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.3;}}
 </style>
 </head>
 <body>
-<div class="logo-ring">
-  <img src="./logos/noxis.png" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
-  <div class="logo-fallback" style="display:none;">N</div>
+<div class="glow-bg"></div>
+
+<div class="logo-container">
+  <div class="orbit-ring"></div>
+  <div class="orbit-ring-inner"></div>
+  <div class="noxis-hexagon">
+    <svg width="42" height="42" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M24 4L42 14V34L24 44L6 34V14L24 4Z" stroke="#06B6D4" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M16 32V16L32 32V16" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="24" cy="24" r="3" fill="#06B6D4" filter="drop-shadow(0 0 6px #06B6D4)"/>
+    </svg>
+  </div>
 </div>
-<div class="wordmark">Noxis</div>
-<div class="tagline">Industrial ERP</div>
-<div class="progress-track"><div class="progress-bar"></div></div>
-<div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-<div class="version">v13.1 &nbsp;·&nbsp; Omnora Labs</div>
+
+<div class="brand-title">NOXIS HUB</div>
+<div class="brand-sub">Industrial Intelligence & ERP</div>
+
+<div class="progress-track">
+  <div class="progress-bar"></div>
+</div>
+
+<div class="status-text">
+  <span class="status-dot"></span>
+  <span>INITIALIZING LOCAL MESH ENGINE...</span>
+</div>
+
+<div class="footer-meta">
+  <span>v13.0.9 &nbsp;·&nbsp; SQLite WAL</span>
+  <span>OMNORA LABS</span>
+</div>
 </body>
 </html>`;
         splashWindow.loadURL(splashHtml);

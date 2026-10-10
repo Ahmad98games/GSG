@@ -139,11 +139,11 @@ const TIER_FEATURES = {
     ],
 };
 const TIER_CAPS = {
-    trial: { maxDevices: 5, maxBranches: 1, maxCameras: 4, maxSkus: -1, maxParties: -1 },
+    trial: { maxDevices: 15, maxBranches: 1, maxCameras: 4, maxSkus: -1, maxParties: -1 },
     free_forever: { maxDevices: 1, maxBranches: 1, maxCameras: 0, maxSkus: 200, maxParties: 50 },
-    lite: { maxDevices: 2, maxBranches: 1, maxCameras: 1, maxSkus: -1, maxParties: -1 },
-    pro: { maxDevices: 10, maxBranches: 3, maxCameras: 8, maxSkus: -1, maxParties: -1 },
-    elite: { maxDevices: -1, maxBranches: -1, maxCameras: -1, maxSkus: -1, maxParties: -1 },
+    lite: { maxDevices: 5, maxBranches: 1, maxCameras: 0, maxSkus: -1, maxParties: -1 },
+    pro: { maxDevices: 15, maxBranches: 1, maxCameras: 4, maxSkus: -1, maxParties: -1 },
+    elite: { maxDevices: 50, maxBranches: 99, maxCameras: 6, maxSkus: -1, maxParties: -1 },
 };
 function getActiveTierInfo() {
     // Check for active paid license first

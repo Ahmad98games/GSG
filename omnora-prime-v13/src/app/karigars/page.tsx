@@ -22,6 +22,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import EmptyState from "@/components/ui/EmptyState";
 import DataFreshness from "@/components/ui/DataFreshness";
 import { SummaryCard } from "@/components/ui/SummaryCard";
+import { UpgradeGate } from "@/components/license/UpgradeGate";
 import * as XLSX from 'xlsx';
 import { useToast } from "@/hooks/useToast";
 import { humanizeError } from "@/lib/utils/errors";
@@ -1362,7 +1363,8 @@ export default function KarigarsPage() {
   const { rows } = table.getRowModel();
 
   return (
-    <div className="min-h-screen bg-noxis-bg text-slate-200 p-6">
+    <UpgradeGate feature="karigars">
+      <div className="min-h-screen bg-noxis-bg text-slate-200 p-6">
       <main className="max-w-[1600px] mx-auto space-y-6">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -1576,5 +1578,6 @@ export default function KarigarsPage() {
         )}
       </AnimatePresence>
     </div>
+    </UpgradeGate>
   );
 }

@@ -231,16 +231,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [profile?.visual_theme]);
 
   React.useEffect(() => {
-    // Show intro only once per day if user has completed onboarding, avoiding repeated startup delays
-    const hasOnboarded = localStorage.getItem('noxis_onboarded');
+    // Show intro animation whenever software is opened
     const sessionIntroShown = sessionStorage.getItem('noxis_session_intro_shown');
-    const introSeenDate = localStorage.getItem('noxis_intro_seen_date');
-    const today = new Date().toISOString().slice(0, 10);
-
-    if (hasOnboarded && !sessionIntroShown && introSeenDate !== today) {
+    if (!sessionIntroShown) {
       setShowIntro(true);
       sessionStorage.setItem('noxis_session_intro_shown', 'true');
-      localStorage.setItem('noxis_intro_seen_date', today);
     }
     setIntroChecked(true);
   }, []);

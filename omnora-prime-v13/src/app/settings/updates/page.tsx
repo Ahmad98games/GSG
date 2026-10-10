@@ -49,6 +49,18 @@ interface ChangelogItem {
 
 const HISTORICAL_CHANGELOGS: ChangelogItem[] = [
   {
+    version: '13.0.9',
+    date: 'October 2026',
+    type: 'patch',
+    title: 'Universal XLSX/CSV Import Engine, Multi-Currency Exchange Rates & Animated Startup',
+    highlights: [
+      { tag: 'Bulk Import', text: 'Universal XLSX/CSV parsing with AI schema detection, fuzzy column mapping, and reliable production ingestion', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
+      { tag: 'Exchange Rates', text: 'Multi-currency ledger matrix with live interbank rate sync, custom decimal input, and currency calculator', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      { tag: 'Tier Limits', text: 'Accurate tier-wise feature limits aligned with Free, Lite (Rs. 2,999), Pro (Rs. 6,999) and Elite (Rs. 13,999) specifications', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+      { tag: 'Startup Experience', text: 'High-tech animated Noxis Hub splash window and seamless startup intro reveal', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
+    ],
+  },
+  {
     version: '13.0.8',
     date: 'October 2026',
     type: 'patch',
@@ -217,7 +229,7 @@ export default function UpdatesPage() {
     // 2. Listen for real-time background update events
     const cleanup = (window as any).electronAPI.onUpdateStatus((data: UpdateState) => {
       setUpdateState((prev) => {
-        const version = data.version || prev.version || '13.1.14'
+        const version = data.version || prev.version || '13.0.9'
         let total = data.total ?? prev.total ?? 281255992
         if (total <= 0) total = 281255992
         let transferred = data.transferred ?? prev.transferred ?? 0
@@ -697,7 +709,7 @@ export default function UpdatesPage() {
               Auto-Sync Feed: /updates/{channel}
             </span>
             <a
-              href="https://noxishub.app/updates/stable/Noxis%20Hub%20Setup%2013.0.8.exe"
+              href="https://noxishub.app/updates/stable/Noxis%20Hub%20Setup%2013.0.9.exe"
               target="_blank"
               rel="noreferrer"
               className="text-[11px] font-medium text-cyan-400 hover:text-cyan-300 underline underline-offset-2 flex items-center gap-1 cursor-pointer"

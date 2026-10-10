@@ -26,45 +26,47 @@ interface PlanDetails {
 const PLANS: PlanDetails[] = [
   {
     key: 'lite',
-    name: 'Lite',
-    pkrPrice: 'PKR 25,000 / year',
+    name: 'Lite Tier',
+    pkrPrice: 'Rs. 2,999 / mo (PKR 25k/yr)',
     aedPrice: 'AED 350 / year',
     usdPrice: '$95 / year',
     features: [
-      'Unlimited inventory items & parties (no caps)',
-      'WhatsApp automated billing & PDF delivery',
-      'Karigar payroll runs & pieces tracking',
-      'All financial reports with PDF/Excel export',
-      'Up to 5 paired mobile devices & PC counter'
+      'Up to 5 workstation PCs & 5 Android phones on Wi-Fi',
+      'Unlimited raw material & fabric SKUs',
+      'Double-entry wholesale Khata ledger & party accounts',
+      'PDF invoices & 58mm/80mm thermal slip printing',
+      'Automated daily local SQLite backups'
     ]
   },
   {
     key: 'pro',
-    name: 'Pro',
-    pkrPrice: 'PKR 45,000 / year',
+    name: 'Pro Tier',
+    pkrPrice: 'Rs. 6,999 / mo (PKR 45k/yr)',
     aedPrice: 'AED 600 / year',
     usdPrice: '$160 / year',
     popular: true,
     features: [
-      'Everything in Lite included',
-      'Foresight AI predictive inventory & cashflow',
-      'CCTV live feeds (up to 4 RTSP cameras)',
-      'Workflow automation & transactional alerts',
-      'Up to 15 devices & multi-branch support'
+      'Up to 15 workstation PCs & 15 Android phones on Wi-Fi',
+      'Karigar piece-rate payroll & Peshgi advance ledger',
+      'Connect up to 4 on-site IP cameras via RTSP',
+      'Automated WhatsApp invoices & payment slips',
+      'Roznamcha cash book & Profit/Loss reporting',
+      'Automatic reorder alerts for raw materials'
     ]
   },
   {
     key: 'elite',
-    name: 'Elite',
-    pkrPrice: 'PKR 75,000 / year',
+    name: 'Elite Tier',
+    pkrPrice: 'Rs. 13,999 / mo (PKR 75k/yr)',
     aedPrice: 'AED 1,000 / year',
     usdPrice: '$270 / year',
     features: [
-      'Everything in Pro included',
-      'Up to 6 cameras with AI Sentinel detection',
-      'Up to 50 concurrent mobile devices',
-      'REST API access, webhooks & custom export',
-      'Dedicated Omnora engineering onboarding'
+      'Up to 50 workstation PCs & 50 Android devices on Wi-Fi',
+      'Connect up to 6 IP cameras with AI Sentinel tripwires',
+      'Multi-branch factory operations & stock transfer',
+      'RS232 weighbridge scale bridge integration',
+      'Automatic reorder & 30-day material forecasting',
+      'Dedicated WhatsApp VIP support desk & AnyDesk onboarding'
     ]
   }
 ];

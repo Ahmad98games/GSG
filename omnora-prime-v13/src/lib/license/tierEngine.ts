@@ -100,11 +100,11 @@ export const FEATURE_MATRIX: Record<FeatureKey, Record<Tier, boolean>> = {
   customer_portal:      { free_trial: true,  free: false, lite: false, pro: true,  elite: true  },
 
   // ── Production & Workforce ──────────────────────────────────────────────────
-  karigars:             { free_trial: true,  free: true,  lite: true,  pro: true,  elite: true  },
-  attendance:           { free_trial: true,  free: true,  lite: true,  pro: true,  elite: true  },
-  production_log:       { free_trial: true,  free: true,  lite: true,  pro: true,  elite: true  },
-  payroll:              { free_trial: true,  free: false, lite: true,  pro: true,  elite: true  },
-  payroll_advanced:     { free_trial: true,  free: false, lite: false, pro: true,  elite: true  },
+  karigars:             { free_trial: true,  free: false, lite: false, pro: true,  elite: true  },
+  attendance:           { free_trial: true,  free: false, lite: false, pro: true,  elite: true  },
+  production_log:       { free_trial: true,  free: false, lite: false, pro: true,  elite: true  },
+  payroll:              { free_trial: true,  free: false, lite: false, pro: true,  elite: true  },
+  payroll_advanced:     { free_trial: true,  free: false, lite: false, pro: false, elite: true  },
 
   // ── Reporting & Analytics ───────────────────────────────────────────────────
   reports_basic:        { free_trial: true,  free: true,  lite: true,  pro: true,  elite: true  },
@@ -123,7 +123,7 @@ export const FEATURE_MATRIX: Record<FeatureKey, Record<Tier, boolean>> = {
   mobile_multi_device:  { free_trial: true,  free: false, lite: false, pro: true,  elite: true  },
 
   // ── CCTV & Security ─────────────────────────────────────────────────────────
-  cctv_cameras:         { free_trial: true,  free: false, lite: true,  pro: true,  elite: true  },
+  cctv_cameras:         { free_trial: true,  free: false, lite: false, pro: true,  elite: true  },
   cctv_ai_detection:    { free_trial: true,  free: false, lite: false, pro: false, elite: true  },
 
   // ── AI & Intelligence ───────────────────────────────────────────────────────
@@ -131,8 +131,8 @@ export const FEATURE_MATRIX: Record<FeatureKey, Record<Tier, boolean>> = {
   sentinel_ai:          { free_trial: true,  free: false, lite: false, pro: false, elite: true  },
 
   // ── Multi-location ──────────────────────────────────────────────────────────
-  multi_branch:         { free_trial: true,  free: false, lite: false, pro: true,  elite: true  },
-  branch_reports:       { free_trial: true,  free: false, lite: false, pro: true,  elite: true  },
+  multi_branch:         { free_trial: true,  free: false, lite: false, pro: false, elite: true  },
+  branch_reports:       { free_trial: true,  free: false, lite: false, pro: false, elite: true  },
 
   // ── Advanced / Enterprise ───────────────────────────────────────────────────
   rbac_roles:           { free_trial: true,  free: false, lite: true,  pro: true,  elite: true  },
@@ -150,10 +150,10 @@ export type ResourceKey = 'max_skus' | 'max_parties' | 'max_karigars' | 'max_dev
 
 export const TIER_LIMITS: Record<Tier, Record<ResourceKey, number>> = {
   //                         skus   parties  karigars  devices  cameras  branches
-  free_trial: { max_skus: -1,    max_parties: -1,    max_karigars: -1,    max_devices: 1,  max_cameras: 4,  max_branches: 1  },
-  free:       { max_skus: 200,   max_parties: 50,    max_karigars: 25,    max_devices: 1,  max_cameras: 0,  max_branches: 1  },
-  lite:       { max_skus: -1,    max_parties: -1,    max_karigars: -1,    max_devices: 5,  max_cameras: 2,  max_branches: 1  },
-  pro:        { max_skus: -1,    max_parties: -1,    max_karigars: -1,    max_devices: 15, max_cameras: 4,  max_branches: 5  },
+  free_trial: { max_skus: -1,    max_parties: -1,    max_karigars: -1,    max_devices: 15, max_cameras: 4,  max_branches: 1  },
+  free:       { max_skus: 200,   max_parties: 50,    max_karigars: 0,     max_devices: 1,  max_cameras: 0,  max_branches: 1  },
+  lite:       { max_skus: -1,    max_parties: -1,    max_karigars: 0,     max_devices: 5,  max_cameras: 0,  max_branches: 1  },
+  pro:        { max_skus: -1,    max_parties: -1,    max_karigars: -1,    max_devices: 15, max_cameras: 4,  max_branches: 1  },
   elite:      { max_skus: -1,    max_parties: -1,    max_karigars: -1,    max_devices: 50, max_cameras: 6,  max_branches: 99 },
 }
 
@@ -176,11 +176,11 @@ export const UPGRADE_MESSAGES: Record<FeatureKey, string> = {
   khata_ledger:        'Khata ledger is available on all plans.',
   credit_limit:        'Credit limits require Lite plan or higher.',
   customer_portal:     'Customer portal requires Pro plan or higher.',
-  karigars:            'Karigar management is available on all plans.',
-  attendance:          'Attendance tracking is available on all plans.',
-  production_log:      'Production logging is available on all plans.',
-  payroll:             'Payroll calculations require Lite plan or higher.',
-  payroll_advanced:    'Advanced payroll requires Pro plan or higher.',
+  karigars:            'Karigar piece-rate payroll requires Pro plan or higher.',
+  attendance:          'Worker attendance logging requires Pro plan or higher.',
+  production_log:      'Production logging requires Pro plan or higher.',
+  payroll:             'Karigar piece-rate payroll requires Pro plan or higher.',
+  payroll_advanced:    'Advanced multi-tier piece-rate payroll requires Elite plan.',
   reports_basic:       'Basic reports are available on all plans.',
   reports_export:      'Exporting reports (CSV/PDF) requires Lite plan or higher.',
   reports_advanced:    'Advanced reports require Pro plan or higher.',
@@ -189,14 +189,14 @@ export const UPGRADE_MESSAGES: Record<FeatureKey, string> = {
   cloud_backup:        'Cloud backup requires Pro plan or higher. Your data is currently PC-only.',
   cloud_sync:          'Cloud sync requires Pro plan or higher.',
   multi_device:        'Multi-device access requires Lite plan or higher.',
-  mobile_app:          'Mobile app (1 device) is available on all plans.',
+  mobile_app:          'Mobile app is available on all plans.',
   mobile_multi_device: 'Multiple mobile devices require Pro plan or higher.',
-  cctv_cameras:        'CCTV camera integration requires Lite plan or higher.',
-  cctv_ai_detection:   'AI-powered CCTV detection requires Elite plan.',
+  cctv_cameras:        'RTSP IP camera streaming requires Pro plan or higher.',
+  cctv_ai_detection:   'AI Sentinel tripwire motion alerts require Elite plan.',
   foresight_ai:        'Foresight AI business predictions require Pro plan or higher.',
   sentinel_ai:         'Sentinel AI security monitoring requires Elite plan.',
-  multi_branch:        'Multi-branch management requires Pro plan or higher.',
-  branch_reports:      'Branch-level reports require Pro plan or higher.',
+  multi_branch:        'Multi-branch factory operations require Elite plan.',
+  branch_reports:      'Branch-level consolidated reports require Elite plan.',
   rbac_roles:          'Role-based access control requires Lite plan or higher.',
   audit_log:           'Audit log requires Lite plan or higher.',
   workflow_builder:    'Workflow automation builder requires Pro plan or higher.',

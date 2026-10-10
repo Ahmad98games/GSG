@@ -89,21 +89,21 @@ export default function CCTVPage() {
 
   const onlineCount = cameras.filter((c: any) => c.status === 'online').length;
 
-  // TRIGGER 5 — Warm CCTV Preview on Free tier (instead of cold UpgradeGate)
-  if (effectiveTier === 'free' && !isTrial) {
+  // TRIGGER 5 — Warm CCTV Preview on Free & Lite tiers (CCTV requires Pro or Elite)
+  if ((effectiveTier === 'free' || effectiveTier === 'lite') && !isTrial) {
     return (
       <div className="min-h-screen bg-[#07080A] text-slate-300 p-6 sm:p-10 font-inter flex items-center justify-center">
         <div className="max-w-4xl w-full space-y-8 animate-in fade-in zoom-in-95 duration-300">
           <div className="text-center space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/25 text-[#60A5FA] text-[10px] font-mono font-bold uppercase tracking-widest mb-2">
               <Video size={13} />
-              <span>CCTV Feeds — Lite+ Feature</span>
+              <span>CCTV IP Feeds — Pro & Elite Feature</span>
             </div>
             <h1 className="text-3xl font-black text-white tracking-tight">
               Real-Time Workshop & Factory Video Surveillance
             </h1>
             <p className="text-xs sm:text-sm text-zinc-400 max-w-xl mx-auto leading-relaxed">
-              Connect your existing RTSP cameras. No extra hardware needed. Works with any Hikvision, Dahua, or generic IP camera.
+              Connect your on-site RTSP cameras (Up to 4 on Pro, Up to 6 with AI Tripwires on Elite). Works with Hikvision, Dahua, or generic IP cameras over local network.
             </p>
           </div>
 
@@ -155,7 +155,7 @@ export default function CCTVPage() {
               href="/settings/license?upgrade=true"
               className="inline-flex items-center gap-2 px-8 py-3.5 bg-[#60A5FA] hover:bg-blue-400 text-black font-black uppercase tracking-wider text-xs rounded-sm transition-all shadow-[0_4px_25px_rgba(96,165,250,0.3)]"
             >
-              <span>See Lite plan — PKR 25,000/year</span>
+              <span>Activate Pro License (Rs. 6,999/mo)</span>
               <ArrowRight size={14} />
             </Link>
             <p className="text-[11px] text-zinc-500 font-mono">

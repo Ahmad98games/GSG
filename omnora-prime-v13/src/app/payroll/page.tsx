@@ -24,6 +24,7 @@ import * as z from "zod";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
 import { SummaryCard } from "@/components/ui/SummaryCard";
+import { UpgradeGate } from "@/components/license/UpgradeGate";
 
 import { Can } from "@/components/rbac/Can";
 
@@ -309,7 +310,8 @@ export default function PayrollPage() {
   };
 
   return (
-    <div className="min-h-screen bg-noxis-bg text-slate-200 p-6">
+    <UpgradeGate feature="payroll">
+      <div className="min-h-screen bg-noxis-bg text-slate-200 p-6">
       <main className="max-w-[1600px] mx-auto space-y-6">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -475,7 +477,8 @@ export default function PayrollPage() {
         onClose={() => setFeedbackOpen(false)}
         trigger="post_payroll"
       />
-    </div>
+      </div>
+    </UpgradeGate>
   );
 }
 
