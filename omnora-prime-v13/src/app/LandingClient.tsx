@@ -8,7 +8,8 @@ import { createClient } from '@/lib/supabase/client'
 import {
   Database, Layers, Smartphone, ShieldCheck, BarChart4, Globe2,
   Download, Check, X, Menu, Terminal, CircleDollarSign,
-  ShieldAlert, Sparkles, MessageSquare, Wifi, Lock, Cpu, ChevronRight, Video
+  ShieldAlert, Sparkles, MessageSquare, Wifi, Lock, Cpu, ChevronRight, Video,
+  HardDrive, QrCode, CheckCircle2, ArrowRight, Zap, FileSpreadsheet
 } from 'lucide-react'
 import {
   LandingBackdrop,
@@ -206,11 +207,42 @@ export default function LandingClient() {
   ]
 
   const comparisonRows = [
-    { metric: 'Network Dependency', noxis: '100% Offline (Runs from local hard drive & office Wi-Fi)', cloud: 'Completely blocks when internet or fiber cuts', manual: 'Paper registers' },
-    { metric: 'Karigar Wages & Peshgi', noxis: 'Automatic piece-rate (yd/suit/maund) + advance deductions', cloud: 'Requires complicated custom spreadsheets', manual: 'Calculated manually, frequent disputes' },
-    { metric: 'Security Camera Integration', noxis: 'Connect up to 6 on-site IP cameras via RTSP with motion tripwire alerts', cloud: 'Requires high monthly fee smart cameras', manual: 'Separate NVR with manual video review' },
-    { metric: 'Data Control & Safety', noxis: 'Local SQLite file stored on your hard drive (+ optional cloud backup)', cloud: 'Stored on public cloud servers with vendor lock-in', manual: 'Paper books prone to damage, water, or fire' },
-    { metric: 'Pricing Model', noxis: 'Permanent offline license with no forced recurring monthly rent', cloud: 'Continuous per-seat monthly subscription fee', manual: 'Hidden losses from calculation errors and theft' },
+    {
+      metric: 'Load-Shedding & Power Cuts',
+      noxis: 'WAL-enabled SQLite ensures zero corrupted records when generators kick in',
+      cloud: 'Browser sessions crash; unsaved invoices lost during sudden outages',
+      manual: 'Work stalls in the dark; delayed entries and lost paper vouchers'
+    },
+    {
+      metric: 'Fiber Cuts & Internet Blackouts',
+      noxis: '100% Offline — Runs permanently on your local office hard drive and workshop Wi-Fi',
+      cloud: 'Completely blocked when optical fiber cuts or broadband disconnects',
+      manual: 'Paper books; zero multi-counter coordination'
+    },
+    {
+      metric: 'Karigar Piece-Rates & Peshgi',
+      noxis: 'Automated piece-rate matrices (yd/meter/suit) + real-time advance deduction & slip printing',
+      cloud: 'Generic monthly salary only; cannot handle piece-rates or daily floor cash advances',
+      manual: 'Calculated by hand on paper slips; frequent Friday evening wage disputes'
+    },
+    {
+      metric: 'Data Privacy & Margin Secrecy',
+      noxis: '100% Local on your physical PC. Sensitive profit margins and supplier rates never touch public cloud',
+      cloud: 'Confidential factory ledger data stored on external multi-tenant cloud servers',
+      manual: 'Open paper Khata books readable by anyone walking past the desk'
+    },
+    {
+      metric: 'Migration & Onboarding',
+      noxis: 'Free personal assistance from Omnora Labs to migrate your existing Excel sheets and paper Khata registers into Noxis.',
+      cloud: 'Self-serve CSV format errors; expensive third-party consultant implementation fees',
+      manual: 'Permanently trapped in handwritten notebooks and loose receipts'
+    },
+    {
+      metric: 'License & Cost Structure',
+      noxis: 'Permanent offline license with no forced recurring monthly software rent',
+      cloud: 'Continuous per-seat monthly subscription fee that cuts off access if unpaid',
+      manual: 'Continuous hidden losses from calculation errors and uncollected Khata'
+    },
   ]
 
   return (
@@ -256,8 +288,31 @@ export default function LandingClient() {
                 ]}
               />
 
-              <p className="text-[#94A3B8] text-sm sm:text-base lg:text-lg leading-relaxed max-w-2xl mx-auto mt-8 font-medium">
-                Works offline for daily operations. Connect to WhatsApp/internet only when needed. Core functions (POS, Karigar piece-rates, fabric inventory, Khata, CCTV) run 100% offline from your local hard drive.
+              {/* INDUSTRIAL TRUST SUB-BADGE */}
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.2 }}
+                className="mt-6 max-w-3xl mx-auto w-full px-2"
+              >
+                <div className="relative inline-flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 px-5 py-3 rounded-lg border border-[#C5A059]/40 bg-[#0E1015]/95 shadow-[0_4px_30px_rgba(0,0,0,0.6),0_0_35px_rgba(197,160,89,0.12)] backdrop-blur-md text-center sm:text-left">
+                  <div className="flex items-center gap-2 text-emerald-400 font-mono text-[11px] uppercase tracking-wider shrink-0 font-bold">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <ShieldCheck size={16} className="text-emerald-400 shrink-0" />
+                    <span>Permanent Offline License</span>
+                  </div>
+                  <span className="hidden sm:inline text-white/20">|</span>
+                  <p className="text-xs sm:text-sm font-semibold tracking-wide text-[#F3E8D2] leading-snug">
+                    Permanent Offline License — Zero Cloud Reliance — Runs 100% on your local office hard drive and workshop Wi-Fi.
+                  </p>
+                </div>
+              </motion.div>
+
+              <p className="text-[#94A3B8] text-sm sm:text-base lg:text-lg leading-relaxed max-w-2xl mx-auto mt-6 font-medium">
+                Engineered for load-shedding, fiber cable cuts, and zero cloud delay. Core operations—Karigar piece-rate payroll, Peshgi advance ledgers, fabric inventory, and wholesale Khata—run 100% offline from your local PC hard drive.
               </p>
 
               <div className="w-full mt-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-4">
@@ -281,11 +336,138 @@ export default function LandingClient() {
                   <MessageSquare size={14} className="text-emerald-400" /> WhatsApp Live Demo
                 </a>
               </div>
+
+              {/* Quick Hero Micro-Guarantees */}
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[11px] font-mono text-gray-400">
+                <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-400" /> WAPDA &amp; UPS Power-Cut Protected</span>
+                <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-400" /> Zero PTCL / Fiber Dependence</span>
+                <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-400" /> Free Excel &amp; Khata Migration</span>
+              </div>
             </div>
           </section>
 
           {/* Marquee Features */}
           <SignatureMarquee items={marqueeTerms} />
+
+          {/* ═══ 3-STEP ONBOARDING SECTION ═══ */}
+          <section className="py-24 px-4 sm:px-6 max-w-7xl mx-auto border-t border-white/[0.04] relative">
+            <Reveal variant="up" className="text-center max-w-3xl mx-auto mb-16 space-y-3">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#C5A059]/10 border border-[#C5A059]/20 text-[#E8D5B5] text-[10px] font-mono font-bold uppercase tracking-widest">
+                <Zap size={12} className="text-[#C5A059]" />
+                Frictionless Workshop Setup · 10-Minute Deployment
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight uppercase">
+                How It Works in 3 Simple Steps
+              </h2>
+              <p className="text-sm text-gray-400 max-w-xl mx-auto leading-relaxed">
+                No complex server racks, no cloud subscriptions, and no rewiring. Connect your cashier or office desktop to your factory floor in under 10 minutes.
+              </p>
+            </Reveal>
+
+            <RevealStagger className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+              {/* Step 1 */}
+              <RevealItem>
+                <div className="relative h-full flex flex-col justify-between p-8 rounded-xl border border-white/[0.08] bg-[#0A0C10] hover:border-[#C5A059]/40 transition-all duration-300 group shadow-xl">
+                  <div className="space-y-5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-3xl font-black font-mono tracking-tight text-[#C5A059]/40 group-hover:text-[#C5A059] transition-colors">
+                        01
+                      </span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider font-mono px-2 py-0.5 rounded bg-[#C5A059]/10 text-[#E8D5B5] border border-[#C5A059]/20">
+                        Workstation PC
+                      </span>
+                    </div>
+
+                    <div className="w-12 h-12 rounded-lg bg-[#C5A059]/10 border border-[#C5A059]/30 flex items-center justify-center text-[#C5A059]">
+                      <Download size={22} />
+                    </div>
+
+                    <div className="space-y-2">
+                      <h3 className="text-xl font-bold text-white tracking-tight">
+                        Step 1: Install PC .exe
+                      </h3>
+                      <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
+                        Download and run the standalone installer on your main office or cashier PC. Noxis initializes an encrypted local SQLite database directly on your hard drive with zero cloud configuration, zero server maintenance, and zero recurring fees.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 pt-4 border-t border-white/[0.04] flex items-center gap-2 text-[11px] font-mono text-emerald-400">
+                    <CheckCircle2 size={14} className="shrink-0" />
+                    <span>WAL engine survives sudden power cuts &amp; load-shedding</span>
+                  </div>
+                </div>
+              </RevealItem>
+
+              {/* Step 2 */}
+              <RevealItem>
+                <div className="relative h-full flex flex-col justify-between p-8 rounded-xl border border-white/[0.08] bg-[#0A0C10] hover:border-[#60A5FA]/40 transition-all duration-300 group shadow-xl">
+                  <div className="space-y-5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-3xl font-black font-mono tracking-tight text-[#60A5FA]/40 group-hover:text-[#60A5FA] transition-colors">
+                        02
+                      </span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider font-mono px-2 py-0.5 rounded bg-[#60A5FA]/10 text-[#93C5FD] border border-[#60A5FA]/20">
+                        Floor Wi-Fi Sync
+                      </span>
+                    </div>
+
+                    <div className="w-12 h-12 rounded-lg bg-[#60A5FA]/10 border border-[#60A5FA]/30 flex items-center justify-center text-[#60A5FA]">
+                      <QrCode size={22} />
+                    </div>
+
+                    <div className="space-y-2">
+                      <h3 className="text-xl font-bold text-white tracking-tight">
+                        Step 2: Scan local Wi-Fi QR on Android
+                      </h3>
+                      <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
+                        Floor supervisors open the companion app and scan the pairing QR code displayed on the PC. Devices sync across your existing workshop Wi-Fi router without consuming cellular 4G data or needing internet access.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 pt-4 border-t border-white/[0.04] flex items-center gap-2 text-[11px] font-mono text-[#60A5FA]">
+                    <CheckCircle2 size={14} className="shrink-0" />
+                    <span>Works during fiber cable cuts &amp; broadband blackouts</span>
+                  </div>
+                </div>
+              </RevealItem>
+
+              {/* Step 3 */}
+              <RevealItem>
+                <div className="relative h-full flex flex-col justify-between p-8 rounded-xl border border-white/[0.08] bg-[#0A0C10] hover:border-emerald-500/40 transition-all duration-300 group shadow-xl">
+                  <div className="space-y-5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-3xl font-black font-mono tracking-tight text-emerald-500/40 group-hover:text-emerald-400 transition-colors">
+                        03
+                      </span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                        Dispute-Free Factory
+                      </span>
+                    </div>
+
+                    <div className="w-12 h-12 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                      <CircleDollarSign size={22} />
+                    </div>
+
+                    <div className="space-y-2">
+                      <h3 className="text-xl font-bold text-white tracking-tight">
+                        Step 3: Track Karigar piece-rates &amp; Khata
+                      </h3>
+                      <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
+                        Log yards, meters, suits, or units completed right at the looms or stitching tables. Net pay calculates automatically, Peshgi cash advances deduct instantly, and double-entry wholesale ledgers stay balanced without wage disputes.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 pt-4 border-t border-white/[0.04] flex items-center gap-2 text-[11px] font-mono text-emerald-400">
+                    <CheckCircle2 size={14} className="shrink-0" />
+                    <span>Instant thermal worker slips &amp; one-click customer WhatsApp</span>
+                  </div>
+                </div>
+              </RevealItem>
+            </RevealStagger>
+          </section>
 
           {/* High-Fidelity B2B Dashboard Cockpit */}
           <section className="px-4 md:px-6 py-24 max-w-7xl mx-auto">
@@ -791,6 +973,59 @@ export default function LandingClient() {
                   </tbody>
                 </table>
               </div>
+
+              {/* ═══ DEDICATED MIGRATION GUARANTEE BLOCK ═══ */}
+              <div className="mt-12 rounded-2xl border border-[#C5A059]/40 bg-gradient-to-br from-[#12141C] via-[#0D0F14] to-[#08090C] p-8 sm:p-12 shadow-[0_20px_50px_rgba(0,0,0,0.7),0_0_40px_rgba(197,160,89,0.08)] relative overflow-hidden">
+                <div className="absolute top-0 right-0 -mr-20 -mt-20 w-72 h-72 rounded-full bg-[#C5A059]/10 blur-3xl pointer-events-none" />
+                <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-60 h-60 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+
+                <div className="relative z-10 flex flex-col lg:flex-row items-center gap-8 justify-between">
+                  <div className="space-y-4 max-w-2xl text-left">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#C5A059]/10 border border-[#C5A059]/30 text-[#E8D5B5] text-[10px] font-mono font-bold uppercase tracking-widest">
+                      <ShieldCheck size={14} className="text-emerald-400" />
+                      Zero-Friction Switch Guarantee
+                    </div>
+
+                    <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-snug">
+                      Free personal assistance from Omnora Labs to migrate your existing Excel sheets and paper Khata registers into Noxis.
+                    </h3>
+
+                    <p className="text-xs sm:text-sm text-gray-300 leading-relaxed">
+                      You don&apos;t have to re-type years of transactions or risk downtime during transition. Our engineering team personally formats, cleans, and imports your customer opening balances, supplier ledgers, raw material inventory SKUs, and Karigar advance books directly into your new offline Noxis installation.
+                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                      <div className="flex items-center gap-2 text-xs text-gray-300 font-mono">
+                        <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
+                        <span>Excel / CSV Formatted &amp; Cleaned</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-gray-300 font-mono">
+                        <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
+                        <span>Paper Registers Digitized Free</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-gray-300 font-mono">
+                        <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
+                        <span>Live WhatsApp &amp; AnyDesk Setup</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="shrink-0 flex flex-col items-center sm:items-stretch gap-3 w-full sm:w-auto">
+                    <a
+                      href="https://wa.me/923264742678?text=Salam%20Omnora,%20I%20want%20free%20help%20migrating%20my%20factory%20Excel%20and%20paper%20Khata%20into%20Noxis"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-2.5 px-6 py-4 rounded font-extrabold text-xs uppercase tracking-wider text-black bg-[#25D366] hover:bg-[#20bd5a] transition-all duration-300 shadow-xl cursor-pointer"
+                    >
+                      <MessageSquare size={16} />
+                      <span>Claim Free Migration Assistance</span>
+                    </a>
+                    <span className="text-[10px] text-center text-gray-500 font-mono">
+                      Direct Senior Engineer Line · +92 326 4742678
+                    </span>
+                  </div>
+                </div>
+              </div>
             </Reveal>
           </section>
 
@@ -809,7 +1044,7 @@ export default function LandingClient() {
                   <p className="text-[10px] font-bold tracking-[0.3em] uppercase" style={{ color: CHAMPAGNE }}>Direct Engineer Setup</p>
                   <h3 className="text-2xl sm:text-3xl font-bold text-white tracking-tight uppercase">Get Started with Noxis Hub</h3>
                   <p className="text-xs text-gray-400 max-w-md mx-auto leading-relaxed">
-                    We can help you configure your office Wi-Fi router, set up Karigar piece-rates, and import your existing customer Khata balances.
+                    We personally configure your office Wi-Fi router, set up Karigar piece-rates, and migrate your existing Excel sheets and paper Khata registers into Noxis with zero downtime.
                   </p>
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
                     <a
