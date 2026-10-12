@@ -520,7 +520,7 @@ export default React.memo(function IndustrialSidebar() {
                   borderStyle: 'solid'
                 }}
               >
-                v13.0.9
+                v13.0.10
               </span>
             )}
           </div>

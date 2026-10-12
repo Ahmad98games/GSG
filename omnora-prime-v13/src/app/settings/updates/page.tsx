@@ -49,6 +49,18 @@ interface ChangelogItem {
 
 const HISTORICAL_CHANGELOGS: ChangelogItem[] = [
   {
+    version: '13.0.10',
+    date: 'October 2026',
+    type: 'patch',
+    title: 'Business Intelligence, Factory Branches, Universal Shortcuts Engine & Deep Sentinel Intelligence',
+    highlights: [
+      { tag: 'Business Intelligence', text: 'Restored direct navigation to Business Intelligence telemetry, trend analytics, and real-time KPI metrics', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
+      { tag: 'Sidebar & Settings', text: 'Re-integrated Sales Orders, Universal Import, Mandi Rates, Factory Branches, and System Diagnostics', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      { tag: 'Sentinel Assistant', text: 'Embedded persistent quick-trigger pill (Ctrl+Shift+S) with deep operational manual and instant issue diagnostics', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+      { tag: 'Shortcut Help', text: 'Universal interactive shortcut manual, comprehensive new-user feature guide, and Ctrl+0 zoom recovery', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
+    ],
+  },
+  {
     version: '13.0.9',
     date: 'October 2026',
     type: 'patch',
@@ -229,7 +241,7 @@ export default function UpdatesPage() {
     // 2. Listen for real-time background update events
     const cleanup = (window as any).electronAPI.onUpdateStatus((data: UpdateState) => {
       setUpdateState((prev) => {
-        const version = data.version || prev.version || '13.0.9'
+        const version = data.version || prev.version || '13.0.10'
         let total = data.total ?? prev.total ?? 281255992
         if (total <= 0) total = 281255992
         let transferred = data.transferred ?? prev.transferred ?? 0
@@ -709,7 +721,7 @@ export default function UpdatesPage() {
               Auto-Sync Feed: /updates/{channel}
             </span>
             <a
-              href="https://noxishub.app/updates/stable/Noxis%20Hub%20Setup%2013.0.9.exe"
+              href="https://noxishub.app/updates/stable/Noxis%20Hub%20Setup%2013.0.10.exe"
               target="_blank"
               rel="noreferrer"
               className="text-[11px] font-medium text-cyan-400 hover:text-cyan-300 underline underline-offset-2 flex items-center gap-1 cursor-pointer"
