@@ -50,14 +50,16 @@ export default function SentinelAssistant() {
     try {
       const chatRes = await processChatQuery(text, []);
       if (chatRes.content === "I don't know about that.") {
-        setResponse("I can help you with:");
+        setResponse("I can help you with basic to advanced operations across Noxis Hub:");
         setSuggestedChips([
-          "Show inventory",
-          "Create new invoice",
-          "Log production",
-          "Check cash flow",
-          "Mark attendance",
-          "Generate payslip"
+          "Business Intelligence",
+          "Reset zoom (Ctrl+0)",
+          "Data Import Wizard",
+          "Karigar piece-rate & Peshgi",
+          "Mandi commodity rates",
+          "Cash flow forecast",
+          "Offline SQLite protection",
+          "Keyboard shortcuts guide"
         ]);
       } else {
         setResponse(chatRes.content);
@@ -230,10 +232,19 @@ export default function SentinelAssistant() {
                           animate={{ opacity: 1 }} 
                           className="space-y-2"
                         >
-                          <p className="text-xl font-bold text-gray-400">Say a command or type below...</p>
-                          <div className="flex flex-wrap justify-center gap-2">
-                            {["Profit report", "Open inventory", "Check low stock", "New invoice"].map(cmd => (
-                              <span key={cmd} className="text-[9px] uppercase font-bold text-gray-600 px-2 py-1 bg-white/5 rounded border border-white/5 hover:border-white/10 transition-colors cursor-pointer" onClick={() => handleCommand(cmd)}>
+                          <p className="text-xl font-bold text-gray-400">Ask about any module or feature...</p>
+                          <div className="flex flex-wrap justify-center gap-2 max-w-lg">
+                            {[
+                              "Business Intelligence",
+                              "Reset zoom (Ctrl+0)",
+                              "Data Import Wizard",
+                              "Karigar piece-rates",
+                              "Mandi rates",
+                              "Cash flow forecast",
+                              "Offline SQLite engine",
+                              "Desktop shortcuts"
+                            ].map(cmd => (
+                              <span key={cmd} className="text-[9px] uppercase font-bold text-gray-400 px-2.5 py-1 bg-white/5 rounded border border-white/10 hover:border-electric-blue/40 hover:text-white transition-colors cursor-pointer" onClick={() => handleCommand(cmd)}>
                                 "{cmd}"
                               </span>
                             ))}
@@ -286,6 +297,35 @@ export default function SentinelAssistant() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* ── PERSISTENT VISIBLE FLOATING ASSISTANT TRIGGER ── */}
+      {!isOpen && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          className="fixed bottom-5 right-5 z-[80] flex items-center select-none"
+        >
+          <button
+            onClick={() => setIsOpen(true)}
+            className="group flex items-center gap-2.5 px-3.5 py-2 rounded-full border border-electric-blue/30 bg-[#0B0F17]/95 hover:bg-[#101622] hover:border-electric-blue/70 text-white shadow-[0_8px_25px_rgba(0,0,0,0.6),0_0_20px_rgba(0,112,243,0.2)] backdrop-blur-md transition-all duration-200 cursor-pointer"
+            title="Open Sentinel AI Assistant (Ctrl+Shift+S)"
+          >
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-electric-blue opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-electric-blue"></span>
+            </span>
+            <div className="w-5 h-5 rounded-full bg-electric-blue/20 flex items-center justify-center text-electric-blue group-hover:scale-110 transition-transform">
+              <Sparkles size={12} className="animate-pulse" />
+            </div>
+            <span className="text-[11px] font-bold tracking-wider uppercase font-mono text-slate-200 group-hover:text-white">
+              Sentinel AI
+            </span>
+            <kbd className="hidden sm:inline-block text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/10 text-slate-400 border border-white/10">
+              Ctrl+Shift+S
+            </kbd>
+          </button>
+        </motion.div>
+      )}
 
       <style jsx global>{`
         @keyframes waveform {

@@ -57,9 +57,11 @@ const SETTINGS_SECTIONS: NavSection[] = [
     title: 'Maintenance & System',
     items: [
       { id: 'updates', label: 'Software Updates', href: '/settings/updates', icon: RefreshCw, badge: 'v13.0.9', badgeColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
+      { id: 'diagnostics', label: 'System Diagnostics', href: '/settings/diagnostics', icon: Activity },
       { id: 'backup', label: 'Backup & Restore', href: '/settings/backup', icon: Download },
       { id: 'data', label: 'Data Management', href: '/settings?tab=data', icon: Database },
       { id: 'devices', label: 'Devices & Bridges', href: '/settings/devices', icon: Cpu },
+      { id: 'notifications', label: 'Alert Schedules', href: '/settings?tab=notifications', icon: Bell },
     ],
   },
   {
@@ -75,6 +77,7 @@ const SETTINGS_SECTIONS: NavSection[] = [
     items: [
       { id: 'opening-balances', label: 'Opening Balances', href: '/settings/opening-balances', icon: DollarSign },
       { id: 'branches', label: 'Factory Branches', href: '/settings/branches', icon: Layers },
+      { id: 'partners', label: 'Partners & Affiliates', href: '/settings/partners', icon: Share2 },
       { id: 'exchange-rates', label: 'Exchange Rates', href: '/settings/exchange-rates', icon: Globe },
       { id: 'import', label: 'Import Wizard', href: '/settings/import', icon: Download },
     ],

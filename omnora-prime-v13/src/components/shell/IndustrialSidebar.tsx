@@ -46,6 +46,8 @@ import {
   Wallet,
   Thermometer,
   Sparkles,
+  ShoppingBag,
+  Download,
 } from 'lucide-react'
 
 import { usePersona } from '@/hooks/usePersona'
@@ -163,6 +165,12 @@ export default React.memo(function IndustrialSidebar() {
         icon: ShoppingCart,
       },
       {
+        id: 'orders',
+        label: 'Sales Orders',
+        href: '/orders',
+        icon: ClipboardList,
+      },
+      {
         id: 'production',
         label: nav.production || 'Production Grid',
         href: industry.key === 'textile' || industry.key === 'garment' ? '/production/grid' : '/production',
@@ -265,13 +273,25 @@ export default React.memo(function IndustrialSidebar() {
         id: 'purchase',
         label: nav.purchase || 'Purchases',
         href: '/purchase',
-        icon: ShoppingCart,
+        icon: ShoppingBag,
       },
       {
         id: 'payroll',
         label: nav.payroll || 'Payroll & Wages',
         href: '/payroll',
         icon: Wallet,
+      },
+      {
+        id: 'cashflow',
+        label: 'Cash Flow',
+        href: '/cashflow',
+        icon: Wallet,
+      },
+      {
+        id: 'mandi',
+        label: 'Mandi Rates',
+        href: '/mandi',
+        icon: BarChart3,
       },
       {
         id: 'finance',
@@ -314,6 +334,13 @@ export default React.memo(function IndustrialSidebar() {
         icon: BarChart3,
       },
       {
+        id: 'intelligence',
+        label: 'Business Intelligence',
+        href: '/intelligence',
+        icon: Sparkles,
+        badge: 'BI',
+      },
+      {
         id: 'workflows',
         label: 'Workflows',
         href: '/workflows',
@@ -338,6 +365,12 @@ export default React.memo(function IndustrialSidebar() {
         icon: ArrowLeftRight,
       },
       {
+        id: 'import',
+        label: 'Data Import Wizard',
+        href: '/import',
+        icon: Download,
+      },
+      {
         id: 'configuration',
         label: 'System Settings',
         href: '/settings',
@@ -352,7 +385,7 @@ export default React.memo(function IndustrialSidebar() {
 
       return items.filter((item) => {
         // Always show these core items regardless of mode
-        const alwaysShow = ['dashboard', 'pos', 'inventory', 'configuration', 'reports', 'cctv', 'pairing', 'messaging']
+        const alwaysShow = ['dashboard', 'pos', 'inventory', 'configuration', 'reports', 'cctv', 'pairing', 'messaging', 'intelligence', 'orders', 'import', 'cashflow', 'mandi']
         if (alwaysShow.includes(item.id)) return true
 
         // Ensure active industry-specific operational features are never stripped out
