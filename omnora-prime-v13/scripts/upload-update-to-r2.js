@@ -26,7 +26,8 @@ const R2_SECRET_ACCESS_KEY = '24dcd73108b450b53eb12e2a0152a610f135cea14c60f114c6
 const R2_BUCKET_NAME = 'noxishub';
 
 const agent = new https.Agent({
-  keepAlive: false,
+  keepAlive: true,
+  maxSockets: 10,
 });
 
 const client = new S3Client({
@@ -62,7 +63,7 @@ async function uploadLargeMultipart(localPath, r2Key, contentType = 'application
   const CHUNK_SIZE = 5 * 1024 * 1024; // 5 MB per part (S3 minimum)
   const numParts = Math.ceil(totalBytes / CHUNK_SIZE);
 
-  console.log(`\n Starting resilient multipart upload for "${r2Key}" (${totalMB} MB, ${numParts} parts)...`);
+  console.log(`\n Starting high-speed resilient multipart upload for "${r2Key}" (${totalMB} MB, ${numParts} parts, concurrency: 3)...`);
 
   const createRes = await client.send(new CreateMultipartUploadCommand({
     Bucket: R2_BUCKET_NAME,
@@ -71,55 +72,67 @@ async function uploadLargeMultipart(localPath, r2Key, contentType = 'application
   }));
   const uploadId = createRes.UploadId;
 
-  const parts = [];
-  const fd = fs.openSync(localPath, 'r');
+  const parts = new Array(numParts);
+  const concurrency = 3;
+  let activeIndex = 0;
+  let completedCount = 0;
 
   try {
-    for (let partNumber = 1; partNumber <= numParts; partNumber++) {
-      const start = (partNumber - 1) * CHUNK_SIZE;
-      const end = Math.min(start + CHUNK_SIZE, totalBytes);
-      const partLength = end - start;
-      const buffer = Buffer.alloc(partLength);
-      fs.readSync(fd, buffer, 0, partLength, start);
+    async function worker() {
+      while (true) {
+        const idx = activeIndex++;
+        if (idx >= numParts) break;
 
-      const percent = ((end / totalBytes) * 100).toFixed(1);
-      const partStart = Date.now();
-      process.stdout.write(`  Part ${partNumber}/${numParts} (${(partLength / (1024 * 1024)).toFixed(1)} MB) [${percent}%]... `);
+        const partNumber = idx + 1;
+        const start = idx * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, totalBytes);
+        const partLength = end - start;
+        const buffer = Buffer.alloc(partLength);
 
-      let partRes = null;
-      let partAttempts = 0;
-      const maxPartAttempts = 8;
-      while (partAttempts < maxPartAttempts) {
-        try {
-          partAttempts++;
-          partRes = await client.send(
-            new UploadPartCommand({
-              Bucket: R2_BUCKET_NAME,
-              Key: r2Key,
-              UploadId: uploadId,
-              PartNumber: partNumber,
-              Body: buffer,
-            }),
-            { abortSignal: AbortSignal.timeout(300000) }
-          );
-          break;
-        } catch (partErr) {
-          if (partAttempts >= maxPartAttempts) throw partErr;
-          process.stdout.write(`⚠️ (Retry ${partAttempts}/${maxPartAttempts}: ${partErr.code || partErr.name || 'timeout'}) `);
-          await new Promise(r => setTimeout(r, 2000 * partAttempts));
+        const fd = fs.openSync(localPath, 'r');
+        fs.readSync(fd, buffer, 0, partLength, start);
+        fs.closeSync(fd);
+
+        let partRes = null;
+        let partAttempts = 0;
+        const maxPartAttempts = 8;
+        const partStart = Date.now();
+
+        while (partAttempts < maxPartAttempts) {
+          try {
+            partAttempts++;
+            partRes = await client.send(
+              new UploadPartCommand({
+                Bucket: R2_BUCKET_NAME,
+                Key: r2Key,
+                UploadId: uploadId,
+                PartNumber: partNumber,
+                Body: buffer,
+              }),
+              { abortSignal: AbortSignal.timeout(300000) }
+            );
+            break;
+          } catch (partErr) {
+            if (partAttempts >= maxPartAttempts) throw partErr;
+            console.warn(`  ⚠️ Part ${partNumber} retry ${partAttempts}/${maxPartAttempts}: ${partErr.code || partErr.message || 'timeout'}`);
+            await new Promise(r => setTimeout(r, 2000 * partAttempts));
+          }
         }
+
+        const durationSec = ((Date.now() - partStart) / 1000).toFixed(1);
+        completedCount++;
+        const percent = ((completedCount / numParts) * 100).toFixed(1);
+        console.log(`  ✓ Part ${partNumber}/${numParts} (${(partLength / (1024 * 1024)).toFixed(1)} MB) uploaded in ${durationSec}s [Overall: ${completedCount}/${numParts} - ${percent}%]`);
+
+        parts[idx] = {
+          PartNumber: partNumber,
+          ETag: partRes.ETag,
+        };
       }
-
-      const durationSec = ((Date.now() - partStart) / 1000).toFixed(1);
-      parts.push({
-        PartNumber: partNumber,
-        ETag: partRes.ETag,
-      });
-
-      console.log(`✓ (${durationSec}s)`);
     }
 
-    fs.closeSync(fd);
+    const workers = Array.from({ length: concurrency }, () => worker());
+    await Promise.all(workers);
 
     console.log('  Completing multipart upload on Cloudflare R2...');
     await client.send(new CompleteMultipartUploadCommand({
@@ -131,7 +144,6 @@ async function uploadLargeMultipart(localPath, r2Key, contentType = 'application
 
     console.log(`✅ Finished uploading: ${r2Key}`);
   } catch (err) {
-    try { fs.closeSync(fd); } catch {}
     console.error(`❌ Multipart upload failed: ${err.message}`);
     try {
       await client.send(new AbortMultipartUploadCommand({
