@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
-import { Monitor, Smartphone, Loader2, Wifi, Globe, Link as LinkIcon, Info, ShieldCheck, Cpu } from "lucide-react";
+import { Monitor, Smartphone, Loader2, Wifi, Globe, Link as LinkIcon, Info, ShieldCheck, Cpu, Zap } from "lucide-react";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
+import { useLicense } from "@/hooks/useLicense";
 import Image from "next/image";
 
 interface HubInfo {
@@ -26,6 +27,11 @@ interface PairingDevice {
 
 export default function PairingPage() {
   const { profile } = useBusinessProfile();
+  const { tier, limit } = useLicense();
+  const maxDeviceLimit = limit('max_devices');
+  const maxDevicesDisplay = maxDeviceLimit === -1 ? '∞' : (maxDeviceLimit || 5);
+  const tierName = (tier || 'lite').toUpperCase();
+
   const [hubInfo, setHubInfo] = useState<HubInfo | null>(null);
   const [tunnelUrl, setTunnelUrl] = useState<string | null>(null);
   const [unifiedQrCode, setUnifiedQrCode] = useState<string>("");
@@ -260,12 +266,17 @@ export default function PairingPage() {
               <Smartphone className="text-slate-400 w-5 h-5" />
             </div>
 
-            <h2 className="text-lg font-black text-white uppercase tracking-wider mb-2">
-              Connected Devices ({connectedDevices.length})
+            <h2 className="text-lg font-black text-white uppercase tracking-wider mb-2 flex items-center justify-between">
+              <span>Connected Devices ({connectedDevices.length} / {maxDevicesDisplay})</span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold uppercase">{tierName} TIER</span>
             </h2>
-            <p className="text-xs text-slate-400 mb-6 leading-relaxed">
-              List of active tablets, terminals, and mobile devices connected to this local hub.
+            <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+              Active handheld terminals connected to local mesh.
             </p>
+            <div className="mb-4 p-2.5 bg-slate-950/80 border border-slate-800 rounded-lg text-[10px] text-slate-400 flex items-center justify-between">
+              <span className="flex items-center gap-1.5"><Zap size={11} className="text-amber-400" /> Plan Capacity:</span>
+              <span className="text-slate-300">Lite: <strong>5</strong> · Pro: <strong>15</strong> · Elite: <strong>50</strong></span>
+            </div>
 
             {/* Devices list */}
             <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">

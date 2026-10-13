@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Mobile WebSocket Bridge â€” Hardened Security Edition (v13.1)
  *
  * Security model:
@@ -55,12 +55,15 @@ interface BridgeClient {
 const clients = new Map<string, BridgeClient>();
 let wss: WebSocketServer | null = null;
 
-// Tier â†’ max devices. Must mirror the Hub license system exactly.
+// Tier → max devices. Must mirror the Hub license system exactly.
 const TIER_LIMITS: Record<string, number> = {
   lite: 5,
   pro: 15,
   elite: 50,
-  trial: 3,
+  trial: 15,
+  free_trial: 15,
+  free: 1,
+  free_forever: 1,
 };
 
 // Valid deviceId: 8â€“64 chars, alphanumeric, dashes, underscores only
@@ -744,7 +747,11 @@ async function handleMessage(
     case 'STOCK_UPDATED':
     case 'SCAN_COMPLETED':
     case 'PARTY_CREATED':
-    case 'WORKER_CREATED': {
+    case 'WORKER_CREATED':
+    case 'KHATA_ENTRY':
+    case 'KHATA_UPDATED':
+    case 'DISPATCH_UPDATED':
+    case 'PAYMENT_RECEIVED': {
       console.log(`[Bridge] Event ${String(msg.type)} from ${client.deviceLabel}`);
       broadcastToHubRenderer(String(msg.type), {
         deviceLabel: client.deviceLabel,
@@ -839,6 +846,15 @@ function broadcastToHubRenderer(event: string, data: any): void {
       console.error('[Bridge] IPC emit error:', err.message);
     }
   }
+
+  // Next.js standalone process forked by Electron utilityProcess
+  if (typeof process !== 'undefined' && typeof process.send === 'function') {
+    try {
+      process.send({ type: 'bridge-event', event, data });
+    } catch (err: any) {
+      console.error('[Bridge] process.send error:', err.message);
+    }
+  }
 }
 
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -911,6 +927,25 @@ export function broadcastToAllDevices(
   message: any
 ): void {
   deliverMessageToDevice('all', message);
+}
+
+/**
+ * Broadcast an operational event or cache invalidation to all active mobile devices.
+ * Used for PC-to-Mobile real-time updates (e.g. stock level adjusted on PC, prices modified).
+ */
+export function broadcastSyncToMobileDevices(
+  eventType: string,
+  payload?: any
+): void {
+  clients.forEach((device) => {
+    if (device.paired && device.ws.readyState === WebSocket.OPEN) {
+      send(device.ws, {
+        type: eventType,
+        payload: payload || {},
+        timestamp: Date.now(),
+      });
+    }
+  });
 }
 
 export function getConnectedClientsMap(): Map<string, BridgeClient> {

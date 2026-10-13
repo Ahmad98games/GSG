@@ -5,8 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import QRCode from 'react-qr-code';
 import {
   Smartphone, Wifi, WifiOff, Trash2, RefreshCw,
-  ShieldCheck, AlertTriangle, Clock, QrCode, Globe
+  ShieldCheck, AlertTriangle, Clock, QrCode, Globe, Zap
 } from 'lucide-react';
+import { useLicense } from '@/hooks/useLicense';
 
 interface PairedDevice {
   id?: string;
@@ -152,6 +153,11 @@ export default function DevicesPage() {
     );
   }
 
+  const { tier, limit } = useLicense();
+  const maxDeviceLimit = limit('max_devices');
+  const maxDevicesDisplay = maxDeviceLimit === -1 ? '∞' : (maxDeviceLimit || 5);
+  const tierName = (tier || 'lite').toUpperCase();
+
   return (
     <div className="p-8 max-w-3xl">
       {/* Header */}
@@ -164,15 +170,18 @@ export default function DevicesPage() {
             <h1 className="text-lg font-bold text-white uppercase tracking-tight">
               Connected Devices
             </h1>
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              {tierName} TIER ({maxDevicesDisplay} DEVICES MAX)
+            </span>
           </div>
           <p className="text-xs text-gray-500 ml-11">
-            Mobile phones paired with this Hub via WiFi.
-            Remove a device to revoke its access immediately.
+            Mobile handhelds paired with this Hub via WiFi or encrypted tunnel.
+            Remove a device to revoke its mesh access immediately.
           </p>
         </div>
         <button
           onClick={load}
-          className="flex items-center space-x-2 px-3 py-1.5 text-[10px] uppercase font-bold text-gray-500 hover:text-white border border-white/5 hover:border-white/10 rounded-sm transition-all"
+          className="flex items-center space-x-2 px-3 py-1.5 text-[10px] uppercase font-bold text-gray-500 hover:text-white border border-white/5 hover:border-white/10 rounded-sm transition-all cursor-pointer"
         >
           <RefreshCw size={11} />
           <span>Refresh</span>
@@ -180,7 +189,7 @@ export default function DevicesPage() {
       </div>
 
       {/* Live stats bar */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-3 gap-3 mb-4">
         {[
           {
             label: 'Paired Now',
@@ -190,8 +199,8 @@ export default function DevicesPage() {
             bg: 'bg-emerald-500/10',
           },
           {
-            label: 'Authorized',
-            value: allDevices.length,
+            label: `Authorized (${tierName})`,
+            value: `${allDevices.length} / ${maxDevicesDisplay}`,
             icon: ShieldCheck,
             color: 'text-electric-blue',
             bg: 'bg-electric-blue/10',
@@ -221,6 +230,24 @@ export default function DevicesPage() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Tier Quotas Guidance Bar */}
+      <div className="mb-6 p-3 bg-white/[0.02] border border-white/[0.06] rounded-sm flex flex-wrap items-center justify-between text-[11px] text-gray-400 gap-2">
+        <div className="flex items-center gap-2">
+          <Zap size={13} className="text-amber-400" />
+          <span className="font-semibold text-white">Tier Capacity:</span>
+          <span>Free: <strong className="text-gray-300">1</strong></span>
+          <span className="text-gray-600">·</span>
+          <span>Lite: <strong className="text-emerald-400">5 Devices</strong></span>
+          <span className="text-gray-600">·</span>
+          <span>Pro: <strong className="text-cyan-400">15 Devices</strong></span>
+          <span className="text-gray-600">·</span>
+          <span>Elite: <strong className="text-amber-400">50 Devices</strong></span>
+        </div>
+        <span className="text-[10px] text-gray-500 font-mono">
+          WiFi & Cloud Tunnel Mesh
+        </span>
       </div>
 
       {/* Error */}

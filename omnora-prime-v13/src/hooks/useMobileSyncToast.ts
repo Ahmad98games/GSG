@@ -59,6 +59,67 @@ function buildToastMessage(
       }
     }
 
+    case 'STOCK_UPDATED': {
+      const sku = data?.sku_name || data?.sku || data?.name || 'Inventory item'
+      const qty = data?.quantity ?? data?.qty ?? data?.units ?? ''
+      return {
+        title: '📦 Warehouse Stock Updated',
+        message: `${sku} updated via Handheld${qty !== '' ? ` (${qty} units)` : ''}`,
+      }
+    }
+
+    case 'SCAN_COMPLETED': {
+      const code = data?.barcode || data?.code || data?.sku || ''
+      return {
+        title: '🔍 Barcode Scanned',
+        message: `Scanned ${code || 'item'} at warehouse floor`,
+      }
+    }
+
+    case 'KHATA_ENTRY':
+    case 'KHATA_UPDATED': {
+      const amt = data?.amount
+        ? `PKR ${Number(data.amount).toLocaleString('en-PK')}`
+        : ''
+      const note = data?.note ? ` (${data.note})` : ''
+      return {
+        title: '📒 Khata Ledger Updated',
+        message: `Field collection recorded${amt ? ` — ${amt}` : ''}${note}`,
+      }
+    }
+
+    case 'PARTY_CREATED': {
+      const name = data?.name || data?.party_name || 'New Party'
+      return {
+        title: '👥 Party Registered',
+        message: `${name} enrolled from Mobile`,
+      }
+    }
+
+    case 'WORKER_CREATED': {
+      const name = data?.name || data?.worker_name || 'New Worker'
+      return {
+        title: '👷 Karigar Added',
+        message: `${name} registered on shop floor`,
+      }
+    }
+
+    case 'DISPATCH_UPDATED': {
+      const order = data?.order_number || data?.id || 'Dispatch order'
+      return {
+        title: '🚚 Dispatch Updated',
+        message: `${order} updated via Handheld`,
+      }
+    }
+
+    case 'DEVICE_CONNECTED': {
+      const label = data?.deviceLabel || 'Mobile device'
+      return {
+        title: '📱 Handheld Connected',
+        message: `${label} paired with local mesh`,
+      }
+    }
+
     default:
       return null
   }
