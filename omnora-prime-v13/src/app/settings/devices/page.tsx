@@ -532,7 +532,7 @@ export default function DevicesPage() {
                   <span className="text-electric-blue font-mono font-black">1.</span> Strict Tier Quota Gate
                 </p>
                 <p className="text-gray-500">
-                  Pro tier allows strictly 15 concurrent devices (Lite: 5, Free: 1, Elite: 50). Scanning device #16 triggers <code className="text-amber-400 font-mono">ERR_TIER_LIMIT_EXCEEDED</code> and severs the socket instantly with WebSocket Code 1008.
+                  Strictly enforced across all tiers: <strong className="text-emerald-400">Lite: 5</strong> (6th blocked), <strong className="text-cyan-400">Pro: 15</strong> (16th blocked), <strong className="text-amber-400">Elite: 50</strong> (51st blocked), Free: 1 (2nd blocked). Any scan beyond tier capacity triggers <code className="text-amber-400 font-mono">ERR_TIER_LIMIT_EXCEEDED</code> and severs the socket instantly with WebSocket Code 1008.
                 </p>
               </div>
 

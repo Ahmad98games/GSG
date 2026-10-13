@@ -273,10 +273,24 @@ export default function PairingPage() {
             <p className="text-xs text-slate-400 mb-4 leading-relaxed">
               Active handheld terminals connected to local mesh.
             </p>
+
+            {/* Plan Capacity & Quota Guard */}
             <div className="mb-4 p-2.5 bg-slate-950/80 border border-slate-800 rounded-lg text-[10px] text-slate-400 flex items-center justify-between">
-              <span className="flex items-center gap-1.5"><Zap size={11} className="text-amber-400" /> Plan Capacity:</span>
-              <span className="text-slate-300">Lite: <strong>5</strong> · Pro: <strong>15</strong> · Elite: <strong>50</strong></span>
+              <span className="flex items-center gap-1.5"><Zap size={11} className="text-amber-400" /> Plan Limits:</span>
+              <span className="text-slate-300">Lite: <strong className="text-emerald-400">5</strong> · Pro: <strong className="text-cyan-400">15</strong> · Elite: <strong className="text-amber-400">50</strong></span>
             </div>
+
+            {maxDeviceLimit > 0 && connectedDevices.length >= maxDeviceLimit && (
+              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-400 flex items-start gap-2.5">
+                <ShieldCheck size={16} className="text-red-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold uppercase tracking-wider text-[10px]">Quota Reached ({connectedDevices.length}/{maxDevicesDisplay})</p>
+                  <p className="text-[10px] text-red-300/80 mt-0.5">
+                    Your {tierName} tier is at maximum capacity ({maxDevicesDisplay} devices). Additional scanning attempts will be blocked by the backend security gate with Policy Violation (1008). Unpair an inactive device in Settings to connect a new one.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Devices list */}
             <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
