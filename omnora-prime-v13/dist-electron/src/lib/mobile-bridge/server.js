@@ -55,6 +55,7 @@ exports.getBridgeStatus = getBridgeStatus;
 exports.disconnectDevice = disconnectDevice;
 exports.deliverMessageToDevice = deliverMessageToDevice;
 exports.broadcastToAllDevices = broadcastToAllDevices;
+exports.broadcastSyncToMobileDevices = broadcastSyncToMobileDevices;
 exports.getConnectedClientsMap = getConnectedClientsMap;
 const ws_1 = require("ws");
 const crypto_1 = require("crypto");
@@ -76,13 +77,45 @@ function getAdmin() {
 }
 const clients = new Map();
 let wss = null;
-// Tier â†’ max devices. Must mirror the Hub license system exactly.
+// Tier → max devices. Must mirror the Hub license system exactly.
 const TIER_LIMITS = {
     lite: 5,
     pro: 15,
     elite: 50,
-    trial: 3,
+    trial: 15,
+    free_trial: 15,
+    free: 1,
+    free_forever: 1,
 };
+const ipRateLimits = new Map();
+function isIpQuarantined(ip) {
+    const entry = ipRateLimits.get(ip);
+    if (!entry)
+        return false;
+    if (entry.jailedUntil > Date.now())
+        return true;
+    if (Date.now() - entry.lastAttempt > 60_000) {
+        ipRateLimits.delete(ip);
+        return false;
+    }
+    return false;
+}
+function recordFailedAttempt(ip) {
+    const now = Date.now();
+    const entry = ipRateLimits.get(ip) || { attempts: 0, lastAttempt: now, jailedUntil: 0 };
+    entry.attempts++;
+    entry.lastAttempt = now;
+    if (entry.attempts >= 5) {
+        entry.jailedUntil = now + 5 * 60 * 1000; // 5 minute quarantine
+        ipRateLimits.set(ip, entry);
+        return true; // Newly jailed
+    }
+    ipRateLimits.set(ip, entry);
+    return false;
+}
+function resetFailedAttempts(ip) {
+    ipRateLimits.delete(ip);
+}
 // Valid deviceId: 8â€“64 chars, alphanumeric, dashes, underscores only
 const DEVICE_ID_RE = /^[a-zA-Z0-9_-]{8,64}$/;
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -111,7 +144,12 @@ async function getLocalProfile() {
         if (!cfg['business_id'] && !cfg['business_name'])
             return null;
         const tier = cfg['tier'] || 'lite';
-        const maxDevices = Number(cfg['max_devices']) || TIER_LIMITS[tier] || 5;
+        const tierCap = TIER_LIMITS[tier] ?? 1;
+        const configuredLimit = Number(cfg['max_devices']);
+        // Anti-tamper clamping: user config cannot exceed hard license cap
+        const maxDevices = (configuredLimit > 0 && configuredLimit <= tierCap)
+            ? configuredLimit
+            : tierCap;
         return {
             id: cfg['business_id'] || 'local',
             business_name: cfg['business_name'] || 'Noxis Hub',
@@ -143,6 +181,12 @@ function attachMobileBridge(httpServer, customPort) {
     wss.on('connection', (ws, req) => {
         const clientId = (0, crypto_1.randomUUID)();
         const clientIp = req.socket.remoteAddress || 'unknown';
+        // ── Security Gate: Check IP Quarantine ─────────────────────────────────────
+        if (isIpQuarantined(clientIp)) {
+            console.warn(`[Bridge] Security: Quarantined IP rejected: ${clientIp}`);
+            ws.close(1008, 'Security: IP temporarily quarantined due to authorization flood');
+            return;
+        }
         clients.set(clientId, {
             id: clientId,
             ws,
@@ -153,6 +197,7 @@ function attachMobileBridge(httpServer, customPort) {
             connectedAt: new Date(),
             lastHeartbeat: new Date(),
             tier: null,
+            clientIp,
         });
         console.log(`[Bridge] Client connected: ${clientId} from ${clientIp}`);
         // Give client 30 seconds to send PAIR_REQUEST or disconnect them
@@ -260,10 +305,15 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
             const rawLabel = String(msg.deviceLabel ?? msg.label ?? 'Mobile Device').slice(0, 80);
             // 1. Validate deviceId format
             if (!DEVICE_ID_RE.test(rawDeviceId)) {
+                recordFailedAttempt(client.clientIp);
                 send(ws, {
                     type: 'PAIRING_REJECTED',
-                    reason: 'Invalid device identifier. Must be 8â€“64 alphanumeric characters.',
+                    code: 'ERR_INVALID_DEVICE_ID',
+                    reason: 'Invalid device identifier. Must be 8-64 alphanumeric characters.',
                 });
+                clearTimeout(pairingTimeout);
+                ws.close(1008, 'Invalid device identifier format');
+                clients.delete(clientId);
                 return;
             }
             // 2. Load business profile from local_config
@@ -291,15 +341,27 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
                 });
                 return;
             }
-            // 5. Check device limit via persistent device table
+            // 5. Anti-Revocation Blacklist Gate & Device Limit Enforcement
             let isAlreadyAuthorized = false;
+            let isDeviceRevoked = false;
             let authorizedCount = 0;
             try {
+                // A. Check if device is in revoked / blacklisted state
+                const revokedMatch = await client_1.db
+                    .select({ nodeId: schema.authorizedDevices.nodeId })
+                    .from(schema.authorizedDevices)
+                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema.authorizedDevices.businessId, profile.id), (0, drizzle_orm_1.eq)(schema.authorizedDevices.deviceId, rawDeviceId), (0, drizzle_orm_1.eq)(schema.authorizedDevices.isRevoked, 1)))
+                    .limit(1);
+                if (revokedMatch.length > 0) {
+                    isDeviceRevoked = true;
+                }
+                // B. Count currently authorized, non-revoked devices
                 const [countResult] = await client_1.db
                     .select({ value: (0, drizzle_orm_1.sql) `count(*)` })
                     .from(schema.authorizedDevices)
                     .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema.authorizedDevices.businessId, profile.id), (0, drizzle_orm_1.eq)(schema.authorizedDevices.isRevoked, 0)));
                 authorizedCount = countResult?.value ?? 0;
+                // C. Check if already active and authorized
                 const existing = await client_1.db
                     .select({ nodeId: schema.authorizedDevices.nodeId })
                     .from(schema.authorizedDevices)
@@ -308,17 +370,83 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
                 isAlreadyAuthorized = existing.length > 0;
             }
             catch (dbErr) {
-                console.error('[Bridge] DB count error during pairing:', dbErr.message);
-                // Non-fatal: proceed without count check if DB unavailable
+                console.error('[Bridge] DB verification error during pairing:', dbErr.message);
             }
-            if (!isAlreadyAuthorized && authorizedCount >= profile.maxDevices) {
+            // Security Enforcement: Revoked / Blacklisted Device Rejection
+            if (isDeviceRevoked) {
+                recordFailedAttempt(client.clientIp);
+                try {
+                    await client_1.db.insert(schema.securityAudit).values({
+                        id: `sec-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                        nodeId: rawDeviceId,
+                        eventType: 'REVOKED_DEVICE_ACCESS_ATTEMPT',
+                        payload: JSON.stringify({
+                            ip: client.clientIp,
+                            deviceLabel: rawLabel,
+                            tier: profile.tier,
+                            reason: 'Revoked/Blacklisted device attempted QR handshake reconnect.'
+                        }),
+                        failedAuthCount: 1,
+                        createdAt: new Date().toISOString(),
+                    });
+                }
+                catch (auditErr) {
+                    console.error('[Bridge] Failed to record security audit for revoked device:', auditErr.message);
+                }
+                broadcastToHubRenderer('SECURITY_ALERT', {
+                    severity: 'HIGH',
+                    title: 'Revoked Device Connection Blocked',
+                    message: `Revoked handheld "${rawLabel}" (${rawDeviceId}) from IP ${client.clientIp} attempted to re-pair. Access denied.`,
+                    timestamp: new Date().toISOString(),
+                    nodeId: rawDeviceId,
+                });
                 send(ws, {
                     type: 'PAIRING_REJECTED',
-                    reason: `Device limit reached. Your ${profile.tier} plan allows ${profile.maxDevices} devices. Upgrade to add more.`,
+                    code: 'ERR_DEVICE_REVOKED',
+                    reason: 'Access denied: This device was previously revoked by the administrator.',
+                });
+                ws.close(1008, 'DEVICE_REVOKED');
+                return;
+            }
+            // Security Enforcement: Strict Tier Quota Overflow Gate
+            if (!isAlreadyAuthorized && authorizedCount >= profile.maxDevices) {
+                recordFailedAttempt(client.clientIp);
+                try {
+                    await client_1.db.insert(schema.securityAudit).values({
+                        id: `sec-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                        nodeId: rawDeviceId,
+                        eventType: 'TIER_QUOTA_OVERFLOW_BLOCKED',
+                        payload: JSON.stringify({
+                            ip: client.clientIp,
+                            deviceLabel: rawLabel,
+                            tier: profile.tier,
+                            currentCount: authorizedCount,
+                            maxAllowed: profile.maxDevices,
+                            action: 'Socket severed, connection dropped with 1008 Policy Violation'
+                        }),
+                        failedAuthCount: 1,
+                        createdAt: new Date().toISOString(),
+                    });
+                }
+                catch (auditErr) {
+                    console.error('[Bridge] Failed to record security audit for quota overflow:', auditErr.message);
+                }
+                broadcastToHubRenderer('SECURITY_ALERT', {
+                    severity: 'HIGH',
+                    title: 'Tier Device Limit Exceeded',
+                    message: `Device "${rawLabel}" (${rawDeviceId}) attempted pairing, but your ${profile.tier.toUpperCase()} tier is strictly capped at ${profile.maxDevices} devices (${authorizedCount}/${profile.maxDevices} active). Connection severed.`,
+                    timestamp: new Date().toISOString(),
+                    nodeId: rawDeviceId,
+                });
+                send(ws, {
+                    type: 'PAIRING_REJECTED',
+                    code: 'ERR_TIER_LIMIT_EXCEEDED',
+                    reason: `Tier device limit reached. Your ${profile.tier.toUpperCase()} plan is strictly capped at ${profile.maxDevices} concurrent devices. Unpair an inactive device or upgrade your plan to connect more.`,
                     tier: profile.tier,
                     maxDevices: profile.maxDevices,
                     currentCount: authorizedCount,
                 });
+                ws.close(1008, 'TIER_LIMIT_EXCEEDED');
                 return;
             }
             // 6. Register/update device in authorized_devices
@@ -342,14 +470,12 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
                         deviceLabel: rawLabel,
                         label: rawLabel,
                         lastSeen: new Date().toISOString(),
-                        isRevoked: 0,
                         isActive: 1,
                     },
                 });
             }
             catch (dbErr) {
                 console.error('[Bridge] Device registration error:', dbErr.message);
-                // Non-fatal â€” proceed with in-memory pairing
             }
             // 7. Update in-memory client state
             clearTimeout(pairingTimeout);
@@ -692,7 +818,11 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
         case 'STOCK_UPDATED':
         case 'SCAN_COMPLETED':
         case 'PARTY_CREATED':
-        case 'WORKER_CREATED': {
+        case 'WORKER_CREATED':
+        case 'KHATA_ENTRY':
+        case 'KHATA_UPDATED':
+        case 'DISPATCH_UPDATED':
+        case 'PAYMENT_RECEIVED': {
             console.log(`[Bridge] Event ${String(msg.type)} from ${client.deviceLabel}`);
             broadcastToHubRenderer(String(msg.type), {
                 deviceLabel: client.deviceLabel,
@@ -781,6 +911,15 @@ function broadcastToHubRenderer(event, data) {
             console.error('[Bridge] IPC emit error:', err.message);
         }
     }
+    // Next.js standalone process forked by Electron utilityProcess
+    if (typeof process !== 'undefined' && typeof process.send === 'function') {
+        try {
+            process.send({ type: 'bridge-event', event, data });
+        }
+        catch (err) {
+            console.error('[Bridge] process.send error:', err.message);
+        }
+    }
 }
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // PUBLIC API
@@ -827,6 +966,21 @@ function deliverMessageToDevice(deviceId, message) {
 }
 function broadcastToAllDevices(message) {
     deliverMessageToDevice('all', message);
+}
+/**
+ * Broadcast an operational event or cache invalidation to all active mobile devices.
+ * Used for PC-to-Mobile real-time updates (e.g. stock level adjusted on PC, prices modified).
+ */
+function broadcastSyncToMobileDevices(eventType, payload) {
+    clients.forEach((device) => {
+        if (device.paired && device.ws.readyState === ws_1.WebSocket.OPEN) {
+            send(device.ws, {
+                type: eventType,
+                payload: payload || {},
+                timestamp: Date.now(),
+            });
+        }
+    });
 }
 function getConnectedClientsMap() {
     return clients;

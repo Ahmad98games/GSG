@@ -702,7 +702,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 </div>
 
 <div class="footer-meta">
-  <span>v13.0.10 &nbsp;·&nbsp; SQLite WAL</span>
+  <span>v14.0.0 &nbsp;·&nbsp; SQLite WAL</span>
   <span>OMNORA LABS</span>
 </div>
 </body>

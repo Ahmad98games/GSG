@@ -49,6 +49,18 @@ interface ChangelogItem {
 
 const HISTORICAL_CHANGELOGS: ChangelogItem[] = [
   {
+    version: '14.0.0',
+    date: 'October 2026',
+    type: 'major',
+    title: 'Noxis Hub v14.0.0 Gold Master — Multi-Tier Real-Time Mesh, 5-Layer Security Architecture & Sentinel AI',
+    highlights: [
+      { tag: 'Multi-Tier Limits', text: 'Hard-enforced device capacities across Free (1), Lite (5), Pro (15), and Elite (50) with automated socket severing (1008)', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      { tag: 'Defense Architecture', text: 'Sliding-window IP quarantine jail (60s / 5 failed attempts), cryptographic device ID sanitization, and anti-revocation blacklist gate', color: 'text-red-400 bg-red-500/10 border-red-500/20' },
+      { tag: 'Real-Time Sync', text: 'Real-Time Warehouse & Field Sync, biometric khata bond, bidirectional conflict resolution, and instant desktop HUD threat alerts', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
+      { tag: 'Sentinel Assistant', text: 'Autonomous ERP intelligence with deep codebase knowledge, instant diagnostics, business intelligence telemetry, and shortcut integration', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+    ],
+  },
+  {
     version: '13.0.10',
     date: 'October 2026',
     type: 'patch',
@@ -241,7 +253,7 @@ export default function UpdatesPage() {
     // 2. Listen for real-time background update events
     const cleanup = (window as any).electronAPI.onUpdateStatus((data: UpdateState) => {
       setUpdateState((prev) => {
-        const version = data.version || prev.version || '13.0.10'
+        const version = data.version || prev.version || '14.0.0'
         let total = data.total ?? prev.total ?? 281255992
         if (total <= 0) total = 281255992
         let transferred = data.transferred ?? prev.transferred ?? 0
@@ -721,7 +733,7 @@ export default function UpdatesPage() {
               Auto-Sync Feed: /updates/{channel}
             </span>
             <a
-              href="https://noxishub.app/updates/stable/Noxis%20Hub%20Setup%2013.0.10.exe"
+              href="https://noxishub.app/updates/stable/Noxis%20Hub%20Setup%2014.0.0.exe"
               target="_blank"
               rel="noreferrer"
               className="text-[11px] font-medium text-cyan-400 hover:text-cyan-300 underline underline-offset-2 flex items-center gap-1 cursor-pointer"
