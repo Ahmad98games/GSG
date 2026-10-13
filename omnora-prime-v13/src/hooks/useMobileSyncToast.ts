@@ -120,6 +120,13 @@ function buildToastMessage(
       }
     }
 
+    case 'SECURITY_ALERT': {
+      return {
+        title: data?.title || '🚨 Security Alert',
+        message: data?.message || 'Unauthorized mobile connection attempt blocked',
+      }
+    }
+
     default:
       return null
   }
@@ -139,7 +146,7 @@ function shouldShowToast(type: string): boolean {
 }
 
 export function useMobileSyncToast() {
-  const { success, info } = useToast()
+  const { success, info, error } = useToast()
 
   const handleMobileEvent = useCallback(
     (event: CustomEvent) => {
@@ -150,9 +157,13 @@ export function useMobileSyncToast() {
       const toastData = buildToastMessage(type, data)
       if (!toastData) return
 
-      info(toastData.title, toastData.message)
+      if (type === 'SECURITY_ALERT') {
+        error(toastData.title, toastData.message)
+      } else {
+        info(toastData.title, toastData.message)
+      }
     },
-    [info]
+    [info, error]
   )
 
   const handleSyncComplete = useCallback(

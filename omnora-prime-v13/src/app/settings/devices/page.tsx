@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import QRCode from 'react-qr-code';
 import {
   Smartphone, Wifi, WifiOff, Trash2, RefreshCw,
-  ShieldCheck, AlertTriangle, Clock, QrCode, Globe, Zap
+  ShieldCheck, AlertTriangle, Clock, QrCode, Globe, Zap,
+  ShieldAlert, Lock, Ban
 } from 'lucide-react';
 import { useLicense } from '@/hooks/useLicense';
 
@@ -29,9 +30,19 @@ interface LiveDevice {
   tier: string | null;
 }
 
+interface SecurityAuditItem {
+  id: string;
+  nodeId: string;
+  eventType: string;
+  payload: string | null;
+  failedAuthCount: number | null;
+  createdAt: string;
+}
+
 export default function DevicesPage() {
   const [persistedDevices, setPersistedDevices] = useState<PairedDevice[]>([]);
   const [liveDevices, setLiveDevices] = useState<LiveDevice[]>([]);
+  const [securityAlerts, setSecurityAlerts] = useState<SecurityAuditItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [revoking, setRevoking] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,9 +53,10 @@ export default function DevicesPage() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [devRes, statusRes] = await Promise.all([
+      const [devRes, statusRes, secRes] = await Promise.all([
         fetch('/api/hub/devices'),
         fetch('/api/hub/info'),
+        fetch('/api/hub/security-alerts'),
       ]);
 
       if (devRes.ok) {
@@ -57,6 +69,11 @@ export default function DevicesPage() {
       if (statusRes.ok) {
         const info = await statusRes.json();
         setLiveDevices(info.bridge?.pairedDevices || []);
+      }
+
+      if (secRes.ok) {
+        const alerts = await secRes.json();
+        setSecurityAlerts(Array.isArray(alerts) ? alerts : []);
       }
     } catch (err: any) {
       setError('Could not load device data. Is the Hub running?');
@@ -400,21 +417,152 @@ export default function DevicesPage() {
         </div>
       )}
 
-      {/* Security note */}
-      <div className="mt-8 p-4 bg-white/[0.02] border border-white/5 rounded-sm">
-        <div className="flex items-start space-x-3">
-          <ShieldCheck size={14} className="text-electric-blue mt-0.5 shrink-0" />
-          <div>
-            <p className="text-[10px] font-bold text-white uppercase tracking-widest mb-1">
-              Security Notes
+      {/* Security Quarantine & Threat Audit Log */}
+      <div className="mt-8 p-5 bg-[#0F1114] border border-white/[0.08] rounded-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <ShieldAlert size={14} className="text-red-400" />
+            <p className="text-[10px] font-bold uppercase tracking-widest text-white">
+              Security Quarantine & Enforcement Audit
             </p>
-            <ul className="text-[10px] text-gray-600 space-y-1">
-              <li>• Devices must be on the same WiFi as this Hub to connect</li>
-              <li>• Removing a device disconnects it instantly and requires re-pairing</li>
-              <li>• Device IDs are validated (8–64 chars, alphanumeric) before pairing</li>
-              <li>• Connections that don't pair within 30 seconds are auto-disconnected</li>
-              <li>• Connections silent for 90+ seconds are automatically dropped</li>
-            </ul>
+            {securityAlerts.length > 0 && (
+              <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-red-500/10 text-red-400 border border-red-500/20">
+                {securityAlerts.length} Events Logged
+              </span>
+            )}
+          </div>
+          <span className="text-[9px] text-gray-500 font-mono">
+            Active Defenses: Socket Severing (1008) + IP Quarantine
+          </span>
+        </div>
+
+        {securityAlerts.length === 0 ? (
+          <div className="p-4 bg-white/[0.02] border border-white/5 rounded-sm text-center">
+            <ShieldCheck size={20} className="text-emerald-400 mx-auto mb-1.5 opacity-80" />
+            <p className="text-xs font-semibold text-gray-300">All Nodes Secure & Within Tier Limits</p>
+            <p className="text-[10px] text-gray-600 mt-0.5">
+              No unauthorized pairing attempts, revoked handshake intrusions, or tier overflow breaches detected.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {securityAlerts.slice(0, 5).map((alert) => {
+              let parsed: any = {};
+              try {
+                parsed = alert.payload ? JSON.parse(alert.payload) : {};
+              } catch {
+                parsed = { raw: alert.payload };
+              }
+
+              const isOverflow = alert.eventType === 'TIER_QUOTA_OVERFLOW_BLOCKED';
+              const isRevoked = alert.eventType === 'REVOKED_DEVICE_ACCESS_ATTEMPT';
+
+              return (
+                <div
+                  key={alert.id}
+                  className="p-3 bg-black/40 border border-white/5 rounded-sm flex items-start justify-between gap-3"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                          isOverflow
+                            ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                            : isRevoked
+                            ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                            : 'bg-electric-blue/10 text-electric-blue border border-electric-blue/20'
+                        }`}
+                      >
+                        {alert.eventType.replace(/_/g, ' ')}
+                      </span>
+                      <span className="text-[10px] font-mono text-gray-400 font-bold">
+                        {alert.nodeId}
+                      </span>
+                    </div>
+
+                    <p className="text-[10px] text-gray-400">
+                      {isOverflow && (
+                        <span>
+                          Exceeded {parsed.tier?.toUpperCase()} tier cap ({parsed.currentCount}/{parsed.maxAllowed} devices). Handshake dropped & socket severed.
+                        </span>
+                      )}
+                      {isRevoked && (
+                        <span>
+                          Revoked/Blacklisted handheld attempted re-pairing via QR scan. Denied.
+                        </span>
+                      )}
+                      {!isOverflow && !isRevoked && (
+                        <span>{parsed.reason || parsed.raw || 'Security policy rule triggered.'}</span>
+                      )}
+                    </p>
+
+                    <div className="flex items-center gap-3 text-[9px] text-gray-600 font-mono">
+                      {parsed.ip && <span>IP: {parsed.ip}</span>}
+                      {parsed.deviceLabel && <span>Device: {parsed.deviceLabel}</span>}
+                    </div>
+                  </div>
+
+                  <span className="text-[9px] text-gray-500 shrink-0 font-mono">
+                    {formatTime(alert.createdAt)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 5-Layer Security Architecture */}
+      <div className="mt-6 p-5 bg-white/[0.02] border border-white/5 rounded-sm">
+        <div className="flex items-start space-x-3">
+          <Lock size={15} className="text-electric-blue mt-0.5 shrink-0" />
+          <div className="space-y-3 w-full">
+            <div>
+              <p className="text-[10px] font-bold text-white uppercase tracking-widest">
+                Multi-Layer Mesh Security Architecture
+              </p>
+              <p className="text-[10px] text-gray-500 mt-0.5">
+                How Noxis Hub treats unauthorized devices, tier limits, and network intrusions:
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[10px]">
+              <div className="p-2.5 bg-black/30 border border-white/5 rounded-sm space-y-1">
+                <p className="font-bold text-gray-300 flex items-center gap-1.5">
+                  <span className="text-electric-blue font-mono font-black">1.</span> Strict Tier Quota Gate
+                </p>
+                <p className="text-gray-500">
+                  Pro tier allows strictly 15 concurrent devices (Lite: 5, Free: 1, Elite: 50). Scanning device #16 triggers <code className="text-amber-400 font-mono">ERR_TIER_LIMIT_EXCEEDED</code> and severs the socket instantly with WebSocket Code 1008.
+                </p>
+              </div>
+
+              <div className="p-2.5 bg-black/30 border border-white/5 rounded-sm space-y-1">
+                <p className="font-bold text-gray-300 flex items-center gap-1.5">
+                  <span className="text-electric-blue font-mono font-black">2.</span> IP Flood Quarantine Jail
+                </p>
+                <p className="text-gray-500">
+                  5 failed authorization or pairing attempts within 60 seconds automatically places the remote IP in a strict 5-minute quarantine jail, dropping subsequent TCP handshakes.
+                </p>
+              </div>
+
+              <div className="p-2.5 bg-black/30 border border-white/5 rounded-sm space-y-1">
+                <p className="font-bold text-gray-300 flex items-center gap-1.5">
+                  <span className="text-electric-blue font-mono font-black">3.</span> Anti-Revocation Blacklist Gate
+                </p>
+                <p className="text-gray-500">
+                  Revoking a device blacklists its cryptographic device ID. Re-scanning the QR code will NOT bypass revocation; the backend recognizes the revoked ID and rejects it.
+                </p>
+              </div>
+
+              <div className="p-2.5 bg-black/30 border border-white/5 rounded-sm space-y-1">
+                <p className="font-bold text-gray-300 flex items-center gap-1.5">
+                  <span className="text-electric-blue font-mono font-black">4.</span> Desktop Hub HUD Alerts
+                </p>
+                <p className="text-gray-500">
+                  Intrusion attempts and tier overflow events trigger immediate, high-priority red alert toasts on the Desktop Hub HUD and are permanently recorded in the security audit database.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
