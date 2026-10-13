@@ -22,7 +22,7 @@ const FAQS = [
   },
   { 
     q: "Can I pay monthly instead of annually?", 
-    a: "Yes! You can choose Monthly or Annual billing anytime. Monthly plans give full operational flexibility (Lite: Rs. 2,999/mo, Pro: Rs. 6,999/mo, Elite: Rs. 13,999/mo) with zero long-term commitment. Annual plans include a massive ~30% discount." 
+    a: "Yes! You can choose Monthly or Annual billing anytime. Monthly launch plans give full operational flexibility (Lite: Rs. 1,999/mo, Pro: Rs. 4,999/mo, Elite: Rs. 9,999/mo) with zero long-term commitment. Annual plans lock in maximum discounts (Lite: Rs. 18,000/yr, Pro: Rs. 45,000/yr, Elite: Rs. 90,000/yr) with free hardware motherboard re-binding." 
   },
   { 
     q: "Can I use Noxis Hub without an internet connection?", 
@@ -44,9 +44,9 @@ const FAQS = [
     q: "Is my factory data safe and private?", 
     a: "Yes. All your records are stored in a local SQLite file on your office computer's hard drive, never on public servers. We have zero access to your sales, pricing, or worker wage logs." 
   },
-  {
-    q: "What happens if my factory PC breaks or is replaced?",
-    a: "We provide free hardware motherboard re-binding. Simply send us your new Machine ID (HWID) along with your original purchase receipt on WhatsApp (+92 326 4742678), and we issue an updated key within minutes."
+  { 
+    q: "What happens if my factory PC breaks or is replaced?", 
+    a: "We provide free hardware motherboard re-binding. Simply send us your new Machine ID (HWID) along with your original purchase receipt on WhatsApp (+92 326 4742678), and we issue an updated key within minutes." 
   }
 ];
 
@@ -76,11 +76,17 @@ const PRICING_DATA = {
   lite: {
     tierKey: 'lite',
     name: 'Lite Tier',
-    monthlyPKR: 2999,
-    annualPKR: 25000,
-    monthlyUSD: 15,
-    annualUSD: 150,
-    savingsBadge: "Save Rs. 10,988 / year",
+    monthlyPKR: 1999,
+    originalMonthlyPKR: 2999,
+    annualPKR: 18000,
+    originalAnnualPKR: 25000,
+    monthlyUSD: 10,
+    originalMonthlyUSD: 15,
+    annualUSD: 99,
+    originalAnnualUSD: 150,
+    monthlySavingsBadge: "Save Rs. 1,000 / mo (-33% Launch Offer)",
+    annualSavingsBadge: "Save Rs. 5,988 / yr vs monthly (Was Rs. 25,000)",
+    discountPercent: "-33%",
     sub: '5 PCs on local network, 5 phones on office Wi-Fi.',
     devices: '5 PCs + 5 Mobile Phones',
     features: [
@@ -100,11 +106,18 @@ const PRICING_DATA = {
     tierKey: 'pro',
     name: 'Pro Tier',
     popular: true,
-    monthlyPKR: 6999,
-    annualPKR: 60000,
-    monthlyUSD: 35,
-    annualUSD: 360,
-    savingsBadge: "Save Rs. 23,988 / year",
+    monthlyPKR: 4999,
+    originalMonthlyPKR: 6999,
+    annualPKR: 45000,
+    originalAnnualPKR: 60000,
+    monthlyUSD: 25,
+    originalMonthlyUSD: 35,
+    annualUSD: 225,
+    originalAnnualUSD: 360,
+    foundersOfferBadge: "LIMITED TIME FOUNDERS OFFER (-30%)",
+    monthlySavingsBadge: "Save Rs. 2,000 / mo (-30% Founders Offer)",
+    annualSavingsBadge: "Save Rs. 14,988 / yr vs monthly (Was Rs. 60,000)",
+    discountPercent: "-30%",
     sub: '15 PCs, 15 phones on office Wi-Fi, Karigar piece-rate payroll, on-site IP cameras.',
     devices: '15 PCs + 15 Mobile Phones',
     features: [
@@ -124,11 +137,17 @@ const PRICING_DATA = {
     tierKey: 'elite',
     name: 'Elite Tier',
     primary: true,
-    monthlyPKR: 13999,
-    annualPKR: 120000,
-    monthlyUSD: 70,
-    annualUSD: 720,
-    savingsBadge: "Save Rs. 47,988 / year",
+    monthlyPKR: 9999,
+    originalMonthlyPKR: 13999,
+    annualPKR: 90000,
+    originalAnnualPKR: 120000,
+    monthlyUSD: 50,
+    originalMonthlyUSD: 70,
+    annualUSD: 450,
+    originalAnnualUSD: 720,
+    monthlySavingsBadge: "Save Rs. 4,000 / mo (-29% Launch Offer)",
+    annualSavingsBadge: "Save Rs. 29,988 / yr vs monthly (Was Rs. 120,000)",
+    discountPercent: "-29%",
     sub: '50 PCs, 50 phones on office Wi-Fi, multi-branch, tripwire camera alerts.',
     devices: '50 PCs + 50 Mobile Phones',
     features: [
@@ -506,10 +525,13 @@ export default function PricingClient() {
             displayCurrency={displayCurrency}
             localCurrency={localCurrency}
             pricePKR={billingCycle === 'monthly' ? PRICING_DATA.lite.monthlyPKR : PRICING_DATA.lite.annualPKR}
+            originalPricePKR={billingCycle === 'monthly' ? PRICING_DATA.lite.originalMonthlyPKR : PRICING_DATA.lite.originalAnnualPKR}
             priceUSD={billingCycle === 'monthly' ? PRICING_DATA.lite.monthlyUSD : PRICING_DATA.lite.annualUSD}
+            originalPriceUSD={billingCycle === 'monthly' ? PRICING_DATA.lite.originalMonthlyUSD : PRICING_DATA.lite.originalAnnualUSD}
             billingCycle={billingCycle}
             period={billingCycle === 'monthly' ? 'mo' : 'yr'}
-            savingsBadge={PRICING_DATA.lite.savingsBadge}
+            savingsBadge={billingCycle === 'monthly' ? PRICING_DATA.lite.monthlySavingsBadge : PRICING_DATA.lite.annualSavingsBadge}
+            discountPercent={PRICING_DATA.lite.discountPercent}
             sub={PRICING_DATA.lite.sub}
             features={PRICING_DATA.lite.features}
             cta={PRICING_DATA.lite.cta}
@@ -522,14 +544,18 @@ export default function PricingClient() {
           <PricingCard 
             tier={PRICING_DATA.pro.name}
             popular
+            foundersOfferBadge={PRICING_DATA.pro.foundersOfferBadge}
             region={region}
             displayCurrency={displayCurrency}
             localCurrency={localCurrency}
             pricePKR={billingCycle === 'monthly' ? PRICING_DATA.pro.monthlyPKR : PRICING_DATA.pro.annualPKR}
+            originalPricePKR={billingCycle === 'monthly' ? PRICING_DATA.pro.originalMonthlyPKR : PRICING_DATA.pro.originalAnnualPKR}
             priceUSD={billingCycle === 'monthly' ? PRICING_DATA.pro.monthlyUSD : PRICING_DATA.pro.annualUSD}
+            originalPriceUSD={billingCycle === 'monthly' ? PRICING_DATA.pro.originalMonthlyUSD : PRICING_DATA.pro.originalAnnualUSD}
             billingCycle={billingCycle}
             period={billingCycle === 'monthly' ? 'mo' : 'yr'}
-            savingsBadge={PRICING_DATA.pro.savingsBadge}
+            savingsBadge={billingCycle === 'monthly' ? PRICING_DATA.pro.monthlySavingsBadge : PRICING_DATA.pro.annualSavingsBadge}
+            discountPercent={PRICING_DATA.pro.discountPercent}
             sub={PRICING_DATA.pro.sub}
             features={PRICING_DATA.pro.features}
             cta={PRICING_DATA.pro.cta}
@@ -546,10 +572,13 @@ export default function PricingClient() {
             displayCurrency={displayCurrency}
             localCurrency={localCurrency}
             pricePKR={billingCycle === 'monthly' ? PRICING_DATA.elite.monthlyPKR : PRICING_DATA.elite.annualPKR}
+            originalPricePKR={billingCycle === 'monthly' ? PRICING_DATA.elite.originalMonthlyPKR : PRICING_DATA.elite.originalAnnualPKR}
             priceUSD={billingCycle === 'monthly' ? PRICING_DATA.elite.monthlyUSD : PRICING_DATA.elite.annualUSD}
+            originalPriceUSD={billingCycle === 'monthly' ? PRICING_DATA.elite.originalMonthlyUSD : PRICING_DATA.elite.originalAnnualUSD}
             billingCycle={billingCycle}
             period={billingCycle === 'monthly' ? 'mo' : 'yr'}
-            savingsBadge={PRICING_DATA.elite.savingsBadge}
+            savingsBadge={billingCycle === 'monthly' ? PRICING_DATA.elite.monthlySavingsBadge : PRICING_DATA.elite.annualSavingsBadge}
+            discountPercent={PRICING_DATA.elite.discountPercent}
             sub={PRICING_DATA.elite.sub}
             features={PRICING_DATA.elite.features}
             cta={PRICING_DATA.elite.cta}
@@ -1192,9 +1221,9 @@ export default function PricingClient() {
 }
  
 function PricingCard({ 
-  tier, pricePKR, priceUSD, period = 'mo', sub, features, cta, onPurchase, 
+  tier, pricePKR, originalPricePKR, priceUSD, originalPriceUSD, period = 'mo', sub, features, cta, onPurchase, 
   onHwidClick, popular, primary, region, displayCurrency, localCurrency, variant,
-  billingCycle, savingsBadge
+  billingCycle, savingsBadge, discountPercent, foundersOfferBadge
 }: any) {
   
   const isSA = region === 'south_asian';
@@ -1206,46 +1235,90 @@ function PricingCard({
       ? (priceUSD === 0 ? '$0' : `$${priceUSD}`)
       : (pricePKR === 0 ? 'Rs. 0' : formatCurrency(pricePKR, localCurrency).replace(/\.00$/, ''));
 
+  const originalDisplayPrice = originalPricePKR && originalPricePKR > 0
+    ? (isSA 
+        ? `Rs. ${originalPricePKR.toLocaleString()}`
+        : useUSD 
+          ? (originalPriceUSD ? `$${originalPriceUSD}` : undefined)
+          : formatCurrency(originalPricePKR, localCurrency).replace(/\.00$/, ''))
+    : null;
+
   return (
     <motion.div 
       variants={variant}
       className={cn(
-        "relative flex flex-col p-6 border transition-all duration-300 rounded-md",
+        "relative flex flex-col p-6 transition-all duration-300 rounded-md",
         popular 
-          ? "bg-[#0B0F17] border-[#08EBF6] shadow-[0_0_30px_rgba(8,235,246,0.2)] z-10" 
-          : "bg-[#030712] border-white/10 hover:border-[#08EBF6]/40"
+          ? "bg-gradient-to-b from-[#0B1522] via-[#070D16] to-[#03060C] border-2 border-[#00E5FF] shadow-[0_0_40px_rgba(0,229,255,0.25),inset_0_0_20px_rgba(0,229,255,0.05)] ring-1 ring-[#00E5FF]/50 z-10" 
+          : primary
+            ? "bg-gradient-to-b from-[#08121D] to-[#03070E] border border-[#00E5FF]/40 hover:border-[#00E5FF] hover:shadow-[0_0_30px_rgba(0,229,255,0.2)]"
+            : tier === 'Lite Tier'
+              ? "bg-[#030712] border border-[#10B981]/40 hover:border-[#10B981] hover:shadow-[0_0_30px_rgba(16,185,129,0.2)]"
+              : "bg-[#030712] border border-white/10 hover:border-white/20"
       )}
     >
+      {/* Top Banner on Most Popular */}
       {popular && (
-        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#08EBF6] text-black text-[9px] font-black uppercase tracking-[0.25em] px-4 py-1 whitespace-nowrap rounded-md shadow-[0_0_12px_#08EBF6]">
+        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#00E5FF] to-[#10B981] text-black text-[9px] font-black uppercase tracking-[0.25em] px-4 py-1 whitespace-nowrap rounded-md shadow-[0_0_15px_rgba(0,229,255,0.6)]">
           Most Popular for Mills
         </div>
       )}
 
-      <div className="mb-6">
+      {/* Founders Offer / Launch Discount Badge */}
+      {foundersOfferBadge ? (
+        <div className="mb-3.5 inline-flex items-center gap-2 px-3 py-1 rounded bg-[#00E5FF]/10 border border-[#00E5FF] text-[#00E5FF] text-[9px] font-black uppercase tracking-widest shadow-[0_0_15px_rgba(0,229,255,0.3)]">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#10B981] opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-[#10B981]"></span>
+          </span>
+          <span>{foundersOfferBadge}</span>
+        </div>
+      ) : discountPercent ? (
+        <div className="mb-3.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-[#10B981]/10 border border-[#10B981]/30 text-[#10B981] text-[9px] font-black uppercase tracking-wider shadow-[0_0_10px_rgba(16,185,129,0.15)]">
+          <Sparkles size={11} className="text-[#00E5FF]" />
+          <span>Launch Offer ({discountPercent})</span>
+        </div>
+      ) : null}
+
+      <div className="mb-5">
         <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">{tier}</h3>
         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed min-h-[32px]">{sub}</p>
       </div>
 
       <div className="mb-6">
-        <div className="flex items-baseline gap-1.5 flex-wrap">
-          <span className="text-2xl sm:text-3xl font-mono font-black text-white tracking-tight">
+        {/* Strikethrough Original Price + Cybernetic Tag */}
+        {originalDisplayPrice && (
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-sm font-mono line-through text-slate-500 font-bold tracking-tight">
+              {originalDisplayPrice}
+            </span>
+            <span className="px-1.5 py-0.5 rounded text-[8.5px] font-black uppercase tracking-wider bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/40 shadow-[0_0_8px_rgba(16,185,129,0.2)]">
+              {discountPercent ? `${discountPercent} OFF` : 'LAUNCH DISCOUNT'}
+            </span>
+          </div>
+        )}
+
+        {/* Current Active Price */}
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <span className="text-3xl sm:text-4xl font-mono font-black text-white tracking-tight drop-shadow-[0_0_15px_rgba(0,229,255,0.25)]">
             {displayPrice}
           </span>
-          <span className="text-[10px] font-black text-[#5FA5FA] uppercase tracking-wider">
+          <span className="text-[10px] font-black text-[#00E5FF] uppercase tracking-wider">
             / {period === 'mo' ? 'MONTH' : period === 'yr' ? 'YEAR' : 'FOREVER'}
           </span>
         </div>
 
-        {billingCycle === 'annual' && savingsBadge && (
-          <div className="mt-2 inline-flex items-center gap-1 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-sm">
-            <span>🎉 {savingsBadge}</span>
+        {/* Savings Badge */}
+        {savingsBadge && (
+          <div className="mt-2.5 inline-flex items-center gap-1.5 text-[9px] font-bold text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/30 px-2.5 py-1 rounded shadow-[0_0_10px_rgba(16,185,129,0.15)]">
+            <Sparkles size={11} className="text-[#00E5FF] shrink-0" />
+            <span>{savingsBadge}</span>
           </div>
         )}
 
         {billingCycle === 'monthly' && pricePKR > 0 && (
           <p className="text-[9px] text-slate-500 font-medium mt-1.5">
-            Billed monthly · Zero long-term lock in
+            Billed monthly · Zero long-term commitment
           </p>
         )}
 
@@ -1260,7 +1333,7 @@ function PricingCard({
         {features.map((f: any, i: number) => (
           <div key={i} className={cn("flex items-start space-x-3 text-[11px]", f.included ? "text-slate-300" : "text-slate-600")}>
             {f.included ? (
-              <Check size={14} className={f.highlight ? "text-[#08EBF6] shrink-0 font-bold" : "text-emerald-400 shrink-0"} />
+              <Check size={14} className={f.highlight ? "text-[#00E5FF] shrink-0 font-bold" : "text-[#10B981] shrink-0"} />
             ) : (
               <X size={14} className="text-slate-700 shrink-0" />
             )}
@@ -1274,11 +1347,13 @@ function PricingCard({
           onClick={() => onPurchase(tier, displayPrice)}
           className={cn(
             "block w-full py-3.5 text-center text-[10px] font-black uppercase tracking-[0.2em] transition-all rounded-md cursor-pointer",
-            primary 
-              ? "bg-gradient-to-r from-[#08EBF6] to-[#5FA5FA] text-black hover:brightness-110 active:scale-95 shadow-[0_0_20px_rgba(8,235,246,0.3)]" 
-              : popular 
-                ? "bg-[#08EBF6] text-black hover:brightness-110 active:scale-95 shadow-[0_0_20px_rgba(8,235,246,0.35)]" 
-                : "bg-white/10 text-white hover:bg-white/20 hover:text-[#08EBF6] border border-white/10 active:scale-95"
+            popular 
+              ? "bg-gradient-to-r from-[#00E5FF] via-[#10B981] to-[#00E5FF] text-black hover:brightness-110 active:scale-95 shadow-[0_0_25px_rgba(0,229,255,0.4)]" 
+              : primary
+                ? "bg-gradient-to-r from-[#00E5FF] to-[#3B82F6] text-black hover:brightness-110 active:scale-95 shadow-[0_0_20px_rgba(0,229,255,0.3)]" 
+                : tier === 'Lite Tier'
+                  ? "bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/50 hover:bg-[#10B981] hover:text-black active:scale-95 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
+                  : "bg-white/10 text-white hover:bg-white/20 hover:text-[#00E5FF] border border-white/10 active:scale-95"
           )}
         >
           {cta}
@@ -1287,7 +1362,7 @@ function PricingCard({
         {onHwidClick && (
           <button
             onClick={onHwidClick}
-            className="w-full text-center text-[9px] text-gray-500 hover:text-cyan-400 py-1 transition-colors uppercase tracking-wider font-mono cursor-pointer"
+            className="w-full text-center text-[9px] text-gray-500 hover:text-[#00E5FF] py-1 transition-colors uppercase tracking-wider font-mono cursor-pointer"
           >
             Or Activate with Machine ID (HWID) →
           </button>

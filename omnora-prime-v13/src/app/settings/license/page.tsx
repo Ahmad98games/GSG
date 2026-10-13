@@ -27,7 +27,7 @@ const PLANS: PlanDetails[] = [
   {
     key: 'lite',
     name: 'Lite Tier',
-    pkrPrice: 'Rs. 2,999 / mo (PKR 25k/yr)',
+    pkrPrice: 'Rs. 1,999 / mo (PKR 18k/yr)',
     aedPrice: 'AED 350 / year',
     usdPrice: '$95 / year',
     features: [
@@ -41,7 +41,7 @@ const PLANS: PlanDetails[] = [
   {
     key: 'pro',
     name: 'Pro Tier',
-    pkrPrice: 'Rs. 6,999 / mo (PKR 60k/yr)',
+    pkrPrice: 'Rs. 4,999 / mo (PKR 45k/yr)',
     aedPrice: 'AED 750 / year',
     usdPrice: '$205 / year',
     popular: true,
@@ -57,7 +57,7 @@ const PLANS: PlanDetails[] = [
   {
     key: 'elite',
     name: 'Elite Tier',
-    pkrPrice: 'Rs. 13,999 / mo (PKR 120k/yr)',
+    pkrPrice: 'Rs. 9,999 / mo (PKR 90k/yr)',
     aedPrice: 'AED 1,499 / year',
     usdPrice: '$410 / year',
     features: [
