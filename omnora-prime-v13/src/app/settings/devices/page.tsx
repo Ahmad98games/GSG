@@ -66,10 +66,25 @@ export default function DevicesPage() {
         setPersistedDevices(list.filter((d: PairedDevice) => !d.isRevoked));
       }
 
+      let currentLive: LiveDevice[] = [];
       if (statusRes.ok) {
         const info = await statusRes.json();
-        setLiveDevices(info.bridge?.pairedDevices || []);
+        if (Array.isArray(info.bridge?.pairedDevices)) {
+          currentLive = info.bridge.pairedDevices;
+        }
       }
+
+      // Also query direct Electron bridge status if available
+      if ((window as any).electronAPI && typeof (window as any).electronAPI.getBridgeStatus === 'function') {
+        try {
+          const directStatus = await (window as any).electronAPI.getBridgeStatus();
+          if (directStatus && Array.isArray(directStatus.pairedDevices) && directStatus.pairedDevices.length > 0) {
+            currentLive = directStatus.pairedDevices;
+          }
+        } catch {}
+      }
+
+      setLiveDevices(currentLive);
 
       if (secRes.ok) {
         const alerts = await secRes.json();
@@ -84,9 +99,28 @@ export default function DevicesPage() {
 
   useEffect(() => {
     load();
-    // Auto-refresh every 5 minutes to check heartbeat updates without draining resources.
-    const interval = setInterval(load, 300000);
-    return () => clearInterval(interval);
+    // Refresh quickly (3s) while settings page is open so paired devices appear immediately
+    const interval = setInterval(load, 3000);
+
+    const electronAPI = (window as any).electronAPI;
+    const handleBridgeEvent = (_: any, payload: any) => {
+      if (payload?.event === 'DEVICE_COUNT_CHANGED' || payload?.event === 'DEVICE_CONNECTED') {
+        load();
+      }
+    };
+
+    if (electronAPI?.on) {
+      electronAPI.on('bridge-event', handleBridgeEvent);
+    } else if (electronAPI?.onBridgeEvent) {
+      electronAPI.onBridgeEvent(handleBridgeEvent);
+    }
+
+    return () => {
+      clearInterval(interval);
+      if (electronAPI?.off) {
+        electronAPI.off('bridge-event', handleBridgeEvent);
+      }
+    };
   }, [load]);
 
   const revokeDevice = async (nodeId: string, label: string | null) => {
@@ -112,13 +146,30 @@ export default function DevicesPage() {
     }
   };
 
-  // Merge persisted + live data
-  const allDevices = persistedDevices.map(d => {
+  // Merge persisted + live data ensuring all connected devices display
+  const matchedPersisted = persistedDevices.map(d => {
     const live = liveDevices.find(
       l => l.deviceId === d.deviceId || l.deviceId === d.nodeId
     );
     return { ...d, live };
   });
+
+  const unmatchedLive = liveDevices
+    .filter(l => !persistedDevices.some(d => d.deviceId === l.deviceId || d.nodeId === l.deviceId))
+    .map(l => ({
+      id: l.deviceId || 'live-' + Math.random(),
+      nodeId: l.deviceId || 'live-device',
+      deviceId: l.deviceId,
+      deviceLabel: l.deviceLabel || 'Connected Mobile Device',
+      label: l.deviceLabel || 'Connected Mobile Device',
+      lastSeen: l.lastHeartbeat || new Date().toISOString(),
+      isRevoked: 0,
+      isActive: 1,
+      createdAt: l.connectedAt || new Date().toISOString(),
+      live: l,
+    }));
+
+  const allDevices = [...matchedPersisted, ...unmatchedLive];
 
   // Detect local Hub URL and tunnel URL
   useEffect(() => {

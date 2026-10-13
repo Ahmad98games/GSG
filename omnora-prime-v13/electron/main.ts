@@ -1307,56 +1307,107 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     recipientDeviceId, recipientRole,
     priority,
   }) => {
-    let data: any = null;
+    const msgId = crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
+    const createdAtStr = new Date().toISOString();
+    const newMsg = {
+      id: msgId,
+      business_id: businessId || 'local',
+      sender_type: 'hub',
+      sender_name: 'PC Hub',
+      recipient_type: recipientType || 'all',
+      recipient_device_id: recipientDeviceId || null,
+      recipient_role: recipientRole || null,
+      message_text: text,
+      message_type: 'text',
+      priority: priority || 'normal',
+      is_read: 0,
+      created_at: createdAtStr,
+    };
+
+    // Save to local SQLite
+    try {
+      const { db } = require('../src/lib/db/client');
+      const sqlite = db?.$client;
+      if (sqlite) {
+        sqlite.prepare(`
+          INSERT OR REPLACE INTO hub_messages (id, business_id, sender_type, sender_device_id, sender_name, recipient_type, recipient_device_id, recipient_role, message_text, message_type, priority, is_read, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          newMsg.id, newMsg.business_id, newMsg.sender_type, null,
+          newMsg.sender_name, newMsg.recipient_type, newMsg.recipient_device_id,
+          newMsg.recipient_role, newMsg.message_text, newMsg.message_type,
+          newMsg.priority, newMsg.is_read, newMsg.created_at
+        );
+      }
+    } catch (err: any) {
+      startupLog(`[Messaging] Local SQLite Insert Warning: ${err.message}`);
+    }
+
+    // Try Supabase admin if available
     try {
       const { createAdminClient } = require('../src/lib/supabase/admin');
       const admin = createAdminClient();
       if (admin) {
-        const { data: inserted } = await admin
-          .from('hub_messages')
-          .insert({
-            business_id: businessId,
-            sender_type: 'hub',
-            sender_name: 'PC Hub',
-            recipient_type: recipientType,
-            recipient_device_id: recipientDeviceId,
-            recipient_role: recipientRole,
-            message_text: text,
-            priority: priority || 'normal',
-          })
-          .select()
-          .single();
-        data = inserted;
+        await admin.from('hub_messages').insert(newMsg);
       }
-    } catch (err: any) {
-      startupLog(`[Messaging] DB Insert Error: ${err.message}`);
-    }
+    } catch {}
 
     const messagePayload = {
-      id: data?.id || String(Date.now()),
+      id: newMsg.id,
       text,
       senderName: 'PC Hub',
       priority: priority || 'normal',
-      createdAt: data?.created_at || new Date().toISOString(),
+      createdAt: createdAtStr,
     };
 
-    if (recipientType === 'all') {
-      broadcastToAllDevices(messagePayload);
-    } else if (recipientType === 'device' && recipientDeviceId) {
-      deliverMessageToDevice(recipientDeviceId, messagePayload);
-    } else if (recipientType === 'role' && recipientRole) {
-      const clientsMap = getConnectedClientsMap();
-      clientsMap.forEach((device) => {
-        if (device.deviceRole === recipientRole && device.deviceId) {
-          deliverMessageToDevice(device.deviceId, messagePayload);
-        }
-      });
+    // Post to nextServer process where mobile WebSocket bridge is running
+    if (nextServer && typeof (nextServer as any).postMessage === 'function') {
+      try {
+        (nextServer as any).postMessage({
+          type: 'bridge-command',
+          command: 'DELIVER_MESSAGE',
+          payload: { recipientType, recipientDeviceId, messagePayload },
+        });
+      } catch (err: any) {
+        startupLog(`[Messaging] postMessage to nextServer error: ${err.message}`);
+      }
     }
 
-    return { success: true, message: data };
+    // Also attempt inline delivery if clients are in same process
+    try {
+      if (recipientType === 'all') {
+        broadcastToAllDevices(messagePayload);
+      } else if (recipientDeviceId) {
+        deliverMessageToDevice(recipientDeviceId, messagePayload);
+      }
+    } catch {}
+
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('messaging:new-message', newMsg);
+    }
+
+    return { success: true, message: newMsg };
   });
 
   ipcMain.handle('messaging:getHistory', async (_, { businessId, limit = 50 }) => {
+    // 1. Try local SQLite
+    try {
+      const { db } = require('../src/lib/db/client');
+      const sqlite = db?.$client;
+      if (sqlite) {
+        const rows = sqlite.prepare(`
+          SELECT * FROM hub_messages 
+          WHERE business_id = ? OR ? = 'local' OR ? = '' OR business_id IS NULL
+          ORDER BY created_at DESC 
+          LIMIT ?
+        `).all(businessId || 'local', businessId || 'local', businessId || 'local', limit);
+        if (rows && rows.length > 0) return rows;
+      }
+    } catch (err: any) {
+      startupLog(`[Messaging] Local getHistory error: ${err.message}`);
+    }
+
+    // 2. Fallback to Supabase admin
     try {
       const { createAdminClient } = require('../src/lib/supabase/admin');
       const admin = createAdminClient();
@@ -2446,6 +2497,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         if (msg && msg.type === 'bridge-event') {
           if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('bridge-event', { event: msg.event, data: msg.data });
+            if (msg.event === 'messaging:new-message') {
+              mainWindow.webContents.send('messaging:new-message', msg.data);
+            }
           }
           if (msg.event === 'DEVICE_COUNT_CHANGED') {
             lastBridgeStatus = {

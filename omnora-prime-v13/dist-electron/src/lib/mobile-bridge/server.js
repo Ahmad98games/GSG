@@ -75,6 +75,14 @@ function getAdmin() {
     }
     return adminClient;
 }
+function getSqlite() {
+    try {
+        return client_1.db.$client || null;
+    }
+    catch {
+        return null;
+    }
+}
 const clients = new Map();
 let wss = null;
 // Tier → max devices. Must mirror the Hub license system exactly.
@@ -277,6 +285,19 @@ function attachMobileBridge(httpServer, customPort) {
             });
         });
     }, 30_000);
+    if (typeof process !== 'undefined' && typeof process.on === 'function') {
+        process.on('message', (msg) => {
+            if (msg && msg.type === 'bridge-command') {
+                if (msg.command === 'DELIVER_MESSAGE') {
+                    const { recipientDeviceId, messagePayload } = msg.payload || {};
+                    deliverMessageToDevice(recipientDeviceId || 'all', messagePayload);
+                }
+                else if (msg.command === 'SYNC_INVALIDATE') {
+                    broadcastSyncToMobileDevices('DATA_INVALIDATED', msg.payload);
+                }
+            }
+        });
+    }
     console.log('[Bridge] Mobile bridge attached on /mobile-bridge');
     return wss;
 }
@@ -568,7 +589,7 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
                 countryCode: profile.country_code,
                 // Connection metadata
                 connectedDevices: getPairedCount(),
-                hubVersion: process.env.npm_package_version || '13.0.0',
+                hubVersion: process.env.npm_package_version || '14.0.0',
             });
             broadcastToHubRenderer('DEVICE_COUNT_CHANGED', {
                 connectedDevices: getPairedCount(),
@@ -602,190 +623,306 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
                 });
                 return;
             }
-            // All data reads are done via Drizzle against the local SQLite cache.
-            // No cross-tenant access is possible: all queries are scoped to client.businessId.
-            // Note: heavy data should be fetched directly from Supabase by the mobile app.
-            // These DATA_REQUEST reads are for lightweight local-first data only.
+            // Local-first data retrieval: SQLite cache is checked first, falling back to Supabase.
             let data = [];
             let error = null;
+            const sqlite = getSqlite();
             try {
                 switch (resource) {
-                    case 'skus':
-                        data = await client_1.db
-                            .select()
-                            .from(schema.skuCache)
-                            .limit(200);
+                    case 'skus': {
+                        if (sqlite) {
+                            try {
+                                data = sqlite.prepare(`
+                  SELECT * FROM skus 
+                  WHERE is_active = 1 OR is_active IS NULL
+                  ORDER BY name ASC 
+                  LIMIT 200
+                `).all();
+                            }
+                            catch { }
+                            if (!data || data.length === 0) {
+                                try {
+                                    data = sqlite.prepare(`SELECT * FROM sku_cache LIMIT 200`).all();
+                                }
+                                catch { }
+                            }
+                        }
+                        if (!data || data.length === 0) {
+                            const admin = getAdmin();
+                            if (admin) {
+                                try {
+                                    const { data: resData } = await admin.from('skus').select('*').limit(200);
+                                    data = resData || [];
+                                }
+                                catch { }
+                            }
+                        }
                         break;
-                    case 'branches':
+                    }
+                    case 'branches': {
                         data = await client_1.db
                             .select()
                             .from(schema.branchCache)
                             .where((0, drizzle_orm_1.eq)(schema.branchCache.businessId, client.businessId));
                         break;
+                    }
                     case 'parties': {
-                        const admin = getAdmin();
-                        if (admin) {
-                            const { data: resData, error: resErr } = await admin
-                                .from('parties')
-                                .select('*')
-                                .eq('business_id', client.businessId)
-                                .order('name');
-                            if (resErr)
-                                throw resErr;
-                            data = resData || [];
+                        if (sqlite) {
+                            try {
+                                data = sqlite.prepare(`
+                  SELECT * FROM parties 
+                  WHERE is_active = 1 OR is_active IS NULL
+                  ORDER BY name ASC
+                `).all();
+                            }
+                            catch (e) {
+                                console.warn('[Bridge] Local parties select error:', e.message);
+                            }
                         }
-                        else {
-                            throw new Error('Supabase admin not available');
+                        if (!data || data.length === 0) {
+                            const admin = getAdmin();
+                            if (admin) {
+                                try {
+                                    const { data: resData } = await admin
+                                        .from('parties')
+                                        .select('*')
+                                        .order('name');
+                                    data = resData || [];
+                                    if (sqlite && data.length > 0) {
+                                        for (const p of data) {
+                                            try {
+                                                sqlite.prepare(`
+                          INSERT OR REPLACE INTO parties (id, business_id, name, party_type, phone, current_balance, is_active, created_at, updated_at)
+                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        `).run(p.id, p.business_id || client.businessId || 'local', p.name, p.party_type || 'customer', p.phone || null, p.current_balance || 0, p.is_active ?? 1, p.created_at || new Date().toISOString(), p.updated_at || new Date().toISOString());
+                                            }
+                                            catch { }
+                                        }
+                                    }
+                                }
+                                catch { }
+                            }
                         }
                         break;
                     }
                     case 'invoices': {
-                        const admin = getAdmin();
-                        if (admin) {
-                            const { data: resData, error: resErr } = await admin
-                                .from('invoices')
-                                .select('*')
-                                .eq('business_id', client.businessId)
-                                .order('created_at', { ascending: false })
-                                .limit(100);
-                            if (resErr)
-                                throw resErr;
-                            data = resData || [];
+                        if (sqlite) {
+                            try {
+                                data = sqlite.prepare(`
+                  SELECT * FROM invoices 
+                  ORDER BY invoice_date DESC, created_at DESC 
+                  LIMIT 100
+                `).all();
+                            }
+                            catch (e) {
+                                console.warn('[Bridge] Local invoices select error:', e.message);
+                            }
                         }
-                        else {
-                            throw new Error('Supabase admin not available');
+                        if (!data || data.length === 0) {
+                            const admin = getAdmin();
+                            if (admin) {
+                                try {
+                                    const { data: resData } = await admin
+                                        .from('invoices')
+                                        .select('*')
+                                        .order('created_at', { ascending: false })
+                                        .limit(100);
+                                    data = resData || [];
+                                    if (sqlite && data.length > 0) {
+                                        for (const inv of data) {
+                                            try {
+                                                sqlite.prepare(`
+                          INSERT OR REPLACE INTO invoices (id, business_id, invoice_number, invoice_type, party_id, party_name, party_phone, invoice_date, status, total_amount, amount_paid, balance_due, created_at, updated_at)
+                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        `).run(inv.id, inv.business_id || client.businessId || 'local', inv.invoice_number || 'INV', inv.invoice_type || 'invoice', inv.party_id || null, inv.party_name || null, inv.party_phone || null, inv.invoice_date || new Date().toISOString(), inv.status || 'posted', inv.total_amount || 0, inv.amount_paid || 0, inv.balance_due || 0, inv.created_at || new Date().toISOString(), inv.updated_at || new Date().toISOString());
+                                            }
+                                            catch { }
+                                        }
+                                    }
+                                }
+                                catch { }
+                            }
                         }
                         break;
                     }
+                    case 'workers':
                     case 'karigars': {
-                        const admin = getAdmin();
-                        if (admin) {
-                            const { data: resData, error: resErr } = await admin
-                                .from('karigars')
-                                .select('*')
-                                .eq('business_id', client.businessId)
-                                .eq('status', 'active')
-                                .order('name');
-                            if (resErr)
-                                throw resErr;
-                            data = resData || [];
+                        if (sqlite) {
+                            try {
+                                data = sqlite.prepare(`
+                  SELECT * FROM karigars 
+                  WHERE status = 'active' OR status IS NULL
+                  ORDER BY name ASC
+                `).all();
+                            }
+                            catch (e) {
+                                console.warn('[Bridge] Local karigars select error:', e.message);
+                            }
                         }
-                        else {
-                            throw new Error('Supabase admin not available');
+                        if (!data || data.length === 0) {
+                            const admin = getAdmin();
+                            if (admin) {
+                                try {
+                                    const { data: resData } = await admin
+                                        .from('karigars')
+                                        .select('*')
+                                        .eq('status', 'active')
+                                        .order('name');
+                                    data = resData || [];
+                                    if (sqlite && data.length > 0) {
+                                        for (const k of data) {
+                                            try {
+                                                sqlite.prepare(`
+                          INSERT OR REPLACE INTO karigars (id, business_id, name, karigar_code, phone, department, designation, wage_type, piece_rate, status, created_at, updated_at)
+                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        `).run(k.id, k.business_id || client.businessId || 'local', k.name, k.karigar_code || null, k.phone || null, k.department || null, k.designation || 'Karigar', k.wage_type || 'piece_rate', k.piece_rate || 0, k.status || 'active', k.created_at || new Date().toISOString(), k.updated_at || new Date().toISOString());
+                                            }
+                                            catch { }
+                                        }
+                                    }
+                                }
+                                catch { }
+                            }
                         }
                         break;
                     }
                     case 'attendance_today': {
-                        const admin = getAdmin();
-                        if (admin) {
-                            const todayStr = new Date().toISOString().split('T')[0];
-                            const { data: resData, error: resErr } = await admin
-                                .from('attendance_logs')
-                                .select('*')
-                                .eq('business_id', client.businessId)
-                                .eq('attendance_date', todayStr);
-                            if (resErr)
-                                throw resErr;
-                            data = resData || [];
+                        const todayStr = new Date().toISOString().split('T')[0];
+                        if (sqlite) {
+                            try {
+                                data = sqlite.prepare(`
+                  SELECT a.*, k.name as karigar_name 
+                  FROM attendance_logs a 
+                  LEFT JOIN karigars k ON a.karigar_id = k.id 
+                  WHERE a.attendance_date = ?
+                `).all(todayStr);
+                            }
+                            catch (e) {
+                                console.warn('[Bridge] Local attendance select error:', e.message);
+                            }
                         }
-                        else {
-                            throw new Error('Supabase admin not available');
+                        if (!data || data.length === 0) {
+                            const admin = getAdmin();
+                            if (admin) {
+                                try {
+                                    const { data: resData } = await admin
+                                        .from('attendance_logs')
+                                        .select('*, karigars(name)')
+                                        .eq('attendance_date', todayStr);
+                                    data = resData || [];
+                                }
+                                catch { }
+                            }
                         }
                         break;
                     }
                     case 'production_log': {
-                        const admin = getAdmin();
-                        if (admin) {
-                            const { data: resData, error: resErr } = await admin
-                                .from('karigar_production_logs')
-                                .select('*, karigars(name)')
-                                .eq('business_id', client.businessId)
-                                .order('created_at', { ascending: false })
-                                .limit(100);
-                            if (resErr)
-                                throw resErr;
-                            data = resData || [];
+                        if (sqlite) {
+                            try {
+                                data = sqlite.prepare(`
+                  SELECT p.*, k.name as karigar_name 
+                  FROM karigar_production_logs p 
+                  LEFT JOIN karigars k ON p.karigar_id = k.id 
+                  ORDER BY p.log_date DESC, p.created_at DESC 
+                  LIMIT 100
+                `).all();
+                            }
+                            catch (e) {
+                                console.warn('[Bridge] Local production select error:', e.message);
+                            }
                         }
-                        else {
-                            throw new Error('Supabase admin not available');
+                        if (!data || data.length === 0) {
+                            const admin = getAdmin();
+                            if (admin) {
+                                try {
+                                    const { data: resData } = await admin
+                                        .from('karigar_production_logs')
+                                        .select('*, karigars(name)')
+                                        .order('created_at', { ascending: false })
+                                        .limit(100);
+                                    data = resData || [];
+                                }
+                                catch { }
+                            }
                         }
                         break;
                     }
                     case 'dashboard_kpis': {
-                        const admin = getAdmin();
-                        if (admin) {
-                            const todayStr = new Date().toISOString().split('T')[0];
-                            const [kCount, aCount, dCount] = await Promise.all([
-                                admin
-                                    .from('karigars')
-                                    .select('id', { count: 'exact', head: true })
-                                    .eq('business_id', client.businessId)
-                                    .eq('status', 'active'),
-                                admin
-                                    .from('attendance_logs')
-                                    .select('id', { count: 'exact', head: true })
-                                    .eq('business_id', client.businessId)
-                                    .eq('attendance_date', todayStr)
-                                    .eq('status', 'present'),
-                                admin
-                                    .from('dispatch_orders')
-                                    .select('id', { count: 'exact', head: true })
-                                    .eq('business_id', client.businessId)
-                                    .in('status', ['pending', 'packed'])
-                            ]);
-                            data = [{
-                                    totalKarigars: kCount.count || 0,
-                                    presentToday: aCount.count || 0,
-                                    pendingDispatch: dCount.count || 0,
-                                    hubVersion: process.env.npm_package_version || '13.0.0',
-                                    tier: client.tier,
-                                    connectedDevices: getPairedCount()
-                                }];
+                        const todayStr = new Date().toISOString().split('T')[0];
+                        let kCount = 0;
+                        let aCount = 0;
+                        let dCount = 0;
+                        if (sqlite) {
+                            try {
+                                const kRes = sqlite.prepare(`SELECT count(*) as c FROM karigars WHERE status = 'active' OR status IS NULL`).get();
+                                kCount = kRes?.c || 0;
+                                const aRes = sqlite.prepare(`SELECT count(*) as c FROM attendance_logs WHERE attendance_date = ? AND status = 'present'`).get(todayStr);
+                                aCount = aRes?.c || 0;
+                                const dRes = sqlite.prepare(`SELECT count(*) as c FROM invoices WHERE status != 'paid'`).get();
+                                dCount = dRes?.c || 0;
+                            }
+                            catch { }
                         }
-                        else {
-                            data = [{
-                                    totalKarigars: 0,
-                                    presentToday: 0,
-                                    pendingDispatch: 0,
-                                    hubVersion: process.env.npm_package_version || '13.0.0',
-                                    tier: client.tier,
-                                    connectedDevices: getPairedCount()
-                                }];
-                        }
+                        data = [{
+                                totalKarigars: kCount,
+                                presentToday: aCount,
+                                pendingDispatch: dCount,
+                                hubVersion: '14.0.0',
+                                tier: client.tier,
+                                connectedDevices: getPairedCount()
+                            }];
                         break;
                     }
                     case 'dispatch_pending': {
-                        const admin = getAdmin();
-                        if (admin) {
-                            const { data: resData, error: resErr } = await admin
-                                .from('dispatch_orders')
-                                .select('*')
-                                .eq('business_id', client.businessId)
-                                .in('status', ['pending', 'packed']);
-                            if (resErr)
-                                throw resErr;
-                            data = resData || [];
+                        if (sqlite) {
+                            try {
+                                data = sqlite.prepare(`SELECT * FROM invoices WHERE status != 'paid' ORDER BY created_at DESC LIMIT 50`).all();
+                            }
+                            catch { }
                         }
-                        else {
-                            throw new Error('Supabase admin not available');
+                        if (!data || data.length === 0) {
+                            const admin = getAdmin();
+                            if (admin) {
+                                try {
+                                    const { data: resData } = await admin
+                                        .from('dispatch_orders')
+                                        .select('*')
+                                        .in('status', ['pending', 'packed']);
+                                    data = resData || [];
+                                }
+                                catch { }
+                            }
+                        }
+                        break;
+                    }
+                    case 'peshgi':
+                    case 'advances': {
+                        if (sqlite) {
+                            try {
+                                data = sqlite.prepare(`
+                  SELECT pt.*, k.name as karigar_name 
+                  FROM peshgi_transactions pt 
+                  LEFT JOIN karigars k ON pt.karigar_id = k.id 
+                  ORDER BY pt.transaction_date DESC, pt.created_at DESC 
+                  LIMIT 100
+                `).all();
+                            }
+                            catch { }
                         }
                         break;
                     }
                     case 'scan_history': {
                         const admin = getAdmin();
                         if (admin) {
-                            const { data: resData, error: resErr } = await admin
-                                .from('scan_logs')
-                                .select('*')
-                                .eq('business_id', client.businessId)
-                                .order('created_at', { ascending: false })
-                                .limit(100);
-                            if (resErr)
-                                throw resErr;
-                            data = resData || [];
-                        }
-                        else {
-                            throw new Error('Supabase admin not available');
+                            try {
+                                const { data: resData } = await admin
+                                    .from('scan_logs')
+                                    .select('*')
+                                    .order('created_at', { ascending: false })
+                                    .limit(100);
+                                data = resData || [];
+                            }
+                            catch { }
                         }
                         break;
                     }
@@ -795,6 +932,7 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
                 }
             }
             catch (dbErr) {
+                console.error(`[Bridge] Data fetch failed for ${resource}:`, dbErr.message);
                 error = `Data fetch failed: ${dbErr.message}`;
                 data = [];
             }
@@ -808,17 +946,170 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
             });
             break;
         }
-        // â”€â”€ Mobile-originated events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        // Mobile writes directly to Supabase; these events notify the Hub UI
-        // to refresh â€” the actual data comes via Supabase realtime subscription.
-        case 'ATTENDANCE_LOGGED':
-        case 'PRODUCTION_LOGGED':
-        case 'ADVANCE_GIVEN':
-        case 'INVOICE_CREATED':
+        // ── Mobile-originated events ──
+        case 'INVOICE_CREATED': {
+            console.log(`[Bridge] INVOICE_CREATED from ${client.deviceLabel}`);
+            const sqlite = getSqlite();
+            const invPayload = (msg.invoice || msg.data || msg);
+            if (sqlite && invPayload) {
+                const invId = invPayload.id || (0, crypto_1.randomUUID)();
+                try {
+                    sqlite.prepare(`
+            INSERT OR REPLACE INTO invoices (id, business_id, invoice_number, invoice_type, party_id, party_name, party_phone, invoice_date, status, total_amount, amount_paid, balance_due, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(invId, invPayload.business_id || client.businessId || 'local', invPayload.invoice_number || `INV-${Date.now().toString().slice(-6)}`, invPayload.invoice_type || 'invoice', invPayload.party_id || null, invPayload.party_name || null, invPayload.party_phone || null, invPayload.invoice_date || new Date().toISOString(), invPayload.status || 'posted', Number(invPayload.total_amount || invPayload.net_total || 0), Number(invPayload.amount_paid || 0), Number(invPayload.balance_due || invPayload.total_amount || 0), new Date().toISOString(), new Date().toISOString());
+                    if (Array.isArray(msg.items || invPayload.items)) {
+                        const items = (msg.items || invPayload.items);
+                        for (const it of items) {
+                            sqlite.prepare(`
+                INSERT OR REPLACE INTO invoice_items (id, invoice_id, business_id, sku_id, description, quantity, unit, unit_price, total_price)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+              `).run(it.id || (0, crypto_1.randomUUID)(), invId, invPayload.business_id || client.businessId || 'local', it.sku_id || null, it.description || 'Item', Number(it.qty || it.quantity || 1), it.unit || 'Piece', Number(it.unit_price || 0), Number(it.total_price || (it.qty || 1) * (it.unit_price || 0)));
+                        }
+                    }
+                }
+                catch (e) {
+                    console.warn('[Bridge] Local invoice insert error:', e.message);
+                }
+            }
+            broadcastToHubRenderer('INVOICE_CREATED', {
+                deviceLabel: client.deviceLabel,
+                deviceId: client.deviceId,
+                ...msg,
+            });
+            broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'invoices' });
+            break;
+        }
+        case 'PARTY_CREATED': {
+            console.log(`[Bridge] PARTY_CREATED from ${client.deviceLabel}`);
+            const sqlite = getSqlite();
+            const p = (msg.party || msg.data || msg);
+            if (sqlite && p) {
+                const pId = p.id || (0, crypto_1.randomUUID)();
+                try {
+                    sqlite.prepare(`
+            INSERT OR REPLACE INTO parties (id, business_id, name, party_type, phone, address, current_balance, is_active, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(pId, p.business_id || client.businessId || 'local', p.name || 'New Party', p.party_type || 'customer', p.phone || null, p.address || null, Number(p.current_balance || 0), 1, new Date().toISOString(), new Date().toISOString());
+                }
+                catch (e) {
+                    console.warn('[Bridge] Local party insert error:', e.message);
+                }
+            }
+            broadcastToHubRenderer('PARTY_CREATED', {
+                deviceLabel: client.deviceLabel,
+                deviceId: client.deviceId,
+                ...msg,
+            });
+            broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'parties' });
+            break;
+        }
+        case 'WORKER_CREATED': {
+            console.log(`[Bridge] WORKER_CREATED from ${client.deviceLabel}`);
+            const sqlite = getSqlite();
+            const k = (msg.worker || msg.karigar || msg.data || msg);
+            if (sqlite && k) {
+                const kId = k.id || (0, crypto_1.randomUUID)();
+                try {
+                    sqlite.prepare(`
+            INSERT OR REPLACE INTO karigars (id, business_id, name, karigar_code, phone, department, designation, wage_type, piece_rate, status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(kId, k.business_id || client.businessId || 'local', k.name || 'New Worker', k.karigar_code || null, k.phone || null, k.department || null, k.designation || 'Karigar', k.wage_type || 'piece_rate', Number(k.piece_rate || 0), 'active', new Date().toISOString(), new Date().toISOString());
+                }
+                catch (e) {
+                    console.warn('[Bridge] Local karigar insert error:', e.message);
+                }
+            }
+            broadcastToHubRenderer('WORKER_CREATED', {
+                deviceLabel: client.deviceLabel,
+                deviceId: client.deviceId,
+                ...msg,
+            });
+            broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'karigars' });
+            break;
+        }
+        case 'ATTENDANCE_LOGGED': {
+            console.log(`[Bridge] ATTENDANCE_LOGGED from ${client.deviceLabel}`);
+            const sqlite = getSqlite();
+            const a = (msg.attendance || msg.data || msg);
+            if (sqlite && a && a.karigar_id) {
+                const aId = a.id || (0, crypto_1.randomUUID)();
+                const todayStr = a.attendance_date || new Date().toISOString().split('T')[0];
+                try {
+                    sqlite.prepare(`
+            INSERT OR REPLACE INTO attendance_logs (id, business_id, karigar_id, attendance_date, status, check_in_time, device_id, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(aId, a.business_id || client.businessId || 'local', a.karigar_id, todayStr, a.status || 'present', a.check_in_time || new Date().toISOString(), client.deviceId || null, new Date().toISOString(), new Date().toISOString());
+                }
+                catch (e) {
+                    console.warn('[Bridge] Local attendance insert error:', e.message);
+                }
+            }
+            broadcastToHubRenderer('ATTENDANCE_LOGGED', {
+                deviceLabel: client.deviceLabel,
+                deviceId: client.deviceId,
+                ...msg,
+            });
+            broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'attendance_today' });
+            break;
+        }
+        case 'ADVANCE_GIVEN': {
+            console.log(`[Bridge] ADVANCE_GIVEN from ${client.deviceLabel}`);
+            const sqlite = getSqlite();
+            const adv = (msg.advance || msg.data || msg);
+            if (sqlite && adv && adv.karigar_id) {
+                const advId = adv.id || (0, crypto_1.randomUUID)();
+                const todayStr = adv.transaction_date || new Date().toISOString().split('T')[0];
+                const amt = Number(adv.amount || 0);
+                try {
+                    sqlite.prepare(`
+            INSERT OR REPLACE INTO peshgi_transactions (id, business_id, karigar_id, transaction_type, amount, transaction_date, description, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(advId, adv.business_id || client.businessId || 'local', adv.karigar_id, 'advance', amt, todayStr, adv.description || adv.notes || 'Mobile Advance', new Date().toISOString());
+                    sqlite.prepare(`
+            UPDATE karigars SET peshgi_balance = COALESCE(peshgi_balance, 0) + ?, updated_at = ?
+            WHERE id = ?
+          `).run(amt, new Date().toISOString(), adv.karigar_id);
+                }
+                catch (e) {
+                    console.warn('[Bridge] Local advance insert error:', e.message);
+                }
+            }
+            broadcastToHubRenderer('ADVANCE_GIVEN', {
+                deviceLabel: client.deviceLabel,
+                deviceId: client.deviceId,
+                ...msg,
+            });
+            broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'karigars' });
+            break;
+        }
+        case 'PRODUCTION_LOGGED': {
+            console.log(`[Bridge] PRODUCTION_LOGGED from ${client.deviceLabel}`);
+            const sqlite = getSqlite();
+            const prod = (msg.production || msg.data || msg);
+            if (sqlite && prod && prod.karigar_id) {
+                const prodId = prod.id || (0, crypto_1.randomUUID)();
+                const todayStr = prod.log_date || new Date().toISOString().split('T')[0];
+                try {
+                    sqlite.prepare(`
+            INSERT OR REPLACE INTO karigar_production_logs (id, business_id, karigar_id, log_date, units_produced, grade, earnings, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(prodId, prod.business_id || client.businessId || 'local', prod.karigar_id, todayStr, Number(prod.units_produced || prod.units || 0), prod.grade || 'A', Number(prod.earnings || 0), new Date().toISOString(), new Date().toISOString());
+                }
+                catch (e) {
+                    console.warn('[Bridge] Local production insert error:', e.message);
+                }
+            }
+            broadcastToHubRenderer('PRODUCTION_LOGGED', {
+                deviceLabel: client.deviceLabel,
+                deviceId: client.deviceId,
+                ...msg,
+            });
+            broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'production_log' });
+            break;
+        }
         case 'STOCK_UPDATED':
         case 'SCAN_COMPLETED':
-        case 'PARTY_CREATED':
-        case 'WORKER_CREATED':
         case 'KHATA_ENTRY':
         case 'KHATA_UPDATED':
         case 'DISPATCH_UPDATED':
@@ -829,49 +1120,83 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
                 deviceId: client.deviceId,
                 ...msg,
             });
+            broadcastSyncToMobileDevices('DATA_INVALIDATED', { event: msg.type });
             break;
         }
         case 'MSG_SEND': {
             const { text, priority, messageId } = msg;
             if (!client.paired || !client.businessId)
                 break;
-            const admin = getAdmin();
-            let newMsg = null;
-            if (admin) {
+            const msgId = messageId || (0, crypto_1.randomUUID)();
+            const createdAtStr = new Date().toISOString();
+            const messageRecord = {
+                id: msgId,
+                business_id: client.businessId || 'local',
+                sender_type: 'device',
+                sender_device_id: client.deviceId,
+                sender_name: client.deviceLabel || 'Mobile Device',
+                recipient_type: msg.recipientType || 'hub',
+                recipient_device_id: msg.recipientDeviceId || null,
+                recipient_role: msg.recipientRole || null,
+                message_text: text,
+                message_type: 'text',
+                priority: priority || 'normal',
+                is_read: 0,
+                created_at: createdAtStr,
+            };
+            const sqlite = getSqlite();
+            if (sqlite) {
                 try {
-                    const { data } = await admin
-                        .from('hub_messages')
-                        .insert({
-                        business_id: client.businessId,
-                        sender_type: 'device',
-                        sender_device_id: client.deviceId,
-                        sender_name: client.deviceLabel || 'Mobile Device',
-                        recipient_type: 'hub',
-                        message_text: text,
-                        priority: priority || 'normal',
-                    })
-                        .select()
-                        .single();
-                    newMsg = data;
+                    sqlite.prepare(`
+            INSERT OR REPLACE INTO hub_messages (id, business_id, sender_type, sender_device_id, sender_name, recipient_type, recipient_device_id, recipient_role, message_text, message_type, priority, is_read, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(messageRecord.id, messageRecord.business_id, messageRecord.sender_type, messageRecord.sender_device_id, messageRecord.sender_name, messageRecord.recipient_type, messageRecord.recipient_device_id, messageRecord.recipient_role, messageRecord.message_text, messageRecord.message_type, messageRecord.priority, messageRecord.is_read, messageRecord.created_at);
                 }
                 catch (err) {
-                    console.error('[Bridge] Failed to save MSG_SEND:', err.message);
+                    console.warn('[Bridge] Local hub_messages insert error:', err.message);
                 }
+            }
+            // Try Supabase admin in background
+            const admin = getAdmin();
+            if (admin) {
+                admin.from('hub_messages').insert(messageRecord).then().catch(() => { });
             }
             send(ws, {
                 type: 'MSG_ACK',
                 messageId,
-                serverMessageId: newMsg?.id,
+                serverMessageId: msgId,
             });
-            if (newMsg) {
-                broadcastToHubRenderer('messaging:new-message', newMsg);
-            }
+            // Broadcast to PC Hub renderer
+            broadcastToHubRenderer('messaging:new-message', messageRecord);
+            // Relay to all other connected paired mobile devices
+            const outMsg = {
+                id: msgId,
+                text,
+                senderName: client.deviceLabel || 'Mobile Device',
+                priority: priority || 'normal',
+                createdAt: createdAtStr,
+            };
+            clients.forEach((c) => {
+                if (c.paired && c.id !== clientId && c.ws.readyState === ws_1.WebSocket.OPEN) {
+                    send(c.ws, {
+                        type: 'MSG_INCOMING',
+                        message: outMsg,
+                    });
+                }
+            });
             break;
         }
         case 'MSG_READ': {
             const { messageId } = msg;
             if (!client.paired || !client.deviceId)
                 break;
+            const sqlite = getSqlite();
+            if (sqlite && messageId) {
+                try {
+                    sqlite.prepare(`UPDATE hub_messages SET is_read = 1 WHERE id = ?`).run(messageId);
+                }
+                catch { }
+            }
             const admin = getAdmin();
             if (admin && messageId) {
                 try {

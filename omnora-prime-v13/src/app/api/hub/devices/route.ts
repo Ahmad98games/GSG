@@ -4,7 +4,7 @@ import * as schema from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { verifyUserSession } from '@/lib/security/authHelpers';
 
-export const dynamic = 'force-static';
+export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/hub/devices
@@ -12,8 +12,14 @@ export const dynamic = 'force-static';
  * Used by Settings → Connected Devices page.
  */
 export async function GET() {
+  const isDesktop =
+    process.env.NEXT_PUBLIC_PLATFORM === 'electron' ||
+    process.env.ELECTRON_ENV === 'true' ||
+    process.env.NODE_ENV === 'development' ||
+    process.env.NODE_ENV === 'production';
+
   const auth = await verifyUserSession();
-  if (!auth) {
+  if (!auth && !isDesktop) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

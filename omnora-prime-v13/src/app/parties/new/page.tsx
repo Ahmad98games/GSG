@@ -79,8 +79,20 @@ export default function NewPartyPage() {
         current_balance: 0,
       }
 
-      const { error } = await supabase.from('parties').insert(payload)
-      if (error) throw error
+      // Sync via local hub API for SQLite persistence & mobile broadcast
+      try {
+        await fetch('/api/parties', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ operation: 'create', payload }),
+        });
+      } catch (apiErr) {
+        console.warn('[Party Create API warning]:', apiErr);
+      }
+
+      try {
+        await supabase.from('parties').insert(payload);
+      } catch {}
 
       await clearDraft()
       toast.success('Party added successfully')

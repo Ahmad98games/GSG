@@ -65,78 +65,190 @@ export default function MessagingPage() {
 
   // Load connected devices
   useEffect(() => {
-    if (!profile?.id) return
-
     const loadDevices = async () => {
-      const data = await (window as any).electronAPI?.getBridgeStatus?.();
-      if (data?.pairedDevices) {
-        setDevices(data.pairedDevices.map((d: any) => ({
-          id: d.deviceId || String(Math.random()),
-          device_id: d.deviceId || '',
-          device_label: d.deviceLabel || 'Mobile Device',
-          device_role: 'general',
-          last_seen: d.lastHeartbeat || new Date().toISOString(),
-          is_online: true,
-          unread_count: 0,
-        })))
+      let liveList: any[] = [];
+      try {
+        const data = await (window as any).electronAPI?.getBridgeStatus?.();
+        if (data?.pairedDevices && Array.isArray(data.pairedDevices) && data.pairedDevices.length > 0) {
+          liveList = data.pairedDevices;
+        }
+      } catch {}
+
+      if (liveList.length === 0) {
+        try {
+          const res = await fetch('/api/hub/info');
+          if (res.ok) {
+            const json = await res.json();
+            if (Array.isArray(json.bridge?.pairedDevices)) {
+              liveList = json.bridge.pairedDevices;
+            }
+          }
+        } catch {}
       }
+
+      // Also fetch persisted authorized devices to include registered devices
+      let persistedList: any[] = [];
+      try {
+        const resDev = await fetch('/api/hub/devices');
+        if (resDev.ok) {
+          const devJson = await resDev.json();
+          persistedList = Array.isArray(devJson) ? devJson : (devJson.devices || []);
+        }
+      } catch {}
+
+      const mappedDevices = [
+        ...persistedList.map((d: any) => {
+          const isLive = liveList.some((l: any) => l.deviceId === d.deviceId || l.deviceId === d.nodeId);
+          return {
+            id: d.deviceId || d.nodeId || String(Math.random()),
+            device_id: d.deviceId || d.nodeId || '',
+            device_label: d.deviceLabel || d.label || 'Mobile Device',
+            device_role: 'general',
+            last_seen: d.lastSeen || new Date().toISOString(),
+            is_online: isLive,
+            unread_count: 0,
+          };
+        }),
+        ...liveList
+          .filter((l: any) => !persistedList.some((p: any) => p.deviceId === l.deviceId || p.nodeId === l.deviceId))
+          .map((l: any) => ({
+            id: l.deviceId || String(Math.random()),
+            device_id: l.deviceId || '',
+            device_label: l.deviceLabel || 'Mobile Device',
+            device_role: 'general',
+            last_seen: l.lastHeartbeat || new Date().toISOString(),
+            is_online: true,
+            unread_count: 0,
+          })),
+      ];
+
+      if (mappedDevices.length > 0) {
+        setDevices(mappedDevices);
+      }
+    };
+
+    loadDevices();
+    const interval = setInterval(loadDevices, 4000);
+
+    const electronAPI = (window as any).electronAPI;
+    const handleBridgeEvent = (_: any, payload: any) => {
+      if (payload?.event === 'DEVICE_COUNT_CHANGED' || payload?.event === 'DEVICE_CONNECTED') {
+        loadDevices();
+      }
+    };
+
+    if (electronAPI?.on) {
+      electronAPI.on('bridge-event', handleBridgeEvent);
     }
 
-    loadDevices()
-    const interval = setInterval(loadDevices, 10000)
-    return () => clearInterval(interval)
-  }, [profile?.id])
+    return () => {
+      clearInterval(interval);
+      if (electronAPI?.off) {
+        electronAPI.off('bridge-event', handleBridgeEvent);
+      }
+    };
+  }, [profile?.id]);
 
   // Load message history
   useEffect(() => {
-    if (!profile?.id) return
-
     const load = async () => {
-      const data = await (window as any).electronAPI?.messaging?.getHistory({
-        businessId: profile.id,
-        limit: 100,
-      })
-      setMessages(data || [])
-    }
+      let loaded: any[] = [];
+      try {
+        const data = await (window as any).electronAPI?.messaging?.getHistory({
+          businessId: profile?.id || 'local',
+          limit: 100,
+        });
+        if (Array.isArray(data) && data.length > 0) {
+          loaded = data;
+        }
+      } catch {}
 
-    load()
-  }, [profile?.id])
+      if (loaded.length === 0) {
+        try {
+          const res = await fetch(`/api/hub/messaging?business_id=${profile?.id || 'local'}&limit=100`);
+          if (res.ok) {
+            const json = await res.json();
+            if (Array.isArray(json)) {
+              loaded = json;
+            }
+          }
+        } catch {}
+      }
+
+      setMessages(loaded);
+    };
+
+    load();
+  }, [profile?.id]);
 
   // Listen for new incoming messages
   useEffect(() => {
-    if (!(window as any).electronAPI?.messaging) return
+    const electronAPI = (window as any).electronAPI;
 
-    (window as any).electronAPI.messaging.onNewMessage((msg: Message) => {
-      setMessages(prev => [msg, ...prev])
+    const handleNewMsg = (msg: Message) => {
+      setMessages(prev => [msg, ...prev]);
       setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-      }, 100)
-    })
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    };
+
+    if (electronAPI?.messaging?.onNewMessage) {
+      electronAPI.messaging.onNewMessage(handleNewMsg);
+    }
+
+    // Also listen to general bridge-event
+    const handleBridgeMsg = (_: any, payload: any) => {
+      if (payload?.event === 'messaging:new-message' && payload?.data) {
+        handleNewMsg(payload.data);
+      }
+    };
+    if (electronAPI?.on) {
+      electronAPI.on('bridge-event', handleBridgeMsg);
+    }
 
     return () => {
-      (window as any).electronAPI.messaging.removeMessageListener()
-    }
-  }, [])
+      if (electronAPI?.messaging?.removeMessageListener) {
+        electronAPI.messaging.removeMessageListener();
+      }
+      if (electronAPI?.off) {
+        electronAPI.off('bridge-event', handleBridgeMsg);
+      }
+    };
+  }, []);
 
   const sendMessage = useCallback(async () => {
-    if (!messageText.trim() || !profile?.id) return
+    if (!messageText.trim()) return;
 
-    setSending(true)
+    setSending(true);
+    const payload = {
+      businessId: profile?.id || 'local',
+      text: messageText.trim(),
+      recipientType: selectedRecipient === 'all' ? 'all' : 'device',
+      recipientDeviceId: selectedRecipient !== 'all' ? selectedRecipient : null,
+      priority,
+    };
+
     try {
-      await (window as any).electronAPI?.messaging?.send({
-        businessId: profile.id,
-        text: messageText.trim(),
-        recipientType: selectedRecipient === 'all' ? 'all' : 'device',
-        recipientDeviceId: selectedRecipient !== 'all' ? selectedRecipient : null,
-        priority,
-      })
+      let sent = false;
+      if ((window as any).electronAPI?.messaging?.send) {
+        const res = await (window as any).electronAPI.messaging.send(payload);
+        if (res && res.success) sent = true;
+      }
 
-      setMessageText('')
-      setPriority('normal')
+      if (!sent) {
+        await fetch('/api/hub/messaging', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      setMessageText('');
+      setPriority('normal');
     } finally {
-      setSending(false)
+      setSending(false);
     }
-  }, [messageText, selectedRecipient, priority, profile?.id])
+  }, [messageText, selectedRecipient, priority, profile?.id]);
 
   const saveDeviceLabel = useCallback(
     async (deviceId: string) => {

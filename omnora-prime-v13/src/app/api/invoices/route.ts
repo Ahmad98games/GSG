@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { db } from '@/lib/db/client';
+import { broadcastSyncToMobileDevices } from '@/lib/mobile-bridge/server';
+import { randomUUID } from 'crypto';
+
+export const dynamic = 'force-dynamic';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -118,6 +123,62 @@ export async function POST(req: NextRequest) {
           console.warn('[API Invoices] Party balance update warning:', partyErr);
         }
       }
+
+      // 6. Local SQLite persistence & mobile push
+      try {
+        const sqlite = (db as any).$client;
+        if (sqlite) {
+          sqlite.prepare(`
+            INSERT OR REPLACE INTO invoices (id, business_id, invoice_number, invoice_type, party_id, party_name, party_phone, invoice_date, due_date, status, total_amount, amount_paid, balance_due, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            invoiceId,
+            invoice.business_id,
+            invoice.invoice_number || 'INV',
+            invoice.invoice_type || 'invoice',
+            invoice.party_id || null,
+            invoice.party_name || null,
+            invoice.party_phone || null,
+            invoice.invoice_date || new Date().toISOString(),
+            invoice.due_date || null,
+            invoice.status || 'posted',
+            Number(invoice.total_amount || 0),
+            Number(invoice.amount_paid || 0),
+            Number(invoice.balance_due || invoice.total_amount || 0),
+            new Date().toISOString(),
+            new Date().toISOString()
+          );
+
+          if (items.length > 0) {
+            for (const it of items) {
+              sqlite.prepare(`
+                INSERT OR REPLACE INTO invoice_items (id, invoice_id, business_id, sku_id, description, quantity, unit, unit_price, total_price)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+              `).run(
+                it.id || randomUUID(),
+                invoiceId,
+                invoice.business_id,
+                it.sku_id || null,
+                it.description || 'Item',
+                Number(it.qty || 1),
+                it.unit || 'Piece',
+                Number(it.unit_price || 0),
+                Number((it.qty || 1) * (it.unit_price || 0))
+              );
+            }
+          }
+        }
+      } catch (sqErr: any) {
+        console.warn('[API Invoices] Local SQLite insertion warning:', sqErr.message);
+      }
+
+      try {
+        broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'invoices' });
+        broadcastSyncToMobileDevices('INVOICE_CREATED', {
+          invoice_number: invoice.invoice_number,
+          total_amount: invoice.total_amount,
+        });
+      } catch {}
 
       return NextResponse.json({ success: true, invoice_id: invoiceId });
     }

@@ -1,5 +1,6 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import os from 'os';
+import { getBridgeStatus } from '@/lib/mobile-bridge/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,6 +24,13 @@ export async function GET() {
   const port = parseInt(process.env.PORT ?? '3000', 10);
   const bridgePort = 7447;
 
+  let bridge: any = { connected: 0, paired: 0, pairedDevices: [] };
+  try {
+    bridge = getBridgeStatus();
+  } catch (err) {
+    console.warn('[Hub Info] Could not fetch bridge status:', err);
+  }
+
   return NextResponse.json({
     ip: localIP,
     localIp: localIP,
@@ -37,6 +45,7 @@ export async function GET() {
     hostname: os.hostname(),
     platform: os.platform(),
     uptime: os.uptime(),
-    version: process.env.npm_package_version || '13.0.0',
+    version: process.env.npm_package_version || '14.0.0',
+    bridge,
   });
 }
