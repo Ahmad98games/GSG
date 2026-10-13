@@ -12,6 +12,7 @@ const PUBLIC_ROUTES = [
 
 const NAV_LINKS = [
   { label: 'Features', href: '/features' },
+  { label: 'Mobile Hub', href: '/#mobile' },
   { label: 'Industries', href: '/industries' },
   { label: 'Pricing', href: '/pricing' },
   { label: 'Download', href: '/download' },
@@ -55,8 +56,8 @@ export function Nav() {
             <span className="text-white font-bold text-sm tracking-tight font-sans">
               Noxis Hub
             </span>
-            <span className="text-[10px] font-mono font-bold text-[#F59E0B] bg-[#F59E0B]/10 px-1.5 py-0.5 rounded border border-[#F59E0B]/20">
-              v13
+            <span className="text-[10px] font-mono font-bold text-[#10B981] bg-[#10B981]/10 px-1.5 py-0.5 rounded border border-[#10B981]/25">
+              v14
             </span>
           </div>
         </Link>

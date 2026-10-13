@@ -74,7 +74,7 @@ export default function DownloadPage() {
           </a>
 
           <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] font-mono text-gray-400">
-            <span>v13.0.2 Stable</span>
+            <span>v14.0.0 Stable</span>
             <span>•</span>
             <span>210 MB Portable Archive</span>
             <span>•</span>

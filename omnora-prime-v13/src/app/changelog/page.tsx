@@ -4,10 +4,26 @@ import { Tag, Calendar, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-reac
 
 const RELEASES = [
   {
+    version: 'v14.0.0',
+    date: 'October 2026',
+    isCurrent: true,
+    title: 'Major Release — Noxis Mobile Hub & Sovereign Industrial Grid v14',
+    summary: 'Full production launch of Noxis Mobile Hub for Android, Urdu & English AI Voice Khata, biometric attendance, Bluetooth thermal printing, and strict multi-tier device security.',
+    changes: [
+      'Noxis Mobile Hub (Android & Handheld) production launch with instant local Wi-Fi router pairing and encrypted Cloudflare tunnel fallback.',
+      'AI Urdu & English Voice Khata Engine: Natural speech parser directly records double-entry debits, credits, and factory cash advances (Peshgi).',
+      'Biometric & photo selfie attendance with GPS geofencing and supervisor shift audit validation.',
+      'Loom floor piece-rate wage logging (yards, meters, suits, thaan cuts) directly from Android terminals.',
+      'Handheld Mobile POS counter with ESC/POS Bluetooth 58mm & 80mm wireless thermal slip printing.',
+      'High-speed camera barcode and QR fabric roll scanner for rapid warehouse cycle counts and dispatch tracking.',
+      'Floor Peshgi (cash advance) disbursements with instant Karigar balance ledger deduction.',
+      'Strict multi-tier device pairing limits (Lite: 3, Pro: 15, Elite: 50) with hardware fingerprint security and auto-suspension watchdog.',
+    ],
+  },
+  {
     version: 'v13.0.0',
     date: 'July 2026',
-    isCurrent: true,
-    title: 'Major Release — Industrial ERP & Companion Mesh',
+    title: 'Industrial ERP & Companion Mesh',
     summary: 'Complete redesign of offline-first engine, RS232 weighbridge support, CCTV video feeds, and UAE VAT 201 compliance.',
     changes: [
       'RS232 weighbridge direct integration for rice mill Paddy IN / Rice OUT weight entries.',
@@ -45,7 +61,7 @@ const RELEASES = [
 ]
 
 export default function ChangelogPage() {
-  const [openVersions, setOpenVersions] = useState<string[]>(['v13.0.0'])
+  const [openVersions, setOpenVersions] = useState<string[]>(['v14.0.0'])
 
   const toggleVersion = (v: string) => {
     setOpenVersions(prev =>

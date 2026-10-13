@@ -103,7 +103,7 @@ const HISTORICAL_CHANGELOGS: ChangelogItem[] = [
     highlights: [
       { tag: 'Evaluation Engine', text: 'Calibrated strict 7-day Pro evaluation with multi-source anti-tamper persistence', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
       { tag: 'Free Forever', text: 'Seamless transition to Free Forever mode (200 SKUs, 50 Parties) with 100% data preservation', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
-      { tag: 'Update Pipeline', text: 'Real-time v13 Core Engine background streaming and one-click install', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
+      { tag: 'Update Pipeline', text: 'Real-time v14 Core Engine background streaming and one-click install', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
     ],
   },
   {

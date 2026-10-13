@@ -541,7 +541,7 @@ export default function LandingClient() {
                         >
                           <div className="flex items-center justify-between border-b border-white/[0.03] pb-3">
                             <h3 className="text-xs font-bold uppercase tracking-widest text-[#C5A059]">Mill Floor Status Overview</h3>
-                            <span className="text-[10px] text-gray-500 font-mono">v13.0.1 Stable</span>
+                            <span className="text-[10px] text-emerald-400 font-mono font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">v14.0.0 Stable</span>
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="p-4 rounded border border-white/[0.04] bg-white/[0.01] space-y-2">
@@ -776,15 +776,15 @@ export default function LandingClient() {
 
             <div className="max-w-7xl mx-auto relative">
               <Reveal variant="up" className="text-center mb-16">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#60A5FA]/10 border border-[#60A5FA]/20 text-[#60A5FA] text-[10px] font-bold uppercase tracking-widest mb-6">
-                  <div className="w-2 h-2 rounded-full bg-[#60A5FA] animate-pulse" />
-                  Local Wi-Fi Floor Sync
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-widest mb-6">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  v14.0 Production Live · Android &amp; Handheld Terminals
                 </div>
                 <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-4 uppercase">
-                  Noxis Mobile Floor Companion
+                  Noxis Mobile Hub &amp; Floor Companion
                 </h2>
-                <p className="text-base text-gray-400 max-w-2xl mx-auto leading-relaxed">
-                  Up to 50 Android devices can log piece-rate output and attendance over your workshop&apos;s Wi-Fi router without using external mobile data.
+                <p className="text-base text-gray-400 max-w-3xl mx-auto leading-relaxed">
+                  Full-featured handheld terminal for supervisors, weavers, cashiers, and dispatch teams. Connects zero-cloud over local Wi-Fi or encrypted tunnel with AI Voice Khata, photo attendance, piece-rate wages, and thermal Bluetooth printing.
                 </p>
               </Reveal>
 
@@ -792,57 +792,89 @@ export default function LandingClient() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start mb-20">
                 {/* Left: Phone mockup */}
                 <div className="relative mx-auto flex justify-center">
-                  <div className="relative w-64 h-[520px] bg-[#0A0C0F] rounded-[3rem] border-2 border-white/10 shadow-2xl overflow-hidden">
+                  <div className="relative w-72 h-[560px] bg-[#0A0C0F] rounded-[3rem] border-2 border-white/10 shadow-2xl overflow-hidden">
                     {/* Status bar */}
                     <div className="absolute top-0 left-0 right-0 h-12 bg-[#0A0C0F] flex items-center justify-between px-6 pt-2">
-                      <span className="text-[10px] text-gray-600 font-mono">9:41</span>
+                      <span className="text-[10px] text-gray-500 font-mono">10:45</span>
                       <div className="w-20 h-4 bg-black rounded-full" />
-                      <div className="flex gap-1 items-center">
+                      <div className="flex gap-1.5 items-center">
                         <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="text-[9px] text-emerald-400 font-bold">Office Wi-Fi</span>
+                        <span className="text-[9px] text-emerald-400 font-bold">192.168.1.45</span>
                       </div>
                     </div>
 
                     {/* Screen */}
-                    <div className="absolute top-12 left-0 right-0 bottom-0 bg-[#060708] p-4 overflow-hidden">
-                      <div className="flex items-center justify-between py-2 mb-4 border-b border-white/[0.06]">
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                          <span className="text-[10px] text-emerald-400 font-semibold">PC Hub Connected</span>
+                    <div className="absolute top-12 left-0 right-0 bottom-0 bg-[#060708] p-4 overflow-hidden flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between py-2 mb-3 border-b border-white/[0.06]">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            <span className="text-[10px] text-emerald-400 font-semibold font-mono">PC HUB · &lt;1ms PING</span>
+                          </div>
+                          <span className="text-[9px] font-bold text-[#C5A059] bg-[#C5A059]/10 px-1.5 py-0.5 rounded border border-[#C5A059]/20">v14 TERMINAL</span>
                         </div>
-                        <span className="text-[9px] font-bold text-[#C5A059] bg-[#C5A059]/10 px-1.5 py-0.5 rounded">SHOP FLOOR</span>
+
+                        {/* Top quick metrics */}
+                        <div className="grid grid-cols-2 gap-2 mb-3">
+                          {([
+                            ['Karigars On Floor', '48 / 52 Present', '#10B981'],
+                            ['Today Output', '2,480 yds / 380 suits', '#60A5FA'],
+                            ['AI Voice Khata', 'Ready (Urdu/Eng)', '#C5A059'],
+                            ['ESC/POS Printer', '58mm BT Paired', '#A78BFA'],
+                          ] as const).map(([label, value, color]) => (
+                            <div key={label} className="bg-[#0F1114] rounded-xl p-2.5 border border-white/[0.06]">
+                              <p className="text-[8px] text-gray-500 uppercase tracking-wider mb-0.5">{label}</p>
+                              <p className="text-xs font-bold font-mono truncate" style={{ color }}>{value}</p>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Quick 6-button Floor Grid */}
+                        <p className="text-[8px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">Quick Operations</p>
+                        <div className="grid grid-cols-3 gap-1.5 mb-3">
+                          {([
+                            ['🎙️', 'Voice Khata', '#C5A059'],
+                            ['📸', 'Photo Attend', '#10B981'],
+                            ['⚡', 'Log Wages', '#60A5FA'],
+                            ['🖨️', 'Mobile POS', '#A78BFA'],
+                            ['💰', 'Peshgi Adv', '#F59E0B'],
+                            ['⊞', 'Scan Roll', '#34D399'],
+                          ] as const).map(([icon, label, color]) => (
+                            <div key={label} className="bg-[#0F1114] rounded-lg p-2 border border-white/[0.06] flex flex-col items-center gap-1">
+                              <span className="text-base" style={{ color }}>{icon}</span>
+                              <span className="text-[8px] text-gray-300 font-medium text-center leading-tight">{label}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Live activity feed items */}
+                        <div className="space-y-1.5">
+                          <div className="bg-emerald-500/[0.08] border border-emerald-500/20 rounded-lg p-2">
+                            <p className="text-[9px] text-emerald-400 font-semibold">🎙️ Voice: &ldquo;Haji Aslam ko 50,000 naqd&rdquo;</p>
+                            <p className="text-[8px] text-gray-400 mt-0.5">Voucher #V-8821 posted to SQLite ledger</p>
+                          </div>
+                          <div className="bg-[#60A5FA]/[0.08] border border-[#60A5FA]/20 rounded-lg p-2">
+                            <p className="text-[9px] text-[#60A5FA] font-semibold">🖨️ POS Bill #B-4190 Printed</p>
+                            <p className="text-[8px] text-gray-400 mt-0.5">58mm Bluetooth Thermal ESC/POS slip issued</p>
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 mb-4">
-                        {([['Present', '47/52', '#10B981'], ['Yards Today', '1,840 yds', '#60A5FA'], ['Pending Jobs', '3 Batches', '#F59E0B'], ['Alerts', '0', '#374151']] as const).map(([label, value, color]) => (
-                          <div key={label} className="bg-[#0F1114] rounded-xl p-3 border border-white/[0.06]">
-                            <p className="text-[9px] text-gray-500 mb-1">{label}</p>
-                            <p className="text-sm font-bold font-mono" style={{ color }}>{value}</p>
+                      {/* Bottom phone nav */}
+                      <div className="h-12 bg-[#0A0C0F] border-t border-white/[0.06] -mx-4 -mb-4 flex items-center justify-around px-2">
+                        {([
+                          { icon: '🏠', label: 'Home', active: true },
+                          { icon: '🎙️', label: 'Khata', active: false },
+                          { icon: '👷', label: 'Workers', active: false },
+                          { icon: '🖨️', label: 'POS', active: false },
+                          { icon: '📦', label: 'Stock', active: false },
+                        ] as const).map((tab, i) => (
+                          <div key={i} className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg ${tab.active ? 'text-[#60A5FA]' : 'text-gray-500'}`}>
+                            <span className="text-xs">{tab.icon}</span>
+                            <span className="text-[7px] font-bold">{tab.label}</span>
                           </div>
                         ))}
                       </div>
-
-                      <div className="grid grid-cols-3 gap-2 mb-4">
-                        {([['✓', 'Attend', '#10B981'], ['⚡', 'Log Units', '#60A5FA'], ['⊞', 'Scan', '#F59E0B']] as const).map(([icon, label, color]) => (
-                          <div key={label} className="bg-[#0F1114] rounded-xl p-3 border border-white/[0.06] flex flex-col items-center gap-1.5">
-                            <span className="text-lg" style={{ color }}>{icon}</span>
-                            <span className="text-[9px] text-gray-400 font-medium">{label}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="bg-emerald-500/[0.08] border border-emerald-500/20 rounded-xl p-3">
-                        <p className="text-[9px] text-emerald-400 font-semibold">✓ Muhammad Akram marked Present</p>
-                        <p className="text-[8px] text-gray-500 mt-0.5">Synced to PC over local Wi-Fi router</p>
-                      </div>
-                    </div>
-
-                    <div className="absolute bottom-0 left-0 right-0 h-14 bg-[#0A0C0F] border-t border-white/[0.06] flex items-center justify-around px-2">
-                      {(['⊞', '👷', '⚡', '✓', '≡'] as const).map((icon, i) => (
-                        <div key={i} className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg ${i === 0 ? 'bg-[#60A5FA]/15' : ''}`}>
-                          <span className={`text-sm ${i === 0 ? 'text-[#60A5FA]' : 'text-gray-700'}`}>{icon}</span>
-                        </div>
-                      ))}
                     </div>
                   </div>
 
@@ -854,22 +886,23 @@ export default function LandingClient() {
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-emerald-400 mb-4 flex items-center gap-2">
                       <span className="w-4 h-px bg-emerald-400/50" />
-                      Works Over Office Wi-Fi (No Mobile Data)
+                      Factory Floor &amp; Worker Wage Features
                     </p>
                     <div className="space-y-3">
                       {[
-                        { icon: '📡', title: 'Local Router Pairing', desc: 'Scan the QR code shown on your PC Hub. Connects in seconds over your office Wi-Fi router.' },
-                        { icon: '✓', title: 'Daily Attendance Marking', desc: 'Mark Present, Absent, or Half-day for each worker directly on the shop floor.' },
-                        { icon: '⚡', title: 'Piece-Rate Output Logging', desc: 'Log meters, yards, or pieces produced by each weaver or stitcher. Wage calculation updates live.' },
-                        { icon: '💰', title: 'Peshgi (Advance) Recording', desc: 'Record cash advances handed out on the floor. Balance deducts from the worker\'s account immediately.' },
+                        { icon: '📡', title: 'Local Router Pairing & Zero Mobile Data', desc: 'Scan the pairing QR on your PC Hub. Connects in under 2 seconds over local workshop Wi-Fi with zero internet required, or over encrypted tunnel across branches.' },
+                        { icon: '🎙️', title: 'Urdu & English AI Voice Khata Engine', desc: 'Speak natural voice entries like "Haji Aslam ko 50,000 naqd diye" or "Ali Raza 120 gaz latha". AI automatically parses amounts, accounts, and posts double-entry vouchers.' },
+                        { icon: '📸', title: 'Biometric & Photo Attendance with Geofencing', desc: 'Clock-in workers with selfie camera verification, shift audit tracking, and optional GPS geofence validation. Completely eliminates proxy attendance and buddy punching.' },
+                        { icon: '⚡', title: 'Piece-Rate Wage Logging (Yards / Meters / Suits)', desc: 'Supervisors log weaving, stitching, and cutting output directly at each loom or table. Instant wage calculations sync straight into weekly payroll.' },
+                        { icon: '💰', title: 'Floor Peshgi (Advance) & Daily Ledger', desc: 'Disburse and record on-the-spot cash advances (Peshgi). Updates worker balance instantly and automatically deducts from Saturday pay envelopes.' },
                       ].map(item => (
                         <RevealItem key={item.title}>
                           <div className="flex items-start gap-3 p-4 bg-[#0F1114] border border-white/[0.08] rounded-xl hover:border-emerald-500/20 transition-colors">
                             <span className="text-xl flex-shrink-0 mt-0.5">{item.icon}</span>
-                            <div>
+                            <div className="flex-1">
                               <div className="flex items-center gap-2 mb-0.5">
                                 <p className="text-sm font-semibold text-white">{item.title}</p>
-                                <span className="text-[9px] bg-emerald-500/15 text-emerald-400 px-1.5 py-0.5 rounded font-bold">READY</span>
+                                <span className="text-[9px] bg-emerald-500/15 text-emerald-400 px-1.5 py-0.5 rounded font-bold border border-emerald-500/20">LIVE v14</span>
                               </div>
                               <p className="text-xs text-gray-400 leading-relaxed">{item.desc}</p>
                             </div>
@@ -882,17 +915,17 @@ export default function LandingClient() {
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#60A5FA] mb-4 flex items-center gap-2">
                       <span className="w-4 h-px bg-[#60A5FA]/50" />
-                      Mobile Modules
+                      Handheld POS, Logistics &amp; Security
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {[
-                        { icon: '📦', title: 'Barcode Scanner', desc: 'Scan fabric rolls and product labels to check stock or verify dispatches.' },
-                        { icon: '📊', title: 'Daily Shift Summaries', desc: 'Review daily production totals and attendance counts directly on your phone.' },
-                        { icon: '🔔', title: 'Low-Stock Alerts', desc: 'Receive instant notifications when critical raw material yarn or dye runs low.' },
-                        { icon: '🇵🇰', title: 'Urdu & English Modes', desc: 'Easy-to-use interface built for supervisors and floor managers.' },
+                        { icon: '🖨️', title: 'Mobile POS & Bluetooth ESC/POS Printing', desc: 'Bill customers on the shop floor and print slips directly to 58mm or 80mm Bluetooth thermal receipt printers.' },
+                        { icon: '⊞', title: 'High-Speed Barcode & QR Scanner', desc: 'Scan fabric rolls, thaan tags, and dispatch carton labels to verify stock and prevent wrong deliveries.' },
+                        { icon: '📹', title: 'Live RTSP CCTV & Watchdog', desc: 'View shop floor camera streams and security alerts right on the supervisor mobile screen.' },
+                        { icon: '📻', title: 'Encrypted Mesh Intercom & Shift Audit', desc: 'Two-way voice intercom between office PC and mobile terminals plus end-of-shift balance reconciliations.' },
                       ].map(item => (
                         <RevealItem key={item.title}>
-                          <div className="flex items-start gap-3 p-4 bg-[#0F1114] border border-white/[0.06] rounded-xl">
+                          <div className="flex items-start gap-3 p-4 bg-[#0F1114] border border-white/[0.06] rounded-xl hover:border-[#60A5FA]/20 transition-colors h-full">
                             <span className="text-lg flex-shrink-0 mt-0.5">{item.icon}</span>
                             <div>
                               <p className="text-sm font-semibold text-white">{item.title}</p>

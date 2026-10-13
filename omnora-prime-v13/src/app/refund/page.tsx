@@ -240,7 +240,7 @@ function RefundContent() {
 
             {/* Footer */}
             <footer className="pt-8 border-t border-white/[0.05] flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] font-mono uppercase tracking-widest text-slate-600">
-              <span>Noxis Hub Refund Policy v13.0</span>
+              <span>Noxis Hub Refund Policy v14.0</span>
               <div className="flex items-center gap-4">
                 <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
                 <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>

@@ -57,7 +57,7 @@ export default function AboutPage() {
             Noxis Hub runs locally on your PC hard drive and office Wi-Fi network. It handles piece-rate Karigar wage calculations, yarn and fabric inventory tracking, and on-site RTSP camera streams without requiring an active internet connection.
           </p>
           <div className="text-[10px] text-gray-400 font-mono tracking-widest uppercase flex items-center gap-3">
-            <span>CORE: v13.0-STABLE</span>
+            <span>CORE: v14.0-STABLE</span>
             <span>•</span>
             <span>COMPILED: {BUILD_DATE}</span>
           </div>

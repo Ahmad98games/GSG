@@ -169,21 +169,22 @@ export default function FeaturesPage() {
     },
     {
       id: 'mobile',
-      title: 'Shop-Floor Android Phone Logging',
-      badge: 'No Internet Needed',
-      desc: 'Up to 50 Android devices can log piece-rate output and attendance over your workshop\'s Wi-Fi router without using external mobile data.',
+      title: 'Noxis Mobile Hub (Android & Handheld POS)',
+      badge: 'v14.0 Production Ready',
+      desc: 'Complete Android & Tablet floor terminal. Supervisors log piece-rate production, worker attendance, voice khata entries, and scan barcodes over local Wi-Fi or Cloud Tunnel.',
       image: '/software-images/device pair.png',
       items: [
-        'QR code pairing for Android phones over local Wi-Fi router',
-        'Floor attendance marking & Peshgi advance logging',
-        'Stock scanning & batch production entry from phone',
-        'Sub-2-second local synchronization with PC Hub',
-        'Role-based permissions limiting mobile supervisor views'
+        'Instant QR pairing over local Wi-Fi or Cloudflare Tunnel (zero data cost)',
+        'Biometric & photo worker attendance marking with shift overtime audit',
+        'Piece-rate wage logging (yards, meters, suits, pieces) & Karigar dashboard',
+        'Urdu & English Voice Khata engine with floor Peshgi cash advance recording',
+        'Mobile POS counter & wireless barcode/QR fabric roll scanner',
+        'Thermal Bluetooth ESC/POS slip printing & encrypted mesh floor intercom'
       ],
       icon: Smartphone,
-      color: 'text-cyan-400',
-      border: 'border-cyan-500/20',
-      bg: 'bg-cyan-500/10'
+      color: 'text-emerald-400',
+      border: 'border-emerald-500/20',
+      bg: 'bg-emerald-500/10'
     }
   ]
 
@@ -225,7 +226,7 @@ export default function FeaturesPage() {
           <div className="inline-flex items-center gap-2 bg-[#C5A059]/10 border border-[#C5A059]/25 px-4 py-1.5 rounded-full">
             <Sparkles size={14} className="text-[#C5A059]" />
             <span className="text-xs font-black text-[#C5A059] uppercase tracking-widest">
-              Industrial Feature Index · Noxis Hub v13.0.0
+              Industrial Feature Index · Noxis Hub v14.0.0
             </span>
           </div>
 
@@ -344,7 +345,7 @@ export default function FeaturesPage() {
             <span className="text-xs font-mono font-bold uppercase tracking-widest text-[#C5A059]">Visual Walkthrough</span>
             <h2 className="text-2xl sm:text-3xl font-black uppercase text-white">Live Software Interface Showcase</h2>
             <p className="text-xs text-slate-400 max-w-xl mx-auto">
-              Real screenshots captured directly from active industrial workstations using Noxis Hub v13.
+              Real screenshots captured directly from active industrial workstations using Noxis Hub v14.
             </p>
           </div>
 

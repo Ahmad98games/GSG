@@ -191,7 +191,7 @@ const COMPARISON_CATEGORIES = [
     features: [
       { name: "WhatsApp Support (+92 326 4742678)", free: "Community Docs", lite: "Standard WhatsApp", pro: "Priority WhatsApp (<1h)", elite: "VIP Engineer Direct Line" },
       { name: "Remote AnyDesk Setup & Migration", free: "—", lite: "Self-Install Guides", pro: "Guided 30-min Call", elite: "✔ Full Turnkey Onboarding" },
-      { name: "Software Updates & Maintenance", free: "Community", lite: "✔ Lifetime v13+", pro: "✔ Lifetime v13+", elite: "✔ Lifetime Priority" },
+      { name: "Software Updates & Maintenance", free: "Community", lite: "✔ Lifetime v14+", pro: "✔ Lifetime v14+", elite: "✔ Lifetime Priority" },
     ]
   }
 ];

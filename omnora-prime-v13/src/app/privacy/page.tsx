@@ -369,7 +369,7 @@ function PrivacyContent() {
 
             {/* Footer */}
             <footer className="pt-8 border-t border-white/[0.05] flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] font-mono uppercase tracking-widest text-slate-600">
-              <span>Noxis Hub Privacy Policy v13.1</span>
+              <span>Noxis Hub Privacy Policy v14.0</span>
               <div className="flex items-center gap-4">
                 <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
                 <Link href="/refund" className="hover:text-white transition-colors">Refund</Link>

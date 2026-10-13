@@ -296,7 +296,7 @@ function TermsContent() {
               </div>
 
               <div className="bg-[#0A0D10] border border-white/[0.04] p-5 rounded flex items-center justify-between text-[10px] font-mono font-bold uppercase tracking-widest text-slate-600">
-                <span>VALIDATED EULA v13.0</span>
+                <span>VALIDATED EULA v14.0</span>
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
               </div>
             </div>
@@ -334,7 +334,7 @@ function TermsContent() {
 
             {/* Footer */}
             <footer className="pt-8 border-t border-white/[0.05] flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] font-mono uppercase tracking-widest text-slate-600">
-              <span>Noxis Hub EULA v13.0 · Pakistan Law</span>
+              <span>Noxis Hub EULA v14.0 · Pakistan Law</span>
               <div className="flex items-center gap-4">
                 <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
                 <Link href="/refund" className="hover:text-white transition-colors">Refund</Link>

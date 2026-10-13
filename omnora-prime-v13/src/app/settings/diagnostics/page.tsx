@@ -137,7 +137,7 @@ export default function DiagnosticsPage() {
            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               <div className="p-6 bg-white/5 border border-white/5 rounded-sm text-center">
                  <p className="text-[10px] text-slate-500 font-bold uppercase mb-2">Build Version</p>
-                 <p className="text-sm font-black text-white">Noxis Hub v13.0</p>
+                 <p className="text-sm font-black text-white">Noxis Hub v14.0</p>
               </div>
               <div className="p-6 bg-white/5 border border-white/5 rounded-sm text-center">
                  <p className="text-[10px] text-slate-500 font-bold uppercase mb-2">Runtime</p>
