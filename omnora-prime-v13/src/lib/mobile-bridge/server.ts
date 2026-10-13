@@ -656,7 +656,7 @@ async function handleMessage(
 
         // Connection metadata
         connectedDevices: getPairedCount(),
-        hubVersion: process.env.npm_package_version || '14.0.0',
+        hubVersion: process.env.npm_package_version || '14.0.1',
       });
 
       broadcastToHubRenderer('DEVICE_COUNT_CHANGED', {
@@ -934,7 +934,7 @@ async function handleMessage(
               totalKarigars: kCount,
               presentToday: aCount,
               pendingDispatch: dCount,
-              hubVersion: '14.0.0',
+              hubVersion: '14.0.1',
               tier: client.tier,
               connectedDevices: getPairedCount()
             }];

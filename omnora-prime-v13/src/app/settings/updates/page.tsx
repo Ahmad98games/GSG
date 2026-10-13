@@ -49,6 +49,17 @@ interface ChangelogItem {
 
 const HISTORICAL_CHANGELOGS: ChangelogItem[] = [
   {
+    version: '14.0.1',
+    date: 'October 2026',
+    type: 'patch',
+    title: 'Noxis Hub v14.0.1 — Live Handheld Visibility, Bidirectional Messaging & Local SQLite Sync',
+    highlights: [
+      { tag: 'Device Visibility', text: 'Instant detection and live status display for paired handheld devices on PC Hub', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      { tag: 'Bidirectional Messaging', text: 'Real-time offline-first text and alert dispatching between PC Hub and mobile devices', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
+      { tag: 'Offline SQLite Sync', text: 'Real-time synchronization for invoices, parties, karigars, and attendance directly using local SQLite', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+    ],
+  },
+  {
     version: '14.0.0',
     date: 'October 2026',
     type: 'major',

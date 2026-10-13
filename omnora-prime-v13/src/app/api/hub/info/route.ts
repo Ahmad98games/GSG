@@ -45,7 +45,7 @@ export async function GET() {
     hostname: os.hostname(),
     platform: os.platform(),
     uptime: os.uptime(),
-    version: process.env.npm_package_version || '14.0.0',
+    version: process.env.npm_package_version || '14.0.1',
     bridge,
   });
 }
