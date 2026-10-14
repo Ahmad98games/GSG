@@ -101,12 +101,21 @@ export default function PairingPage() {
                 "/mobile-bridge")
           : currentHubInfo.tunnelUrl;
 
+        const lanIp = currentHubInfo.ip || currentHubInfo.localIp || '192.168.0.105';
         const payload = JSON.stringify({
           v: 2,
+          type: 'noxis-hub-pairing',
           businessName: profile?.business_name || "Noxis Hub",
           bridgeUrl: currentHubInfo.bridgeUrl,
           mobileUrl: currentHubInfo.mobileUrl,
           tunnelUrl: finalTunnelUrl,
+          ip: lanIp,
+          port: currentHubInfo.bridgePort || 7447,
+          endpoints: [
+            ...(finalTunnelUrl ? [{ type: 'tunnel', url: finalTunnelUrl }] : []),
+            { type: 'bridge', url: currentHubInfo.bridgeUrl },
+            { type: 'local', url: `http://${lanIp}:3000` },
+          ],
           ts: Date.now(),
         });
 

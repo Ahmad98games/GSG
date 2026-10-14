@@ -49,6 +49,8 @@ export default function DevicesPage() {
   const [localUrl, setLocalUrl] = useState<string>('');
   const [tunnelUrl, setTunnelUrl] = useState<string | null>(null);
   const [hubBridgeUrl, setHubBridgeUrl] = useState<string>('');
+  const [hubIp, setHubIp] = useState<string>('');
+  const [hubMobileUrl, setHubMobileUrl] = useState<string>('');
 
   const load = useCallback(async () => {
     setError(null);
@@ -72,6 +74,10 @@ export default function DevicesPage() {
         if (Array.isArray(info.bridge?.pairedDevices)) {
           currentLive = info.bridge.pairedDevices;
         }
+        if (info.ip) setHubIp(info.ip);
+        if (info.bridgeUrl) setHubBridgeUrl(info.bridgeUrl);
+        if (info.mobileUrl) setHubMobileUrl(info.mobileUrl);
+        if (info.tunnelUrl) setTunnelUrl(info.tunnelUrl);
       }
 
       // Also query direct Electron bridge status if available
@@ -184,13 +190,26 @@ export default function DevicesPage() {
       .catch(() => {});
   }, []);
 
+  const lanIp = hubIp || '192.168.0.105';
+  const realBridgeUrl = hubBridgeUrl || `ws://${lanIp}:7447`;
+  const realLocalUrl = `http://${lanIp}:3000`;
+  const realMobileUrl = hubMobileUrl || `http://${lanIp}:3000/mobile`;
+
   const qrPayload = JSON.stringify({
-    v: 1,
+    v: 2,
     type: 'noxis-hub-pairing',
+    businessName: 'Noxis Hub',
+    bridgeUrl: realBridgeUrl,
+    mobileUrl: realMobileUrl,
+    tunnelUrl: tunnelUrl || null,
+    ip: lanIp,
+    port: 7447,
     endpoints: [
       ...(tunnelUrl ? [{ type: 'tunnel', url: tunnelUrl }] : []),
-      ...(localUrl ? [{ type: 'local', url: localUrl }] : []),
+      { type: 'bridge', url: realBridgeUrl },
+      { type: 'local', url: realLocalUrl },
     ],
+    ts: Date.now(),
   });
 
   const formatTime = (iso: string | null) => {
@@ -369,13 +388,11 @@ export default function DevicesPage() {
               </ol>
             </div>
             <div className="space-y-1">
-              {localUrl && (
-                <div className="flex items-center gap-2">
-                  <Wifi size={10} className="text-[#60A5FA] flex-shrink-0" />
-                  <span className="text-[10px] font-mono text-gray-600 truncate">{localUrl}</span>
-                  <span className="text-[9px] text-[#60A5FA] bg-[#60A5FA]/10 px-1.5 py-0.5 rounded font-bold flex-shrink-0">WiFi</span>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <Wifi size={10} className="text-[#60A5FA] flex-shrink-0" />
+                <span className="text-[10px] font-mono text-gray-400 truncate">{realBridgeUrl}</span>
+                <span className="text-[9px] text-[#60A5FA] bg-[#60A5FA]/10 px-1.5 py-0.5 rounded font-bold flex-shrink-0">WiFi Bridge</span>
+              </div>
               {tunnelUrl && (
                 <div className="flex items-center gap-2">
                   <Globe size={10} className="text-emerald-400 flex-shrink-0" />
