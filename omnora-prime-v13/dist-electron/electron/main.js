@@ -620,7 +620,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 </div>
 
 <div class="footer-meta">
-  <span>v14.0.0 &nbsp;·&nbsp; SQLite WAL</span>
+  <span>v14.0.1 &nbsp;·&nbsp; SQLite WAL</span>
   <span>OMNORA LABS</span>
 </div>
 </body>
@@ -1274,10 +1274,23 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     });
     electron_1.ipcMain.handle('messaging:renameDevice', async (_, { deviceId, newLabel, deviceRole }) => {
         try {
+            const sqlite = global.__noxisDb;
+            if (sqlite) {
+                sqlite.prepare(`
+          UPDATE authorized_devices 
+          SET device_label = ?, label = ?, device_role = ?
+          WHERE device_id = ? OR node_id = ?
+        `).run(newLabel, newLabel, deviceRole || 'general', deviceId, deviceId);
+            }
+        }
+        catch (e) {
+            startupLog(`[Messaging] Local renameDevice warning: ${e.message}`);
+        }
+        try {
             const { createAdminClient } = require('../src/lib/supabase/admin');
             const admin = createAdminClient();
             if (!admin)
-                return null;
+                return { success: true };
             const { data } = await admin
                 .from('authorized_devices')
                 .update({
@@ -1287,10 +1300,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 .eq('device_id', deviceId)
                 .select()
                 .single();
-            return data;
+            return data || { success: true };
         }
         catch {
-            return null;
+            return { success: true };
         }
     });
     electron_1.ipcMain.handle('sync-tier', (_, data) => {
@@ -2305,8 +2318,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 // Registered after window is created so startupLog is fully available
                 (0, onvifService_1.registerOnvifHandlers)(startupLog);
                 (0, mediamtxService_1.registerMediamtxHandlers)(startupLog);
-                // ── STEP 6: Start WebSocket bridge server ──
-                startWsBridgeServer();
+                // ── STEP 6: WebSocket mobile bridge is managed authoritatively by Next.js server (server.ts) on port 7447 ──
+                // Disabled duplicate competing server to prevent EADDRINUSE collision
+                // startWsBridgeServer();
                 // ── STEP 7: Send power-cut recovery signal to renderer ──
                 if (wasPowerCut) {
                     setTimeout(() => {

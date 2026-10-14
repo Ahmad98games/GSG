@@ -151,6 +151,35 @@ exports.db = new Proxy({}, {
                 compatible_vehicles TEXT,
                 commission_rate TEXT DEFAULT '0'
               );
+
+              CREATE TABLE IF NOT EXISTS hub_messages (
+                id TEXT PRIMARY KEY,
+                business_id TEXT DEFAULT 'local',
+                sender_type TEXT NOT NULL,
+                sender_device_id TEXT,
+                sender_name TEXT NOT NULL,
+                recipient_type TEXT NOT NULL,
+                recipient_device_id TEXT,
+                recipient_role TEXT,
+                message_text TEXT NOT NULL,
+                message_type TEXT DEFAULT 'text',
+                priority TEXT DEFAULT 'normal',
+                is_read INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT (datetime('now'))
+              );
+
+              CREATE TABLE IF NOT EXISTS authorized_devices (
+                node_id TEXT PRIMARY KEY,
+                mesh_key TEXT NOT NULL DEFAULT '',
+                label TEXT,
+                is_active INTEGER NOT NULL DEFAULT 1,
+                business_id TEXT,
+                device_id TEXT,
+                device_label TEXT DEFAULT 'Mobile Device',
+                last_seen TEXT,
+                is_revoked INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT DEFAULT (datetime('now'))
+              );
             `);
                         const alterTableSafe = (table, colDef) => {
                             try {
@@ -161,21 +190,37 @@ exports.db = new Proxy({}, {
                         alterTableSafe('sku_cache', 'oem_number TEXT');
                         alterTableSafe('sku_cache', 'compatible_vehicles TEXT');
                         alterTableSafe('sku_cache', 'commission_rate TEXT DEFAULT "0"');
-                        alterTableSafe('auth_devices', 'business_id TEXT');
+                        alterTableSafe('authorized_devices', 'business_id TEXT');
+                        alterTableSafe('authorized_devices', 'device_id TEXT');
+                        alterTableSafe('authorized_devices', 'device_label TEXT');
+                        alterTableSafe('authorized_devices', 'last_seen TEXT');
+                        alterTableSafe('authorized_devices', 'is_revoked INTEGER DEFAULT 0');
+                        alterTableSafe('authorized_devices', 'is_active INTEGER DEFAULT 1');
                         alterTableSafe('branch_cache', 'business_id TEXT');
                         alterTableSafe('sync_logs', 'business_id TEXT');
                         alterTableSafe('parties', 'business_id TEXT');
                         alterTableSafe('parties', 'is_blocked INTEGER DEFAULT 0');
+                        alterTableSafe('parties', 'current_balance REAL DEFAULT 0');
                         alterTableSafe('invoices', 'business_id TEXT');
+                        alterTableSafe('invoices', 'party_id TEXT');
+                        alterTableSafe('invoices', 'party_name TEXT');
+                        alterTableSafe('invoices', 'party_phone TEXT');
+                        alterTableSafe('invoices', 'invoice_number TEXT');
+                        alterTableSafe('invoices', 'total_amount REAL DEFAULT 0');
+                        alterTableSafe('invoices', 'amount_paid REAL DEFAULT 0');
+                        alterTableSafe('invoices', 'balance_due REAL DEFAULT 0');
+                        alterTableSafe('invoices', 'status TEXT DEFAULT "posted"');
                         alterTableSafe('ledger_entries', 'business_id TEXT');
                         alterTableSafe('payments', 'business_id TEXT');
                         alterTableSafe('skus', 'business_id TEXT');
                         alterTableSafe('karigars', 'business_id TEXT');
+                        alterTableSafe('karigars', 'peshgi_balance REAL DEFAULT 0');
                         alterTableSafe('expenses', 'business_id TEXT');
                         alterTableSafe('purchase_orders', 'business_id TEXT');
                         alterTableSafe('workflows', 'business_id TEXT');
                         alterTableSafe('workflow_runs', 'business_id TEXT');
                         alterTableSafe('employees', 'business_id TEXT');
+                        alterTableSafe('hub_messages', 'created_at TEXT');
                     }
                     catch { }
                     return instance;

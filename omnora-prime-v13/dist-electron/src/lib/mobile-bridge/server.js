@@ -589,7 +589,7 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
                 countryCode: profile.country_code,
                 // Connection metadata
                 connectedDevices: getPairedCount(),
-                hubVersion: process.env.npm_package_version || '14.0.0',
+                hubVersion: process.env.npm_package_version || '14.0.1',
             });
             broadcastToHubRenderer('DEVICE_COUNT_CHANGED', {
                 connectedDevices: getPairedCount(),
@@ -867,7 +867,7 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
                                 totalKarigars: kCount,
                                 presentToday: aCount,
                                 pendingDispatch: dCount,
-                                hubVersion: '14.0.0',
+                                hubVersion: '14.0.1',
                                 tier: client.tier,
                                 connectedDevices: getPairedCount()
                             }];
@@ -1031,18 +1031,25 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
         case 'ATTENDANCE_LOGGED': {
             console.log(`[Bridge] ATTENDANCE_LOGGED from ${client.deviceLabel}`);
             const sqlite = getSqlite();
-            const a = (msg.attendance || msg.data || msg);
-            if (sqlite && a && a.karigar_id) {
-                const aId = a.id || (0, crypto_1.randomUUID)();
-                const todayStr = a.attendance_date || new Date().toISOString().split('T')[0];
-                try {
-                    sqlite.prepare(`
-            INSERT OR REPLACE INTO attendance_logs (id, business_id, karigar_id, attendance_date, status, check_in_time, device_id, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `).run(aId, a.business_id || client.businessId || 'local', a.karigar_id, todayStr, a.status || 'present', a.check_in_time || new Date().toISOString(), client.deviceId || null, new Date().toISOString(), new Date().toISOString());
-                }
-                catch (e) {
-                    console.warn('[Bridge] Local attendance insert error:', e.message);
+            const rawAtt = (msg.attendance || msg.data || msg);
+            const recordsToInsert = Array.isArray(msg.records)
+                ? msg.records
+                : (Array.isArray(rawAtt) ? rawAtt : (rawAtt && rawAtt.karigar_id ? [rawAtt] : []));
+            if (sqlite && recordsToInsert.length > 0) {
+                for (const a of recordsToInsert) {
+                    if (!a || !a.karigar_id)
+                        continue;
+                    const aId = a.id || (0, crypto_1.randomUUID)();
+                    const todayStr = a.attendance_date || new Date().toISOString().split('T')[0];
+                    try {
+                        sqlite.prepare(`
+              INSERT OR REPLACE INTO attendance_logs (id, business_id, karigar_id, attendance_date, status, check_in_time, device_id, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(aId, a.business_id || client.businessId || 'local', a.karigar_id, todayStr, a.status || 'present', a.check_in_time || new Date().toISOString(), client.deviceId || null, new Date().toISOString(), new Date().toISOString());
+                    }
+                    catch (e) {
+                        console.warn('[Bridge] Local attendance insert error:', e.message);
+                    }
                 }
             }
             broadcastToHubRenderer('ATTENDANCE_LOGGED', {
@@ -1124,9 +1131,14 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
             break;
         }
         case 'MSG_SEND': {
-            const { text, priority, messageId } = msg;
-            if (!client.paired || !client.businessId)
+            const rawMsg = msg;
+            const text = String(rawMsg.text || rawMsg.payload?.text || '');
+            const priority = rawMsg.priority || rawMsg.payload?.priority || 'normal';
+            const messageId = rawMsg.messageId || rawMsg.payload?.messageId || (0, crypto_1.randomUUID)();
+            if (!client.paired)
                 break;
+            if (!client.businessId)
+                client.businessId = 'local';
             const msgId = messageId || (0, crypto_1.randomUUID)();
             const createdAtStr = new Date().toISOString();
             const messageRecord = {

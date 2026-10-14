@@ -31,6 +31,11 @@ export async function GET() {
     console.warn('[Hub Info] Could not fetch bridge status:', err);
   }
 
+  const rawTunnel = process.env.CLOUDFLARE_TUNNEL_URL || '';
+  const isDummyTunnel = !rawTunnel || rawTunnel.includes('your-tunnel-hostname') || rawTunnel.includes('example.com');
+  const cleanTunnelHost = rawTunnel.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+  const tunnelUrl = isDummyTunnel ? null : `wss://${cleanTunnelHost}/mobile-bridge`;
+
   return NextResponse.json({
     ip: localIP,
     localIp: localIP,
@@ -39,13 +44,11 @@ export async function GET() {
     bridgeUrl: `ws://${localIP}:${bridgePort}`,
     nextBridgeUrl: `ws://${localIP}:${port}/mobile-bridge`,
     mobileUrl: `http://${localIP}:${port}/mobile`,
-    tunnelUrl: process.env.CLOUDFLARE_TUNNEL_URL
-      ? `wss://${process.env.CLOUDFLARE_TUNNEL_URL}/mobile-bridge`
-      : null,
+    tunnelUrl,
     hostname: os.hostname(),
     platform: os.platform(),
     uptime: os.uptime(),
-    version: process.env.npm_package_version || '14.0.1',
+    version: '14.0.0',
     bridge,
   });
 }

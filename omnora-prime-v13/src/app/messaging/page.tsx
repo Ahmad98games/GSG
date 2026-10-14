@@ -8,8 +8,10 @@ import {
   Send, Smartphone, Users, Wifi,
   WifiOff, Edit2, Check, Crown,
   MessageCircle, AlertTriangle,
-  Bell, BellOff, Clock,
+  Bell, BellOff, Clock, Trash2,
+  QrCode, X, RefreshCw, ExternalLink,
 } from 'lucide-react'
+import QRCode from 'qrcode'
 import { useBusinessProfile } from '@/hooks/useBusinessProfile'
 import { useLicense } from '@/hooks/useLicense'
 import { UpgradeGate } from '@/components/license/UpgradeGate'
@@ -61,74 +63,126 @@ export default function MessagingPage() {
   const [editingDevice, setEditingDevice] = useState<string | null>(null)
   const [editLabel, setEditLabel] = useState('')
   const [editRole, setEditRole] = useState('')
+  const [showPairModal, setShowPairModal] = useState(false)
+  const [hubInfo, setHubInfo] = useState<any>(null)
+  const [pairingQrUrl, setPairingQrUrl] = useState<string>('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Load connected devices
-  useEffect(() => {
-    const loadDevices = async () => {
-      let liveList: any[] = [];
-      try {
-        const data = await (window as any).electronAPI?.getBridgeStatus?.();
-        if (data?.pairedDevices && Array.isArray(data.pairedDevices) && data.pairedDevices.length > 0) {
-          liveList = data.pairedDevices;
-        }
-      } catch {}
-
-      if (liveList.length === 0) {
-        try {
-          const res = await fetch('/api/hub/info');
-          if (res.ok) {
-            const json = await res.json();
-            if (Array.isArray(json.bridge?.pairedDevices)) {
-              liveList = json.bridge.pairedDevices;
-            }
-          }
-        } catch {}
+  // Revoke / delete device
+  const revokeDevice = useCallback(async (deviceId: string) => {
+    if (!window.confirm('Unpair and remove this device?')) return;
+    try {
+      await fetch('/api/hub/devices/revoke', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId, nodeId: deviceId }),
+      });
+      setDevices(prev => prev.filter(d => d.device_id !== deviceId && d.id !== deviceId));
+      if (selectedRecipient === deviceId) {
+        setSelectedRecipient('all');
       }
+    } catch (e: any) {
+      console.warn('Revoke device failed:', e);
+    }
+  }, [selectedRecipient]);
 
-      // Also fetch persisted authorized devices to include registered devices
-      let persistedList: any[] = [];
-      try {
-        const resDev = await fetch('/api/hub/devices');
-        if (resDev.ok) {
-          const devJson = await resDev.json();
-          persistedList = Array.isArray(devJson) ? devJson : (devJson.devices || []);
+  // Load connected devices
+  const loadDevices = useCallback(async () => {
+    let liveList: any[] = [];
+    try {
+      const data = await (window as any).electronAPI?.getBridgeStatus?.();
+      if (data?.pairedDevices && Array.isArray(data.pairedDevices) && data.pairedDevices.length > 0) {
+        liveList = data.pairedDevices;
+      }
+    } catch {}
+
+    let currentHubInfo: any = null;
+    try {
+      const res = await fetch('/api/hub/info');
+      if (res.ok) {
+        const json = await res.json();
+        currentHubInfo = json;
+        setHubInfo(json);
+        if (Array.isArray(json.bridge?.pairedDevices) && liveList.length === 0) {
+          liveList = json.bridge.pairedDevices;
         }
-      } catch {}
+      }
+    } catch {}
 
-      const mappedDevices = [
-        ...persistedList.map((d: any) => {
-          const isLive = liveList.some((l: any) => l.deviceId === d.deviceId || l.deviceId === d.nodeId);
-          return {
-            id: d.deviceId || d.nodeId || String(Math.random()),
-            device_id: d.deviceId || d.nodeId || '',
-            device_label: d.deviceLabel || d.label || 'Mobile Device',
-            device_role: 'general',
-            last_seen: d.lastSeen || new Date().toISOString(),
-            is_online: isLive,
-            unread_count: 0,
-          };
-        }),
-        ...liveList
-          .filter((l: any) => !persistedList.some((p: any) => p.deviceId === l.deviceId || p.nodeId === l.deviceId))
-          .map((l: any) => ({
-            id: l.deviceId || String(Math.random()),
-            device_id: l.deviceId || '',
-            device_label: l.deviceLabel || 'Mobile Device',
-            device_role: 'general',
-            last_seen: l.lastHeartbeat || new Date().toISOString(),
-            is_online: true,
-            unread_count: 0,
-          })),
-      ];
+    // Also fetch persisted authorized devices to include registered devices
+    let persistedList: any[] = [];
+    try {
+      const resDev = await fetch('/api/hub/devices');
+      if (resDev.ok) {
+        const devJson = await resDev.json();
+        persistedList = Array.isArray(devJson) ? devJson : (devJson.devices || []);
+      }
+    } catch {}
 
-      if (mappedDevices.length > 0) {
-        setDevices(mappedDevices);
+    // Exclude revoked devices
+    persistedList = persistedList.filter((d: any) => !d.isRevoked && d.is_revoked !== 1);
+
+    const mappedDevices = [
+      ...persistedList.map((d: any) => {
+        const isLive = liveList.some((l: any) => l.deviceId === d.deviceId || l.deviceId === d.nodeId);
+        return {
+          id: d.deviceId || d.nodeId || String(Math.random()),
+          device_id: d.deviceId || d.nodeId || '',
+          device_label: d.deviceLabel || d.label || 'Mobile Device',
+          device_role: d.device_role || 'general',
+          last_seen: d.lastSeen || new Date().toISOString(),
+          is_online: isLive,
+          unread_count: 0,
+        };
+      }),
+      ...liveList
+        .filter((l: any) => !persistedList.some((p: any) => p.deviceId === l.deviceId || p.nodeId === l.deviceId))
+        .map((l: any) => ({
+          id: l.deviceId || String(Math.random()),
+          device_id: l.deviceId || '',
+          device_label: l.deviceLabel || 'Mobile Device',
+          device_role: 'general',
+          last_seen: l.lastHeartbeat || new Date().toISOString(),
+          is_online: true,
+          unread_count: 0,
+        })),
+    ];
+
+    setDevices(mappedDevices);
+  }, []);
+
+  // Generate Smart QR Code when modal opens or hubInfo updates
+  useEffect(() => {
+    if (!hubInfo) return;
+    const generateQR = async () => {
+      try {
+        const payload = JSON.stringify({
+          v: 2,
+          businessName: profile?.business_name || 'Noxis Hub',
+          bridgeUrl: hubInfo.bridgeUrl,
+          mobileUrl: hubInfo.mobileUrl,
+          tunnelUrl: hubInfo.tunnelUrl,
+          ts: Date.now(),
+        });
+        const url = await QRCode.toDataURL(payload, {
+          width: 320,
+          margin: 2,
+          color: {
+            dark: '#10B981',
+            light: '#00000000',
+          },
+        });
+        setPairingQrUrl(url);
+      } catch (e) {
+        console.warn('QR generation error:', e);
       }
     };
+    generateQR();
+  }, [hubInfo, profile]);
 
+  useEffect(() => {
     loadDevices();
-    const interval = setInterval(loadDevices, 4000);
+    const interval = setInterval(loadDevices, 3000);
 
     const electronAPI = (window as any).electronAPI;
     const handleBridgeEvent = (_: any, payload: any) => {
@@ -141,13 +195,21 @@ export default function MessagingPage() {
       electronAPI.on('bridge-event', handleBridgeEvent);
     }
 
+    const handleWindowEvent = (e: any) => {
+      if (e.detail?.type === 'DEVICE_COUNT_CHANGED' || e.detail?.type === 'DEVICE_CONNECTED') {
+        loadDevices();
+      }
+    };
+    window.addEventListener('noxis:mobile-event', handleWindowEvent);
+
     return () => {
       clearInterval(interval);
       if (electronAPI?.off) {
         electronAPI.off('bridge-event', handleBridgeEvent);
       }
+      window.removeEventListener('noxis:mobile-event', handleWindowEvent);
     };
-  }, [profile?.id]);
+  }, [loadDevices]);
 
   // Load message history
   useEffect(() => {
@@ -288,15 +350,38 @@ export default function MessagingPage() {
       {/* ── LEFT PANEL: Devices ── */}
       <div className="w-64 flex-shrink-0 border-r border-white/6 bg-[#0A0C0F] flex flex-col">
         {/* Header */}
-        <div className="p-4 border-b border-white/6">
-          <h2 className="text-sm font-bold text-white mb-1">Messaging</h2>
-          <p className="text-[10px] text-gray-400">
-            {onlineDevices.length} online · {devices.length} paired
-          </p>
+        <div className="p-4 border-b border-white/6 flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-bold text-white mb-0.5">Messaging</h2>
+            <p className="text-[10px] text-gray-400">
+              {onlineDevices.length} online · {devices.length} paired
+            </p>
+          </div>
+          <button
+            onClick={() => setShowPairModal(true)}
+            className="flex items-center gap-1 px-2 py-1 bg-[#60A5FA]/10 hover:bg-[#60A5FA]/20 border border-[#60A5FA]/30 text-[#60A5FA] rounded text-[10px] font-bold cursor-pointer transition-all"
+            title="Scan QR Code with Mobile Phone"
+          >
+            <QrCode size={12} />
+            <span>Pair</span>
+          </button>
         </div>
 
         {/* Recipient selector */}
         <div className="p-3 space-y-1 overflow-y-auto flex-1 custom-scrollbar">
+          {/* Test device cleanup banner */}
+          {devices.some(d => d.device_id === 'DEVICE_TEST_12345678') && (
+            <div className="mb-2 p-2 bg-amber-500/10 border border-amber-500/20 rounded text-[10px] text-amber-300 flex items-center justify-between">
+              <span>Old test device</span>
+              <button
+                onClick={() => revokeDevice('DEVICE_TEST_12345678')}
+                className="underline hover:text-amber-100 font-bold cursor-pointer"
+              >
+                Remove
+              </button>
+            </div>
+          )}
+
           {/* Broadcast to all */}
           <button
             onClick={() => setSelectedRecipient('all')}
@@ -318,7 +403,7 @@ export default function MessagingPage() {
           {/* Online devices */}
           {onlineDevices.length > 0 && (
             <p className="text-[9px] font-bold uppercase tracking-widest text-gray-500 px-2 pt-3 pb-1">
-              Online
+              Online ({onlineDevices.length})
             </p>
           )}
 
@@ -340,13 +425,14 @@ export default function MessagingPage() {
               onEditCancel={() => setEditingDevice(null)}
               onLabelChange={setEditLabel}
               onRoleChange={setEditRole}
+              onDelete={() => revokeDevice(device.device_id)}
             />
           ))}
 
           {/* Offline devices */}
           {offlineDevices.length > 0 && (
             <p className="text-[9px] font-bold uppercase tracking-widest text-gray-500 px-2 pt-3 pb-1">
-              Offline
+              Offline ({offlineDevices.length})
             </p>
           )}
 
@@ -368,6 +454,7 @@ export default function MessagingPage() {
               onEditCancel={() => setEditingDevice(null)}
               onLabelChange={setEditLabel}
               onRoleChange={setEditRole}
+              onDelete={() => revokeDevice(device.device_id)}
             />
           ))}
 
@@ -507,6 +594,67 @@ export default function MessagingPage() {
           </p>
         </div>
       </div>
+
+      {/* ── PAIRING QR MODAL ── */}
+      {showPairModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0F1117] border border-emerald-500/30 rounded-xl p-6 max-w-md w-full shadow-2xl relative text-left">
+            <button
+              onClick={() => setShowPairModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white p-1 cursor-pointer"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="flex items-center gap-2 mb-3">
+              <span className="p-1.5 bg-emerald-500/10 text-emerald-400 rounded">
+                <QrCode size={18} />
+              </span>
+              <h3 className="text-base font-bold text-white">Pair Mobile Device</h3>
+            </div>
+
+            <p className="text-xs text-slate-400 mb-4">
+              Open the Noxis mobile app, go to <strong className="text-white">Settings → Pairing</strong>, and scan this code to connect your phone instantly.
+            </p>
+
+            <div className="p-4 bg-slate-950 border border-emerald-500/20 rounded-lg flex items-center justify-center mb-4">
+              {pairingQrUrl ? (
+                <img
+                  src={pairingQrUrl}
+                  alt="Pairing QR Code"
+                  className="w-48 h-48 filter brightness-110"
+                />
+              ) : (
+                <div className="w-48 h-48 flex items-center justify-center text-xs text-gray-500">
+                  Generating QR Code...
+                </div>
+              )}
+            </div>
+
+            {hubInfo && (
+              <div className="space-y-2 bg-slate-950/70 p-3 rounded border border-white/5 text-[11px]">
+                <div className="flex items-center justify-between text-slate-400">
+                  <span>WiFi Bridge Host:</span>
+                  <span className="font-mono text-emerald-400">{hubInfo.bridgeUrl || 'Port 7447'}</span>
+                </div>
+                {hubInfo.mobileUrl && (
+                  <div className="flex items-center justify-between text-slate-400">
+                    <span>Direct Web Link:</span>
+                    <span className="font-mono text-blue-400 select-all">{hubInfo.mobileUrl}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowPairModal(false)}
+              className="w-full mt-4 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 text-xs font-bold rounded transition-all cursor-pointer"
+            >
+              Done / Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -525,6 +673,7 @@ function DeviceRow({
   onEditCancel,
   onLabelChange,
   onRoleChange,
+  onDelete,
 }: any) {
   if (isEditing) {
     return (
@@ -606,16 +755,29 @@ function DeviceRow({
         </p>
       </div>
 
-      {/* Edit button */}
-      <button
-        onClick={e => {
-          e.stopPropagation()
-          onEditStart()
-        }}
-        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-500 hover:text-gray-300 cursor-pointer"
-      >
-        <Edit2 size={11} />
-      </button>
+      {/* Action buttons */}
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button
+          onClick={e => {
+            e.stopPropagation()
+            onEditStart()
+          }}
+          title="Rename Device"
+          className="p-1 text-gray-500 hover:text-gray-300 cursor-pointer"
+        >
+          <Edit2 size={11} />
+        </button>
+        <button
+          onClick={e => {
+            e.stopPropagation()
+            onDelete?.()
+          }}
+          title="Unpair / Remove Device"
+          className="p-1 text-gray-500 hover:text-red-400 cursor-pointer"
+        >
+          <Trash2 size={11} />
+        </button>
+      </div>
     </button>
   )
 }

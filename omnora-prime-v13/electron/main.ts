@@ -1426,9 +1426,22 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
   ipcMain.handle('messaging:renameDevice', async (_, { deviceId, newLabel, deviceRole }) => {
     try {
+      const sqlite = (global as any).__noxisDb;
+      if (sqlite) {
+        sqlite.prepare(`
+          UPDATE authorized_devices 
+          SET device_label = ?, label = ?, device_role = ?
+          WHERE device_id = ? OR node_id = ?
+        `).run(newLabel, newLabel, deviceRole || 'general', deviceId, deviceId);
+      }
+    } catch (e: any) {
+      startupLog(`[Messaging] Local renameDevice warning: ${e.message}`);
+    }
+
+    try {
       const { createAdminClient } = require('../src/lib/supabase/admin');
       const admin = createAdminClient();
-      if (!admin) return null;
+      if (!admin) return { success: true };
       const { data } = await admin
         .from('authorized_devices')
         .update({
@@ -1438,9 +1451,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         .eq('device_id', deviceId)
         .select()
         .single();
-      return data;
+      return data || { success: true };
     } catch {
-      return null;
+      return { success: true };
     }
   });
 
@@ -2608,8 +2621,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         registerOnvifHandlers(startupLog);
         registerMediamtxHandlers(startupLog);
 
-        // ── STEP 6: Start WebSocket bridge server ──
-        startWsBridgeServer();
+        // ── STEP 6: WebSocket mobile bridge is managed authoritatively by Next.js server (server.ts) on port 7447 ──
+        // Disabled duplicate competing server to prevent EADDRINUSE collision
+        // startWsBridgeServer();
 
         // ── STEP 7: Send power-cut recovery signal to renderer ──
         if (wasPowerCut) {

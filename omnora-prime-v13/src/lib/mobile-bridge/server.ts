@@ -1152,27 +1152,34 @@ async function handleMessage(
     case 'ATTENDANCE_LOGGED': {
       console.log(`[Bridge] ATTENDANCE_LOGGED from ${client.deviceLabel}`);
       const sqlite = getSqlite();
-      const a = (msg.attendance || msg.data || msg) as any;
-      if (sqlite && a && a.karigar_id) {
-        const aId = a.id || randomUUID();
-        const todayStr = a.attendance_date || new Date().toISOString().split('T')[0];
-        try {
-          sqlite.prepare(`
-            INSERT OR REPLACE INTO attendance_logs (id, business_id, karigar_id, attendance_date, status, check_in_time, device_id, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `).run(
-            aId,
-            a.business_id || client.businessId || 'local',
-            a.karigar_id,
-            todayStr,
-            a.status || 'present',
-            a.check_in_time || new Date().toISOString(),
-            client.deviceId || null,
-            new Date().toISOString(),
-            new Date().toISOString()
-          );
-        } catch (e: any) {
-          console.warn('[Bridge] Local attendance insert error:', e.message);
+      const rawAtt = (msg.attendance || msg.data || msg) as any;
+      const recordsToInsert = Array.isArray(msg.records)
+        ? msg.records
+        : (Array.isArray(rawAtt) ? rawAtt : (rawAtt && rawAtt.karigar_id ? [rawAtt] : []));
+
+      if (sqlite && recordsToInsert.length > 0) {
+        for (const a of recordsToInsert) {
+          if (!a || !a.karigar_id) continue;
+          const aId = a.id || randomUUID();
+          const todayStr = a.attendance_date || new Date().toISOString().split('T')[0];
+          try {
+            sqlite.prepare(`
+              INSERT OR REPLACE INTO attendance_logs (id, business_id, karigar_id, attendance_date, status, check_in_time, device_id, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(
+              aId,
+              a.business_id || client.businessId || 'local',
+              a.karigar_id,
+              todayStr,
+              a.status || 'present',
+              a.check_in_time || new Date().toISOString(),
+              client.deviceId || null,
+              new Date().toISOString(),
+              new Date().toISOString()
+            );
+          } catch (e: any) {
+            console.warn('[Bridge] Local attendance insert error:', e.message);
+          }
         }
       }
 
@@ -1278,8 +1285,12 @@ async function handleMessage(
     }
 
     case 'MSG_SEND': {
-      const { text, priority, messageId } = msg as any;
-      if (!client.paired || !client.businessId) break;
+      const rawMsg = msg as any;
+      const text = String(rawMsg.text || rawMsg.payload?.text || '');
+      const priority = rawMsg.priority || rawMsg.payload?.priority || 'normal';
+      const messageId = rawMsg.messageId || rawMsg.payload?.messageId || randomUUID();
+      if (!client.paired) break;
+      if (!client.businessId) client.businessId = 'local';
 
       const msgId = messageId || randomUUID();
       const createdAtStr = new Date().toISOString();
