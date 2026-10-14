@@ -1089,6 +1089,12 @@ export default function LandingClient() {
                       <MessageSquare size={14} /> WhatsApp Support (+92 326 4742678)
                     </a>
                     <Link
+                      href="/pricing"
+                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 border border-[#C5A059]/40 bg-[#C5A059]/10 font-extrabold text-[10px] tracking-[0.2em] uppercase py-4 px-8 rounded-sm text-white hover:bg-[#C5A059]/20 transition-colors cursor-pointer"
+                    >
+                      <span>Explore Pricing &amp; Support Tiers</span>
+                    </Link>
+                    <Link
                       href="/download"
                       className="w-full sm:w-auto inline-flex items-center justify-center gap-2 border border-white/20 font-extrabold text-[10px] tracking-[0.2em] uppercase py-4 px-8 rounded-sm text-white hover:bg-white/5 transition-colors cursor-pointer"
                     >

@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { 
   Check, X, ShieldCheck, Zap, Globe, Copy, ExternalLink, Cpu, Loader, 
   Sparkles, MessageCircle, Calculator, Building2, ChevronDown, ChevronUp,
-  Award, RefreshCw, Lock, ArrowRight, CheckCircle2, Clock, Users, Flame
+  Award, RefreshCw, Lock, ArrowRight, CheckCircle2, Clock, Users, Flame,
+  HardDrive, Wifi
 } from "lucide-react";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { formatCurrency } from "@/lib/currency/currencyEngine";
@@ -106,6 +107,7 @@ const PRICING_DATA = {
     tierKey: 'pro',
     name: 'Pro Tier',
     popular: true,
+    targetAudience: 'Standard Business / Mills',
     monthlyPKR: 4999,
     originalMonthlyPKR: 6999,
     annualPKR: 45000,
@@ -114,21 +116,50 @@ const PRICING_DATA = {
     originalMonthlyUSD: 35,
     annualUSD: 225,
     originalAnnualUSD: 360,
-    foundersOfferBadge: "LIMITED TIME FOUNDERS OFFER (-30%)",
-    monthlySavingsBadge: "Save Rs. 2,000 / mo (-30% Founders Offer)",
-    annualSavingsBadge: "Save Rs. 14,988 / yr vs monthly (Was Rs. 60,000)",
+    foundersOfferBadge: "RECOMMENDED FOR MILLS (-30%)",
+    monthlySavingsBadge: "Includes 7 days of dedicated technical assistance",
+    annualSavingsBadge: "1 Month Full Setup Assistance + 6 Months Free Updates (Recommended)",
+    supportPackageMonthly: "Includes 7 days of dedicated technical assistance",
+    supportPackageAnnual: "Includes 1 month of full setup assistance + 6 months of free software updates",
     discountPercent: "-30%",
-    sub: '15 PCs, 15 phones on office Wi-Fi, Karigar piece-rate payroll, on-site IP cameras.',
+    sub: 'Standard Business & Mills · Local-network mobile pairing, Karigar piece-rates & zero-internet reliability.',
     devices: '15 PCs + 15 Mobile Phones',
     features: [
-      { label: "Up to 15 Workstation PCs on Local Network", included: true, highlight: true },
+      { label: "Local-Network Mobile-to-PC Secure Pairing (Office Wi-Fi)", included: true, highlight: true },
+      { label: "AES-256 Encryption & Zero-Internet Local SQLite Engine", included: true, highlight: true },
+      { label: "Karigar Piece-Rate Payroll & Peshgi (Advance) Ledger", included: true, highlight: true },
+      { label: "Live Raw Material & Wholesale Inventory Management", included: true, highlight: true },
+      { label: "Up to 15 Workstation PCs on Local Network", included: true },
       { label: "15 Android Phones on Office Wi-Fi", included: true },
-      { label: "Karigar Piece-Rate Payroll & Peshgi Ledger", included: true, highlight: true },
-      { label: "Connect up to 4 On-Site IP Cameras via RTSP", included: true, highlight: true },
+      { label: "Connect up to 4 On-Site IP Cameras via RTSP", included: true },
       { label: "Automatic Reorder Alerts for Raw Materials", included: true },
-      { label: "Automated WhatsApp Invoices & Payment Slips", included: true },
       { label: "Roznamcha Cash Book & Profit/Loss Export", included: true },
-      { label: "Priority WhatsApp Support Desk", included: true },
+      { label: "Multi-Branch Factory Operations", included: false },
+    ],
+    featuresMonthly: [
+      { label: "7 Days Dedicated Technical Assistance Included", included: true, highlight: true },
+      { label: "Local-Network Mobile-to-PC Secure Pairing (Office Wi-Fi)", included: true, highlight: true },
+      { label: "AES-256 Encryption & Zero-Internet Local SQLite Engine", included: true, highlight: true },
+      { label: "Karigar Piece-Rate Payroll & Peshgi (Advance) Ledger", included: true, highlight: true },
+      { label: "Live Raw Material & Wholesale Inventory Management", included: true, highlight: true },
+      { label: "Up to 15 Workstation PCs on Local Network", included: true },
+      { label: "15 Android Phones on Office Wi-Fi", included: true },
+      { label: "Connect up to 4 On-Site IP Cameras via RTSP", included: true },
+      { label: "Automatic Reorder Alerts for Raw Materials", included: true },
+      { label: "Roznamcha Cash Book & Profit/Loss Export", included: true },
+      { label: "Multi-Branch Factory Operations", included: false },
+    ],
+    featuresAnnual: [
+      { label: "1 Month Full Setup Assistance + 6 Months Free Updates", included: true, highlight: true },
+      { label: "Local-Network Mobile-to-PC Secure Pairing (Office Wi-Fi)", included: true, highlight: true },
+      { label: "AES-256 Encryption & Zero-Internet Local SQLite Engine", included: true, highlight: true },
+      { label: "Karigar Piece-Rate Payroll & Peshgi (Advance) Ledger", included: true, highlight: true },
+      { label: "Live Raw Material & Wholesale Inventory Management", included: true, highlight: true },
+      { label: "Up to 15 Workstation PCs on Local Network", included: true },
+      { label: "15 Android Phones on Office Wi-Fi", included: true },
+      { label: "Connect up to 4 On-Site IP Cameras via RTSP", included: true },
+      { label: "Automatic Reorder Alerts for Raw Materials", included: true },
+      { label: "Roznamcha Cash Book & Profit/Loss Export", included: true },
       { label: "Multi-Branch Factory Operations", included: false },
     ],
     cta: "Activate Pro License",
@@ -137,6 +168,7 @@ const PRICING_DATA = {
     tierKey: 'elite',
     name: 'Elite Tier',
     primary: true,
+    targetAudience: 'Heavy Operations / Multi-Branch Enterprise',
     monthlyPKR: 9999,
     originalMonthlyPKR: 13999,
     annualPKR: 90000,
@@ -145,21 +177,48 @@ const PRICING_DATA = {
     originalMonthlyUSD: 70,
     annualUSD: 450,
     originalAnnualUSD: 720,
-    monthlySavingsBadge: "Save Rs. 4,000 / mo (-29% Launch Offer)",
-    annualSavingsBadge: "Save Rs. 29,988 / yr vs monthly (Was Rs. 120,000)",
+    foundersOfferBadge: "ENTERPRISE VIP DEPLOYMENT",
+    monthlySavingsBadge: "Includes 15 days of VIP priority support",
+    annualSavingsBadge: "1.5 Months Onboarding Assistance + 12 Months Free Updates & Priority Support",
+    supportPackageMonthly: "Includes 15 days of VIP priority support",
+    supportPackageAnnual: "Includes 1.5 months of dedicated onboarding assistance + 12 months of free updates & priority support",
     discountPercent: "-29%",
-    sub: '50 PCs, 50 phones on office Wi-Fi, multi-branch, tripwire camera alerts.',
+    sub: 'Heavy Operations & Multi-Branch Enterprise · Biometric enclave security, multi-tier mills & VIP priority support.',
     devices: '50 PCs + 50 Mobile Phones',
     features: [
-      { label: "Up to 50 Workstation PCs on Local Network", included: true, highlight: true },
-      { label: "Up to 50 Android Devices Logging over Wi-Fi", included: true },
-      { label: "Connect up to 6 IP Cameras with Motion Tripwires", included: true, highlight: true },
-      { label: "Automatic Reorder & 30-Day Material Forecasting", included: true },
-      { label: "Multi-Branch Factory Operations & Stock Transfer", included: true, highlight: true },
+      { label: "Multi-Branch Factory Operations & Real-Time Stock Transfer", included: true, highlight: true },
+      { label: "Biometric Hardware Enclave Auth (expo-secure-store & local auth)", included: true, highlight: true },
+      { label: "Local-Network Mobile-to-PC Secure Pairing (Up to 50 Devices)", included: true, highlight: true },
+      { label: "Advanced Karigar Piece-Rate Engine & Multi-Tier Peshgi Ledgers", included: true, highlight: true },
+      { label: "Zero-Internet Offline-First Reliability (AES-256 Local SQLite)", included: true, highlight: true },
       { label: "RS232 Weighbridge Scale Bridge Integration", included: true, highlight: true },
-      { label: "Dedicated WhatsApp VIP Support Desk (+92 326 4742678)", included: true },
-      { label: "Free Remote AnyDesk Onboarding & Setup", included: true },
-      { label: "Custom Invoice & Thermal Format Design", included: true },
+      { label: "Connect up to 6 IP Cameras with Motion Tripwires", included: true },
+      { label: "Automatic Reorder & 30-Day Material Predictive Forecasting", included: true },
+      { label: "Custom Invoice & Thermal Format Design Studio", included: true },
+    ],
+    featuresMonthly: [
+      { label: "15 Days VIP Priority Support Included", included: true, highlight: true },
+      { label: "Multi-Branch Factory Operations & Real-Time Stock Transfer", included: true, highlight: true },
+      { label: "Biometric Hardware Enclave Auth (expo-secure-store & local auth)", included: true, highlight: true },
+      { label: "Local-Network Mobile-to-PC Secure Pairing (Up to 50 Devices)", included: true, highlight: true },
+      { label: "Advanced Karigar Piece-Rate Engine & Multi-Tier Peshgi Ledgers", included: true, highlight: true },
+      { label: "Zero-Internet Offline-First Reliability (AES-256 Local SQLite)", included: true, highlight: true },
+      { label: "RS232 Weighbridge Scale Bridge Integration", included: true, highlight: true },
+      { label: "Connect up to 6 IP Cameras with Motion Tripwires", included: true },
+      { label: "Automatic Reorder & 30-Day Material Predictive Forecasting", included: true },
+      { label: "Custom Invoice & Thermal Format Design Studio", included: true },
+    ],
+    featuresAnnual: [
+      { label: "1.5 Months Dedicated Onboarding + 12 Months Free Updates & VIP Support", included: true, highlight: true },
+      { label: "Multi-Branch Factory Operations & Real-Time Stock Transfer", included: true, highlight: true },
+      { label: "Biometric Hardware Enclave Auth (expo-secure-store & local auth)", included: true, highlight: true },
+      { label: "Local-Network Mobile-to-PC Secure Pairing (Up to 50 Devices)", included: true, highlight: true },
+      { label: "Advanced Karigar Piece-Rate Engine & Multi-Tier Peshgi Ledgers", included: true, highlight: true },
+      { label: "Zero-Internet Offline-First Reliability (AES-256 Local SQLite)", included: true, highlight: true },
+      { label: "RS232 Weighbridge Scale Bridge Integration", included: true, highlight: true },
+      { label: "Connect up to 6 IP Cameras with Motion Tripwires", included: true },
+      { label: "Automatic Reorder & 30-Day Material Predictive Forecasting", included: true },
+      { label: "Custom Invoice & Thermal Format Design Studio", included: true },
     ],
     cta: "Activate Elite License",
   },
@@ -171,7 +230,9 @@ const COMPARISON_CATEGORIES = [
     features: [
       { name: "Local Workstation PCs (Motherboard Locked)", free: "1 PC", lite: "5 PCs", pro: "15 PCs", elite: "50 PCs" },
       { name: "Android Floor Devices over Local Wi-Fi", free: "—", lite: "5 Devices", pro: "15 Devices", elite: "50 Devices" },
-      { name: "100% Offline SQLite Engine (Zero Cloud Mandatory)", free: "✔", lite: "✔", pro: "✔", elite: "✔" },
+      { name: "Local-Network Mobile-to-PC Secure Pairing", free: "—", lite: "✔ Local Subnet", pro: "✔ High-Speed Bridge", elite: "✔ Multi-Terminal Cluster" },
+      { name: "100% Offline SQLite Engine (Zero-Internet Dependency)", free: "✔", lite: "✔", pro: "✔", elite: "✔" },
+      { name: "AES-256 Encryption & Biometric Enclave (expo-secure-store)", free: "Basic", lite: "✔", pro: "✔ Military-Grade", elite: "✔ Hardware Enclave" },
       { name: "Multi-Branch Mill Synchronization", free: "—", lite: "—", pro: "—", elite: "✔ Multi-Branch" },
       { name: "Motherboard Re-binding Guarantee", free: "—", lite: "✔", pro: "✔ Unlimited", elite: "✔ Priority" },
     ]
@@ -208,9 +269,10 @@ const COMPARISON_CATEGORIES = [
   {
     category: "Support, Updates & Onboarding",
     features: [
-      { name: "WhatsApp Support (+92 326 4742678)", free: "Community Docs", lite: "Standard WhatsApp", pro: "Priority WhatsApp (<1h)", elite: "VIP Engineer Direct Line" },
-      { name: "Remote AnyDesk Setup & Migration", free: "—", lite: "Self-Install Guides", pro: "Guided 30-min Call", elite: "✔ Full Turnkey Onboarding" },
-      { name: "Software Updates & Maintenance", free: "Community", lite: "✔ Lifetime v14+", pro: "✔ Lifetime v14+", elite: "✔ Lifetime Priority" },
+      { name: "Dedicated Technical Assistance", free: "Community Docs", lite: "Standard WhatsApp", pro: "7 Days (Monthly) / 1 Month (Yearly)", elite: "15 Days VIP (Monthly) / 1.5 Months VIP (Yearly)" },
+      { name: "Software Updates Guarantee", free: "Community", lite: "Standard v14+", pro: "6 Months Free Updates (Yearly)", elite: "12 Months Free Updates & VIP Priority (Yearly)" },
+      { name: "WhatsApp VIP Desk (+92 326 4742678)", free: "—", lite: "Standard WhatsApp", pro: "Priority WhatsApp (<1h)", elite: "Direct Senior Engineer VIP Line" },
+      { name: "Remote AnyDesk Setup & Migration", free: "—", lite: "Self-Install Guides", pro: "Full Setup Assistance Call", elite: "✔ Turnkey Onboarding & Staff Training" },
     ]
   }
 ];
@@ -451,6 +513,62 @@ export default function PricingClient() {
           </p>
         </motion.div>
 
+        {/* ═══ CORE ARCHITECTURAL CAPABILITIES ═══ */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="mb-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+        >
+          <div className="bg-[#0B0E14] border border-[#00E5FF]/20 p-5 rounded-md relative overflow-hidden group hover:border-[#00E5FF]/50 transition-colors shadow-lg">
+            <div className="w-10 h-10 rounded-lg bg-[#00E5FF]/10 text-[#00E5FF] flex items-center justify-center mb-3">
+              <Wifi size={20} />
+            </div>
+            <h3 className="text-sm font-black text-white uppercase tracking-tight mb-1">
+              Local Mobile-to-PC Pairing
+            </h3>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Instant QR pairing over local workshop Wi-Fi. Real-time sub-millisecond bidirectional WebSocket bridge with zero cloud dependency.
+            </p>
+          </div>
+
+          <div className="bg-[#0B0E14] border border-[#10B981]/20 p-5 rounded-md relative overflow-hidden group hover:border-[#10B981]/50 transition-colors shadow-lg">
+            <div className="w-10 h-10 rounded-lg bg-[#10B981]/10 text-[#10B981] flex items-center justify-center mb-3">
+              <Lock size={20} />
+            </div>
+            <h3 className="text-sm font-black text-white uppercase tracking-tight mb-1">
+              AES-256 &amp; Biometric Enclave
+            </h3>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Hardware enclave authentication via expo-secure-store &amp; expo-local-authentication with 256-bit encrypted local storage.
+            </p>
+          </div>
+
+          <div className="bg-[#0B0E14] border border-amber-500/20 p-5 rounded-md relative overflow-hidden group hover:border-amber-500/50 transition-colors shadow-lg">
+            <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center mb-3">
+              <Users size={20} />
+            </div>
+            <h3 className="text-sm font-black text-white uppercase tracking-tight mb-1">
+              Karigar Payroll &amp; Peshgi
+            </h3>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Industrial piece-rate engine (meters, suits, pieces), daily attendance, live inventory deduction, and automated cash advance balances.
+            </p>
+          </div>
+
+          <div className="bg-[#0B0E14] border border-purple-500/20 p-5 rounded-md relative overflow-hidden group hover:border-purple-500/50 transition-colors shadow-lg">
+            <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center mb-3">
+              <HardDrive size={20} />
+            </div>
+            <h3 className="text-sm font-black text-white uppercase tracking-tight mb-1">
+              Zero-Internet Offline-First
+            </h3>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              100% offline-first reliability. Local SQLite engine runs on your PC storage, completely immune to internet outages or cloud downtime.
+            </p>
+          </div>
+        </motion.div>
+
         {/* ═══ 7-DAY EVALUATION & FREEMIUM GUARANTEE BANNER ═══ */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -555,9 +673,10 @@ export default function PricingClient() {
             billingCycle={billingCycle}
             period={billingCycle === 'monthly' ? 'mo' : 'yr'}
             savingsBadge={billingCycle === 'monthly' ? PRICING_DATA.pro.monthlySavingsBadge : PRICING_DATA.pro.annualSavingsBadge}
+            supportPackage={billingCycle === 'monthly' ? PRICING_DATA.pro.supportPackageMonthly : PRICING_DATA.pro.supportPackageAnnual}
             discountPercent={PRICING_DATA.pro.discountPercent}
             sub={PRICING_DATA.pro.sub}
-            features={PRICING_DATA.pro.features}
+            features={billingCycle === 'monthly' ? PRICING_DATA.pro.featuresMonthly : PRICING_DATA.pro.featuresAnnual}
             cta={PRICING_DATA.pro.cta}
             onPurchase={(name: string, price: string) => handlePurchase(name, price, 'pro')}
             onHwidClick={() => handleActivateHwid('pro')}
@@ -568,6 +687,7 @@ export default function PricingClient() {
           <PricingCard 
             tier={PRICING_DATA.elite.name}
             primary
+            foundersOfferBadge={PRICING_DATA.elite.foundersOfferBadge}
             region={region}
             displayCurrency={displayCurrency}
             localCurrency={localCurrency}
@@ -578,9 +698,10 @@ export default function PricingClient() {
             billingCycle={billingCycle}
             period={billingCycle === 'monthly' ? 'mo' : 'yr'}
             savingsBadge={billingCycle === 'monthly' ? PRICING_DATA.elite.monthlySavingsBadge : PRICING_DATA.elite.annualSavingsBadge}
+            supportPackage={billingCycle === 'monthly' ? PRICING_DATA.elite.supportPackageMonthly : PRICING_DATA.elite.supportPackageAnnual}
             discountPercent={PRICING_DATA.elite.discountPercent}
             sub={PRICING_DATA.elite.sub}
-            features={PRICING_DATA.elite.features}
+            features={billingCycle === 'monthly' ? PRICING_DATA.elite.featuresMonthly : PRICING_DATA.elite.featuresAnnual}
             cta={PRICING_DATA.elite.cta}
             onPurchase={(name: string, price: string) => handlePurchase(name, price, 'elite')}
             onHwidClick={() => handleActivateHwid('elite')}
@@ -1223,7 +1344,7 @@ export default function PricingClient() {
 function PricingCard({ 
   tier, pricePKR, originalPricePKR, priceUSD, originalPriceUSD, period = 'mo', sub, features, cta, onPurchase, 
   onHwidClick, popular, primary, region, displayCurrency, localCurrency, variant,
-  billingCycle, savingsBadge, discountPercent, foundersOfferBadge
+  billingCycle, savingsBadge, discountPercent, foundersOfferBadge, supportPackage
 }: any) {
   
   const isSA = region === 'south_asian';
@@ -1328,6 +1449,19 @@ function PricingCard({
           </p>
         )}
       </div>
+
+      {/* Support & Assistance Tier Guarantee */}
+      {supportPackage && (
+        <div className="mb-5 p-3 rounded bg-[#00E5FF]/5 border border-[#00E5FF]/25 shadow-[0_0_15px_rgba(0,229,255,0.08)]">
+          <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-[#00E5FF] mb-1">
+            <ShieldCheck size={13} className="text-[#10B981]" />
+            <span>Guaranteed Technical Support</span>
+          </div>
+          <p className="text-[11px] font-bold text-white leading-snug">
+            {supportPackage}
+          </p>
+        </div>
+      )}
 
       <div className="flex-1 space-y-3.5 mb-8">
         {features.map((f: any, i: number) => (
