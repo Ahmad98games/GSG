@@ -157,10 +157,52 @@ export const db = new Proxy({} as Record<string, any>, {
                 is_revoked INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT DEFAULT (datetime('now'))
               );
+
+              CREATE TABLE IF NOT EXISTS orders (
+                id TEXT PRIMARY KEY,
+                business_id TEXT DEFAULT 'local',
+                order_number TEXT NOT NULL,
+                party_id TEXT,
+                order_date TEXT NOT NULL,
+                expected_date TEXT,
+                status TEXT DEFAULT 'pending',
+                total_amount REAL DEFAULT 0,
+                notes TEXT,
+                created_at TEXT DEFAULT (datetime('now')),
+                updated_at TEXT DEFAULT (datetime('now'))
+              );
+
+              CREATE TABLE IF NOT EXISTS order_items (
+                id TEXT PRIMARY KEY,
+                order_id TEXT NOT NULL,
+                business_id TEXT DEFAULT 'local',
+                sku_id TEXT,
+                description TEXT NOT NULL,
+                quantity REAL NOT NULL DEFAULT 1,
+                unit TEXT DEFAULT 'Piece',
+                unit_price REAL NOT NULL DEFAULT 0,
+                total_price REAL NOT NULL DEFAULT 0,
+                notes TEXT
+              );
             `);
             const alterTableSafe = (table: string, colDef: string) => {
               try { sqliteInst.exec(`ALTER TABLE ${table} ADD COLUMN ${colDef};`); } catch {}
             };
+            alterTableSafe('orders', 'business_id TEXT');
+            alterTableSafe('orders', 'order_number TEXT');
+            alterTableSafe('orders', 'party_id TEXT');
+            alterTableSafe('orders', 'order_date TEXT');
+            alterTableSafe('orders', 'expected_date TEXT');
+            alterTableSafe('orders', 'status TEXT DEFAULT "pending"');
+            alterTableSafe('orders', 'total_amount REAL DEFAULT 0');
+            alterTableSafe('orders', 'notes TEXT');
+            alterTableSafe('order_items', 'business_id TEXT');
+            alterTableSafe('order_items', 'sku_id TEXT');
+            alterTableSafe('order_items', 'description TEXT');
+            alterTableSafe('order_items', 'quantity REAL DEFAULT 1');
+            alterTableSafe('order_items', 'unit TEXT DEFAULT "Piece"');
+            alterTableSafe('order_items', 'unit_price REAL DEFAULT 0');
+            alterTableSafe('order_items', 'total_price REAL DEFAULT 0');
             alterTableSafe('sku_cache', 'oem_number TEXT');
             alterTableSafe('sku_cache', 'compatible_vehicles TEXT');
             alterTableSafe('sku_cache', 'commission_rate TEXT DEFAULT "0"');

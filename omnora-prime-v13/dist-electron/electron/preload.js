@@ -61,6 +61,36 @@ electron_1.contextBridge.exposeInMainWorld('electronAPI', {
             electron_1.ipcRenderer.removeListener('update-status', listener);
         };
     },
+    onUpdateAvailable: (callback) => {
+        const listener = (_, data) => {
+            if (data && data.status === 'available')
+                callback(data);
+        };
+        electron_1.ipcRenderer.on('update-status', listener);
+        return () => {
+            electron_1.ipcRenderer.removeListener('update-status', listener);
+        };
+    },
+    onUpdateProgress: (callback) => {
+        const listener = (_, data) => {
+            if (data && data.status === 'downloading')
+                callback(data);
+        };
+        electron_1.ipcRenderer.on('update-status', listener);
+        return () => {
+            electron_1.ipcRenderer.removeListener('update-status', listener);
+        };
+    },
+    onUpdateDownloaded: (callback) => {
+        const listener = (_, data) => {
+            if (data && data.status === 'ready')
+                callback(data);
+        };
+        electron_1.ipcRenderer.on('update-status', listener);
+        return () => {
+            electron_1.ipcRenderer.removeListener('update-status', listener);
+        };
+    },
     getTunnelUrl: () => electron_1.ipcRenderer.invoke('get-tunnel-url'),
     onTunnelReady: (callback) => {
         const listener = (_, data) => callback(data);

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, utilityProcess, UtilityProcess, powerSaveBlocker } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, utilityProcess, UtilityProcess, powerSaveBlocker, Notification } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { spawn, ChildProcess, exec } from 'child_process';
@@ -95,9 +95,8 @@ autoUpdater.logger = log
 
 // Update channel — can be changed per license tier (Pro/Elite get beta channel)
 autoUpdater.channel = 'stable'
-autoUpdater.autoDownload = false;
+autoUpdater.autoDownload = true;
 autoUpdater.disableDifferentialDownload = true;
-// We download manually so we can show progress to the user
 autoUpdater.allowPrerelease = false
 autoUpdater.allowDowngrade = true
 autoUpdater.setFeedURL({
@@ -977,6 +976,17 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
           releaseNotes: info.releaseNotes || '',
         }
       );
+
+      try {
+        if (Notification.isSupported()) {
+          new Notification({
+            title: `Noxis Hub Update Available: v${info.version}`,
+            body: `Downloading new update patch automatically in background...`,
+          }).show();
+        }
+      } catch (err: any) {
+        startupLog(`[Update] Notification error: ${err.message}`);
+      }
     });
 
     autoUpdater.on('update-not-available', () => {
@@ -1003,7 +1013,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         'update-status',
         {
           status: 'downloading',
-          version: latestUpdateInfo?.version || '13.1.14',
+          version: latestUpdateInfo?.version || '14.0.1',
           percent: pct,
           transferred,
           total,
@@ -1015,14 +1025,28 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     autoUpdater.on('update-downloaded', (info) => {
       startupLog(`[Update] Downloaded: v${info.version}`);
       updateDownloaded = true;
+      downloadProgress = 100;
 
       win.webContents.send(
         'update-status',
         {
           status: 'ready',
           version: info.version,
+          releaseName: info.releaseName || `Version ${info.version}`,
+          releaseNotes: info.releaseNotes || '',
         }
       );
+
+      try {
+        if (Notification.isSupported()) {
+          new Notification({
+            title: `Noxis Hub v${info.version} Ready!`,
+            body: `Software update v${info.version} has been downloaded. Restart the app or click the banner to apply.`,
+          }).show();
+        }
+      } catch (err: any) {
+        startupLog(`[Update] Notification error: ${err.message}`);
+      }
     });
 
     autoUpdater.on('error', (err) => {
@@ -1044,24 +1068,50 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       );
     });
 
+    // Re-broadcast status whenever window finishes loading
+    win.webContents.on('did-finish-load', () => {
+      if (updateDownloaded && latestUpdateInfo) {
+        win.webContents.send('update-status', {
+          status: 'ready',
+          version: latestUpdateInfo.version,
+          releaseName: latestUpdateInfo.releaseName || `Version ${latestUpdateInfo.version}`,
+        });
+      } else if (updateAvailable && latestUpdateInfo) {
+        win.webContents.send('update-status', {
+          status: downloadProgress > 0 ? 'downloading' : 'available',
+          version: latestUpdateInfo.version,
+          percent: downloadProgress,
+        });
+      }
+    });
+
     if (isDev) return;
 
-    // Initial check — immediate (500ms) after launch
+    // Initial check — 2s and 10s after launch
     setTimeout(async () => {
       try {
         const res = await autoUpdater.checkForUpdates();
         if (res?.updateInfo) { latestUpdateInfo = res.updateInfo; updateAvailable = true; }
       } catch (err: any) { startupLog(`[Update] Initial check error: ${err.message}`); }
-    }, 500);
+    }, 2000);
 
-    // Periodic check — every 4 hours
+    setTimeout(async () => {
+      if (!updateDownloaded && !updateAvailable) {
+        try {
+          const res = await autoUpdater.checkForUpdates();
+          if (res?.updateInfo) { latestUpdateInfo = res.updateInfo; updateAvailable = true; }
+        } catch { /* non-fatal */ }
+      }
+    }, 10000);
+
+    // Periodic check — every 15 minutes
     setInterval(async () => {
       if (!updateDownloaded) {
         try {
           await autoUpdater.checkForUpdates();
         } catch { /* non-fatal */ }
       }
-    }, 4 * 60 * 60 * 1000);
+    }, 15 * 60 * 1000);
   }
 
   // ─────────────────────────────────────────────

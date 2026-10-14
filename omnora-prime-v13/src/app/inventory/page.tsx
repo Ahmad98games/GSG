@@ -15,10 +15,12 @@ import { useRouter } from "next/navigation";
 import { 
   Plus, Search, Download, Upload, 
   MoreVertical, Edit, Trash2, ArrowUpDown,
-  AlertCircle, CheckCircle2, X, Package,
+  AlertCircle, CheckCircle2, Check, X, Package,
   History, MapPin, Layers, Info, Briefcase, Barcode,
-  Calendar, Zap, TrendingDown, Eye, MessageCircle
+  Calendar, Zap, TrendingDown, Eye, MessageCircle,
+  Copy, ExternalLink, Printer, ArrowRight
 } from "lucide-react";
+import { UniversalLabelGenerator } from "@/components/common/UniversalLabelGenerator";
 import { sendWhatsAppAlert, ALERT_TEMPLATES } from "@/lib/whatsapp/alertEngine";
 import { useIndustryConfig } from "@/hooks/useIndustryConfig";
 import { useBarcodeScan } from "@/hooks/useBarcodeScan";
@@ -172,9 +174,57 @@ export default function InventoryPage() {
   const [prefilledBarcode, setPrefilledBarcode] = useState<string>("");
   const [adjustingSKU, setAdjustingSKU] = useState<SKU | null>(null);
   const [selectedSku, setSelectedSku] = useState<SKU | null>(null);
+  const [printingSku, setPrintingSku] = useState<SKU | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
   const [isScannerFlashing, setIsScannerFlashing] = useState(false);
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
+
+  const handleDeleteSku = async (sku: SKU) => {
+    if (!confirm(`Permanently delete ${sku.name}?`)) return;
+    try {
+      const bizId = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null);
+      const backupSku = { ...sku };
+
+      const { error } = await supabase.from('skus').delete().eq('id', sku.id);
+      if (error) {
+        if (error.code === '23503' || error.message?.toLowerCase().includes('violates foreign key')) {
+          const { error: archiveError } = await supabase.from('skus').update({ is_active: false }).eq('id', sku.id);
+          if (archiveError) throw archiveError;
+        } else {
+          throw error;
+        }
+      }
+
+      queryClient.setQueryData(['inventory', profile?.id], (old: any) => {
+        if (!Array.isArray(old)) return [];
+        return old.filter((s: any) => s.id !== sku.id);
+      });
+
+      if (typeof window !== 'undefined' && bizId) {
+        try {
+          const key = `noxis_cached_skus_${bizId}`;
+          const existing = JSON.parse(localStorage.getItem(key) || '[]');
+          localStorage.setItem(key, JSON.stringify(existing.filter((s: any) => s.id !== sku.id)));
+        } catch {}
+      }
+
+      import('@/stores/undoStore').then(({ useUndoStore }) => {
+        useUndoStore.getState().pushAction({
+          description: `Deleted SKU ${backupSku.name}`,
+          undo: async () => {
+            const supabaseClient = createClient();
+            await supabaseClient.from('skus').insert(backupSku);
+            queryClient.invalidateQueries({ queryKey: ['inventory'] });
+          }
+        });
+      }).catch(() => {});
+
+      toast.success(`${sku.name} deleted`, 'Press Ctrl+Z to undo');
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+    } catch (err: any) {
+      toast.error('Failed to delete SKU', humanizeError(err, 'delete sku'));
+    }
+  };
 
   // Data Fetching — Fast & Stable Local-First (Instant 0ms UI with Stale-While-Revalidate)
   const { data: skus = [], isLoading: skusLoading, error: skusError, refetch: refetchSkus, dataUpdatedAt: skusUpdatedAt } = useQuery({
@@ -426,7 +476,15 @@ export default function InventoryPage() {
     }),
     columnHelper.display({
       id: "actions",
-      cell: (info) => <TableActions sku={info.row.original} onAdjust={() => setAdjustingSKU(info.row.original)} onEdit={() => setEditingSKU(info.row.original)} />,
+      cell: (info) => (
+        <TableActions 
+          sku={info.row.original} 
+          onView={() => setSelectedSku(info.row.original)}
+          onAdjust={() => setAdjustingSKU(info.row.original)} 
+          onEdit={() => setEditingSKU(info.row.original)}
+          onPrintLabel={() => setPrintingSku(info.row.original)}
+        />
+      ),
     }),
   // fmt is intentionally excluded — it is NOT used in column definitions (only in voice intents)
   // Including fmt caused infinite re-renders since fmt ref changes on every usePersona() call
@@ -714,8 +772,37 @@ export default function InventoryPage() {
         <SkuDetailPanel
           sku={selectedSku}
           onClose={() => setSelectedSku(null)}
-          onEdit={() => { setAdjustingSKU(selectedSku); setSelectedSku(null); }}
+          onModify={() => { setEditingSKU(selectedSku); setSelectedSku(null); }}
+          onAdjust={() => { setAdjustingSKU(selectedSku); setSelectedSku(null); }}
+          onPrintLabel={() => setPrintingSku(selectedSku)}
+          onQuickAdjust={async (delta) => {
+            const newQty = Math.max(0, Number(selectedSku.qty_on_hand) + delta);
+            adjustStock({ skuId: selectedSku.id, qty_on_hand: newQty, previousQty: selectedSku.qty_on_hand });
+            setSelectedSku(prev => prev ? { ...prev, qty_on_hand: newQty } : null);
+          }}
+          onDelete={() => {
+            handleDeleteSku(selectedSku);
+            setSelectedSku(null);
+          }}
           fmt={fmt}
+        />
+      )}
+
+      {/* Universal Label Generator */}
+      {printingSku && (
+        <UniversalLabelGenerator
+          isOpen={!!printingSku}
+          onClose={() => setPrintingSku(null)}
+          data={{
+            name: printingSku.name,
+            skuCode: printingSku.sku_code,
+            barcode: printingSku.barcode || printingSku.sku_code,
+            price: printingSku.sale_price ?? undefined,
+            wholesalePrice: printingSku.cost_price ?? undefined,
+            unit: printingSku.unit,
+            category: printingSku.category ?? undefined,
+            payloadType: 'SKU'
+          }}
         />
       )}
 
@@ -740,127 +827,322 @@ export default function InventoryPage() {
 
 // --- SKU Detail Side Panel ---
 
-function SkuDetailPanel({ sku, onClose, onEdit, fmt }: { sku: SKU; onClose: () => void; onEdit: () => void; fmt: any }) {
+function SkuDetailPanel({ 
+  sku, 
+  onClose, 
+  onModify, 
+  onAdjust, 
+  onQuickAdjust,
+  onPrintLabel,
+  onDelete,
+  fmt 
+}: { 
+  sku: SKU; 
+  onClose: () => void; 
+  onModify: () => void; 
+  onAdjust: () => void; 
+  onQuickAdjust?: (delta: number) => Promise<void>;
+  onPrintLabel?: () => void;
+  onDelete?: () => void;
+  fmt: any; 
+}) {
+  const router = useRouter();
+  const [copiedBarcode, setCopiedBarcode] = useState(false);
+  const [isAdjusting, setIsAdjusting] = useState(false);
+
+  const copyBarcode = () => {
+    if (sku.barcode || sku.sku_code) {
+      navigator.clipboard.writeText(sku.barcode || sku.sku_code);
+      setCopiedBarcode(true);
+      setTimeout(() => setCopiedBarcode(false), 2000);
+    }
+  };
+
+  const handleQuickDelta = async (delta: number) => {
+    if (onQuickAdjust) {
+      setIsAdjusting(true);
+      try {
+        await onQuickAdjust(delta);
+      } finally {
+        setIsAdjusting(false);
+      }
+    }
+  };
+
+  const handleShareWhatsapp = () => {
+    const text = `*SKU Code:* ${sku.sku_code}\n*Item:* ${sku.name}\n*Stock on Hand:* ${sku.qty_on_hand} ${sku.unit}\n*Sale Price:* PKR ${sku.sale_price}\n*Status:* ${sku.qty_on_hand <= (sku.reorder_level || 0) ? 'LOW STOCK' : 'AVAILABLE'}`;
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    if (typeof window !== 'undefined') window.open(url, '_blank');
+  };
+
+  const cost = Number(sku.cost_price) || 0;
+  const sale = Number(sku.sale_price) || 0;
+  const qty = Number(sku.qty_on_hand) || 0;
+  const reserved = Number(sku.qty_reserved) || 0;
+  const available = Math.max(0, qty - reserved);
+  const totalValuation = qty * cost;
+  const potentialRevenue = qty * sale;
+  const marginPercent = cost > 0 && sale > 0 ? (((sale - cost) / cost) * 100).toFixed(1) : null;
+
   return (
-    <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
-      <div
-        className="w-full max-w-md h-full bg-[#0F1114] border-l border-white/8 overflow-y-auto shadow-2xl"
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs" onClick={onClose}>
+      <motion.div
+        initial={{ x: "100%" }}
+        animate={{ x: 0 }}
+        exit={{ x: "100%" }}
+        transition={{ type: "spring", damping: 28, stiffness: 300 }}
+        className="w-full max-w-md h-full bg-[#0F1114] border-l border-white/10 flex flex-col shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-white/8">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#14161A]">
           <div>
-            <p className="text-[10px] font-mono font-bold text-[#60A5FA] tracking-widest">{sku.sku_code}</p>
-            <h2 className="text-base font-bold text-white mt-0.5">{sku.name}</h2>
+            <span className="text-[10px] font-mono font-bold text-[#60A5FA] tracking-widest">{sku.sku_code}</span>
+            <h2 className="text-base font-bold text-white mt-0.5 truncate max-w-[260px]">{sku.name}</h2>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-600 hover:text-white transition-colors text-lg leading-none"
-          >
-            ✕
-          </button>
+          <div className="flex items-center space-x-1">
+            <button
+              onClick={onModify}
+              title="Modify / Edit SKU Details"
+              className="p-2 text-gray-400 hover:text-[#60A5FA] hover:bg-white/5 rounded-sm transition-colors cursor-pointer"
+            >
+              <Edit size={16} />
+            </button>
+            {onPrintLabel && (
+              <button
+                onClick={onPrintLabel}
+                title="Print Barcode Tag"
+                className="p-2 text-gray-400 hover:text-purple-400 hover:bg-white/5 rounded-sm transition-colors cursor-pointer"
+              >
+                <Barcode size={16} />
+              </button>
+            )}
+            <button
+              onClick={handleShareWhatsapp}
+              title="Share SKU via WhatsApp"
+              className="p-2 text-gray-400 hover:text-[#25D366] hover:bg-white/5 rounded-sm transition-colors cursor-pointer"
+            >
+              <MessageCircle size={16} />
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 text-gray-500 hover:text-white hover:bg-white/5 rounded-sm transition-colors ml-1 cursor-pointer"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
-        {/* Visual Asset Preview */}
-        {sku.thumbnail_url && (
-          <div className="w-full h-44 bg-black/40 border-b border-white/8 flex items-center justify-center p-3 relative">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={sku.thumbnail_url} alt={sku.name} className="max-h-full max-w-full object-contain rounded-sm shadow-md" />
-          </div>
-        )}
-
-        {/* Stock status */}
-        <div className="px-6 py-5 border-b border-white/8">
-          <div className="flex items-end justify-between mb-2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">Qty on Hand</p>
-            <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full ${
-              sku.qty_on_hand > (sku.reorder_level || 0)
-                ? 'bg-emerald-500/10 text-emerald-400'
-                : sku.qty_on_hand === 0
-                ? 'bg-red-500/10 text-red-400'
-                : 'bg-amber-500/10 text-amber-400'
-            }`}>
-              {sku.qty_on_hand === 0 ? 'OUT' : sku.qty_on_hand <= (sku.reorder_level || 0) ? 'LOW' : 'OK'}
-            </span>
-          </div>
-          <p className="text-3xl font-mono font-bold text-white">
-            {sku.qty_on_hand} <span className="text-sm text-gray-500">{sku.unit}</span>
-          </p>
-          {sku.reorder_level > 0 && (
-            <p className="text-[10px] text-gray-600 mt-1">Reorder at: {sku.reorder_level} {sku.unit}</p>
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto">
+          {/* Visual Asset Preview */}
+          {sku.thumbnail_url && (
+            <div className="w-full h-44 bg-black/40 border-b border-white/8 flex items-center justify-center p-3 relative group">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={sku.thumbnail_url} alt={sku.name} className="max-h-full max-w-full object-contain rounded-sm shadow-md" />
+              <button
+                onClick={onModify}
+                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center space-x-2 text-xs font-bold text-white transition-opacity cursor-pointer"
+              >
+                <Edit size={14} />
+                <span>Replace Image</span>
+              </button>
+            </div>
           )}
-        </div>
 
-        {/* Details */}
-        <div className="px-6 py-5 space-y-3">
-          {[
-            { label: 'Category', value: sku.category || '—' },
-            { label: 'Location', value: sku.current_location?.replace(/_/g, ' ') || '—' },
-            { label: 'Barcode', value: sku.barcode || '—' },
-            { label: 'Reserved', value: `${sku.qty_reserved || 0} ${sku.unit}` },
-          ].map(({ label, value }) => (
-            <div key={label} className="flex justify-between items-center py-2 border-b border-white/5">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">{label}</span>
-              <span className="text-xs text-white font-medium capitalize">{value}</span>
+          {/* Stock Status Block */}
+          <div className="px-6 py-5 border-b border-white/8 bg-gradient-to-b from-white/[0.02] to-transparent">
+            <div className="flex items-end justify-between mb-2">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">Qty on Hand</p>
+              <span className={`text-[9px] font-bold uppercase px-2.5 py-0.5 rounded-full ${
+                qty > (sku.reorder_level || 0)
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  : qty === 0
+                  ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                  : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+              }`}>
+                {qty === 0 ? 'OUT OF STOCK' : qty <= (sku.reorder_level || 0) ? 'LOW STOCK' : 'IN STOCK'}
+              </span>
             </div>
-          ))}
-        </div>
-
-        {/* Pricing */}
-        <div className="px-6 py-5 bg-white/[0.02] border-t border-white/5 border-b border-white/5">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 mb-3">Pricing</p>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-[10px] text-gray-600 uppercase">Cost</p>
-              <Can permission="view:inventory_costs" fallback={<p className="text-xs text-gray-700 mt-1">Restricted</p>}>
-                <p className="text-sm font-mono font-bold text-[#C5A059] mt-1">{fmt(sku.cost_price)}</p>
-              </Can>
-            </div>
-            <div>
-              <p className="text-[10px] text-gray-600 uppercase">Sale</p>
-              <p className="text-sm font-mono font-bold text-white mt-1">{fmt(sku.sale_price)}</p>
-            </div>
-          </div>
-          <Can permission="view:inventory_costs">
-            {sku.cost_price && sku.sale_price && sku.cost_price > 0 && (
-              <p className="text-[10px] text-emerald-400 mt-2">
-                Margin: {(((sku.sale_price - sku.cost_price) / sku.cost_price) * 100).toFixed(1)}%
+            <p className="text-3xl font-mono font-black text-white">
+              {qty} <span className="text-sm font-normal text-gray-500">{sku.unit}</span>
+            </p>
+            {sku.reorder_level > 0 && (
+              <p className="text-[10px] text-gray-500 mt-1 font-mono">
+                Reorder threshold: <span className="text-amber-400 font-bold">{sku.reorder_level} {sku.unit}</span>
               </p>
             )}
-          </Can>
-        </div>
 
-        {sku.description && (
-          <div className="px-6 py-4 border-b border-white/5">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 mb-1">Description</p>
-            <p className="text-xs text-gray-400 leading-relaxed">{sku.description}</p>
+            {/* Quick in-drawer adjust buttons */}
+            <div className="mt-4 pt-3 border-t border-white/5">
+              <p className="text-[9px] uppercase font-bold text-gray-400 tracking-wider mb-2">Quick Stock Adjust</p>
+              <div className="grid grid-cols-4 gap-2">
+                {[-10, -1, 1, 10].map(delta => (
+                  <button
+                    key={delta}
+                    disabled={isAdjusting || (delta < 0 && qty <= 0)}
+                    onClick={() => handleQuickDelta(delta)}
+                    className="py-1.5 bg-white/5 hover:bg-white/10 disabled:opacity-30 border border-white/5 text-xs font-mono font-bold text-white transition-all text-center rounded-sm cursor-pointer"
+                  >
+                    {delta > 0 ? `+${delta}` : delta}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-        )}
 
-        {/* Actions */}
-        <div className="px-6 py-5 flex gap-3">
-          <button
-            onClick={onEdit}
-            className="flex-1 py-2.5 text-sm font-bold bg-[#60A5FA] text-black hover:bg-blue-400 transition-colors"
-          >
-            Adjust Stock
-          </button>
-          <button
-            onClick={onClose}
-            className="flex-1 py-2.5 text-sm border border-white/10 text-gray-400 hover:border-white/20 transition-colors"
-          >
-            Close
-          </button>
+          {/* Key Specs & Location Grid */}
+          <div className="px-6 py-4 space-y-2.5 border-b border-white/8 text-xs">
+            <div className="flex justify-between items-center py-1.5 border-b border-white/5">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">Category</span>
+              <span className="text-white font-medium capitalize">{sku.category || 'Uncategorized'}</span>
+            </div>
+            <div className="flex justify-between items-center py-1.5 border-b border-white/5">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">Location</span>
+              <span className="text-white font-medium capitalize">{sku.current_location?.replace(/_/g, ' ') || 'Warehouse'}</span>
+            </div>
+            <div className="flex justify-between items-center py-1.5 border-b border-white/5">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">Barcode</span>
+              <div className="flex items-center space-x-2">
+                <span className="text-white font-mono">{sku.barcode || '—'}</span>
+                {sku.barcode && (
+                  <button onClick={copyBarcode} className="text-gray-500 hover:text-white transition-colors cursor-pointer" title="Copy Barcode">
+                    {copiedBarcode ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="flex justify-between items-center py-1.5 border-b border-white/5">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">Reserved For Orders</span>
+              <span className="text-amber-400 font-mono font-bold">{reserved} {sku.unit}</span>
+            </div>
+            <div className="flex justify-between items-center py-1.5 border-b border-white/5">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">Available to Sell</span>
+              <span className="text-emerald-400 font-mono font-bold">{available} {sku.unit}</span>
+            </div>
+          </div>
+
+          {/* Pricing & Margins */}
+          <div className="px-6 py-5 bg-white/[0.02] border-b border-white/8 space-y-3">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">Pricing & Valuation</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-black/30 border border-white/5 p-3 rounded-sm">
+                <p className="text-[9px] text-gray-500 uppercase tracking-widest">Cost Price</p>
+                <Can permission="view:inventory_costs" fallback={<p className="text-xs text-gray-700 mt-1">Restricted</p>}>
+                  <p className="text-sm font-mono font-bold text-[#C5A059] mt-1">{fmt(cost)}</p>
+                </Can>
+              </div>
+              <div className="bg-black/30 border border-white/5 p-3 rounded-sm">
+                <p className="text-[9px] text-gray-500 uppercase tracking-widest">Sale Price</p>
+                <p className="text-sm font-mono font-bold text-white mt-1">{fmt(sale)}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 pt-1">
+              <div>
+                <p className="text-[9px] text-gray-500 uppercase tracking-widest">Stock Valuation</p>
+                <Can permission="view:inventory_costs" fallback={<p className="text-xs text-gray-700">Restricted</p>}>
+                  <p className="text-xs font-mono font-bold text-gray-300 mt-0.5">{fmt(totalValuation)}</p>
+                </Can>
+              </div>
+              <div>
+                <p className="text-[9px] text-gray-500 uppercase tracking-widest">Potential Revenue</p>
+                <p className="text-xs font-mono font-bold text-white mt-0.5">{fmt(potentialRevenue)}</p>
+              </div>
+            </div>
+
+            {marginPercent && (
+              <Can permission="view:inventory_costs">
+                <p className="text-[11px] text-emerald-400 font-medium pt-1">
+                  Profit Margin: <span className="font-mono font-bold">{marginPercent}%</span>
+                </p>
+              </Can>
+            )}
+          </div>
+
+          {/* Description */}
+          {sku.description && (
+            <div className="px-6 py-4 border-b border-white/8">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 mb-1">Description / Notes</p>
+              <p className="text-xs text-gray-300 leading-relaxed font-mono whitespace-pre-wrap">{sku.description}</p>
+            </div>
+          )}
+
+          {/* Stock Audit / Movements Link */}
+          <div className="px-6 py-4 border-b border-white/8">
+            <button
+              onClick={() => router.push(`/inventory/movements?search=${encodeURIComponent(sku.sku_code)}`)}
+              className="w-full py-2 px-3 bg-white/5 hover:bg-white/10 border border-white/5 flex items-center justify-between text-xs text-gray-300 hover:text-white transition-colors rounded-sm cursor-pointer"
+            >
+              <div className="flex items-center space-x-2">
+                <History size={14} className="text-[#60A5FA]" />
+                <span className="text-[10px] uppercase font-bold tracking-wider">View Stock Audit & Movements</span>
+              </div>
+              <ArrowRight size={12} className="text-gray-500" />
+            </button>
+          </div>
         </div>
-      </div>
+
+        {/* Bottom Actions Bar */}
+        <div className="p-4 border-t border-white/10 bg-[#14161A] space-y-2">
+          <div className="flex gap-2">
+            <button
+              onClick={onModify}
+              className="flex-1 py-2.5 px-4 text-xs font-bold uppercase tracking-wider bg-[#60A5FA] text-black hover:bg-blue-400 transition-colors flex items-center justify-center space-x-2 rounded-sm shadow-md cursor-pointer"
+            >
+              <Edit size={14} />
+              <span>Modify / Edit Details</span>
+            </button>
+            <button
+              onClick={onAdjust}
+              className="flex-1 py-2.5 px-4 text-xs font-bold uppercase tracking-wider bg-white/10 hover:bg-white/15 text-white transition-colors flex items-center justify-center space-x-2 border border-white/10 rounded-sm cursor-pointer"
+            >
+              <History size={14} />
+              <span>Adjust Stock</span>
+            </button>
+          </div>
+
+          <div className="flex gap-2">
+            {onPrintLabel && (
+              <button
+                onClick={onPrintLabel}
+                className="flex-1 py-2 px-3 text-[10px] font-bold uppercase tracking-wider bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 transition-colors flex items-center justify-center space-x-1.5 rounded-sm cursor-pointer"
+              >
+                <Barcode size={13} />
+                <span>Print Barcode</span>
+              </button>
+            )}
+            {onDelete && (
+              <button
+                onClick={onDelete}
+                className="py-2 px-3 text-[10px] font-bold uppercase tracking-wider text-red-400 hover:bg-red-500/10 border border-red-500/20 transition-colors flex items-center justify-center space-x-1 rounded-sm cursor-pointer"
+              >
+                <Trash2 size={13} />
+                <span>Delete</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 }
 
-
 // --- Sub-Components ---
 
-const TableActions = React.memo(function TableActions({ sku, onAdjust, onEdit }: { sku: SKU, onAdjust: () => void, onEdit: () => void }) {
+const TableActions = React.memo(function TableActions({ 
+  sku, 
+  onAdjust, 
+  onEdit,
+  onView,
+  onPrintLabel
+}: { 
+  sku: SKU, 
+  onAdjust: () => void, 
+  onEdit: () => void,
+  onView?: () => void,
+  onPrintLabel?: () => void
+}) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
@@ -876,7 +1158,8 @@ const TableActions = React.memo(function TableActions({ sku, onAdjust, onEdit }:
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [open]);
 
-  const handleDelete = async () => {
+  const handleDelete = async (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     if (!confirm(`Permanently delete ${sku.name}?`)) return;
     try {
       const bizId = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null);
@@ -933,42 +1216,76 @@ const TableActions = React.memo(function TableActions({ sku, onAdjust, onEdit }:
   return (
     <div className="relative flex justify-end" ref={containerRef}>
        <button 
-        onClick={() => setOpen(!open)}
-        className="p-2 text-gray-600 hover:text-white transition-colors"
+        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+        className="p-2 text-gray-600 hover:text-white transition-colors cursor-pointer"
+        title="More actions"
        >
           <MoreVertical size={16} />
        </button>
 
        {open && (
-         <div className="absolute right-0 top-10 w-48 bg-surface border border-white/10 shadow-2xl z-50 py-1">
-            {sku.qty_on_hand <= sku.reorder_level && (
-              <button 
-                onClick={() => {
-                  const phone = useBusinessProfileStore.getState().profile?.phone || '';
-                  const msg = ALERT_TEMPLATES.low_stock({ name: sku.name, qty: String(sku.qty_on_hand), unit: sku.unit, reorderLevel: String(sku.reorder_level) });
-                  sendWhatsAppAlert(phone, msg);
-                }}
-                className="w-full px-4 py-2.5 text-left text-[10px] uppercase font-black text-[#25D366] hover:bg-[#25D366]/5 flex items-center space-x-3"
+         <div 
+           className="absolute right-0 top-10 w-52 bg-[#121418] border border-white/10 shadow-2xl z-50 py-1 rounded-sm divide-y divide-white/5"
+           onClick={(e) => e.stopPropagation()}
+         >
+            <div className="py-1">
+              {onView && (
+                <button
+                  onClick={() => { onView(); setOpen(false); }}
+                  className="w-full px-4 py-2 text-left text-[10px] uppercase font-bold text-gray-300 hover:text-white hover:bg-white/5 flex items-center space-x-3 cursor-pointer"
+                >
+                  <Eye size={13} className="text-[#60A5FA]" />
+                  <span>View Details</span>
+                </button>
+              )}
+              <button
+                onClick={() => { onEdit(); setOpen(false); }}
+                className="w-full px-4 py-2 text-left text-[10px] uppercase font-bold text-gray-300 hover:text-white hover:bg-white/5 flex items-center space-x-3 cursor-pointer"
               >
-                 <MessageCircle size={14} />
-                 <span>Send Low Stock Alert</span>
+                <Edit size={13} className="text-[#60A5FA]" />
+                <span>Modify / Edit SKU</span>
               </button>
-            )}
-            <button onClick={onAdjust} className="w-full px-4 py-2.5 text-left text-[10px] uppercase font-bold text-gray-400 hover:text-white hover:bg-white/5 flex items-center space-x-3">
-               <History size={14} />
-               <span>Adjust Stock</span>
-            </button>
-            <button
-               onClick={(e) => { e.stopPropagation(); onEdit(); setOpen(false); }}
-               className="w-full px-4 py-2.5 text-left text-[10px] uppercase font-bold text-gray-400 hover:text-white hover:bg-white/5 flex items-center space-x-3">
-               <Edit size={14} />
-               <span>Edit Details</span>
-            </button>
-            <div className="h-px bg-white/5 my-1" />
-            <button onClick={handleDelete} className="w-full px-4 py-2.5 text-left text-[10px] uppercase font-bold text-critical-red hover:bg-critical-red/10 flex items-center space-x-3">
-               <Trash2 size={14} />
-               <span>Delete SKU</span>
-            </button>
+              <button 
+                onClick={() => { onAdjust(); setOpen(false); }} 
+                className="w-full px-4 py-2 text-left text-[10px] uppercase font-bold text-gray-300 hover:text-white hover:bg-white/5 flex items-center space-x-3 cursor-pointer"
+              >
+                <History size={13} className="text-emerald-400" />
+                <span>Adjust Stock</span>
+              </button>
+              {onPrintLabel && (
+                <button 
+                  onClick={() => { onPrintLabel(); setOpen(false); }} 
+                  className="w-full px-4 py-2 text-left text-[10px] uppercase font-bold text-gray-300 hover:text-white hover:bg-white/5 flex items-center space-x-3 cursor-pointer"
+                >
+                  <Barcode size={13} className="text-purple-400" />
+                  <span>Print Barcode Label</span>
+                </button>
+              )}
+            </div>
+
+            <div className="py-1">
+              {sku.qty_on_hand <= (sku.reorder_level || 0) && (
+                <button 
+                  onClick={() => {
+                    const phone = useBusinessProfileStore.getState().profile?.phone || '';
+                    const msg = ALERT_TEMPLATES.low_stock({ name: sku.name, qty: String(sku.qty_on_hand), unit: sku.unit, reorderLevel: String(sku.reorder_level) });
+                    sendWhatsAppAlert(phone, msg);
+                    setOpen(false);
+                  }}
+                  className="w-full px-4 py-2 text-left text-[10px] uppercase font-bold text-[#25D366] hover:bg-[#25D366]/5 flex items-center space-x-3 cursor-pointer"
+                >
+                  <MessageCircle size={13} />
+                  <span>Low Stock Alert</span>
+                </button>
+              )}
+              <button 
+                onClick={handleDelete} 
+                className="w-full px-4 py-2 text-left text-[10px] uppercase font-bold text-red-400 hover:bg-red-500/10 flex items-center space-x-3 cursor-pointer"
+              >
+                <Trash2 size={13} />
+                <span>Delete SKU</span>
+              </button>
+            </div>
          </div>
        )}
     </div>

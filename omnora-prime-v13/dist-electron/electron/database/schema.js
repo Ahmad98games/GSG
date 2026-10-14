@@ -373,6 +373,40 @@ CREATE TABLE IF NOT EXISTS grn_items (
   total_price REAL DEFAULT 0
 );
 
+-- SALES ORDERS
+CREATE TABLE IF NOT EXISTS orders (
+  id TEXT PRIMARY KEY,
+  business_id TEXT NOT NULL REFERENCES business_profiles(id) ON DELETE CASCADE,
+  order_number TEXT NOT NULL,
+  party_id TEXT REFERENCES parties(id) ON DELETE SET NULL,
+  order_date TEXT NOT NULL,
+  expected_date TEXT,
+  status TEXT DEFAULT 'pending' CHECK(status IN ('pending','in_production','ready','invoiced','cancelled')),
+  total_amount REAL DEFAULT 0,
+  notes TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_orders_business ON orders(business_id);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(business_id, status);
+CREATE INDEX IF NOT EXISTS idx_orders_party ON orders(business_id, party_id);
+
+CREATE TABLE IF NOT EXISTS order_items (
+  id TEXT PRIMARY KEY,
+  order_id TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  business_id TEXT NOT NULL,
+  sku_id TEXT REFERENCES skus(id) ON DELETE SET NULL,
+  description TEXT NOT NULL,
+  quantity REAL NOT NULL DEFAULT 1,
+  unit TEXT DEFAULT 'Piece',
+  unit_price REAL NOT NULL DEFAULT 0,
+  total_price REAL NOT NULL DEFAULT 0,
+  notes TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
+
 -- DISPATCH
 CREATE TABLE IF NOT EXISTS dispatch_orders (
   id TEXT PRIMARY KEY,

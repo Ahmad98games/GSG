@@ -831,6 +831,7 @@ async function handleMessage(
             break;
           }
 
+          case 'orders':
           case 'invoices': {
             if (sqlite) {
               try {

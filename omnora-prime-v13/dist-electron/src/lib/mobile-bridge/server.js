@@ -758,6 +758,7 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
                         }
                         break;
                     }
+                    case 'orders':
                     case 'invoices': {
                         if (sqlite) {
                             try {

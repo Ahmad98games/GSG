@@ -94,9 +94,8 @@ electron_log_1.default.transports.file.maxSize = 5 * 1024 * 1024;
 electron_updater_1.autoUpdater.logger = electron_log_1.default;
 // Update channel — can be changed per license tier (Pro/Elite get beta channel)
 electron_updater_1.autoUpdater.channel = 'stable';
-electron_updater_1.autoUpdater.autoDownload = false;
+electron_updater_1.autoUpdater.autoDownload = true;
 electron_updater_1.autoUpdater.disableDifferentialDownload = true;
-// We download manually so we can show progress to the user
 electron_updater_1.autoUpdater.allowPrerelease = false;
 electron_updater_1.autoUpdater.allowDowngrade = true;
 electron_updater_1.autoUpdater.setFeedURL({
@@ -876,6 +875,17 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 releaseName: info.releaseName || `Version ${info.version}`,
                 releaseNotes: info.releaseNotes || '',
             });
+            try {
+                if (electron_1.Notification.isSupported()) {
+                    new electron_1.Notification({
+                        title: `Noxis Hub Update Available: v${info.version}`,
+                        body: `Downloading new update patch automatically in background...`,
+                    }).show();
+                }
+            }
+            catch (err) {
+                startupLog(`[Update] Notification error: ${err.message}`);
+            }
         });
         electron_updater_1.autoUpdater.on('update-not-available', () => {
             startupLog('[Update] Up to date');
@@ -893,7 +903,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             startupLog(`[Update] Download: ${pct}% (${(transferred / 1048576).toFixed(1)}MB / ${(total / 1048576).toFixed(1)}MB)`);
             win.webContents.send('update-status', {
                 status: 'downloading',
-                version: latestUpdateInfo?.version || '13.1.14',
+                version: latestUpdateInfo?.version || '14.0.1',
                 percent: pct,
                 transferred,
                 total,
@@ -903,10 +913,24 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         electron_updater_1.autoUpdater.on('update-downloaded', (info) => {
             startupLog(`[Update] Downloaded: v${info.version}`);
             updateDownloaded = true;
+            downloadProgress = 100;
             win.webContents.send('update-status', {
                 status: 'ready',
                 version: info.version,
+                releaseName: info.releaseName || `Version ${info.version}`,
+                releaseNotes: info.releaseNotes || '',
             });
+            try {
+                if (electron_1.Notification.isSupported()) {
+                    new electron_1.Notification({
+                        title: `Noxis Hub v${info.version} Ready!`,
+                        body: `Software update v${info.version} has been downloaded. Restart the app or click the banner to apply.`,
+                    }).show();
+                }
+            }
+            catch (err) {
+                startupLog(`[Update] Notification error: ${err.message}`);
+            }
         });
         electron_updater_1.autoUpdater.on('error', (err) => {
             startupLog(`[Update] Error: ${err.message}`);
@@ -921,9 +945,26 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                     : `Update error: ${err.message}`,
             });
         });
+        // Re-broadcast status whenever window finishes loading
+        win.webContents.on('did-finish-load', () => {
+            if (updateDownloaded && latestUpdateInfo) {
+                win.webContents.send('update-status', {
+                    status: 'ready',
+                    version: latestUpdateInfo.version,
+                    releaseName: latestUpdateInfo.releaseName || `Version ${latestUpdateInfo.version}`,
+                });
+            }
+            else if (updateAvailable && latestUpdateInfo) {
+                win.webContents.send('update-status', {
+                    status: downloadProgress > 0 ? 'downloading' : 'available',
+                    version: latestUpdateInfo.version,
+                    percent: downloadProgress,
+                });
+            }
+        });
         if (isDev)
             return;
-        // Initial check — immediate (500ms) after launch
+        // Initial check — 2s and 10s after launch
         setTimeout(async () => {
             try {
                 const res = await electron_updater_1.autoUpdater.checkForUpdates();
@@ -935,8 +976,20 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             catch (err) {
                 startupLog(`[Update] Initial check error: ${err.message}`);
             }
-        }, 500);
-        // Periodic check — every 4 hours
+        }, 2000);
+        setTimeout(async () => {
+            if (!updateDownloaded && !updateAvailable) {
+                try {
+                    const res = await electron_updater_1.autoUpdater.checkForUpdates();
+                    if (res?.updateInfo) {
+                        latestUpdateInfo = res.updateInfo;
+                        updateAvailable = true;
+                    }
+                }
+                catch { /* non-fatal */ }
+            }
+        }, 10000);
+        // Periodic check — every 15 minutes
         setInterval(async () => {
             if (!updateDownloaded) {
                 try {
@@ -944,7 +997,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 }
                 catch { /* non-fatal */ }
             }
-        }, 4 * 60 * 60 * 1000);
+        }, 15 * 60 * 1000);
     }
     // ─────────────────────────────────────────────
     // 7. SESSION TIMERS
