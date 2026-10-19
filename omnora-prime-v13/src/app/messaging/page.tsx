@@ -268,6 +268,16 @@ export default function MessagingPage() {
       electronAPI.on('bridge-event', handleBridgeMsg);
     }
 
+    const handleCustomWindowMsg = (e: any) => {
+      const detail = e?.detail;
+      if (detail?.event === 'messaging:new-message' && detail?.data) {
+        handleNewMsg(detail.data);
+      } else if (detail?.type === 'messaging:new-message' && (detail.data || detail.message)) {
+        handleNewMsg(detail.data || detail.message);
+      }
+    };
+    window.addEventListener('noxis:mobile-event', handleCustomWindowMsg);
+
     return () => {
       if (electronAPI?.messaging?.removeMessageListener) {
         electronAPI.messaging.removeMessageListener();
@@ -275,6 +285,7 @@ export default function MessagingPage() {
       if (electronAPI?.off) {
         electronAPI.off('bridge-event', handleBridgeMsg);
       }
+      window.removeEventListener('noxis:mobile-event', handleCustomWindowMsg);
     };
   }, []);
 

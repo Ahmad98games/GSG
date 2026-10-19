@@ -2753,20 +2753,24 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       })
 
       nextServer.on('message', (msg: any) => {
-        if (msg && msg.type === 'bridge-event') {
-          if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('bridge-event', { event: msg.event, data: msg.data });
-            if (msg.event === 'messaging:new-message') {
-              mainWindow.webContents.send('messaging:new-message', msg.data);
+        try {
+          if (msg && msg.type === 'bridge-event') {
+            if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+              mainWindow.webContents.send('bridge-event', { event: msg.event, data: msg.data });
+              if (msg.event === 'messaging:new-message') {
+                mainWindow.webContents.send('messaging:new-message', msg.data);
+              }
+            }
+            if (msg.event === 'DEVICE_COUNT_CHANGED') {
+              lastBridgeStatus = {
+                connected: Number(msg.data?.connected || 0),
+                paired: Number(msg.data?.paired || 0),
+                pairedDevices: Array.isArray(msg.data?.pairedDevices) ? msg.data.pairedDevices : [],
+              };
             }
           }
-          if (msg.event === 'DEVICE_COUNT_CHANGED') {
-            lastBridgeStatus = {
-              connected: msg.data.connected,
-              paired: msg.data.paired,
-              pairedDevices: msg.data.pairedDevices || [],
-            };
-          }
+        } catch (bridgeErr: any) {
+          startupLog(`[Electron] Error handling bridge message: ${bridgeErr?.message || bridgeErr}`);
         }
       })
 

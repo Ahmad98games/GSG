@@ -35,6 +35,122 @@ function getAdmin() {
   return adminClient;
 }
 
+
+// ─── SUPABASE DIRECT SYNC HELPERS ───────────────────────────────────────────
+function mapWageType(w: any): string {
+  if (!w) return 'piece_rate';
+  const str = String(w).toLowerCase();
+  if (str.includes('daily')) return 'daily_wage';
+  if (str.includes('month') || str.includes('salary')) return 'monthly_salary';
+  return 'piece_rate';
+}
+
+function mapInvoiceStatus(s: any): string {
+  if (!s) return 'issued';
+  const str = String(s).toLowerCase();
+  if (['draft', 'issued', 'partially_paid', 'paid', 'cancelled', 'overdue'].includes(str)) return str;
+  return 'issued';
+}
+
+async function syncWorkerToSupabase(k: any, defaultBusinessId?: string) {
+  const admin = getAdmin();
+  if (!admin || !k) return;
+  const businessId = (k.business_id && k.business_id !== 'local')
+    ? k.business_id
+    : (defaultBusinessId && defaultBusinessId !== 'local' ? defaultBusinessId : 'ffa84a41-941e-4e4e-87c3-9580271db2bd');
+
+  const karigarRecord = {
+    id: k.id || randomUUID(),
+    business_id: businessId,
+    name: k.name || 'New Worker',
+    karigar_code: k.karigar_code || ('K-' + Date.now().toString().slice(-4)),
+    phone: k.phone || null,
+    skill_type: k.skill_type || 'General',
+    joining_date: k.joining_date || new Date().toISOString().slice(0, 10),
+    wage_type: mapWageType(k.wage_type),
+    piece_rate: Number(k.piece_rate || 0),
+    daily_rate: Number(k.daily_rate || 0),
+    status: 'active',
+    updated_at: new Date().toISOString()
+  };
+
+  try {
+    const { error } = await admin.from('karigars').upsert(karigarRecord, { onConflict: 'id' });
+    if (error) {
+      console.warn('[Bridge] Karigar Supabase upsert notice:', error.message);
+    } else {
+      console.log(`[Bridge] Karigar ${karigarRecord.id} (${karigarRecord.name}) successfully synced to Supabase`);
+    }
+  } catch (err: any) {
+    console.warn('[Bridge] Karigar sync error:', err.message);
+  }
+}
+
+async function syncInvoiceToSupabase(inv: any, defaultBusinessId?: string) {
+  const admin = getAdmin();
+  if (!admin || !inv) return;
+  const businessId = (inv.business_id && inv.business_id !== 'local')
+    ? inv.business_id
+    : (defaultBusinessId && defaultBusinessId !== 'local' ? defaultBusinessId : 'ffa84a41-941e-4e4e-87c3-9580271db2bd');
+
+  const invRecord: any = {
+    id: inv.id || randomUUID(),
+    business_id: businessId,
+    invoice_no: inv.invoice_no || inv.invoice_number || ('INV-' + Date.now().toString().slice(-6)),
+    party_id: inv.party_id || null,
+    total: Number(inv.total ?? inv.total_amount ?? 0),
+    subtotal: Number(inv.subtotal ?? inv.total ?? inv.total_amount ?? 0),
+    tax_amount: Number(inv.tax_amount || 0),
+    discount_amount: Number(inv.discount_amount || 0),
+    status: mapInvoiceStatus(inv.status),
+    issue_date: inv.issue_date || inv.invoice_date || new Date().toISOString().slice(0, 10),
+    due_date: inv.due_date || inv.issue_date || inv.invoice_date || new Date().toISOString().slice(0, 10),
+    updated_at: new Date().toISOString()
+  };
+
+  try {
+    const { error } = await admin.from('invoices').upsert(invRecord, { onConflict: 'id' });
+    if (error) {
+      console.warn('[Bridge] Invoice Supabase upsert notice:', error.message);
+    } else {
+      console.log(`[Bridge] Invoice ${invRecord.invoice_no} successfully synced to Supabase`);
+    }
+  } catch (err: any) {
+    console.warn('[Bridge] Invoice sync error:', err.message);
+  }
+}
+
+async function syncPartyToSupabase(p: any, defaultBusinessId?: string) {
+  const admin = getAdmin();
+  if (!admin || !p) return;
+  const businessId = (p.business_id && p.business_id !== 'local')
+    ? p.business_id
+    : (defaultBusinessId && defaultBusinessId !== 'local' ? defaultBusinessId : 'ffa84a41-941e-4e4e-87c3-9580271db2bd');
+
+  const partyRecord = {
+    id: p.id || randomUUID(),
+    business_id: businessId,
+    name: p.name || 'New Customer',
+    party_type: p.party_type || 'customer',
+    phone: p.phone || null,
+    address: p.address || null,
+    current_balance: Number(p.current_balance || 0),
+    is_active: p.is_active !== false,
+    updated_at: new Date().toISOString()
+  };
+
+  try {
+    const { error } = await admin.from('parties').upsert(partyRecord, { onConflict: 'id' });
+    if (error) {
+      console.warn('[Bridge] Party Supabase upsert notice:', error.message);
+    } else {
+      console.log(`[Bridge] Party ${partyRecord.name} successfully synced to Supabase`);
+    }
+  } catch (err: any) {
+    console.warn('[Bridge] Party sync error:', err.message);
+  }
+}
+
 function getSqlite(): any {
   try {
     return (db as any).$client || null;
@@ -1068,10 +1184,66 @@ async function handleMessage(
     }
 
     // ── Mobile-originated events ──
+
+    case 'crdt_sync_event': {
+      console.log(`[Bridge] crdt_sync_event for ${msg.table} (${msg.operation}) from ${client.deviceLabel}`);
+      const table = msg.table;
+      const op = msg.operation;
+      const payload = msg.payload || msg.data;
+
+      if (table === 'karigars' && payload) {
+        syncWorkerToSupabase(payload, client.businessId);
+        broadcastToHubRenderer('WORKER_CREATED', {
+          deviceLabel: client.deviceLabel,
+          deviceId: client.deviceId,
+          worker: payload,
+          ...payload,
+        });
+        broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'karigars' });
+      } else if (table === 'invoices' && payload) {
+        syncInvoiceToSupabase(payload, client.businessId);
+        broadcastToHubRenderer('INVOICE_CREATED', {
+          deviceLabel: client.deviceLabel,
+          deviceId: client.deviceId,
+          invoice: payload,
+          ...payload,
+        });
+        broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'invoices' });
+      } else if (table === 'parties' && payload) {
+        syncPartyToSupabase(payload, client.businessId);
+        broadcastToHubRenderer('PARTY_CREATED', {
+          deviceLabel: client.deviceLabel,
+          deviceId: client.deviceId,
+          party: payload,
+          ...payload,
+        });
+        broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'parties' });
+      } else if (payload && table) {
+        const admin = getAdmin();
+        if (admin) {
+          const { vector_clock, synced_at, ...cleanRecord } = payload;
+          admin.from(table).upsert(cleanRecord).then().catch(() => {});
+        }
+        broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: table });
+      }
+
+      send(ws, {
+        type: 'CRDT_SYNC_ACK',
+        table,
+        operation: op,
+        entityId: payload?.id,
+        timestamp: Date.now()
+      });
+      break;
+    }
+
     case 'INVOICE_CREATED': {
       console.log(`[Bridge] INVOICE_CREATED from ${client.deviceLabel}`);
       const sqlite = getSqlite();
       const invPayload = (msg.invoice || msg.data || msg) as any;
+      if (invPayload) {
+        syncInvoiceToSupabase(invPayload, client.businessId);
+      }
       if (sqlite && invPayload) {
         const invId = invPayload.id || randomUUID();
         try {
@@ -1132,6 +1304,9 @@ async function handleMessage(
       console.log(`[Bridge] PARTY_CREATED from ${client.deviceLabel}`);
       const sqlite = getSqlite();
       const p = (msg.party || msg.data || msg) as any;
+      if (p) {
+        syncPartyToSupabase(p, client.businessId);
+      }
       if (sqlite && p) {
         const pId = p.id || randomUUID();
         try {
@@ -1168,6 +1343,9 @@ async function handleMessage(
       console.log(`[Bridge] WORKER_CREATED from ${client.deviceLabel}`);
       const sqlite = getSqlite();
       const k = (msg.worker || msg.karigar || msg.data || msg) as any;
+      if (k) {
+        syncWorkerToSupabase(k, client.businessId);
+      }
       if (sqlite && k) {
         const kId = k.id || randomUUID();
         try {
@@ -1342,8 +1520,12 @@ async function handleMessage(
       const text = String(rawMsg.text || rawMsg.payload?.text || '');
       const priority = rawMsg.priority || rawMsg.payload?.priority || 'normal';
       const messageId = rawMsg.messageId || rawMsg.payload?.messageId || randomUUID();
-      if (!client.paired) break;
-      if (!client.businessId) client.businessId = 'local';
+      const senderDeviceId = client.deviceId || rawMsg.deviceId || rawMsg.sender_device_id || 'mobile-device';
+      const senderLabel = client.deviceLabel || rawMsg.deviceLabel || rawMsg.sender_name || 'Mobile Terminal';
+
+      if (!client.businessId || client.businessId === 'local') {
+        client.businessId = 'ffa84a41-941e-4e4e-87c3-9580271db2bd';
+      }
 
       const msgId = messageId || randomUUID();
       const createdAtStr = new Date().toISOString();
@@ -1403,6 +1585,14 @@ async function handleMessage(
 
       // Broadcast to PC Hub renderer
       broadcastToHubRenderer('messaging:new-message', messageRecord);
+      clients.forEach((otherClient) => {
+        if (otherClient.ws.readyState === WebSocket.OPEN && otherClient.id !== client.id) {
+          send(otherClient.ws, {
+            type: 'MSG_INCOMING',
+            message: messageRecord,
+          });
+        }
+      });
 
       // Relay to all other connected paired mobile devices
       const outMsg = {
@@ -1508,8 +1698,8 @@ export function getBridgeStatus(): {
   pairedDevices: Array<{
     deviceId: string | null;
     deviceLabel: string | null;
-    connectedAt: Date;
-    lastHeartbeat: Date;
+    connectedAt: Date | string;
+    lastHeartbeat: Date | string;
     tier: string | null;
   }>;
 } {
@@ -1519,8 +1709,8 @@ export function getBridgeStatus(): {
       pairedDevices.push({
         deviceId: c.deviceId,
         deviceLabel: c.deviceLabel,
-        connectedAt: c.connectedAt,
-        lastHeartbeat: c.lastHeartbeat,
+        connectedAt: c.connectedAt instanceof Date ? c.connectedAt.toISOString() : (c.connectedAt || new Date().toISOString()),
+        lastHeartbeat: c.lastHeartbeat instanceof Date ? c.lastHeartbeat.toISOString() : (c.lastHeartbeat || new Date().toISOString()),
         tier: c.tier,
       });
     }

@@ -395,13 +395,13 @@ function InvoiceRow({ inv }: { inv: any }) {
       <td className="px-4 py-2.5 text-sm text-gray-200">
         <div className="flex flex-col">
           <span className="text-xs font-data font-bold text-white group-hover:text-sandstone-gold transition-colors">{inv.invoice_no}</span>
-          <span className="text-[9px] text-gray-600 font-data uppercase">ID: {inv.id.substring(0,8)}</span>
+          <span className="text-[9px] text-gray-600 font-data uppercase">ID: {inv.id ? String(inv.id).substring(0,8) : 'N/A'}</span>
         </div>
       </td>
       <td className="px-4 py-2.5 text-sm text-gray-200">
           <div className="flex items-center space-x-2 text-[10px] text-gray-400 uppercase font-bold">
             <Calendar size={12} className="text-gray-600" />
-            <span>{fmtDate(inv.issue_date)}</span>
+            <span>{fmtDate(inv.issue_date || inv.invoice_date || inv.created_at)}</span>
           </div>
       </td>
       <td className="px-4 py-2.5 text-sm text-gray-200">
@@ -410,16 +410,16 @@ function InvoiceRow({ inv }: { inv: any }) {
               <User size={14} />
             </div>
             <div className="flex flex-col">
-              <span className="text-xs font-bold text-white uppercase tracking-tight">{inv.party?.name}</span>
-              <span className="text-[9px] text-gray-600 font-bold uppercase tracking-widest">Active Ledger: {inv.party_id.substring(0,8)}</span>
+              <span className="text-xs font-bold text-white uppercase tracking-tight">{inv.party?.name || "Walk-in Customer"}</span>
+              <span className="text-[9px] text-gray-600 font-bold uppercase tracking-widest">Active Ledger: {inv.party_id ? String(inv.party_id).substring(0,8) : 'CASH / WALKIN'}</span>
             </div>
         </div>
       </td>
       <td className="px-8 py-5 text-right">
           <div className="flex flex-col items-end">
-            <FinancialAmount value={inv.total} className="text-sm font-bold" />
+            <FinancialAmount value={Number(inv.total ?? inv.total_amount ?? 0)} className="text-sm font-bold" />
             <FinancialAmount 
-              value={inv.balance_due} 
+              value={Number(inv.balance_due ?? inv.balance ?? 0)} 
               className="text-[9px] opacity-50" 
               showSign={false}
             />

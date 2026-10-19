@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import QRCode from 'react-qr-code';
 import {
-  Smartphone, Wifi, WifiOff, Trash2, RefreshCw,
+  Smartphone, Download, Wifi, WifiOff, Trash2, RefreshCw,
   ShieldCheck, AlertTriangle, Clock, QrCode, Globe, Zap,
   ShieldAlert, Lock, Ban
 } from 'lucide-react';
@@ -407,6 +407,39 @@ export default function DevicesPage() {
               )}
             </div>
           </div>
+        </div>
+      </div>
+
+            {/* APK Direct Download Helper */}
+      <div className="mb-8 p-4 bg-[#0F1114] border border-[#60A5FA]/20 rounded-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-[#60A5FA]/10 text-[#60A5FA] rounded-sm">
+            <Smartphone size={18} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-white uppercase tracking-tight">Noxis Mobile Terminal</span>
+              <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-[#60A5FA]/10 text-[#60A5FA] border border-[#60A5FA]/20">
+                v14.0.0 APK
+              </span>
+            </div>
+            <p className="text-[11px] text-gray-400">
+              Need to install the companion app on a new Android handheld or tablet?
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <a
+            href="https://pub-8c464d0d92ff44abbf70c58c362ad258.r2.dev/noxis-preview.apk"
+            download="Noxis-Mobile-Terminal-v14.0.0.apk"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-[#60A5FA] to-[#08EBF6] text-black hover:opacity-95 rounded-sm text-[11px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer shadow-[0_0_15px_rgba(96,165,250,0.2)]"
+          >
+            <Download size={13} />
+            <span>Download APK (116 MB)</span>
+          </a>
         </div>
       </div>
 
