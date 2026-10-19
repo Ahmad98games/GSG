@@ -52,7 +52,7 @@ function mapInvoiceStatus(s: any): string {
   return 'issued';
 }
 
-async function syncWorkerToSupabase(k: any, defaultBusinessId?: string) {
+async function syncWorkerToSupabase(k: any, defaultBusinessId?: string | null) {
   const admin = getAdmin();
   if (!admin || !k) return;
   const businessId = (k.business_id && k.business_id !== 'local')
@@ -86,7 +86,7 @@ async function syncWorkerToSupabase(k: any, defaultBusinessId?: string) {
   }
 }
 
-async function syncInvoiceToSupabase(inv: any, defaultBusinessId?: string) {
+async function syncInvoiceToSupabase(inv: any, defaultBusinessId?: string | null) {
   const admin = getAdmin();
   if (!admin || !inv) return;
   const businessId = (inv.business_id && inv.business_id !== 'local')
@@ -120,7 +120,7 @@ async function syncInvoiceToSupabase(inv: any, defaultBusinessId?: string) {
   }
 }
 
-async function syncPartyToSupabase(p: any, defaultBusinessId?: string) {
+async function syncPartyToSupabase(p: any, defaultBusinessId?: string | null) {
   const admin = getAdmin();
   if (!admin || !p) return;
   const businessId = (p.business_id && p.business_id !== 'local')
@@ -1189,7 +1189,7 @@ async function handleMessage(
       console.log(`[Bridge] crdt_sync_event for ${msg.table} (${msg.operation}) from ${client.deviceLabel}`);
       const table = msg.table;
       const op = msg.operation;
-      const payload = msg.payload || msg.data;
+      const payload: any = msg.payload || msg.data;
 
       if (table === 'karigars' && payload) {
         syncWorkerToSupabase(payload, client.businessId);
