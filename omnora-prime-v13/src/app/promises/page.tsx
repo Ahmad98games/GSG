@@ -42,6 +42,8 @@ export default function PromisesPage() {
   const [selectedPartyId, setSelectedPartyId] = useState("");
   const [unpaidInvoices, setUnpaidInvoices] = useState<any[]>([]);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
+  const [invoiceSearch, setInvoiceSearch] = useState("");
+  const [isInvoiceDropdownOpen, setIsInvoiceDropdownOpen] = useState(false);
   const [promisedAmount, setPromisedAmount] = useState("");
   const [promiseDate, setPromiseDate] = useState("");
   const [notes, setNotes] = useState("");
@@ -101,35 +103,78 @@ export default function PromisesPage() {
     fetchParties();
   }, [businessId, supabase]);
 
-  // Load Unpaid Invoices when party is selected
+  // Load Unpaid Invoices (scoped to party if selected, otherwise all unpaid invoices for business)
   useEffect(() => {
-    if (!selectedPartyId) {
-      setUnpaidInvoices([]);
-      setSelectedInvoiceId("");
-      return;
-    }
+    const targetBizId = businessId || profile?.id;
+    if (!targetBizId) return;
+
     const fetchInvoices = async () => {
-      const { data } = await supabase
-        .from("invoices")
-        .select("id, invoice_no, total, balance_due")
-        .eq("party_id", selectedPartyId)
-        .not("status", "in", ["paid", "cancelled"])
-        .order("issue_date", { ascending: false });
-      if (data) setUnpaidInvoices(data);
+      try {
+        let q = supabase
+          .from("invoices")
+          .select("id, invoice_no, total, balance_due, party_id, status, party:parties(id, name)")
+          .eq("business_id", targetBizId)
+          .not("status", "in", '(paid,cancelled)')
+          .order("created_at", { ascending: false });
+
+        if (selectedPartyId) {
+          q = q.eq("party_id", selectedPartyId);
+        }
+
+        const { data, error } = await q;
+        if (!error && data) {
+          setUnpaidInvoices(data);
+        } else if (error) {
+          console.error("Error fetching unpaid invoices:", error);
+          setUnpaidInvoices([]);
+        }
+      } catch (err) {
+        console.error("Error in fetchInvoices:", err);
+      }
     };
     fetchInvoices();
-  }, [selectedPartyId, supabase]);
+  }, [businessId, profile?.id, selectedPartyId, supabase]);
 
-  // Auto-fill amount when invoice is selected
-  const handleInvoiceChange = (invId: string) => {
-    setSelectedInvoiceId(invId);
-    const inv = unpaidInvoices.find(i => i.id === invId);
-    if (inv) {
-      setPromisedAmount(String(inv.balance_due));
-    } else {
-      setPromisedAmount("");
+  // Select an invoice from search / dropdown
+  const handleSelectInvoice = (inv: any | null) => {
+    if (!inv) {
+      setSelectedInvoiceId("");
+      setInvoiceSearch("");
+      setIsInvoiceDropdownOpen(false);
+      return;
+    }
+
+    setSelectedInvoiceId(inv.id);
+    const balance = inv.balance_due ?? inv.total ?? 0;
+    setInvoiceSearch(`${inv.invoice_no} (PKR ${Number(balance).toLocaleString()})`);
+    setIsInvoiceDropdownOpen(false);
+
+    // Auto-link party if not already set or different
+    if (inv.party_id && (!selectedPartyId || selectedPartyId !== inv.party_id)) {
+      setSelectedPartyId(inv.party_id);
+      const party = parties.find((p) => p.id === inv.party_id) || inv.party;
+      if (party?.name) {
+        setPartySearch(party.name);
+      }
+    }
+
+    if (balance > 0) {
+      setPromisedAmount(String(balance));
     }
   };
+
+  // Filter invoices for searchable dropdown
+  const filteredInvoices = useMemo(() => {
+    if (!invoiceSearch.trim() || invoiceSearch.includes(selectedInvoiceId)) {
+      return unpaidInvoices;
+    }
+    const q = invoiceSearch.toLowerCase().trim();
+    return unpaidInvoices.filter((inv) =>
+      inv.invoice_no?.toLowerCase().includes(q) ||
+      inv.party?.name?.toLowerCase().includes(q) ||
+      String(inv.balance_due ?? inv.total ?? "").includes(q)
+    );
+  }, [unpaidInvoices, invoiceSearch, selectedInvoiceId]);
 
   // Create Promise
   const handleCreatePromise = async (e: React.FormEvent) => {
@@ -272,6 +317,8 @@ export default function PromisesPage() {
     setSelectedPartyId("");
     setPartySearch("");
     setSelectedInvoiceId("");
+    setInvoiceSearch("");
+    setIsInvoiceDropdownOpen(false);
     setPromisedAmount("");
     setPromiseDate("");
     setNotes("");
@@ -461,22 +508,77 @@ export default function PromisesPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[9px] uppercase font-bold text-gray-500 tracking-widest block">
-                    Linked Invoice (Optional)
-                  </label>
-                  <select
-                    value={selectedInvoiceId}
-                    onChange={(e) => handleInvoiceChange(e.target.value)}
-                    disabled={!selectedPartyId}
-                    className="w-full bg-[#070809] border border-white/5 px-4 py-2.5 text-xs text-white outline-none focus:border-[#C5A059] transition-all rounded-sm disabled:opacity-40"
-                  >
-                    <option value="">-- No linked invoice --</option>
-                    {unpaidInvoices.map((inv) => (
-                      <option key={inv.id} value={inv.id}>
-                        {inv.invoice_no} (Owed: PKR {inv.balance_due})
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[9px] uppercase font-bold text-gray-500 tracking-widest block">
+                      Linked Invoice (Optional)
+                    </label>
+                    {selectedInvoiceId && (
+                      <button
+                        type="button"
+                        onClick={() => handleSelectInvoice(null)}
+                        className="text-[9px] text-gray-400 hover:text-red-400 transition-colors"
+                      >
+                        Clear selection
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={invoiceSearch}
+                      onChange={(e) => {
+                        setInvoiceSearch(e.target.value);
+                        if (e.target.value === "") {
+                          setSelectedInvoiceId("");
+                        }
+                        setIsInvoiceDropdownOpen(true);
+                      }}
+                      onFocus={() => setIsInvoiceDropdownOpen(true)}
+                      placeholder={selectedPartyId ? "Search invoice # or click to pick..." : "Search invoice # (auto-selects customer)..."}
+                      className="w-full bg-[#070809] border border-white/5 px-4 py-2.5 text-xs text-white outline-none focus:border-[#C5A059] transition-all rounded-sm placeholder:text-gray-600"
+                    />
+                    {isInvoiceDropdownOpen && (
+                      <div className="absolute top-full left-0 right-0 bg-[#0F1114] border border-white/10 z-50 max-h-48 overflow-y-auto shadow-2xl rounded-b-sm">
+                        <div
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            handleSelectInvoice(null);
+                          }}
+                          className="px-4 py-2 text-xs text-gray-500 hover:bg-white/5 cursor-pointer border-b border-white/5"
+                        >
+                          -- No linked invoice --
+                        </div>
+                        {filteredInvoices.length === 0 ? (
+                          <div className="px-4 py-3 text-xs text-gray-500 text-center">
+                            {unpaidInvoices.length === 0 ? "No unpaid invoices found" : "No matching invoices found"}
+                          </div>
+                        ) : (
+                          filteredInvoices.map((inv) => (
+                            <div
+                              key={inv.id}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                handleSelectInvoice(inv);
+                              }}
+                              className="px-4 py-2.5 text-xs hover:bg-[#C5A059]/10 cursor-pointer border-b border-white/5 flex items-center justify-between text-white transition-colors"
+                            >
+                              <div>
+                                <span className="font-bold text-[#C5A059] font-mono">{inv.invoice_no}</span>
+                                {inv.party?.name && (
+                                  <span className="text-[10px] text-gray-400 block font-sans">
+                                    {inv.party.name}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[11px] font-mono text-emerald-400 font-bold">
+                                Due: PKR {Number(inv.balance_due ?? inv.total ?? 0).toLocaleString()}
+                              </span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -862,22 +964,77 @@ export default function PromisesPage() {
 
                 {/* Optional Invoice association */}
                 <div className="space-y-2">
-                  <label className="text-[9px] uppercase font-bold text-gray-500 tracking-widest block">
-                    Linked Invoice (Optional)
-                  </label>
-                  <select
-                    value={selectedInvoiceId}
-                    onChange={(e) => handleInvoiceChange(e.target.value)}
-                    disabled={!selectedPartyId}
-                    className="w-full bg-[#070809] border border-white/5 px-4 py-2.5 text-xs text-white outline-none focus:border-[#C5A059] transition-all rounded-sm disabled:opacity-40"
-                  >
-                    <option value="">-- No linked invoice --</option>
-                    {unpaidInvoices.map((inv) => (
-                      <option key={inv.id} value={inv.id}>
-                        {inv.invoice_no} (Owed: PKR {inv.balance_due})
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[9px] uppercase font-bold text-gray-500 tracking-widest block">
+                      Linked Invoice (Optional)
+                    </label>
+                    {selectedInvoiceId && (
+                      <button
+                        type="button"
+                        onClick={() => handleSelectInvoice(null)}
+                        className="text-[9px] text-gray-400 hover:text-red-400 transition-colors"
+                      >
+                        Clear selection
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={invoiceSearch}
+                      onChange={(e) => {
+                        setInvoiceSearch(e.target.value);
+                        if (e.target.value === "") {
+                          setSelectedInvoiceId("");
+                        }
+                        setIsInvoiceDropdownOpen(true);
+                      }}
+                      onFocus={() => setIsInvoiceDropdownOpen(true)}
+                      placeholder={selectedPartyId ? "Search invoice # or click to pick..." : "Search invoice # (auto-selects customer)..."}
+                      className="w-full bg-[#070809] border border-white/5 px-4 py-2.5 text-xs text-white outline-none focus:border-[#C5A059] transition-all rounded-sm placeholder:text-gray-600"
+                    />
+                    {isInvoiceDropdownOpen && (
+                      <div className="absolute top-full left-0 right-0 bg-[#0F1114] border border-white/10 z-50 max-h-48 overflow-y-auto shadow-2xl rounded-b-sm">
+                        <div
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            handleSelectInvoice(null);
+                          }}
+                          className="px-4 py-2 text-xs text-gray-500 hover:bg-white/5 cursor-pointer border-b border-white/5"
+                        >
+                          -- No linked invoice --
+                        </div>
+                        {filteredInvoices.length === 0 ? (
+                          <div className="px-4 py-3 text-xs text-gray-500 text-center">
+                            {unpaidInvoices.length === 0 ? "No unpaid invoices found" : "No matching invoices found"}
+                          </div>
+                        ) : (
+                          filteredInvoices.map((inv) => (
+                            <div
+                              key={inv.id}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                handleSelectInvoice(inv);
+                              }}
+                              className="px-4 py-2.5 text-xs hover:bg-[#C5A059]/10 cursor-pointer border-b border-white/5 flex items-center justify-between text-white transition-colors"
+                            >
+                              <div>
+                                <span className="font-bold text-[#C5A059] font-mono">{inv.invoice_no}</span>
+                                {inv.party?.name && (
+                                  <span className="text-[10px] text-gray-400 block font-sans">
+                                    {inv.party.name}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[11px] font-mono text-emerald-400 font-bold">
+                                Due: PKR {Number(inv.balance_due ?? inv.total ?? 0).toLocaleString()}
+                              </span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Promised Amount */}

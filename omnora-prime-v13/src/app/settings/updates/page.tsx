@@ -21,11 +21,16 @@ import {
   FileText,
   Check,
   Terminal,
+  Lock,
+  ShieldAlert,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { UpdateUpgradeGate } from '@/components/updates/UpdateUpgradeGate'
 
 interface UpdateState {
-  status: 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'up-to-date' | 'error' | 'dev'
+  status: 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'up-to-date' | 'error' | 'dev' | 'gated'
+  isGated?: boolean
+  requiredTier?: string
   version?: string
   percent?: number
   transferred?: number
@@ -49,26 +54,17 @@ interface ChangelogItem {
 
 const HISTORICAL_CHANGELOGS: ChangelogItem[] = [
   {
-    version: '14.0.1',
-    date: 'October 2026',
-    type: 'patch',
-    title: 'Noxis Hub v14.0.1 — Live Handheld Visibility, Bidirectional Messaging & Local SQLite Sync',
-    highlights: [
-      { tag: 'Device Visibility', text: 'Instant detection and live status display for paired handheld devices on PC Hub', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
-      { tag: 'Bidirectional Messaging', text: 'Real-time offline-first text and alert dispatching between PC Hub and mobile devices', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
-      { tag: 'Offline SQLite Sync', text: 'Real-time synchronization for invoices, parties, karigars, and attendance directly using local SQLite', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
-    ],
-  },
-  {
     version: '14.0.0',
     date: 'October 2026',
     type: 'major',
-    title: 'Noxis Hub v14.0.0 Gold Master — Multi-Tier Real-Time Mesh, 5-Layer Security Architecture & Sentinel AI',
+    title: 'Noxis Hub v14.0.0 Gold Master — Official Emblem, Webhooks Engine, Auto-Resume & Sentinel AI',
     highlights: [
-      { tag: 'Multi-Tier Limits', text: 'Hard-enforced device capacities across Free (1), Lite (5), Pro (15), and Elite (50) with automated socket severing (1008)', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      { tag: 'Official Brand Emblem', text: 'Integrated official Noxis logo vector graphic across TitleBar and master sidebar anchors', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
+      { tag: 'Session Auto-Resume', text: 'Reliable cold-boot and ungraceful shutdown route restoration to last active workspace', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      { tag: 'Download Lead Capture', text: 'Integrated Supabase lead capture on download with automatic workstation detection', color: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
+      { tag: 'Webhook Engine', text: 'Workable webhook triggers and simulator for Shopify, WooCommerce, and Zapier', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+      { tag: 'Audit Trail Visualizer', text: 'Executive visual state transitions replacing raw JSON code blocks', color: 'text-rose-400 bg-rose-500/10 border-rose-500/20' },
       { tag: 'Defense Architecture', text: 'Sliding-window IP quarantine jail (60s / 5 failed attempts), cryptographic device ID sanitization, and anti-revocation blacklist gate', color: 'text-red-400 bg-red-500/10 border-red-500/20' },
-      { tag: 'Real-Time Sync', text: 'Real-Time Warehouse & Field Sync, biometric khata bond, bidirectional conflict resolution, and instant desktop HUD threat alerts', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
-      { tag: 'Sentinel Assistant', text: 'Autonomous ERP intelligence with deep codebase knowledge, instant diagnostics, business intelligence telemetry, and shortcut integration', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
     ],
   },
   {
@@ -212,25 +208,72 @@ export default function UpdatesPage() {
   const [lastCheckedAt, setLastCheckedAt] = useState<string>('Just now')
   const [showChangelogHistory, setShowChangelogHistory] = useState(false)
 
+  // Version-Locked Telemetry & Ceiling Policy
+  const [baselineVersion, setBaselineVersion] = useState<string>('v14.0.0')
+  const [licenseTier, setLicenseTier] = useState<'lite' | 'pro' | 'elite'>('elite')
+  const [maxAllowedCeiling, setMaxAllowedCeiling] = useState<string>('v16.x.x')
+  const [allowedWindow, setAllowedWindow] = useState<string>('+2 Major Generations')
+  const [hwid, setHwid] = useState<string>('')
+  const [isUpgradeGateOpen, setIsUpgradeGateOpen] = useState<boolean>(false)
+  const [gatedDetails, setGatedDetails] = useState<{
+    targetVersion: string
+    requiredTier?: string
+    message?: string
+  }>({
+    targetVersion: 'v16.0.0',
+    requiredTier: 'elite',
+    message: '',
+  })
+
   const isElectron =
     typeof window !== 'undefined' &&
     !!(window as any).electronAPI
 
   useEffect(() => {
     if (!isElectron) {
-      setCurrentVersion('13.0.1')
+      setCurrentVersion('14.0.0')
+      setBaselineVersion('v14.0.0')
+      setLicenseTier('elite')
+      setMaxAllowedCeiling('v16.x.x')
       return
     }
 
-    // 1. Fetch current status immediately
+    // 1. Fetch Version Policy & Telemetry Status
+    const loadVersionPolicy = async () => {
+      try {
+        const policy = await (window as any).electronAPI.getVersionPolicy?.()
+        if (policy) {
+          if (policy.baselineVersion) setBaselineVersion(policy.baselineVersion)
+          if (policy.tier) setLicenseTier(policy.tier)
+          if (policy.maxAllowedVersion) setMaxAllowedCeiling(policy.maxAllowedVersion)
+          if (policy.allowedWindow) setAllowedWindow(policy.allowedWindow)
+          if (policy.hwid) setHwid(policy.hwid)
+        }
+      } catch {}
+    }
+    loadVersionPolicy()
+
+    // 2. Fetch current status immediately
     ;(window as any).electronAPI
       .getUpdateStatus()
       .then((s: any) => {
         if (!s) return
-        setCurrentVersion(s.currentVersion || '13.0.1')
+        setCurrentVersion(s.currentVersion || '14.0.0')
+        if (s.baselineVersion) setBaselineVersion(s.baselineVersion)
+        if (s.tier) setLicenseTier(s.tier)
+        if (s.maxAllowedVersion) setMaxAllowedCeiling(s.maxAllowedVersion)
+        if (s.hwid) setHwid(s.hwid)
         setChannel((window as any).electronAPI.channel || 'stable')
 
-        if (s.updateDownloaded) {
+        if (s.isGated || s.status === 'gated') {
+          setGatedDetails({
+            targetVersion: s.version || 'v16.0.0',
+            requiredTier: s.requiredTier || 'elite',
+            message: s.message,
+          })
+          setIsUpgradeGateOpen(true)
+          setUpdateState({ status: 'gated', isGated: true, version: s.version })
+        } else if (s.updateDownloaded) {
           setUpdateState({
             status: 'ready',
             version: s.version,
@@ -255,14 +298,41 @@ export default function UpdatesPage() {
             releaseDate: s.releaseDate,
           })
         } else {
-          // If not checked recently, automatically trigger an immediate background check!
           checkForUpdates()
         }
       })
       .catch(() => {})
 
-    // 2. Listen for real-time background update events
-    const cleanup = (window as any).electronAPI.onUpdateStatus((data: UpdateState) => {
+    // 3. Listen for Gated Events
+    const handleGated = (data: any) => {
+      if (data && (data.isGated || data.status === 'gated')) {
+        setGatedDetails({
+          targetVersion: data.targetVersion || data.version || 'v16.0.0',
+          requiredTier: data.requiredTier || 'elite',
+          message: data.message,
+        })
+        setIsUpgradeGateOpen(true)
+        setUpdateState((prev) => ({
+          ...prev,
+          status: 'gated',
+          isGated: true,
+          version: data.targetVersion || data.version,
+        }))
+      }
+    }
+
+    let cleanupGated: (() => void) | undefined
+    try {
+      cleanupGated = (window as any).electronAPI.onUpdateGated?.(handleGated)
+    } catch {}
+
+    // 4. Listen for real-time background update events
+    const cleanup = (window as any).electronAPI.onUpdateStatus((data: any) => {
+      if (data.isGated || data.status === 'gated') {
+        handleGated(data)
+        return
+      }
+
       setUpdateState((prev) => {
         const version = data.version || prev.version || '14.0.0'
         let total = data.total ?? prev.total ?? 281255992
@@ -290,14 +360,54 @@ export default function UpdatesPage() {
       }
     })
 
-    return cleanup
+    return () => {
+      if (typeof cleanup === 'function') cleanup()
+      if (typeof cleanupGated === 'function') cleanupGated()
+    }
   }, [isElectron])
 
-  const checkForUpdates = async () => {
-    if (!isElectron) return
+  const checkForUpdates = async (testTargetVersion?: string) => {
     setUpdateState((prev) => ({ ...prev, status: 'checking' }))
+
+    // In browser simulation or dev
+    if (!isElectron) {
+      setTimeout(() => {
+        if (testTargetVersion) {
+          const testMajor = parseInt(testTargetVersion.replace(/^v/i, ''))
+          const baseMajor = parseInt(baselineVersion.replace(/^v/i, ''))
+          const maxMajor = baseMajor + (licenseTier === 'elite' ? 2 : 1)
+          if (testMajor > maxMajor) {
+            setGatedDetails({
+              targetVersion: testTargetVersion,
+              requiredTier: licenseTier === 'elite' ? 'enterprise' : 'elite',
+              message: `Your current ${licenseTier.toUpperCase()} license supports updates up to v${maxMajor}.x. Upgrade to unlock ${testTargetVersion}.`,
+            })
+            setIsUpgradeGateOpen(true)
+            setUpdateState({ status: 'gated', isGated: true, version: testTargetVersion })
+            return
+          }
+        }
+        setUpdateState({ status: 'up-to-date' })
+        setLastCheckedAt(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+      }, 500)
+      return
+    }
+
     try {
-      await (window as any).electronAPI.checkForUpdates()
+      const res = await (window as any).electronAPI.checkForUpdates(testTargetVersion)
+      if (res?.isGated || res?.status === 'gated') {
+        setGatedDetails({
+          targetVersion: res.targetVersion || testTargetVersion || 'v16.0.0',
+          requiredTier: res.requiredTier || 'elite',
+          message: res.message,
+        })
+        setIsUpgradeGateOpen(true)
+        setUpdateState({
+          status: 'gated',
+          isGated: true,
+          version: res.targetVersion || testTargetVersion,
+        })
+      }
       setLastCheckedAt(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
     } catch {
       setUpdateState((prev) => ({ ...prev, status: 'error', message: 'Failed to connect to Omnora CDN' }))
@@ -389,7 +499,7 @@ export default function UpdatesPage() {
           </div>
 
           <button
-            onClick={checkForUpdates}
+            onClick={() => checkForUpdates()}
             disabled={!isElectron || updateState.status === 'checking'}
             className="h-8 px-3 rounded-[4px] bg-white text-slate-950 hover:bg-slate-100 text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-40"
           >
@@ -399,8 +509,112 @@ export default function UpdatesPage() {
         </div>
       </div>
 
+      {/* ── AUTONOMOUS VERSION-LOCKED TIER-GATING HUD ── */}
+      <div className="p-4 rounded-[6px] bg-[#0E131E] border border-cyan-500/20 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-white tracking-tight uppercase">
+                  Version-Locked Tier Maintenance Policy
+                </span>
+                <span className={cn(
+                  'text-[9px] font-mono px-2 py-0.5 rounded-full font-bold uppercase border',
+                  licenseTier === 'elite'
+                    ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                    : licenseTier === 'pro'
+                    ? 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30'
+                    : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                )}>
+                  {licenseTier} Tier
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Baseline Version: <span className="font-mono text-slate-200">{baselineVersion}</span> · Maintenance Window: <span className="text-cyan-300 font-medium">{allowedWindow}</span>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => checkForUpdates('v16.0.0')}
+              className="px-2.5 py-1 text-[11px] font-mono rounded bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/[0.08] transition flex items-center gap-1.5"
+              title="Test tier-gating engine against v16 release manifest"
+            >
+              <Lock size={12} className="text-amber-400" />
+              <span>Simulate v16 Gate</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => checkForUpdates('v17.0.0')}
+              className="px-2.5 py-1 text-[11px] font-mono rounded bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/[0.08] transition flex items-center gap-1.5"
+              title="Test tier-gating engine against v17 release manifest"
+            >
+              <Lock size={12} className="text-red-400" />
+              <span>Simulate v17 Gate</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 pt-1">
+          <div className="p-2.5 rounded bg-black/40 border border-white/[0.06] space-y-0.5">
+            <span className="text-[9px] font-mono text-slate-500 uppercase">Installed Version</span>
+            <p className="text-xs font-mono font-bold text-white">v{currentVersion}</p>
+          </div>
+          <div className="p-2.5 rounded bg-black/40 border border-white/[0.06] space-y-0.5">
+            <span className="text-[9px] font-mono text-slate-500 uppercase">Baseline Installation</span>
+            <p className="text-xs font-mono font-bold text-cyan-300">{baselineVersion}</p>
+          </div>
+          <div className="p-2.5 rounded bg-black/40 border border-white/[0.06] space-y-0.5">
+            <span className="text-[9px] font-mono text-slate-500 uppercase">Active License Tier</span>
+            <p className="text-xs font-mono font-bold text-amber-300 uppercase">{licenseTier}</p>
+          </div>
+          <div className="p-2.5 rounded bg-black/40 border border-white/[0.06] space-y-0.5">
+            <span className="text-[9px] font-mono text-slate-500 uppercase">Max Version Ceiling</span>
+            <p className="text-xs font-mono font-bold text-emerald-400">{maxAllowedCeiling}</p>
+          </div>
+        </div>
+      </div>
+
       {/* ── PRIMARY STATUS RADAR / HERO CARD (Clean #131823, no glowing blur) ── */}
       <div className="rounded-[6px] border border-white/[0.08] bg-[#131823] p-5 md:p-6 transition-colors">
+        {/* 0. GATED STATUS BANNER */}
+        {updateState.status === 'gated' && (
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10 py-1">
+            <div className="flex items-start gap-3.5">
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex-shrink-0">
+                <ShieldAlert size={26} />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold text-amber-300 tracking-tight">
+                    Update v{updateState.version} Gated by License Tier
+                  </h2>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase font-bold">
+                    Ceiling {maxAllowedCeiling}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300">
+                  {gatedDetails.message || `Your current ${licenseTier.toUpperCase()} license supports updates up to ${maxAllowedCeiling}. Upgrade to Elite to unlock this generation.`}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsUpgradeGateOpen(true)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black text-xs font-bold uppercase transition-all shadow-[0_0_20px_rgba(245,158,11,0.25)] shrink-0 cursor-pointer"
+            >
+              <Lock size={13} />
+              <span>Open Upgrade Gate</span>
+            </button>
+          </div>
+        )}
+
         {/* 1. UP TO DATE OR IDLE */}
         {(updateState.status === 'idle' || updateState.status === 'up-to-date') && (
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
@@ -428,7 +642,7 @@ export default function UpdatesPage() {
             </div>
 
             <button
-              onClick={checkForUpdates}
+              onClick={() => checkForUpdates()}
               disabled={!isElectron}
               className="h-8 px-3 rounded-[4px] bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-slate-300 text-xs font-medium transition-colors cursor-pointer flex items-center gap-2 disabled:opacity-40"
             >
@@ -636,7 +850,7 @@ export default function UpdatesPage() {
             </div>
 
             <button
-              onClick={checkForUpdates}
+              onClick={() => checkForUpdates()}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold uppercase transition-all cursor-pointer"
             >
               <RefreshCw size={13} />
@@ -797,6 +1011,21 @@ export default function UpdatesPage() {
           ))}
         </div>
       </div>
+
+      {/* ── VERSION UPGRADE GATE MODAL ── */}
+      <UpdateUpgradeGate
+        isOpen={isUpgradeGateOpen}
+        onClose={() => setIsUpgradeGateOpen(false)}
+        targetVersion={gatedDetails.targetVersion || 'v16.0.0'}
+        baselineVersion={baselineVersion}
+        currentVersion={currentVersion}
+        currentTier={licenseTier}
+        maxAllowedVersion={maxAllowedCeiling}
+        requiredTier={gatedDetails.requiredTier || 'elite'}
+        hwid={hwid}
+        message={gatedDetails.message}
+      />
     </div>
   )
 }
+

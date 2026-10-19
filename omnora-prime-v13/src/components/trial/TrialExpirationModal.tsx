@@ -199,7 +199,7 @@ export function TrialExpirationModal() {
               </div>
               <div>
                 <h2 className="text-xl font-black text-white uppercase tracking-tight">
-                  Your 7-Day Pro Evaluation Has Ended
+                  Your 7-Day Elite Evaluation Has Ended
                 </h2>
                 <p className="text-xs text-slate-400 font-medium mt-0.5">
                   Choose whether to upgrade your factory setup or continue with Free Forever mode.
@@ -225,54 +225,62 @@ export function TrialExpirationModal() {
 
             {/* Free Forever vs Paid Comparison Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs">
-              {/* What Remains Active */}
-              <div className="bg-white/[0.03] border border-white/[0.07] rounded-md p-4 space-y-2.5">
-                <p className="text-[10px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
-                  <CheckCircle2 size={13} />
-                  Free Forever Features (Always Active)
+              {/* Restricted Free Forever */}
+              <div className="bg-amber-500/[0.04] border border-amber-500/20 rounded-md p-4 space-y-2.5">
+                <p className="text-[10px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                  <ShieldAlert size={13} />
+                  Free Forever Strict Operational Limits
                 </p>
                 <ul className="space-y-1.5 text-[11px] text-slate-300">
                   <li className="flex items-start gap-2">
-                    <span className="text-emerald-400 font-bold">✓</span>
-                    <span><strong>POS Counter:</strong> Remains 100% unlocked forever</span>
+                    <span className="text-amber-400 font-bold">⚠</span>
+                    <span><strong>Invoice Limit:</strong> Capped at 25 total invoices maximum</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-emerald-400 font-bold">✓</span>
-                    <span><strong>Data Capacity:</strong> Capped to 200 SKUs &amp; 50 Parties/Ledgers</span>
+                    <span className="text-amber-400 font-bold">⚠</span>
+                    <span><strong>Watermark:</strong> All thermal &amp; A4 bills print with evaluation banner</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-emerald-400 font-bold">✓</span>
-                    <span><strong>Export:</strong> Full PDF invoices and Excel records</span>
+                    <span className="text-amber-400 font-bold">⚠</span>
+                    <span><strong>WhatsApp Alerts:</strong> Daily summaries &amp; customer auto-reminders locked</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-emerald-400 font-bold">✓</span>
-                    <span><strong>Offline Local Engine:</strong> Works with zero internet required</span>
+                    <span className="text-amber-400 font-bold">⚠</span>
+                    <span><strong>Export:</strong> Excel &amp; balance sheet bulk ledger exports locked</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-amber-400 font-bold">⚠</span>
+                    <span><strong>LAN Mesh:</strong> Multi-terminal scanner &amp; mobile syncing disabled</span>
                   </li>
                 </ul>
               </div>
 
-              {/* What Requires License */}
-              <div className="bg-white/[0.02] border border-white/[0.05] rounded-md p-4 space-y-2.5">
-                <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <Lock size={13} className="text-amber-400" />
-                  Locked Premium Modules
+              {/* Unlocked License Tier */}
+              <div className="bg-cyan-500/[0.04] border border-cyan-500/20 rounded-md p-4 space-y-2.5">
+                <p className="text-[10px] font-black uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                  <CheckCircle2 size={13} />
+                  Permanent Unlocked Tier (Pro / Elite)
                 </p>
-                <ul className="space-y-1.5 text-[11px] text-slate-400">
+                <ul className="space-y-1.5 text-[11px] text-slate-200">
                   <li className="flex items-start gap-2">
-                    <CloudOff size={13} className="text-slate-500 shrink-0 mt-0.5" />
-                    <span>Cloud Backup &amp; Automatic Sync locked</span>
+                    <span className="text-cyan-400 font-bold">✓</span>
+                    <span><strong>Unlimited Invoicing:</strong> Zero invoice caps, clean thermal receipts</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Smartphone size={13} className="text-slate-500 shrink-0 mt-0.5" />
-                    <span>Mobile Wi-Fi pairing (&gt;1 device) locked</span>
+                    <span className="text-cyan-400 font-bold">✓</span>
+                    <span><strong>Full Karigar Ledger:</strong> Piece-rate, daily wages, and khata balance</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Building2 size={13} className="text-slate-500 shrink-0 mt-0.5" />
-                    <span>Multi-branch consolidation locked</span>
+                    <span className="text-cyan-400 font-bold">✓</span>
+                    <span><strong>Multi-Terminal Mesh:</strong> Unlimited mobile scanners &amp; POS counters</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Video size={13} className="text-slate-500 shrink-0 mt-0.5" />
-                    <span>CCTV live camera feeds locked</span>
+                    <span className="text-cyan-400 font-bold">✓</span>
+                    <span><strong>Automated WhatsApp:</strong> Instant PDF sharing &amp; 8 PM daily owner briefing</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-cyan-400 font-bold">✓</span>
+                    <span><strong>Hardware License:</strong> Lifetime offline permanent activation</span>
                   </li>
                 </ul>
               </div>

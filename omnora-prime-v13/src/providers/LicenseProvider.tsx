@@ -105,13 +105,13 @@ function normalizeTier(raw: string | undefined | null): Tier {
 }
 
 const DEFAULT_INFO: LicenseInfo = {
-  tier:          'elite',
-  licenseKey:    'NOXIS-ELITE-PERPETUAL-2026',
+  tier:          'free_trial',
+  licenseKey:    null,
   expiresAt:     null,
   issuedAt:      Date.now(),
   businessId:    '00000000-0000-0000-0000-000000000000',
-  trialStatus:   null,
-  trialDaysLeft: 0,
+  trialStatus:   'active',
+  trialDaysLeft: 7,
   graceDaysLeft: 0,
   skuCount:      0,
   partyCount:    0,
@@ -153,7 +153,7 @@ export function LicenseProvider({ children }: { children: React.ReactNode }) {
         setInfo(newInfo);
 
         const zustandTier: 'lite' | 'pro' | 'elite' =
-          tier === 'elite' ? 'elite'
+          tier === 'elite' || tier === 'free_trial' ? 'elite'
           : tier === 'pro' ? 'pro'
           : 'lite';
         setZustandTier(
@@ -167,15 +167,46 @@ export function LicenseProvider({ children }: { children: React.ReactNode }) {
           if (stored) {
             try {
               const parsed = JSON.parse(stored);
+              const mappedTier = normalizeTier(parsed.tier);
               setInfo((prev) => ({
                 ...prev,
-                tier: normalizeTier(parsed.tier),
+                tier: mappedTier,
                 licenseKey: parsed.key ?? null,
                 expiresAt: parsed.expiresAt
                   ? new Date(parsed.expiresAt).getTime()
                   : null,
               }));
+              const zustandTier: 'lite' | 'pro' | 'elite' =
+                mappedTier === 'elite' || mappedTier === 'free_trial' ? 'elite'
+                : mappedTier === 'pro' ? 'pro'
+                : 'lite';
+              setZustandTier(zustandTier, parsed.expiresAt, mappedTier === 'free_trial');
             } catch {}
+          } else {
+            // Fresh client download: Start automatic 7-day Elite trial!
+            let trialStart = Date.now();
+            const storedStart = localStorage.getItem('noxis_trial_start');
+            if (storedStart) {
+              trialStart = parseInt(storedStart, 10);
+            } else {
+              localStorage.setItem('noxis_trial_start', String(trialStart));
+            }
+            const msElapsed = Date.now() - trialStart;
+            const daysLeft = Math.max(0, 7 - Math.floor(msElapsed / (1000 * 60 * 60 * 24)));
+            const isTrialActive = daysLeft > 0;
+            const newInfo: LicenseInfo = {
+              ...DEFAULT_INFO,
+              tier: isTrialActive ? 'free_trial' : 'free',
+              trialStatus: isTrialActive ? 'active' : 'expired',
+              trialDaysLeft: daysLeft,
+              expiresAt: trialStart + 7 * 24 * 60 * 60 * 1000,
+            };
+            setInfo(newInfo);
+            setZustandTier(
+              isTrialActive ? 'elite' : 'lite',
+              new Date(trialStart + 7 * 24 * 60 * 60 * 1000).toISOString(),
+              isTrialActive
+            );
           }
         }
       }

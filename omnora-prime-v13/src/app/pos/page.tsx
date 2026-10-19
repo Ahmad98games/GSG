@@ -88,6 +88,8 @@ export default function POSPage() {
   const [search, setSearch] = useState('')
   const [searchResults, setSearchResults] =
     useState<any[]>([])
+  const [localInventory, setLocalInventory] =
+    useState<any[]>([])
   const [searchLoading, setSearchLoading] =
     useState(false)
   const [completing, setCompleting] =
@@ -109,6 +111,79 @@ export default function POSPage() {
 
   const currency = profile?.base_currency
     || 'PKR'
+
+  // Pre-load and sync local inventory for instant 0ms offline search
+  const loadInventory = useCallback(async () => {
+    const bizId = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null)
+    let cachedList: any[] = []
+
+    if (typeof window !== 'undefined') {
+      const keysToTry = [
+        bizId ? `noxis_cached_skus_${bizId}` : null,
+      ].filter(Boolean) as string[]
+
+      for (const k of keysToTry) {
+        try {
+          const raw = localStorage.getItem(k)
+          if (raw) {
+            const parsed = JSON.parse(raw)
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              cachedList = parsed
+              break
+            }
+          }
+        } catch {}
+      }
+
+      // If still empty, scan any key starting with noxis_cached_skus_
+      if (cachedList.length === 0 && bizId) {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(`noxis_cached_skus_${bizId}`) || '[]')
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            cachedList = parsed
+          }
+        } catch {}
+      }
+    }
+
+    if (cachedList.length > 0) {
+      setLocalInventory(cachedList)
+    }
+
+    // Parallel fetch from Supabase to refresh inventory cache
+    if (bizId) {
+      try {
+        const { data, error } = await supabase
+          .from('skus')
+          .select(`
+            id, name, sku_code, barcode,
+            sale_price, wholesale_price,
+            dealer_price, unit, tax_rate,
+            qty_on_hand, reorder_level, is_active, business_id
+          `)
+          .eq('is_active', true)
+          .eq('business_id', bizId)
+          .order('name')
+          .limit(100)
+
+        if (!error && Array.isArray(data) && data.length > 0) {
+          setLocalInventory(data)
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(`noxis_cached_skus_${bizId}`, JSON.stringify(data))
+          }
+        }
+      } catch (err) {
+        console.warn('[POS] Failed to fetch server SKUs:', err)
+      }
+    }
+  }, [profile?.id, supabase])
+
+  useEffect(() => {
+    loadInventory()
+    const handleUpdate = () => loadInventory()
+    window.addEventListener('noxis:sku_updated', handleUpdate)
+    return () => window.removeEventListener('noxis:sku_updated', handleUpdate)
+  }, [loadInventory])
 
   // Restore cart from draft
   useEffect(() => {
@@ -168,14 +243,15 @@ export default function POSPage() {
     searchRef.current?.focus()
   }, [])
 
-  // Debounced search
+  // Robust debounced search with 0ms local-first lookup
   useEffect(() => {
     clearTimeout(searchTimeout.current)
     const parsedScan = parseScannedPayload(search)
-    const queryTerm = parsedScan.skuCode || parsedScan.cleanCode
+    const queryTerm = (parsedScan.skuCode || parsedScan.cleanCode || search || '').trim()
 
-    if (!queryTerm || !profile?.id) {
+    if (!queryTerm) {
       setSearchResults([])
+      setSearchLoading(false)
       return
     }
 
@@ -186,10 +262,44 @@ export default function POSPage() {
       )
     }
 
-    searchTimeout.current = setTimeout(
-      async () => {
+    const termLower = queryTerm.toLowerCase()
+
+    // 1. Instant 0ms local memory search
+    const localMatches = localInventory.filter(s => {
+      const nameMatch = (s.name || '').toLowerCase().includes(termLower)
+      const skuCodeMatch = (s.sku_code || '').toLowerCase().includes(termLower)
+      const barcodeMatch = (s.barcode || '').toLowerCase().includes(termLower)
+      const categoryMatch = (s.category || '').toLowerCase().includes(termLower)
+      return nameMatch || skuCodeMatch || barcodeMatch || categoryMatch
+    })
+
+    if (localMatches.length > 0) {
+      setSearchResults(localMatches.slice(0, 8))
+      // Exact barcode / sku_code match auto-add
+      const exactMatch = localMatches.find(
+        s => (s.barcode && s.barcode.toLowerCase() === termLower) ||
+             (s.sku_code && s.sku_code.toLowerCase() === termLower)
+      )
+      if (exactMatch && queryTerm.length >= 3) {
+        handleAddItem(exactMatch)
+        setScanFeedback('success')
+        setTimeout(() => setScanFeedback(null), 600)
+        return
+      }
+    }
+
+    // 2. Debounced Remote Search for fresh server inventory
+    searchTimeout.current = setTimeout(async () => {
       setSearchLoading(true)
       try {
+        const bizId = profile?.id
+        if (!bizId) {
+          setSearchLoading(false)
+          return
+        }
+        // Sanitize for PostgREST ILIKE
+        const cleanTerm = queryTerm.replace(/[%_\\]/g, '')
+
         const { data } = await supabase
           .from('skus')
           .select(`
@@ -198,43 +308,39 @@ export default function POSPage() {
             dealer_price, unit, tax_rate,
             qty_on_hand, reorder_level
           `)
-          .eq('business_id', profile.id)
           .eq('is_active', true)
-          .or(
-            `name.ilike.%${queryTerm}%,` +
-            `sku_code.ilike.%${queryTerm}%,` +
-            `barcode.eq.${queryTerm}`
-          )
+          .or(`name.ilike.%${cleanTerm}%,sku_code.ilike.%${cleanTerm}%,barcode.ilike.%${cleanTerm}%`)
           .order('name')
-          .limit(8)
+          .limit(10)
 
-        setSearchResults(data || [])
+        const mergedMap = new Map<string, any>()
+        localMatches.forEach((item: any) => mergedMap.set(item.id, item))
+        ;(data || []).forEach((item: any) => mergedMap.set(item.id, item))
+        const finalResults = Array.from(mergedMap.values()).slice(0, 10)
 
-        // Barcode exact match = auto-add
-        if (data && data.length === 1 &&
-          (data[0].barcode === queryTerm || data[0].sku_code === queryTerm)) {
-          handleAddItem(data[0])
+        setSearchResults(finalResults)
+
+        if (finalResults.length === 1 &&
+          (finalResults[0].barcode === queryTerm || finalResults[0].sku_code === queryTerm)) {
+          handleAddItem(finalResults[0])
           setScanFeedback('success')
-          setTimeout(() =>
-            setScanFeedback(null), 600
-          )
-        } else if (
-          queryTerm.length > 5 &&
-          data?.length === 0
-        ) {
+          setTimeout(() => setScanFeedback(null), 600)
+        } else if (queryTerm.length > 4 && finalResults.length === 0) {
           setScanFeedback('error')
-          setTimeout(() =>
-            setScanFeedback(null), 600
-          )
+          setTimeout(() => setScanFeedback(null), 600)
+        }
+      } catch (err) {
+        console.warn('[POS] Search query error, keeping local matches:', err)
+        if (localMatches.length > 0) {
+          setSearchResults(localMatches.slice(0, 8))
         }
       } finally {
         setSearchLoading(false)
       }
-    }, 200)
+    }, 180)
 
-    return () =>
-      clearTimeout(searchTimeout.current)
-  }, [search, profile?.id, handleAddItem])
+    return () => clearTimeout(searchTimeout.current)
+  }, [search, profile?.id, localInventory, handleAddItem, supabase])
 
   const queryClient = useQueryClient()
   const { currentUser } = useCurrentUser()
@@ -562,9 +668,12 @@ export default function POSPage() {
             return (
               <button
                 key={sku.id}
-                onClick={() =>
-                  !isOut && handleAddItem(sku)}
-                disabled={isOut}
+                onClick={() => {
+                  if (isOut) {
+                    toast('Item added with 0 on-hand stock', { icon: '⚠️' })
+                  }
+                  handleAddItem(sku)
+                }}
                 className={`
                   w-full flex items-center
                   justify-between gap-3
@@ -572,7 +681,7 @@ export default function POSPage() {
                   border-b border-white/4
                   transition-colors
                   ${isOut
-                    ? 'opacity-40 cursor-not-allowed'
+                    ? 'opacity-70 hover:bg-red-500/10 cursor-pointer'
                     : 'hover:bg-white/4 cursor-pointer'}
                 `}
               >
@@ -636,21 +745,62 @@ export default function POSPage() {
             </div>
           )}
 
-          {!search && (
-            <div className="px-4 py-8
-              text-center">
-              <Barcode size={24}
-                className="text-gray-800
-                  mx-auto mb-2" />
-              <p className="text-xs
-                text-gray-700">
-                Type item name or
-                scan barcode
-              </p>
-              <p className="text-[10px]
-                text-gray-800 mt-1">
-                F2 to focus
-              </p>
+          {!search && localInventory.length > 0 && (
+            <div className="py-2">
+              <div className="px-4 py-2 border-b border-white/[0.04] flex items-center justify-between">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-cyan-400 font-bold">
+                  Quick Stock Items ({localInventory.length})
+                </span>
+                <span className="text-[9px] text-gray-500 font-mono">Click to add</span>
+              </div>
+              {localInventory.slice(0, 10).map(sku => {
+                const isLow = sku.qty_on_hand <= (sku.reorder_level || 0)
+                const isOut = sku.qty_on_hand <= 0
+                return (
+                  <button
+                    key={sku.id}
+                    onClick={() => handleAddItem(sku)}
+                    className="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-left border-b border-white/[0.03] hover:bg-white/[0.04] transition-colors cursor-pointer group"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-white group-hover:text-cyan-300 transition-colors truncate">
+                        {sku.name}
+                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[10px] text-gray-500 font-mono">
+                          {sku.sku_code || 'SKU'}
+                        </span>
+                        {isLow && !isOut && (
+                          <span className="text-[8px] font-bold text-amber-400 bg-amber-400/10 px-1 rounded-sm">
+                            LOW
+                          </span>
+                        )}
+                        {isOut && (
+                          <span className="text-[8px] font-bold text-red-400 bg-red-400/10 px-1 rounded-sm">
+                            0 QTY
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-xs font-bold text-[#60A5FA] font-mono">
+                        {formatCurrency(sku.sale_price, currency)}
+                      </p>
+                      <p className="text-[10px] text-gray-500">
+                        {sku.qty_on_hand} {sku.unit || 'pcs'}
+                      </p>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {!search && localInventory.length === 0 && (
+            <div className="px-4 py-8 text-center">
+              <Barcode size={24} className="text-gray-800 mx-auto mb-2" />
+              <p className="text-xs text-gray-700">Type item name or scan barcode</p>
+              <p className="text-[10px] text-gray-800 mt-1">F2 to focus</p>
             </div>
           )}
         </div>

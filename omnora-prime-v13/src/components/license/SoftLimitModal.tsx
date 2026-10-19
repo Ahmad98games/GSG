@@ -20,12 +20,12 @@ export function SoftLimitModal({ isOpen, type, onClose }: SoftLimitModalProps) {
   const isSku = type === 'sku';
 
   const title = isSku 
-    ? "You have 100 items on Free plan" 
-    : "You have 30 party accounts on Free";
+    ? "You have reached the 200 items limit on Free plan" 
+    : "You have reached the 50 party accounts limit on Free plan";
 
   const description = isSku
-    ? "Lite plan allows unlimited items. PKR 25,000/year — less than one employee's monthly wage."
-    : "Upgrade to add unlimited customers and suppliers. PKR 25,000/year — less than one employee's monthly wage.";
+    ? "Free tier includes up to 200 inventory items. Upgrade to Pro or Elite to add unlimited products and batch-tracked inventory."
+    : "Free tier includes up to 50 customer and supplier accounts. Upgrade to Pro or Elite to manage unlimited parties and ledgers.";
 
   const Icon = isSku ? Package : Users;
 

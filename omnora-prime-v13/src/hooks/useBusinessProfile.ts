@@ -100,21 +100,38 @@ export const useBusinessProfile = () => {
             const localData = localRes && localRes.ok ? await localRes.json() : {};
             const configMap = (localData.localConfig || []).reduce((acc: any, c: any) => ({ ...acc, [c.key]: c.value }), {});
             
-            const rawBizId = configMap.business_id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null);
-            const bizId = isUuid(rawBizId) ? rawBizId : DEFAULT_BIZ_ID;
+            let rawBizId = configMap.business_id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null);
+            if (!rawBizId || !isUuid(rawBizId) || rawBizId === DEFAULT_BIZ_ID) {
+              if (typeof window !== 'undefined') {
+                const stored = localStorage.getItem('noxis_business_id');
+                if (stored && isUuid(stored) && stored !== DEFAULT_BIZ_ID) {
+                  rawBizId = stored;
+                } else {
+                  rawBizId = crypto.randomUUID();
+                  try { localStorage.setItem('noxis_business_id', rawBizId); } catch {}
+                }
+              } else {
+                rawBizId = DEFAULT_BIZ_ID;
+              }
+            }
+            const bizId = rawBizId;
             const existing = useBusinessProfileStore.getState().profile || ({} as any);
             const cachedLogo = typeof window !== 'undefined' ? (localStorage.getItem('noxis_logo') || localStorage.getItem('noxis_avatar_url')) : null;
             const resolvedLogo = configMap.logo_url || configMap.avatar_url || cachedLogo || existing.logo_url || existing.avatar_url || '';
             const resolvedAvatar = configMap.avatar_url || resolvedLogo || existing.avatar_url || '';
 
+            // Clean defaults: a fresh installation should have empty name until user completes onboarding
+            const resolvedBusinessName = configMap.business_name || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_name') : null) || existing.business_name || '';
+            const resolvedOwnerName = configMap.owner_name || (typeof window !== 'undefined' ? localStorage.getItem('noxis_owner_name') : null) || existing.owner_name || '';
+
             setProfile({
               id: bizId,
-              business_name: configMap.business_name || existing.business_name || 'Noxis Business',
-              owner_name: configMap.owner_name || existing.owner_name || 'Noxis Owner',
-              tier: configMap.tier || existing.tier || 'lite',
-              industry_type: configMap.industry_type || existing.industry_type || 'general',
-              industry_key: configMap.industry_key || existing.industry_key || 'general',
-              role: configMap.role || existing.role || 'retailer',
+              business_name: resolvedBusinessName,
+              owner_name: resolvedOwnerName,
+              tier: configMap.tier || existing.tier || 'elite',
+              industry_type: configMap.industry_type || existing.industry_type || 'textile',
+              industry_key: configMap.industry_key || existing.industry_key || 'textile',
+              role: configMap.role || existing.role || 'manufacturer',
               currency: configMap.currency || existing.currency || 'PKR',
               region: configMap.region || existing.region || 'south_asian',
               country_code: configMap.country_code || existing.country_code || 'PK',
@@ -129,15 +146,26 @@ export const useBusinessProfile = () => {
               avatar_last_changed: configMap.avatar_last_changed || existing.avatar_last_changed || '',
               preferred_locale: configMap.preferred_locale || existing.preferred_locale || 'en',
               visual_theme: configMap.visual_theme || existing.visual_theme,
+              onboarding_done: Boolean(resolvedBusinessName && (typeof window !== 'undefined' && localStorage.getItem('noxis_onboarded') === 'true')),
               industry_last_changed_at: configMap.industry_last_changed_at || (typeof window !== 'undefined' ? localStorage.getItem('noxis_industry_last_changed_at') : null) || existing.industry_last_changed_at || undefined,
             } as any);
           } catch {
+            let fallbackBizId = typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null;
+            if (!fallbackBizId || !isUuid(fallbackBizId) || fallbackBizId === DEFAULT_BIZ_ID) {
+              if (typeof window !== 'undefined') {
+                fallbackBizId = crypto.randomUUID();
+                try { localStorage.setItem('noxis_business_id', fallbackBizId); } catch {}
+              } else {
+                fallbackBizId = DEFAULT_BIZ_ID;
+              }
+            }
             const existing = useBusinessProfileStore.getState().profile || ({} as any);
             setProfile({ 
-              id: DEFAULT_BIZ_ID, 
-              business_name: existing.business_name || 'Noxis Business', 
-              role: 'retailer', 
+              id: fallbackBizId, 
+              business_name: existing.business_name || '', 
+              role: 'manufacturer', 
               currency: 'PKR',
+              onboarding_done: Boolean(existing.business_name && (typeof window !== 'undefined' && localStorage.getItem('noxis_onboarded') === 'true')),
               logo_url: existing.logo_url || (typeof window !== 'undefined' ? localStorage.getItem('noxis_logo') : '') || '',
               avatar_url: existing.avatar_url || '',
             } as any);
@@ -166,25 +194,32 @@ export const useBusinessProfile = () => {
               const localData = localRes && localRes.ok ? await localRes.json() : {};
               const configMap = (localData.localConfig || []).reduce((acc: any, c: any) => ({ ...acc, [c.key]: c.value }), {});
               
-              const bizId = isUuid(configMap.business_id) ? configMap.business_id : DEFAULT_BIZ_ID;
+              let bizId = configMap.business_id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null);
+              if (!bizId || !isUuid(bizId) || bizId === DEFAULT_BIZ_ID) {
+                bizId = (typeof window !== 'undefined' && localStorage.getItem('noxis_business_id')) || crypto.randomUUID();
+                if (typeof window !== 'undefined') localStorage.setItem('noxis_business_id', bizId);
+              }
               const existing = useBusinessProfileStore.getState().profile || ({} as any);
               const cachedLogo = typeof window !== 'undefined' ? (localStorage.getItem('noxis_logo') || localStorage.getItem('noxis_avatar_url')) : null;
               const resolvedLogo = configMap.logo_url || configMap.avatar_url || cachedLogo || existing.logo_url || existing.avatar_url || '';
               const resolvedAvatar = configMap.avatar_url || resolvedLogo || existing.avatar_url || '';
 
+              const resolvedBusinessName = configMap.business_name || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_name') : null) || existing.business_name || '';
+              const resolvedOwnerName = configMap.owner_name || (typeof window !== 'undefined' ? localStorage.getItem('noxis_owner_name') : null) || existing.owner_name || '';
+
               const fallbackProfile: any = {
                 id: bizId,
-                business_name: configMap.business_name || existing.business_name || 'Noxis Business',
-                owner_name: configMap.owner_name || existing.owner_name || 'Noxis Owner',
+                business_name: resolvedBusinessName,
+                owner_name: resolvedOwnerName,
                 avatar_type: (configMap.avatar_type || existing.avatar_type || 'custom') as any,
                 avatar_preset_id: Number(configMap.avatar_preset_id || 1),
                 logo_url: resolvedLogo,
                 avatar_url: resolvedAvatar,
                 avatar_last_changed: configMap.avatar_last_changed || existing.avatar_last_changed || '',
-                tier: configMap.tier || existing.tier || 'lite',
-                industry_type: configMap.industry_type || existing.industry_type || 'general',
-                industry_key: configMap.industry_key || existing.industry_key || 'general',
-                role: configMap.role || existing.role || 'retailer',
+                tier: configMap.tier || existing.tier || 'elite',
+                industry_type: configMap.industry_type || existing.industry_type || 'textile',
+                industry_key: configMap.industry_key || existing.industry_key || 'textile',
+                role: configMap.role || existing.role || 'manufacturer',
                 currency: configMap.currency || existing.currency || 'PKR',
                 region: configMap.region || existing.region || 'south_asian',
                 country_code: configMap.country_code || existing.country_code || 'PK',
@@ -193,11 +228,13 @@ export const useBusinessProfile = () => {
                 tax_rate: Number(configMap.tax_rate ?? existing.tax_rate ?? 0),
                 address: configMap.address || existing.address || '',
                 preferred_locale: configMap.preferred_locale || existing.preferred_locale || 'en',
+                onboarding_done: Boolean(resolvedBusinessName && (typeof window !== 'undefined' && localStorage.getItem('noxis_onboarded') === 'true')),
                 industry_last_changed_at: configMap.industry_last_changed_at || (typeof window !== 'undefined' ? localStorage.getItem('noxis_industry_last_changed_at') : null) || existing.industry_last_changed_at || undefined,
               };
               setProfile(fallbackProfile);
             } catch (localErr) {
-              setProfile({ id: DEFAULT_BIZ_ID, business_name: 'Noxis Business', role: 'retailer', currency: 'PKR' } as any);
+              const freshId = (typeof window !== 'undefined' && localStorage.getItem('noxis_business_id')) || crypto.randomUUID();
+              setProfile({ id: freshId, business_name: '', role: 'manufacturer', currency: 'PKR', onboarding_done: false } as any);
             }
           }
         } else {

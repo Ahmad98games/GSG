@@ -60,22 +60,67 @@ export default function DispatchCenterPage() {
   const loadOrders = async () => {
     if (!profile?.id) return;
     try {
-      const { data, error } = await supabase
+      const { data: rawOrders, error } = await supabase
         .from('dispatch_orders')
-        .select(`
-          *,
-          party:parties(id, name, address),
-          invoice:invoices(
-            id, invoice_no, total,
-            items:invoice_items(qty, unit, description)
-          )
-        `)
+        .select('*')
         .eq('business_id', profile.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setOrders(data || []);
-    } catch (err) {
+
+      if (!rawOrders || rawOrders.length === 0) {
+        setOrders([]);
+        return;
+      }
+
+      // Collect IDs for batch hydration
+      const invoiceIds = Array.from(new Set(rawOrders.map((o: any) => o.invoice_id).filter(Boolean)));
+      const partyIds = Array.from(new Set(rawOrders.map((o: any) => o.party_id).filter(Boolean)));
+
+      // Fetch invoices
+      let invoicesMap: Record<string, any> = {};
+      if (invoiceIds.length > 0) {
+        const { data: invData } = await supabase
+          .from('invoices')
+          .select('id, invoice_no, total, party_id, items:invoice_items(qty, unit, description)')
+          .in('id', invoiceIds);
+        if (invData) {
+          invData.forEach((inv: any) => {
+            invoicesMap[inv.id] = inv;
+            if (inv.party_id && !partyIds.includes(inv.party_id)) {
+              partyIds.push(inv.party_id);
+            }
+          });
+        }
+      }
+
+      // Fetch parties
+      let partiesMap: Record<string, any> = {};
+      if (partyIds.length > 0) {
+        const { data: partyData } = await supabase
+          .from('parties')
+          .select('id, name, address')
+          .in('id', partyIds);
+        if (partyData) {
+          partyData.forEach((p: any) => {
+            partiesMap[p.id] = p;
+          });
+        }
+      }
+
+      // Assemble joined orders
+      const hydrated = rawOrders.map((order: any) => {
+        const inv = invoicesMap[order.invoice_id] || null;
+        const party = partiesMap[order.party_id] || (inv ? partiesMap[inv.party_id] : null) || null;
+        return {
+          ...order,
+          invoice: inv,
+          party: party,
+        };
+      });
+
+      setOrders(hydrated);
+    } catch (err: any) {
       console.error('[Dispatch]', err);
     } finally {
       setLoading(false);
@@ -107,11 +152,18 @@ export default function DispatchCenterPage() {
     return orders.filter(order => {
       const partyName = order.party?.name || "";
       const invNo = order.invoice?.invoice_no || "";
-      const matchesSearch = invNo.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            partyName.toLowerCase().includes(searchTerm.toLowerCase());
+      const driver = order.driver_name || "";
+      const vehicle = order.vehicle_number || "";
+      const search = searchTerm.trim().toLowerCase();
+
+      const matchesSearch = !search || 
+                            invNo.toLowerCase().includes(search) || 
+                            partyName.toLowerCase().includes(search) ||
+                            driver.toLowerCase().includes(search) ||
+                            vehicle.toLowerCase().includes(search);
       
       const matchesStatus = statusFilter === "All" || statusFilter === "All Status" || 
-                            order.status.toLowerCase() === statusFilter.toLowerCase() ||
+                            order.status?.toLowerCase() === statusFilter.toLowerCase() ||
                             (statusFilter === "Dispatched" && order.status === "out_for_delivery");
       return matchesSearch && matchesStatus;
     });
@@ -381,6 +433,10 @@ export default function DispatchCenterPage() {
                 <button
                   onClick={async () => {
                     if (!profile?.id) return;
+                    if (!selectedInvoice) {
+                      toast.warning('Please select an invoice or order to dispatch.');
+                      return;
+                    }
                     setSaving(true);
                     try {
                       const { error } = await supabase
@@ -401,7 +457,7 @@ export default function DispatchCenterPage() {
                       setDriverName('');
                       setVehicleNum('');
                       setSelectedInvoice(null);
-                      loadOrders();
+                      await loadOrders();
                     } catch (err: any) {
                       toast.error(humanizeError(err, 'create dispatch order'));
                     } finally {

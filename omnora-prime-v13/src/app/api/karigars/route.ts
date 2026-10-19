@@ -15,9 +15,67 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const businessId = searchParams.get('business_id');
+    const karigarId = searchParams.get('id') || searchParams.get('karigar_id');
 
-    // 1. Try local SQLite first
     const sqlite = (db as any).$client;
+
+    // Single Karigar Detail Query
+    if (karigarId) {
+      let karigarRow: any = null;
+      let attendanceRows: any[] = [];
+      let productionRows: any[] = [];
+      let advanceRows: any[] = [];
+
+      if (sqlite) {
+        try {
+          karigarRow = sqlite.prepare('SELECT * FROM karigars WHERE id = ?').get(karigarId);
+          if (karigarRow) {
+            attendanceRows = sqlite.prepare(`
+              SELECT id, business_id, karigar_id, attendance_date as log_date, status, 8 as shift_hours, 0 as overtime_hrs, notes
+              FROM attendance_logs 
+              WHERE karigar_id = ? 
+              ORDER BY attendance_date DESC LIMIT 50
+            `).all(karigarId) || [];
+
+            productionRows = sqlite.prepare(`
+              SELECT id, business_id, karigar_id, log_date, units_produced as qty_produced, grade as quality_grade, earnings as effective_earning, notes
+              FROM karigar_production_logs 
+              WHERE karigar_id = ? 
+              ORDER BY log_date DESC LIMIT 50
+            `).all(karigarId) || [];
+
+            advanceRows = sqlite.prepare(`
+              SELECT id, business_id, karigar_id, amount, transaction_date as advance_date, description as reason, 'approved' as status
+              FROM peshgi_transactions 
+              WHERE karigar_id = ? 
+              ORDER BY transaction_date DESC LIMIT 50
+            `).all(karigarId) || [];
+          }
+        } catch (sqErr: any) {
+          console.warn('[API Karigars] Local SQLite single worker query error:', sqErr.message);
+        }
+      }
+
+      if (!karigarRow) {
+        try {
+          const { data: supaKar } = await supabase
+            .from('karigars')
+            .select('*, karigar_grades(grade_name)')
+            .eq('id', karigarId)
+            .maybeSingle();
+          if (supaKar) karigarRow = supaKar;
+        } catch {}
+      }
+
+      return NextResponse.json({
+        data: karigarRow,
+        attendance: attendanceRows,
+        production: productionRows,
+        advances: advanceRows
+      });
+    }
+
+    // 1. Try local SQLite first for list
     if (sqlite) {
       try {
         const localRows = sqlite.prepare(`

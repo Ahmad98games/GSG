@@ -85,6 +85,12 @@ exports.getExitFlag = getExitFlag;
 exports.setExitFlag = setExitFlag;
 exports.getLastSeenVersion = getLastSeenVersion;
 exports.setLastSeenVersion = setLastSeenVersion;
+exports.getBaselineInstallationVersion = getBaselineInstallationVersion;
+exports.setBaselineInstallationVersion = setBaselineInstallationVersion;
+exports.getBaselineTier = getBaselineTier;
+exports.setBaselineTier = setBaselineTier;
+exports.getInstallationHWID = getInstallationHWID;
+exports.setInstallationHWID = setInstallationHWID;
 const electron_store_1 = __importDefault(require("electron-store"));
 const crypto = __importStar(require("crypto"));
 const os = __importStar(require("os"));
@@ -146,6 +152,10 @@ const store = new electron_store_1.default({
         trial_completed: false,
         // License
         license_payload: '',
+        // Baseline Version Lock & Telemetry
+        baseline_installation_version: '',
+        baseline_tier: 'elite',
+        installation_hwid: '',
         // Power-cut
         exit_flag: 'clean',
     },
@@ -229,14 +239,23 @@ function clearLockAttempts() {
     store.set('lockedUntil', 0);
 }
 function saveLastRoute(route) {
-    if (route.includes('/login') ||
+    if (!route ||
+        route === '/' ||
+        route === '' ||
+        route === '/index.html' ||
+        route.includes('/login') ||
         route.includes('/setup') ||
-        route.includes('/lock'))
+        route.includes('/lock') ||
+        route.includes('/download'))
         return;
     store.set('lastRoute', route);
 }
 function getLastRoute() {
-    return store.get('lastRoute') || '/dashboard';
+    const r = store.get('lastRoute');
+    if (!r || r === '/' || r === '/index.html' || r.includes('/login') || r.includes('/lock')) {
+        return '/dashboard';
+    }
+    return r;
 }
 function saveLastActive() {
     store.set('lastActiveAt', Date.now());
@@ -357,4 +376,23 @@ function getLastSeenVersion() {
 }
 function setLastSeenVersion(ver) {
     store.set('lastSeenVersion', ver);
+}
+// ── BASELINE VERSION LOCK & TIER GATING ──
+function getBaselineInstallationVersion() {
+    return store.get('baseline_installation_version') || '';
+}
+function setBaselineInstallationVersion(version) {
+    store.set('baseline_installation_version', version);
+}
+function getBaselineTier() {
+    return store.get('baseline_tier') || 'elite';
+}
+function setBaselineTier(tier) {
+    store.set('baseline_tier', tier);
+}
+function getInstallationHWID() {
+    return store.get('installation_hwid') || '';
+}
+function setInstallationHWID(hwid) {
+    store.set('installation_hwid', hwid);
 }

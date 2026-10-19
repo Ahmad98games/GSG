@@ -9,7 +9,8 @@ import { createClient } from "@/lib/supabase/client";
 import { 
   Plus, Trash2, Save, ShoppingCart, 
   Search, Calendar, Clock, AlertTriangle,
-  ChevronDown, User, FileText, CheckCircle2
+  ChevronDown, User, FileText, CheckCircle2,
+  Loader2
 } from "lucide-react";
 import { AddPartyModal } from "@/components/parties/AddPartyModal";
 import { motion, AnimatePresence } from "framer-motion";
@@ -46,6 +47,7 @@ export default function NewPurchaseOrder() {
   const [isSearchingSkus, setIsSearchingSkus] = useState(false);
   const [skuSearchResults, setSkuSearchResults] = useState<any[]>([]);
   const [skuSearchQuery, setSkuSearchQuery] = useState("");
+  const [activeSearchIndex, setActiveSearchIndex] = useState<number | null>(null);
 
   const DRAFT_KEY = 'purchase-new-po';
   const draftData = { selectedSupplierId, expectedBy, items, notes };
@@ -127,30 +129,55 @@ export default function NewPurchaseOrder() {
     setItems(items.filter((_, i) => i !== index));
   };
 
-  const searchSkus = async (query: string) => {
-    setSkuSearchQuery(query);
-    if (query.length < 2) {
-      setSkuSearchResults([]);
-      return;
+  const searchSkus = async (query: string, rowIndex?: number) => {
+    if (rowIndex !== undefined) {
+      setActiveSearchIndex(rowIndex);
     }
+    setSkuSearchQuery(query);
+    const clean = query?.trim() || "";
     setIsSearchingSkus(true);
-    const { data } = await supabase
-      .from('skus')
-      .select('*')
-      .ilike('name', `%${query}%`)
-      .limit(5);
-    setSkuSearchResults(data || []);
-    setIsSearchingSkus(false);
+    try {
+      let q = supabase
+        .from('skus')
+        .select('*');
+
+      if (persona?.id) {
+        q = q.eq('business_id', persona.id);
+      }
+
+      if (clean) {
+        q = q.or(`sku_code.ilike.%${clean}%,name.ilike.%${clean}%`);
+      }
+
+      const { data, error } = await q.limit(10);
+      if (!error && data && data.length > 0) {
+        setSkuSearchResults(data);
+      } else {
+        // Fallback without business_id if scoped query returned nothing
+        let fb = supabase.from('skus').select('*');
+        if (clean) {
+          fb = fb.or(`sku_code.ilike.%${clean}%,name.ilike.%${clean}%`);
+        }
+        const { data: fbData } = await fb.limit(10);
+        setSkuSearchResults(fbData || []);
+      }
+    } catch (err) {
+      console.error('Failed to search SKUs:', err);
+      setSkuSearchResults([]);
+    } finally {
+      setIsSearchingSkus(false);
+    }
   };
 
   const selectSku = (index: number, sku: any) => {
     updateItem(index, 'sku_id', sku.id);
-    updateItem(index, 'sku_code', sku.sku_code);
-    updateItem(index, 'description', sku.name);
+    updateItem(index, 'sku_code', sku.sku_code || '');
+    updateItem(index, 'description', sku.name || sku.sku_code);
     updateItem(index, 'unit', sku.unit || 'unit');
     updateItem(index, 'unit_cost', sku.cost_price || 0);
     setSkuSearchResults([]);
     setSkuSearchQuery("");
+    setActiveSearchIndex(null);
   };
 
   const handleSave = async (status: 'draft' | 'sent') => {
@@ -312,13 +339,14 @@ export default function NewPurchaseOrder() {
             )}
           </section>
 
-          <section className="bg-surface border border-white/5 overflow-hidden">
+          <section className="bg-surface border border-white/5 overflow-visible">
             <div className="p-6 border-b border-white/5 flex items-center justify-between bg-onyx/30">
               <h3 className="text-[10px] uppercase tracking-widest text-gray-500 font-bold flex items-center">
                 <FileText size={12} className="mr-2" />
                 <span>Line Items</span>
               </h3>
               <button 
+                type="button"
                 onClick={addItem}
                 className="flex items-center space-x-1 text-[10px] font-bold text-electric-blue uppercase tracking-widest hover:text-white transition-colors"
               >
@@ -346,34 +374,84 @@ export default function NewPurchaseOrder() {
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 10 }}
-                      className="border-b border-white/5 hover:bg-white/[0.01] transition-colors"
+                      className="border-b border-white/5 hover:bg-white/[0.01] transition-colors relative"
                     >
                       <td className="px-6 py-4 relative">
                         <div className="space-y-1">
-                          <input 
-                            className="bg-transparent text-xs font-bold text-white w-full outline-none focus:border-b border-electric-blue"
-                            placeholder="Type to search SKU..."
-                            value={item.description}
-                            onChange={(e) => {
-                              updateItem(index, 'description', e.target.value);
-                              searchSkus(e.target.value);
-                            }}
-                          />
-                          {item.sku_code && <p className="text-[10px] font-mono text-gray-500">{item.sku_code}</p>}
+                          <div className="flex items-center gap-1.5 border-b border-white/10 focus-within:border-cyan-400 transition-colors pb-1">
+                            <input 
+                              className="bg-transparent text-xs font-bold text-white w-full outline-none placeholder:text-gray-600"
+                              placeholder="Type to search SKU or name..."
+                              value={item.description}
+                              onFocus={() => {
+                                searchSkus(item.description || item.sku_code || "", index);
+                              }}
+                              onBlur={() => {
+                                setTimeout(() => {
+                                  setActiveSearchIndex(prev => prev === index ? null : prev);
+                                }, 250);
+                              }}
+                              onChange={(e) => {
+                                updateItem(index, 'description', e.target.value);
+                                searchSkus(e.target.value, index);
+                              }}
+                            />
+                            <button
+                              type="button"
+                              title="Browse all SKUs"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                searchSkus("", index);
+                              }}
+                              className="text-gray-500 hover:text-cyan-400 transition-colors p-1"
+                            >
+                              <Search size={13} />
+                            </button>
+                          </div>
+                          {item.sku_code && (
+                            <p className="text-[10px] font-mono text-cyan-400 flex items-center gap-1.5">
+                              <span className="opacity-60">SKU:</span> {item.sku_code}
+                            </p>
+                          )}
                         </div>
                         {/* SKU Search Dropdown */}
-                        {skuSearchQuery && skuSearchResults.length > 0 && (
-                          <div className="absolute left-6 top-full z-50 bg-surface border border-white/10 shadow-2xl min-w-[200px]">
-                            {skuSearchResults.map(sku => (
-                              <button 
-                                key={sku.id}
-                                onClick={() => selectSku(index, sku)}
-                                className="w-full text-left px-4 py-2 text-xs hover:bg-electric-blue/10 border-b border-white/5 flex flex-col"
-                              >
-                                <span className="font-bold">{sku.name}</span>
-                                <span className="text-[10px] text-gray-500 font-mono">{sku.sku_code} | {fmt(sku.cost_price)}</span>
-                              </button>
-                            ))}
+                        {activeSearchIndex === index && (
+                          <div className="absolute left-6 top-[calc(100%-4px)] z-[9999] bg-[#0E1217] border border-cyan-500/30 rounded-md shadow-[0_10px_35px_rgba(0,0,0,0.8)] min-w-[280px] max-w-[360px] max-h-64 overflow-y-auto backdrop-blur-md">
+                            <div className="px-3 py-1.5 bg-white/5 border-b border-white/5 flex items-center justify-between text-[9px] uppercase tracking-wider text-gray-400 font-bold">
+                              <span>Select SKU Catalog</span>
+                              {isSearchingSkus && <Loader2 size={10} className="animate-spin text-cyan-400" />}
+                            </div>
+                            {isSearchingSkus && skuSearchResults.length === 0 ? (
+                              <div className="p-3 text-xs text-gray-400 flex items-center gap-2">
+                                <Loader2 size={12} className="animate-spin text-cyan-400" />
+                                <span>Searching SKUs...</span>
+                              </div>
+                            ) : skuSearchResults.length === 0 ? (
+                              <div className="p-3 text-xs text-gray-400">
+                                No SKUs found matching "{skuSearchQuery}".
+                              </div>
+                            ) : (
+                              skuSearchResults.map(sku => (
+                                <button 
+                                  key={sku.id}
+                                  type="button"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    selectSku(index, sku);
+                                  }}
+                                  className="w-full text-left px-3 py-2 text-xs hover:bg-cyan-500/10 hover:border-l-2 hover:border-cyan-400 border-b border-white/5 flex flex-col transition-colors cursor-pointer"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-bold text-white truncate mr-2">{sku.name}</span>
+                                    <span className="font-mono text-cyan-400 text-[11px] font-semibold whitespace-nowrap">{fmt(sku.cost_price || 0)}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between text-[10px] text-gray-400 font-mono mt-0.5">
+                                    <span>{sku.sku_code || '—'}</span>
+                                    <span className="uppercase text-[9px] bg-white/5 px-1.5 py-0.2 rounded text-gray-300">{sku.unit || 'unit'}</span>
+                                  </div>
+                                </button>
+                              ))
+                            )}
                           </div>
                         )}
                       </td>

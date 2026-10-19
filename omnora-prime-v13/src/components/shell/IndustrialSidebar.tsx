@@ -476,21 +476,12 @@ export default React.memo(function IndustrialSidebar() {
             }}
           >
             <div className="flex items-center gap-2">
-              <div 
-                className="w-[18px] h-[18px] rounded-[3px] flex items-center justify-center flex-shrink-0"
-                style={{
-                  backgroundColor: 'var(--color-input-bg, rgba(255,255,255,0.08))',
-                  borderColor: 'var(--color-card-border, rgba(255,255,255,0.12))',
-                  borderWidth: '1px',
-                  borderStyle: 'solid'
-                }}
-              >
-                <span 
-                  className="text-[10px] font-mono font-semibold"
-                  style={{ color: 'var(--color-text, #cbd5e1)' }}
-                >
-                  N
-                </span>
+              <div className="w-[18px] h-[18px] flex items-center justify-center flex-shrink-0">
+                <img 
+                  src="/logos/noxis.png" 
+                  alt="Noxis Hub" 
+                  className="w-[18px] h-[18px] object-contain select-none pointer-events-none" 
+                />
               </div>
               {!isCollapsed && (
                 <div className="flex items-center gap-1.5">

@@ -156,6 +156,12 @@ export const SKUFormModal: React.FC<SKUFormModalProps> = ({
       return
     }
 
+    // Enforce Free Tier hard-cap: 200 items maximum
+    if (!initialData?.id && atLimit('max_skus')) {
+      setShowSoftLimit(true)
+      return
+    }
+
     setSaving(true)
     try {
       const targetSkuId = initialData?.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-4000-8000-' + Date.now().toString(16).padStart(12, '0'))
@@ -239,6 +245,27 @@ export const SKUFormModal: React.FC<SKUFormModalProps> = ({
           throw error
         }
         toast.success('Item created successfully')
+      }
+
+      // Sync into local storage caches for instant 0ms offline POS and inventory search
+      if (typeof window !== 'undefined') {
+        const savedItem = {
+          ...payload,
+          id: targetSkuId,
+          created_at: initialData?.created_at || new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+        const cacheKeys = [
+          bizId ? `noxis_cached_skus_${bizId}` : null,
+        ].filter(Boolean) as string[]
+        cacheKeys.forEach(k => {
+          try {
+            const existing = JSON.parse(localStorage.getItem(k) || '[]')
+            const filtered = Array.isArray(existing) ? existing.filter((s: any) => s.id !== targetSkuId) : []
+            localStorage.setItem(k, JSON.stringify([savedItem, ...filtered]))
+          } catch {}
+        })
+        window.dispatchEvent(new CustomEvent('noxis:sku_updated', { detail: savedItem }))
       }
 
       onSuccess?.()

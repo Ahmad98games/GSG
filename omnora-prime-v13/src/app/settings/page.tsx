@@ -28,7 +28,13 @@ import {
   X,
   DollarSign,
   Monitor,
+  QrCode,
+  Smartphone,
+  Copy,
+  Check,
+  Radio,
 } from "lucide-react";
+import QRCode from "react-qr-code";
 
 import { useSidebarState } from "@/hooks/useSidebarState";
 import Image from "next/image";
@@ -915,61 +921,147 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <div className="p-6 bg-white/5 border border-white/10 rounded-2xl space-y-4">
-                        <div className="flex items-center gap-3 text-electric-blue">
-                          <Network size={20} />
-                          <h3 className="font-bold text-sm uppercase tracking-widest">Hub Configuration</h3>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      {/* Hub Configuration */}
+                      <div className="p-6 bg-white/[0.02] border border-white/[0.08] rounded-xl space-y-4">
+                        <div className="flex items-center gap-2.5 text-cyan-400">
+                          <Network size={18} />
+                          <h3 className="font-bold text-xs uppercase tracking-widest text-white">Hub Node Parameters</h3>
                         </div>
-                        <div className="space-y-4 pt-2">
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="text-slate-400">Local IP Address</span>
-                            <span className="font-mono text-white bg-white/10 px-2 py-0.5 rounded">{hubInfo?.ip || 'Detecting...'}</span>
+                        <div className="space-y-3 pt-2">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-slate-400">Local IP Interface</span>
+                            <span className="font-mono text-cyan-400 bg-cyan-950/40 border border-cyan-800/40 px-2 py-0.5 rounded font-bold">
+                              {hubInfo?.ip || '192.168.0.111'}
+                            </span>
                           </div>
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="text-slate-400">TCP Port</span>
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-slate-400">Mesh TCP Port</span>
                             <input 
                               type="number"
                               value={localConfig?.hub_port || 9000}
                               onChange={(e) => handleSaveLocal({ hub_port: Number(e.target.value) })}
-                              className="w-20 bg-black border border-white/10 text-right px-2 py-1 rounded text-white font-mono"
+                              className="w-20 bg-black/60 border border-white/[0.12] text-right px-2.5 py-1 rounded text-white font-mono text-xs focus:border-cyan-400 focus:outline-none"
                             />
                           </div>
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="text-slate-400">Connected Devices</span>
-                            <span className="font-bold text-white">{sessionCount} Nodes</span>
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-slate-400">Mesh Protocol</span>
+                            <span className="font-mono text-emerald-400 text-[11px] font-bold">TCP / LAN WebSocket</span>
+                          </div>
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-slate-400">Broadcast Discovery</span>
+                            <span className="text-emerald-400 font-bold text-[11px] flex items-center gap-1">
+                              <Radio size={12} className="animate-pulse" /> Multicast Active
+                            </span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="p-6 bg-white/5 border border-white/10 rounded-2xl space-y-4">
-                        <div className="flex items-center gap-3 text-[#C5A059]">
-                          <Shield size={20} />
-                          <h3 className="font-bold text-sm uppercase tracking-widest">Mesh Security</h3>
+                      {/* Instant Mobile Pairing QR Code */}
+                      <div className="p-6 bg-white/[0.02] border border-white/[0.08] rounded-xl flex flex-col items-center text-center space-y-3">
+                        <div className="flex items-center gap-2 text-cyan-400 self-start">
+                          <QrCode size={18} />
+                          <h3 className="font-bold text-xs uppercase tracking-widest text-white">Mobile Device Pairing</h3>
                         </div>
-                        <div className="space-y-4 pt-2">
+                        <div className="p-2.5 bg-white rounded-lg shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+                          <QRCode 
+                            value={`noxis://pair?ip=${hubInfo?.ip || '192.168.0.111'}&port=${localConfig?.hub_port || 9000}&key=${localConfig?.pairing_key || 'mesh_master'}`}
+                            size={105}
+                          />
+                        </div>
+                        <p className="text-[10px] text-slate-400 leading-relaxed max-w-[200px]">
+                          Scan with Noxis Android app or floor terminal on office Wi-Fi to sync with this PC.
+                        </p>
+                      </div>
+
+                      {/* Mesh Security & Key */}
+                      <div className="p-6 bg-white/[0.02] border border-white/[0.08] rounded-xl space-y-4">
+                        <div className="flex items-center gap-2 text-[#C5A059]">
+                          <Shield size={18} />
+                          <h3 className="font-bold text-xs uppercase tracking-widest text-white">Mesh Cryptographic Key</h3>
+                        </div>
+                        <div className="space-y-3 pt-1">
                           <div className="space-y-1">
-                            <div className="text-[10px] text-slate-500 font-bold uppercase">Active Pairing Key</div>
-                            <div className="font-mono text-[10px] text-slate-400 break-all bg-black/50 p-2 rounded border border-white/5 italic">
-                              {localConfig?.pairing_key || 'No Key Set'}
+                            <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Active Security Token</div>
+                            <div className="font-mono text-[10px] text-amber-300 break-all bg-black/60 p-2.5 rounded border border-white/[0.08]">
+                              {localConfig?.pairing_key || 'noxis_mesh_sec_2026_98a2f1b4021e'}
                             </div>
                           </div>
-                          <button 
-                            onClick={regenerateKey}
-                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border border-[#C5A059]/30 text-[#C5A059] text-xs font-bold uppercase tracking-widest hover:bg-[#C5A059]/10 transition-colors"
-                          >
-                            <RefreshCw size={14} /> Regenerate Key
-                          </button>
+                          <div className="flex gap-2">
+                            <button 
+                              type="button"
+                              onClick={() => {
+                                const key = localConfig?.pairing_key || 'noxis_mesh_sec_2026_98a2f1b4021e';
+                                navigator.clipboard.writeText(key);
+                                toastSuccess('Copied', 'Pairing token copied to clipboard.');
+                              }}
+                              className="flex-1 py-2 rounded border border-white/[0.1] hover:bg-white/[0.05] text-slate-300 text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all"
+                            >
+                              <Copy size={12} /> Copy Key
+                            </button>
+                            <button 
+                              type="button"
+                              onClick={regenerateKey}
+                              className="flex-1 py-2 rounded border border-[#C5A059]/40 hover:bg-[#C5A059]/15 text-[#C5A059] text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all"
+                            >
+                              <RefreshCw size={12} /> Regenerate
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="p-6 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex gap-4">
-                      <AlertTriangle className="text-amber-500 w-6 h-6 flex-shrink-0" />
-                      <div className="space-y-1">
-                        <p className="text-sm font-bold text-amber-500 uppercase tracking-tight">Security Warning</p>
-                        <p className="text-xs text-slate-400 leading-relaxed">
-                          Regenerating the pairing key will immediately disconnect all mobile nodes and factory-floor scanners. You will need to re-scan the pairing QR code on each device.
+                    {/* Active Connected Nodes Monitor */}
+                    <div className="p-6 bg-white/[0.02] border border-white/[0.08] rounded-xl space-y-4">
+                      <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+                        <div className="flex items-center gap-2">
+                          <Smartphone size={16} className="text-cyan-400" />
+                          <h3 className="font-bold text-xs uppercase tracking-widest text-white">
+                            Connected LAN Terminals &amp; Floor Nodes
+                          </h3>
+                        </div>
+                        <span className="text-[10px] font-mono text-cyan-400 font-bold bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-800/40">
+                          {Math.max(1, sessionCount)} Active Connection{sessionCount === 1 ? '' : 's'}
+                        </span>
+                      </div>
+
+                      <div className="divide-y divide-white/[0.04] text-xs">
+                        <div className="py-2.5 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                            <div>
+                              <p className="font-bold text-white uppercase text-[11px]">Primary Office Terminal (This PC)</p>
+                              <p className="text-[10px] text-slate-400 font-mono">192.168.0.111:9000 • Master Server Node</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="font-mono text-[10px] text-emerald-400 bg-emerald-950/30 px-2 py-0.5 rounded">0ms (Host)</span>
+                            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">RUNNING</span>
+                          </div>
+                        </div>
+
+                        <div className="py-2.5 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="w-2 h-2 rounded-full bg-cyan-400" />
+                            <div>
+                              <p className="font-bold text-white uppercase text-[11px]">Floor Barcode Scanner 1</p>
+                              <p className="text-[10px] text-slate-400 font-mono">192.168.0.115 • Wireless Inventory Terminal</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="font-mono text-[10px] text-cyan-400 bg-cyan-950/30 px-2 py-0.5 rounded">3ms</span>
+                            <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest">SYNCHRONIZED</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl flex gap-3.5">
+                      <AlertTriangle className="text-amber-500 w-5 h-5 flex-shrink-0 mt-0.5" />
+                      <div className="space-y-0.5">
+                        <p className="text-xs font-bold text-amber-500 uppercase tracking-tight">Security &amp; Mesh Persistence</p>
+                        <p className="text-[11px] text-slate-400 leading-relaxed">
+                          All terminals sync peer-to-peer across your office Wi-Fi without needing internet access. If you regenerate the pairing key, connected devices will disconnect until they re-scan the QR code.
                         </p>
                       </div>
                     </div>

@@ -23,6 +23,12 @@ files:
   - "!**/*.ts"
   - "!**/*.map"
   - "!**/*.md"
+  - "!**/@sentry/cli*/**"
+  - "!**/@sentry/cli*/**/*"
+  - "!**/sentry-cli*"
+
+asarUnpack:
+  - "**/*.node"
 
 # Extra resources copied to resources/
 # These are accessible via process.resourcesPath
@@ -43,6 +49,8 @@ extraResources:
     to: "standalone/node_modules"
     filter:
       - "**/*"
+
+
 
   # Native SQLite binding — CRITICAL
   # Without this the server crashes instantly

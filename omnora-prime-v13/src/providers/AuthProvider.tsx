@@ -109,13 +109,27 @@ export function AuthProvider({
           try {
             const api = (window as any).electronAPI
             const isL = await api?.store?.isLocked?.()
-            const appLockEnabled = await api?.store?.isAppLockEnabled?.()
-            electronLocked = !!(isL || appLockEnabled)
+            electronLocked = Boolean(isL)
           } catch {}
         }
 
         if ((sessionLocked || localLocked || electronLocked) && pathname && !pathname.startsWith('/lock') && !pathname.startsWith('/login')) {
           router.replace('/lock')
+          return
+        }
+
+        // Auto-resume to last operational route if on root in Electron
+        if ((pathname === '/' || pathname === '/index.html') && isElectron) {
+          try {
+            const api = (window as any).electronAPI
+            const storedRoute = await api?.store?.getLastRoute?.()
+            const localRoute = localStorage.getItem('noxis_last_route')
+            const finalRoute = (storedRoute && storedRoute !== '/' && !storedRoute.startsWith('/lock') && !storedRoute.startsWith('/login')) 
+              ? storedRoute 
+              : (localRoute && localRoute !== '/' && !localRoute.startsWith('/lock') && !localRoute.startsWith('/login') ? localRoute : '/dashboard')
+            router.replace(finalRoute)
+          } catch {}
+          return
         }
 
         return

@@ -27,46 +27,50 @@ const PLANS: PlanDetails[] = [
   {
     key: 'lite',
     name: 'Lite Tier',
-    pkrPrice: 'Rs. 1,999 / mo (PKR 18k/yr)',
-    aedPrice: 'AED 350 / year',
-    usdPrice: '$95 / year',
+    pkrPrice: 'Rs. 72,000 Permanent (or Rs. 1,999/mo · 18k/yr)',
+    aedPrice: 'AED 999 Lifetime (or AED 350/yr)',
+    usdPrice: '$260 Lifetime (or $95/yr)',
     features: [
+      'Permanent lifetime motherboard-locked license (Never expires)',
       'Up to 5 workstation PCs & 5 Android phones on Wi-Fi',
       'Unlimited raw material & fabric SKUs',
       'Double-entry wholesale Khata ledger & party accounts',
       'PDF invoices & 58mm/80mm thermal slip printing',
-      'Automated daily local SQLite backups'
+      'Automated daily local SQLite backups',
+      'Free hardware motherboard re-binding guarantee'
     ]
   },
   {
     key: 'pro',
     name: 'Pro Tier',
-    pkrPrice: 'Rs. 4,999 / mo (PKR 45k/yr)',
-    aedPrice: 'AED 750 / year',
-    usdPrice: '$205 / year',
+    pkrPrice: 'Rs. 135,000 Permanent (or Rs. 4,999/mo · 45k/yr)',
+    aedPrice: 'AED 1,899 Lifetime (or AED 750/yr)',
+    usdPrice: '$490 Lifetime (or $205/yr)',
     popular: true,
     features: [
+      'Permanent lifetime motherboard-locked license (Never expires)',
       'Up to 15 workstation PCs & 15 Android phones on Wi-Fi',
       'Karigar piece-rate payroll & Peshgi advance ledger',
       'Connect up to 4 on-site IP cameras via RTSP',
       'Automated WhatsApp invoices & payment slips',
       'Roznamcha cash book & Profit/Loss reporting',
-      'Automatic reorder alerts for raw materials'
+      '1 Year VIP technical support & free lifetime motherboard re-binding'
     ]
   },
   {
     key: 'elite',
     name: 'Elite Tier',
-    pkrPrice: 'Rs. 9,999 / mo (PKR 90k/yr)',
-    aedPrice: 'AED 1,499 / year',
-    usdPrice: '$410 / year',
+    pkrPrice: 'Rs. 225,000 Permanent (or Rs. 9,999/mo · 90k/yr)',
+    aedPrice: 'AED 3,199 Lifetime (or AED 1,499/yr)',
+    usdPrice: '$799 Lifetime (or $410/yr)',
     features: [
+      'Permanent enterprise cluster license (Never expires)',
       'Up to 50 workstation PCs & 50 Android devices on Wi-Fi',
       'Connect up to 6 IP cameras with AI Sentinel tripwires',
       'Multi-branch factory operations & stock transfer',
       'RS232 weighbridge scale bridge integration',
       'Automatic reorder & 30-day material forecasting',
-      'Dedicated WhatsApp VIP support desk & AnyDesk onboarding'
+      'Turnkey onboarding & lifetime direct Senior Engineer WhatsApp desk'
     ]
   }
 ];
@@ -320,7 +324,7 @@ export default function LicenseUpgradePage() {
             Upgrade Noxis Hub
           </h1>
           <p className="text-xs sm:text-sm text-zinc-400 max-w-lg mx-auto leading-relaxed">
-            Permanent license. Your data stays forever. One time per year.
+            Permanent lifetime licenses (Lite: Rs. 72,000 · Pro: Rs. 135,000 · Elite: Rs. 225,000) or flexible monthly/annual subscriptions.
           </p>
         </div>
 
@@ -572,6 +576,36 @@ export default function LicenseUpgradePage() {
             </div>
           </div>
 
+        </div>
+
+        {/* Evaluation Terms & Data Retention Policy */}
+        <div className="bg-[#0D1017] border border-white/5 rounded-xl p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+            <h3 className="text-xs font-black text-white uppercase tracking-wider">
+              Automated Evaluation &amp; Data Protection Policy
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-zinc-400">
+            <div className="space-y-1">
+              <p className="font-bold text-white text-[11px] uppercase tracking-wide">1. Automated 7-Day Elite Trial</p>
+              <p className="text-[11px] leading-relaxed text-zinc-400">
+                Starts automatically on installation with full Elite features (Cloud Sync, CCTV, AI, and Karigar piece-rate payroll). You receive pre-expiry notices before the evaluation window closes.
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="font-bold text-white text-[11px] uppercase tracking-wide">2. Zero Data Loss Guarantee</p>
+              <p className="text-[11px] leading-relaxed text-zinc-400">
+                Your database is stored locally on your hard drive in SQLite. Records, invoices, and ledgers are never deleted, locked, or held hostage upon trial completion.
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="font-bold text-white text-[11px] uppercase tracking-wide">3. Free Forever Downgrade &amp; Caps</p>
+              <p className="text-[11px] leading-relaxed text-zinc-400">
+                On Day 8+, unrenewed workstations transition to Free Forever (POS Counter and existing records remain permanently active; new entries are capped at 200 SKUs and 50 parties).
+              </p>
+            </div>
+          </div>
         </div>
 
       </div>

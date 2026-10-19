@@ -49,10 +49,44 @@ export default function BusinessModeSelector() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isOwnerPermanent, setIsOwnerPermanent] = useState(false)
   const [hwid, setHwid] = useState('')
+  const [detectedLeadName, setDetectedLeadName] = useState('')
+  const [detectedCity, setDetectedCity] = useState('')
 
-  // Check hardware ID and active permanent license immediately on mount
+  // Check hardware ID, local lead capture, and active permanent license immediately on mount
   useEffect(() => {
     if (typeof window === 'undefined') return
+
+    // 1. Check local lead cache from download registration
+    const localLead = localStorage.getItem('noxis_lead_name')
+    const localPhone = localStorage.getItem('noxis_lead_phone')
+    const localBiz = localStorage.getItem('noxis_lead_business')
+
+    if (localLead) {
+      setDetectedLeadName(localLead)
+      setShopName(prev => prev || localBiz || `${localLead}'s Business`)
+      setWhatsApp(prev => prev || localPhone || '')
+    }
+
+    // 2. Query download lead endpoint to auto-detect if freshly installed
+    fetch('/api/download-lead')
+      .then(r => r.json())
+      .then(res => {
+        if (res?.found && res?.lead) {
+          if (!localLead && res.lead.fullName) {
+            setDetectedLeadName(res.lead.fullName)
+          }
+          if (res.lead.businessName) {
+            setShopName(prev => prev || res.lead.businessName)
+          }
+          if (res.lead.phone) {
+            setWhatsApp(prev => prev || res.lead.phone)
+          }
+          if (res.lead.city) {
+            setDetectedCity(res.lead.city)
+          }
+        }
+      })
+      .catch(() => {})
 
     const storedLicense = localStorage.getItem('noxis_license')
     let hasRealPerpetual = false
@@ -183,24 +217,31 @@ export default function BusinessModeSelector() {
         {step === 1 ? (
           <div>
             {/* Header */}
-            <div className="px-8 pt-8 pb-4 text-center space-y-2">
+            <div className="px-8 pt-8 pb-4 text-center space-y-2.5">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#08EBF6]/10 border border-[#08EBF6]/30 text-[10px] font-mono font-bold text-[#08EBF6] uppercase tracking-widest">
-                {isOwnerPermanent ? <Crown size={12} className="text-amber-400" /> : <Sparkles size={10} />}
-                <span>{isOwnerPermanent ? 'Permanent Elite License Active' : 'First-Run Setup'}</span>
+                <Sparkles size={11} className="text-[#08EBF6]" />
+                <span>Station Initialized</span>
+                <span className="text-zinc-500">·</span>
+                <span className="text-emerald-400 font-bold">7-Day Full Access Evaluation</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight font-mono">
-                Select Your Industry Mode
+                {detectedLeadName ? `Welcome, ${detectedLeadName}` : 'Welcome to Noxis Hub'}
               </h1>
-              <p className="text-xs text-zinc-400 max-w-md mx-auto">
-                {isOwnerPermanent 
-                  ? 'Your Hardware ID is verified. Select your preferred workflow layout below.'
-                  : 'This configures your sidebar, dashboard, and feature modules. You can change this anytime.'}
+              <p className="text-xs text-zinc-300 max-w-xl mx-auto leading-relaxed">
+                Noxis Hub is an offline industrial ERP built specifically for wholesale textile mills, garment production, and wholesale distribution counters. All ledgers, stock registers, and karigar wages operate securely on your local hard drive.
               </p>
-              {hwid && (
-                <p className="text-[10px] font-mono text-zinc-500 truncate max-w-md mx-auto">
-                  HWID: <span className="text-emerald-400 font-semibold">{hwid}</span>
-                </p>
-              )}
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+                {detectedLeadName && (
+                  <span className="px-2.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-[10px] font-mono text-emerald-400">
+                    Licensee: {detectedLeadName} {detectedCity ? `· ${detectedCity}` : ''}
+                  </span>
+                )}
+                {hwid && (
+                  <span className="px-2.5 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] font-mono text-zinc-400">
+                    Node ID: <span className="text-[#08EBF6] font-semibold">{hwid}</span>
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Mode Cards */}
@@ -339,21 +380,28 @@ export default function BusinessModeSelector() {
 
               {/* Status Badge */}
               <div className={cn(
-                'flex items-center gap-3 p-3 rounded-lg border',
+                'flex items-center gap-3 p-3.5 rounded-lg border',
                 MODE_COLORS[selectedMode].bg,
                 MODE_COLORS[selectedMode].border,
               )}>
                 <span className="text-xl">{BUSINESS_MODE_CONFIGS[selectedMode].emoji}</span>
                 <div>
                   <p className="text-xs font-bold text-white font-mono">
-                    {BUSINESS_MODE_CONFIGS[selectedMode].label}
+                    {BUSINESS_MODE_CONFIGS[selectedMode].label} Mode
                   </p>
                   <p className="text-[10px] text-zinc-400">
                     {isOwnerPermanent
                       ? '👑 Permanent Elite License · Unlimited karigars, cameras & workstations'
-                      : '7-Day Free Evaluation included'}
+                      : '⚡ 7-Day Elite Evaluation · All premium industrial features unlocked'}
                   </p>
                 </div>
+              </div>
+
+              {/* Clean Workspace Guarantee */}
+              <div className="p-3 bg-white/[0.02] border border-white/5 rounded-lg">
+                <p className="text-[10px] text-zinc-400 font-mono">
+                  🛡️ <span className="text-white font-bold">Official Fresh Release:</span> Zero dummy or test data loaded. Your database begins in a completely pristine, official state.
+                </p>
               </div>
             </div>
 
@@ -366,10 +414,10 @@ export default function BusinessModeSelector() {
                 className="w-full flex items-center justify-center gap-2 py-3.5 rounded-lg font-mono font-bold text-xs uppercase tracking-wider bg-[#08EBF6] text-black hover:bg-[#5FA5FA] transition-colors cursor-pointer shadow-lg shadow-[#08EBF6]/20 disabled:opacity-50"
               >
                 {isSubmitting ? (
-                  <span>Applying Settings...</span>
+                  <span>Configuring Clean Workspace...</span>
                 ) : (
                   <>
-                    <span>{isOwnerPermanent ? 'Open Workspace (Permanent Elite)' : 'Start 7-Day Free Evaluation'}</span>
+                    <span>{isOwnerPermanent ? 'Open Workspace (Permanent Elite)' : 'Launch Clean Workspace (7-Day Elite Trial)'}</span>
                     <ArrowRight size={14} />
                   </>
                 )}
@@ -381,7 +429,7 @@ export default function BusinessModeSelector() {
                 className="w-full flex items-center justify-center gap-2 py-3 rounded-lg border border-[#25D366]/30 bg-[#25D366]/5 text-[#25D366] font-mono font-bold text-[10px] uppercase tracking-wider hover:bg-[#25D366]/10 transition-colors cursor-pointer"
               >
                 <MessageCircle size={13} />
-                <span>Contact Omnora WhatsApp Support</span>
+                <span>Contact Omnora Team on WhatsApp</span>
               </button>
             </div>
           </div>

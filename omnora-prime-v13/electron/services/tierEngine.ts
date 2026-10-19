@@ -61,6 +61,7 @@ const TIER_FEATURES: Record<LicenseTier | 'free_forever' | 'trial', FeatureKey[]
     FEATURES.POS,
     FEATURES.INVENTORY,
     FEATURES.INVOICES,
+    FEATURES.RECURRING_INVOICES,
     FEATURES.PARTIES,
     FEATURES.KHATA,
     FEATURES.CLOUD_SYNC,
@@ -72,8 +73,11 @@ const TIER_FEATURES: Record<LicenseTier | 'free_forever' | 'trial', FeatureKey[]
     FEATURES.REPORTS_BASIC,
     FEATURES.REPORTS_ADVANCED,
     FEATURES.BRANCHES,
+    FEATURES.MULTI_BRANCH,
+    FEATURES.PAYROLL,
     FEATURES.PURCHASE_ORDERS,
     FEATURES.AUDIT_LOG,
+    FEATURES.BETA_UPDATES,
   ],
 
   // Day 8+ (Trial Expired) — POS stays, cloud/CCTV/sync/mobile/AI locked, caps enforced
@@ -155,7 +159,7 @@ export interface TierCaps {
 }
 
 const TIER_CAPS: Record<LicenseTier | 'free_forever' | 'trial', TierCaps> = {
-  trial:        { maxDevices: 15, maxBranches: 1,  maxCameras: 4,  maxSkus: -1,  maxParties: -1  },
+  trial:        { maxDevices: 50, maxBranches: 99, maxCameras: 6,  maxSkus: -1,  maxParties: -1  },
   free_forever: { maxDevices: 1,  maxBranches: 1,  maxCameras: 0,  maxSkus: 200, maxParties: 50  },
   lite:         { maxDevices: 5,  maxBranches: 1,  maxCameras: 0,  maxSkus: -1,  maxParties: -1  },
   pro:          { maxDevices: 15, maxBranches: 1,  maxCameras: 4,  maxSkus: -1,  maxParties: -1  },

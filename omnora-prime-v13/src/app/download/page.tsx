@@ -5,7 +5,7 @@ import PublicNavbar from '@/components/shell/PublicNavbar';
 import { 
   Download, Check, MessageCircle, ChevronDown, 
   Sparkles, CheckCircle2, ShieldCheck, Terminal, Cpu, HardDrive, Wifi, Lock,
-  FolderArchive, MousePointerClick
+  FolderArchive, MousePointerClick, X, Loader2, ArrowRight, User, Building, Phone, MapPin
 } from 'lucide-react';
 
 const DOWNLOAD_ZIP_URL = '/api/download-software?format=zip&trial=true&redirect=true';
@@ -36,6 +36,40 @@ const FAQS = [
 
 export default function DownloadPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [showModal, setShowModal] = useState(false);
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [businessName, setBusinessName] = useState('');
+  const [city, setCity] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleStartDownload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fullName.trim() || !phone.trim()) return;
+
+    setSubmitting(true);
+    try {
+      await fetch('/api/download-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName,
+          phone,
+          businessName,
+          city,
+        })
+      });
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('noxis_lead_name', fullName.trim());
+        localStorage.setItem('noxis_lead_phone', phone.trim());
+        localStorage.setItem('noxis_lead_business', (businessName && businessName.trim()) ? businessName.trim() : `${fullName.trim()}'s Business`);
+      }
+    } catch {}
+
+    window.location.href = DOWNLOAD_ZIP_URL;
+    setShowModal(false);
+    setSubmitting(false);
+  };
 
   return (
     <div className="min-h-screen bg-[#030712] text-slate-300 font-sans selection:bg-[#08EBF6]/30 selection:text-white">
@@ -47,7 +81,7 @@ export default function DownloadPage() {
 
         <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#08EBF6]/10 border border-[#08EBF6]/30 text-[#08EBF6] text-[10px] font-mono font-bold uppercase tracking-widest">
           <Sparkles size={12} />
-          <span>7-Day Free Evaluation · No Registration Needed</span>
+          <span>7-Day Free Evaluation · Immediate Access</span>
         </div>
 
         <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight max-w-3xl mx-auto uppercase leading-tight">
@@ -65,13 +99,14 @@ export default function DownloadPage() {
 
         {/* Primary CTA */}
         <div className="pt-4 flex flex-col items-center space-y-3">
-          <a
-            href={DOWNLOAD_ZIP_URL}
-            className="inline-flex items-center justify-center gap-3 px-10 py-4.5 bg-[#08EBF6] hover:bg-[#5FA5FA] text-black font-mono font-black uppercase tracking-wider text-xs rounded transition-all shadow-[0_0_25px_rgba(8,235,246,0.3)] hover:scale-[1.02]"
+          <button
+            type="button"
+            onClick={() => setShowModal(true)}
+            className="inline-flex items-center justify-center gap-3 px-10 py-4.5 bg-[#08EBF6] hover:bg-[#5FA5FA] text-black font-mono font-black uppercase tracking-wider text-xs rounded transition-all shadow-[0_0_25px_rgba(8,235,246,0.3)] hover:scale-[1.02] cursor-pointer"
           >
             <Download size={18} />
             <span>Download for Windows (.zip)</span>
-          </a>
+          </button>
 
           <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] font-mono text-gray-400">
             <span>v14.0.0 Stable</span>
@@ -308,14 +343,132 @@ export default function DownloadPage() {
         <p className="text-xs text-zinc-400 max-w-md mx-auto">
           Start your 7-Day Free Evaluation immediately. No sign-up, no credit card, and completely offline.
         </p>
-        <a
-          href={DOWNLOAD_ZIP_URL}
-          className="inline-flex items-center gap-2 px-8 py-3.5 bg-[#08EBF6] hover:bg-[#5FA5FA] text-black font-mono font-bold uppercase tracking-wider text-xs rounded transition-all shadow-[0_0_20px_rgba(8,235,246,0.25)]"
+        <button
+          type="button"
+          onClick={() => setShowModal(true)}
+          className="inline-flex items-center gap-2 px-8 py-3.5 bg-[#08EBF6] hover:bg-[#5FA5FA] text-black font-mono font-bold uppercase tracking-wider text-xs rounded transition-all shadow-[0_0_20px_rgba(8,235,246,0.25)] cursor-pointer"
         >
           <Download size={16} />
           <span>Download Noxis Hub (.zip)</span>
-        </a>
+        </button>
       </section>
+
+      {/* Registration & Download Lead Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg bg-[#07090E] border border-[#08EBF6]/40 rounded-2xl p-6 sm:p-8 shadow-[0_0_50px_rgba(8,235,246,0.15)] text-left">
+            <button
+              onClick={() => setShowModal(false)}
+              className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-white transition-colors"
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-[#08EBF6]/10 border border-[#08EBF6]/30 flex items-center justify-center text-[#08EBF6]">
+                <ShieldCheck size={22} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white font-mono uppercase tracking-wide">
+                  Direct Download & Instant Trial
+                </h3>
+                <p className="text-xs text-zinc-400">
+                  Register your business workstation to start the 7-day evaluation.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleStartDownload} className="space-y-4">
+              <div>
+                <label className="block text-xs font-mono font-bold text-zinc-300 uppercase mb-1.5 flex items-center gap-1.5">
+                  <User size={13} className="text-[#08EBF6]" />
+                  Your Name <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Tariq Mehmood"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-black/50 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-[#08EBF6] transition-colors font-sans"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono font-bold text-zinc-300 uppercase mb-1.5 flex items-center gap-1.5">
+                  <Phone size={13} className="text-[#08EBF6]" />
+                  WhatsApp / Phone Number <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="tel"
+                  required
+                  placeholder="e.g. +92 300 1234567"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-black/50 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-[#08EBF6] transition-colors font-sans"
+                />
+                <span className="text-[10px] text-zinc-500 mt-1 block">Used to verify your 7-day trial and send license recovery keys.</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono font-bold text-zinc-300 uppercase mb-1.5 flex items-center gap-1.5">
+                    <Building size={13} className="text-[#08EBF6]" />
+                    Business / Mill Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Al-Madina Garments"
+                    value={businessName}
+                    onChange={(e) => setBusinessName(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-black/50 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-[#08EBF6] transition-colors font-sans"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono font-bold text-zinc-300 uppercase mb-1.5 flex items-center gap-1.5">
+                    <MapPin size={13} className="text-[#08EBF6]" />
+                    City
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Faisalabad, Lahore, Karachi"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-black/50 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-[#08EBF6] transition-colors font-sans"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full py-3.5 bg-gradient-to-r from-[#08EBF6] to-[#5FA5FA] hover:opacity-95 text-black font-mono font-bold text-xs uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(8,235,246,0.3)] disabled:opacity-50 cursor-pointer"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>Initiating Download...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download size={16} />
+                      <span>Start Download (.zip portable)</span>
+                      <ArrowRight size={14} />
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div className="flex items-center justify-center gap-2 text-[10px] text-zinc-400 font-mono text-center pt-1">
+                <Lock size={11} className="text-emerald-400" />
+                <span>100% Secure · No payment required · Portable offline archive</span>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <footer className="border-t border-white/5 bg-[#020304] py-6 text-center text-[10px] font-mono text-zinc-500">
         <p>© {new Date().getFullYear()} Omnora. Industrial ERP for Textile Mills & Wholesale Traders.</p>

@@ -67,7 +67,12 @@ function copyNextSubpathWrappers() {
     return;
   }
   copyDir(srcDir, destDir);
-  console.log('[Electron Build] ✓ Copied complete next package into standalone node_modules');
+  const serverNextJs = path.join(destDir, 'dist', 'server', 'next.js');
+  if (!fs.existsSync(serverNextJs)) {
+    console.error(`[Electron Build] ✗ CRITICAL: ${serverNextJs} missing after copying next package!`);
+    throw new Error(`Next.js server module failed to copy to standalone: ${serverNextJs}`);
+  }
+  console.log('[Electron Build] ✓ Copied complete next package into standalone node_modules (verified next.js runtime exists)');
 }
 
 // ── Assemble the standalone bundle ───────────────────────────────────────────

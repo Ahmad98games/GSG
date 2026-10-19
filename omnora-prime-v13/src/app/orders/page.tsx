@@ -85,30 +85,84 @@ function NewOrderModal({
     { description: '', quantity: 1, unit: 'Piece', unit_price: 0, total_price: 0 }
   ]);
 
-  // Fetch Parties (Customers)
+  // Fetch Parties (Customers) - Multi-tiered resilient query: Local SQLite API -> Supabase -> Local Cache
   const { data: parties = [] } = useQuery({
     queryKey: ['order_parties', businessId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('parties')
-        .select('id, name, phone, type')
-        .order('name');
-      if (error) return [];
-      return data || [];
+      // 1. Try local SQLite API route first
+      try {
+        const res = await fetch(`/api/parties?business_id=${businessId || 'local'}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.data && Array.isArray(json.data) && json.data.length > 0) {
+            return json.data;
+          }
+        }
+      } catch (err) {
+        console.warn('[Orders] API parties fetch warning:', err);
+      }
+
+      // 2. Direct Supabase / local client fallback (use correct column 'party_type')
+      try {
+        let query = supabase
+          .from('parties')
+          .select('id, name, phone, party_type')
+          .order('name');
+        if (businessId && businessId !== 'local' && businessId !== '00000000-0000-0000-0000-000000000000') {
+          query = query.eq('business_id', businessId);
+        }
+        const { data, error } = await query;
+        if (!error && data && data.length > 0) {
+          return data;
+        }
+      } catch (err) {
+        console.warn('[Orders] Supabase parties fetch warning:', err);
+      }
+
+      // 3. Fallback to localStorage cache
+      if (typeof window !== 'undefined') {
+        const cacheKeys = [
+          `noxis_cached_parties_${businessId}`,
+          `noxis_cached_parties_00000000-0000-0000-0000-000000000000`,
+          `noxis_cached_parties`
+        ];
+        for (const k of cacheKeys) {
+          try {
+            const raw = localStorage.getItem(k);
+            if (raw) {
+              const list = JSON.parse(raw);
+              if (Array.isArray(list) && list.length > 0) return list;
+            }
+          } catch {}
+        }
+      }
+
+      return [];
     },
     enabled: isOpen
   });
 
-  // Fetch Available SKUs
+  // Fetch Available SKUs - Multi-tiered resilient query
   const { data: skus = [] } = useQuery({
     queryKey: ['order_skus', businessId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('skus')
-        .select('id, sku_code, name, unit, sale_price, qty_on_hand, category')
-        .order('name');
-      if (error) return [];
-      return data || [];
+      try {
+        const { data, error } = await supabase
+          .from('skus')
+          .select('id, sku_code, name, unit, sale_price, qty_on_hand, category')
+          .order('name');
+        if (!error && data && data.length > 0) return data;
+      } catch {}
+
+      try {
+        const res = await fetch(`/api/stock?business_id=${businessId || 'local'}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.data && Array.isArray(json.data) && json.data.length > 0) return json.data;
+        }
+      } catch {}
+
+      return [];
     },
     enabled: isOpen
   });
@@ -348,12 +402,16 @@ function NewOrderModal({
                 <select
                   value={partyId}
                   onChange={e => setPartyId(e.target.value)}
-                  className="w-full bg-black/50 border border-white/10 px-3 py-2 text-xs text-white focus:border-[#C5A059] outline-none"
+                  className="w-full bg-[#0D1117] border border-white/10 px-3 py-2 text-xs text-white focus:border-[#C5A059] outline-none"
                 >
-                  <option value="">-- Choose Registered Customer / Party --</option>
+                  <option value="" className="bg-[#0D1117] text-gray-400">
+                    {parties.length === 0 
+                      ? '-- No Registered Customers Found (Add in Parties or use Walk-in) --' 
+                      : `-- Choose Registered Customer / Party (${parties.length} available) --`}
+                  </option>
                   {parties.map((p: any) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} {p.phone ? `(${p.phone})` : ''}
+                    <option key={p.id} value={p.id} className="bg-[#0D1117] text-white py-1">
+                      {p.name} {p.phone ? `(${p.phone})` : ''} {p.party_type ? `[${p.party_type}]` : ''}
                     </option>
                   ))}
                 </select>
@@ -399,11 +457,11 @@ function NewOrderModal({
                         <select
                           value={item.sku_id || ''}
                           onChange={e => handleSkuSelect(idx, e.target.value)}
-                          className="w-full bg-black/60 border border-white/10 px-2 py-1.5 text-xs text-white focus:border-[#60A5FA] outline-none"
+                          className="w-full bg-[#0D1117] border border-white/10 px-2 py-1.5 text-xs text-white focus:border-[#60A5FA] outline-none"
                         >
-                          <option value="">Custom Non-Inventory</option>
+                          <option value="" className="bg-[#0D1117] text-gray-400">Custom Non-Inventory</option>
                           {skus.map((s: any) => (
-                            <option key={s.id} value={s.id}>
+                            <option key={s.id} value={s.id} className="bg-[#0D1117] text-white py-1">
                               {s.name} ({s.sku_code}) - Stock: {s.qty_on_hand} {s.unit}
                             </option>
                           ))}

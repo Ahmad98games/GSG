@@ -25,32 +25,71 @@ export default function UsersPage() {
     pin: '',
   })
 
+  const bizId = profile?.id || 'local_tenant'
+
   const { data: users = [], isLoading } =
     useQuery({
-      queryKey: ['sub-users', profile?.id],
+      queryKey: ['sub-users', bizId],
       queryFn: async () => {
-        if (!profile?.id) return []
-        // Try sub_users table first
-        const { data: subData, error: subErr } = await supabase
-          .from('sub_users')
-          .select('*')
-          .eq('business_id', profile.id)
-          .eq('is_active', true)
-          .order('created_at')
+        let localMembers: any[] = []
+        if (typeof window !== 'undefined') {
+          try {
+            const cached = localStorage.getItem(`noxis_team_members_${bizId}`)
+            if (cached) localMembers = JSON.parse(cached)
+          } catch {}
+        }
 
-        if (!subErr && subData && subData.length > 0) return subData
+        if (profile?.id) {
+          try {
+            // Try sub_users table first
+            const { data: subData, error: subErr } = await supabase
+              .from('sub_users')
+              .select('*')
+              .eq('business_id', profile.id)
+              .eq('is_active', true)
+              .order('created_at')
 
-        // Fallback to staff_users table
-        const { data: staffData } = await supabase
-          .from('staff_users')
-          .select('*')
-          .eq('business_id', profile.id)
-          .eq('is_active', true)
-          .order('created_at')
+            if (!subErr && subData && subData.length > 0) {
+              const merged = [...subData]
+              for (const lm of localMembers) {
+                if (!merged.some(m => m.id === lm.id || m.email === lm.email)) {
+                  merged.push(lm)
+                }
+              }
+              if (typeof window !== 'undefined') {
+                try { localStorage.setItem(`noxis_team_members_${bizId}`, JSON.stringify(merged)) } catch {}
+              }
+              return merged
+            }
 
-        return staffData || subData || []
+            // Fallback to staff_users table
+            const { data: staffData } = await supabase
+              .from('staff_users')
+              .select('*')
+              .eq('business_id', profile.id)
+              .eq('is_active', true)
+              .order('created_at')
+
+            if (staffData && staffData.length > 0) {
+              const merged = [...staffData]
+              for (const lm of localMembers) {
+                if (!merged.some(m => m.id === lm.id || m.email === lm.email)) {
+                  merged.push(lm)
+                }
+              }
+              if (typeof window !== 'undefined') {
+                try { localStorage.setItem(`noxis_team_members_${bizId}`, JSON.stringify(merged)) } catch {}
+              }
+              return merged
+            }
+          } catch (err) {
+            console.warn('[Users] Cloud query failed, using local:', err)
+          }
+        }
+
+        return localMembers
       },
-      enabled: !!profile?.id,
+      staleTime: 1000 * 60,
     })
 
   const addUser = useMutation({
@@ -58,112 +97,117 @@ export default function UsersPage() {
       if (!newUser.name.trim() || !newUser.email.trim()) {
         throw new Error('Name and email are required')
       }
-      if (!profile?.id) {
-        throw new Error('Business profile not loaded')
-      }
 
-      const payload = {
-        businessId: profile.id,
+      const newMember = {
+        id: `staff_${Date.now()}`,
+        business_id: bizId,
         name: newUser.name.trim(),
         email: newUser.email.trim().toLowerCase(),
         role: newUser.role,
+        is_active: true,
+        created_at: new Date().toISOString(),
       }
 
-      // Route through service-role API first to prevent RLS permission denial
-      const res = await fetch('/api/staff/invite', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      // 1. Instant local persistence
+      if (typeof window !== 'undefined') {
+        try {
+          const cached = JSON.parse(localStorage.getItem(`noxis_team_members_${bizId}`) || '[]')
+          const updated = [...cached, newMember]
+          localStorage.setItem(`noxis_team_members_${bizId}`, JSON.stringify(updated))
+        } catch {}
+      }
+
+      // 2. Optimistic UI update
+      queryClient.setQueryData(['sub-users', bizId], (old: any) => {
+        const arr = Array.isArray(old) ? old : []
+        return [...arr, newMember]
       })
 
-      if (!res.ok) {
-        const resData = await res.json().catch(() => ({}))
-        // Direct fallback attempt if API failed
-        const { error: directErr } = await supabase
-          .from('staff_users')
-          .insert({
+      // 3. Cloud / API attempt in background
+      if (profile?.id) {
+        try {
+          fetch('/api/staff/invite', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              businessId: profile.id,
+              name: newMember.name,
+              email: newMember.email,
+              role: newMember.role,
+            }),
+          }).catch(() => null)
+
+          await supabase.from('staff_users').insert({
             business_id: profile.id,
-            name: payload.name,
-            email: payload.email,
-            role: payload.role,
-            is_active: true
+            name: newMember.name,
+            email: newMember.email,
+            role: newMember.role,
+            is_active: true,
           })
-        if (directErr && !resData.error) {
-          throw new Error(directErr.message)
-        }
-        if (resData.error) {
-          throw new Error(resData.error)
+        } catch (err) {
+          console.warn('[Users] Cloud sync deferred:', err)
         }
       }
+
+      return newMember
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['sub-users', profile?.id]
-      })
       setShowAddUser(false)
       setNewUser({
-        name: '', email: '',
-        role: 'supervisor', pin: '',
+        name: '',
+        email: '',
+        role: 'supervisor',
+        pin: '',
       })
       toast.success('Success', 'Team member added successfully')
     },
     onError: (err: any) => {
-      toast.error(
-        'Failed',
-        err.message?.includes('duplicate') || err.message?.includes('already a team member')
-          ? 'This email is already a team member'
-          : (err.message || 'Could not add team member')
-      )
+      toast.error('Failed', err.message || 'Could not add team member')
     },
   })
 
   const removeUser = useMutation({
     mutationFn: async (userId: string) => {
-      // Deactivate via service role API
-      await fetch('/api/staff/invite', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, businessId: profile!.id }),
-      }).catch(() => null)
-
-      // Also attempt direct update
-      await supabase
-        .from('sub_users')
-        .update({ is_active: false })
-        .eq('id', userId)
-        .eq('business_id', profile!.id)
-
-      await supabase
-        .from('staff_users')
-        .update({ is_active: false })
-        .eq('id', userId)
-        .eq('business_id', profile!.id)
-    },
-    onSuccess: (_, userId) => {
-      queryClient.invalidateQueries({
-        queryKey: ['sub-users', profile?.id]
-      })
-
-      const targetUser = (users as any[]).find((u: any) => u.id === userId);
-      if (targetUser) {
-        import('@/stores/undoStore').then(({ useUndoStore }) => {
-          useUndoStore.getState().pushAction({
-            description: `Removed team member ${targetUser.name}`,
-            undo: async () => {
-              const supabaseClient = createClient();
-              await supabaseClient
-                .from('sub_users')
-                .update({ is_active: true })
-                .eq('id', userId);
-              queryClient.invalidateQueries({
-                queryKey: ['sub-users', profile?.id]
-              });
-            }
-          });
-        });
+      // 1. Instant local update
+      if (typeof window !== 'undefined') {
+        try {
+          const cached = JSON.parse(localStorage.getItem(`noxis_team_members_${bizId}`) || '[]')
+          const updated = cached.filter((u: any) => u.id !== userId)
+          localStorage.setItem(`noxis_team_members_${bizId}`, JSON.stringify(updated))
+        } catch {}
       }
 
-      toast.success('Removed', 'Team member removed successfully. Press Ctrl+Z to undo')
+      // 2. Optimistic UI update
+      queryClient.setQueryData(['sub-users', bizId], (old: any) => {
+        if (!Array.isArray(old)) return []
+        return old.filter((u: any) => u.id !== userId)
+      })
+
+      // 3. Cloud update
+      if (profile?.id) {
+        try {
+          fetch('/api/staff/invite', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, businessId: profile.id }),
+          }).catch(() => null)
+
+          await supabase
+            .from('sub_users')
+            .update({ is_active: false })
+            .eq('id', userId)
+            .eq('business_id', profile.id)
+
+          await supabase
+            .from('staff_users')
+            .update({ is_active: false })
+            .eq('id', userId)
+            .eq('business_id', profile.id)
+        } catch {}
+      }
+    },
+    onSuccess: () => {
+      toast.success('Removed', 'Team member removed successfully')
     },
   })
 

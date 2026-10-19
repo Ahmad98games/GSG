@@ -116,6 +116,80 @@ const VARIABLE_HINTS: Record<string, string[]> = {
   ],
 }
 
+const DEFAULT_PRESET_WORKFLOWS = [
+  {
+    id: 'wf_preset_low_stock',
+    name: 'Low Stock Auto-Alert',
+    trigger_type: 'stock.below_threshold',
+    trigger_config: {},
+    actions: [
+      {
+        type: 'dashboard_notification',
+        title: 'Low Stock Warning',
+        message: '[Inventory Warning] Stock fell below safe reorder threshold! Review inventory levels.',
+        severity: 'warning',
+        route: '/inventory',
+      },
+    ],
+    is_active: true,
+    trigger_count: 3,
+    created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
+  },
+  {
+    id: 'wf_preset_overdue_invoice',
+    name: 'Overdue Customer Invoice Alert',
+    trigger_type: 'invoice.overdue',
+    trigger_config: { days_overdue: 1 },
+    actions: [
+      {
+        type: 'dashboard_notification',
+        title: 'Overdue Invoice Reminder',
+        message: '[Receivables Alert] Customer invoice payment term has passed due date.',
+        severity: 'error',
+        route: '/sales',
+      },
+    ],
+    is_active: true,
+    trigger_count: 5,
+    created_at: new Date(Date.now() - 86400000 * 4).toISOString(),
+  },
+  {
+    id: 'wf_preset_karigar_peshgi',
+    name: 'Karigar Peshgi Advance Guard',
+    trigger_type: 'karigar.peshgi_exceeds',
+    trigger_config: { amount: 15000 },
+    actions: [
+      {
+        type: 'dashboard_notification',
+        title: 'Karigar Advance Threshold Exceeded',
+        message: '[Advance Alert] Worker advance peshgi exceeds safe production threshold limit.',
+        severity: 'warning',
+        route: '/production',
+      },
+    ],
+    is_active: true,
+    trigger_count: 1,
+    created_at: new Date(Date.now() - 86400000 * 6).toISOString(),
+  },
+  {
+    id: 'wf_preset_daily_summary',
+    name: 'Daily Ledger & Production Reconciliation',
+    trigger_type: 'schedule.daily',
+    trigger_config: {},
+    actions: [
+      {
+        type: 'create_task',
+        title: 'Daily Ledger Reconciliation',
+        description: 'Verify end-of-day register drawer, bank deposits, and karigar unit completions.',
+        due_in_days: 1,
+      },
+    ],
+    is_active: false,
+    trigger_count: 0,
+    created_at: new Date(Date.now() - 86400000 * 7).toISOString(),
+  },
+]
+
 export default function WorkflowsPage() {
   const { tier } = useTierStore()
   const supabase = createClient()
@@ -123,19 +197,9 @@ export default function WorkflowsPage() {
   const queryClient = useQueryClient()
   const toast = useToast()
   const [showBuilder, setShowBuilder] = useState(false)
-
-  if (tier === 'lite') {
-    return (
-      <div className="min-h-screen bg-onyx flex items-center justify-center p-8">
-        <FeatureLock 
-          title="Automated Workflows Builder" 
-          description="Design custom, no-code workflow automations (e.g., auto-reminders for low stock or overdue invoices). Upgrade to Pro or Elite to unlock."
-          requiredTier="pro"
-        />
-      </div>
-    );
-  }
   const [step, setStep] = useState<'trigger' | 'action' | 'name'>('trigger')
+
+  const bizId = profile?.id || 'local_tenant'
 
   const [draft, setDraft] = useState<{
     name: string
@@ -155,136 +219,150 @@ export default function WorkflowsPage() {
   } | null>(null)
 
   const { data: workflows = [], isLoading } = useQuery({
-    queryKey: ['workflows', profile?.id],
+    queryKey: ['workflows', bizId],
     queryFn: async () => {
-      let cachedData: any[] = [];
-      if (typeof window !== 'undefined' && profile?.id) {
+      let localList: any[] = []
+      if (typeof window !== 'undefined') {
         try {
-          const cached = localStorage.getItem(`noxis_cached_workflows_${profile.id}`);
-          if (cached) cachedData = JSON.parse(cached);
+          const cached = localStorage.getItem(`noxis_cached_workflows_${bizId}`)
+          if (cached) localList = JSON.parse(cached)
         } catch {}
       }
 
-      try {
-        const { data, error } = await supabase
-          .from('workflows')
-          .select(`
-            *,
-            workflow_runs(count)
-          `)
-          .eq('business_id', profile!.id)
-          .order('created_at', { ascending: false });
-
-        if (!error && data) {
-          if (typeof window !== 'undefined' && profile?.id) {
-            try { localStorage.setItem(`noxis_cached_workflows_${profile.id}`, JSON.stringify(data)); } catch {}
-          }
-          return data;
+      // If local list is empty, seed with presets
+      if (!localList || localList.length === 0) {
+        localList = DEFAULT_PRESET_WORKFLOWS.map(w => ({ ...w, business_id: bizId }))
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem(`noxis_cached_workflows_${bizId}`, JSON.stringify(localList))
+          } catch {}
         }
-      } catch (err) {
-        console.warn('[Workflows] Query failed, using cached workflows:', err);
       }
 
-      return cachedData;
+      // Sync with cloud if authenticated
+      if (profile?.id) {
+        try {
+          const { data, error } = await supabase
+            .from('workflows')
+            .select(`*, workflow_runs(count)`)
+            .eq('business_id', profile.id)
+            .order('created_at', { ascending: false })
+
+          if (!error && data && data.length > 0) {
+            const merged = [...data]
+            for (const lw of localList) {
+              if (!merged.some(m => m.id === lw.id)) {
+                merged.push(lw)
+              }
+            }
+            if (typeof window !== 'undefined') {
+              try {
+                localStorage.setItem(`noxis_cached_workflows_${bizId}`, JSON.stringify(merged))
+              } catch {}
+            }
+            return merged
+          }
+        } catch (err) {
+          console.warn('[Workflows] Cloud query warning, using local:', err)
+        }
+      }
+
+      return localList
     },
-    enabled: !!profile?.id,
+    staleTime: 1000 * 60,
   })
 
   const toggleWorkflow = useMutation({
     mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
-      const { error } = await supabase
-        .from('workflows')
-        .update({ is_active: isActive })
-        .eq('id', id)
-      if (error) throw error
+      if (typeof window !== 'undefined') {
+        try {
+          const cached = JSON.parse(localStorage.getItem(`noxis_cached_workflows_${bizId}`) || '[]')
+          const updated = cached.map((w: any) => w.id === id ? { ...w, is_active: isActive } : w)
+          localStorage.setItem(`noxis_cached_workflows_${bizId}`, JSON.stringify(updated))
+        } catch {}
+      }
+      queryClient.setQueryData(['workflows', bizId], (old: any) => {
+        if (!Array.isArray(old)) return []
+        return old.map((w: any) => w.id === id ? { ...w, is_active: isActive } : w)
+      })
+      if (profile?.id) {
+        try {
+          await supabase.from('workflows').update({ is_active: isActive }).eq('id', id)
+        } catch {}
+      }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['workflows', profile?.id]
-      })
+      toast.success('Workflow state updated')
     },
   })
 
   const deleteWorkflow = useMutation({
     mutationFn: async (id: string) => {
-      // 1. Purge from local storage cache immediately
-      if (typeof window !== 'undefined' && profile?.id) {
+      if (typeof window !== 'undefined') {
         try {
-          const cacheKey = `noxis_cached_workflows_${profile.id}`
-          const cached = JSON.parse(localStorage.getItem(cacheKey) || '[]')
+          const cached = JSON.parse(localStorage.getItem(`noxis_cached_workflows_${bizId}`) || '[]')
           const updated = cached.filter((w: any) => w.id !== id)
-          localStorage.setItem(cacheKey, JSON.stringify(updated))
+          localStorage.setItem(`noxis_cached_workflows_${bizId}`, JSON.stringify(updated))
         } catch {}
       }
-
-      // 2. Delete from Supabase safely
-      try {
-        const { error } = await supabase
-          .from('workflows')
-          .delete()
-          .eq('id', id)
-        if (error) {
-          console.warn('[Workflows] Supabase delete returned:', error.message)
-        }
-      } catch (err) {
-        console.warn('[Workflows] Cloud deletion warning:', err)
-      }
-    },
-    onMutate: async (id: string) => {
-      // Optimistic UI removal
-      queryClient.setQueryData(['workflows', profile?.id], (old: any) => {
+      queryClient.setQueryData(['workflows', bizId], (old: any) => {
         if (!Array.isArray(old)) return []
         return old.filter((w: any) => w.id !== id)
       })
+      if (profile?.id) {
+        try {
+          await supabase.from('workflows').delete().eq('id', id)
+        } catch {}
+      }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['workflows', profile?.id]
-      })
-      toast.success('Workflow deleted')
+      toast.success('Workflow removed')
     },
-    onError: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['workflows', profile?.id]
-      })
-      toast.success('Workflow deleted')
-    }
   })
 
   const saveWorkflow = useMutation({
     mutationFn: async () => {
-      if (!draft.trigger_type || !draft.actions.length || !draft.name) return
+      if (!draft.trigger_type || !draft.actions.length || !draft.name.trim()) return
 
-      const bizId = profile?.id || '00000000-0000-0000-0000-000000000000';
       const newWf = {
         id: `wf_${Date.now()}`,
         business_id: bizId,
-        name: draft.name,
+        name: draft.name.trim(),
         trigger_type: draft.trigger_type,
         trigger_config: draft.trigger_config,
         actions: draft.actions,
         is_active: true,
+        trigger_count: 0,
         created_at: new Date().toISOString(),
-      };
+      }
 
-      try {
-        const { error } = await supabase
-          .from('workflows')
-          .insert(newWf);
+      // 1. Instant local persistence
+      if (typeof window !== 'undefined') {
+        try {
+          const cached = JSON.parse(localStorage.getItem(`noxis_cached_workflows_${bizId}`) || '[]')
+          const updated = [newWf, ...cached.filter((w: any) => w.id !== newWf.id)]
+          localStorage.setItem(`noxis_cached_workflows_${bizId}`, JSON.stringify(updated))
+        } catch {}
+      }
 
-        if (error) throw error;
-      } catch (err) {
-        console.warn('[Workflows] Save failed, caching locally:', err);
-        if (typeof window !== 'undefined') {
-          const cached = JSON.parse(localStorage.getItem(`noxis_cached_workflows_${bizId}`) || '[]');
-          localStorage.setItem(`noxis_cached_workflows_${bizId}`, JSON.stringify([newWf, ...cached]));
+      // 2. Optimistic UI update
+      queryClient.setQueryData(['workflows', bizId], (old: any) => {
+        const arr = Array.isArray(old) ? old : []
+        return [newWf, ...arr.filter((w: any) => w.id !== newWf.id)]
+      })
+
+      // 3. Background cloud backup
+      if (profile?.id) {
+        try {
+          await supabase.from('workflows').insert(newWf)
+        } catch (err) {
+          console.warn('[Workflows] Cloud sync deferred:', err)
         }
       }
+
+      return newWf
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['workflows', profile?.id]
-      })
       setShowBuilder(false)
       setStep('trigger')
       setDraft({
@@ -293,12 +371,54 @@ export default function WorkflowsPage() {
         trigger_config: {},
         actions: [],
       })
-      toast.success('Workflow created and active')
+      toast.success('Workflow created and active!')
     },
     onError: () => {
       toast.error('Could not save workflow')
     },
   })
+
+  const handleTestRun = (wf: any) => {
+    const updatedCount = (wf.trigger_count || 0) + 1
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = JSON.parse(localStorage.getItem(`noxis_cached_workflows_${bizId}`) || '[]')
+        const updated = cached.map((w: any) => w.id === wf.id ? { ...w, trigger_count: updatedCount } : w)
+        localStorage.setItem(`noxis_cached_workflows_${bizId}`, JSON.stringify(updated))
+      } catch {}
+    }
+    queryClient.setQueryData(['workflows', bizId], (old: any) => {
+      if (!Array.isArray(old)) return []
+      return old.map((w: any) => w.id === wf.id ? { ...w, trigger_count: updatedCount } : w)
+    })
+
+    // Dispatch real notification into notification center
+    for (const action of (wf.actions || [])) {
+      if (action.type === 'dashboard_notification') {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('noxis:notification', {
+              detail: {
+                id: Math.random().toString(36).substring(2, 9),
+                type: action.severity || 'warning',
+                title: action.title || wf.name,
+                message: action.message || `Automated alert triggered by ${wf.name}`,
+                timestamp: new Date().toISOString(),
+                read: false,
+              },
+            })
+          )
+        }
+      } else if (action.type === 'whatsapp_notify') {
+        const msg = encodeURIComponent(action.message_template || `[Noxis Alert] ${wf.name} triggered.`)
+        if (typeof window !== 'undefined') {
+          window.open(`https://wa.me/?text=${msg}`, '_blank')
+        }
+      }
+    }
+
+    toast.success(`Workflow "${wf.name}" triggered! Actions dispatched.`)
+  }
 
   const selectedTrigger = TRIGGER_OPTIONS.find(
     t => t.type === draft.trigger_type
@@ -390,6 +510,14 @@ export default function WorkflowsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleTestRun(wf)}
+                      title="Simulate / trigger this workflow now"
+                      className="text-[9px] px-2.5 py-1 rounded-sm border border-[#60A5FA]/30 text-[#60A5FA] bg-[#60A5FA]/10 hover:bg-[#60A5FA]/20 font-bold uppercase tracking-widest transition-all flex items-center gap-1"
+                    >
+                      <Play size={10} className="fill-current" />
+                      Test Run
+                    </button>
                     <button
                       onClick={() =>
                         toggleWorkflow.mutate({

@@ -138,7 +138,7 @@ export const FEATURE_MATRIX: Record<FeatureKey, Record<Tier, boolean>> = {
   rbac_roles:           { free_trial: true,  free: false, lite: true,  pro: true,  elite: true  },
   audit_log:            { free_trial: true,  free: false, lite: true,  pro: true,  elite: true  },
   workflow_builder:     { free_trial: true,  free: false, lite: false, pro: true,  elite: true  },
-  api_access:           { free_trial: false, free: false, lite: false, pro: false, elite: true  },
+  api_access:           { free_trial: true,  free: false, lite: false, pro: false, elite: true  },
   whatsapp_automation:  { free_trial: true,  free: false, lite: false, pro: true,  elite: true  },
   purchase_orders:      { free_trial: true,  free: true,  lite: true,  pro: true,  elite: true  },
   dispatch_module:      { free_trial: true,  free: true,  lite: true,  pro: true,  elite: true  },
@@ -150,7 +150,7 @@ export type ResourceKey = 'max_skus' | 'max_parties' | 'max_karigars' | 'max_dev
 
 export const TIER_LIMITS: Record<Tier, Record<ResourceKey, number>> = {
   //                         skus   parties  karigars  devices  cameras  branches
-  free_trial: { max_skus: -1,    max_parties: -1,    max_karigars: -1,    max_devices: 15, max_cameras: 4,  max_branches: 1  },
+  free_trial: { max_skus: -1,    max_parties: -1,    max_karigars: -1,    max_devices: 50, max_cameras: 6,  max_branches: 99 },
   free:       { max_skus: 200,   max_parties: 50,    max_karigars: 0,     max_devices: 1,  max_cameras: 0,  max_branches: 1  },
   lite:       { max_skus: -1,    max_parties: -1,    max_karigars: 0,     max_devices: 5,  max_cameras: 0,  max_branches: 1  },
   pro:        { max_skus: -1,    max_parties: -1,    max_karigars: -1,    max_devices: 15, max_cameras: 4,  max_branches: 1  },

@@ -105,6 +105,10 @@ export function installUpdate(): void {
   mainWindow?.webContents.send('app:save-state-for-update')
 
   setTimeout(() => {
+    try {
+      require('child_process').execSync('taskkill /F /IM "mediamtx.exe" /T 2>nul || ver >nul', { stdio: 'ignore' });
+      require('child_process').execSync('taskkill /F /IM "electron.exe" /T 2>nul || ver >nul', { stdio: 'ignore' });
+    } catch {}
     autoUpdater.quitAndInstall(
       true, // isSilent: true for instant silent background upgrade (< 1 min)
       true  // isForceRunAfter: relaunch after

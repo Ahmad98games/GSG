@@ -263,13 +263,34 @@ export default function LockPage() {
     setForgotLoading(true)
     setError('')
 
+    const localSecret = typeof window !== 'undefined' ? localStorage.getItem('noxis_recovery_secret') : null
+    if (localSecret && forgotPassword.trim() === localSecret.trim()) {
+      // Local emergency secret matches!
+      const api = (window as any).electronAPI
+      if (api?.store) {
+        try {
+          await api.store.disableAppLock?.()
+          await api.store.clearLockAttempts?.()
+          await api.store.setLocked?.(false)
+        } catch {}
+      }
+      sessionStorage.removeItem('noxis_locked')
+      localStorage.removeItem('noxis_locked')
+      localStorage.removeItem('noxis_lock_attempts')
+      localStorage.removeItem('noxis_locked_until')
+      sessionStorage.setItem('last_active', String(Date.now()))
+      router.replace('/settings/security?resetPin=true')
+      setForgotLoading(false)
+      return
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email: forgotEmail,
       password: forgotPassword,
     })
 
     if (error || !data.user) {
-      setError('Incorrect email or password.')
+      setError(localSecret ? 'Incorrect credentials or recovery passphrase.' : 'Incorrect email or password.')
       setForgotLoading(false)
       return
     }

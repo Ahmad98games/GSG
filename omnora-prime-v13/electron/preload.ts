@@ -57,10 +57,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('install-update'),
   getUpdateStatus: () =>
     ipcRenderer.invoke('get-update-status'),
+  getVersionPolicy: () =>
+    ipcRenderer.invoke('updater:get-version-policy'),
   setUpdateChannel: (channel: string) =>
     ipcRenderer.invoke('set-update-channel', channel),
 
   // Listen for update events
+  onUpdateGated: (callback: (data: any) => void) => {
+    const listener = (_: any, data: any) => callback(data);
+    ipcRenderer.on('update-gated', listener);
+    return () => {
+      ipcRenderer.removeListener('update-gated', listener);
+    };
+  },
   onUpdateStatus: (callback: (data: any) => void) => {
     const listener = (_: any, data: any) => callback(data);
     ipcRenderer.on('update-status', listener);
@@ -120,6 +129,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('store:disableAppLock'),
     isAppLockEnabled: () =>
       ipcRenderer.invoke('store:isAppLockEnabled'),
+    setAppLockEnabled: (enabled: boolean) =>
+      ipcRenderer.invoke('store:setAppLockEnabled', enabled),
     getLockTimeout: () =>
       ipcRenderer.invoke('store:getLockTimeout'),
     setLockTimeout: (m: number) =>
@@ -318,4 +329,16 @@ contextBridge.exposeInMainWorld('cctv', {
     ipcRenderer.invoke('app:zoom-out'),
   getZoomFactor: () =>
     ipcRenderer.invoke('app:get-zoom-factor'),
+
+  // Power-cut & auto-start recovery hooks
+  onPowerCutDetected: (callback: (data: { lastRoute: string; message: string }) => void) => {
+    const handler = (_: any, data: any) => callback(data);
+    ipcRenderer.on('ipc:power-cut-detected', handler);
+    return () => ipcRenderer.removeListener('ipc:power-cut-detected', handler);
+  },
+  onAutoStarted: (callback: (data: { timestamp: number }) => void) => {
+    const handler = (_: any, data: any) => callback(data);
+    ipcRenderer.on('app:autostarted', handler);
+    return () => ipcRenderer.removeListener('app:autostarted', handler);
+  },
 });

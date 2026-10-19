@@ -71,6 +71,11 @@ interface StoreSchema {
   // License
   license_payload: string        // JSON-stringified LicensePayload, encrypted by store
 
+  // Baseline Version Lock & Telemetry
+  baseline_installation_version: string
+  baseline_tier: 'lite' | 'pro' | 'elite'
+  installation_hwid: string
+
   // Power-cut recovery
   exit_flag: string              // 'running' | 'clean'
 }
@@ -115,6 +120,10 @@ const store: any = new (ElectronStore as any)({
     trial_completed: false,
     // License
     license_payload: '',
+    // Baseline Version Lock & Telemetry
+    baseline_installation_version: '',
+    baseline_tier: 'elite',
+    installation_hwid: '',
     // Power-cut
     exit_flag: 'clean',
   },
@@ -226,15 +235,24 @@ export function clearLockAttempts(): void {
 
 export function saveLastRoute(route: string) {
   if (
+    !route ||
+    route === '/' ||
+    route === '' ||
+    route === '/index.html' ||
     route.includes('/login') ||
     route.includes('/setup') ||
-    route.includes('/lock')
+    route.includes('/lock') ||
+    route.includes('/download')
   ) return
   store.set('lastRoute', route)
 }
 
 export function getLastRoute(): string {
-  return store.get('lastRoute') || '/dashboard'
+  const r = store.get('lastRoute')
+  if (!r || r === '/' || r === '/index.html' || r.includes('/login') || r.includes('/lock')) {
+    return '/dashboard'
+  }
+  return r
 }
 
 export function saveLastActive() {
@@ -391,5 +409,31 @@ export function getLastSeenVersion(): string {
 
 export function setLastSeenVersion(ver: string): void {
   store.set('lastSeenVersion', ver)
+}
+
+// ── BASELINE VERSION LOCK & TIER GATING ──
+
+export function getBaselineInstallationVersion(): string {
+  return store.get('baseline_installation_version') || ''
+}
+
+export function setBaselineInstallationVersion(version: string): void {
+  store.set('baseline_installation_version', version)
+}
+
+export function getBaselineTier(): 'lite' | 'pro' | 'elite' {
+  return store.get('baseline_tier') || 'elite'
+}
+
+export function setBaselineTier(tier: 'lite' | 'pro' | 'elite'): void {
+  store.set('baseline_tier', tier)
+}
+
+export function getInstallationHWID(): string {
+  return store.get('installation_hwid') || ''
+}
+
+export function setInstallationHWID(hwid: string): void {
+  store.set('installation_hwid', hwid)
 }
 

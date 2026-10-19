@@ -59,6 +59,7 @@ const licenseVerifier_1 = require("./services/licenseVerifier");
 const tierEngine_1 = require("./services/tierEngine");
 const rbacEngine_1 = require("./bridge/rbacEngine");
 const server_1 = require("../src/lib/mobile-bridge/server");
+const autonomousUpdateEngine_1 = require("./services/autonomousUpdateEngine");
 // ── Store ─────────────────────────────────────────────────────────────────────
 const store_1 = require("./store");
 // ─────────────────────────────────────────────
@@ -153,10 +154,11 @@ function startupLog(msg) {
 // ── AUTO-START MANAGEMENT ──
 function applyAutoStart(enabled) {
     try {
+        const isWin = process.platform === 'win32';
         electron_1.app.setLoginItemSettings({
             openAtLogin: enabled,
             openAsHidden: false,
-            ...(process.platform === 'win32' && {
+            ...(isWin && electron_1.app.isPackaged && {
                 path: process.execPath,
                 args: ['--autostart'],
             }),
@@ -173,16 +175,17 @@ function getAutoStartStatus() {
     const stored = (0, store_1.getAutoStartEnabled)();
     let registeredWithOS = false;
     try {
+        const isWin = process.platform === 'win32';
         const settings = electron_1.app.getLoginItemSettings({
-            ...(process.platform === 'win32' && {
+            ...(isWin && electron_1.app.isPackaged && {
                 path: process.execPath,
                 args: ['--autostart'],
             }),
         });
-        registeredWithOS = settings.openAtLogin;
+        registeredWithOS = settings.openAtLogin || stored;
     }
     catch {
-        registeredWithOS = false;
+        registeredWithOS = stored;
     }
     return {
         enabled: stored,
@@ -619,7 +622,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 </div>
 
 <div class="footer-meta">
-  <span>v14.0.1 &nbsp;·&nbsp; SQLite WAL</span>
+  <span>v14.0.0 &nbsp;·&nbsp; SQLite WAL</span>
   <span>OMNORA LABS</span>
 </div>
 </body>
@@ -865,11 +868,36 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             });
         });
         electron_updater_1.autoUpdater.on('update-available', (info) => {
-            startupLog(`[Update] Update available: v${info.version}`);
+            startupLog(`[Update] Incoming manifest update: v${info.version}`);
+            const policy = (0, autonomousUpdateEngine_1.getVersionPolicy)();
+            const eligibility = (0, autonomousUpdateEngine_1.calculateVersionEligibility)(policy.baselineVersion, policy.tier, info.version);
+            if (!eligibility.allowed) {
+                startupLog(`[Update] Version-Gated: v${info.version} exceeds ${policy.tier.toUpperCase()} baseline ceiling ${eligibility.maxAllowedVersion}`);
+                updateAvailable = false;
+                latestUpdateInfo = null;
+                const gatedPayload = {
+                    status: 'gated',
+                    isGated: true,
+                    updateAvailable: true,
+                    targetVersion: info.version,
+                    version: info.version,
+                    requiredTier: eligibility.requiredTier,
+                    message: eligibility.message,
+                    baselineVersion: policy.baselineVersion,
+                    currentVersion: policy.currentVersion,
+                    maxAllowedVersion: eligibility.maxAllowedVersion,
+                    tier: policy.tier,
+                    hwid: policy.hwid,
+                };
+                win.webContents.send('update-status', gatedPayload);
+                win.webContents.send('update-gated', gatedPayload);
+                return;
+            }
             updateAvailable = true;
             latestUpdateInfo = info;
             win.webContents.send('update-status', {
                 status: 'available',
+                isGated: false,
                 version: info.version,
                 releaseDate: info.releaseDate,
                 releaseName: info.releaseName || `Version ${info.version}`,
@@ -903,7 +931,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             startupLog(`[Update] Download: ${pct}% (${(transferred / 1048576).toFixed(1)}MB / ${(total / 1048576).toFixed(1)}MB)`);
             win.webContents.send('update-status', {
                 status: 'downloading',
-                version: latestUpdateInfo?.version || '14.0.1',
+                version: latestUpdateInfo?.version || '14.0.0',
                 percent: pct,
                 transferred,
                 total,
@@ -1158,28 +1186,103 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             };
         }
     });
-    electron_1.ipcMain.handle('check-for-updates', async () => {
+    const executeUpdateCheck = async (simulateTargetVersion) => {
         try {
-            // Don't check in development
+            const policy = (0, autonomousUpdateEngine_1.getVersionPolicy)();
+            // If simulateTargetVersion passed (useful for simulated tests or UI checks)
+            if (simulateTargetVersion) {
+                const eligibility = (0, autonomousUpdateEngine_1.calculateVersionEligibility)(policy.baselineVersion, policy.tier, simulateTargetVersion);
+                if (!eligibility.allowed) {
+                    const payload = {
+                        status: 'gated',
+                        updateAvailable: true,
+                        isGated: true,
+                        requiredTier: eligibility.requiredTier,
+                        message: eligibility.message,
+                        targetVersion: simulateTargetVersion,
+                        baselineVersion: policy.baselineVersion,
+                        currentVersion: policy.currentVersion,
+                        maxAllowedVersion: eligibility.maxAllowedVersion,
+                        tier: policy.tier,
+                        hwid: policy.hwid,
+                    };
+                    mainWindow?.webContents.send('update-status', payload);
+                    mainWindow?.webContents.send('update-gated', payload);
+                    return payload;
+                }
+            }
             if (!electron_1.app.isPackaged) {
                 return {
                     status: 'dev',
-                    message: 'Auto-update disabled in development'
+                    message: 'Auto-update running in development mode',
+                    policy,
                 };
             }
-            await electron_updater_1.autoUpdater.checkForUpdates();
-            return { status: 'checking' };
+            const res = await electron_updater_1.autoUpdater.checkForUpdates();
+            if (res?.updateInfo) {
+                const eligibility = (0, autonomousUpdateEngine_1.calculateVersionEligibility)(policy.baselineVersion, policy.tier, res.updateInfo.version);
+                if (!eligibility.allowed) {
+                    updateAvailable = false;
+                    latestUpdateInfo = null;
+                    const payload = {
+                        status: 'gated',
+                        updateAvailable: true,
+                        isGated: true,
+                        requiredTier: eligibility.requiredTier,
+                        message: eligibility.message,
+                        targetVersion: res.updateInfo.version,
+                        baselineVersion: policy.baselineVersion,
+                        currentVersion: policy.currentVersion,
+                        maxAllowedVersion: eligibility.maxAllowedVersion,
+                        tier: policy.tier,
+                        hwid: policy.hwid,
+                    };
+                    mainWindow?.webContents.send('update-status', payload);
+                    mainWindow?.webContents.send('update-gated', payload);
+                    return payload;
+                }
+                latestUpdateInfo = res.updateInfo;
+                updateAvailable = true;
+                return {
+                    status: 'available',
+                    updateAvailable: true,
+                    isGated: false,
+                    version: res.updateInfo.version,
+                    policy,
+                };
+            }
+            return { status: 'checking', policy };
         }
         catch (err) {
             return {
                 status: 'error',
-                message: err.message
+                message: err.message,
             };
         }
+    };
+    electron_1.ipcMain.handle('check-for-updates', async (_, targetVersion) => {
+        return executeUpdateCheck(targetVersion);
+    });
+    electron_1.ipcMain.handle('updater:check-for-updates', async (_, targetVersion) => {
+        return executeUpdateCheck(targetVersion);
+    });
+    electron_1.ipcMain.handle('updater:get-version-policy', () => {
+        return (0, autonomousUpdateEngine_1.getVersionPolicy)();
     });
     electron_1.ipcMain.handle('download-update', async () => {
-        if (!updateAvailable)
+        if (!updateAvailable || !latestUpdateInfo)
             return;
+        const policy = (0, autonomousUpdateEngine_1.getVersionPolicy)();
+        const eligibility = (0, autonomousUpdateEngine_1.calculateVersionEligibility)(policy.baselineVersion, policy.tier, latestUpdateInfo.version);
+        if (!eligibility.allowed) {
+            startupLog(`[Update] Prevented download: target v${latestUpdateInfo.version} is gated.`);
+            return {
+                blocked: true,
+                isGated: true,
+                requiredTier: eligibility.requiredTier,
+                message: eligibility.message,
+            };
+        }
         try {
             await electron_updater_1.autoUpdater.downloadUpdate();
         }
@@ -1190,23 +1293,47 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     electron_1.ipcMain.handle('install-update', () => {
         if (!updateDownloaded)
             return;
-        // Let app finish current operations then quit and install
+        try {
+            if (nextServer) {
+                nextServer.kill();
+                nextServer = null;
+            }
+            if (visionProcess) {
+                visionProcess.kill();
+                visionProcess = null;
+            }
+            if (tunnelProcess) {
+                tunnelProcess.kill();
+                tunnelProcess = null;
+            }
+            (0, mediamtxService_1.stopMediamtx)();
+        }
+        catch { }
         setImmediate(() => {
             electron_updater_1.autoUpdater.quitAndInstall(true, // run installer silently for instant background update (< 1 min)
             true // restart after install
             );
         });
     });
-    electron_1.ipcMain.handle('get-update-status', () => ({
-        updateAvailable,
-        updateDownloaded,
-        downloadProgress,
-        version: latestUpdateInfo?.version,
-        releaseName: latestUpdateInfo?.releaseName,
-        releaseNotes: latestUpdateInfo?.releaseNotes,
-        releaseDate: latestUpdateInfo?.releaseDate,
-        currentVersion: electron_1.app.getVersion(),
-    }));
+    electron_1.ipcMain.handle('get-update-status', () => {
+        const policy = (0, autonomousUpdateEngine_1.getVersionPolicy)();
+        return {
+            updateAvailable,
+            updateDownloaded,
+            downloadProgress,
+            version: latestUpdateInfo?.version,
+            releaseName: latestUpdateInfo?.releaseName,
+            releaseNotes: latestUpdateInfo?.releaseNotes,
+            releaseDate: latestUpdateInfo?.releaseDate,
+            currentVersion: electron_1.app.isPackaged ? electron_1.app.getVersion() : '14.0.0',
+            baselineVersion: policy.baselineVersion,
+            tier: policy.tier,
+            maxAllowedMajor: policy.maxAllowedMajor,
+            maxAllowedVersion: policy.maxAllowedVersion,
+            allowedWindow: policy.allowedWindow,
+            hwid: policy.hwid,
+        };
+    });
     electron_1.ipcMain.handle('get-bridge-status', () => lastBridgeStatus);
     electron_1.ipcMain.handle('get-tunnel-url', () => ({
         url: tunnelUrl,
@@ -1385,7 +1512,52 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         const trialState = (0, trialEngine_1.getTrialState)();
         const license = (0, licenseVerifier_1.getActiveLicensePayload)();
         const hasPaidLicense = Boolean(license);
-        const activeTier = license?.tier || (trialState.status === 'expired' ? 'free_forever' : 'elite');
+        const activeTier = license?.tier || (trialState.status === 'expired' ? 'free_forever' : 'trial');
+        let skuCount = 0;
+        let partyCount = 0;
+        let karigarCount = 0;
+        try {
+            const { db } = require('../src/lib/db/client');
+            const sqlite = db?.$client || global.__noxisDb;
+            if (sqlite) {
+                try {
+                    const sRow = sqlite.prepare('SELECT COUNT(*) as cnt FROM skus WHERE is_active = 1').get();
+                    skuCount = sRow?.cnt ?? 0;
+                }
+                catch {
+                    try {
+                        const sRow = sqlite.prepare('SELECT COUNT(*) as cnt FROM skus').get();
+                        skuCount = sRow?.cnt ?? 0;
+                    }
+                    catch { }
+                }
+                try {
+                    const pRow = sqlite.prepare('SELECT COUNT(*) as cnt FROM parties WHERE is_active = 1').get();
+                    partyCount = pRow?.cnt ?? 0;
+                }
+                catch {
+                    try {
+                        const pRow = sqlite.prepare('SELECT COUNT(*) as cnt FROM parties').get();
+                        partyCount = pRow?.cnt ?? 0;
+                    }
+                    catch { }
+                }
+                try {
+                    const kRow = sqlite.prepare("SELECT COUNT(*) as cnt FROM karigars WHERE status = 'active'").get();
+                    karigarCount = kRow?.cnt ?? 0;
+                }
+                catch {
+                    try {
+                        const kRow = sqlite.prepare('SELECT COUNT(*) as cnt FROM karigars').get();
+                        karigarCount = kRow?.cnt ?? 0;
+                    }
+                    catch { }
+                }
+            }
+        }
+        catch (e) {
+            startupLog(`[License IPC] DB count query warning: ${e.message}`);
+        }
         return {
             tier: activeTier,
             caps: tierInfo.caps,
@@ -1401,6 +1573,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             isPermanent: hasPaidLicense && (!license?.expiresAt || license.expiresAt === 0),
             businessId: license?.businessId || '00000000-0000-0000-0000-000000000000',
             expiresAt: license?.expiresAt || 0,
+            skuCount,
+            partyCount,
+            karigarCount,
         };
     });
     // Activates a license key string or payload object. Validates and persists instantly.
@@ -1679,6 +1854,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         return { ok: true };
     });
     electron_1.ipcMain.handle('store:isAppLockEnabled', () => (0, store_1.isAppLockEnabled)());
+    electron_1.ipcMain.handle('store:setAppLockEnabled', (_, enabled) => {
+        (0, store_1.setAppLockEnabled)(enabled);
+        return { ok: true };
+    });
     electron_1.ipcMain.handle('store:getLockTimeout', () => (0, store_1.getLockTimeout)());
     electron_1.ipcMain.handle('store:setLockTimeout', (_, minutes) => {
         (0, store_1.setLockTimeout)(minutes);
@@ -1942,7 +2121,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         mainWindow.on('closed', () => { mainWindow = null; });
         const serverUrl = `http://127.0.0.1:${PORT}`;
         const lockOn = (0, store_1.isAppLockEnabled)() || (0, store_1.isLocked)();
-        const targetPath = lockOn ? '/lock' : ((0, store_1.getLastRoute)() || '/dashboard');
+        const storedRoute = (0, store_1.getLastRoute)();
+        const targetPath = lockOn ? '/lock' : (storedRoute && storedRoute !== '/' && !storedRoute.startsWith('/login') && !storedRoute.startsWith('/lock') ? storedRoute : '/dashboard');
         const targetUrl = `http://127.0.0.1:${PORT}${targetPath}`;
         try {
             startupLog('[Electron] Waiting for Next.js server...');

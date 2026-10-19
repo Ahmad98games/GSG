@@ -7,4 +7,5 @@ build
 *.log
 .DS_Store
 textile-mobile/assets/*.png
+.VSCodeCounter
 !.gitignore

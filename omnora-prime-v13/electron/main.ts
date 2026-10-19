@@ -22,6 +22,11 @@ import { verifyLicense, getActiveLicensePayload, persistLicense, revokeLicense }
 import { canUse, getActiveTierInfo, isWithinDeviceLimit, FEATURES } from './services/tierEngine'
 import { buildHubAck, normalizeRole, canWriteKhata, type MobileRole } from './bridge/rbacEngine'
 import { deliverMessageToDevice, broadcastToAllDevices, getConnectedClientsMap } from '../src/lib/mobile-bridge/server'
+import {
+  initAutonomousUpdateBaseline,
+  calculateVersionEligibility,
+  getVersionPolicy,
+} from './services/autonomousUpdateEngine'
 // ── Store ─────────────────────────────────────────────────────────────────────
 import store, {
   saveSession,
@@ -151,10 +156,11 @@ function startupLog(msg: string): void {
 // ── AUTO-START MANAGEMENT ──
 function applyAutoStart(enabled: boolean): void {
   try {
+    const isWin = process.platform === 'win32';
     app.setLoginItemSettings({
       openAtLogin: enabled,
       openAsHidden: false,
-      ...(process.platform === 'win32' && {
+      ...(isWin && app.isPackaged && {
         path: process.execPath,
         args: ['--autostart'],
       }),
@@ -175,15 +181,16 @@ function getAutoStartStatus(): { enabled: boolean; registeredWithOS: boolean } {
   let registeredWithOS = false
 
   try {
+    const isWin = process.platform === 'win32';
     const settings = app.getLoginItemSettings({
-      ...(process.platform === 'win32' && {
+      ...(isWin && app.isPackaged && {
         path: process.execPath,
         args: ['--autostart'],
       }),
     })
-    registeredWithOS = settings.openAtLogin
+    registeredWithOS = settings.openAtLogin || stored
   } catch {
-    registeredWithOS = false
+    registeredWithOS = stored
   }
 
   return {
@@ -701,7 +708,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 </div>
 
 <div class="footer-meta">
-  <span>v14.0.1 &nbsp;·&nbsp; SQLite WAL</span>
+  <span>v14.0.0 &nbsp;·&nbsp; SQLite WAL</span>
   <span>OMNORA LABS</span>
 </div>
 </body>
@@ -962,7 +969,36 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     });
 
     autoUpdater.on('update-available', (info) => {
-      startupLog(`[Update] Update available: v${info.version}`);
+      startupLog(`[Update] Incoming manifest update: v${info.version}`);
+      
+      const policy = getVersionPolicy();
+      const eligibility = calculateVersionEligibility(policy.baselineVersion, policy.tier, info.version);
+
+      if (!eligibility.allowed) {
+        startupLog(`[Update] Version-Gated: v${info.version} exceeds ${policy.tier.toUpperCase()} baseline ceiling ${eligibility.maxAllowedVersion}`);
+        updateAvailable = false;
+        latestUpdateInfo = null;
+
+        const gatedPayload = {
+          status: 'gated',
+          isGated: true,
+          updateAvailable: true,
+          targetVersion: info.version,
+          version: info.version,
+          requiredTier: eligibility.requiredTier,
+          message: eligibility.message,
+          baselineVersion: policy.baselineVersion,
+          currentVersion: policy.currentVersion,
+          maxAllowedVersion: eligibility.maxAllowedVersion,
+          tier: policy.tier,
+          hwid: policy.hwid,
+        };
+
+        win.webContents.send('update-status', gatedPayload);
+        win.webContents.send('update-gated', gatedPayload);
+        return;
+      }
+
       updateAvailable = true;
       latestUpdateInfo = info;
 
@@ -970,6 +1006,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         'update-status',
         {
           status: 'available',
+          isGated: false,
           version: info.version,
           releaseDate: info.releaseDate,
           releaseName: info.releaseName || `Version ${info.version}`,
@@ -1013,7 +1050,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         'update-status',
         {
           status: 'downloading',
-          version: latestUpdateInfo?.version || '14.0.1',
+          version: latestUpdateInfo?.version || '14.0.0',
           percent: pct,
           transferred,
           total,
@@ -1296,27 +1333,123 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       }
     }
   });
-  ipcMain.handle('check-for-updates', async () => {
+  const executeUpdateCheck = async (simulateTargetVersion?: string) => {
     try {
-      // Don't check in development
+      const policy = getVersionPolicy();
+
+      // If simulateTargetVersion passed (useful for simulated tests or UI checks)
+      if (simulateTargetVersion) {
+        const eligibility = calculateVersionEligibility(
+          policy.baselineVersion,
+          policy.tier,
+          simulateTargetVersion
+        );
+        if (!eligibility.allowed) {
+          const payload = {
+            status: 'gated',
+            updateAvailable: true,
+            isGated: true,
+            requiredTier: eligibility.requiredTier,
+            message: eligibility.message,
+            targetVersion: simulateTargetVersion,
+            baselineVersion: policy.baselineVersion,
+            currentVersion: policy.currentVersion,
+            maxAllowedVersion: eligibility.maxAllowedVersion,
+            tier: policy.tier,
+            hwid: policy.hwid,
+          };
+          mainWindow?.webContents.send('update-status', payload);
+          mainWindow?.webContents.send('update-gated', payload);
+          return payload;
+        }
+      }
+
       if (!app.isPackaged) {
         return {
           status: 'dev',
-          message: 'Auto-update disabled in development'
+          message: 'Auto-update running in development mode',
+          policy,
         };
       }
-      await autoUpdater.checkForUpdates();
-      return { status: 'checking' };
+
+      const res = await autoUpdater.checkForUpdates();
+      if (res?.updateInfo) {
+        const eligibility = calculateVersionEligibility(
+          policy.baselineVersion,
+          policy.tier,
+          res.updateInfo.version
+        );
+
+        if (!eligibility.allowed) {
+          updateAvailable = false;
+          latestUpdateInfo = null;
+          const payload = {
+            status: 'gated',
+            updateAvailable: true,
+            isGated: true,
+            requiredTier: eligibility.requiredTier,
+            message: eligibility.message,
+            targetVersion: res.updateInfo.version,
+            baselineVersion: policy.baselineVersion,
+            currentVersion: policy.currentVersion,
+            maxAllowedVersion: eligibility.maxAllowedVersion,
+            tier: policy.tier,
+            hwid: policy.hwid,
+          };
+          mainWindow?.webContents.send('update-status', payload);
+          mainWindow?.webContents.send('update-gated', payload);
+          return payload;
+        }
+
+        latestUpdateInfo = res.updateInfo;
+        updateAvailable = true;
+        return {
+          status: 'available',
+          updateAvailable: true,
+          isGated: false,
+          version: res.updateInfo.version,
+          policy,
+        };
+      }
+
+      return { status: 'checking', policy };
     } catch (err: any) {
       return {
         status: 'error',
-        message: err.message
+        message: err.message,
       };
     }
+  };
+
+  ipcMain.handle('check-for-updates', async (_, targetVersion?: string) => {
+    return executeUpdateCheck(targetVersion);
+  });
+
+  ipcMain.handle('updater:check-for-updates', async (_, targetVersion?: string) => {
+    return executeUpdateCheck(targetVersion);
+  });
+
+  ipcMain.handle('updater:get-version-policy', () => {
+    return getVersionPolicy();
   });
 
   ipcMain.handle('download-update', async () => {
-    if (!updateAvailable) return;
+    if (!updateAvailable || !latestUpdateInfo) return;
+    const policy = getVersionPolicy();
+    const eligibility = calculateVersionEligibility(
+      policy.baselineVersion,
+      policy.tier,
+      latestUpdateInfo.version
+    );
+    if (!eligibility.allowed) {
+      startupLog(`[Update] Prevented download: target v${latestUpdateInfo.version} is gated.`);
+      return {
+        blocked: true,
+        isGated: true,
+        requiredTier: eligibility.requiredTier,
+        message: eligibility.message,
+      };
+    }
     try {
       await autoUpdater.downloadUpdate();
     } catch (err: any) {
@@ -1326,7 +1459,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
   ipcMain.handle('install-update', () => {
     if (!updateDownloaded) return;
-    // Let app finish current operations then quit and install
+    try {
+      if (nextServer) { (nextServer as any).kill(); nextServer = null; }
+      if (visionProcess) { (visionProcess as any).kill(); visionProcess = null; }
+      if (tunnelProcess) { (tunnelProcess as any).kill(); tunnelProcess = null; }
+      stopMediamtx();
+    } catch {}
     setImmediate(() => {
       autoUpdater.quitAndInstall(
         true, // run installer silently for instant background update (< 1 min)
@@ -1335,16 +1473,25 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     });
   });
 
-  ipcMain.handle('get-update-status', () => ({
-    updateAvailable,
-    updateDownloaded,
-    downloadProgress,
-    version: latestUpdateInfo?.version,
-    releaseName: latestUpdateInfo?.releaseName,
-    releaseNotes: latestUpdateInfo?.releaseNotes,
-    releaseDate: latestUpdateInfo?.releaseDate,
-    currentVersion: app.getVersion(),
-  }));
+  ipcMain.handle('get-update-status', () => {
+    const policy = getVersionPolicy();
+    return {
+      updateAvailable,
+      updateDownloaded,
+      downloadProgress,
+      version: latestUpdateInfo?.version,
+      releaseName: latestUpdateInfo?.releaseName,
+      releaseNotes: latestUpdateInfo?.releaseNotes,
+      releaseDate: latestUpdateInfo?.releaseDate,
+      currentVersion: app.isPackaged ? app.getVersion() : '14.0.0',
+      baselineVersion: policy.baselineVersion,
+      tier: policy.tier,
+      maxAllowedMajor: policy.maxAllowedMajor,
+      maxAllowedVersion: policy.maxAllowedVersion,
+      allowedWindow: policy.allowedWindow,
+      hwid: policy.hwid,
+    };
+  });
   ipcMain.handle('get-bridge-status', () => lastBridgeStatus);
   ipcMain.handle('get-tunnel-url', () => ({
     url: tunnelUrl,
@@ -1531,7 +1678,47 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     const trialState = getTrialState();
     const license = getActiveLicensePayload();
     const hasPaidLicense = Boolean(license);
-    const activeTier = license?.tier || (trialState.status === 'expired' ? 'free_forever' : 'elite');
+    const activeTier = license?.tier || (trialState.status === 'expired' ? 'free_forever' : 'trial');
+
+    let skuCount = 0;
+    let partyCount = 0;
+    let karigarCount = 0;
+    try {
+      const { db } = require('../src/lib/db/client');
+      const sqlite = db?.$client || (global as any).__noxisDb;
+      if (sqlite) {
+        try {
+          const sRow = sqlite.prepare('SELECT COUNT(*) as cnt FROM skus WHERE is_active = 1').get();
+          skuCount = sRow?.cnt ?? 0;
+        } catch {
+          try {
+            const sRow = sqlite.prepare('SELECT COUNT(*) as cnt FROM skus').get();
+            skuCount = sRow?.cnt ?? 0;
+          } catch {}
+        }
+        try {
+          const pRow = sqlite.prepare('SELECT COUNT(*) as cnt FROM parties WHERE is_active = 1').get();
+          partyCount = pRow?.cnt ?? 0;
+        } catch {
+          try {
+            const pRow = sqlite.prepare('SELECT COUNT(*) as cnt FROM parties').get();
+            partyCount = pRow?.cnt ?? 0;
+          } catch {}
+        }
+        try {
+          const kRow = sqlite.prepare("SELECT COUNT(*) as cnt FROM karigars WHERE status = 'active'").get();
+          karigarCount = kRow?.cnt ?? 0;
+        } catch {
+          try {
+            const kRow = sqlite.prepare('SELECT COUNT(*) as cnt FROM karigars').get();
+            karigarCount = kRow?.cnt ?? 0;
+          } catch {}
+        }
+      }
+    } catch (e: any) {
+      startupLog(`[License IPC] DB count query warning: ${e.message}`);
+    }
+
     return {
       tier: activeTier,
       caps: tierInfo.caps,
@@ -1547,6 +1734,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       isPermanent: hasPaidLicense && (!license?.expiresAt || license.expiresAt === 0),
       businessId: license?.businessId || '00000000-0000-0000-0000-000000000000',
       expiresAt: license?.expiresAt || 0,
+      skuCount,
+      partyCount,
+      karigarCount,
     };
   });
 
@@ -1873,6 +2063,11 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
   ipcMain.handle('store:isAppLockEnabled', () => isAppLockEnabled())
 
+  ipcMain.handle('store:setAppLockEnabled', (_, enabled: boolean) => {
+    setAppLockEnabled(enabled)
+    return { ok: true }
+  })
+
   ipcMain.handle('store:getLockTimeout', () => getLockTimeout())
 
   ipcMain.handle('store:setLockTimeout', (_, minutes: number) => {
@@ -2178,7 +2373,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
     const serverUrl = `http://127.0.0.1:${PORT}`;
     const lockOn = isAppLockEnabled() || isLocked();
-    const targetPath = lockOn ? '/lock' : (getLastRoute() || '/dashboard');
+    const storedRoute = getLastRoute();
+    const targetPath = lockOn ? '/lock' : (storedRoute && storedRoute !== '/' && !storedRoute.startsWith('/login') && !storedRoute.startsWith('/lock') ? storedRoute : '/dashboard');
     const targetUrl = `http://127.0.0.1:${PORT}${targetPath}`;
 
     try {

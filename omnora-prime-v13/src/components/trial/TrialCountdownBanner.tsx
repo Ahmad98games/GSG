@@ -33,7 +33,7 @@ export function TrialCountdownBanner({ isCollapsed = false }: TrialCountdownBann
         <button
           type="button"
           onClick={() => router.push('/settings/license?upgrade=true')}
-          title="Last day of Pro evaluation — Click to upgrade"
+          title="Last day of Elite evaluation — Click to upgrade"
           className={cn(
             "w-full text-left transition-all duration-300 rounded-sm border",
             "bg-red-500/15 border-red-500/40 hover:bg-red-500/25 hover:border-red-400 text-red-300 shadow-[0_0_12px_rgba(239,68,68,0.2)]",
@@ -44,7 +44,7 @@ export function TrialCountdownBanner({ isCollapsed = false }: TrialCountdownBann
           {!isCollapsed && (
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-black uppercase tracking-wider text-red-200 truncate">
-                🔴 Last day of Pro Evaluation
+                🔴 Last day of Elite Evaluation
               </p>
               <p className="text-[9px] text-red-400/90 font-mono truncate">
                 Keep all features active →
@@ -63,7 +63,7 @@ export function TrialCountdownBanner({ isCollapsed = false }: TrialCountdownBann
         <button
           type="button"
           onClick={() => router.push('/settings/license?upgrade=true')}
-          title="2 days left — Click to keep features"
+          title="2 days left — Click to keep Elite features"
           className={cn(
             "w-full text-left transition-all duration-300 rounded-sm border relative overflow-hidden animate-pulse-subtle",
             "bg-orange-500/15 border-orange-500/40 hover:bg-orange-500/25 text-orange-300 shadow-[0_0_15px_rgba(249,115,22,0.25)] ring-1 ring-orange-500/30",
@@ -92,7 +92,7 @@ export function TrialCountdownBanner({ isCollapsed = false }: TrialCountdownBann
       <button
         type="button"
         onClick={() => router.push('/settings/license?upgrade=true')}
-        title={`Pro Evaluation — ${daysLeft} days left`}
+        title={`Elite Evaluation — ${daysLeft} days left`}
         className={cn(
           "w-full text-left transition-all duration-200 rounded-sm border",
           "bg-emerald-500/10 border-emerald-500/25 hover:bg-emerald-500/20 text-emerald-300",
@@ -103,7 +103,7 @@ export function TrialCountdownBanner({ isCollapsed = false }: TrialCountdownBann
         {!isCollapsed && (
           <div className="min-w-0 flex-1 flex items-center justify-between">
             <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300 truncate">
-              ✦ Pro Trial — {daysLeft} days left
+              ✦ Elite Trial — {daysLeft} days left
             </span>
             <span className="text-[8px] font-mono text-emerald-400/60 bg-emerald-500/10 px-1 py-0.5 rounded">
               Active
@@ -165,11 +165,11 @@ export function TopUrgencyBanner() {
         <div>
           {isLastDay ? (
             <p className="text-xs font-bold text-red-200">
-              Pro evaluation ends today at midnight. <span className="text-red-400 font-normal">Upgrade now to keep Cloud Sync, CCTV, and AI active.</span>
+              Elite evaluation ends today at midnight. <span className="text-red-400 font-normal">Upgrade now to keep Cloud Sync, CCTV, AI, and Karigar Payroll active.</span>
             </p>
           ) : (
             <p className="text-xs font-bold text-red-200">
-              🔴 2 days remaining in Pro evaluation. <span className="text-red-400 font-normal">Your POS remains active forever, but Cloud Sync, CCTV, and Mobile Companion will pause after Day 7.</span>
+              🔴 2 days remaining in Elite evaluation. <span className="text-red-400 font-normal">Your POS remains active forever, but Cloud Sync, CCTV, AI, and Karigar Payroll will pause after Day 7.</span>
             </p>
           )}
         </div>

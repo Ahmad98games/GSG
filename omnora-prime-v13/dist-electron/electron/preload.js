@@ -52,8 +52,16 @@ electron_1.contextBridge.exposeInMainWorld('electronAPI', {
     downloadUpdate: () => electron_1.ipcRenderer.invoke('download-update'),
     installUpdate: () => electron_1.ipcRenderer.invoke('install-update'),
     getUpdateStatus: () => electron_1.ipcRenderer.invoke('get-update-status'),
+    getVersionPolicy: () => electron_1.ipcRenderer.invoke('updater:get-version-policy'),
     setUpdateChannel: (channel) => electron_1.ipcRenderer.invoke('set-update-channel', channel),
     // Listen for update events
+    onUpdateGated: (callback) => {
+        const listener = (_, data) => callback(data);
+        electron_1.ipcRenderer.on('update-gated', listener);
+        return () => {
+            electron_1.ipcRenderer.removeListener('update-gated', listener);
+        };
+    },
     onUpdateStatus: (callback) => {
         const listener = (_, data) => callback(data);
         electron_1.ipcRenderer.on('update-status', listener);
@@ -107,6 +115,7 @@ electron_1.contextBridge.exposeInMainWorld('electronAPI', {
         getPinHash: () => electron_1.ipcRenderer.invoke('store:getPinHash'),
         disableAppLock: () => electron_1.ipcRenderer.invoke('store:disableAppLock'),
         isAppLockEnabled: () => electron_1.ipcRenderer.invoke('store:isAppLockEnabled'),
+        setAppLockEnabled: (enabled) => electron_1.ipcRenderer.invoke('store:setAppLockEnabled', enabled),
         getLockTimeout: () => electron_1.ipcRenderer.invoke('store:getLockTimeout'),
         setLockTimeout: (m) => electron_1.ipcRenderer.invoke('store:setLockTimeout', m),
         isLocked: () => electron_1.ipcRenderer.invoke('store:isLocked'),
@@ -237,4 +246,15 @@ electron_1.contextBridge.exposeInMainWorld('cctv', {
     zoomIn: () => electron_1.ipcRenderer.invoke('app:zoom-in'),
     zoomOut: () => electron_1.ipcRenderer.invoke('app:zoom-out'),
     getZoomFactor: () => electron_1.ipcRenderer.invoke('app:get-zoom-factor'),
+    // Power-cut & auto-start recovery hooks
+    onPowerCutDetected: (callback) => {
+        const handler = (_, data) => callback(data);
+        electron_1.ipcRenderer.on('ipc:power-cut-detected', handler);
+        return () => electron_1.ipcRenderer.removeListener('ipc:power-cut-detected', handler);
+    },
+    onAutoStarted: (callback) => {
+        const handler = (_, data) => callback(data);
+        electron_1.ipcRenderer.on('app:autostarted', handler);
+        return () => electron_1.ipcRenderer.removeListener('app:autostarted', handler);
+    },
 });

@@ -51,8 +51,14 @@ export default React.memo(function TitleBar() {
         className="flex-1 h-full flex items-center px-4 space-x-4 cursor-default"
         style={{ WebkitAppRegion: 'drag' } as any}
       >
-        <div className="flex items-center space-x-3">
-          <Image src="/logos/noxis.png" alt="Noxis" width={24} height={24} />
+        <div className="flex items-center space-x-2.5">
+          <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
+            <img 
+              src="/logos/noxis.png" 
+              alt="Noxis Hub" 
+              className="w-5 h-5 object-contain select-none pointer-events-none" 
+            />
+          </div>
           <span 
             className="text-[11px] font-black tracking-[0.25em]"
             style={{ color: 'var(--color-text, #ffffff)' }}

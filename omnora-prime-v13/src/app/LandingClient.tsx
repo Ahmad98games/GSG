@@ -83,19 +83,31 @@ export default function LandingClient() {
           !!(window as any).electron
         )
 
-        // Strict: Redirect to /dashboard ONLY inside Electron app frame
+        // Strict: Auto-resume to user's last operational route inside Electron app frame
         if (isElectron) {
+          let resumeRoute = '/dashboard'
+          try {
+            const electronRoute = await (window as any).electronAPI?.store?.getLastRoute?.()
+            const localRoute = typeof window !== 'undefined' ? localStorage.getItem('noxis_last_route') : null
+            if (electronRoute && electronRoute !== '/' && !electronRoute.startsWith('/login') && !electronRoute.startsWith('/lock') && !electronRoute.startsWith('/setup')) {
+              resumeRoute = electronRoute
+            } else if (localRoute && localRoute !== '/' && !localRoute.startsWith('/login') && !localRoute.startsWith('/lock') && !localRoute.startsWith('/setup')) {
+              resumeRoute = localRoute
+            }
+          } catch {}
+
           const { data: { session } } = await supabase.auth.getSession()
           if (session) {
             const { data: profile } = await supabase
               .from('business_profiles').select('id, onboarding_done')
               .eq('user_id', session.user.id).single()
-            router.replace(profile?.onboarding_done !== false ? '/dashboard' : '/setup')
-            return
-          } else {
-            router.replace('/dashboard')
-            return
+            if (profile?.onboarding_done === false) {
+              router.replace('/setup')
+              return
+            }
           }
+          router.replace(resumeRoute)
+          return
         }
 
         // Web production build: ALWAYS display public website pages

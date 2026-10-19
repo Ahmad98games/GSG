@@ -33,6 +33,15 @@ export function Nav() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [dropdown, setDropdown] = useState<string | null>(null)
 
+  // Impenetrable Desktop Barrier: Website marketing navigation must NEVER render inside Electron
+  const isElectron = typeof window !== 'undefined' && (
+    !!(window as any).electron ||
+    !!(window as any).electronAPI ||
+    !!(window as any).electronWindow ||
+    navigator.userAgent.toLowerCase().includes('electron')
+  )
+  if (isElectron) return null
+
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20)
     window.addEventListener('scroll', handler, { passive: true })

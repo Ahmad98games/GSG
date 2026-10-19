@@ -22,10 +22,22 @@ const TIER_DEVICES = {
   elite: 50,
 };
 
-const TIER_PRICES: Record<string, number> = {
-  lite: 2500,
-  pro: 6500,
-  elite: 14000,
+const TIER_PRICES_MONTHLY: Record<string, number> = {
+  lite: 1999,
+  pro: 4999,
+  elite: 9999,
+};
+
+const TIER_PRICES_ANNUAL: Record<string, number> = {
+  lite: 18000,
+  pro: 45000,
+  elite: 90000,
+};
+
+const TIER_PRICES_PERMANENT: Record<string, number> = {
+  lite: 72000,
+  pro: 135000,
+  elite: 225000,
 };
 
 export async function POST(req: NextRequest) {
@@ -53,16 +65,23 @@ export async function POST(req: NextRequest) {
     const cleanTxId = (txId || '').trim();
     const licenseKey = generateLicenseKey(cleanTier);
 
-    // Default duration: 1 year (or 1 month if monthly)
+    // Duration: 100 years for permanent, 1 year for annual, 1 month for monthly
     const expiresAt = new Date();
-    if (billingCycle === 'annual') {
+    const isPermanent = billingCycle === 'permanent' || billingCycle === 'lifetime';
+    if (isPermanent) {
+      expiresAt.setFullYear(expiresAt.getFullYear() + 100);
+    } else if (billingCycle === 'annual') {
       expiresAt.setFullYear(expiresAt.getFullYear() + 1);
     } else {
       expiresAt.setMonth(expiresAt.getMonth() + 1);
     }
 
     const maxDevices = TIER_DEVICES[cleanTier as keyof typeof TIER_DEVICES] || 15;
-    const amountPaid = TIER_PRICES[cleanTier] || 6500;
+    const amountPaid = isPermanent
+      ? (TIER_PRICES_PERMANENT[cleanTier] || 135000)
+      : billingCycle === 'annual'
+        ? (TIER_PRICES_ANNUAL[cleanTier] || 45000)
+        : (TIER_PRICES_MONTHLY[cleanTier] || 4999);
 
     // Persist to Supabase licenses table
     const { error: insertError } = await supabase
@@ -78,7 +97,7 @@ export async function POST(req: NextRequest) {
         payment_method: paymentMethod,
         amount_paid: amountPaid,
         currency: 'PKR',
-        notes: `HWID: ${cleanHwid || 'PENDING'} | TID: ${cleanTxId || 'PENDING'} | Mode: Web-Checkout`,
+        notes: `HWID: ${cleanHwid || 'PENDING'} | TID: ${cleanTxId || 'PENDING'} | Mode: Web-Checkout-${billingCycle.toUpperCase()}`,
       });
 
     if (insertError) {

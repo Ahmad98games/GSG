@@ -87,6 +87,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [dismissedExpired, setDismissedExpired] = React.useState(false);
   const [showHwidModal, setShowHwidModal] = React.useState(false);
   const [isExporting, setIsExporting] = React.useState(false);
+  const [powerCutNotice, setPowerCutNotice] = React.useState<{ lastRoute: string; message: string } | null>(null);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const api = (window as any).electronAPI;
+    if (api?.onPowerCutDetected) {
+      const unsub = api.onPowerCutDetected((data: { lastRoute: string; message: string }) => {
+        setPowerCutNotice(data);
+      });
+      return unsub;
+    }
+  }, []);
 
   const trialExpiryDate = expiresAt ? new Date(expiresAt) : null;
   const isTrialExpired = Boolean(isTrial && trialExpiryDate && trialExpiryDate < new Date());
@@ -173,8 +185,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       if (api?.store) {
         try {
           const isL = await api.store.isLocked?.();
-          const appLockEnabled = await api.store.isAppLockEnabled?.();
-          electronLocked = !!(isL || appLockEnabled);
+          electronLocked = Boolean(isL);
         } catch {}
       }
 
@@ -293,9 +304,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/who-is-it-for") ||
     pathname.startsWith("/technology") ||
     pathname.startsWith("/whats-new") ||
-    pathname.startsWith("/purchase") ||
+    pathname.startsWith("/purchase/success") ||
     pathname.startsWith("/success") ||
-    pathname.startsWith("/settings/license") ||
     pathname.startsWith("/calculators") ||
     pathname.startsWith("/converters") ||
     pathname.startsWith("/specs") ||
@@ -385,6 +395,27 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       )}
       {isElectron && <TitleBar />}
       
+      {powerCutNotice && (
+        <div className="bg-[#111827] border-b border-amber-500/40 px-4 py-2 flex items-center justify-between text-xs font-mono z-[70] shadow-lg sticky top-10">
+          <div className="flex items-center gap-2.5 text-amber-300">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            <span className="font-bold uppercase tracking-wider">Session Auto-Resumed:</span>
+            <span className="text-zinc-300">{powerCutNotice.message}</span>
+            {powerCutNotice.lastRoute && (
+              <span className="text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-500/30">
+                {powerCutNotice.lastRoute}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => setPowerCutNotice(null)}
+            className="text-zinc-400 hover:text-white px-2 py-1 rounded text-[11px] bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+      
       <TopUrgencyBanner />
       <ExpiryBanner />
       <UpdateBanner />
@@ -416,18 +447,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             className="fixed inset-0 pointer-events-none z-0 overflow-hidden"
             aria-hidden="true"
           >
-            {/* Omnora Labs OM watermark */}
+            {/* Noxis Hub watermark */}
             <div style={{
               position: 'absolute',
               bottom: -20,
               right: -20,
-              opacity: 0.015,
+              opacity: 0.02,
               transform: 'rotate(-15deg)',
               userSelect: 'none',
               pointerEvents: 'none',
             }}>
               <img
-                src="/logos/omnoralabs.png"
+                src="/logos/noxis.png"
                 alt=""
                 style={{
                   width: 400,

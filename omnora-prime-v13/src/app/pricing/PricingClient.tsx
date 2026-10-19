@@ -22,8 +22,12 @@ const FAQS = [
     a: "Most textile mill and factory owners prefer direct bank transfers (Raqami Islamic Digital Bank, Raast, JazzCash, or bank wire) without third-party card processing fees. Once payment is confirmed, we issue your permanent offline license key locked to your PC's motherboard within 30 minutes." 
   },
   { 
-    q: "Can I pay monthly instead of annually?", 
-    a: "Yes! You can choose Monthly or Annual billing anytime. Monthly launch plans give full operational flexibility (Lite: Rs. 1,999/mo, Pro: Rs. 4,999/mo, Elite: Rs. 9,999/mo) with zero long-term commitment. Annual plans lock in maximum discounts (Lite: Rs. 18,000/yr, Pro: Rs. 45,000/yr, Elite: Rs. 90,000/yr) with free hardware motherboard re-binding." 
+    q: "Do you offer a permanent (lifetime) license?", 
+    a: "Yes! For factories and businesses wanting full ownership with zero recurring renewals, we offer permanent offline licenses: Lite Permanent at Rs. 72,000, Pro Permanent at Rs. 135,000, and Elite Permanent at Rs. 225,000. Permanent licenses are bound to your PC motherboard, operate 100% offline indefinitely, and include our free hardware motherboard re-binding guarantee." 
+  },
+  { 
+    q: "Can I pay monthly or annually instead?", 
+    a: "Yes! You can choose Monthly, Annual, or Permanent billing anytime. Monthly launch plans give full flexibility (Lite: Rs. 1,999/mo, Pro: Rs. 4,999/mo, Elite: Rs. 9,999/mo). Annual plans offer big savings (Lite: Rs. 18,000/yr, Pro: Rs. 45,000/yr, Elite: Rs. 90,000/yr). Permanent licenses offer lifetime offline ownership with zero recurring fees forever (Lite: Rs. 72,000, Pro: Rs. 135,000, Elite: Rs. 225,000)." 
   },
   { 
     q: "Can I use Noxis Hub without an internet connection?", 
@@ -57,8 +61,10 @@ const PRICING_DATA = {
     name: 'Free Forever',
     monthlyPKR: 0,
     annualPKR: 0,
+    permanentPKR: 0,
     monthlyUSD: 0,
     annualUSD: 0,
+    permanentUSD: 0,
     sub: 'Capped at 200 SKUs, 50 Parties, POS counter unlocked forever.',
     devices: '1 Local PC',
     features: [
@@ -81,12 +87,18 @@ const PRICING_DATA = {
     originalMonthlyPKR: 2999,
     annualPKR: 18000,
     originalAnnualPKR: 25000,
+    permanentPKR: 72000,
+    originalPermanentPKR: 95000,
     monthlyUSD: 10,
     originalMonthlyUSD: 15,
     annualUSD: 99,
     originalAnnualUSD: 150,
+    permanentUSD: 260,
+    originalPermanentUSD: 360,
     monthlySavingsBadge: "Save Rs. 1,000 / mo (-33% Launch Offer)",
     annualSavingsBadge: "Save Rs. 5,988 / yr vs monthly (Was Rs. 25,000)",
+    permanentSavingsBadge: "One-Time Payment · Lifetime Offline Ownership · Zero Renewals",
+    supportPackagePermanent: "Includes lifetime motherboard re-binding guarantee & setup assistance",
     discountPercent: "-33%",
     sub: '5 PCs on local network, 5 phones on office Wi-Fi.',
     devices: '5 PCs + 5 Mobile Phones',
@@ -101,6 +113,18 @@ const PRICING_DATA = {
       { label: "Karigar Piece-Rate Wage Payroll", included: false },
       { label: "CCTV IP Camera RTSP Feeds", included: false },
     ],
+    featuresPermanent: [
+      { label: "Permanent Offline License Locked to Motherboard (Never Expires)", included: true, highlight: true },
+      { label: "Up to 5 Workstation PCs on Local Network", included: true, highlight: true },
+      { label: "5 Android Phones on Office Wi-Fi", included: true },
+      { label: "Local SQLite File Stored on Your Hard Drive", included: true },
+      { label: "Unlimited Raw Material & Fabric SKUs", included: true },
+      { label: "Double-Entry Wholesale Khata Ledger", included: true },
+      { label: "PDF Invoices & 58mm/80mm Thermal Printing", included: true },
+      { label: "Automated Daily SQLite Local Backups", included: true },
+      { label: "Free Hardware Motherboard Re-binding Guarantee", included: true, highlight: true },
+      { label: "Zero Rental or Subscription Renewal Fees Forever", included: true, highlight: true },
+    ],
     cta: "Activate Lite License",
   },
   pro: {
@@ -112,15 +136,21 @@ const PRICING_DATA = {
     originalMonthlyPKR: 6999,
     annualPKR: 45000,
     originalAnnualPKR: 60000,
+    permanentPKR: 135000,
+    originalPermanentPKR: 180000,
     monthlyUSD: 25,
     originalMonthlyUSD: 35,
     annualUSD: 225,
     originalAnnualUSD: 360,
+    permanentUSD: 490,
+    originalPermanentUSD: 650,
     foundersOfferBadge: "RECOMMENDED FOR MILLS (-30%)",
     monthlySavingsBadge: "Includes 7 days of dedicated technical assistance",
     annualSavingsBadge: "1 Month Full Setup Assistance + 6 Months Free Updates (Recommended)",
+    permanentSavingsBadge: "Best Value for Mills · Lifetime Offline Activation · 1 Year VIP Support",
     supportPackageMonthly: "Includes 7 days of dedicated technical assistance",
     supportPackageAnnual: "Includes 1 month of full setup assistance + 6 months of free software updates",
+    supportPackagePermanent: "Includes 1 Full Year of VIP Technical Support + Lifetime Free Motherboard Re-binding",
     discountPercent: "-30%",
     sub: 'Standard Business & Mills · Local-network mobile pairing, Karigar piece-rates & zero-internet reliability.',
     devices: '15 PCs + 15 Mobile Phones',
@@ -162,6 +192,20 @@ const PRICING_DATA = {
       { label: "Roznamcha Cash Book & Profit/Loss Export", included: true },
       { label: "Multi-Branch Factory Operations", included: false },
     ],
+    featuresPermanent: [
+      { label: "Permanent Motherboard-Locked Offline Activation (Never Expires)", included: true, highlight: true },
+      { label: "1 Full Year of Priority WhatsApp Technical Support & Setup", included: true, highlight: true },
+      { label: "Local-Network Mobile-to-PC Secure Pairing (Office Wi-Fi)", included: true, highlight: true },
+      { label: "AES-256 Encryption & Zero-Internet Local SQLite Engine", included: true, highlight: true },
+      { label: "Karigar Piece-Rate Payroll & Peshgi (Advance) Ledger", included: true, highlight: true },
+      { label: "Live Raw Material & Wholesale Inventory Management", included: true, highlight: true },
+      { label: "Up to 15 Workstation PCs on Local Network", included: true },
+      { label: "15 Android Phones on Office Wi-Fi", included: true },
+      { label: "Connect up to 4 On-Site IP Cameras via RTSP", included: true },
+      { label: "Automatic Reorder Alerts for Raw Materials", included: true },
+      { label: "Free Hardware Motherboard Re-binding for Life", included: true, highlight: true },
+      { label: "Zero Recurring Rental or Renewal Fees Forever", included: true, highlight: true },
+    ],
     cta: "Activate Pro License",
   },
   elite: {
@@ -173,15 +217,21 @@ const PRICING_DATA = {
     originalMonthlyPKR: 13999,
     annualPKR: 90000,
     originalAnnualPKR: 120000,
+    permanentPKR: 225000,
+    originalPermanentPKR: 300000,
     monthlyUSD: 50,
     originalMonthlyUSD: 70,
     annualUSD: 450,
     originalAnnualUSD: 720,
+    permanentUSD: 799,
+    originalPermanentUSD: 1100,
     foundersOfferBadge: "ENTERPRISE VIP DEPLOYMENT",
     monthlySavingsBadge: "Includes 15 days of VIP priority support",
     annualSavingsBadge: "1.5 Months Onboarding Assistance + 12 Months Free Updates & Priority Support",
+    permanentSavingsBadge: "Enterprise VIP · Multi-Branch Cluster · Lifetime Turnkey Access",
     supportPackageMonthly: "Includes 15 days of VIP priority support",
     supportPackageAnnual: "Includes 1.5 months of dedicated onboarding assistance + 12 months of free updates & priority support",
+    supportPackagePermanent: "Turnkey Onboarding + Lifetime Direct Senior Engineer VIP Line + Unlimited Re-binding",
     discountPercent: "-29%",
     sub: 'Heavy Operations & Multi-Branch Enterprise · Biometric enclave security, multi-tier mills & VIP priority support.',
     devices: '50 PCs + 50 Mobile Phones',
@@ -219,6 +269,19 @@ const PRICING_DATA = {
       { label: "Connect up to 6 IP Cameras with Motion Tripwires", included: true },
       { label: "Automatic Reorder & 30-Day Material Predictive Forecasting", included: true },
       { label: "Custom Invoice & Thermal Format Design Studio", included: true },
+    ],
+    featuresPermanent: [
+      { label: "Permanent Enterprise Offline Cluster Activation (Never Expires)", included: true, highlight: true },
+      { label: "Turnkey Onboarding Assistance & Factory Staff Training", included: true, highlight: true },
+      { label: "Direct Senior Engineer WhatsApp VIP Desk for Life", included: true, highlight: true },
+      { label: "Multi-Branch Factory Operations & Real-Time Stock Transfer", included: true, highlight: true },
+      { label: "Biometric Hardware Enclave Auth (expo-secure-store & local auth)", included: true, highlight: true },
+      { label: "Local-Network Mobile-to-PC Secure Pairing (Up to 50 Devices)", included: true, highlight: true },
+      { label: "Advanced Karigar Piece-Rate Engine & Multi-Tier Peshgi Ledgers", included: true, highlight: true },
+      { label: "RS232 Weighbridge Scale Bridge Integration", included: true, highlight: true },
+      { label: "Connect up to 6 IP Cameras with Motion Tripwires", included: true },
+      { label: "Unlimited Free Motherboard Re-binding Guarantee", included: true, highlight: true },
+      { label: "Zero Subscriptions or Renewal Fees Forever", included: true, highlight: true },
     ],
     cta: "Activate Elite License",
   },
@@ -280,7 +343,7 @@ const COMPARISON_CATEGORIES = [
 export default function PricingClient() {
   const router = useRouter();
   const { profile } = useBusinessProfile();
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual' | 'permanent'>('monthly');
   const [displayCurrency, setDisplayCurrency] = useState<'LOCAL' | 'USD'>('LOCAL');
 
   // Checkout & HWID Modal State
@@ -315,9 +378,10 @@ export default function PricingClient() {
   }, [region]);
 
   const handlePurchase = (plan: string, price: string, tierKey?: string) => {
+    const cycleSuffix = billingCycle === 'permanent' ? 'Permanent License' : billingCycle;
     setSelectedPlan({ 
       tier: plan, 
-      price: `${price} (${billingCycle})`,
+      price: `${price} (${cycleSuffix})`,
       tierKey: tierKey || 'pro',
     });
     setCheckoutError('');
@@ -351,9 +415,13 @@ export default function PricingClient() {
       navigator.clipboard.writeText(cleanHwid);
     }
 
+    const cycleLabel = 
+      billingCycle === 'permanent' ? 'PERMANENT / LIFETIME LICENSE' : 
+      `${billingCycle.toUpperCase()} billing`;
+
     const msg = encodeURIComponent(
       `Assalam o Alaikum Omnora Labs,\n\n` +
-      `I have sent the payment of ${selectedPlan.price} for the Noxis *${selectedPlan.tier}* (${billingCycle.toUpperCase()} billing).\n\n` +
+      `I have sent the payment of ${selectedPlan.price} for the Noxis *${selectedPlan.tier}* (${cycleLabel}).\n\n` +
       `🏢 Business: ${cleanBiz || 'Not provided'}\n` +
       `💻 Machine ID: ${cleanHwid || 'Not provided'}\n` +
       `💳 Payment Method: ${formattedMethodName} (${methodDetails})\n` +
@@ -453,12 +521,12 @@ export default function PricingClient() {
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mt-8">
-            {/* Billing Toggle (Monthly / Annual) */}
-            <div className="bg-[#030712] p-1.5 rounded-md border border-[#08EBF6]/30 flex w-fit shadow-2xl relative">
+            {/* Billing Toggle (Monthly / Annual / Permanent) */}
+            <div className="bg-[#030712] p-1.5 rounded-md border border-[#08EBF6]/30 flex flex-wrap sm:flex-nowrap justify-center gap-1.5 w-fit shadow-2xl relative">
               <button 
                 onClick={() => setBillingCycle('monthly')}
                 className={cn(
-                  "px-6 sm:px-8 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all rounded-md cursor-pointer",
+                  "px-5 sm:px-7 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all rounded-md cursor-pointer",
                   billingCycle === 'monthly' ? 'bg-[#08EBF6] text-black shadow-[0_0_15px_rgba(8,235,246,0.4)]' : 'text-slate-400 hover:text-white'
                 )}
               >
@@ -467,13 +535,25 @@ export default function PricingClient() {
               <button 
                 onClick={() => setBillingCycle('annual')}
                 className={cn(
-                  "px-6 sm:px-8 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all relative rounded-md cursor-pointer",
+                  "px-5 sm:px-7 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all relative rounded-md cursor-pointer",
                   billingCycle === 'annual' ? 'bg-[#08EBF6] text-black shadow-[0_0_15px_rgba(8,235,246,0.4)]' : 'text-slate-400 hover:text-white'
                 )}
               >
                 Annual License
-                <span className="absolute -top-3.5 -right-3.5 bg-[#5FA5FA] text-[8px] px-2 py-0.5 rounded-md text-black font-black uppercase shadow-md">
-                  SAVE UP TO 30%
+                <span className="absolute -top-3.5 -right-2 bg-[#5FA5FA] text-[8px] px-1.5 py-0.5 rounded text-black font-black uppercase shadow-md">
+                  SAVE 30%
+                </span>
+              </button>
+              <button 
+                onClick={() => setBillingCycle('permanent')}
+                className={cn(
+                  "px-5 sm:px-7 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all relative rounded-md cursor-pointer",
+                  billingCycle === 'permanent' ? 'bg-[#10B981] text-black shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'text-slate-400 hover:text-white'
+                )}
+              >
+                Permanent License
+                <span className="absolute -top-3.5 -right-2 bg-[#10B981] text-[8px] px-1.5 py-0.5 rounded text-black font-black uppercase shadow-md animate-pulse">
+                  LIFETIME
                 </span>
               </button>
             </div>
@@ -504,11 +584,13 @@ export default function PricingClient() {
           </div>
 
           {/* Quick Notice on Billing */}
-          <p className="text-[11px] text-gray-500 mt-4">
+          <p className="text-[11px] text-gray-400 mt-4">
             {billingCycle === 'monthly' ? (
               <span>⚡ Showing <strong className="text-white">Monthly rates</strong>. Pay month-by-month with zero long-term commitment.</span>
-            ) : (
+            ) : billingCycle === 'annual' ? (
               <span>🎉 Showing <strong className="text-emerald-400">Annual rates</strong>. 12 months unlocked with maximum discount &amp; free hardware re-binding.</span>
+            ) : (
+              <span>👑 Showing <strong className="text-[#08EBF6]">Permanent Lifetime License rates</strong>. Lite: <strong className="text-white">Rs. 72,000</strong> · Pro: <strong className="text-white">Rs. 135,000</strong> · Elite: <strong className="text-white">Rs. 225,000</strong>. One-time payment, lifetime offline ownership, zero renewal fees.</span>
             )}
           </p>
         </motion.div>
@@ -642,17 +724,38 @@ export default function PricingClient() {
             region={region}
             displayCurrency={displayCurrency}
             localCurrency={localCurrency}
-            pricePKR={billingCycle === 'monthly' ? PRICING_DATA.lite.monthlyPKR : PRICING_DATA.lite.annualPKR}
-            originalPricePKR={billingCycle === 'monthly' ? PRICING_DATA.lite.originalMonthlyPKR : PRICING_DATA.lite.originalAnnualPKR}
-            priceUSD={billingCycle === 'monthly' ? PRICING_DATA.lite.monthlyUSD : PRICING_DATA.lite.annualUSD}
-            originalPriceUSD={billingCycle === 'monthly' ? PRICING_DATA.lite.originalMonthlyUSD : PRICING_DATA.lite.originalAnnualUSD}
+            pricePKR={
+              billingCycle === 'monthly' ? PRICING_DATA.lite.monthlyPKR :
+              billingCycle === 'annual' ? PRICING_DATA.lite.annualPKR :
+              PRICING_DATA.lite.permanentPKR
+            }
+            originalPricePKR={
+              billingCycle === 'monthly' ? PRICING_DATA.lite.originalMonthlyPKR :
+              billingCycle === 'annual' ? PRICING_DATA.lite.originalAnnualPKR :
+              PRICING_DATA.lite.originalPermanentPKR
+            }
+            priceUSD={
+              billingCycle === 'monthly' ? PRICING_DATA.lite.monthlyUSD :
+              billingCycle === 'annual' ? PRICING_DATA.lite.annualUSD :
+              PRICING_DATA.lite.permanentUSD
+            }
+            originalPriceUSD={
+              billingCycle === 'monthly' ? PRICING_DATA.lite.originalMonthlyUSD :
+              billingCycle === 'annual' ? PRICING_DATA.lite.originalAnnualUSD :
+              PRICING_DATA.lite.originalPermanentUSD
+            }
             billingCycle={billingCycle}
-            period={billingCycle === 'monthly' ? 'mo' : 'yr'}
-            savingsBadge={billingCycle === 'monthly' ? PRICING_DATA.lite.monthlySavingsBadge : PRICING_DATA.lite.annualSavingsBadge}
-            discountPercent={PRICING_DATA.lite.discountPercent}
+            period={billingCycle === 'monthly' ? 'mo' : billingCycle === 'annual' ? 'yr' : 'permanent'}
+            savingsBadge={
+              billingCycle === 'monthly' ? PRICING_DATA.lite.monthlySavingsBadge :
+              billingCycle === 'annual' ? PRICING_DATA.lite.annualSavingsBadge :
+              PRICING_DATA.lite.permanentSavingsBadge
+            }
+            supportPackage={billingCycle === 'permanent' ? PRICING_DATA.lite.supportPackagePermanent : undefined}
+            discountPercent={billingCycle === 'permanent' ? "-24%" : PRICING_DATA.lite.discountPercent}
             sub={PRICING_DATA.lite.sub}
-            features={PRICING_DATA.lite.features}
-            cta={PRICING_DATA.lite.cta}
+            features={billingCycle === 'permanent' ? PRICING_DATA.lite.featuresPermanent : PRICING_DATA.lite.features}
+            cta={billingCycle === 'permanent' ? "Get Lite Permanent License" : PRICING_DATA.lite.cta}
             onPurchase={(name: string, price: string) => handlePurchase(name, price, 'lite')}
             onHwidClick={() => handleActivateHwid('lite')}
             variant={fadeInUp}
@@ -662,22 +765,50 @@ export default function PricingClient() {
           <PricingCard 
             tier={PRICING_DATA.pro.name}
             popular
-            foundersOfferBadge={PRICING_DATA.pro.foundersOfferBadge}
+            foundersOfferBadge={billingCycle === 'permanent' ? "LIFETIME VALUE FOR MILLS (-25%)" : PRICING_DATA.pro.foundersOfferBadge}
             region={region}
             displayCurrency={displayCurrency}
             localCurrency={localCurrency}
-            pricePKR={billingCycle === 'monthly' ? PRICING_DATA.pro.monthlyPKR : PRICING_DATA.pro.annualPKR}
-            originalPricePKR={billingCycle === 'monthly' ? PRICING_DATA.pro.originalMonthlyPKR : PRICING_DATA.pro.originalAnnualPKR}
-            priceUSD={billingCycle === 'monthly' ? PRICING_DATA.pro.monthlyUSD : PRICING_DATA.pro.annualUSD}
-            originalPriceUSD={billingCycle === 'monthly' ? PRICING_DATA.pro.originalMonthlyUSD : PRICING_DATA.pro.originalAnnualUSD}
+            pricePKR={
+              billingCycle === 'monthly' ? PRICING_DATA.pro.monthlyPKR :
+              billingCycle === 'annual' ? PRICING_DATA.pro.annualPKR :
+              PRICING_DATA.pro.permanentPKR
+            }
+            originalPricePKR={
+              billingCycle === 'monthly' ? PRICING_DATA.pro.originalMonthlyPKR :
+              billingCycle === 'annual' ? PRICING_DATA.pro.originalAnnualPKR :
+              PRICING_DATA.pro.originalPermanentPKR
+            }
+            priceUSD={
+              billingCycle === 'monthly' ? PRICING_DATA.pro.monthlyUSD :
+              billingCycle === 'annual' ? PRICING_DATA.pro.annualUSD :
+              PRICING_DATA.pro.permanentUSD
+            }
+            originalPriceUSD={
+              billingCycle === 'monthly' ? PRICING_DATA.pro.originalMonthlyUSD :
+              billingCycle === 'annual' ? PRICING_DATA.pro.originalAnnualUSD :
+              PRICING_DATA.pro.originalPermanentUSD
+            }
             billingCycle={billingCycle}
-            period={billingCycle === 'monthly' ? 'mo' : 'yr'}
-            savingsBadge={billingCycle === 'monthly' ? PRICING_DATA.pro.monthlySavingsBadge : PRICING_DATA.pro.annualSavingsBadge}
-            supportPackage={billingCycle === 'monthly' ? PRICING_DATA.pro.supportPackageMonthly : PRICING_DATA.pro.supportPackageAnnual}
-            discountPercent={PRICING_DATA.pro.discountPercent}
+            period={billingCycle === 'monthly' ? 'mo' : billingCycle === 'annual' ? 'yr' : 'permanent'}
+            savingsBadge={
+              billingCycle === 'monthly' ? PRICING_DATA.pro.monthlySavingsBadge :
+              billingCycle === 'annual' ? PRICING_DATA.pro.annualSavingsBadge :
+              PRICING_DATA.pro.permanentSavingsBadge
+            }
+            supportPackage={
+              billingCycle === 'monthly' ? PRICING_DATA.pro.supportPackageMonthly :
+              billingCycle === 'annual' ? PRICING_DATA.pro.supportPackageAnnual :
+              PRICING_DATA.pro.supportPackagePermanent
+            }
+            discountPercent={billingCycle === 'permanent' ? "-25%" : PRICING_DATA.pro.discountPercent}
             sub={PRICING_DATA.pro.sub}
-            features={billingCycle === 'monthly' ? PRICING_DATA.pro.featuresMonthly : PRICING_DATA.pro.featuresAnnual}
-            cta={PRICING_DATA.pro.cta}
+            features={
+              billingCycle === 'monthly' ? PRICING_DATA.pro.featuresMonthly :
+              billingCycle === 'annual' ? PRICING_DATA.pro.featuresAnnual :
+              PRICING_DATA.pro.featuresPermanent
+            }
+            cta={billingCycle === 'permanent' ? "Get Pro Permanent License" : PRICING_DATA.pro.cta}
             onPurchase={(name: string, price: string) => handlePurchase(name, price, 'pro')}
             onHwidClick={() => handleActivateHwid('pro')}
             variant={fadeInUp}
@@ -687,22 +818,50 @@ export default function PricingClient() {
           <PricingCard 
             tier={PRICING_DATA.elite.name}
             primary
-            foundersOfferBadge={PRICING_DATA.elite.foundersOfferBadge}
+            foundersOfferBadge={billingCycle === 'permanent' ? "LIFETIME ENTERPRISE CLUSTER (-25%)" : PRICING_DATA.elite.foundersOfferBadge}
             region={region}
             displayCurrency={displayCurrency}
             localCurrency={localCurrency}
-            pricePKR={billingCycle === 'monthly' ? PRICING_DATA.elite.monthlyPKR : PRICING_DATA.elite.annualPKR}
-            originalPricePKR={billingCycle === 'monthly' ? PRICING_DATA.elite.originalMonthlyPKR : PRICING_DATA.elite.originalAnnualPKR}
-            priceUSD={billingCycle === 'monthly' ? PRICING_DATA.elite.monthlyUSD : PRICING_DATA.elite.annualUSD}
-            originalPriceUSD={billingCycle === 'monthly' ? PRICING_DATA.elite.originalMonthlyUSD : PRICING_DATA.elite.originalAnnualUSD}
+            pricePKR={
+              billingCycle === 'monthly' ? PRICING_DATA.elite.monthlyPKR :
+              billingCycle === 'annual' ? PRICING_DATA.elite.annualPKR :
+              PRICING_DATA.elite.permanentPKR
+            }
+            originalPricePKR={
+              billingCycle === 'monthly' ? PRICING_DATA.elite.originalMonthlyPKR :
+              billingCycle === 'annual' ? PRICING_DATA.elite.originalAnnualPKR :
+              PRICING_DATA.elite.originalPermanentPKR
+            }
+            priceUSD={
+              billingCycle === 'monthly' ? PRICING_DATA.elite.monthlyUSD :
+              billingCycle === 'annual' ? PRICING_DATA.elite.annualUSD :
+              PRICING_DATA.elite.permanentUSD
+            }
+            originalPriceUSD={
+              billingCycle === 'monthly' ? PRICING_DATA.elite.originalMonthlyUSD :
+              billingCycle === 'annual' ? PRICING_DATA.elite.originalAnnualUSD :
+              PRICING_DATA.elite.originalPermanentUSD
+            }
             billingCycle={billingCycle}
-            period={billingCycle === 'monthly' ? 'mo' : 'yr'}
-            savingsBadge={billingCycle === 'monthly' ? PRICING_DATA.elite.monthlySavingsBadge : PRICING_DATA.elite.annualSavingsBadge}
-            supportPackage={billingCycle === 'monthly' ? PRICING_DATA.elite.supportPackageMonthly : PRICING_DATA.elite.supportPackageAnnual}
-            discountPercent={PRICING_DATA.elite.discountPercent}
+            period={billingCycle === 'monthly' ? 'mo' : billingCycle === 'annual' ? 'yr' : 'permanent'}
+            savingsBadge={
+              billingCycle === 'monthly' ? PRICING_DATA.elite.monthlySavingsBadge :
+              billingCycle === 'annual' ? PRICING_DATA.elite.annualSavingsBadge :
+              PRICING_DATA.elite.permanentSavingsBadge
+            }
+            supportPackage={
+              billingCycle === 'monthly' ? PRICING_DATA.elite.supportPackageMonthly :
+              billingCycle === 'annual' ? PRICING_DATA.elite.supportPackageAnnual :
+              PRICING_DATA.elite.supportPackagePermanent
+            }
+            discountPercent={billingCycle === 'permanent' ? "-25%" : PRICING_DATA.elite.discountPercent}
             sub={PRICING_DATA.elite.sub}
-            features={billingCycle === 'monthly' ? PRICING_DATA.elite.featuresMonthly : PRICING_DATA.elite.featuresAnnual}
-            cta={PRICING_DATA.elite.cta}
+            features={
+              billingCycle === 'monthly' ? PRICING_DATA.elite.featuresMonthly :
+              billingCycle === 'annual' ? PRICING_DATA.elite.featuresAnnual :
+              PRICING_DATA.elite.featuresPermanent
+            }
+            cta={billingCycle === 'permanent' ? "Get Elite Permanent License" : PRICING_DATA.elite.cta}
             onPurchase={(name: string, price: string) => handlePurchase(name, price, 'elite')}
             onHwidClick={() => handleActivateHwid('elite')}
             variant={fadeInUp}
@@ -1425,7 +1584,7 @@ function PricingCard({
             {displayPrice}
           </span>
           <span className="text-[10px] font-black text-[#00E5FF] uppercase tracking-wider">
-            / {period === 'mo' ? 'MONTH' : period === 'yr' ? 'YEAR' : 'FOREVER'}
+            / {period === 'mo' ? 'MONTH' : period === 'yr' ? 'YEAR' : period === 'permanent' ? 'ONE-TIME (LIFETIME)' : 'FOREVER'}
           </span>
         </div>
 
@@ -1443,9 +1602,16 @@ function PricingCard({
           </p>
         )}
 
+        {billingCycle === 'permanent' && pricePKR > 0 && (
+          <p className="text-[9.5px] text-[#10B981] font-bold mt-1.5 flex items-center gap-1">
+            <CheckCircle2 size={12} className="text-[#10B981] inline shrink-0" />
+            <span>One-time payment · Lifetime offline ownership · Zero renewals</span>
+          </p>
+        )}
+
         {pricePKR > 0 && (isSA || !useUSD) && (
           <p className="text-[9px] text-slate-500 font-mono mt-1 italic">
-            ≈ ${priceUSD} USD / {period === 'mo' ? 'mo' : 'yr'}
+            ≈ ${priceUSD} USD {period === 'mo' ? '/ mo' : period === 'yr' ? '/ yr' : '(one-time payment)'}
           </p>
         )}
       </div>

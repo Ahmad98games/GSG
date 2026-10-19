@@ -921,7 +921,7 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
                                 totalKarigars: kCount,
                                 presentToday: aCount,
                                 pendingDispatch: dCount,
-                                hubVersion: '14.0.1',
+                                hubVersion: '14.0.0',
                                 tier: client.tier,
                                 connectedDevices: getPairedCount()
                             }];

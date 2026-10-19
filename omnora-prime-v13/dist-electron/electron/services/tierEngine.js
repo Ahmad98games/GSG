@@ -60,6 +60,7 @@ const TIER_FEATURES = {
         exports.FEATURES.POS,
         exports.FEATURES.INVENTORY,
         exports.FEATURES.INVOICES,
+        exports.FEATURES.RECURRING_INVOICES,
         exports.FEATURES.PARTIES,
         exports.FEATURES.KHATA,
         exports.FEATURES.CLOUD_SYNC,
@@ -71,8 +72,11 @@ const TIER_FEATURES = {
         exports.FEATURES.REPORTS_BASIC,
         exports.FEATURES.REPORTS_ADVANCED,
         exports.FEATURES.BRANCHES,
+        exports.FEATURES.MULTI_BRANCH,
+        exports.FEATURES.PAYROLL,
         exports.FEATURES.PURCHASE_ORDERS,
         exports.FEATURES.AUDIT_LOG,
+        exports.FEATURES.BETA_UPDATES,
     ],
     // Day 8+ (Trial Expired) — POS stays, cloud/CCTV/sync/mobile/AI locked, caps enforced
     free_forever: [
@@ -139,7 +143,7 @@ const TIER_FEATURES = {
     ],
 };
 const TIER_CAPS = {
-    trial: { maxDevices: 15, maxBranches: 1, maxCameras: 4, maxSkus: -1, maxParties: -1 },
+    trial: { maxDevices: 50, maxBranches: 99, maxCameras: 6, maxSkus: -1, maxParties: -1 },
     free_forever: { maxDevices: 1, maxBranches: 1, maxCameras: 0, maxSkus: 200, maxParties: 50 },
     lite: { maxDevices: 5, maxBranches: 1, maxCameras: 0, maxSkus: -1, maxParties: -1 },
     pro: { maxDevices: 15, maxBranches: 1, maxCameras: 4, maxSkus: -1, maxParties: -1 },

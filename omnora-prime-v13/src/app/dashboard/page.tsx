@@ -72,6 +72,9 @@ interface DashboardData {
   recentAttendance: any[]
   topKarigars: any[]
   promises: any[]
+  stockItems?: any[]
+  karigarsList?: any[]
+  ledgerEntries?: any[]
 }
 
 export default function OwnerDashboard() {
@@ -176,10 +179,36 @@ export default function OwnerDashboard() {
       // 2. Read local storage caches for offline & real-time updates
       let localKarigars: any[] = []
       let localKhataEntries: any[] = []
+      let localSkus: any[] = []
       if (typeof window !== 'undefined') {
         try {
-          const kStr = localStorage.getItem(`noxis_cached_karigars_${biz}`)
-          if (kStr) localKarigars = JSON.parse(kStr)
+          const kKeys = [
+            `noxis_cached_karigars_${biz}`,
+          ]
+          for (const kk of kKeys) {
+            const kStr = localStorage.getItem(kk)
+            if (kStr) {
+              const parsedK = JSON.parse(kStr)
+              if (Array.isArray(parsedK) && parsedK.length > 0) {
+                localKarigars = parsedK
+                break
+              }
+            }
+          }
+
+          const skuKeys = [
+            `noxis_cached_skus_${biz}`,
+          ]
+          for (const sk of skuKeys) {
+            const rawSk = localStorage.getItem(sk)
+            if (rawSk) {
+              const parsedSk = JSON.parse(rawSk)
+              if (Array.isArray(parsedSk) && parsedSk.length > 0) {
+                localSkus = parsedSk
+                break
+              }
+            }
+          }
 
           const khataStr = localStorage.getItem(`noxis_khata_cache_${biz}`)
           if (khataStr) {
@@ -197,7 +226,8 @@ export default function OwnerDashboard() {
 
       const invoices = raw.invoicesMonth || []
       const receivablesData = raw.receivables || []
-      const stock = raw.stock || []
+      const stock = (raw.stock && raw.stock.length > 0) ? raw.stock : (raw.stockItems && raw.stockItems.length > 0 ? raw.stockItems : localSkus)
+      const karigars = (raw.karigarsList && raw.karigarsList.length > 0) ? raw.karigarsList : localKarigars
       const payrolls = raw.payroll || []
       const peshgi = raw.peshgi || []
 
@@ -216,8 +246,17 @@ export default function OwnerDashboard() {
         }
       })
 
-      const totalKarigarCount = Math.max(raw.totalKarigars || 0, localKarigars.length)
+      const totalKarigarCount = Math.max(raw.totalKarigars || 0, karigars.length, localKarigars.length)
       const attendanceCount = raw.attendanceToday || 0
+
+      // Calculate accurate stock value
+      const computedStockValue = stock.reduce((s: number, i: any) => {
+        const qty = Number(i.qty_on_hand || 0)
+        const cost = Number(i.cost_price || i.sale_price || 0)
+        return s + (qty * cost)
+      }, 0)
+
+      const computedLowStock = raw.lowStockCount || stock.filter((i: any) => Number(i.qty_on_hand || 0) <= Number(i.reorder_level || 10)).length
 
       const dashboardData: DashboardData = {
         businessName: (activeProfile as any)?.business_name || 'My Factory',
@@ -235,8 +274,8 @@ export default function OwnerDashboard() {
         pendingReceivables: receivablesData.reduce((s: number, i: any) => s + (i.balance_due ?? i.total_amount ?? i.total ?? 0), 0) + localReceivables,
         overdueCount: overdueInvoices.length,
 
-        stockValue: stock.reduce((s: number, i: any) => s + ((i.qty_on_hand || 0) * (i.cost_price || 0)), 0),
-        lowStockCount: raw.lowStockCount || 0,
+        stockValue: computedStockValue,
+        lowStockCount: computedLowStock,
 
         pendingDispatch: raw.dispatchCount || 0,
         pendingPurchases: raw.purchaseCount || 0,
@@ -251,6 +290,9 @@ export default function OwnerDashboard() {
         recentAttendance: raw.recentAttendance || [],
         topKarigars: raw.topKarigars || [],
         promises: raw.promises || [],
+        stockItems: stock,
+        karigarsList: karigars,
+        ledgerEntries: raw.ledgerEntries || localKhataEntries,
       }
 
       setData(dashboardData)
@@ -584,41 +626,75 @@ export default function OwnerDashboard() {
                 />
               </div>
 
-              {/* Attendance list */}
-              <Section title="Attendance Logs (Today)">
-                {data.recentAttendance.length === 0 ? (
-                  <EmptyState message="No attendance entries recorded today." />
-                ) : data.recentAttendance.map((a: any, i: number) => (
-                  <RowItem
-                    key={i}
-                    left={a.karigar?.name || 'Unknown Staff'}
-                    right=""
-                    sub=""
-                    accent={
-                      a.status === 'present'
-                        ? 'text-emerald-400'
-                        : a.status === 'half'
-                        ? 'text-amber-400'
-                        : 'text-red-400'
-                    }
-                    badge={a.status}
-                  />
-                ))}
-              </Section>
-
-              {/* Top Workers Production */}
-              <Section title="Top Production (MTD)">
-                {data.topKarigars.length === 0 ? (
-                  <EmptyState message="No production entries logged this month." />
-                ) : data.topKarigars.map((k: any, i: number) => (
-                  <RowItem
-                    key={i}
-                    left={k.karigar?.name || 'Unknown Staff'}
-                    right={formatCurrency(k.earnings)}
-                    sub={`${Number(k.units_produced || 0).toLocaleString()} pieces produced · Code: ${k.karigar?.karigar_code || 'N/A'}`}
-                    accent="text-cyan-400"
-                  />
-                ))}
+              {/* Registered Karigars Staff Roster */}
+              <Section title="Registered Floor Staff Directory">
+                {(data.karigarsList && data.karigarsList.length > 0) ? (
+                  <div className="space-y-2">
+                    {data.karigarsList.map((k: any) => {
+                      const isPresent = (data.recentAttendance || []).some(
+                        (a: any) => (a.karigar_id === k.id || a.karigar?.id === k.id || a.karigar?.name === k.name) && a.status === 'present'
+                      )
+                      return (
+                        <div
+                          key={k.id}
+                          className="flex items-center justify-between p-3.5 bg-[#0A0D10] border border-white/[0.04] rounded-sm hover:border-cyan-500/20 transition-colors"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-8 h-8 rounded-full bg-cyan-950/40 border border-cyan-500/20 flex items-center justify-center text-cyan-400 text-xs font-bold font-mono">
+                              {(k.name || 'W').charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-white truncate">{k.name}</p>
+                              <p className="text-[10px] text-slate-500 font-mono">
+                                Code: {k.karigar_code || 'KAR-' + k.id?.slice(0, 4)} · Status: {k.status || 'active'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-sm uppercase tracking-wider ${
+                              isPresent
+                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                : 'bg-slate-800/60 text-slate-400 border border-white/5'
+                            }`}>
+                              {isPresent ? 'Present Today' : 'Absent'}
+                            </span>
+                            <button
+                              onClick={async () => {
+                                const newStatus = isPresent ? 'absent' : 'present'
+                                try {
+                                  if (!profile?.id) return
+                                  await supabase.from('attendance_logs').upsert({
+                                    karigar_id: k.id,
+                                    business_id: profile.id,
+                                    attendance_date: new Date().toISOString().split('T')[0],
+                                    status: newStatus,
+                                  })
+                                } catch {}
+                                setData(prev => {
+                                  if (!prev) return prev
+                                  const updatedPres = isPresent ? Math.max(0, prev.presentToday - 1) : prev.presentToday + 1
+                                  return {
+                                    ...prev,
+                                    presentToday: updatedPres,
+                                    absentToday: Math.max(0, prev.totalKarigars - updatedPres),
+                                    recentAttendance: isPresent
+                                      ? (prev.recentAttendance || []).filter((a: any) => a.karigar_id !== k.id)
+                                      : [...(prev.recentAttendance || []), { karigar_id: k.id, status: 'present', karigar: k }]
+                                  }
+                                })
+                              }}
+                              className="text-[10px] font-mono px-2.5 py-1 bg-white/5 hover:bg-cyan-500/10 text-slate-300 hover:text-cyan-400 border border-white/10 rounded transition-colors"
+                            >
+                              {isPresent ? 'Mark Absent' : 'Mark Present'}
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <EmptyState message="No registered floor staff found." />
+                )}
               </Section>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -687,20 +763,24 @@ export default function OwnerDashboard() {
                 )}
               </Section>
 
-              {/* Promises */}
-              <Section title="Payment Promises">
-                {data.promises.length === 0 ? (
-                  <EmptyState message="No pending payment commitments logged." />
-                ) : data.promises.map((p: any) => (
-                  <RowItem
-                    key={p.id}
-                    left={p.party?.name || 'Unknown'}
-                    right={formatCurrency(p.amount)}
-                    sub={`Promise date: ${p.promise_date ? new Date(p.promise_date).toLocaleDateString('en-PK') : '—'}`}
-                    accent={p.promise_date && new Date(p.promise_date) < new Date() ? 'text-red-400' : 'text-emerald-400'}
-                    badge={p.promise_date && new Date(p.promise_date) < new Date() ? 'overdue' : 'pending'}
-                  />
-                ))}
+              {/* Recent Invoices & Ledgers */}
+              <Section title="Recent Posted Billing & Ledgers">
+                {data.recentInvoices.length === 0 ? (
+                  <EmptyState message="No billing entries posted this month." />
+                ) : (
+                  <div className="space-y-2">
+                    {data.recentInvoices.map((inv: any) => (
+                      <RowItem
+                        key={inv.id}
+                        left={inv.party_name || inv.party?.name || 'Customer Account'}
+                        right={formatCurrency(inv.total_amount ?? inv.total ?? inv.subtotal ?? 0)}
+                        sub={`${inv.invoice_number || inv.invoice_no || 'INV'} · ${inv.created_at ? new Date(inv.created_at).toLocaleDateString('en-PK') : '—'}`}
+                        accent="text-emerald-400"
+                        badge={inv.status || 'posted'}
+                      />
+                    ))}
+                  </div>
+                )}
               </Section>
             </>
           )}
@@ -743,12 +823,104 @@ export default function OwnerDashboard() {
                       {data.lowStockCount} product units require restocking
                     </p>
                     <p className="text-slate-500 leading-normal font-medium">
-                      Open Noxis Hub on your workstation to create and issue purchase order slips.
+                      Open Fabric / Stock inventory to generate purchase orders or reorder fabric rolls.
                     </p>
                   </div>
                   <AlertTriangle size={18} className="text-amber-400 shrink-0" />
                 </div>
               )}
+
+              {/* Live Inventory Valuation & Stock Ledger */}
+              <Section title="Live Inventory & Stock Valuation Ledger">
+                {(data.stockItems && data.stockItems.length > 0) ? (
+                  <div className="border border-white/[0.04] rounded-sm overflow-hidden bg-[#0A0D10]">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-white/[0.04] bg-white/[0.02] text-[10px] font-mono uppercase tracking-wider text-slate-400">
+                            <th className="py-2.5 px-4 font-semibold">Item & SKU Code</th>
+                            <th className="py-2.5 px-4 font-semibold">Category</th>
+                            <th className="py-2.5 px-4 font-semibold text-right">On Hand Qty</th>
+                            <th className="py-2.5 px-4 font-semibold text-right">Cost Price</th>
+                            <th className="py-2.5 px-4 font-semibold text-right">Sale Price</th>
+                            <th className="py-2.5 px-4 font-semibold text-right">Asset Valuation</th>
+                            <th className="py-2.5 px-4 font-semibold text-center">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/[0.02]">
+                          {data.stockItems.map((item: any) => {
+                            const qty = Number(item.qty_on_hand || 0)
+                            const cost = Number(item.cost_price || 0)
+                            const sale = Number(item.sale_price || 0)
+                            const reorder = Number(item.reorder_level || 10)
+                            const valuation = qty * (cost || sale)
+                            const isLow = qty <= reorder && qty > 0
+                            const isOut = qty <= 0
+
+                            return (
+                              <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
+                                <td className="py-3 px-4">
+                                  <div className="font-semibold text-white">{item.name}</div>
+                                  <div className="text-[10px] text-cyan-400 font-mono">{item.sku_code || 'SKU'}</div>
+                                </td>
+                                <td className="py-3 px-4 text-slate-400">{item.category || 'Fabric / Stock'}</td>
+                                <td className="py-3 px-4 text-right font-mono font-bold text-white">
+                                  {qty.toLocaleString()} <span className="text-[10px] font-normal text-slate-500">{item.unit || 'pcs'}</span>
+                                </td>
+                                <td className="py-3 px-4 text-right font-mono text-slate-300">
+                                  {formatCurrency(cost)}
+                                </td>
+                                <td className="py-3 px-4 text-right font-mono text-[#60A5FA]">
+                                  {formatCurrency(sale)}
+                                </td>
+                                <td className="py-3 px-4 text-right font-mono font-bold text-emerald-400">
+                                  {formatCurrency(valuation)}
+                                </td>
+                                <td className="py-3 px-4 text-center">
+                                  {isOut ? (
+                                    <span className="text-[9px] font-mono font-bold text-red-400 bg-red-400/10 px-2 py-0.5 rounded-sm">
+                                      OUT OF STOCK
+                                    </span>
+                                  ) : isLow ? (
+                                    <span className="text-[9px] font-mono font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-sm">
+                                      LOW STOCK
+                                    </span>
+                                  ) : (
+                                    <span className="text-[9px] font-mono font-bold text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-sm">
+                                      IN STOCK
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="p-3 border-t border-white/[0.04] bg-[#07090C] flex items-center justify-between text-xs">
+                      <span className="text-slate-400 font-mono text-[11px]">
+                        Total Inventory Asset Value: <strong className="text-cyan-400">{formatCurrency(data.stockValue)}</strong>
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href="/inventory"
+                          className="px-3 py-1 bg-white/5 hover:bg-white/10 text-slate-300 text-xs rounded transition-colors"
+                        >
+                          Manage Inventory
+                        </Link>
+                        <Link
+                          href="/pos"
+                          className="px-3 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-xs font-semibold rounded border border-cyan-500/30 transition-colors"
+                        >
+                          Open POS Counter
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <EmptyState message="No stock items registered in database." />
+                )}
+              </Section>
             </>
           )}
 
