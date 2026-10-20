@@ -187,7 +187,7 @@ export default function DownloadPage() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h2 className="text-lg font-bold text-white uppercase font-mono tracking-tight">Mobile Terminal</h2>
+                      <h2 className="text-lg font-bold text-white uppercase font-mono tracking-tight">Noxis Mobile Hub</h2>
                       <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 uppercase">
                         v14.0.0 APK
                       </span>
@@ -243,9 +243,7 @@ export default function DownloadPage() {
                     <p className="text-[11px] text-zinc-600 leading-snug">
                       Point your Android camera at this QR code to download the APK directly onto your phone without needing a computer cable.
                     </p>
-                    <span className="inline-block text-[9px] font-mono text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                      Cloudflare High-Speed Edge CDN
-                    </span>
+                   
                   </div>
                 </div>
               ) : (
