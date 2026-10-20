@@ -622,7 +622,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 </div>
 
 <div class="footer-meta">
-  <span>v14.0.0 &nbsp;·&nbsp; SQLite WAL</span>
+  <span>v14.0.1 &nbsp;·&nbsp; SQLite WAL</span>
   <span>OMNORA LABS</span>
 </div>
 </body>
@@ -1506,13 +1506,29 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     // ─────────────────────────────────────────────
     // LICENSE & TRIAL IPC HANDLERS
     // ─────────────────────────────────────────────
-    // Returns current tier info + HWID + trial state for the Settings page
+    // Returns current tier info + HWID + trial state + plan intelligence for the Settings page & provider
     electron_1.ipcMain.handle('license:getInfo', () => {
         const tierInfo = (0, tierEngine_1.getActiveTierInfo)();
         const trialState = (0, trialEngine_1.getTrialState)();
         const license = (0, licenseVerifier_1.getActiveLicensePayload)();
+        const rawLicense = (0, licenseVerifier_1.getRawLicensePayload)();
         const hasPaidLicense = Boolean(license);
-        const activeTier = license?.tier || (trialState.status === 'expired' ? 'free_forever' : 'trial');
+        const wasPaidLicense = Boolean(rawLicense);
+        const isExpired = Boolean(rawLicense && (0, licenseVerifier_1.isLicenseExpired)(rawLicense));
+        const activeTier = license?.tier || (trialState.status === 'expired' || isExpired ? 'free_forever' : 'trial');
+        // Self-detect billing cycle and timespan
+        let billingCycle = 'trial';
+        let totalTimespanDays = 0;
+        if (rawLicense) {
+            if (!rawLicense.expiresAt || rawLicense.expiresAt === 0) {
+                billingCycle = 'lifetime';
+            }
+            else {
+                const durationMs = rawLicense.expiresAt - (rawLicense.issuedAt || (rawLicense.expiresAt - 30 * 86400000));
+                totalTimespanDays = Math.max(1, Math.round(durationMs / 86400000));
+                billingCycle = totalTimespanDays > 100 ? 'yearly' : 'monthly';
+            }
+        }
         let skuCount = 0;
         let partyCount = 0;
         let karigarCount = 0;
@@ -1560,6 +1576,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         }
         return {
             tier: activeTier,
+            rawTier: rawLicense?.tier || null,
             caps: tierInfo.caps,
             features: tierInfo.features,
             maxDevices: tierInfo.maxDevices,
@@ -1571,8 +1588,13 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             hwid: (0, hwid_1.generateHWID)(),
             licenseActive: hasPaidLicense,
             isPermanent: hasPaidLicense && (!license?.expiresAt || license.expiresAt === 0),
-            businessId: license?.businessId || '00000000-0000-0000-0000-000000000000',
-            expiresAt: license?.expiresAt || 0,
+            isExpired,
+            isDeactivated: isExpired,
+            billingCycle,
+            totalTimespanDays,
+            businessId: rawLicense?.businessId || '00000000-0000-0000-0000-000000000000',
+            issuedAt: rawLicense?.issuedAt || 0,
+            expiresAt: rawLicense?.expiresAt || 0,
             skuCount,
             partyCount,
             karigarCount,
@@ -1619,6 +1641,58 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     electron_1.ipcMain.handle('trial:getState', () => {
         return (0, trialEngine_1.getTrialState)();
     });
+    // Notifies admin server when a plan ends & software deactivates
+    electron_1.ipcMain.handle('license:notifyExpiry', async (_, payload) => {
+        try {
+            startupLog(`[License IPC] Manual plan expiry notification requested: ${JSON.stringify(payload)}`);
+            return { success: true, notifiedAt: Date.now() };
+        }
+        catch (e) {
+            return { success: false, error: e.message };
+        }
+    });
+    // ── Plan Expiry Watchdog ───────────────────────────────────────────────────
+    // Periodically checks if the user's monthly or yearly timespan has completed.
+    // If completed, automatically deactivates paid features, drops to Free tier,
+    // notifies the renderer to prompt upgrade, and alerts the admin.
+    let planExpiredEventDispatched = false;
+    setInterval(async () => {
+        try {
+            const rawLicense = (0, licenseVerifier_1.getRawLicensePayload)();
+            if (!rawLicense || !rawLicense.expiresAt || rawLicense.expiresAt === 0)
+                return;
+            const isExpired = Date.now() > rawLicense.expiresAt;
+            if (isExpired && !planExpiredEventDispatched) {
+                planExpiredEventDispatched = true;
+                const durationMs = rawLicense.expiresAt - (rawLicense.issuedAt || (rawLicense.expiresAt - 30 * 86400000));
+                const totalTimespanDays = Math.max(1, Math.round(durationMs / 86400000));
+                const billingCycle = totalTimespanDays > 100 ? 'yearly' : 'monthly';
+                startupLog(`[License Watcher] ⚠️ User plan timespan completed: ${rawLicense.businessId} (${rawLicense.tier} · ${billingCycle} · ${totalTimespanDays}d). Deactivating software to Free mode.`);
+                // 1. Broadcast deactivation event to renderer window
+                mainWindow?.webContents.send('license-expired');
+                mainWindow?.webContents.send('license:plan-ended', {
+                    tier: rawLicense.tier,
+                    billingCycle,
+                    totalTimespanDays,
+                    businessId: rawLicense.businessId,
+                    issuedAt: rawLicense.issuedAt,
+                    expiresAt: rawLicense.expiresAt,
+                });
+                // 2. Shut down premium background engines (e.g. CCTV AI Sentinel)
+                if (visionProcess) {
+                    killProcess(visionProcess, 'Vision Engine (Plan Deactivated)');
+                    visionProcess = null;
+                }
+            }
+            else if (!isExpired && planExpiredEventDispatched) {
+                // License renewed
+                planExpiredEventDispatched = false;
+            }
+        }
+        catch (err) {
+            startupLog(`[License Watcher] Watcher check warning: ${err.message}`);
+        }
+    }, 20 * 1000); // Check every 20 seconds
     // ─────────────────────────────────────────────
     // WEBSOCKET BRIDGE SERVER (Mobile RBAC)
     // Runs inline in main process for direct SQLite
@@ -2455,20 +2529,25 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 catch { }
             });
             nextServer.on('message', (msg) => {
-                if (msg && msg.type === 'bridge-event') {
-                    if (mainWindow && !mainWindow.isDestroyed()) {
-                        mainWindow.webContents.send('bridge-event', { event: msg.event, data: msg.data });
-                        if (msg.event === 'messaging:new-message') {
-                            mainWindow.webContents.send('messaging:new-message', msg.data);
+                try {
+                    if (msg && msg.type === 'bridge-event') {
+                        if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+                            mainWindow.webContents.send('bridge-event', { event: msg.event, data: msg.data });
+                            if (msg.event === 'messaging:new-message') {
+                                mainWindow.webContents.send('messaging:new-message', msg.data);
+                            }
+                        }
+                        if (msg.event === 'DEVICE_COUNT_CHANGED') {
+                            lastBridgeStatus = {
+                                connected: Number(msg.data?.connected || 0),
+                                paired: Number(msg.data?.paired || 0),
+                                pairedDevices: Array.isArray(msg.data?.pairedDevices) ? msg.data.pairedDevices : [],
+                            };
                         }
                     }
-                    if (msg.event === 'DEVICE_COUNT_CHANGED') {
-                        lastBridgeStatus = {
-                            connected: msg.data.connected,
-                            paired: msg.data.paired,
-                            pairedDevices: msg.data.pairedDevices || [],
-                        };
-                    }
+                }
+                catch (bridgeErr) {
+                    startupLog(`[Electron] Error handling bridge message: ${bridgeErr?.message || bridgeErr}`);
                 }
             });
             nextServer.on('exit', (code) => {

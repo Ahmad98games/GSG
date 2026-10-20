@@ -26,6 +26,11 @@ electron_1.contextBridge.exposeInMainWorld('electron', {
         const listener = () => callback();
         electron_1.ipcRenderer.on('license-expired', listener);
         return () => electron_1.ipcRenderer.removeListener('license-expired', listener);
+    },
+    onPlanEnded: (callback) => {
+        const listener = (_, data) => callback(data);
+        electron_1.ipcRenderer.on('license:plan-ended', listener);
+        return () => electron_1.ipcRenderer.removeListener('license:plan-ended', listener);
     }
 });
 const bridgeListeners = new Map();
@@ -166,6 +171,12 @@ electron_1.contextBridge.exposeInMainWorld('electronAPI', {
         activate: (keyOrData) => electron_1.ipcRenderer.invoke('license:activate', keyOrData),
         verify: (keyOrData) => electron_1.ipcRenderer.invoke('license:activate', keyOrData),
         getHWID: () => electron_1.ipcRenderer.invoke('license:getHWID'),
+        notifyExpiry: (payload) => electron_1.ipcRenderer.invoke('license:notifyExpiry', payload),
+        onPlanEnded: (callback) => {
+            const listener = (_, data) => callback(data);
+            electron_1.ipcRenderer.on('license:plan-ended', listener);
+            return () => electron_1.ipcRenderer.removeListener('license:plan-ended', listener);
+        },
     },
     // ── Trial Engine ────────────────────────────────────────────────────────────
     trial: {

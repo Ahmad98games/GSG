@@ -36,6 +36,7 @@ import { ExpiryBanner } from '@/components/license/ExpiryBanner';
 import { TopUrgencyBanner } from '@/components/trial/TrialCountdownBanner';
 import { TrialExpirationModal } from '@/components/trial/TrialExpirationModal';
 import { LicenseReminderModal } from '@/components/license/LicenseReminderModal';
+import { PlanCompletionUpgradeModal } from '@/components/license/PlanCompletionUpgradeModal';
 import { ActivationCelebration } from '@/components/license/ActivationCelebration';
 import HWIDActivationModal from "@/components/pricing/HWIDActivationModal";
 import BusinessModeSelector from '@/components/onboarding/BusinessModeSelector';
@@ -488,6 +489,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       <TrialExpirationModal />
       <LicenseReminderModal />
+      <PlanCompletionUpgradeModal />
       <ActivationCelebration />
       <OfflineIndicator />
     </>

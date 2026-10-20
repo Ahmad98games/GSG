@@ -49,6 +49,8 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.verifyLicense = verifyLicense;
+exports.getRawLicensePayload = getRawLicensePayload;
+exports.isLicenseExpired = isLicenseExpired;
 exports.getActiveLicensePayload = getActiveLicensePayload;
 exports.persistLicense = persistLicense;
 exports.revokeLicense = revokeLicense;
@@ -167,7 +169,7 @@ function verifyLicense(keyString) {
     }
 }
 // ── Persistence helpers ───────────────────────────────────────────────────────
-function getActiveLicensePayload() {
+function getRawLicensePayload() {
     const raw = (0, store_1.getLicensePayload)();
     if (!raw)
         return null;
@@ -177,6 +179,22 @@ function getActiveLicensePayload() {
     catch {
         return null;
     }
+}
+function isLicenseExpired(payload) {
+    if (!payload)
+        return false;
+    if (!payload.expiresAt || payload.expiresAt === 0)
+        return false;
+    return Date.now() > payload.expiresAt;
+}
+function getActiveLicensePayload() {
+    const payload = getRawLicensePayload();
+    if (!payload)
+        return null;
+    if (isLicenseExpired(payload)) {
+        return null;
+    }
+    return payload;
 }
 function persistLicense(payload) {
     (0, store_1.setLicensePayload)(JSON.stringify(payload));

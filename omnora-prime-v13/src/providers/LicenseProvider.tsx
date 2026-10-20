@@ -22,6 +22,12 @@ import {
   getMinTierForFeature,
   getEffectiveTier,
 } from '@/lib/license/tierEngine';
+import {
+  type PlanCycle,
+  type PlanIntelligence,
+  analyzePlanIntelligence,
+  buildAdminPlanEndedNotificationPayload,
+} from '@/lib/license/planIntelligence';
 import { useTierStore } from '@/stores/tierStore';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -32,6 +38,9 @@ export interface LicenseInfo {
   expiresAt: number | null;   // epoch ms, null = no paid license
   issuedAt: number | null;
   businessId: string | null;
+  customerName: string | null;
+  billingCycle: PlanCycle;
+  totalTimespanDays: number;
   trialStatus: 'active' | 'grace' | 'expired' | null;
   trialDaysLeft: number;
   graceDaysLeft: number;
@@ -61,14 +70,24 @@ export interface LicenseState extends LicenseInfo {
   daysUntilExpiry: number | null;
   isExpiringSoon: boolean;   // paid license ≤ 30 days left
   isExpired: boolean;        // paid license past expiresAt
+  isDeactivated: boolean;    // auto-deactivated on timespan completion
+
+  // Plan Intelligence
+  planIntelligence: PlanIntelligence;
+  daysActive: number;
+  daysRemaining: number;
+  percentElapsed: number;
+  formattedActivePeriod: string;
 
   effectiveTier: Tier;
   previousPaidTier: Tier | null;
   justExpired: boolean;
   lastReminderAt: number | null;
   showReminderNow: boolean;
+  showPlanEndedModal: boolean;
 
   dismissReminder: () => void;
+  dismissPlanEndedModal: () => void;
   startUpgrade: () => void;
 
   // Usage percentages (0–100) for progress bars
@@ -86,10 +105,6 @@ const LicenseContext = createContext<LicenseState | null>(null);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/**
- * Map the raw IPC tier string (from electron/services/tierEngine) to the
- * renderer Tier type. 'free_forever' → 'free', 'trial' → 'free_trial'.
- */
 function normalizeTier(raw: string | undefined | null): Tier {
   if (!raw) return 'free';
   const map: Record<string, Tier> = {
@@ -105,17 +120,20 @@ function normalizeTier(raw: string | undefined | null): Tier {
 }
 
 const DEFAULT_INFO: LicenseInfo = {
-  tier:          'free_trial',
-  licenseKey:    null,
-  expiresAt:     null,
-  issuedAt:      Date.now(),
-  businessId:    '00000000-0000-0000-0000-000000000000',
-  trialStatus:   'active',
-  trialDaysLeft: 7,
-  graceDaysLeft: 0,
-  skuCount:      0,
-  partyCount:    0,
-  karigarCount:  0,
+  tier:              'free_trial',
+  licenseKey:        null,
+  expiresAt:         null,
+  issuedAt:          Date.now(),
+  businessId:        '00000000-0000-0000-0000-000000000000',
+  customerName:      'Workstation User',
+  billingCycle:      'trial',
+  totalTimespanDays: 7,
+  trialStatus:       'active',
+  trialDaysLeft:     7,
+  graceDaysLeft:     0,
+  skuCount:          0,
+  partyCount:        0,
+  karigarCount:      0,
 };
 
 // ── Provider ──────────────────────────────────────────────────────────────────
@@ -127,6 +145,7 @@ export function LicenseProvider({ children }: { children: React.ReactNode }) {
 
   const [lastReminderAt, setLastReminderAt] = useState<number | null>(null);
   const [showReminderNow, setShowReminderNow] = useState(false);
+  const [showPlanEndedModal, setShowPlanEndedModal] = useState(false);
 
   // Sync tier into the legacy Zustand store for backward compatibility
   const setZustandTier = useTierStore((s) => s.setTier);
@@ -136,30 +155,42 @@ export function LicenseProvider({ children }: { children: React.ReactNode }) {
       if (typeof window !== 'undefined' && (window as any).electronAPI?.license?.getInfo) {
         const raw = await (window as any).electronAPI.license.getInfo();
         const tier = normalizeTier(raw?.tier);
+        const rawTier = raw?.rawTier ? normalizeTier(raw.rawTier) : tier;
+
+        const durationMs = (raw?.expiresAt && raw?.issuedAt) ? Math.max(0, raw.expiresAt - raw.issuedAt) : 0;
+        const totalTimespanDays = raw?.totalTimespanDays || (durationMs > 0 ? Math.round(durationMs / 86400000) : 30);
+        const billingCycle: PlanCycle = raw?.billingCycle || (totalTimespanDays > 100 ? 'yearly' : 'monthly');
 
         const newInfo: LicenseInfo = {
-          tier,
-          licenseKey:    raw?.licenseKey   ?? null,
-          expiresAt:     raw?.expiresAt    ?? null,
-          issuedAt:      raw?.issuedAt     ?? null,
-          businessId:    raw?.businessId   ?? null,
-          trialStatus:   raw?.trialStatus  ?? null,
-          trialDaysLeft: raw?.trialDaysLeft ?? 0,
-          graceDaysLeft: raw?.graceDaysLeft ?? 0,
-          skuCount:      raw?.skuCount     ?? 0,
-          partyCount:    raw?.partyCount   ?? 0,
-          karigarCount:  raw?.karigarCount ?? 0,
+          tier: raw?.isExpired ? 'free' : tier,
+          licenseKey:        raw?.licenseKey   ?? null,
+          expiresAt:         raw?.expiresAt    ?? null,
+          issuedAt:          raw?.issuedAt     ?? null,
+          businessId:        raw?.businessId   ?? null,
+          customerName:      raw?.customerName ?? 'Workstation User',
+          billingCycle,
+          totalTimespanDays,
+          trialStatus:       raw?.trialStatus  ?? null,
+          trialDaysLeft:     raw?.trialDaysLeft ?? 0,
+          graceDaysLeft:     raw?.graceDaysLeft ?? 0,
+          skuCount:          raw?.skuCount     ?? 0,
+          partyCount:        raw?.partyCount   ?? 0,
+          karigarCount:      raw?.karigarCount ?? 0,
         };
         setInfo(newInfo);
 
+        if (raw?.isExpired && rawTier !== 'free') {
+          setShowPlanEndedModal(true);
+        }
+
         const zustandTier: 'lite' | 'pro' | 'elite' =
-          tier === 'elite' || tier === 'free_trial' ? 'elite'
-          : tier === 'pro' ? 'pro'
+          newInfo.tier === 'elite' || newInfo.tier === 'free_trial' ? 'elite'
+          : newInfo.tier === 'pro' ? 'pro'
           : 'lite';
         setZustandTier(
           zustandTier,
           raw?.expiresAt ? new Date(raw.expiresAt).toISOString() : undefined,
-          tier === 'free_trial',
+          newInfo.tier === 'free_trial',
         );
       } else {
         if (typeof window !== 'undefined') {
@@ -168,14 +199,28 @@ export function LicenseProvider({ children }: { children: React.ReactNode }) {
             try {
               const parsed = JSON.parse(stored);
               const mappedTier = normalizeTier(parsed.tier);
+              const expiresMs = parsed.expiresAt ? new Date(parsed.expiresAt).getTime() : null;
+              const issuedMs = parsed.activatedAt || parsed.issuedAt || (expiresMs ? expiresMs - 30 * 86400000 : Date.now());
+              const isPast = expiresMs ? Date.now() >= expiresMs : false;
+
+              const totalDays = expiresMs ? Math.max(1, Math.round((expiresMs - issuedMs) / 86400000)) : 0;
+              const billingCycle: PlanCycle = parsed.billingCycle || (totalDays > 100 ? 'yearly' : totalDays > 0 ? 'monthly' : 'lifetime');
+
               setInfo((prev) => ({
                 ...prev,
-                tier: mappedTier,
+                tier: isPast && mappedTier !== 'free' ? 'free' : mappedTier,
                 licenseKey: parsed.key ?? null,
-                expiresAt: parsed.expiresAt
-                  ? new Date(parsed.expiresAt).getTime()
-                  : null,
+                expiresAt: expiresMs,
+                issuedAt: issuedMs,
+                customerName: parsed.customerName || 'Workstation User',
+                billingCycle,
+                totalTimespanDays: totalDays,
               }));
+
+              if (isPast && mappedTier !== 'free') {
+                setShowPlanEndedModal(true);
+              }
+
               const zustandTier: 'lite' | 'pro' | 'elite' =
                 mappedTier === 'elite' || mappedTier === 'free_trial' ? 'elite'
                 : mappedTier === 'pro' ? 'pro'
@@ -183,7 +228,7 @@ export function LicenseProvider({ children }: { children: React.ReactNode }) {
               setZustandTier(zustandTier, parsed.expiresAt, mappedTier === 'free_trial');
             } catch {}
           } else {
-            // Fresh client download: Start automatic 7-day Elite trial!
+            // Fresh client download: Start automatic 7-day Elite trial
             let trialStart = Date.now();
             const storedStart = localStorage.getItem('noxis_trial_start');
             if (storedStart) {
@@ -197,6 +242,8 @@ export function LicenseProvider({ children }: { children: React.ReactNode }) {
             const newInfo: LicenseInfo = {
               ...DEFAULT_INFO,
               tier: isTrialActive ? 'free_trial' : 'free',
+              billingCycle: 'trial',
+              totalTimespanDays: 7,
               trialStatus: isTrialActive ? 'active' : 'expired',
               trialDaysLeft: daysLeft,
               expiresAt: trialStart + 7 * 24 * 60 * 60 * 1000,
@@ -220,26 +267,46 @@ export function LicenseProvider({ children }: { children: React.ReactNode }) {
   // Load on mount
   useEffect(() => {
     loadLicenseInfo();
-
-    const interval = setInterval(loadLicenseInfo, 5 * 60 * 1000);
+    const interval = setInterval(loadLicenseInfo, 60 * 1000); // Check every minute
     return () => clearInterval(interval);
   }, [loadLicenseInfo]);
 
-  // Listen for license-expired event from Electron main process
+  // Listen for plan-ended or license-expired events from Electron main process
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const electron = (window as any).electron;
-    if (!electron?.onLicenseExpired) return;
-    const unlisten = electron.onLicenseExpired(() => {
+    const electronAPI = (window as any).electronAPI;
+
+    const handlePlanEnded = (payload?: any) => {
+      console.log('[LicenseProvider] Plan ended event detected from Electron:', payload);
       setInfo((prev) => ({ ...prev, tier: 'free' }));
-    });
-    return () => unlisten?.();
+      setShowPlanEndedModal(true);
+    };
+
+    let unlistenPlanEnded: (() => void) | undefined;
+    if (electron?.onPlanEnded) {
+      unlistenPlanEnded = electron.onPlanEnded(handlePlanEnded);
+    } else if (electronAPI?.license?.onPlanEnded) {
+      unlistenPlanEnded = electronAPI.license.onPlanEnded(handlePlanEnded);
+    }
+
+    let unlistenExpired: (() => void) | undefined;
+    if (electron?.onLicenseExpired) {
+      unlistenExpired = electron.onLicenseExpired(() => {
+        setInfo((prev) => ({ ...prev, tier: 'free' }));
+      });
+    }
+
+    return () => {
+      unlistenPlanEnded?.();
+      unlistenExpired?.();
+    };
   }, []);
 
-  // ── Derived values ─────────────────────────────────────────────────────────
+  // ── Derived values & Plan Intelligence ─────────────────────────────────────
 
   const derived = useMemo(() => {
-    const { tier, expiresAt, skuCount, partyCount, karigarCount } = info;
+    const { tier, expiresAt, issuedAt, businessId, customerName, billingCycle, skuCount, partyCount, karigarCount } = info;
 
     let daysUntilExpiry: number | null = null;
     let isExpiringSoon = false;
@@ -263,6 +330,16 @@ export function LicenseProvider({ children }: { children: React.ReactNode }) {
     const isTrial  = effectiveTier === 'free_trial';
     const isPaid   = (tier === 'lite' || tier === 'pro' || tier === 'elite') && !isExpired;
 
+    // Run Plan Intelligence analyzer
+    const planIntelligence = analyzePlanIntelligence({
+      tier,
+      expiresAt,
+      issuedAt,
+      businessId,
+      customerName,
+      billingCycle,
+    });
+
     return {
       isFree,
       isLite,
@@ -276,27 +353,57 @@ export function LicenseProvider({ children }: { children: React.ReactNode }) {
       daysUntilExpiry,
       isExpiringSoon,
       isExpired,
+      isDeactivated: isExpired && tier !== 'free',
+      planIntelligence,
+      daysActive: planIntelligence.timespan.daysActive,
+      daysRemaining: planIntelligence.timespan.daysRemaining,
+      percentElapsed: planIntelligence.timespan.percentElapsed,
+      formattedActivePeriod: planIntelligence.timespan.formattedActivePeriod,
       skuUsagePct:     getUsagePct('max_skus',      skuCount,     effectiveTier),
       partyUsagePct:   getUsagePct('max_parties',   partyCount,   effectiveTier),
       karigarUsagePct: getUsagePct('max_karigars',  karigarCount, effectiveTier),
     };
   }, [info, lastReminderAt]);
 
-  // Hourly reminder timer
+  // Dispatch server notification when plan completion occurs (notify admin once per expiration)
+  useEffect(() => {
+    if (derived.isExpired && info.tier !== 'free') {
+      const notifyKey = `noxis_plan_ended_notified_${info.licenseKey || info.businessId}_${info.expiresAt}`;
+      try {
+        if (!sessionStorage.getItem(notifyKey)) {
+          sessionStorage.setItem(notifyKey, 'true');
+          const payload = buildAdminPlanEndedNotificationPayload(derived.planIntelligence);
+
+          // 1. Send via local fetch
+          fetch('/api/license/notify-expiry', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          }).catch((err) => console.warn('[LicenseProvider] Server notify error:', err));
+
+          // 2. Also inform Electron IPC if available
+          const api = (window as any).electronAPI;
+          if (api?.license?.notifyExpiry) {
+            api.license.notifyExpiry(payload).catch(() => {});
+          }
+        }
+      } catch {}
+    }
+  }, [derived.isExpired, info.tier, info.licenseKey, info.businessId, info.expiresAt, derived.planIntelligence]);
+
+  // Periodic reminder timer
   useEffect(() => {
     if (!derived.isExpired || info.tier === 'free') return;
 
     const checkReminder = () => {
       const now = Date.now();
       const ONE_HOUR = 60 * 60 * 1000;
-
       if (!lastReminderAt || now - lastReminderAt >= ONE_HOUR) {
         setShowReminderNow(true);
       }
     };
 
     checkReminder();
-
     const interval = setInterval(checkReminder, 60 * 1000);
     return () => clearInterval(interval);
   }, [derived.isExpired, info.tier, lastReminderAt]);
@@ -306,10 +413,15 @@ export function LicenseProvider({ children }: { children: React.ReactNode }) {
     setLastReminderAt(Date.now());
   }, []);
 
+  const dismissPlanEndedModal = useCallback(() => {
+    setShowPlanEndedModal(false);
+  }, []);
+
   const startUpgrade = useCallback(() => {
     setShowReminderNow(false);
+    setShowPlanEndedModal(false);
     setLastReminderAt(Date.now());
-    router.push('/settings/license?upgrade=true');
+    router.push('/settings/license/upgrade?expired=true');
   }, [router]);
 
   // ── Gate functions ─────────────────────────────────────────────────────────
@@ -364,7 +476,9 @@ export function LicenseProvider({ children }: { children: React.ReactNode }) {
     ...derived,
     lastReminderAt,
     showReminderNow,
+    showPlanEndedModal,
     dismissReminder,
+    dismissPlanEndedModal,
     startUpgrade,
     refresh,
   };
@@ -384,6 +498,9 @@ const DEFAULT_FALLBACK_STATE: LicenseState = {
   expiresAt: null,
   issuedAt: Date.now(),
   businessId: '00000000-0000-0000-0000-000000000000',
+  customerName: 'Workstation User',
+  billingCycle: 'lifetime',
+  totalTimespanDays: 9999,
   trialStatus: null,
   trialDaysLeft: 0,
   graceDaysLeft: 0,
@@ -408,9 +525,17 @@ const DEFAULT_FALLBACK_STATE: LicenseState = {
   daysUntilExpiry: null,
   isExpiringSoon: false,
   isExpired: false,
+  isDeactivated: false,
+  planIntelligence: analyzePlanIntelligence({ tier: 'elite', expiresAt: 0 }),
+  daysActive: 0,
+  daysRemaining: 9999,
+  percentElapsed: 0,
+  formattedActivePeriod: 'Permanent Lifetime',
   lastReminderAt: null,
   showReminderNow: false,
+  showPlanEndedModal: false,
   dismissReminder: () => {},
+  dismissPlanEndedModal: () => {},
   startUpgrade: () => {},
   skuUsagePct: 0,
   partyUsagePct: 0,

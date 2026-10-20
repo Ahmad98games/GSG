@@ -166,7 +166,7 @@ export function verifyLicense(keyString: string): VerifyResult {
 
 // ── Persistence helpers ───────────────────────────────────────────────────────
 
-export function getActiveLicensePayload(): LicensePayload | null {
+export function getRawLicensePayload(): LicensePayload | null {
   const raw = getLicensePayload()
   if (!raw) return null
   try {
@@ -176,6 +176,21 @@ export function getActiveLicensePayload(): LicensePayload | null {
   }
 }
 
+export function isLicenseExpired(payload: LicensePayload | null): boolean {
+  if (!payload) return false
+  if (!payload.expiresAt || payload.expiresAt === 0) return false
+  return Date.now() > payload.expiresAt
+}
+
+export function getActiveLicensePayload(): LicensePayload | null {
+  const payload = getRawLicensePayload()
+  if (!payload) return null
+  if (isLicenseExpired(payload)) {
+    return null
+  }
+  return payload
+}
+
 export function persistLicense(payload: LicensePayload): void {
   setLicensePayload(JSON.stringify(payload))
 }
@@ -183,3 +198,4 @@ export function persistLicense(payload: LicensePayload): void {
 export function revokeLicense(): void {
   clearLicensePayload()
 }
+

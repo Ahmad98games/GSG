@@ -89,19 +89,19 @@ export function ExpiryBanner() {
 
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-white mb-1">
-            Your {tierName} plan has expired
+            Your {tierName} Plan has Ended & Deactivated
           </p>
-          <p className="text-xs text-gray-500 leading-relaxed">
-            You are now on the <span className="text-white font-semibold">Free plan</span> — your data is safe and the software is working. Some {tierName} features are paused until you renew.
+          <p className="text-xs text-gray-400 leading-relaxed">
+            The software has self-detected plan timespan completion. You are now on <span className="text-white font-semibold">Free Forever mode</span> — your store data and POS billing remain 100% active. Premium cloud and AI features are paused.
           </p>
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
           <Link
-            href="/settings/license?upgrade=true"
+            href="/settings/license/upgrade?expired=true"
             className="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-[10px] font-black uppercase tracking-wider rounded-sm transition-colors"
           >
-            Renew {tierName}
+            Renew / Upgrade {tierName}
           </Link>
           <button
             onClick={handleDismiss}
@@ -119,18 +119,19 @@ export function ExpiryBanner() {
     const tierName = (tier as string).charAt(0).toUpperCase() + (tier as string).slice(1)
     return (
       <div className="mx-6 mt-4 p-3 rounded-sm bg-amber-500/5 border border-amber-500/15 flex items-center justify-between gap-4">
-        <p className="text-xs text-amber-400">
-          ⏰ Your {tierName} plan expires in <strong>{daysUntilExpiry} days</strong>. Renew to keep all features.
-        </p>
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+          <p className="text-xs text-amber-300">
+            ⏰ Your {tierName} plan timespan completes in <strong className="text-white">{daysUntilExpiry} days</strong>. Renew now to avoid automated feature pause.
+          </p>
+        </div>
         <div className="flex gap-2 flex-shrink-0">
-          <a
-            href={`https://wa.me/923264742678?text=${encodeURIComponent(`I want to renew my Noxis Hub ${tierName} license`)}`}
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            href="/settings/license/upgrade"
             className="px-3 py-1.5 bg-amber-500 text-black text-xs font-bold rounded-sm hover:bg-amber-400 transition-colors"
           >
-            Renew Now
-          </a>
+            Renew Plan
+          </Link>
           <button
             onClick={handleDismiss}
             className="text-gray-600 hover:text-gray-400 p-1"

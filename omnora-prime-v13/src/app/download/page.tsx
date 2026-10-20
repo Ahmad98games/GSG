@@ -115,6 +115,7 @@ export default function DownloadPage() {
   const [city, setCity] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showApkQr, setShowApkQr] = useState(false);
+  const [targetPlatform, setTargetPlatform] = useState<'windows' | 'android'>('windows');
 
   // ── HANDLER PRESERVED EXACTLY ──
   const handleStartDownload = async (e: React.FormEvent) => {
@@ -131,16 +132,18 @@ export default function DownloadPage() {
           phone,
           businessName,
           city,
+          platform: targetPlatform,
         })
       });
       if (typeof window !== 'undefined') {
         localStorage.setItem('noxis_lead_name', fullName.trim());
         localStorage.setItem('noxis_lead_phone', phone.trim());
         localStorage.setItem('noxis_lead_business', (businessName && businessName.trim()) ? businessName.trim() : `${fullName.trim()}'s Business`);
+        localStorage.setItem('noxis_lead_platform', targetPlatform);
       }
     } catch {}
 
-    window.location.href = DOWNLOAD_ZIP_URL;
+    window.location.href = targetPlatform === 'android' ? CLOUDFLARE_APK_URL : DOWNLOAD_ZIP_URL;
     setShowModal(false);
     setSubmitting(false);
   };
@@ -266,7 +269,7 @@ export default function DownloadPage() {
             <div className="px-7 pb-7 pt-2">
               <button
                 type="button"
-                onClick={() => setShowModal(true)}
+                onClick={() => { setTargetPlatform('windows'); setShowModal(true); }}
                 className="w-full flex items-center justify-center gap-2.5 px-6 py-3.5 bg-[#08EBF6] hover:bg-[#08EBF6]/90 text-black font-bold text-sm rounded-xl transition-all shadow-[0_4px_20px_rgba(8,235,246,0.2)] hover:shadow-[0_4px_28px_rgba(8,235,246,0.35)] hover:-translate-y-0.5 cursor-pointer"
               >
                 <Download size={15} />
@@ -374,14 +377,17 @@ export default function DownloadPage() {
 
             {/* CTA */}
             <div className="px-7 pb-7 pt-2">
-              <a
-                href={CLOUDFLARE_APK_URL}
-                download="Noxis-Mobile-Terminal-v14.0.0.apk"
+              <button
+                type="button"
+                onClick={() => {
+                  setTargetPlatform('android');
+                  setShowModal(true);
+                }}
                 className="w-full flex items-center justify-center gap-2.5 px-6 py-3.5 bg-gradient-to-r from-[#60A5FA] to-[#08EBF6] hover:opacity-95 text-black font-bold text-sm rounded-xl transition-all shadow-[0_4px_20px_rgba(96,165,250,0.2)] hover:shadow-[0_4px_28px_rgba(96,165,250,0.3)] hover:-translate-y-0.5 cursor-pointer"
               >
                 <Download size={15} />
-                Download for Android
-              </a>
+                Download for Android (APK)
+              </button>
               <div className="flex items-center justify-between mt-2.5 px-0.5">
                 <span className="text-[10px] text-zinc-600">noxis-preview.apk</span>
                 <button
@@ -708,14 +714,17 @@ export default function DownloadPage() {
             <Download size={15} />
             Download for Windows
           </button>
-          <a
-            href={CLOUDFLARE_APK_URL}
-            download="Noxis-Mobile-Terminal-v14.0.0.apk"
+          <button
+            type="button"
+            onClick={() => {
+              setTargetPlatform('android');
+              setShowModal(true);
+            }}
             className="flex items-center gap-2.5 px-7 py-3.5 bg-white/6 hover:bg-white/9 border border-white/10 text-white font-semibold text-sm rounded-xl transition-all cursor-pointer"
           >
             <Download size={15} />
             Download for Android
-          </a>
+          </button>
         </div>
         <p className="text-xs text-zinc-600">
           Free for 7 days · No data uploaded · Your PC stores everything
@@ -749,10 +758,12 @@ export default function DownloadPage() {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-white">
-                    Start your free trial
+                    {targetPlatform === 'android' ? 'Download Noxis Mobile (Android APK)' : 'Start your free trial'}
                   </h3>
                   <p className="text-xs text-zinc-500 mt-0.5">
-                    We use this to send you a license key if you choose to upgrade later.
+                    {targetPlatform === 'android'
+                      ? 'Enter your factory details to register your mobile handheld and sync with your PC Hub.'
+                      : 'We use this to send you a license key if you choose to upgrade later.'}
                   </p>
                 </div>
               </div>

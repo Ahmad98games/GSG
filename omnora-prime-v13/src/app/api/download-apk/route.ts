@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
       filename: 'Noxis-Mobile-Terminal-v14.0.0.apk',
       file_size_mb: 116.04,
       file_size_bytes: 121675350,
-      hash_sha256: 'f7557a36552a24c44aeafe061e420d67befea80564fb81fea3edbc4cc947ac92',
+      hash_sha256: '27f2f934d10181fe8a20c044d23b16b472b3f9825f18a9451c0ec4afc559f542',
       direct_download_url: CLOUDFLARE_APK_URL,
       manifest_url: CLOUDFLARE_VERSION_URL,
       released_at: '2026-10-20T08:00:37.015Z',

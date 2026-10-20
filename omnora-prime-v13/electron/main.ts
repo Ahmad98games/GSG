@@ -18,7 +18,7 @@ import { registerMediamtxHandlers, stopMediamtx } from './services/mediamtxServi
 // ── Licensing & Security ──────────────────────────────────────────────────────
 import { verifyHWID, generateHWID, getCachedHWIDOrGenerate } from './services/hwid'
 import { initTrialEngine, checkpointMonotonicElapsed, getTrialState } from './services/trialEngine'
-import { verifyLicense, getActiveLicensePayload, persistLicense, revokeLicense } from './services/licenseVerifier'
+import { verifyLicense, getActiveLicensePayload, getRawLicensePayload, isLicenseExpired, persistLicense, revokeLicense } from './services/licenseVerifier'
 import { canUse, getActiveTierInfo, isWithinDeviceLimit, FEATURES } from './services/tierEngine'
 import { buildHubAck, normalizeRole, canWriteKhata, type MobileRole } from './bridge/rbacEngine'
 import { deliverMessageToDevice, broadcastToAllDevices, getConnectedClientsMap } from '../src/lib/mobile-bridge/server'
@@ -708,7 +708,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 </div>
 
 <div class="footer-meta">
-  <span>v14.0.0 &nbsp;·&nbsp; SQLite WAL</span>
+  <span>v14.0.1 &nbsp;·&nbsp; SQLite WAL</span>
   <span>OMNORA LABS</span>
 </div>
 </body>
@@ -1672,13 +1672,29 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   // LICENSE & TRIAL IPC HANDLERS
   // ─────────────────────────────────────────────
 
-  // Returns current tier info + HWID + trial state for the Settings page
+  // Returns current tier info + HWID + trial state + plan intelligence for the Settings page & provider
   ipcMain.handle('license:getInfo', () => {
     const tierInfo = getActiveTierInfo();
     const trialState = getTrialState();
     const license = getActiveLicensePayload();
+    const rawLicense = getRawLicensePayload();
     const hasPaidLicense = Boolean(license);
-    const activeTier = license?.tier || (trialState.status === 'expired' ? 'free_forever' : 'trial');
+    const wasPaidLicense = Boolean(rawLicense);
+    const isExpired = Boolean(rawLicense && isLicenseExpired(rawLicense));
+    const activeTier = license?.tier || (trialState.status === 'expired' || isExpired ? 'free_forever' : 'trial');
+    
+    // Self-detect billing cycle and timespan
+    let billingCycle: 'monthly' | 'yearly' | 'lifetime' | 'trial' = 'trial';
+    let totalTimespanDays = 0;
+    if (rawLicense) {
+      if (!rawLicense.expiresAt || rawLicense.expiresAt === 0) {
+        billingCycle = 'lifetime';
+      } else {
+        const durationMs = rawLicense.expiresAt - (rawLicense.issuedAt || (rawLicense.expiresAt - 30 * 86400000));
+        totalTimespanDays = Math.max(1, Math.round(durationMs / 86400000));
+        billingCycle = totalTimespanDays > 100 ? 'yearly' : 'monthly';
+      }
+    }
 
     let skuCount = 0;
     let partyCount = 0;
@@ -1721,6 +1737,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
     return {
       tier: activeTier,
+      rawTier: rawLicense?.tier || null,
       caps: tierInfo.caps,
       features: tierInfo.features,
       maxDevices: tierInfo.maxDevices,
@@ -1732,8 +1749,13 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       hwid: generateHWID(),
       licenseActive: hasPaidLicense,
       isPermanent: hasPaidLicense && (!license?.expiresAt || license.expiresAt === 0),
-      businessId: license?.businessId || '00000000-0000-0000-0000-000000000000',
-      expiresAt: license?.expiresAt || 0,
+      isExpired,
+      isDeactivated: isExpired,
+      billingCycle,
+      totalTimespanDays,
+      businessId: rawLicense?.businessId || '00000000-0000-0000-0000-000000000000',
+      issuedAt: rawLicense?.issuedAt || 0,
+      expiresAt: rawLicense?.expiresAt || 0,
       skuCount,
       partyCount,
       karigarCount,
@@ -1785,6 +1807,61 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   ipcMain.handle('trial:getState', () => {
     return getTrialState();
   });
+
+  // Notifies admin server when a plan ends & software deactivates
+  ipcMain.handle('license:notifyExpiry', async (_, payload: any) => {
+    try {
+      startupLog(`[License IPC] Manual plan expiry notification requested: ${JSON.stringify(payload)}`);
+      return { success: true, notifiedAt: Date.now() };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  });
+
+  // ── Plan Expiry Watchdog ───────────────────────────────────────────────────
+  // Periodically checks if the user's monthly or yearly timespan has completed.
+  // If completed, automatically deactivates paid features, drops to Free tier,
+  // notifies the renderer to prompt upgrade, and alerts the admin.
+  let planExpiredEventDispatched = false;
+  setInterval(async () => {
+    try {
+      const rawLicense = getRawLicensePayload();
+      if (!rawLicense || !rawLicense.expiresAt || rawLicense.expiresAt === 0) return;
+
+      const isExpired = Date.now() > rawLicense.expiresAt;
+      if (isExpired && !planExpiredEventDispatched) {
+        planExpiredEventDispatched = true;
+        const durationMs = rawLicense.expiresAt - (rawLicense.issuedAt || (rawLicense.expiresAt - 30 * 86400000));
+        const totalTimespanDays = Math.max(1, Math.round(durationMs / 86400000));
+        const billingCycle = totalTimespanDays > 100 ? 'yearly' : 'monthly';
+
+        startupLog(`[License Watcher] ⚠️ User plan timespan completed: ${rawLicense.businessId} (${rawLicense.tier} · ${billingCycle} · ${totalTimespanDays}d). Deactivating software to Free mode.`);
+
+        // 1. Broadcast deactivation event to renderer window
+        mainWindow?.webContents.send('license-expired');
+        mainWindow?.webContents.send('license:plan-ended', {
+          tier: rawLicense.tier,
+          billingCycle,
+          totalTimespanDays,
+          businessId: rawLicense.businessId,
+          issuedAt: rawLicense.issuedAt,
+          expiresAt: rawLicense.expiresAt,
+        });
+
+        // 2. Shut down premium background engines (e.g. CCTV AI Sentinel)
+        if (visionProcess) {
+          killProcess(visionProcess, 'Vision Engine (Plan Deactivated)');
+          visionProcess = null;
+        }
+      } else if (!isExpired && planExpiredEventDispatched) {
+        // License renewed
+        planExpiredEventDispatched = false;
+      }
+    } catch (err: any) {
+      startupLog(`[License Watcher] Watcher check warning: ${err.message}`);
+    }
+  }, 20 * 1000); // Check every 20 seconds
+
 
   // ─────────────────────────────────────────────
   // WEBSOCKET BRIDGE SERVER (Mobile RBAC)

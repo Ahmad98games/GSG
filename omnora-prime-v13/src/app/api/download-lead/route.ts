@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://zgxmvwxzjmpmesqliwxl.supabase.co',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-);
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://zgxmvwxzjmpmesqliwxl.supabase.co';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
-    const { fullName, businessName, phone, city, hwid } = body;
+    const { fullName, businessName, phone, city, hwid, platform = 'android', deviceModel } = body;
 
     if (!fullName || !phone) {
       return NextResponse.json(
@@ -37,14 +37,14 @@ export async function POST(req: NextRequest) {
         city: city?.trim() || 'Pakistan',
         country: 'PK',
         currency: 'PKR',
-        role: 'manufacturer',
+        role: platform === 'android' ? 'mobile_operator' : 'manufacturer',
         industry_type: 'textile',
         industry_key: 'textile',
         license_status: 'trial',
         trial_started_at: new Date().toISOString(),
         onboarding_done: true,
         summary_frequency: 1,
-        whatsapp_numbers: [{ name: fullName.trim(), phone: cleanPhone }]
+        whatsapp_numbers: [{ name: fullName.trim(), phone: cleanPhone, platform, device: deviceModel || 'Android/Windows', downloaded_at: new Date().toISOString() }]
       })
       .select('id, business_name, owner_name, phone, created_at')
       .maybeSingle();
@@ -53,32 +53,25 @@ export async function POST(req: NextRequest) {
       console.warn('[DownloadLead] Supabase record warning:', error.message);
     }
 
-    // 2. Also register pre-activated trial license
-    try {
-      const trialKey = `TRIAL-${cleanPhone.slice(-6)}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
-      await supabase.from('licenses').insert({
-        license_key: trialKey,
-        tier: 'elite',
-        customer_name: fullName.trim(),
-        customer_phone: cleanPhone,
-        hwid: hwid || 'PENDING_INSTALLATION',
-        is_trial: true,
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        status: 'ACTIVE'
-      });
-    } catch {}
+    console.log(`[DownloadLead] Registered ${platform.toUpperCase()} download lead: ${fullName} (${cleanPhone}) for ${bizName}`);
+
+    const downloadUrl = platform === 'android' 
+      ? 'https://pub-8c464d0d92ff44abbf70c58c362ad258.r2.dev/noxis-preview.apk'
+      : '/api/download-software?format=zip&trial=true&redirect=true';
 
     return NextResponse.json({
       success: true,
       message: 'Download lead recorded successfully',
+      platform,
       lead: {
         id: data?.id,
         fullName: fullName.trim(),
         businessName: bizName,
         phone: cleanPhone,
+        platform,
         registeredAt: new Date().toISOString()
       },
-      downloadUrl: '/api/download-software?format=zip&trial=true&redirect=true'
+      downloadUrl
     });
   } catch (err: any) {
     console.error('[DownloadLead API] Exception:', err);
@@ -92,31 +85,10 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const hwid = searchParams.get('hwid');
     const phone = searchParams.get('phone');
+    const limit = parseInt(searchParams.get('limit') || '50', 10);
 
-    if (hwid && hwid !== 'PENDING_INSTALLATION') {
-      const { data: license } = await supabase
-        .from('licenses')
-        .select('*')
-        .eq('hwid', hwid)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (license) {
-        return NextResponse.json({
-          found: true,
-          lead: {
-            fullName: license.customer_name,
-            phone: license.customer_phone,
-            hwid: license.hwid,
-            expiresAt: license.expires_at
-          }
-        });
-      }
-    }
-
+    // Search by specific phone
     if (phone) {
       const { data: profile } = await supabase
         .from('business_profiles')
@@ -133,36 +105,48 @@ export async function GET(req: NextRequest) {
             fullName: profile.owner_name || profile.business_name,
             businessName: profile.business_name,
             phone: profile.phone,
-            city: profile.city
+            city: profile.city,
+            downloadedAt: profile.created_at
           }
         });
       }
     }
 
-    // Fallback: get the most recent download lead for single-machine local test
-    const { data: recent } = await supabase
+    // Default: Return list of all download leads (up to limit)
+    const { data: leads, error } = await supabase
       .from('business_profiles')
-      .select('owner_name, business_name, phone, city, created_at')
+      .select('id, owner_name, business_name, phone, city, role, license_status, whatsapp_numbers, created_at')
       .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(limit);
 
-    if (recent) {
-      return NextResponse.json({
-        found: true,
-        recent: true,
-        lead: {
-          fullName: recent.owner_name || recent.business_name,
-          businessName: recent.business_name,
-          phone: recent.phone,
-          city: recent.city
-        }
-      });
+    if (error) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ found: false });
+    const formatted = (leads || []).map((l: any) => {
+      let platform = 'android';
+      if (Array.isArray(l.whatsapp_numbers) && l.whatsapp_numbers.length > 0) {
+        platform = l.whatsapp_numbers[0]?.platform || (l.role === 'mobile_operator' ? 'android' : 'windows');
+      } else if (l.role === 'manufacturer') {
+        platform = 'windows';
+      }
+      return {
+        id: l.id,
+        fullName: l.owner_name || 'N/A',
+        businessName: l.business_name || 'N/A',
+        phone: l.phone || 'N/A',
+        city: l.city || 'N/A',
+        platform: platform.toUpperCase(),
+        downloadedAt: l.created_at
+      };
+    });
+
+    return NextResponse.json({
+      success: true,
+      totalCount: formatted.length,
+      leads: formatted
+    });
   } catch (err: any) {
-    return NextResponse.json({ found: false, error: err.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
-
