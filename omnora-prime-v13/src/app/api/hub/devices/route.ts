@@ -48,19 +48,22 @@ export async function GET() {
     }
   }
 
-  // Also merge in any live bridge connections
+  // Merge with live bridge connections to accurately reflect real-time online status
+  let liveDeviceIds = new Set<string>();
   try {
     const bridgeStatus = getBridgeStatus();
     if (bridgeStatus && Array.isArray(bridgeStatus.pairedDevices)) {
       for (const live of bridgeStatus.pairedDevices) {
+        if (live.deviceId) liveDeviceIds.add(live.deviceId);
         const found = devices.find(d => (d.deviceId || d.nodeId) === live.deviceId);
         if (!found) {
           devices.push({
             nodeId: live.deviceId,
             deviceId: live.deviceId,
-            label: live.deviceLabel,
-            deviceLabel: live.deviceLabel,
+            label: live.deviceLabel || 'Live Workstation Node',
+            deviceLabel: live.deviceLabel || 'Live Workstation Node',
             isActive: 1,
+            isLive: true,
             isRevoked: 0,
             lastSeen: live.lastHeartbeat,
             createdAt: live.connectedAt,
@@ -70,7 +73,39 @@ export async function GET() {
     }
   } catch {}
 
-  return NextResponse.json(devices);
+  const result = devices.map(d => {
+    const id = d.deviceId || d.nodeId;
+    const isLive = liveDeviceIds.has(id);
+    return {
+      ...d,
+      nodeId: d.nodeId || id,
+      deviceId: id,
+      label: d.label || d.deviceLabel || (isLive ? 'Active Workstation' : 'Offline Terminal'),
+      deviceLabel: d.deviceLabel || d.label || (isLive ? 'Active Workstation' : 'Offline Terminal'),
+      isActive: isLive ? 1 : 0,
+      isLive,
+    };
+  });
+
+  return NextResponse.json(result);
+}
+
+/**
+ * DELETE /api/hub/devices
+ * Clears all registered/stale device records from local storage.
+ */
+export async function DELETE() {
+  try {
+    const sqlite = getSqliteInstance();
+    if (sqlite) {
+      sqlite.prepare('DELETE FROM authorized_devices').run();
+    } else {
+      await db.delete(schema.authorizedDevices);
+    }
+    return NextResponse.json({ success: true, message: 'All device profiles cleared.' });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
 }
 
 /**

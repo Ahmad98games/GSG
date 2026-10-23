@@ -51,6 +51,8 @@ import { generateThermalReceipt }
   from '@/lib/pdf/generateThermal'
 import { generateInvoicePDF }
   from '@/lib/accounting/generateInvoice'
+import { POSThermalReceipt }
+  from '@/components/pos/POSThermalReceipt'
 
 // Static data outside component
 const PAYMENT_METHODS = [
@@ -218,6 +220,12 @@ export default function POSPage() {
         e.preventDefault()
         searchRef.current?.focus()
       }
+      if (e.key === 'F9') {
+        e.preventDefault()
+        if (lastInvoice) {
+          window.print()
+        }
+      }
       if (e.key === 'F10') {
         e.preventDefault()
         if (cart.items.length > 0) {
@@ -233,7 +241,7 @@ export default function POSPage() {
     window.addEventListener('keydown', handler)
     return () =>
       window.removeEventListener('keydown', handler)
-  }, [cart.items.length])
+  }, [cart.items.length, lastInvoice])
 
   const handleAddItem = useCallback(
     (sku: any) => {
@@ -482,16 +490,26 @@ export default function POSPage() {
         )
       }
 
-      // Success
+      // Success - snapshot complete cart before reset
       clearDraft()
-      setLastInvoice({
+      const completedInvoice = {
         id: result.invoice_id,
         invoice_number: result.invoice_number,
         invoice_status: result.invoice_status,
         total_amount: cart.grandTotal,
         amount_paid: result.amount_paid,
         balance_due: result.balance_due,
-      })
+        items: [...cart.items],
+        subtotal: cart.subtotal,
+        discountAmount: cart.discountAmount,
+        taxAmount: cart.taxAmount,
+        partyName: cart.partyName,
+        partyPhone: cart.partyPhone,
+        payments: [...cart.payments],
+        change: cart.change,
+        createdAt: new Date().toISOString(),
+      }
+      setLastInvoice(completedInvoice)
       setShowPaymentPanel(false)
       setShowReceipt(true)
       setCart(createEmptyCart())
@@ -529,9 +547,18 @@ export default function POSPage() {
   const handleWhatsApp = useCallback(() => {
     if (!lastInvoice) return
     const msg = buildWhatsAppInvoiceMessage(
-      lastInvoice, cart, profile
+      {
+        invoice_number: lastInvoice.invoice_number,
+        invoice_date: lastInvoice.createdAt || new Date().toISOString(),
+        total_amount: lastInvoice.total_amount,
+        amount_paid: lastInvoice.amount_paid,
+        balance_due: lastInvoice.balance_due,
+        status: lastInvoice.invoice_status || 'paid',
+      },
+      lastInvoice as any,
+      profile
     )
-    const phone = (cart.partyPhone || '')
+    const phone = (lastInvoice.partyPhone || '')
       .replace(/[^0-9+]/g, '')
       .replace(/^0/, '92')
     window.open(
@@ -540,25 +567,31 @@ export default function POSPage() {
       }`,
       '_blank'
     )
-  }, [lastInvoice, cart, profile])
+  }, [lastInvoice, profile])
 
-  const handlePrintThermal =
-    useCallback(async () => {
+  const handlePrintThermal = useCallback(() => {
+    if (!lastInvoice) return
+    window.print()
+  }, [lastInvoice])
+
+  const handleDownloadThermalPDF = useCallback(async () => {
     if (!lastInvoice) return
     await generateThermalReceipt(
       lastInvoice,
-      cart.items,
-      profile
+      lastInvoice.items || [],
+      profile,
+      {
+        currency,
+        cashierName: currentUser?.name || currentUser?.email || 'Terminal Operator',
+      }
     )
-    window.print()
-  }, [lastInvoice, cart, profile])
+  }, [lastInvoice, profile, currency, currentUser])
 
-  const handlePrintA4 =
-    useCallback(async () => {
+  const handlePrintA4 = useCallback(async () => {
     if (!lastInvoice) return
     await generateInvoicePDF({
       ...lastInvoice,
-      items: cart.items,
+      items: lastInvoice.items || [],
       businessName: profile?.business_name,
       businessAddress: profile?.address,
       businessPhone: profile?.phone,
@@ -566,7 +599,7 @@ export default function POSPage() {
       strnNumber: (profile as any)?.strn_number,
       currency,
     })
-  }, [lastInvoice, cart, profile, currency])
+  }, [lastInvoice, profile, currency])
 
   // Low stock warning items
   const lowStockItems = useMemo(() =>
@@ -1163,49 +1196,51 @@ export default function POSPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-3
-              gap-2">
+            {/* Thermal Receipt Preview (Screen preview) */}
+            <div className="max-h-[300px] overflow-y-auto no-scrollbar border border-white/10 rounded-sm bg-black/40 p-2 shadow-inner">
+              <POSThermalReceipt
+                invoice={lastInvoice}
+                profile={profile}
+                currency={currency}
+                cashierName={currentUser?.name || currentUser?.email || 'Terminal Cashier'}
+              />
+            </div>
+
+            <div className="grid grid-cols-4 gap-2">
               <button
                 onClick={handlePrintThermal}
-                className="flex flex-col
-                  items-center gap-1 p-3
-                  bg-[#161A1F] border
-                  border-white/8 rounded-sm
-                  text-gray-400 hover:text-white
-                  transition-colors">
+                title="Print 80mm/58mm thermal slip (F9)"
+                className="flex flex-col items-center gap-1 p-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-sm text-emerald-400 hover:text-white transition-colors">
                 <Printer size={16} />
-                <span className="text-[10px]
-                  font-semibold">
-                  Thermal
+                <span className="text-[10px] font-bold">
+                  Print (F9)
+                </span>
+              </button>
+              <button
+                onClick={handleDownloadThermalPDF}
+                title="Download 80mm thermal receipt PDF"
+                className="flex flex-col items-center gap-1 p-2.5 bg-[#161A1F] border border-white/8 rounded-sm text-gray-400 hover:text-white transition-colors">
+                <Receipt size={16} />
+                <span className="text-[10px] font-semibold">
+                  PDF Slip
                 </span>
               </button>
               <button
                 onClick={handlePrintA4}
-                className="flex flex-col
-                  items-center gap-1 p-3
-                  bg-[#161A1F] border
-                  border-white/8 rounded-sm
-                  text-gray-400 hover:text-white
-                  transition-colors">
+                title="Standard A4 Tax Invoice PDF"
+                className="flex flex-col items-center gap-1 p-2.5 bg-[#161A1F] border border-white/8 rounded-sm text-gray-400 hover:text-white transition-colors">
                 <Receipt size={16} />
-                <span className="text-[10px]
-                  font-semibold">
+                <span className="text-[10px] font-semibold">
                   PDF A4
                 </span>
               </button>
               <button
                 onClick={handleWhatsApp}
-                disabled={!cart.partyPhone}
-                className="flex flex-col
-                  items-center gap-1 p-3
-                  bg-[#161A1F] border
-                  border-white/8 rounded-sm
-                  text-gray-400 hover:text-white
-                  disabled:opacity-40
-                  transition-colors">
+                disabled={!lastInvoice?.partyPhone}
+                title="Share order summary to WhatsApp"
+                className="flex flex-col items-center gap-1 p-2.5 bg-[#161A1F] border border-white/8 rounded-sm text-gray-400 hover:text-white disabled:opacity-40 transition-colors">
                 <Share2 size={16} />
-                <span className="text-[10px]
-                  font-semibold">
+                <span className="text-[10px] font-semibold">
                   WhatsApp
                 </span>
               </button>
@@ -1216,14 +1251,22 @@ export default function POSPage() {
                 setShowReceipt(false)
                 searchRef.current?.focus()
               }}
-              className="w-full py-3
-                bg-[#60A5FA] text-black
-                font-bold rounded-sm
-                hover:brightness-110
-                transition-all">
+              className="w-full py-3 bg-[#60A5FA] text-black font-bold rounded-sm hover:brightness-110 transition-all">
               New Sale
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Hidden Thermal Slip for direct F9 / Print execution even if modal closed */}
+      {!showReceipt && lastInvoice && (
+        <div className="hidden">
+          <POSThermalReceipt
+            invoice={lastInvoice}
+            profile={profile}
+            currency={currency}
+            cashierName={currentUser?.name || currentUser?.email || 'Terminal Cashier'}
+          />
         </div>
       )}
     </div>

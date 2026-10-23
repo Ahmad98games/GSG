@@ -31,13 +31,13 @@ export function createClient() {
     };
 
     const fetchWithTimeout = (url: any, options: any = {}) => {
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      if (typeof navigator !== 'undefined' && (!navigator.onLine || (window as any).__noxis_wan_online === false)) {
         return Promise.reject(new TypeError('Failed to fetch (Offline)'));
       }
       const urlStr = typeof url === 'string' ? url : (url?.url || '');
       const isUpload = urlStr.includes('/storage/') || urlStr.includes('/upload') || options?.body instanceof FormData || options?.body instanceof Blob;
-      // 30s for file uploads, 3.5s for cloud database queries so UI stays super-snappy and never freezes
-      const timeoutMs = isUpload ? 30000 : 3500;
+      // 30s for file uploads, 1200ms for cloud database queries so UI stays super-snappy and never freezes
+      const timeoutMs = isUpload ? 30000 : 1200;
       const controller = new AbortController();
       const id = setTimeout(() => controller.abort(), timeoutMs);
       return fetch(url, {

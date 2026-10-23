@@ -42,6 +42,7 @@ import HWIDActivationModal from "@/components/pricing/HWIDActivationModal";
 import BusinessModeSelector from '@/components/onboarding/BusinessModeSelector';
 import { useBusinessModeStore } from '@/stores/businessModeStore';
 import { PublicNavProvider } from '@/components/shell/PublicNavbar';
+import { NoxisSessionRecoveryModal } from '@/components/shell/NoxisSessionRecoveryModal';
 
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -89,6 +90,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [showHwidModal, setShowHwidModal] = React.useState(false);
   const [isExporting, setIsExporting] = React.useState(false);
   const [powerCutNotice, setPowerCutNotice] = React.useState<{ lastRoute: string; message: string } | null>(null);
+  const [showRecoveryModal, setShowRecoveryModal] = React.useState(false);
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -96,6 +98,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (api?.onPowerCutDetected) {
       const unsub = api.onPowerCutDetected((data: { lastRoute: string; message: string }) => {
         setPowerCutNotice(data);
+        setShowRecoveryModal(true);
       });
       return unsub;
     }
@@ -281,6 +284,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     navigator.userAgent.toLowerCase().includes('electron')
   );
 
+  const isStandalonePortal = Boolean(
+    pathname?.startsWith('/workstation') ||
+    pathname?.startsWith('/pos') ||
+    pathname?.startsWith('/mobile') ||
+    pathname?.startsWith('/scanner')
+  );
+
   // Hide internal shell components on public website pages
   const shouldHideShell = 
     !pathname ||
@@ -316,7 +326,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // Check if current route is a public marketing route
   const isPublicRoute = shouldHideShell;
 
-  if (!isPublicRoute && !isElectron && process.env.NODE_ENV !== 'development') {
+  // On the public cloud marketing website (noxishub.app), protect private internal routes
+  const isCloudWebsite = typeof window !== 'undefined' && (
+    window.location.hostname === 'noxishub.app' ||
+    window.location.hostname.endsWith('.noxishub.app') ||
+    window.location.hostname.includes('pages.dev') ||
+    window.location.hostname.includes('vercel.app')
+  );
+
+  if (isCloudWebsite && !isPublicRoute && !isStandalonePortal) {
     return (
       <PublicNavProvider>
         <div className="min-h-screen bg-[#121417] flex items-center justify-center p-8 select-none">
@@ -337,6 +355,22 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </PublicNavProvider>
+    );
+  }
+
+  // Dedicated LAN Standalone Portals: Workstation node, POS cashier, mobile terminals
+  if (isStandalonePortal) {
+    return (
+      <div 
+        className="min-h-screen w-screen flex flex-col bg-[#07090E] select-none text-zinc-100 overflow-hidden"
+        style={{ backgroundColor: 'var(--color-bg, #07090E)' }}
+      >
+        {isElectron && <TitleBar />}
+        <ToastContainer />
+        <main className="flex-1 w-full overflow-y-auto">
+          {children}
+        </main>
+      </div>
     );
   }
 
@@ -396,24 +430,39 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       )}
       {isElectron && <TitleBar />}
       
-      {powerCutNotice && (
-        <div className="bg-[#111827] border-b border-amber-500/40 px-4 py-2 flex items-center justify-between text-xs font-mono z-[70] shadow-lg sticky top-10">
-          <div className="flex items-center gap-2.5 text-amber-300">
-            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-            <span className="font-bold uppercase tracking-wider">Session Auto-Resumed:</span>
-            <span className="text-zinc-300">{powerCutNotice.message}</span>
+      {showRecoveryModal && (
+        <NoxisSessionRecoveryModal
+          powerCutInfo={powerCutNotice}
+          onClose={() => setShowRecoveryModal(false)}
+        />
+      )}
+
+      {powerCutNotice && !showRecoveryModal && (
+        <div className="bg-[#0B0F19] border-b border-cyan-500/30 px-4 py-2 flex items-center justify-between text-xs font-mono z-[70] shadow-lg sticky top-10">
+          <div className="flex items-center gap-2.5 text-cyan-300">
+            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+            <span className="font-bold uppercase tracking-wider text-white">Noxis Resilience:</span>
+            <span className="text-zinc-300">Ungraceful shutdown detected. Pending session & drafts preserved.</span>
             {powerCutNotice.lastRoute && (
-              <span className="text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-500/30">
+              <span className="text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-500/30 font-semibold">
                 {powerCutNotice.lastRoute}
               </span>
             )}
           </div>
-          <button
-            onClick={() => setPowerCutNotice(null)}
-            className="text-zinc-400 hover:text-white px-2 py-1 rounded text-[11px] bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
-          >
-            Dismiss
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowRecoveryModal(true)}
+              className="px-2.5 py-1 rounded text-[11px] bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-200 font-semibold transition-colors cursor-pointer"
+            >
+              Review Pending Work
+            </button>
+            <button
+              onClick={() => setPowerCutNotice(null)}
+              className="text-zinc-400 hover:text-white px-2 py-1 rounded text-[11px] bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+            >
+              Dismiss
+            </button>
+          </div>
         </div>
       )}
       

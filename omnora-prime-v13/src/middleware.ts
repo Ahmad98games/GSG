@@ -27,6 +27,9 @@ const ALLOWED_WEB_PREFIXES = [
   '/portal',
   '/shared',
   '/not-found',
+  '/workstation',
+  '/mobile',
+  '/pos',
 ];
 
 const ALLOWED_WEB_APIS = [
@@ -40,6 +43,7 @@ const ALLOWED_WEB_APIS = [
   '/api/webhooks',
   '/api/license',
   '/api/heartbeat',
+  '/api/hub',
 ];
 
 export async function middleware(request: NextRequest) {
@@ -54,19 +58,59 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 2. Security Layer: Strict Web vs Desktop Separation
-  // Desktop environment is verified via Electron platform flag, Electron process env, or user-agent
-  const isDesktop = 
+  // 2. Security Layer: Strict Web vs Desktop / Local Workstation Separation
+  const host = request.headers.get('host') || '';
+  const hostname = host.split(':')[0].toLowerCase();
+  
+  // Check if request is directed to a local/private network node (LAN Workstation or Mobile device)
+  const isPrivateIpOrLocalHost = 
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname.startsWith('192.168.') ||
+    hostname.startsWith('10.') ||
+    hostname.startsWith('172.16.') ||
+    hostname.startsWith('172.17.') ||
+    hostname.startsWith('172.18.') ||
+    hostname.startsWith('172.19.') ||
+    hostname.startsWith('172.20.') ||
+    hostname.startsWith('172.21.') ||
+    hostname.startsWith('172.22.') ||
+    hostname.startsWith('172.23.') ||
+    hostname.startsWith('172.24.') ||
+    hostname.startsWith('172.25.') ||
+    hostname.startsWith('172.26.') ||
+    hostname.startsWith('172.27.') ||
+    hostname.startsWith('172.28.') ||
+    hostname.startsWith('172.29.') ||
+    hostname.startsWith('172.30.') ||
+    hostname.startsWith('172.31.') ||
+    hostname.endsWith('.local') ||
+    hostname === '::1';
+
+  const isLocalNodeHost = 
+    process.env.ELECTRON_ENV === 'true' ||
+    process.env.IS_NOXIS_HUB_HOST === 'true' ||
+    process.env.ELECTRON_USER_DATA !== undefined ||
+    isPrivateIpOrLocalHost;
+
+  const isDesktopOrWorkstation = 
     process.env.NEXT_PUBLIC_PLATFORM === 'electron' ||
     process.env.ELECTRON_ENV === 'true' ||
     request.headers.get('user-agent')?.toLowerCase().includes('electron') ||
     request.headers.get('x-noxis-client') === 'desktop' ||
-    process.env.NODE_ENV === 'development';
+    request.headers.get('x-noxis-client') === 'workstation' ||
+    process.env.NODE_ENV === 'development' ||
+    isLocalNodeHost;
 
   const ADMIN_SEGMENT = process.env.ADMIN_PATH_SEGMENT;
 
-  // If request is from an open-web client (NOT desktop app)
-  if (!isDesktop) {
+  // On local workstation/LAN nodes, root `/` redirects directly into the operational Hub dashboard
+  if (isLocalNodeHost && (pathname === '/' || pathname === '/index.html')) {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  // If request is from an external open-web client (NOT desktop app and NOT local LAN workstation)
+  if (!isDesktopOrWorkstation) {
     const isRoot = pathname === '/' || pathname === '/index.html';
     const isAllowedPrefix = ALLOWED_WEB_PREFIXES.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`));
     const isAllowedAdmin = ADMIN_SEGMENT ? pathname === `/${ADMIN_SEGMENT}` || pathname.startsWith(`/${ADMIN_SEGMENT}/`) : false;

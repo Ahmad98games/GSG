@@ -541,9 +541,34 @@ else {
             : path.join(__dirname, '../../build/icon.ico');
         startupLog(`[Icon] Splash Path: ${iconPath}`);
         startupLog(`[Icon] Splash Exists: ${fs.existsSync(iconPath)}`);
+        // Resolve official Noxis Hub logo as base64 to guarantee instant zero-network rendering
+        let logoDataUrl = '';
+        const possibleLogoPaths = [
+            electron_1.app.isPackaged ? path.join(process.resourcesPath, 'build', 'icon.png') : '',
+            electron_1.app.isPackaged ? path.join(process.resourcesPath, 'public', 'logos', 'icons', '256x256.png') : '',
+            path.join(__dirname, '../../build/icon.png'),
+            path.join(__dirname, '../../public/logos/icons/256x256.png'),
+            path.join(__dirname, '../public/logos/icons/256x256.png'),
+            path.join(__dirname, '../../public/logos/noxis.png'),
+            path.join(process.cwd(), 'build/icon.png'),
+            path.join(process.cwd(), 'public/logos/icons/256x256.png'),
+        ].filter(Boolean);
+        for (const p of possibleLogoPaths) {
+            if (fs.existsSync(p)) {
+                try {
+                    const buf = fs.readFileSync(p);
+                    logoDataUrl = `data:image/png;base64,${buf.toString('base64')}`;
+                    startupLog(`[Splash] Loaded logo from: ${p} (${buf.length} bytes)`);
+                    break;
+                }
+                catch (e) {
+                    startupLog(`[Splash] Failed reading logo at ${p}: ${e.message}`);
+                }
+            }
+        }
         splashWindow = new electron_1.BrowserWindow({
-            width: 540,
-            height: 380,
+            width: 560,
+            height: 400,
             frame: false,
             transparent: false,
             resizable: false,
@@ -559,36 +584,41 @@ else {
             },
             icon: iconPath,
         });
-        const splashHtml = `data:text/html,<!DOCTYPE html>
+        const logoHtml = logoDataUrl
+            ? `<img src="${logoDataUrl}" alt="Noxis Hub" style="width:58px;height:58px;object-fit:contain;filter:drop-shadow(0 0 16px rgba(6,182,212,0.65));border-radius:12px;" />`
+            : `<svg width="44" height="44" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M24 4L42 14V34L24 44L6 34V14L24 4Z" stroke="#06B6D4" stroke-width="2.5" stroke-linejoin="round"/>
+          <path d="M16 32V16L32 32V16" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="24" cy="24" r="3" fill="#06B6D4" />
+        </svg>`;
+        const splashHtml = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
+<title>Noxis Hub</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{width:100%;height:100%;background:#07090E;overflow:hidden;user-select:none;-webkit-app-region:drag;}
-body{display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border:1px solid rgba(6,182,212,0.3);box-shadow:inset 0 0 40px rgba(6,182,212,0.06);}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border:1px solid rgba(6,182,212,0.35);box-shadow:inset 0 0 50px rgba(6,182,212,0.08);position:relative;}
 
-.glow-bg{position:absolute;width:240px;height:240px;background:radial-gradient(circle,rgba(6,182,212,0.18) 0%,rgba(59,130,246,0.08) 50%,transparent 70%);border-radius:50%;filter:blur(30px);pointer-events:none;animation:pulse 3s ease-in-out infinite alternate;}
+.glow-bg{position:absolute;width:280px;height:280px;background:radial-gradient(circle,rgba(6,182,212,0.22) 0%,rgba(99,102,241,0.12) 50%,transparent 70%);border-radius:50%;filter:blur(36px);pointer-events:none;animation:pulse 3.5s ease-in-out infinite alternate;}
 
-.logo-container{position:relative;width:96px;height:96px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;}
-.orbit-ring{position:absolute;inset:-6px;border:1.5px dashed rgba(6,182,212,0.35);border-radius:50%;animation:spin 12s linear infinite;}
-.orbit-ring-inner{position:absolute;inset:2px;border:1px solid rgba(59,130,246,0.3);border-radius:24px;transform:rotate(45deg);animation:spin-reverse 18s linear infinite;}
+.logo-container{position:relative;width:96px;height:96px;display:flex;align-items:center;justify-content:center;margin-bottom:24px;}
 
-.noxis-hexagon{width:76px;height:76px;border-radius:20px;background:linear-gradient(135deg,#0E1626 0%,#080C14 100%);border:1.5px solid rgba(6,182,212,0.5);display:flex;align-items:center;justify-content:center;box-shadow:0 0 30px rgba(6,182,212,0.25);position:relative;z-index:2;}
+.noxis-badge{width:88px;height:88px;border-radius:22px;background:linear-gradient(135deg,#0C1322 0%,#060910 100%);border:1.5px solid rgba(6,182,212,0.55);display:flex;align-items:center;justify-content:center;box-shadow:0 0 35px rgba(6,182,212,0.3),inset 0 1px 0 rgba(255,255,255,0.1);position:relative;z-index:2;}
 
-.brand-title{font-size:24px;font-weight:900;letter-spacing:7px;text-transform:uppercase;background:linear-gradient(90deg,#FFFFFF 0%,#38BDF8 60%,#06B6D4 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px;}
-.brand-sub{font-size:9px;font-weight:700;letter-spacing:4px;color:#94A3B8;text-transform:uppercase;margin-bottom:26px;}
+.brand-title{font-size:26px;font-weight:900;letter-spacing:8px;text-transform:uppercase;background:linear-gradient(90deg,#FFFFFF 0%,#38BDF8 55%,#06B6D4 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px;}
+.brand-sub{font-size:9.5px;font-weight:700;letter-spacing:4.5px;color:#94A3B8;text-transform:uppercase;margin-bottom:28px;display:flex;align-items:center;gap:8px;}
+.brand-badge{font-size:8px;padding:2px 7px;background:rgba(6,182,212,0.15);border:1px solid rgba(6,182,212,0.4);color:#38BDF8;border-radius:999px;letter-spacing:1px;font-weight:800;}
 
-.progress-track{width:240px;height:3px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;position:relative;margin-bottom:14px;}
-.progress-bar{position:absolute;top:0;left:0;height:100%;background:linear-gradient(90deg,#06B6D4,#3B82F6,#60A5FA);border-radius:2px;box-shadow:0 0 10px #06B6D4;animation:load 2.2s cubic-bezier(0.4,0,0.2,1) infinite;}
+.progress-track{width:260px;height:3px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;position:relative;margin-bottom:14px;}
+.progress-bar{position:absolute;top:0;left:0;height:100%;background:linear-gradient(90deg,#C5A059,#06B6D4,#38BDF8);border-radius:2px;box-shadow:0 0 14px rgba(6,182,212,0.8);animation:load 2.4s cubic-bezier(0.4,0,0.2,1) infinite;}
 
-.status-text{font-size:10px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;color:#38BDF8;letter-spacing:1px;font-weight:600;display:flex;align-items:center;gap:6px;}
-.status-dot{width:5px;height:5px;border-radius:50%;background:#06B6D4;box-shadow:0 0 8px #06B6D4;animation:blink 1s ease-in-out infinite;}
+.status-text{font-size:10px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;color:#38BDF8;letter-spacing:1px;font-weight:600;display:flex;align-items:center;gap:7px;text-align:center;}
+.status-dot{width:6px;height:6px;border-radius:50%;background:#06B6D4;box-shadow:0 0 10px #06B6D4;animation:blink 1.2s ease-in-out infinite;flex-shrink:0;}
 
-.footer-meta{position:absolute;bottom:14px;display:flex;align-items:center;justify-content:space-between;width:100%;padding:0 24px;font-size:9px;font-family:ui-monospace,monospace;color:#64748B;letter-spacing:1px;}
+.footer-meta{position:absolute;bottom:14px;display:flex;align-items:center;justify-content:space-between;width:100%;padding:0 26px;font-size:9px;font-family:ui-monospace,monospace;color:#64748B;letter-spacing:1px;}
 
-@keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
-@keyframes spin-reverse{from{transform:rotate(45deg);}to{transform:rotate(-315deg);}}
 @keyframes pulse{0%{opacity:0.6;transform:scale(0.95);}100%{opacity:1;transform:scale(1.15);}}
 @keyframes load{0%{width:0%;left:0%;}50%{width:70%;left:20%;}100%{width:10%;left:100%;}}
 @keyframes blink{0%,100%{opacity:1;}50%{opacity:0.3;}}
@@ -598,19 +628,16 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 <div class="glow-bg"></div>
 
 <div class="logo-container">
-  <div class="orbit-ring"></div>
-  <div class="orbit-ring-inner"></div>
-  <div class="noxis-hexagon">
-    <svg width="42" height="42" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M24 4L42 14V34L24 44L6 34V14L24 4Z" stroke="#06B6D4" stroke-width="2.5" stroke-linejoin="round"/>
-      <path d="M16 32V16L32 32V16" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-      <circle cx="24" cy="24" r="3" fill="#06B6D4" filter="drop-shadow(0 0 6px #06B6D4)"/>
-    </svg>
+  <div class="noxis-badge">
+    ${logoHtml}
   </div>
 </div>
 
 <div class="brand-title">NOXIS HUB</div>
-<div class="brand-sub">Industrial Intelligence & ERP</div>
+<div class="brand-sub">
+  <span>Industrial Intelligence</span>
+  <span class="brand-badge">v${electron_1.app.getVersion() || '14.0.8'}</span>
+</div>
 
 <div class="progress-track">
   <div class="progress-bar"></div>
@@ -618,18 +645,18 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
 <div class="status-text">
   <span class="status-dot"></span>
-  <span>INITIALIZING LOCAL MESH ENGINE...</span>
+  <span>Starting and preparing Noxis Hub Specially For You...</span>
 </div>
 
 <div class="footer-meta">
-  <span>v14.0.1 &nbsp;·&nbsp; SQLite WAL</span>
+  <span>OFFLINE-FIRST CORE</span>
   <span>OMNORA LABS</span>
 </div>
 </body>
 </html>`;
-        splashWindow.loadURL(splashHtml);
+        splashWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(splashHtml));
         splashWindow.show();
-        startupLog('[Splash] Splash window displayed');
+        startupLog('[Splash] Splash window displayed with encoded URL');
     }
     function destroySplash() {
         if (!splashWindow || splashWindow.isDestroyed())
@@ -691,8 +718,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         const targetVersion = latestUpdateInfo.version;
         const fileName = latestUpdateInfo.files?.[0]?.url || `Noxis Hub Setup ${targetVersion}.exe`;
         const encodedFileName = encodeURIComponent(fileName);
-        const downloadUrl = `https://noxishub.app/updates/stable/${encodedFileName}`;
-        const totalSize = latestUpdateInfo.files?.[0]?.size || 281243319;
+        const candidateUrls = [
+            `https://noxishub.app/updates/stable/${encodedFileName}`,
+            `https://download.omnora.com/updates/stable/${encodedFileName}`
+        ];
+        let downloadUrl = candidateUrls[0];
+        const totalSize = latestUpdateInfo.files?.[0]?.size || 215756803;
         const targetSha512 = latestUpdateInfo.files?.[0]?.sha512 || latestUpdateInfo.sha512;
         const updatesDir = path.join(electron_1.app.getPath('userData'), 'updates');
         if (!fs.existsSync(updatesDir)) {
@@ -745,117 +776,141 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         customTotal = totalSize;
         customTransferred = startByte;
         const headers = {
-            'User-Agent': 'Noxis-Hub-Updater/13.1',
+            'User-Agent': 'Noxis-Hub-Updater/14.0',
         };
         if (startByte > 0) {
             headers['Range'] = `bytes=${startByte}-`;
         }
         return new Promise((resolve) => {
-            let lastBytes = startByte;
-            let lastTime = Date.now();
-            let speed = 0;
-            const req = https.get(downloadUrl, { headers }, (res) => {
-                if (res.statusCode !== 200 && res.statusCode !== 206) {
-                    isCustomDownloading = false;
-                    startupLog(`[Update] Server returned HTTP ${res.statusCode}`);
-                    win.webContents.send('update-status', {
-                        status: 'error',
-                        message: `Server returned HTTP ${res.statusCode}`,
-                    });
-                    return resolve();
-                }
-                const isAppend = res.statusCode === 206 && startByte > 0;
-                const fileStream = fs.createWriteStream(partFilePath, { flags: isAppend ? 'a' : 'w' });
-                if (!isAppend) {
-                    customTransferred = 0;
-                    startByte = 0;
-                }
-                res.on('data', (chunk) => {
-                    customTransferred += chunk.length;
-                    const now = Date.now();
-                    if (now - lastTime >= 400) {
-                        const deltaBytes = customTransferred - lastBytes;
-                        const deltaTime = (now - lastTime) / 1000;
-                        speed = Math.round(deltaBytes / deltaTime);
-                        lastBytes = customTransferred;
-                        lastTime = now;
-                        const pct = Math.min(100, Math.round((customTransferred / totalSize) * 100));
-                        win.webContents.send('update-status', {
-                            status: 'downloading',
-                            percent: pct,
-                            transferred: customTransferred,
-                            total: totalSize,
-                            bytesPerSecond: speed,
-                            resumed: startByte > 0,
-                            resumedFrom: startByte,
-                        });
-                    }
+            let urlIndex = 0;
+            const attemptDownload = (currentUrl) => {
+                let lastBytes = startByte;
+                let lastTime = Date.now();
+                let speed = 0;
+                startupLog(`[Update] Initiating download stream from: ${currentUrl}`);
+                win.webContents.send('update-status', {
+                    status: 'downloading',
+                    percent: totalSize > 0 ? Math.round((startByte / totalSize) * 100) : 0,
+                    transferred: startByte,
+                    total: totalSize,
+                    bytesPerSecond: 0,
+                    resumed: startByte > 0,
+                    resumedFrom: startByte,
                 });
-                res.pipe(fileStream);
-                fileStream.on('finish', () => {
-                    fileStream.close(async () => {
+                const req = https.get(currentUrl, { headers }, (res) => {
+                    if (res.statusCode !== 200 && res.statusCode !== 206) {
+                        urlIndex++;
+                        if (urlIndex < candidateUrls.length) {
+                            startupLog(`[Update] Status ${res.statusCode} from ${currentUrl}, falling back to ${candidateUrls[urlIndex]}`);
+                            return attemptDownload(candidateUrls[urlIndex]);
+                        }
                         isCustomDownloading = false;
-                        startupLog('[Update] Download finished. Verifying SHA-512 checksum...');
-                        try {
-                            const fileData = fs.readFileSync(partFilePath);
-                            const computedSha512 = crypto.createHash('sha512').update(fileData).digest('base64');
-                            if (targetSha512 && computedSha512 !== targetSha512) {
-                                startupLog(`[Update] Checksum mismatch! Expected ${targetSha512}, got ${computedSha512}`);
-                                try {
-                                    fs.unlinkSync(partFilePath);
+                        startupLog(`[Update] All download mirrors returned HTTP ${res.statusCode}`);
+                        win.webContents.send('update-status', {
+                            status: 'error',
+                            message: `Server returned HTTP ${res.statusCode}`,
+                        });
+                        return resolve();
+                    }
+                    const isAppend = res.statusCode === 206 && startByte > 0;
+                    const fileStream = fs.createWriteStream(partFilePath, { flags: isAppend ? 'a' : 'w' });
+                    if (!isAppend) {
+                        customTransferred = 0;
+                        startByte = 0;
+                    }
+                    res.on('data', (chunk) => {
+                        customTransferred += chunk.length;
+                        const now = Date.now();
+                        if (now - lastTime >= 400) {
+                            const deltaBytes = customTransferred - lastBytes;
+                            const deltaTime = (now - lastTime) / 1000;
+                            speed = Math.round(deltaBytes / deltaTime);
+                            lastBytes = customTransferred;
+                            lastTime = now;
+                            const pct = Math.min(100, Math.round((customTransferred / totalSize) * 100));
+                            win.webContents.send('update-status', {
+                                status: 'downloading',
+                                percent: pct,
+                                transferred: customTransferred,
+                                total: totalSize,
+                                bytesPerSecond: speed,
+                                resumed: startByte > 0,
+                                resumedFrom: startByte,
+                            });
+                        }
+                    });
+                    res.pipe(fileStream);
+                    fileStream.on('finish', () => {
+                        fileStream.close(async () => {
+                            isCustomDownloading = false;
+                            startupLog('[Update] Download finished. Verifying SHA-512 checksum...');
+                            try {
+                                const fileData = fs.readFileSync(partFilePath);
+                                const computedSha512 = crypto.createHash('sha512').update(fileData).digest('base64');
+                                if (targetSha512 && computedSha512 !== targetSha512) {
+                                    startupLog(`[Update] Checksum mismatch! Expected ${targetSha512}, got ${computedSha512}`);
+                                    try {
+                                        fs.unlinkSync(partFilePath);
+                                    }
+                                    catch { }
+                                    win.webContents.send('update-status', {
+                                        status: 'error',
+                                        message: 'Checksum verification mismatch. Corrupted partial download cleaned.',
+                                    });
+                                    return resolve();
                                 }
-                                catch { }
+                                if (fs.existsSync(finalFilePath)) {
+                                    try {
+                                        fs.unlinkSync(finalFilePath);
+                                    }
+                                    catch { }
+                                }
+                                fs.renameSync(partFilePath, finalFilePath);
+                                startupLog(`[Update] Verified package ready: ${finalFilePath}`);
+                                updateDownloaded = true;
+                                downloadedInstallerPath = finalFilePath;
+                                win.webContents.send('update-status', {
+                                    status: 'ready',
+                                    version: targetVersion,
+                                });
+                                resolve();
+                            }
+                            catch (err) {
+                                startupLog(`[Update] Checksum verification exception: ${err.message}`);
                                 win.webContents.send('update-status', {
                                     status: 'error',
-                                    message: 'Checksum verification mismatch. Corrupted partial download cleaned.',
+                                    message: `Verification error: ${err.message}`,
                                 });
-                                return resolve();
+                                resolve();
                             }
-                            if (fs.existsSync(finalFilePath)) {
-                                try {
-                                    fs.unlinkSync(finalFilePath);
-                                }
-                                catch { }
-                            }
-                            fs.renameSync(partFilePath, finalFilePath);
-                            startupLog(`[Update] Verified package ready: ${finalFilePath}`);
-                            updateDownloaded = true;
-                            downloadedInstallerPath = finalFilePath;
-                            win.webContents.send('update-status', {
-                                status: 'ready',
-                                version: targetVersion,
-                            });
-                            resolve();
-                        }
-                        catch (err) {
-                            startupLog(`[Update] Checksum verification exception: ${err.message}`);
-                            win.webContents.send('update-status', {
-                                status: 'error',
-                                message: `Verification error: ${err.message}`,
-                            });
-                            resolve();
-                        }
+                        });
+                    });
+                    fileStream.on('error', (err) => {
+                        isCustomDownloading = false;
+                        startupLog(`[Update] File stream error: ${err.message}`);
+                        win.webContents.send('update-status', {
+                            status: 'error',
+                            message: err.message,
+                        });
+                        resolve();
                     });
                 });
-                fileStream.on('error', (err) => {
+                req.on('error', (err) => {
+                    urlIndex++;
+                    if (urlIndex < candidateUrls.length) {
+                        startupLog(`[Update] Network error on ${currentUrl} (${err.message}), trying fallback ${candidateUrls[urlIndex]}`);
+                        return attemptDownload(candidateUrls[urlIndex]);
+                    }
                     isCustomDownloading = false;
-                    startupLog(`[Update] File stream error: ${err.message}`);
+                    startupLog(`[Update] Network request error on all mirrors: ${err.message}`);
                     win.webContents.send('update-status', {
                         status: 'error',
                         message: err.message,
                     });
                     resolve();
                 });
-            });
-            req.on('error', (err) => {
-                isCustomDownloading = false;
-                startupLog(`[Update] Network request error: ${err.message}`);
-                win.webContents.send('update-status', {
-                    status: 'error',
-                    message: err.message,
-                });
-                resolve();
-            });
+            };
+            attemptDownload(candidateUrls[0]);
         });
     }
     function setupAutoUpdater(win) {
@@ -1270,8 +1325,13 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         return (0, autonomousUpdateEngine_1.getVersionPolicy)();
     });
     electron_1.ipcMain.handle('download-update', async () => {
-        if (!updateAvailable || !latestUpdateInfo)
-            return;
+        if (!latestUpdateInfo) {
+            await executeUpdateCheck();
+        }
+        if (!latestUpdateInfo) {
+            startupLog('[Update] No update info found to download');
+            return { error: 'No update available' };
+        }
         const policy = (0, autonomousUpdateEngine_1.getVersionPolicy)();
         const eligibility = (0, autonomousUpdateEngine_1.calculateVersionEligibility)(policy.baselineVersion, policy.tier, latestUpdateInfo.version);
         if (!eligibility.allowed) {
@@ -1284,10 +1344,17 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             };
         }
         try {
-            await electron_updater_1.autoUpdater.downloadUpdate();
+            startupLog(`[Update] Starting resumable download for v${latestUpdateInfo.version}`);
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                downloadUpdateResumable(mainWindow).catch((err) => {
+                    startupLog(`[Update] Resumable download exception: ${err?.message || err}`);
+                });
+            }
+            return { success: true, status: 'downloading' };
         }
         catch (err) {
-            startupLog(`[Update] Download failed: ${err.message}`);
+            startupLog(`[Update] Download initiation failed: ${err.message}`);
+            return { error: err.message };
         }
     });
     electron_1.ipcMain.handle('install-update', () => {
@@ -1309,6 +1376,17 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             (0, mediamtxService_1.stopMediamtx)();
         }
         catch { }
+        if (downloadedInstallerPath && fs.existsSync(downloadedInstallerPath)) {
+            startupLog(`[Update] Executing installer: ${downloadedInstallerPath}`);
+            try {
+                (0, child_process_1.spawn)(downloadedInstallerPath, ['--updated'], { detached: true, stdio: 'ignore' }).unref();
+                setTimeout(() => electron_1.app.quit(), 500);
+                return;
+            }
+            catch (runErr) {
+                startupLog(`[Update] Spawn installer error: ${runErr.message}`);
+            }
+        }
         setImmediate(() => {
             electron_updater_1.autoUpdater.quitAndInstall(true, // run installer silently for instant background update (< 1 min)
             true // restart after install
@@ -1321,11 +1399,14 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             updateAvailable,
             updateDownloaded,
             downloadProgress,
+            isDownloading: isCustomDownloading,
+            transferred: customTransferred,
+            total: customTotal,
             version: latestUpdateInfo?.version,
             releaseName: latestUpdateInfo?.releaseName,
             releaseNotes: latestUpdateInfo?.releaseNotes,
             releaseDate: latestUpdateInfo?.releaseDate,
-            currentVersion: electron_1.app.isPackaged ? electron_1.app.getVersion() : '14.0.0',
+            currentVersion: electron_1.app.isPackaged ? electron_1.app.getVersion() : '14.0.8',
             baselineVersion: policy.baselineVersion,
             tier: policy.tier,
             maxAllowedMajor: policy.maxAllowedMajor,
@@ -1605,7 +1686,23 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         let keyString = typeof keyOrPayload === 'string' ? keyOrPayload : keyOrPayload?.key || '';
         let explicitTier = typeof keyOrPayload === 'object' ? keyOrPayload?.tier : null;
         let explicitExpires = typeof keyOrPayload === 'object' ? keyOrPayload?.expiresAt : null;
-        if (explicitTier && ['lite', 'pro', 'elite'].includes(String(explicitTier).toLowerCase())) {
+        let verifiedByServer = typeof keyOrPayload === 'object' ? Boolean(keyOrPayload?.verifiedByServer) : false;
+        // 1. If key string is provided, always verify cryptographically first
+        if (keyString) {
+            const result = (0, licenseVerifier_1.verifyLicense)(keyString);
+            if (result.valid) {
+                (0, licenseVerifier_1.persistLicense)(result.payload);
+                startupLog(`[License] Activated: ${result.payload.tier} tier for ${result.payload.businessId}`);
+                return { success: true, tier: result.payload.tier };
+            }
+            // If key looks like an offline NOXIS key or was passed as keyString, reject failure immediately
+            if (typeof keyOrPayload === 'string' || keyString.toUpperCase().startsWith('NOXIS-')) {
+                startupLog(`[License] Activation failed: ${result.error}`);
+                return { success: false, error: result.error };
+            }
+        }
+        // 2. Only allow explicit tier payload if verified by official Supabase server
+        if (verifiedByServer && explicitTier && ['lite', 'pro', 'elite'].includes(String(explicitTier).toLowerCase())) {
             const tier = String(explicitTier).toLowerCase();
             const payload = {
                 version: 2,
@@ -1621,21 +1718,15 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 signature: 'VALIDATED_VIA_CLIENT_PORTAL',
             };
             (0, licenseVerifier_1.persistLicense)(payload);
-            startupLog(`[License] Activated via direct payload: ${tier} tier`);
+            startupLog(`[License] Activated via verified server payload: ${tier} tier`);
             return { success: true, tier };
         }
-        const result = (0, licenseVerifier_1.verifyLicense)(keyString);
-        if (result.valid) {
-            (0, licenseVerifier_1.persistLicense)(result.payload);
-            startupLog(`[License] Activated: ${result.payload.tier} tier for ${result.payload.businessId}`);
-            return { success: true, tier: result.payload.tier };
-        }
-        startupLog(`[License] Activation failed: ${result.error}`);
-        return { success: false, error: result.error };
+        startupLog(`[License] Activation failed: INVALID_KEY`);
+        return { success: false, error: 'Invalid license key or cryptographic signature.' };
     });
     // Returns the current HWID for display in Settings (user copies this to send for key generation)
     electron_1.ipcMain.handle('license:getHWID', () => {
-        return (0, hwid_1.getCachedHWIDOrGenerate)();
+        return (0, store_1.getInstallationHWID)() || (0, hwid_1.getCachedHWIDOrGenerate)();
     });
     // Returns full trial state
     electron_1.ipcMain.handle('trial:getState', () => {
@@ -1711,15 +1802,34 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         }
         let WS_PORT = 7447;
         let wss;
+        let bridgeHttpServer;
         try {
-            wss = new WebSocketServer({ port: WS_PORT });
+            const http = require('http');
+            bridgeHttpServer = http.createServer((req, res) => {
+                const hostHeader = req.headers.host || '127.0.0.1';
+                const hostIp = hostHeader.split(':')[0];
+                const reqPath = req.url || '/workstation';
+                const targetUrl = `http://${hostIp}:${PORT}${reqPath}`;
+                res.writeHead(302, {
+                    Location: targetUrl,
+                    'Content-Type': 'text/html; charset=utf-8'
+                });
+                res.end(`<html><head><meta http-equiv="refresh" content="0;url=${targetUrl}"></head><body>Redirecting to Noxis Workstation Node at <a href="${targetUrl}">${targetUrl}</a>...</body></html>`);
+            });
+            wss = new WebSocketServer({ server: bridgeHttpServer });
+            bridgeHttpServer.listen(WS_PORT, '0.0.0.0');
         }
         catch (e) {
-            WS_PORT = 9001;
-            wss = new WebSocketServer({ port: WS_PORT });
+            try {
+                wss = new WebSocketServer({ port: WS_PORT });
+            }
+            catch {
+                WS_PORT = 9001;
+                wss = new WebSocketServer({ port: WS_PORT });
+            }
         }
         const connectedClients = new Map();
-        startupLog(`[Bridge] WebSocket bridge server listening on port ${WS_PORT}`);
+        startupLog(`[Bridge] WebSocket bridge server listening on port ${WS_PORT} with HTTP 302 redirect fallback to port ${PORT}`);
         wss.on('connection', (ws) => {
             ws.on('message', async (raw) => {
                 let msg;
@@ -1964,6 +2074,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         return { ok: true };
     });
     electron_1.ipcMain.handle('store:getFormDraft', (_, key) => (0, store_1.getFormDraft)(key));
+    electron_1.ipcMain.handle('store:getDraft', (_, key) => (0, store_1.getFormDraft)(key));
+    electron_1.ipcMain.handle('store:getAllFormDrafts', () => (0, store_1.getAllFormDrafts)());
     electron_1.ipcMain.handle('store:clearFormDraft', (_, key) => {
         (0, store_1.clearFormDraft)(key);
         return { ok: true };
@@ -2492,6 +2604,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                     HOSTNAME: '0.0.0.0',
                     ELECTRON_USER_DATA: userDataPath,
                     ELECTRON_RESOURCES: resourcesPath,
+                    ELECTRON_ENV: 'true',
+                    NEXT_PUBLIC_PLATFORM: 'electron',
+                    IS_NOXIS_HUB_HOST: 'true',
                     // CRITICAL: Tell Node where to find
                     // the native sqlite binding
                     NODE_PATH: [

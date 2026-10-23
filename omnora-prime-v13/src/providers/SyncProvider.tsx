@@ -78,9 +78,9 @@ export function SyncProvider({
   useEffect(() => {
     if (!profile?.id || !isOnline) return
 
-    // Run delta sync once on mount (only when online)
+    // Run delta sync once on mount (only when truly online)
     const runSync = async () => {
-      if (typeof navigator !== 'undefined' && !navigator.onLine) return
+      if (typeof navigator !== 'undefined' && (!navigator.onLine || (window as any).__noxis_wan_online === false)) return
       setIsSyncing(true)
       try {
         const result = await bootDeltaSync(profile.id)

@@ -31,26 +31,51 @@ export default function DailyProductionLogPage() {
   const { data: batches = [] } = useQuery({
     queryKey: ['active-batches', profile?.id],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('production_batches')
-        .select('*, skus(name, unit)')
-        .eq('business_id', profile?.id)
-        .eq('status', 'in_progress');
-      return data || [];
+      try {
+        const { data } = await supabase
+          .from('production_batches')
+          .select('*, skus(name, unit)')
+          .eq('business_id', profile?.id)
+          .eq('status', 'in_progress');
+        return data || [];
+      } catch {
+        return [];
+      }
     },
     enabled: !!profile?.id
   });
 
-  // 2. Fetch Active Karigars
+  // 2. Fetch Active Karigars (100% Offline-Safe)
   const { data: karigars = [] } = useQuery({
     queryKey: ['active-karigars', profile?.id],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('karigars')
-        .select('*')
-        .eq('business_id', profile?.id)
-        .eq('status', 'active');
-      return data || [];
+      const bizId = profile?.id || 'default'
+      try {
+        const apiRes = await fetch(`/api/karigars?business_id=${bizId}`).catch(() => null)
+        if (apiRes && apiRes.ok) {
+          const json = await apiRes.json()
+          if (Array.isArray(json?.data) && json.data.length > 0) {
+            return json.data
+          }
+        }
+      } catch {}
+
+      try {
+        const { data } = await supabase
+          .from('karigars')
+          .select('*')
+          .eq('business_id', profile?.id)
+          .eq('status', 'active');
+        if (data && data.length > 0) return data;
+      } catch {}
+
+      if (typeof window !== 'undefined') {
+        try {
+          const cached = localStorage.getItem(`noxis_cached_karigars_${bizId}`) || localStorage.getItem('noxis_cached_karigars')
+          if (cached) return JSON.parse(cached)
+        } catch {}
+      }
+      return [];
     },
     enabled: !!profile?.id
   });

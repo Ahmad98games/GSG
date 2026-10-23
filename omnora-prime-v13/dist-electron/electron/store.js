@@ -57,6 +57,7 @@ exports.getLastActive = getLastActive;
 exports.saveFormDraft = saveFormDraft;
 exports.getFormDraft = getFormDraft;
 exports.clearFormDraft = clearFormDraft;
+exports.getAllFormDrafts = getAllFormDrafts;
 exports.saveScrollPosition = saveScrollPosition;
 exports.getScrollPosition = getScrollPosition;
 exports.getLastSyncAt = getLastSyncAt;
@@ -283,6 +284,20 @@ function clearFormDraft(key) {
     const drafts = store.get('lastFormDrafts') || {};
     delete drafts[key];
     store.set('lastFormDrafts', drafts);
+}
+function getAllFormDrafts() {
+    const drafts = store.get('lastFormDrafts') || {};
+    const now = Date.now();
+    const valid = {};
+    for (const [k, v] of Object.entries(drafts)) {
+        if (v && typeof v === 'object' && v.data) {
+            // Retain drafts up to 7 days for ungraceful shutdown resilience
+            if (now - (v.savedAt || 0) <= 86400000 * 7) {
+                valid[k] = v;
+            }
+        }
+    }
+    return valid;
 }
 function saveScrollPosition(route, position) {
     const positions = store.get('lastScrollPositions') || {};

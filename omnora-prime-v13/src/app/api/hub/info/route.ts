@@ -39,16 +39,18 @@ export async function GET() {
   return NextResponse.json({
     ip: localIP,
     localIp: localIP,
-    port: bridgePort,
+    port: port,
+    webPort: port,
     bridgePort: bridgePort,
     bridgeUrl: `ws://${localIP}:${bridgePort}`,
     nextBridgeUrl: `ws://${localIP}:${port}/mobile-bridge`,
     mobileUrl: `http://${localIP}:${port}/mobile`,
+    workstationUrl: `http://${localIP}:${port}/workstation`,
     tunnelUrl,
     hostname: os.hostname(),
     platform: os.platform(),
     uptime: os.uptime(),
-    version: '14.0.0',
+    version: '14.0.8',
     bridge,
   });
 }

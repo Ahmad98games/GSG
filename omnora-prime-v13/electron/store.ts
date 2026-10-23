@@ -286,6 +286,21 @@ export function clearFormDraft(key: string) {
   store.set('lastFormDrafts', drafts)
 }
 
+export function getAllFormDrafts(): Record<string, { data: any; savedAt: number }> {
+  const drafts = store.get('lastFormDrafts') || {}
+  const now = Date.now()
+  const valid: Record<string, { data: any; savedAt: number }> = {}
+  for (const [k, v] of Object.entries(drafts)) {
+    if (v && typeof v === 'object' && (v as any).data) {
+      // Retain drafts up to 7 days for ungraceful shutdown resilience
+      if (now - ((v as any).savedAt || 0) <= 86400000 * 7) {
+        valid[k] = v as any
+      }
+    }
+  }
+  return valid
+}
+
 export function saveScrollPosition(route: string, position: number) {
   const positions = store.get('lastScrollPositions') || {}
   positions[route] = position

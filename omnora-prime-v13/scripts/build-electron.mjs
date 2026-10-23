@@ -67,10 +67,28 @@ function copyNextSubpathWrappers() {
     return;
   }
   copyDir(srcDir, destDir);
+
+  // Prune unused ESM dist directory (1,200+ files) — standalone Node server runs in CJS mode
+  const unusedDirs = [
+    path.join(destDir, 'dist', 'esm'),
+    path.join(destDir, 'dist', 'bundle-analyzer'),
+    path.join(destDir, 'dist', 'next-devtools'),
+    path.join(destDir, 'dist', 'docs'),
+  ];
+  for (const d of unusedDirs) {
+    if (fs.existsSync(d)) {
+      try {
+        fs.rmSync(d, { recursive: true, force: true });
+        console.log(`[Electron Build] ✓ Pruned unused standalone directory: ${path.relative(ROOT, d)}`);
+      } catch {}
+    }
+  }
+
   const serverNextJs = path.join(destDir, 'dist', 'server', 'next.js');
-  if (!fs.existsSync(serverNextJs)) {
-    console.error(`[Electron Build] ✗ CRITICAL: ${serverNextJs} missing after copying next package!`);
-    throw new Error(`Next.js server module failed to copy to standalone: ${serverNextJs}`);
+  const pkgJson = path.join(destDir, 'package.json');
+  if (!fs.existsSync(serverNextJs) || !fs.existsSync(pkgJson)) {
+    console.error(`[Electron Build] ✗ CRITICAL: Next.js runtime incomplete in standalone!`);
+    throw new Error(`Next.js runtime incomplete: serverNextJs=${fs.existsSync(serverNextJs)}, pkgJson=${fs.existsSync(pkgJson)}`);
   }
   console.log('[Electron Build] ✓ Copied complete next package into standalone node_modules (verified next.js runtime exists)');
 }

@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import { usePersona } from '@/hooks/usePersona';
 import { AddPartyModal } from './AddPartyModal';
+import { useFormDraft } from '@/hooks/useFormDraft';
 
 const transactionSchema = z.object({
   date: z.string().min(1, 'Date & time required'),
@@ -79,6 +80,9 @@ export function KhataEntryModal({
 
   const watchType = watch('type');
   const watchPaymentMode = watch('payment_mode');
+  const watchAll = watch();
+
+  const { getDraft, clearDraft } = useFormDraft('khata-entry', !editingEntry ? watchAll : undefined, isOpen && !editingEntry);
 
   useEffect(() => {
     if (editingEntry) {
@@ -97,8 +101,25 @@ export function KhataEntryModal({
         setSelectedParty(found);
         setValue('party_id', found.id);
       }
+    } else if (isOpen) {
+      // Auto-restore pending khata draft
+      getDraft().then((draft) => {
+        if (draft && typeof draft === 'object' && (draft.amount || draft.description || draft.party_id)) {
+          if (draft.date) setValue('date', draft.date);
+          if (draft.description) setValue('description', draft.description);
+          if (draft.type) setValue('type', draft.type);
+          if (draft.amount) setValue('amount', draft.amount);
+          if (draft.payment_mode) setValue('payment_mode', draft.payment_mode);
+          if (draft.reference_no) setValue('reference_no', draft.reference_no);
+          if (draft.party_id) {
+            setValue('party_id', draft.party_id);
+            const found = partiesList.find(p => p.id === draft.party_id);
+            if (found) setSelectedParty(found);
+          }
+        }
+      });
     }
-  }, [editingEntry, preselectedPartyId, partiesList, setValue]);
+  }, [editingEntry, preselectedPartyId, partiesList, setValue, isOpen, getDraft]);
 
   const filteredParties = useMemo(() => {
     if (!partySearch) return partiesList;
@@ -249,6 +270,7 @@ export function KhataEntryModal({
         } catch {}
       }
 
+      clearDraft();
       reset();
       onSuccess(`Transaction ${txRef} posted successfully`);
       onClose();

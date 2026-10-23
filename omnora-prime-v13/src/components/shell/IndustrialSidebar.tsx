@@ -735,7 +735,7 @@ const EnterpriseSidebarItem = React.memo(function EnterpriseSidebarItem({
   const linkContent = (
     <Link
       href={item.href}
-      prefetch={true}
+      prefetch={false}
       className={cn(
         'group relative flex items-center rounded-md px-2.5 py-1.5 text-[13px] font-normal transition-colors duration-150 ease-in-out cursor-pointer',
         isCollapsed ? 'justify-center px-0' : 'gap-2.5',

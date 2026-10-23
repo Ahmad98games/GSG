@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('electron', {
     convertHeic: (files: any) => ipcRenderer.invoke('convert-heic', files)
   },
   invoke: (channel: string, ...args: any[]) => ipcRenderer.invoke(channel, ...args),
+  getHwid: () => ipcRenderer.invoke('license:getHWID'),
   onLicenseExpired: (callback: () => void) => {
     const listener = () => callback();
     ipcRenderer.on('license-expired', listener);
@@ -38,6 +39,7 @@ const bridgeListeners = new Map<any, any>();
 // Data Sovereignty API — lets the renderer ask where data lives on disk
 contextBridge.exposeInMainWorld('electronAPI', {
   getAppDataPath: () => ipcRenderer.invoke('get-app-data-path'),
+  getHwid: () => ipcRenderer.invoke('license:getHWID'),
   fetchScaleWeight: () => ipcRenderer.invoke('fetchScaleWeight'),
   setConfig: (key: string, value: string) => ipcRenderer.invoke('set-config', key, value),
   getBridgeStatus: () => ipcRenderer.invoke('get-bridge-status'),
@@ -162,6 +164,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('store:saveFormDraft', k, d),
     getFormDraft: (k: string) =>
       ipcRenderer.invoke('store:getFormDraft', k),
+    getDraft: (k: string) =>
+      ipcRenderer.invoke('store:getFormDraft', k),
+    getAllFormDrafts: () =>
+      ipcRenderer.invoke('store:getAllFormDrafts'),
     clearFormDraft: (k: string) =>
       ipcRenderer.invoke('store:clearFormDraft', k),
     saveScrollPosition: (r: string, p: number) =>

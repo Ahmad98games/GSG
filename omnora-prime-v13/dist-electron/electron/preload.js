@@ -22,6 +22,7 @@ electron_1.contextBridge.exposeInMainWorld('electron', {
         convertHeic: (files) => electron_1.ipcRenderer.invoke('convert-heic', files)
     },
     invoke: (channel, ...args) => electron_1.ipcRenderer.invoke(channel, ...args),
+    getHwid: () => electron_1.ipcRenderer.invoke('license:getHWID'),
     onLicenseExpired: (callback) => {
         const listener = () => callback();
         electron_1.ipcRenderer.on('license-expired', listener);
@@ -37,6 +38,7 @@ const bridgeListeners = new Map();
 // Data Sovereignty API — lets the renderer ask where data lives on disk
 electron_1.contextBridge.exposeInMainWorld('electronAPI', {
     getAppDataPath: () => electron_1.ipcRenderer.invoke('get-app-data-path'),
+    getHwid: () => electron_1.ipcRenderer.invoke('license:getHWID'),
     fetchScaleWeight: () => electron_1.ipcRenderer.invoke('fetchScaleWeight'),
     setConfig: (key, value) => electron_1.ipcRenderer.invoke('set-config', key, value),
     getBridgeStatus: () => electron_1.ipcRenderer.invoke('get-bridge-status'),
@@ -134,6 +136,8 @@ electron_1.contextBridge.exposeInMainWorld('electronAPI', {
         getLastActive: () => electron_1.ipcRenderer.invoke('store:getLastActive'),
         saveFormDraft: (k, d) => electron_1.ipcRenderer.invoke('store:saveFormDraft', k, d),
         getFormDraft: (k) => electron_1.ipcRenderer.invoke('store:getFormDraft', k),
+        getDraft: (k) => electron_1.ipcRenderer.invoke('store:getFormDraft', k),
+        getAllFormDrafts: () => electron_1.ipcRenderer.invoke('store:getAllFormDrafts'),
         clearFormDraft: (k) => electron_1.ipcRenderer.invoke('store:clearFormDraft', k),
         saveScrollPosition: (r, p) => electron_1.ipcRenderer.invoke('store:saveScrollPosition', r, p),
         getScrollPosition: (r) => electron_1.ipcRenderer.invoke('store:getScrollPosition', r),

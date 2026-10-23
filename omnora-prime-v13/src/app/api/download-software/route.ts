@@ -18,9 +18,9 @@ export async function GET(req: NextRequest) {
     let fileName = searchParams.get('fileName');
     if (!fileName) {
       if (format.toLowerCase() === 'zip') {
-        fileName = 'Noxis-Setup-13.0.2.zip';
+        fileName = 'Noxis-Setup.zip';
       } else {
-        fileName = 'Noxis Setup 13.0.2.exe';
+        fileName = 'Noxis Setup.exe';
       }
     }
 
@@ -187,9 +187,9 @@ export async function POST(req: NextRequest) {
     let fileName = body.fileName;
     if (!fileName) {
       if (format.toLowerCase() === 'zip') {
-        fileName = 'Noxis-Setup-13.0.2.zip';
+        fileName = 'Noxis-Setup.zip';
       } else {
-        fileName = 'Noxis Setup 13.0.2.exe';
+        fileName = 'Noxis Setup.exe';
       }
     }
 

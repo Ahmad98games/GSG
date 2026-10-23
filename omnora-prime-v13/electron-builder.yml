@@ -33,11 +33,12 @@ asarUnpack:
 # Extra resources copied to resources/
 # These are accessible via process.resourcesPath
 extraResources:
-  # The Next.js standalone bundle
+  # The Next.js standalone bundle (excluding node_modules so it is not processed twice)
   - from: ".next/standalone"
     to: "standalone"
     filter:
       - "**/*"
+      - "!node_modules/**"
       - "!*.db"
       - "!*.db-shm"
       - "!*.db-wal"

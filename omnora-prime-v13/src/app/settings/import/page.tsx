@@ -61,8 +61,8 @@ const SCHEMAS: Record<ImportEntity, EntitySchema> = {
       { key: 'category', label: 'Category', required: false, aliases: ['category', 'group', 'type', 'class'] },
       { key: 'unit', label: 'Unit of Measure', required: false, aliases: ['unit', 'uom', 'measure', 'packaging'] },
       { key: 'qty_on_hand', label: 'Stock Quantity', required: false, aliases: ['qty', 'stock', 'qty_on_hand', 'quantity', 'stock qty', 'current stock'] },
-      { key: 'cost_price', label: 'Cost Price (PKR)', required: false, aliases: ['cost', 'cost_price', 'purchase price', 'buying rate', 'cost (pkr)'] },
-      { key: 'sale_price', label: 'Sale Price (PKR)', required: false, aliases: ['sale', 'sale_price', 'price', 'retail price', 'sale rate', 'sale (pkr)', 'mrp'] },
+      { key: 'cost_price', label: 'Cost Price (PKR)', required: false, aliases: ['cost', 'cost_price', 'cost price', 'purchase price', 'buying rate', 'cost (pkr)'] },
+      { key: 'sale_price', label: 'Sale Price (PKR)', required: false, aliases: ['sale', 'sale_price', 'sale price', 'selling price', 'retail price', 'sale rate', 'sale (pkr)', 'mrp'] },
       { key: 'reorder_level', label: 'Reorder Level', required: false, aliases: ['reorder', 'reorder_level', 'min stock', 'alert level'] },
     ]
   },
@@ -113,6 +113,7 @@ export default function BulkDataImportPage() {
   const [detectedReason, setDetectedReason] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [importResult, setImportResult] = useState<{ imported: number; failed: number } | null>(null);
+  const [showAllRows, setShowAllRows] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -182,9 +183,16 @@ export default function BulkDataImportPage() {
         return;
       }
 
-      // 2. Partial substring match
+      // 2. Partial substring match with collision guards
       const partialHeader = headers.find(h => {
         const clean = h.toLowerCase().trim();
+        // Guard against cost vs sale price collision
+        if (f.key === 'sale_price' && (clean.includes('cost') || clean.includes('purchase') || clean.includes('buying'))) {
+          return false;
+        }
+        if (f.key === 'cost_price' && (clean.includes('sale') || clean.includes('sell') || clean.includes('retail') || clean.includes('mrp'))) {
+          return false;
+        }
         return f.aliases.some(alias => clean.includes(alias.toLowerCase()) || alias.toLowerCase().includes(clean));
       });
 
@@ -546,22 +554,33 @@ export default function BulkDataImportPage() {
 
               {/* Data Preview Table */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <h3 className="text-xs font-bold text-slate-300 uppercase tracking-widest flex items-center gap-2">
                     <span className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-[10px] font-black">3</span>
-                    Parsed Document Preview (First 5 Rows)
+                    Parsed Document Preview {showAllRows ? `(All ${parsedRows.length} Rows)` : `(First ${Math.min(5, parsedRows.length)} Rows)`}
                   </h3>
-                  <span className="text-xs font-mono text-cyan-400">
-                    Showing 5 of {parsedRows.length} total rows
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-mono text-cyan-400">
+                      Showing {showAllRows ? parsedRows.length : Math.min(5, parsedRows.length)} of {parsedRows.length} total rows
+                    </span>
+                    {parsedRows.length > 5 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllRows(!showAllRows)}
+                        className="px-2.5 py-1 text-[11px] font-bold rounded-lg border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 transition-colors cursor-pointer"
+                      >
+                        {showAllRows ? 'Show First 5 Only' : `View All (${parsedRows.length} Rows)`}
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                <div className="overflow-x-auto border border-white/5 rounded-xl bg-[#141A26]">
+                <div className="overflow-x-auto max-h-[380px] overflow-y-auto border border-white/5 rounded-xl bg-[#141A26] custom-scrollbar">
                   <table className="w-full text-left">
-                    <thead>
-                      <tr className="bg-[#182030] text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/5">
+                    <thead className="sticky top-0 z-10">
+                      <tr className="bg-[#182030] text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/5 shadow-sm">
                         {currentSchema.fields.map(f => (
-                          <th key={f.key} className="p-3.5 whitespace-nowrap">
+                          <th key={f.key} className="p-3.5 whitespace-nowrap bg-[#182030]">
                             {f.label}
                             {fieldMappings[f.key] && (
                               <span className="block text-[9px] font-mono text-cyan-400 font-normal">
@@ -573,7 +592,7 @@ export default function BulkDataImportPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                      {mappedData.slice(0, 5).map((row, i) => (
+                      {(showAllRows ? mappedData : mappedData.slice(0, 5)).map((row, i) => (
                         <tr key={i} className="hover:bg-white/[0.02] transition-colors">
                           {currentSchema.fields.map(f => (
                             <td key={f.key} className="p-3.5 text-xs font-mono text-slate-300 whitespace-nowrap">

@@ -16,7 +16,14 @@
 
 import * as crypto from 'crypto'
 import { generateHWID } from './hwid'
-import { getLicensePayload, setLicensePayload, clearLicensePayload } from '../store'
+import {
+  getLicensePayload,
+  setLicensePayload,
+  clearLicensePayload,
+  getCachedHWID,
+  getInstallationHWID,
+  setInstallationHWID,
+} from '../store'
 
 // ── Embedded RSA-2048 Public Key ──────────────────────────────────────────────
 // Generated 2026-07-29 for Noxis Hub licensing.
@@ -68,46 +75,17 @@ export function verifyLicense(keyString: string): VerifyResult {
     const trimmed = (keyString || '').trim()
     const parts = trimmed.split('.')
 
-    // If it is NOT a 3-part dot-separated RSA token, check product key format
+    // Offline licenses MUST be a 3-part dot-separated RSA token: NOXIS-[TIER].[PAYLOAD].[SIGNATURE]
     if (parts.length !== 3 || !parts[0].toUpperCase().startsWith('NOXIS-')) {
-      const upper = trimmed.toUpperCase()
-      let productTier: LicenseTier | null = null
-      if (upper.startsWith('ELIT') || upper.includes('ELITE')) {
-        productTier = 'elite'
-      } else if (upper.startsWith('PROP') || upper.startsWith('PRO') || upper.includes('PRO')) {
-        productTier = 'pro'
-      } else if (upper.startsWith('LITE') || upper.includes('LITE')) {
-        productTier = 'lite'
-      }
-
-      if (productTier) {
-        const keyParts = upper.split(/[-_.]/)
-        if (keyParts.length >= 2 || upper.length >= 8) {
-          const payload: LicensePayload = {
-            version: 2,
-            tier: productTier,
-            hwid: generateHWID(),
-            businessId: '00000000-0000-0000-0000-000000000000',
-            issuedAt: Date.now(),
-            expiresAt: 0,
-            maxDevices: productTier === 'elite' ? 50 : productTier === 'pro' ? 15 : 5,
-            maxBranches: productTier === 'elite' ? 99 : productTier === 'pro' ? 5 : 1,
-            maxCameras: productTier === 'elite' ? 6 : productTier === 'pro' ? 4 : 0,
-            features: [],
-            signature: 'PRODUCT_KEY_VERIFIED',
-          }
-          return { valid: true, payload }
-        }
-      }
-      return { valid: false, error: 'INVALID_FORMAT' }
+      return { valid: false, error: 'INVALID_FORMAT: Key must be a valid 3-part cryptographic license (NOXIS-[TIER].[PAYLOAD].[SIGNATURE])' }
     }
 
-    const header = parts[0].toUpperCase() // e.g. "NOXIS-PRO"
-    const tierStr = header.slice(6).toLowerCase() // "pro"
+    const header = parts[0].toUpperCase() // e.g. "NOXIS-ELITE"
+    const tierStr = header.slice(6).toLowerCase() // "elite"
     const payloadB64 = parts[1]
     const sigB64 = parts[2]
 
-    if (!tierStr || !payloadB64 || !sigB64) {
+    if (!tierStr || !['lite', 'pro', 'elite'].includes(tierStr) || !payloadB64 || !sigB64) {
       return { valid: false, error: 'INVALID_FORMAT' }
     }
 
@@ -148,8 +126,21 @@ export function verifyLicense(keyString: string): VerifyResult {
 
     // 5. Verify HWID binding
     const currentHWID = generateHWID()
-    if (payload.hwid !== currentHWID) {
-      return { valid: false, error: 'HWID_MISMATCH' }
+    const cachedHWID = getCachedHWID()
+    const installHWID = getInstallationHWID()
+
+    const isMatch =
+      payload.hwid === currentHWID ||
+      (cachedHWID && payload.hwid === cachedHWID) ||
+      (installHWID && payload.hwid === installHWID)
+
+    if (!isMatch) {
+      // If machine has not yet been bound to another HWID, bind this cryptographically valid key's HWID
+      if (!installHWID) {
+        setInstallationHWID(payload.hwid)
+      } else {
+        return { valid: false, error: 'HWID_MISMATCH' }
+      }
     }
 
     // 6. Verify expiry (0 = lifetime)
@@ -193,6 +184,9 @@ export function getActiveLicensePayload(): LicensePayload | null {
 
 export function persistLicense(payload: LicensePayload): void {
   setLicensePayload(JSON.stringify(payload))
+  if (payload.hwid) {
+    setInstallationHWID(payload.hwid)
+  }
 }
 
 export function revokeLicense(): void {

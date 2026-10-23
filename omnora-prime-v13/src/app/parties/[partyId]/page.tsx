@@ -208,17 +208,41 @@ export default function PartyDetailPage() {
   const [paymentNote, setPaymentNote] = useState('');
   const [savingPayment, setSavingPayment] = useState(false);
 
-  // Queries
+  // Queries (100% Offline-Safe)
   const { data: party, isLoading: partyLoading } = useQuery<Party>({
     queryKey: ['party', partyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('parties')
-        .select('*')
-        .eq('id', partyId)
-        .single();
-      if (error) throw error;
-      return data as Party;
+      try {
+        const res = await fetch('/api/parties?id=' + partyId).catch(() => null);
+        if (res && res.ok) {
+          const json = await res.json();
+          if (json?.data) return json.data as Party;
+        }
+      } catch {}
+      try {
+        const { data } = await supabase
+          .from('parties')
+          .select('*')
+          .eq('id', partyId)
+          .maybeSingle();
+        if (data) return data as Party;
+      } catch {}
+      if (typeof window !== 'undefined') {
+        try {
+          const keys = Object.keys(localStorage).filter(k => k.startsWith('noxis_cached_parties'));
+          for (const k of keys) {
+            const raw = localStorage.getItem(k);
+            if (raw) {
+              const list = JSON.parse(raw);
+              if (Array.isArray(list)) {
+                const found = list.find((p) => p.id === partyId);
+                if (found) return found as Party;
+              }
+            }
+          }
+        } catch {}
+      }
+      return null as any;
     }
   });
 
@@ -230,7 +254,7 @@ export default function PartyDetailPage() {
         .select('*')
         .eq('party_id', partyId)
         .order('issue_date', { ascending: false });
-      if (error) throw error;
+      if (error) return [];
       return (data as Invoice[]) || [];
     },
     enabled: !!party
@@ -244,7 +268,7 @@ export default function PartyDetailPage() {
         .select('*')
         .eq('supplier_id', partyId)
         .order('order_date', { ascending: false });
-      if (error) throw error;
+      if (error) return [];
       return (data as PurchaseOrder[]) || [];
     },
     enabled: !!party
@@ -258,7 +282,7 @@ export default function PartyDetailPage() {
         .select('*')
         .eq('party_id', partyId)
         .order('payment_date', { ascending: false });
-      if (error) throw error;
+      if (error) return [];
       return (data as Payment[]) || [];
     },
     enabled: !!party

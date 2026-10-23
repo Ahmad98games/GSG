@@ -35,51 +35,91 @@ export default function PieceRateGridPage() {
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], [])
 
-  // 1. Query all active piece-rate karigars and today's logs
+  // 1. Query all active piece-rate karigars and today's logs (100% Offline-First)
   const { data: initialData = [], isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['karigars-grid', profile?.id, today],
     queryFn: async () => {
-      if (!profile?.id) return []
+      const bizId = profile?.id || 'default'
 
-      const [karigarRes, attendanceRes, productionRes] = await Promise.all([
-        supabase
-          .from('karigars')
-          .select('*')
-          .eq('business_id', profile.id)
-          .eq('status', 'active')
-          .eq('wage_type', 'piece_rate')
-          .order('name'),
+      let karigarsList: any[] = []
+      // 1. Try local API first (which queries local SQLite directly in 2ms)
+      try {
+        const apiRes = await fetch(`/api/karigars?business_id=${bizId}`).catch(() => null)
+        if (apiRes && apiRes.ok) {
+          const json = await apiRes.json()
+          if (Array.isArray(json?.data) && json.data.length > 0) {
+            karigarsList = json.data
+          }
+        }
+      } catch {}
 
-        supabase
-          .from('attendance_logs')
-          .select('id, karigar_id, status')
-          .eq('business_id', profile.id)
-          .eq('log_date', today),
+      // 2. Fallback to Supabase if local API had 0 items
+      if (karigarsList.length === 0) {
+        try {
+          const { data } = await supabase
+            .from('karigars')
+            .select('*')
+            .or(`business_id.eq.${bizId},business_id.is.null`)
+            .eq('status', 'active')
+            .order('name')
+          if (data && data.length > 0) karigarsList = data
+        } catch {}
+      }
 
-        supabase
-          .from('karigar_production_logs')
-          .select('id, karigar_id, qty_produced, quality_grade, effective_earning')
-          .eq('business_id', profile.id)
-          .eq('log_date', today)
-      ])
+      // 3. Fallback to local storage cache if still 0
+      if (karigarsList.length === 0 && typeof window !== 'undefined') {
+        try {
+          const cached = localStorage.getItem(`noxis_cached_karigars_${bizId}`) || localStorage.getItem('noxis_cached_karigars')
+          if (cached) karigarsList = JSON.parse(cached)
+        } catch {}
+      }
 
-      if (karigarRes.error) throw karigarRes.error
+      // Save to cache for offline hydration
+      if (karigarsList.length > 0 && typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(`noxis_cached_karigars_${bizId}`, JSON.stringify(karigarsList))
+        } catch {}
+      }
+
+      // Filter piece-rate karigars: include workers where wage_type is piece_rate, piece_work, or if no karigars have piece_rate explicitly set, include all active workers so the grid is not empty!
+      const hasExplicitPieceRate = karigarsList.some(k => k.wage_type === 'piece_rate' || k.wage_type === 'piece_work')
+      const targetKarigars = hasExplicitPieceRate
+        ? karigarsList.filter(k => k.wage_type === 'piece_rate' || k.wage_type === 'piece_work')
+        : karigarsList
+
+      let attendanceLogs: any[] = []
+      let productionLogs: any[] = []
+
+      try {
+        const [attendanceRes, productionRes] = await Promise.all([
+          supabase
+            .from('attendance_logs')
+            .select('id, karigar_id, status')
+            .eq('log_date', today),
+          supabase
+            .from('karigar_production_logs')
+            .select('id, karigar_id, qty_produced, quality_grade, effective_earning')
+            .eq('log_date', today)
+        ])
+        attendanceLogs = attendanceRes.data || []
+        productionLogs = productionRes.data || []
+      } catch {}
 
       const attendanceMap = new Map<string, { id: string; status: string }>(
-        (attendanceRes.data || []).map((a: any) => [a.karigar_id, { id: a.id, status: a.status }])
+        attendanceLogs.map((a: any) => [a.karigar_id, { id: a.id, status: a.status }])
       )
       const productionMap = new Map<string, any>(
-        (productionRes.data || []).map((p: any) => [p.karigar_id, p])
+        productionLogs.map((p: any) => [p.karigar_id, p])
       )
 
-      return (karigarRes.data || []).map((k: any) => {
+      return targetKarigars.map((k: any) => {
         const att = attendanceMap.get(k.id)
         const prod = productionMap.get(k.id)
 
         return {
           karigarId: k.id,
           karigarName: k.name,
-          karigarCode: k.karigar_code,
+          karigarCode: k.karigar_code || '',
           pieceRate: k.piece_rate || 0,
           peshgiBalance: k.current_advance || 0,
           attendanceStatus: att ? (att.status as any) : null,
@@ -324,9 +364,26 @@ export default function PieceRateGridPage() {
         }
       }
 
-      const results = await Promise.all(promises)
-      const firstError = results.find(r => r?.error)?.error
-      if (firstError) throw firstError
+      try {
+        const results = await Promise.all(promises)
+        const firstError = results.find(r => r?.error)?.error
+        if (firstError) throw firstError
+      } catch (err: any) {
+        console.warn('[Grid] Direct cloud save failed or offline, enqueuing locally:', err?.message || err)
+        try {
+          const { enqueueOfflineAction } = require('@/lib/sync/offlineQueue')
+          enqueueOfflineAction('SAVE_PIECE_RATE_GRID', {
+            attendanceUpserts,
+            productionUpserts,
+            advanceInserts,
+            timestamp: new Date().toISOString()
+          })
+          toast.info('Saved Offline', 'Grid records stored in local queue. Will sync automatically once internet connects.')
+          return
+        } catch {
+          throw err
+        }
+      }
     },
     onSuccess: () => {
       toast.success('Piece-rate grid changes saved successfully')

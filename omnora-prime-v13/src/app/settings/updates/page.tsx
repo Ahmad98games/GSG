@@ -416,6 +416,13 @@ export default function UpdatesPage() {
 
   const downloadUpdate = async () => {
     if (!isElectron) return
+    setUpdateState((prev) => ({
+      ...prev,
+      status: 'downloading',
+      percent: 0,
+      transferred: 0,
+      total: 215756803,
+    }))
     try {
       await (window as any).electronAPI.downloadUpdate()
     } catch (err: any) {

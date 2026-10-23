@@ -94,18 +94,30 @@ export default function LicenseUpgradePage() {
 
   // Retrieve HWID from electron or fallback localStorage
   useEffect(() => {
-    let machineHwid = '';
-    if (typeof window !== 'undefined') {
-      machineHwid = (window as any).electron?.getHwid?.() || (window as any).electronAPI?.getHwid?.() || '';
-      if (!machineHwid) {
-        machineHwid = localStorage.getItem('noxis_hwid') || '';
-        if (!machineHwid) {
-          machineHwid = 'HWID-' + Math.random().toString(36).substring(2, 10).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
-          localStorage.setItem('noxis_hwid', machineHwid);
+    let isMounted = true;
+    async function fetchHwid() {
+      if (typeof window === 'undefined') return;
+      try {
+        const api = (window as any).electronAPI || (window as any).electron;
+        const machineId = await (api?.license?.getHWID?.() || api?.getHwid?.());
+        if (isMounted && machineId && typeof machineId === 'string') {
+          setHwid(machineId);
+          return;
         }
+      } catch (err) {
+        console.warn('Failed to load electron HWID:', err);
       }
-      setHwid(machineHwid);
+
+      let fallback = localStorage.getItem('noxis_hwid') || '';
+      if (!fallback) {
+        fallback = 'HWID-' + Math.random().toString(36).substring(2, 10).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+        localStorage.setItem('noxis_hwid', fallback);
+      }
+      if (isMounted) setHwid(fallback);
     }
+
+    fetchHwid();
+    return () => { isMounted = false; };
   }, []);
 
   // Business Hours Calculation (Mon-Sat 9am - 9pm PKT = UTC+5)
@@ -231,31 +243,8 @@ export default function LicenseUpgradePage() {
         }
       }
 
-      // ── Step 3: Pattern matching fallback for standard product keys (ELIT-..., PROP-..., LITE-..., NOXIS-...) ──
       if (!success) {
-        if (cleanKey.startsWith('ELIT') || cleanKey.includes('ELITE')) {
-          activatedTier = 'elite';
-          success = true;
-        } else if (cleanKey.startsWith('PROP') || cleanKey.startsWith('PRO') || cleanKey.includes('PRO')) {
-          activatedTier = 'pro';
-          success = true;
-        } else if (cleanKey.startsWith('LITE') || cleanKey.includes('LITE')) {
-          activatedTier = 'lite';
-          success = true;
-        } else if (cleanKey.startsWith('NOXIS-')) {
-          const parts = cleanKey.split(/[-.]/);
-          if (parts.length >= 2) {
-            const pTier = parts[1].toLowerCase();
-            if (['lite', 'pro', 'elite'].includes(pTier)) {
-              activatedTier = pTier as any;
-              success = true;
-            }
-          }
-        }
-      }
-
-      if (!success) {
-        throw new Error("Invalid license key format. Please check your key or contact Omnora Labs on WhatsApp (+92 326 4742678).");
+        throw new Error("Invalid license key or cryptographic signature. Please check your key or contact Omnora Labs on WhatsApp (+92 326 4742678).");
       }
 
       // ── Step 4: Persist activation everywhere and unlock at the moment ──

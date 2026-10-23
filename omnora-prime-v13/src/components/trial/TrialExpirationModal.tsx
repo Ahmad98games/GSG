@@ -42,14 +42,14 @@ export function TrialExpirationModal() {
   // Fetch HWID for quick activation
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const api = (window as any).electronAPI;
-    if (api?.license?.getHWID) {
-      api.license.getHWID().then((id: string) => {
-        if (id) setHwid(id);
-      }).catch(() => {});
-    } else if ((window as any).electron?.getHwid) {
-      setHwid((window as any).electron.getHwid());
-    }
+    const api = (window as any).electronAPI || (window as any).electron;
+    const fetchHwid = async () => {
+      try {
+        const id = await (api?.license?.getHWID?.() || api?.getHwid?.());
+        if (id && typeof id === 'string') setHwid(id);
+      } catch {}
+    };
+    fetchHwid();
   }, []);
 
   // Determine if user has reached Day 8+ expired state
@@ -129,17 +129,33 @@ export function TrialExpirationModal() {
           setActivationError(res.error || 'Invalid license signature or HWID mismatch');
         }
       } else {
-        // Fallback for web demo environment
-        const upper = licenseKey.trim().toUpperCase();
-        if (upper.includes('NOXIS') || upper.includes('ELITE') || upper.includes('PRO') || upper.length >= 16) {
-          const tier = upper.includes('ELITE') ? 'elite' : 'pro';
+        // Web browser environment: Call live verification API
+        const array = new Uint8Array(16);
+        if (typeof window !== 'undefined' && window.crypto) {
+          window.crypto.getRandomValues(array);
+        }
+        const nonce = Array.from(array, dec => dec.toString(16).padStart(2, '0')).join('');
+
+        const res = await fetch('/api/license/activate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            licenseKey: licenseKey.trim().toUpperCase(),
+            appVersion: '14.0.2',
+            nonce,
+          }),
+        });
+        const data = await res.json().catch(() => null);
+
+        if (res.ok && data?.success && data?.license) {
+          const tier = (data.license.tier || 'elite').toLowerCase();
           localStorage.setItem('noxis_license', JSON.stringify({
-            id: 'activated-workstation',
-            key: upper,
+            id: data.license.id || 'activated-workstation',
+            key: licenseKey.trim().toUpperCase(),
             tier,
-            customerName: 'Verified Factory Node',
-            expiresAt: null,
-            maxDevices: tier === 'elite' ? 50 : 15,
+            customerName: data.license.customerName || 'Verified Factory Node',
+            expiresAt: data.license.expiresAt || null,
+            maxDevices: data.license.maxDevices || 50,
             activatedAt: Date.now(),
             cacheExpires: Date.now() + 365 * 24 * 60 * 60 * 1000,
             isValid: true,
@@ -153,7 +169,7 @@ export function TrialExpirationModal() {
           await refresh();
           return;
         } else {
-          setActivationError('Invalid license key format. Please check your purchase certificate.');
+          setActivationError(data?.error || 'Invalid license key. Please check your key or contact support.');
         }
       }
     } catch (err: any) {

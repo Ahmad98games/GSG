@@ -23,22 +23,44 @@ export default function HWIDActivationModal({
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const electronHwid = (window as any).electron?.getHwid?.() || (window as any).electronAPI?.getHwid?.();
-      if (electronHwid) {
-        setHwid(electronHwid);
-      } else {
-        const storedProfile = localStorage.getItem('noxis-business-profile');
-        if (storedProfile) {
-          try {
-            const parsed = JSON.parse(storedProfile);
-            if (parsed.business_name && !businessName) {
-              setBusinessName(parsed.business_name);
-            }
-          } catch {}
+    let isMounted = true;
+    async function loadHwid() {
+      if (typeof window === 'undefined') return;
+      try {
+        const api = (window as any).electronAPI || (window as any).electron;
+        const res = await (api?.license?.getHWID?.() || api?.getHwid?.());
+        if (isMounted && res && typeof res === 'string') {
+          setHwid(res);
+          return;
         }
+      } catch (e) {
+        console.warn('Failed to fetch machine HWID:', e);
+      }
+
+      const storedProfile = localStorage.getItem('noxis-business-profile');
+      if (storedProfile) {
+        try {
+          const parsed = JSON.parse(storedProfile);
+          if (parsed.business_name && !businessName && isMounted) {
+            setBusinessName(parsed.business_name);
+          }
+        } catch {}
+      }
+
+      let fallback = localStorage.getItem('noxis_hwid') || '';
+      if (!fallback) {
+        fallback = 'HWID-' + Math.random().toString(36).substring(2, 10).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+        localStorage.setItem('noxis_hwid', fallback);
+      }
+      if (isMounted && !hwid) {
+        setHwid(fallback);
       }
     }
+
+    if (isOpen) {
+      loadHwid();
+    }
+    return () => { isMounted = false; };
   }, [isOpen]);
 
   if (!isOpen) return null

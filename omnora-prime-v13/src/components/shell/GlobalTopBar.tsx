@@ -81,40 +81,100 @@ export default React.memo(function GlobalTopBar() {
   const [isSyncing, setIsSyncing] = useState(false)
   const [localQueueCount, setLocalQueueCount] = useState(0)
 
-  // 1. Connectivity checking: both navigator events and active ping check
+  // 1. Connectivity checking: true WAN internet probe with reliable GET endpoints
   useEffect(() => {
     let mounted = true
+
     const checkConnection = async () => {
-      const online = typeof navigator !== 'undefined' ? navigator.onLine : true
-      if (!online) {
-        if (mounted) setIsOnline(false)
+      // Hardware interface check (Wi-Fi / Ethernet adapter)
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        if (mounted) {
+          setIsOnline(false)
+          if (typeof window !== 'undefined') (window as any).__noxis_wan_online = false
+        }
         return
       }
-      if (mounted) setIsOnline(true)
+
+      // 1. Try Google 204 captive portal probe (ultra-fast, zero redirects, 0-byte response)
+      try {
+        const controller = new AbortController()
+        const timer = setTimeout(() => controller.abort(), 3500)
+        await fetch('https://www.google.com/generate_204', {
+          method: 'GET',
+          mode: 'no-cors',
+          cache: 'no-store',
+          signal: controller.signal,
+        })
+        clearTimeout(timer)
+        if (mounted) {
+          setIsOnline(true)
+          if (typeof window !== 'undefined') (window as any).__noxis_wan_online = true
+        }
+        return
+      } catch {
+        // Fallback to secondary probe
+      }
+
+      // 2. Try Cloudflare cdn-cgi trace using GET (never HEAD to prevent 302 redirects)
+      try {
+        const controller2 = new AbortController()
+        const timer2 = setTimeout(() => controller2.abort(), 3000)
+        await fetch('https://1.1.1.1/cdn-cgi/trace', {
+          method: 'GET',
+          mode: 'no-cors',
+          cache: 'no-store',
+          signal: controller2.signal,
+        })
+        clearTimeout(timer2)
+        if (mounted) {
+          setIsOnline(true)
+          if (typeof window !== 'undefined') (window as any).__noxis_wan_online = true
+        }
+        return
+      } catch {
+        // Fallback to local network state
+      }
+
+      // 3. If external WAN probes timed out, but device is connected to local Wi-Fi / LAN
+      if (mounted) {
+        const hasNetwork = typeof navigator !== 'undefined' ? navigator.onLine : true
+        setIsOnline(hasNetwork)
+        if (typeof window !== 'undefined') {
+          (window as any).__noxis_wan_online = hasNetwork
+        }
+      }
     }
 
+    checkConnection()
+
     const handleOnline = () => {
-      setIsOnline(true)
-      checkConnection()
-      // Immediately drain offline queue upon reconnection
-      const { drainOfflineQueue, getQueuedCount } = require('@/lib/sync/offlineQueue')
-      setIsSyncing(true)
-      drainOfflineQueue().finally(() => {
+      if (mounted) {
+        setIsOnline(true)
+        if (typeof window !== 'undefined') (window as any).__noxis_wan_online = true
+      }
+      checkConnection().then(() => {
         if (mounted) {
-          setIsSyncing(false)
-          setLocalQueueCount(getQueuedCount())
+          const { drainOfflineQueue, getQueuedCount } = require('@/lib/sync/offlineQueue')
+          setIsSyncing(true)
+          drainOfflineQueue().finally(() => {
+            if (mounted) {
+              setIsSyncing(false)
+              setLocalQueueCount(getQueuedCount())
+            }
+          })
         }
       })
     }
     const handleOffline = () => {
       setIsOnline(false)
+      if (typeof window !== 'undefined') (window as any).__noxis_wan_online = false
       setIsSyncing(false)
     }
 
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
     
-    // Heartbeat check every 15 seconds
+    // Heartbeat WAN probe every 15 seconds
     const interval = setInterval(checkConnection, 15000)
 
     return () => {

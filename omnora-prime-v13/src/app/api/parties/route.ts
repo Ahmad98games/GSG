@@ -15,9 +15,32 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const businessId = searchParams.get('business_id');
+    const partyId = searchParams.get('id') || searchParams.get('party_id');
 
-    // 1. Try local SQLite first
     const sqlite = (db as any).$client;
+
+    // Single Party Detail Query
+    if (partyId) {
+      let partyRow: any = null;
+      if (sqlite) {
+        try {
+          partyRow = sqlite.prepare('SELECT * FROM parties WHERE id = ?').get(partyId);
+        } catch (sqErr: any) {
+          console.warn('[API Parties] Local SQLite single party query error:', sqErr.message);
+        }
+      }
+
+      if (!partyRow) {
+        try {
+          const { data } = await supabase.from('parties').select('*').eq('id', partyId).maybeSingle();
+          if (data) partyRow = data;
+        } catch {}
+      }
+
+      return NextResponse.json({ data: partyRow });
+    }
+
+    // 1. Try local SQLite first for list
     if (sqlite) {
       try {
         const localRows = sqlite.prepare(`

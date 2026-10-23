@@ -328,19 +328,23 @@ export default function SettingsPage() {
         console.warn('[Settings] API activate fetch failed, checking offline fallback:', apiErr);
       }
 
-      // 2. Fallback: Offline pattern recognition for ELIT / PRO / LITE keys if server is offline or table is bypass
-      if (!activatedData) {
-        if (cleanKey.startsWith('ELIT') || cleanKey.startsWith('NOXIS-ELITE')) {
-          activatedData = { tier: 'elite', expires_at: '2027-08-08T00:00:00.000Z', is_trial: false };
-        } else if (cleanKey.startsWith('PRO') || cleanKey.startsWith('NOXIS-PRO')) {
-          activatedData = { tier: 'pro', expires_at: '2027-08-08T00:00:00.000Z', is_trial: false };
-        } else if (cleanKey.startsWith('LITE') || cleanKey.startsWith('NOXIS-LITE')) {
-          activatedData = { tier: 'lite', expires_at: '2027-08-08T00:00:00.000Z', is_trial: false };
+      // 2. Offline cryptographic verification fallback via Electron
+      if (!activatedData && typeof window !== 'undefined') {
+        const electron = (window as any).electronAPI || (window as any).electron;
+        if (electron?.license?.activate) {
+          const result = await electron.license.activate(cleanKey);
+          if (result?.success && result.tier) {
+            activatedData = {
+              tier: result.tier,
+              expires_at: null,
+              is_trial: false,
+            };
+          }
         }
       }
 
       if (!activatedData) {
-        setLicenseVerifyError('Invalid license key. Please check the key and try again.');
+        setLicenseVerifyError('Invalid license key or cryptographic signature. Please check the key and try again.');
         setIsVerifyingLicense(false);
         return;
       }
