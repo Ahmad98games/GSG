@@ -4,9 +4,23 @@ import { Tag, Calendar, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-reac
 
 const RELEASES = [
   {
-    version: 'v14.0.12',
+    version: 'v14.0.13',
     date: 'October 2026',
     isCurrent: true,
+    title: 'Universal Theme Engine, POS Workspace, Auto-Relaunch Updates & Differential Blockmap Engine',
+    summary: 'Comprehensive software-wide theme adaptation across all 23 industrial themes, persistent POS navigation sidebar with Kiosk toggle, automatic update relaunching, differential delta patches, and offline-first batch tracking.',
+    changes: [
+      'Universal Theme Engine: 100% theme shifting across every single page, panel, card, table, header, and input with automatic light-mode contrast harmonization.',
+      'POS Workspace Navigation: Preserves the industrial navigation sidebar on POS by default with an instant one-click Kiosk Mode toggle for full-screen counter operations.',
+      '1-Click Update Auto-Relaunch: Background process supervisor seamlessly monitors installer completion and instantly relaunches Noxis Hub without user intervention.',
+      'Differential Delta Patching: Dynamic size calculation downloads only 2–5 MB blockmap differential byte ranges for patches instead of redownloading 200+ MB installers.',
+      'Offline-First Production Batch Tracking: Fully wired local SQLite schema and REST API for batch lifecycle tracking with real-time creation and output logging.',
+    ],
+  },
+  {
+    version: 'v14.0.12',
+    date: 'October 2026',
+    isCurrent: false,
     title: 'Production Upgrade — Multi-User Auto-Sync, Public REST API & Webhook Dispatcher',
     summary: 'Instant multi-terminal state synchronization, commercially ready Developer API Keys & Webhook engine with HMAC signatures, and seamless update transition splash.',
     changes: [
@@ -75,7 +89,7 @@ const RELEASES = [
 ]
 
 export default function ChangelogPage() {
-  const [openVersions, setOpenVersions] = useState<string[]>(['v14.0.12'])
+  const [openVersions, setOpenVersions] = useState<string[]>(['v14.0.13'])
 
   const toggleVersion = (v: string) => {
     setOpenVersions(prev =>

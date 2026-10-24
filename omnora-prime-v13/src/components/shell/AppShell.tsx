@@ -496,10 +496,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       >
         <GlobalTopBar />
         <IndustrialSidebar />
-        <div className={cn(
-          "flex-1 w-full flex flex-col min-h-0 relative",
-          pathname?.startsWith('/pos') && "overflow-hidden"
-        )}>
+        <div 
+          className={cn(
+            "flex-1 w-full flex flex-col min-h-0 relative",
+            pathname?.startsWith('/pos') && "overflow-hidden"
+          )}
+          style={{
+            backgroundColor: "var(--color-bg)",
+            color: "var(--color-text)"
+          }}
+        >
           <ExpiryBanner />
           <div
             className="fixed inset-0 pointer-events-none z-0 overflow-hidden"

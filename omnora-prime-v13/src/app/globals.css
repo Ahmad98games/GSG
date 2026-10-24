@@ -152,53 +152,268 @@ button, a, [role="button"] {
 }
 
 /* =========================================================================
-   UNIVERSAL THEME ADAPTER (Ensures all 23 themes fit every part of the software)
+   UNIVERSAL COMPREHENSIVE THEME ENGINE
+   Guarantees 100% full theme propagation across every single page & component
    ========================================================================= */
 
-/* Maps legacy and hardcoded card backgrounds directly to the dynamic theme tokens */
-[class*="bg-[#131823]"],
-[class*="bg-[#10141D]"],
-[class*="bg-[#0D0E13]"],
-[class*="bg-[#0E121A]"],
-[class*="bg-[#12161F]"],
-[class*="bg-[#1A1E29]"],
-[class*="bg-[#111622]"] {
-  background-color: var(--color-card-bg, var(--color-surface, #131823)) !important;
-  border-color: var(--color-card-border, var(--color-border, rgba(255, 255, 255, 0.08))) !important;
-}
-
-/* Master canvas backgrounds */
-[class*="bg-[#0B0E14]"],
+/* 1. Master Canvas Backgrounds — covers every single page root in the software */
+[class*="bg-[#000000]"],
+[class*="bg-[#020304]"],
+[class*="bg-[#030406]"],
+[class*="bg-[#030712]"],
+[class*="bg-[#040507]"],
+[class*="bg-[#040608]"],
+[class*="bg-[#050607]"],
+[class*="bg-[#050608]"],
+[class*="bg-[#050709]"],
+[class*="bg-[#05070B]"],
+[class*="bg-[#060708]"],
+[class*="bg-[#060709]"],
+[class*="bg-[#06080B]"],
+[class*="bg-[#06080D]"],
+[class*="bg-[#070708]"],
+[class*="bg-[#070809]"],
+[class*="bg-[#07080A]"],
+[class*="bg-[#07090B]"],
+[class*="bg-[#07090C]"],
+[class*="bg-[#07090D]"],
 [class*="bg-[#07090E]"],
+[class*="bg-[#070B0E]"],
+[class*="bg-[#070B12]"],
 [class*="bg-[#08090A]"],
-[class*="bg-[#060708]"] {
-  background-color: var(--color-bg, #0B0E14) !important;
+[class*="bg-[#08090C]"],
+[class*="bg-[#080A0C]"],
+[class*="bg-[#080A0F]"],
+[class*="bg-[#080B10]"],
+[class*="bg-[#09090A]"],
+[class*="bg-[#09090B]"],
+[class*="bg-[#09090b]"],
+[class*="bg-[#090A0C]"],
+[class*="bg-[#090A0E]"],
+[class*="bg-[#090D14]"],
+[class*="bg-[#090D16]"],
+[class*="bg-[#0A0A0A]"],
+[class*="bg-[#0A0A0B]"],
+[class*="bg-[#0A0A0C]"],
+[class*="bg-[#0A0B0D]"],
+[class*="bg-[#0A0C0E]"],
+[class*="bg-[#0A0C0F]"],
+[class*="bg-[#0A0C10]"],
+[class*="bg-[#0A0D10]"],
+[class*="bg-[#0A0D14]"],
+[class*="bg-[#0A0E17]"],
+[class*="bg-[#0A100A]"],
+[class*="bg-[#0B0D10]"],
+[class*="bg-[#0B0D12]"],
+[class*="bg-[#0B0E14]"],
+[class*="bg-[#0B0F17]"],
+[class*="bg-[#0B0F19]"],
+[class*="bg-[#0C0C0E]"],
+[class*="bg-[#0C0E12]"],
+[class*="bg-[#0C0F12]"],
+[class*="bg-[#0C0F14]"],
+[class*="bg-[#0D0E13]"],
+[class*="bg-[#0D0F11]"],
+[class*="bg-[#0D0F12]"],
+[class*="bg-[#0D0F14]"],
+[class*="bg-[#0D1014]"],
+[class*="bg-[#0D1017]"],
+[class*="bg-[#0D1117]"],
+[class*="bg-[#0D121D]"],
+[class*="bg-[#0E1015]"],
+[class*="bg-[#0E1114]"],
+[class*="bg-[#0E1115]"],
+[class*="bg-[#0E1116]"],
+[class*="bg-[#0E1217]"],
+[class*="bg-[#0E121A]"],
+[class*="bg-[#0E121B]"],
+[class*="bg-[#0E131E]"],
+[class*="bg-[#0E131F]"],
+[class*="bg-[#0E1520]"],
+[class*="bg-[#0F1113]"],
+[class*="bg-[#0F1114]"],
+[class*="bg-[#0F1115]"],
+[class*="bg-[#0F1116]"],
+[class*="bg-[#0F1117]"],
+[class*="bg-[#0F1216]"],
+[class*="bg-[#0F131D]"],
+[class*="bg-[#0F1418]"],
+[class*="bg-[#0F141F]"],
+[class*="bg-[#0F1422]"],
+[class*="bg-[#0F161C]"],
+[class*="bg-[#0a0b0d]"],
+[class*="bg-[#0a0c10]"],
+[class*="bg-[#0b1120]"],
+[class*="bg-[#0f172a]"],
+[class*="bg-[#121417]"],
+[class*="bg-slate-950"],
+[class*="bg-zinc-950"],
+[class*="bg-neutral-950"],
+[class*="bg-gray-950"],
+.bg-onyx {
+  background-color: var(--color-bg) !important;
 }
 
-/* Sidebar and drawer surfaces */
+/* 2. Cards, Panels, Rows, Modals & Surfaces */
+[class*="bg-[#100A0A]"],
+[class*="bg-[#101316]"],
+[class*="bg-[#10141D]"],
+[class*="bg-[#101622]"],
+[class*="bg-[#101726]"],
+[class*="bg-[#111111]"],
+[class*="bg-[#111214]"],
+[class*="bg-[#111317]"],
+[class*="bg-[#111418]"],
+[class*="bg-[#111622]"],
+[class*="bg-[#111624]"],
+[class*="bg-[#120B0B]"],
+[class*="bg-[#121315]"],
+[class*="bg-[#121418]"],
+[class*="bg-[#12161F]"],
+[class*="bg-[#121622]"],
+[class*="bg-[#13151A]"],
+[class*="bg-[#131823]"],
+[class*="bg-[#131824]"],
+[class*="bg-[#14161A]"],
+[class*="bg-[#14171C]"],
+[class*="bg-[#14181E]"],
+[class*="bg-[#141923]"],
+[class*="bg-[#141A26]"],
+[class*="bg-[#15181E]"],
+[class*="bg-[#16181C]"],
+[class*="bg-[#16181D]"],
+[class*="bg-[#16191C]"],
+[class*="bg-[#16191E]"],
+[class*="bg-[#161A1F]"],
+[class*="bg-[#161B22]"],
+[class*="bg-[#161B26]"],
+[class*="bg-[#181B20]"],
+[class*="bg-[#182030]"],
+[class*="bg-[#191C22]"],
+[class*="bg-[#1A1D21]"],
+[class*="bg-[#1A1E26]"],
+[class*="bg-[#1A1E29]"],
+[class*="bg-[#1e293b]"],
+[class*="bg-[#2D3139]"],
+[class*="bg-slate-900"],
+[class*="bg-zinc-900"],
+[class*="bg-neutral-900"],
+[class*="bg-gray-900"],
+[class*="bg-slate-800"],
+[class*="bg-zinc-800"],
+[class*="bg-neutral-800"],
+[class*="bg-gray-800"],
+[class*="bg-surface"] {
+  background-color: var(--color-card-bg) !important;
+  border-color: var(--color-card-border) !important;
+}
+
+/* 3. Sub-headers and sticky page navigation bars */
+header[class*="bg-[#1A1D21]"],
+header[class*="bg-[#111622]"],
+header[class*="bg-[#0A0C0F]"],
+header[class*="bg-[#0B0E14]"],
+header[class*="bg-[#07090E]"],
+header[class*="bg-[#060708]"],
+header[class*="bg-slate-900"],
+header[class*="bg-slate-950"],
+header[class*="bg-zinc-900"],
+header[class*="bg-zinc-950"],
+header[class*="bg-surface"],
+header[class*="bg-[#1A1D21]/50"],
+header[class*="bg-surface/50"] {
+  background-color: var(--color-topbar-bg) !important;
+  border-color: var(--color-card-border) !important;
+}
+
+/* 4. Sidebar and drawer surfaces */
+aside,
 [class*="bg-[#0D121D]"],
 [class*="bg-[#090D14]"],
 [class*="bg-[#0A0E17]"] {
-  background-color: var(--color-sidebar-bg, var(--color-surface, #0D121D)) !important;
-  border-color: var(--color-card-border, var(--color-border, rgba(255, 255, 255, 0.06))) !important;
+  background-color: var(--color-sidebar-bg) !important;
+  border-color: var(--color-card-border) !important;
 }
 
-/* Light Mode Global Text & Border Contrast Alignment */
+/* 5. Inputs, Search Fields, Textareas, Selects */
+input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+textarea,
+select {
+  background-color: var(--color-input-bg) !important;
+  color: var(--color-text) !important;
+  border-color: var(--color-card-border) !important;
+}
+
+/* 6. Universal Border Synchronization */
+[class*="border-slate-800"],
+[class*="border-slate-900"],
+[class*="border-slate-700"],
+[class*="border-zinc-800"],
+[class*="border-zinc-900"],
+[class*="border-zinc-700"],
+[class*="border-white/4"],
+[class*="border-white/5"],
+[class*="border-white/6"],
+[class*="border-white/8"],
+[class*="border-white/10"],
+[class*="border-white/15"],
+[class*="border-white/20"],
+[class*="border-white/[0.03]"],
+[class*="border-white/[0.04]"],
+[class*="border-white/[0.05]"],
+[class*="border-white/[0.06]"],
+[class*="border-white/[0.08]"],
+[class*="border-white/[0.1]"] {
+  border-color: var(--color-card-border) !important;
+}
+
+/* 7. Light Mode Contrast & Full Screen Harmonization */
+:root[data-theme-mode="light"],
+:root.light {
+  color-scheme: light;
+}
+
 :root[data-theme-mode="light"] body,
-:root.light body,
-:root[data-theme-mode="light"] .text-slate-200,
-:root.light .text-slate-200,
-:root[data-theme-mode="light"] .text-slate-100,
-:root.light .text-slate-100,
-:root[data-theme-mode="light"] .text-white,
-:root.light .text-white {
+:root.light body {
+  background-color: var(--color-bg) !important;
   color: var(--color-text, #111827) !important;
 }
 
+:root[data-theme-mode="light"] [class*="bg-black/"],
+:root.light [class*="bg-black/"] {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+:root[data-theme-mode="light"] [class*="bg-black"]:not([class*="bg-black/"]),
+:root.light [class*="bg-black"]:not([class*="bg-black/"]) {
+  background-color: var(--color-card-bg) !important;
+}
+
+:root[data-theme-mode="light"] .text-white,
+:root.light .text-white,
+:root[data-theme-mode="light"] .text-slate-100,
+:root.light .text-slate-100,
+:root[data-theme-mode="light"] .text-slate-200,
+:root.light .text-slate-200,
+:root[data-theme-mode="light"] .text-zinc-100,
+:root.light .text-zinc-100,
+:root[data-theme-mode="light"] .text-zinc-200,
+:root.light .text-zinc-200 {
+  color: var(--color-text, #111827) !important;
+}
+
+:root[data-theme-mode="light"] .text-slate-300,
+:root.light .text-slate-300,
 :root[data-theme-mode="light"] .text-slate-400,
 :root.light .text-slate-400,
 :root[data-theme-mode="light"] .text-slate-500,
 :root.light .text-slate-500,
+:root[data-theme-mode="light"] .text-zinc-400,
+:root.light .text-zinc-400,
+:root[data-theme-mode="light"] .text-zinc-500,
+:root.light .text-zinc-500,
+:root[data-theme-mode="light"] .text-gray-300,
+:root.light .text-gray-300,
 :root[data-theme-mode="light"] .text-gray-400,
 :root.light .text-gray-400,
 :root[data-theme-mode="light"] .text-gray-500,
@@ -206,11 +421,13 @@ button, a, [role="button"] {
   color: var(--color-text-muted, #475569) !important;
 }
 
-:root[data-theme-mode="light"] [class*="border-white/"],
-:root.light [class*="border-white/"],
-:root[data-theme-mode="light"] [class*="border-white\\["],
-:root.light [class*="border-white\\["] {
-  border-color: var(--color-card-border, rgba(0, 0, 0, 0.08)) !important;
+:root[data-theme-mode="light"] .text-gray-600,
+:root.light .text-gray-600,
+:root[data-theme-mode="light"] .text-gray-700,
+:root.light .text-gray-700,
+:root[data-theme-mode="light"] .text-gray-800,
+:root.light .text-gray-800 {
+  color: #64748B !important;
 }
 
 :root[data-theme-mode="light"] [class*="hover:bg-white/"],
@@ -219,18 +436,7 @@ button, a, [role="button"] {
 }
 :root[data-theme-mode="light"] [class*="hover:bg-white/"]:hover,
 :root.light [class*="hover:bg-white/"]:hover {
-  background-color: rgba(0, 0, 0, 0.04) !important;
-}
-
-:root[data-theme-mode="light"] input,
-:root.light input,
-:root[data-theme-mode="light"] textarea,
-:root.light textarea,
-:root[data-theme-mode="light"] select,
-:root.light select {
-  background-color: var(--color-input-bg, #FFFFFF) !important;
-  color: var(--color-text, #111827) !important;
-  border-color: var(--color-card-border, rgba(0, 0, 0, 0.15)) !important;
+  background-color: rgba(0, 0, 0, 0.05) !important;
 }
 
 :root.theme-transitioning,

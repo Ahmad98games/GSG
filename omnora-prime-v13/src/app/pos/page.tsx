@@ -632,12 +632,19 @@ export default function POSPage() {
   )
 
   return (
-    <div className="flex flex-1 w-full h-full min-h-0 overflow-hidden bg-[#060708]">
+    <div 
+      className="flex flex-1 w-full h-full min-h-0 overflow-hidden"
+      style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}
+    >
 
       {/* ── LEFT: SEARCH + RESULTS ── */}
-      <div className="w-80 flex-shrink-0
-        flex flex-col border-r border-white/6
-        bg-[#0A0C0F]">
+      <div 
+        className="w-80 flex-shrink-0 flex flex-col border-r transition-colors"
+        style={{ 
+          backgroundColor: 'var(--color-card-bg)', 
+          borderColor: 'var(--color-card-border)' 
+        }}
+      >
 
         {/* Search bar */}
         <div className="p-4 border-b
@@ -874,16 +881,18 @@ export default function POSPage() {
         min-w-0">
 
         {/* Cart header */}
-        <div className="flex items-center
-          justify-between px-5 py-3
-          border-b border-white/6
-          bg-[#0A0C0F] flex-shrink-0">
+        <div 
+          className="flex items-center justify-between px-5 py-3 border-b flex-shrink-0 transition-colors"
+          style={{ 
+            backgroundColor: 'var(--color-card-bg)', 
+            borderColor: 'var(--color-card-border)' 
+          }}
+        >
           <div className="flex items-center
             gap-3">
             <Receipt size={15}
               className="text-gray-500" />
-            <p className="text-sm font-bold
-              text-white">
+            <p className="text-sm font-bold" style={{ color: 'var(--color-text)' }}>
               Cart
             </p>
             {cart.items.length > 0 && (

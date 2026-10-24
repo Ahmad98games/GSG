@@ -54,6 +54,19 @@ interface ChangelogItem {
 
 const HISTORICAL_CHANGELOGS: ChangelogItem[] = [
   {
+    version: '14.0.13',
+    date: 'October 2026',
+    type: 'patch',
+    title: 'Noxis Hub v14.0.13 — Universal Theme Engine, POS Workspace & Differential Blockmap Updates',
+    highlights: [
+      { tag: 'Universal Theme Engine', text: '100% theme shifting across every page, panel, card, table, and modal for all 23 themes', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
+      { tag: 'POS Workspace Navigation', text: 'Preserves industrial navigation sidebar on POS with one-click full-screen Kiosk toggle', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      { tag: '1-Click Update Relaunch', text: 'Silent background process supervisor automatically relaunches the app upon update completion', color: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
+      { tag: 'Differential Delta Patching', text: 'Dynamic size calculation downloads only 2–5 MB blockmap deltas for minor bug fixes', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+      { tag: 'Production Batch Tracking', text: 'Local SQLite WAL batch registry with live batch creation modal and unit output logging', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
+    ],
+  },
+  {
     version: '14.0.12',
     date: 'October 2026',
     type: 'patch',
@@ -221,7 +234,7 @@ export default function UpdatesPage() {
   const [showChangelogHistory, setShowChangelogHistory] = useState(false)
 
   // Version-Locked Telemetry & Ceiling Policy
-  const [baselineVersion, setBaselineVersion] = useState<string>('v14.0.12')
+  const [baselineVersion, setBaselineVersion] = useState<string>('v14.0.13')
   const [licenseTier, setLicenseTier] = useState<'lite' | 'pro' | 'elite'>('elite')
   const [maxAllowedCeiling, setMaxAllowedCeiling] = useState<string>('v16.x.x')
   const [allowedWindow, setAllowedWindow] = useState<string>('+2 Major Generations')
@@ -243,8 +256,8 @@ export default function UpdatesPage() {
 
   useEffect(() => {
     if (!isElectron) {
-      setCurrentVersion('14.0.12')
-      setBaselineVersion('v14.0.12')
+      setCurrentVersion('14.0.13')
+      setBaselineVersion('v14.0.13')
       setLicenseTier('elite')
       setMaxAllowedCeiling('v16.x.x')
       return
@@ -978,7 +991,7 @@ export default function UpdatesPage() {
               Auto-Sync Feed: /updates/{channel}
             </span>
             <a
-              href="https://noxishub.app/updates/stable/Noxis%20Hub%20Setup%2014.0.12.exe"
+              href="https://noxishub.app/updates/stable/Noxis%20Hub%20Setup%2014.0.13.exe"
               target="_blank"
               rel="noreferrer"
               className="text-[11px] font-medium text-cyan-400 hover:text-cyan-300 underline underline-offset-2 flex items-center gap-1 cursor-pointer"

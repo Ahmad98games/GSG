@@ -62,7 +62,7 @@ export default function AboutPage() {
             <div className="space-y-2">
               <h1 className="text-4xl font-black tracking-[0.5em] text-white uppercase">Noxis</h1>
               <p className="text-[11px] font-bold text-electric-blue uppercase tracking-[0.3em]">
-                v14.0 — Industrial Edition
+                v14.0.13 — Industrial Edition
               </p>
               <p className="text-[9px] text-gray-600 font-mono uppercase tracking-widest">
                 Build: {BUILD_DATE}

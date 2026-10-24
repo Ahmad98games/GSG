@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Noxis Hub Documentation · Official Engineering & Industrial Manual",
-  description: "Comprehensive technical documentation for Noxis Hub v14.0.12. Complete guide to 23 industrial themes, 100% offline SQLite WAL engine, multi-user LAN auto-sync, Developer REST API v1, HMAC webhooks, RS232 weighbridge scales, and Karigar piece-rate payroll.",
+  description: "Comprehensive technical documentation for Noxis Hub v14.0.13. Complete guide to 23 industrial themes, 100% offline SQLite WAL engine, multi-user LAN auto-sync, Developer REST API v1, HMAC webhooks, RS232 weighbridge scales, and Karigar piece-rate payroll.",
   keywords: [
     "Noxis Hub documentation",
     "offline ERP documentation",
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   ],
   openGraph: {
     title: "Noxis Hub Documentation · Official Engineering & Industrial Manual",
-    description: "Complete guide to Noxis Hub v14.0.12 architecture: 23 visual themes, offline SQLite WAL database, multi-user LAN peer sync, public REST API, and industrial hardware integration.",
+    description: "Complete guide to Noxis Hub v14.0.13 architecture: 23 visual themes, offline SQLite WAL database, multi-user LAN peer sync, public REST API, and industrial hardware integration.",
     url: "https://noxishub.app/docs",
     siteName: "Noxis Hub",
     type: "article",

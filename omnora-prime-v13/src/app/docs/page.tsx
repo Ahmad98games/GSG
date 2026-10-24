@@ -108,7 +108,7 @@ export default function DocsPage() {
                   <h3 className="text-xs font-bold uppercase tracking-widest text-white">Engineering Manual</h3>
                 </div>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
-                  v14.0.12
+                  v14.0.13
                 </span>
               </div>
               
@@ -190,7 +190,7 @@ export default function DocsPage() {
             {/* Header Title */}
             <div className="space-y-4 border-b border-white/10 pb-8">
               <div className="inline-flex items-center gap-2 bg-[#C5A059]/10 border border-[#C5A059]/30 px-3 py-1 rounded-full text-[10px] font-mono font-bold text-[#C5A059] uppercase tracking-widest">
-                Official Engineering Documentation · v14.0.12
+                Official Engineering Documentation · v14.0.13
               </div>
               <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight leading-tight uppercase">
                 Noxis Hub Technical <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#08EBF6] via-[#5FA5FA] to-[#08EBF6]">Reference &amp; Manual</span>
@@ -213,7 +213,7 @@ export default function DocsPage() {
               <div className="bg-[#0B0F17] border border-white/10 p-5 rounded-lg space-y-4">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-white">4-Step Desktop Setup Process</h4>
                 <ol className="list-decimal list-inside space-y-2 text-xs text-slate-300 leading-relaxed font-normal">
-                  <li>Download and execute the installer: <code className="bg-white/10 px-1.5 py-0.5 rounded text-white font-mono">Noxis Hub Setup 14.0.12.exe</code></li>
+                  <li>Download and execute the installer: <code className="bg-white/10 px-1.5 py-0.5 rounded text-white font-mono">Noxis Hub Setup 14.0.13.exe</code></li>
                   <li>The single-stream NSIS engine unpacks core runtime libraries in under 30 seconds.</li>
                   <li>Upon initial launch, provide your Business Name and create an encrypted Admin master passphrase.</li>
                   <li>The local SQLite 3 database initializes automatically with power-loss WAL journal journaling.</li>
@@ -225,7 +225,7 @@ export default function DocsPage() {
                     <span>Windows 11 Smart App Control Bypass</span>
                   </div>
                   <p className="text-[11px] text-slate-300 leading-relaxed">
-                    For corporate terminals with strict Windows 11 Smart App Control, download <code className="font-mono text-cyan-300">Noxis-Setup-14.0.12.zip</code> containing <code className="font-mono text-cyan-300">Install-Noxis.bat</code>. It unblocks the binary using official Windows PowerShell execution policies without disabling Defender.
+                    For corporate terminals with strict Windows 11 Smart App Control, download <code className="font-mono text-cyan-300">Noxis-Setup-14.0.13.zip</code> containing <code className="font-mono text-cyan-300">Install-Noxis.bat</code>. It unblocks the binary using official Windows PowerShell execution policies without disabling Defender.
                   </p>
                 </div>
               </div>

@@ -164,7 +164,7 @@ export default function DownloadPage() {
         <div className="flex justify-center mb-8">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[11px] font-mono text-zinc-400 tracking-wider">
             <div className="w-1.5 h-1.5 rounded-full bg-[#08EBF6] animate-pulse" />
-            Version 14.0.12 — Stable Release
+            Version 14.0.13 — Stable Release
           </div>
         </div>
 

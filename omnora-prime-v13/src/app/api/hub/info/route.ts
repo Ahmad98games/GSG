@@ -50,7 +50,7 @@ export async function GET() {
     hostname: os.hostname(),
     platform: os.platform(),
     uptime: os.uptime(),
-    version: '14.0.12',
+    version: '14.0.13',
     bridge,
   });
 }
