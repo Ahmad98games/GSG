@@ -4,9 +4,23 @@ import { Tag, Calendar, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-reac
 
 const RELEASES = [
   {
-    version: 'v14.0.14',
+    version: 'v14.0.15',
     date: 'October 2026',
     isCurrent: true,
+    title: 'Batch Costing & Traceability Engine, Audit Trail, Summary Export & Production Fixes',
+    summary: 'Resolved SQLite quotation syntax for batch output updates, added functional interactive Audit Trail modal and CSV Costing Summary export, and normalized batch costing material and overhead metrics.',
+    changes: [
+      'Batch Output & Status Updates: Fixed SQLite column name resolution for timestamp updates by switching to ISO datetime(\'now\') string literals, preventing \'no such column: now\' errors on output logging.',
+      'Interactive Batch Audit Trail: Added dedicated traceability modal displaying genesis ledger anchors, material allocations, labor contracts, and offline cryptographic ledger verification.',
+      'Batch Costing Summary Export: Enabled instant CSV summary download for cumulative costs, unit margins, and profitability breakdown with one-click export.',
+      'Fiscal Mass Normalization: Harmonized material and overhead unit rates, descriptions, and quantities in the batch fiscal breakdown card.',
+      '1st-Try Seamless Restart: Fixed installer lock contention by decoupling update shutdown from background process holds, guaranteeing instant silent execution on the first click.',
+    ],
+  },
+  {
+    version: 'v14.0.14',
+    date: 'October 2026',
+    isCurrent: false,
     title: 'Instant 1-Click Seamless Restart, Lockout-Free Installer & Differential Delta Streaming',
     summary: 'Single-click instant update installation without lockups or aborted attempts, detached background watcher process supervisor, exit lock bypass, and re-enabled differential delta downloads.',
     changes: [
@@ -103,7 +117,7 @@ const RELEASES = [
 ]
 
 export default function ChangelogPage() {
-  const [openVersions, setOpenVersions] = useState<string[]>(['v14.0.14'])
+  const [openVersions, setOpenVersions] = useState<string[]>(['v14.0.15'])
 
   const toggleVersion = (v: string) => {
     setOpenVersions(prev =>

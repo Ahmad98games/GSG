@@ -323,7 +323,7 @@ export async function PATCH(req: NextRequest) {
       updates.push('notes = ?');
       params.push(notes);
     }
-    updates.push('updated_at = datetime("now")');
+    updates.push("updated_at = datetime('now')");
     params.push(id);
 
     sqlite.prepare(`UPDATE production_batches SET ${updates.join(', ')} WHERE id = ?`).run(...params);
