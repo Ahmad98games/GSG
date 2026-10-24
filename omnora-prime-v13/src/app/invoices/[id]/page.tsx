@@ -21,6 +21,7 @@ import { humanizeError } from '@/lib/utils/errors';
 import { buildInvoiceMessage, buildPaymentReminderMessage, openWhatsApp } from '@/lib/whatsapp/buildMessage';
 import { logAction } from '@/lib/audit/logAction';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { getAmountInWords } from '@/lib/format/amountInWords';
 
 // --- Types ---
 
@@ -312,14 +313,43 @@ export default function InvoiceDetailPage() {
         throw new Error('Invalid Invoice ID');
       }
 
-      // Step 1: Try fetching by ID with joined party
-      let { data } = await supabase
-        .from('invoices')
-        .select('*, party:parties(*)')
-        .eq('id', invoiceId)
-        .maybeSingle();
+      let data: any = null;
 
-      // Step 2: Try fetching by invoice_no with joined party
+      // Step 1: Try local SQLite API first (instant WAL response, works offline)
+      try {
+        const localRes = await fetch(`/api/invoices?id=${encodeURIComponent(invoiceId)}`);
+        if (localRes.ok) {
+          const localData = await localRes.json();
+          if (localData && (localData.id || localData.invoice_no)) {
+            data = {
+              ...localData,
+              invoice_no: localData.invoice_no || localData.invoice_number,
+              issue_date: localData.issue_date || localData.invoice_date,
+              total: Number(localData.total ?? localData.total_amount ?? 0),
+              subtotal: Number(localData.subtotal ?? 0),
+              tax_amount: Number(localData.tax_amount ?? 0),
+              tax_pct: Number(localData.tax_pct ?? localData.tax_rate ?? 0),
+              discount_amount: Number(localData.discount_amount ?? 0),
+              paid_amount: Number(localData.amount_paid ?? localData.paid_amount ?? 0),
+              balance_due: Number(localData.balance_due ?? 0),
+            };
+          }
+        }
+      } catch (localErr) {
+        console.warn('[Invoices View] Local fetch notice:', localErr);
+      }
+
+      // Step 2: Try fetching by ID with joined party via Supabase
+      if (!data) {
+        const { data: byId } = await supabase
+          .from('invoices')
+          .select('*, party:parties(*)')
+          .eq('id', invoiceId)
+          .maybeSingle();
+        if (byId) data = byId;
+      }
+
+      // Step 3: Try fetching by invoice_no with joined party via Supabase
       if (!data) {
         const { data: byNo } = await supabase
           .from('invoices')
@@ -329,7 +359,7 @@ export default function InvoiceDetailPage() {
         if (byNo) data = byNo;
       }
 
-      // Step 3: Fallback query without relationship join (prevents PostgREST schema cache join errors)
+      // Step 4: Fallback query without relationship join
       if (!data) {
         let { data: rawInv } = await supabase
           .from('invoices')
@@ -362,6 +392,18 @@ export default function InvoiceDetailPage() {
       }
 
       if (!data) throw new Error('Invoice not found');
+
+      // Normalize fields
+      data.invoice_no = data.invoice_no || data.invoice_number || 'INV';
+      data.issue_date = data.issue_date || data.invoice_date || new Date().toISOString().split('T')[0];
+      data.total = Number(data.total ?? data.total_amount ?? 0);
+      data.subtotal = Number(data.subtotal ?? 0);
+      data.tax_amount = Number(data.tax_amount ?? 0);
+      data.tax_pct = Number(data.tax_pct ?? data.tax_rate ?? 0);
+      data.discount_amount = Number(data.discount_amount ?? 0);
+      data.paid_amount = Number(data.amount_paid ?? data.paid_amount ?? 0);
+      data.balance_due = Number(data.balance_due ?? (data.total - data.paid_amount));
+
       return data as Invoice;
     }
   });
@@ -370,17 +412,66 @@ export default function InvoiceDetailPage() {
     queryKey: ['invoice_items', invoiceId],
     queryFn: async () => {
       const targetId = invoice?.id || invoiceId;
-      const { data, error } = await supabase
-        .from('invoice_items')
-        .select('*, sku:skus(sku_code, name)')
-        .eq('invoice_id', targetId);
-      if (!error && data) return data as InvoiceItem[];
+      let rawItems: any[] = [];
 
-      const { data: fallbackItems } = await supabase
-        .from('invoice_items')
-        .select('*')
-        .eq('invoice_id', targetId);
-      return (fallbackItems as InvoiceItem[]) || [];
+      // 1. If invoice already arrived with items from local API:
+      if ((invoice as any)?.items && Array.isArray((invoice as any).items) && (invoice as any).items.length > 0) {
+        rawItems = (invoice as any).items;
+      }
+
+      // 2. Query /api/invoices?id=... to fetch from local SQLite
+      if (rawItems.length === 0) {
+        try {
+          const localRes = await fetch(`/api/invoices?id=${encodeURIComponent(targetId)}`);
+          if (localRes.ok) {
+            const localJson = await localRes.json();
+            if (localJson?.items && Array.isArray(localJson.items) && localJson.items.length > 0) {
+              rawItems = localJson.items;
+            }
+          }
+        } catch (localErr) {
+          console.warn('[Invoices View] Items local query notice:', localErr);
+        }
+      }
+
+      // 3. Fallback: Query Supabase
+      if (rawItems.length === 0) {
+        try {
+          const { data, error } = await supabase
+            .from('invoice_items')
+            .select('*, sku:skus(sku_code, name)')
+            .eq('invoice_id', targetId);
+          if (!error && data && data.length > 0) {
+            rawItems = data;
+          } else {
+            const { data: fallbackItems } = await supabase
+              .from('invoice_items')
+              .select('*')
+              .eq('invoice_id', targetId);
+            if (fallbackItems && fallbackItems.length > 0) {
+              rawItems = fallbackItems;
+            }
+          }
+        } catch (supaErr) {
+          console.warn('[Invoices View] Supabase items query notice:', supaErr);
+        }
+      }
+
+      // 4. Normalize all items to guarantee description, qty, unit, unit_price, line_total
+      return rawItems.map((it: any, idx: number) => {
+        const qty = Number(it.qty ?? it.quantity ?? 1);
+        const unitPrice = Number(it.unit_price ?? 0);
+        const lineTotal = Number(it.line_total ?? it.total_price ?? (qty * unitPrice));
+        return {
+          id: it.id || `item-${idx}`,
+          description: it.description || it.sku?.name || 'Item',
+          qty,
+          unit: it.unit || 'pcs',
+          unit_price: unitPrice,
+          line_total: lineTotal,
+          sku: it.sku ? { name: it.sku.name || it.description, sku_code: it.sku.sku_code || '' } : undefined,
+        };
+      });
     },
     enabled: !!invoice
   });
@@ -778,8 +869,10 @@ export default function InvoiceDetailPage() {
                  </div>
 
                  <div className="mt-16 pt-8 border-t border-gray-100">
-                    <p className="text-[9px] uppercase font-black text-gray-400 mb-2">Amount in Words</p>
-                    <p className="text-[11px] font-bold italic uppercase">Zero point zero zero only</p>
+                    <p className="text-[9px] uppercase font-black text-gray-400 mb-2 tracking-wider">Amount in Words</p>
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-900 bg-slate-50 border border-slate-200/80 px-3.5 py-2 rounded-lg inline-block">
+                       {getAmountInWords(invoice.total || (invoice as any).total_amount || 0, (profile as any)?.currency || 'PKR', 'en')}
+                    </p>
                  </div>
 
                  <div className="mt-8">

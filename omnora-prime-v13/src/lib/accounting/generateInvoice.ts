@@ -148,9 +148,10 @@ export function generateInvoicePDF(data: InvoicePDFData) {
     bodyStyles: {
       fontSize: 9,
       cellPadding: 4,
+      textColor: [17, 24, 39],
     },
     alternateRowStyles: {
-      fillColor: [15, 17, 20],
+      fillColor: [248, 250, 252],
     },
     columnStyles: {
       0: { cellWidth: 10, halign: 'center' },
@@ -209,24 +210,31 @@ export function generateInvoicePDF(data: InvoicePDFData) {
 
   y += 58
 
-  // Amount in words line
+  // ── HIGH CONTRAST AMOUNT IN WORDS ──
   const amountWords = getAmountInWords(
     data.grandTotal,
     data.currency || 'PKR',
     (data as any).language || 'en'
   )
 
-  doc.setFont('helvetica', 'italic')
-  doc.setFontSize(9)
-  doc.setTextColor(107, 114, 128)
-  doc.text('Amount in Words:', M, y + 5)
+  const wordsBoxW = PAGE_W - M * 2
+  doc.setFillColor(248, 250, 252)
+  doc.setDrawColor(203, 213, 225)
+  doc.roundedRect(M, y, wordsBoxW, 16, 1.5, 1.5, 'FD')
+
   doc.setFont('helvetica', 'bold')
-  doc.setTextColor(249, 250, 251)
-  doc.text(amountWords, M, y + 12, {
-    maxWidth: PAGE_W - M * 2,
+  doc.setFontSize(7.5)
+  doc.setTextColor(100, 116, 139)
+  doc.text('AMOUNT IN WORDS:', M + 4, y + 5)
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(9.5)
+  doc.setTextColor(15, 23, 42)
+  doc.text(amountWords, M + 4, y + 11.5, {
+    maxWidth: wordsBoxW - 8,
   })
 
-  y += 22
+  y += 20
 
   // If Urdu is enabled, add Urdu line below:
   if ((data as any).showUrdu) {
@@ -237,7 +245,7 @@ export function generateInvoicePDF(data: InvoicePDFData) {
     )
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(9)
-    doc.setTextColor(107, 114, 128)
+    doc.setTextColor(30, 41, 59)
     doc.text(amountWordsUr, PAGE_W - M, y, { align: 'right' })
     y += 8
   }

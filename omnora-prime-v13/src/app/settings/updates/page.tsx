@@ -54,6 +54,18 @@ interface ChangelogItem {
 
 const HISTORICAL_CHANGELOGS: ChangelogItem[] = [
   {
+    version: '14.0.16',
+    date: 'October 2026',
+    type: 'patch',
+    title: 'Noxis Hub v14.0.16 — Invoice Finalize Items, PDF Contrast & Mobile Hub Heartbeat Sync',
+    highlights: [
+      { tag: 'Invoice Item Persistence', text: 'Resolved empty line item rows on finalized invoices with SQLite joined queries and price normalization', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      { tag: 'PDF Invoice Contrast', text: 'Overhauled Amount in Words to print in high-contrast charcoal black on styled container instead of faint white text', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
+      { tag: 'Mobile Mesh Telemetry', text: 'Auto-registering heartbeats from mobile terminals with instant active node status and zero UI lag', color: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
+      { tag: 'Industrial Calculators', text: 'Fabric consumption, GSM calculations, and piece costing calculators integrated into main navigation', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+    ],
+  },
+  {
     version: '14.0.15',
     date: 'October 2026',
     type: 'patch',
@@ -246,7 +258,7 @@ export default function UpdatesPage() {
   const [showChangelogHistory, setShowChangelogHistory] = useState(false)
 
   // Version-Locked Telemetry & Ceiling Policy
-  const [baselineVersion, setBaselineVersion] = useState<string>('v14.0.15')
+  const [baselineVersion, setBaselineVersion] = useState<string>('v14.0.16')
   const [licenseTier, setLicenseTier] = useState<'lite' | 'pro' | 'elite'>('elite')
   const [maxAllowedCeiling, setMaxAllowedCeiling] = useState<string>('v16.x.x')
   const [allowedWindow, setAllowedWindow] = useState<string>('+2 Major Generations')
@@ -268,8 +280,8 @@ export default function UpdatesPage() {
 
   useEffect(() => {
     if (!isElectron) {
-      setCurrentVersion('14.0.15')
-      setBaselineVersion('v14.0.15')
+      setCurrentVersion('14.0.16')
+      setBaselineVersion('v14.0.16')
       setLicenseTier('elite')
       setMaxAllowedCeiling('v16.x.x')
       return
@@ -1003,7 +1015,7 @@ export default function UpdatesPage() {
               Auto-Sync Feed: /updates/{channel}
             </span>
             <a
-              href="https://noxishub.app/updates/stable/Noxis%20Hub%20Setup%2014.0.15.exe"
+              href="https://noxishub.app/updates/stable/Noxis%20Hub%20Setup%2014.0.16.exe"
               target="_blank"
               rel="noreferrer"
               className="text-[11px] font-medium text-cyan-400 hover:text-cyan-300 underline underline-offset-2 flex items-center gap-1 cursor-pointer"

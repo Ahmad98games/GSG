@@ -138,8 +138,13 @@ export default function PairingPage() {
 
   useEffect(() => {
     fetchDevices();
-    const interval = setInterval(fetchDevices, 4000);
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchDevices, 8000);
+    const onFocus = () => fetchDevices();
+    window.addEventListener('focus', onFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+    };
   }, []);
 
   const lanIp = hubInfo?.ip || hubInfo?.localIp || '192.168.0.103';

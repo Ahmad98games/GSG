@@ -553,7 +553,7 @@ export default function LandingClient() {
                         >
                           <div className="flex items-center justify-between border-b border-white/[0.03] pb-3">
                             <h3 className="text-xs font-bold uppercase tracking-widest text-[#C5A059]">Mill Floor Status Overview</h3>
-                            <span className="text-[10px] text-emerald-400 font-mono font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">v14.0.15 Stable</span>
+                            <span className="text-[10px] text-emerald-400 font-mono font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">v14.0.16 Stable</span>
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="p-4 rounded border border-white/[0.04] bg-white/[0.01] space-y-2">

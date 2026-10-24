@@ -34,16 +34,39 @@ export async function GET() {
 
   let devices: any[] = [];
   try {
-    devices = await db
+    const drizzleDevices = await db
       .select()
       .from(schema.authorizedDevices)
       .where(eq(schema.authorizedDevices.isRevoked, 0));
+    devices = drizzleDevices.map((d: any) => ({
+      nodeId: d.nodeId,
+      deviceId: d.deviceId || d.nodeId,
+      label: d.label || d.deviceLabel,
+      deviceLabel: d.deviceLabel || d.label,
+      isActive: d.isActive ?? 1,
+      isRevoked: d.isRevoked ?? 0,
+      businessId: d.businessId,
+      lastSeen: d.lastSeen,
+      createdAt: d.createdAt,
+    }));
   } catch (err: any) {
     // Fallback to direct SQLite
     const sqlite = getSqliteInstance();
     if (sqlite) {
       try {
-        devices = sqlite.prepare('SELECT * FROM authorized_devices WHERE is_revoked = 0').all();
+        const raw = sqlite.prepare('SELECT * FROM authorized_devices WHERE is_revoked = 0').all();
+        devices = raw.map((r: any) => ({
+          nodeId: r.node_id || r.nodeId,
+          deviceId: r.device_id || r.deviceId || r.node_id || r.nodeId,
+          meshKey: r.mesh_key,
+          label: r.label || r.device_label,
+          deviceLabel: r.device_label || r.label,
+          isActive: r.is_active ?? 1,
+          isRevoked: r.is_revoked ?? 0,
+          businessId: r.business_id,
+          lastSeen: r.last_seen,
+          createdAt: r.created_at,
+        }));
       } catch {}
     }
   }
@@ -54,14 +77,18 @@ export async function GET() {
     const bridgeStatus = getBridgeStatus();
     if (bridgeStatus && Array.isArray(bridgeStatus.pairedDevices)) {
       for (const live of bridgeStatus.pairedDevices) {
-        if (live.deviceId) liveDeviceIds.add(live.deviceId);
-        const found = devices.find(d => (d.deviceId || d.nodeId) === live.deviceId);
-        if (!found) {
+        const liveId = live.deviceId || (live as any).nodeId;
+        if (liveId) liveDeviceIds.add(liveId);
+        const found = devices.find(d => {
+          const did = d.deviceId || d.nodeId || d.device_id || d.node_id;
+          return did === liveId;
+        });
+        if (!found && liveId) {
           devices.push({
-            nodeId: live.deviceId,
-            deviceId: live.deviceId,
-            label: live.deviceLabel || 'Live Workstation Node',
-            deviceLabel: live.deviceLabel || 'Live Workstation Node',
+            nodeId: liveId,
+            deviceId: liveId,
+            label: live.deviceLabel || 'Active Handheld Terminal',
+            deviceLabel: live.deviceLabel || 'Active Handheld Terminal',
             isActive: 1,
             isLive: true,
             isRevoked: 0,
@@ -74,16 +101,21 @@ export async function GET() {
   } catch {}
 
   const result = devices.map(d => {
-    const id = d.deviceId || d.nodeId;
+    const id = d.deviceId || d.nodeId || d.device_id || d.node_id;
     const isLive = liveDeviceIds.has(id);
+    const label = d.deviceLabel || d.device_label || d.label || (isLive ? 'Active Handheld' : 'Offline Terminal');
+    const recentlySeen = d.lastSeen ? (Date.now() - new Date(d.lastSeen).getTime() < 35000) : false;
+    const activeStatus = isLive || recentlySeen ? 1 : 0;
     return {
       ...d,
-      nodeId: d.nodeId || id,
+      nodeId: d.nodeId || d.node_id || id,
       deviceId: id,
-      label: d.label || d.deviceLabel || (isLive ? 'Active Workstation' : 'Offline Terminal'),
-      deviceLabel: d.deviceLabel || d.label || (isLive ? 'Active Workstation' : 'Offline Terminal'),
-      isActive: isLive ? 1 : 0,
-      isLive,
+      device_id: id,
+      label,
+      deviceLabel: label,
+      device_label: label,
+      isActive: activeStatus,
+      isLive: isLive || recentlySeen,
     };
   });
 

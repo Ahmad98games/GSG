@@ -196,6 +196,12 @@ export default React.memo(function IndustrialSidebar() {
         icon: Truck,
       },
       {
+        id: 'calculators',
+        label: 'Industrial Calculators',
+        href: '/calculators',
+        icon: Calculator,
+      },
+      {
         id: 'foresight',
         label: 'Foresight AI',
         href: '/foresight',
@@ -511,7 +517,7 @@ export default React.memo(function IndustrialSidebar() {
                   borderStyle: 'solid'
                 }}
               >
-                v14.0.15
+                v14.0.16
               </span>
             )}
           </div>

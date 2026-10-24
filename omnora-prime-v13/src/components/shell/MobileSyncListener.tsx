@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useCallback } from 'react'
+import React, { useEffect, useCallback, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useMobileSyncToast } from '@/hooks/useMobileSyncToast'
 
@@ -8,61 +8,67 @@ export function MobileSyncListener() {
   useMobileSyncToast()
   const queryClient = useQueryClient()
 
+  const pendingKeysRef = useRef<Set<string>>(new Set())
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  const flushInvalidations = useCallback(() => {
+    const keys = Array.from(pendingKeysRef.current)
+    pendingKeysRef.current.clear()
+    for (const key of keys) {
+      try {
+        queryClient.invalidateQueries({ queryKey: [key] })
+      } catch {}
+    }
+  }, [queryClient])
+
+  const queueInvalidation = useCallback((keys: string[]) => {
+    keys.forEach(k => pendingKeysRef.current.add(k))
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+    debounceTimerRef.current = setTimeout(flushInvalidations, 250)
+  }, [flushInvalidations])
+
   const invalidateForEvent = useCallback((eventType: string, data?: any) => {
     try {
       switch (eventType) {
         case 'INVOICE_CREATED':
-          queryClient.invalidateQueries({ queryKey: ['invoices'] })
-          queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
-          queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] })
+          queueInvalidation(['invoices', 'dashboard-summary', 'dashboard-kpis'])
           break
         case 'PARTY_CREATED':
-          queryClient.invalidateQueries({ queryKey: ['parties'] })
-          queryClient.invalidateQueries({ queryKey: ['khata'] })
-          queryClient.invalidateQueries({ queryKey: ['ledger_entries'] })
+          queueInvalidation(['parties', 'khata', 'ledger_entries'])
           break
         case 'WORKER_CREATED':
-          queryClient.invalidateQueries({ queryKey: ['karigars'] })
-          queryClient.invalidateQueries({ queryKey: ['workers'] })
+          queueInvalidation(['karigars', 'workers'])
           break
         case 'ATTENDANCE_LOGGED':
-          queryClient.invalidateQueries({ queryKey: ['attendance'] })
-          queryClient.invalidateQueries({ queryKey: ['attendance_today'] })
-          queryClient.invalidateQueries({ queryKey: ['karigars'] })
+          queueInvalidation(['attendance', 'attendance_today', 'karigars'])
           break
         case 'ADVANCE_GIVEN':
-          queryClient.invalidateQueries({ queryKey: ['peshgi'] })
-          queryClient.invalidateQueries({ queryKey: ['advances'] })
-          queryClient.invalidateQueries({ queryKey: ['ledger_entries'] })
+          queueInvalidation(['peshgi', 'advances', 'ledger_entries'])
           break
         case 'PRODUCTION_LOGGED':
-          queryClient.invalidateQueries({ queryKey: ['production'] })
-          queryClient.invalidateQueries({ queryKey: ['production_log'] })
+          queueInvalidation(['production', 'production_log'])
           break
         case 'KHATA_ENTRY':
         case 'KHATA_UPDATED':
         case 'PAYMENT_RECEIVED':
-          queryClient.invalidateQueries({ queryKey: ['ledger_entries'] })
-          queryClient.invalidateQueries({ queryKey: ['parties'] })
-          queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] })
+          queueInvalidation(['ledger_entries', 'parties', 'dashboard-kpis'])
           break
         case 'DEVICE_COUNT_CHANGED':
         case 'DEVICE_CONNECTED':
-          queryClient.invalidateQueries({ queryKey: ['devices'] })
-          queryClient.invalidateQueries({ queryKey: ['hub_devices'] })
+          queueInvalidation(['devices', 'hub_devices'])
           break
         case 'DATA_INVALIDATED':
           if (data?.resource) {
-            queryClient.invalidateQueries({ queryKey: [data.resource] })
+            queueInvalidation([data.resource])
           } else {
-            queryClient.invalidateQueries()
+            queueInvalidation(['invoices', 'parties', 'karigars'])
           }
           break
       }
     } catch (e) {
       console.warn('[SyncListener] Query invalidation warning:', e)
     }
-  }, [queryClient])
+  }, [queueInvalidation])
 
   useEffect(() => {
     const electronAPI = (window as any).electronAPI

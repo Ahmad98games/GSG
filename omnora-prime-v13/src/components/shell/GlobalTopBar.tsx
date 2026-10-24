@@ -270,11 +270,12 @@ export default React.memo(function GlobalTopBar() {
   useEffect(() => {
     refreshDeviceCount();
 
-    // Fast 6s poll for live device count sync
-    const pollInterval = setInterval(refreshDeviceCount, 6000);
+    // Relaxed 15s poll for live device count sync
+    const pollInterval = setInterval(refreshDeviceCount, 15000);
 
     const handleCustomRefresh = () => refreshDeviceCount();
     window.addEventListener('noxis:device_count_changed', handleCustomRefresh);
+    window.addEventListener('focus', handleCustomRefresh);
 
     if ((window as any).electronAPI && typeof (window as any).electronAPI.on === 'function') {
       const handleBridgeEvent = (_: any, payload: { event: string; data: any }) => {

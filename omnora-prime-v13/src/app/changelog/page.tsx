@@ -4,9 +4,24 @@ import { Tag, Calendar, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-reac
 
 const RELEASES = [
   {
-    version: 'v14.0.15',
+    version: 'v14.0.16',
     date: 'October 2026',
     isCurrent: true,
+    title: 'Invoice Finalization & PDF Rendering Fixes, Mobile Mesh Hub Sync Optimization & Industrial Calculators',
+    summary: 'Resolved empty item rows on finalized invoices, fixed faint Amount in Words in PDF exports with high-contrast containers, optimized Mobile Hub device registration and eliminated sync lag, and linked Industrial Calculators to the main navigation.',
+    changes: [
+      'Invoice Finalization & Line Items: Fixed SQLite query in /api/invoices so item descriptions, quantities, unit prices, and totals persist and render immediately upon invoice finalization.',
+      'PDF Invoice Export Contrast: Corrected Amount in Words styling in PDF generator to print in high-contrast charcoal/black inside a styled container instead of faint white text.',
+      'Amount in Words Localization: Integrated real-time number-to-words currency conversion for PKR, USD, AED, and SAR with dual English and Urdu script support.',
+      'Mobile Hub Mesh Device Telemetry: Fixed device field normalization so connected mobile terminals immediately appear as active online nodes on the host PC.',
+      'Lag-Free Mobile Synchronization: Implemented debounced query invalidation in MobileSyncListener to eliminate UI freezing on both PC and mobile devices.',
+      'Industrial Calculators Sidebar Link: Integrated fabric consumption, GSM, and costing calculators directly into the primary industrial sidebar.',
+    ],
+  },
+  {
+    version: 'v14.0.15',
+    date: 'October 2026',
+    isCurrent: false,
     title: 'Batch Costing & Traceability Engine, Audit Trail, Summary Export & Production Fixes',
     summary: 'Resolved SQLite quotation syntax for batch output updates, added functional interactive Audit Trail modal and CSV Costing Summary export, and normalized batch costing material and overhead metrics.',
     changes: [
@@ -117,7 +132,7 @@ const RELEASES = [
 ]
 
 export default function ChangelogPage() {
-  const [openVersions, setOpenVersions] = useState<string[]>(['v14.0.15'])
+  const [openVersions, setOpenVersions] = useState<string[]>(['v14.0.16'])
 
   const toggleVersion = (v: string) => {
     setOpenVersions(prev =>
