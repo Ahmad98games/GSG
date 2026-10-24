@@ -216,18 +216,38 @@ export default function WebhookManagementPage() {
 
   const handleTestPing = async (ep: WebhookEndpoint) => {
     setTestingId(ep.id);
-    const start = Date.now();
+    let statusCode = 200;
+    let latency = 45;
+    let isSuccess = true;
 
-    // Simulate real webhook ping dispatch with 50-100ms latency
-    await new Promise(r => setTimeout(r, 600));
-    const latency = Date.now() - start;
+    try {
+      const res = await fetch('/api/hub/webhooks/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          endpoint_id: ep.id,
+          name: ep.name,
+          url: ep.url,
+          secret: ep.secret,
+        }),
+      });
+      const data = await res.json();
+      if (data && typeof data.status === 'number') {
+        statusCode = data.status;
+        latency = data.latency_ms || 50;
+        isSuccess = data.success ?? (statusCode >= 200 && statusCode < 300);
+      }
+    } catch {
+      statusCode = 504;
+      isSuccess = false;
+    }
 
     const newDelivery: WebhookDelivery = {
       id: 'del_' + Date.now(),
       endpoint_name: ep.name,
       event_type: 'system.ping',
-      response_status: 200,
-      success: true,
+      response_status: statusCode,
+      success: isSuccess,
       latency_ms: latency,
       delivered_at: new Date().toISOString()
     };

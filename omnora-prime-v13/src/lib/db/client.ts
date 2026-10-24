@@ -158,6 +158,44 @@ export const db = new Proxy({} as Record<string, any>, {
                 created_at TEXT DEFAULT (datetime('now'))
               );
 
+              CREATE TABLE IF NOT EXISTS api_keys (
+                id TEXT PRIMARY KEY,
+                business_id TEXT DEFAULT 'local',
+                name TEXT NOT NULL,
+                key_prefix TEXT NOT NULL,
+                key_hash TEXT NOT NULL,
+                scopes TEXT DEFAULT '["read"]',
+                total_requests INTEGER DEFAULT 0,
+                last_used_at TEXT,
+                is_active INTEGER DEFAULT 1,
+                created_at TEXT DEFAULT (datetime('now'))
+              );
+
+              CREATE TABLE IF NOT EXISTS webhook_endpoints (
+                id TEXT PRIMARY KEY,
+                business_id TEXT DEFAULT 'local',
+                name TEXT NOT NULL,
+                url TEXT NOT NULL,
+                secret TEXT NOT NULL,
+                events TEXT DEFAULT '["*"]',
+                is_active INTEGER DEFAULT 1,
+                created_at TEXT DEFAULT (datetime('now'))
+              );
+
+              CREATE TABLE IF NOT EXISTS webhook_deliveries (
+                id TEXT PRIMARY KEY,
+                business_id TEXT DEFAULT 'local',
+                endpoint_id TEXT,
+                endpoint_name TEXT,
+                event_type TEXT NOT NULL,
+                payload TEXT,
+                response_status INTEGER,
+                response_body TEXT,
+                success INTEGER DEFAULT 1,
+                latency_ms INTEGER DEFAULT 0,
+                delivered_at TEXT DEFAULT (datetime('now'))
+              );
+
               CREATE TABLE IF NOT EXISTS orders (
                 id TEXT PRIMARY KEY,
                 business_id TEXT DEFAULT 'local',

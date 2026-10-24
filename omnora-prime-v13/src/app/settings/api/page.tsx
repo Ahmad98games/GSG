@@ -101,9 +101,28 @@ function ApiPlatformContent() {
     if (!newKeyName.trim()) return;
     
     try {
-      const uuidString = crypto.randomUUID().replace(/-/g, '');
-      const rawKey = `noxis_live_${uuidString}`;
-      const prefix = rawKey.slice(0, 15);
+      let rawKey = '';
+      try {
+        const res = await fetch('/api/hub/api-keys', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: newKeyName.trim(),
+            scopes: newKeyScopes,
+          }),
+        });
+        const data = await res.json();
+        if (data.raw_key) {
+          rawKey = data.raw_key;
+        }
+      } catch {}
+
+      if (!rawKey) {
+        const uuidString = crypto.randomUUID().replace(/-/g, '');
+        rawKey = `noxis_live_${uuidString}`;
+      }
+
+      const prefix = rawKey.slice(0, 16);
       
       const newKeyObj = {
         id: 'key_' + Date.now().toString(36),

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { db } from '@/lib/db/client';
 import { broadcastSyncToMobileDevices } from '@/lib/mobile-bridge/server';
+import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import { randomUUID } from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -297,6 +298,17 @@ export async function POST(req: NextRequest) {
           invoice_number: invoice.invoice_number,
           total_amount: invoice.total_amount,
         });
+
+        // Trigger real outbound webhook dispatch
+        dispatchWebhookEvent('invoice.created', {
+          invoice_id: invoiceId,
+          invoice_number: invoice.invoice_number,
+          total_amount: invoice.total_amount,
+          party_name: invoice.party_name,
+          party_phone: invoice.party_phone,
+          status: invoice.status || 'posted',
+          items_count: items.length,
+        }, invoice.business_id || 'local');
       } catch {}
 
       return NextResponse.json({ success: true, invoice_id: invoiceId });
