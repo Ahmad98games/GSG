@@ -186,7 +186,7 @@ export default function AboutPage() {
                 <div className="space-y-4">
                   <h4 className="text-[10px] font-black uppercase tracking-widest text-white font-mono">Backup Inquiries</h4>
                   <div className="space-y-3">
-                    <ContactLink icon={Mail} label="Support Email" email="[EMAIL_ADDRESS]" />
+                    <ContactLink icon={Mail} label="Support Email" email="omnora@noxishub.app" />
                   </div>
                 </div>
               </div>

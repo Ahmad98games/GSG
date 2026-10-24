@@ -222,6 +222,30 @@ export const db = new Proxy({} as Record<string, any>, {
                 total_price REAL NOT NULL DEFAULT 0,
                 notes TEXT
               );
+
+              CREATE TABLE IF NOT EXISTS production_batches (
+                id TEXT PRIMARY KEY,
+                business_id TEXT DEFAULT 'local',
+                batch_no TEXT NOT NULL,
+                sku_id TEXT,
+                planned_qty REAL DEFAULT 0,
+                actual_qty REAL DEFAULT 0,
+                status TEXT DEFAULT 'open',
+                notes TEXT,
+                created_at TEXT DEFAULT (datetime('now')),
+                updated_at TEXT DEFAULT (datetime('now'))
+              );
+
+              CREATE TABLE IF NOT EXISTS batch_cost_items (
+                id TEXT PRIMARY KEY,
+                batch_id TEXT NOT NULL,
+                category TEXT DEFAULT 'material',
+                item_name TEXT NOT NULL,
+                quantity REAL DEFAULT 0,
+                unit_cost REAL DEFAULT 0,
+                total_cost REAL DEFAULT 0,
+                created_at TEXT DEFAULT (datetime('now'))
+              );
             `);
             const alterTableSafe = (table: string, colDef: string) => {
               try { sqliteInst.exec(`ALTER TABLE ${table} ADD COLUMN ${colDef};`); } catch {}

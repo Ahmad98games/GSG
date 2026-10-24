@@ -1540,11 +1540,21 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       };
     }
     try {
-      startupLog(`[Update] Starting resumable download for v${latestUpdateInfo.version}`);
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        downloadUpdateResumable(mainWindow).catch((err: any) => {
-          startupLog(`[Update] Resumable download exception: ${err?.message || err}`);
+      startupLog(`[Update] Starting differential update download for v${latestUpdateInfo.version}`);
+      if (app.isPackaged) {
+        // Use electron-updater native DifferentialDownloader (downloads only 2–5 MB delta ranges)
+        autoUpdater.downloadUpdate().catch((diffErr: any) => {
+          startupLog(`[Update] Differential update error (${diffErr?.message || diffErr}), falling back to direct stream...`);
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            downloadUpdateResumable(mainWindow).catch((err: any) => {
+              startupLog(`[Update] Resumable download exception: ${err?.message || err}`);
+            });
+          }
         });
+      } else {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          downloadUpdateResumable(mainWindow).catch(() => {});
+        }
       }
       return { success: true, status: 'downloading' };
     } catch (err: any) {
@@ -1580,17 +1590,17 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
     // 4. If we downloaded via our direct HTTP range downloader, run the installer with auto-relaunch
     if (downloadedInstallerPath && fs.existsSync(downloadedInstallerPath)) {
-      startupLog(`[Update] Executing direct installer: ${downloadedInstallerPath}`);
+      startupLog(`[Update] Executing direct installer with auto-relaunch watcher: ${downloadedInstallerPath}`);
       try {
-        const appExePath = process.execPath;
-        // In Windows, NSIS /S runs silently. We also chain automatic app reopening if needed.
-        const child = spawn(downloadedInstallerPath, ['/S', '--updated'], {
+        const appExe = process.execPath;
+        // In Windows, run installer silently with /S, wait for it to finish, and immediately start Noxis Hub.exe
+        const cmd = `Start-Process -FilePath "${downloadedInstallerPath}" -ArgumentList "/S", "--updated" -Wait; Start-Process -FilePath "${appExe}"`;
+        const watcher = spawn('powershell.exe', ['-NoProfile', '-WindowStyle', 'Hidden', '-Command', cmd], {
           detached: true,
           stdio: 'ignore'
         });
-        child.unref();
+        watcher.unref();
 
-        // Give installer 1.2s to start before exiting the old process
         setTimeout(() => {
           app.exit(0);
         }, 1200);
@@ -1600,11 +1610,11 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       }
     }
 
-    // 5. Fallback: autoUpdater standard quitAndInstall
+    // 5. Fallback: autoUpdater standard quitAndInstall with forced relaunch
     setTimeout(() => {
       try {
         autoUpdater.quitAndInstall(
-          false, // not silent, so Windows shows the native fast progress bar rather than an empty screen
+          false, // show fast progress bar
           true   // force relaunch after install completes
         );
       } catch (quitErr: any) {

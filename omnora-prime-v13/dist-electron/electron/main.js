@@ -1357,11 +1357,22 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             };
         }
         try {
-            startupLog(`[Update] Starting resumable download for v${latestUpdateInfo.version}`);
-            if (mainWindow && !mainWindow.isDestroyed()) {
-                downloadUpdateResumable(mainWindow).catch((err) => {
-                    startupLog(`[Update] Resumable download exception: ${err?.message || err}`);
+            startupLog(`[Update] Starting differential update download for v${latestUpdateInfo.version}`);
+            if (electron_1.app.isPackaged) {
+                // Use electron-updater native DifferentialDownloader (downloads only 2–5 MB delta ranges)
+                electron_updater_1.autoUpdater.downloadUpdate().catch((diffErr) => {
+                    startupLog(`[Update] Differential update error (${diffErr?.message || diffErr}), falling back to direct stream...`);
+                    if (mainWindow && !mainWindow.isDestroyed()) {
+                        downloadUpdateResumable(mainWindow).catch((err) => {
+                            startupLog(`[Update] Resumable download exception: ${err?.message || err}`);
+                        });
+                    }
                 });
+            }
+            else {
+                if (mainWindow && !mainWindow.isDestroyed()) {
+                    downloadUpdateResumable(mainWindow).catch(() => { });
+                }
             }
             return { success: true, status: 'downloading' };
         }
@@ -1404,16 +1415,16 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         (0, store_1.setExitFlag)('clean');
         // 4. If we downloaded via our direct HTTP range downloader, run the installer with auto-relaunch
         if (downloadedInstallerPath && fs.existsSync(downloadedInstallerPath)) {
-            startupLog(`[Update] Executing direct installer: ${downloadedInstallerPath}`);
+            startupLog(`[Update] Executing direct installer with auto-relaunch watcher: ${downloadedInstallerPath}`);
             try {
-                const appExePath = process.execPath;
-                // In Windows, NSIS /S runs silently. We also chain automatic app reopening if needed.
-                const child = (0, child_process_1.spawn)(downloadedInstallerPath, ['/S', '--updated'], {
+                const appExe = process.execPath;
+                // In Windows, run installer silently with /S, wait for it to finish, and immediately start Noxis Hub.exe
+                const cmd = `Start-Process -FilePath "${downloadedInstallerPath}" -ArgumentList "/S", "--updated" -Wait; Start-Process -FilePath "${appExe}"`;
+                const watcher = (0, child_process_1.spawn)('powershell.exe', ['-NoProfile', '-WindowStyle', 'Hidden', '-Command', cmd], {
                     detached: true,
                     stdio: 'ignore'
                 });
-                child.unref();
-                // Give installer 1.2s to start before exiting the old process
+                watcher.unref();
                 setTimeout(() => {
                     electron_1.app.exit(0);
                 }, 1200);
@@ -1423,10 +1434,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 startupLog(`[Update] Direct spawn error: ${runErr.message}, falling back to autoUpdater`);
             }
         }
-        // 5. Fallback: autoUpdater standard quitAndInstall
+        // 5. Fallback: autoUpdater standard quitAndInstall with forced relaunch
         setTimeout(() => {
             try {
-                electron_updater_1.autoUpdater.quitAndInstall(false, // not silent, so Windows shows the native fast progress bar rather than an empty screen
+                electron_updater_1.autoUpdater.quitAndInstall(false, // show fast progress bar
                 true // force relaunch after install completes
                 );
             }

@@ -732,9 +732,37 @@ CREATE TABLE IF NOT EXISTS whatsapp_sent_log (
   party_id TEXT REFERENCES parties(id) ON DELETE SET NULL,
   recipient_phone TEXT NOT NULL,
   message_type TEXT NOT NULL,
-  message_text TEXT,
-  sent_at TEXT DEFAULT (datetime('now')),
   reference_id TEXT,
   reference_type TEXT
 );
+
+-- PRODUCTION BATCHES & COSTING
+CREATE TABLE IF NOT EXISTS production_batches (
+  id TEXT PRIMARY KEY,
+  business_id TEXT NOT NULL,
+  batch_no TEXT NOT NULL,
+  sku_id TEXT REFERENCES skus(id) ON DELETE SET NULL,
+  planned_qty REAL DEFAULT 0,
+  actual_qty REAL DEFAULT 0,
+  status TEXT DEFAULT 'open',
+  notes TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_batches_business ON production_batches(business_id);
+CREATE INDEX IF NOT EXISTS idx_batches_status ON production_batches(business_id, status);
+
+CREATE TABLE IF NOT EXISTS batch_cost_items (
+  id TEXT PRIMARY KEY,
+  batch_id TEXT NOT NULL REFERENCES production_batches(id) ON DELETE CASCADE,
+  category TEXT DEFAULT 'material',
+  item_name TEXT NOT NULL,
+  quantity REAL DEFAULT 0,
+  unit_cost REAL DEFAULT 0,
+  total_cost REAL DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_batch_cost_items ON batch_cost_items(batch_id);
 `;

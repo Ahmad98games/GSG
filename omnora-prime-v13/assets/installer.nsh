@@ -15,3 +15,8 @@
   CreateDirectory "$LOCALAPPDATA\noxis-hub-updater"
   CopyFiles /SILENT "$EXEPATH" "$LOCALAPPDATA\noxis-hub-updater\installer.exe"
 !macroend
+
+; Automatically relaunch updated application upon silent or standard installation completion
+!macro customInstallEnd
+  ExecShell "" "$INSTDIR\Noxis Hub.exe"
+!macroend

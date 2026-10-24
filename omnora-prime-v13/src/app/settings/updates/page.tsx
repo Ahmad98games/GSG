@@ -347,10 +347,9 @@ export default function UpdatesPage() {
 
       setUpdateState((prev) => {
         const version = data.version || prev.version || '14.0.0'
-        let total = data.total ?? prev.total ?? 281255992
-        if (total <= 0) total = 281255992
+        let total = data.total ?? prev.total ?? 0
         let transferred = data.transferred ?? prev.transferred ?? 0
-        if (transferred > total) {
+        if (total > 0 && transferred > total) {
           transferred = total
         }
 
@@ -433,7 +432,7 @@ export default function UpdatesPage() {
       status: 'downloading',
       percent: 0,
       transferred: 0,
-      total: 215756803,
+      total: 0,
     }))
     try {
       await (window as any).electronAPI.downloadUpdate()
@@ -756,7 +755,7 @@ export default function UpdatesPage() {
                       Downloading v{updateState.version && updateState.version !== 'Update' ? updateState.version : '13.1.13'}
                     </h2>
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/15 text-blue-300 border border-blue-500/30">
-                      Byte-Range Streaming
+                      {updateState.total && updateState.total < 50 * 1024 * 1024 ? 'Differential Delta Patch' : 'Byte-Range Streaming'}
                     </span>
                   </div>
                   <p className="text-xs text-gray-400 mt-0.5">
@@ -795,7 +794,10 @@ export default function UpdatesPage() {
                 <div className="p-3 rounded-lg bg-black/40 border border-white/5 space-y-1">
                   <span className="text-[10px] font-mono uppercase text-gray-500">Data Transferred</span>
                   <p className="text-sm font-black font-mono text-white">
-                    {formatBytes(Math.min(updateState.transferred ?? 0, updateState.total || 281255992))} / {formatBytes(updateState.total || 281255992)}
+                    {updateState.total && updateState.total > 0
+                      ? `${formatBytes(Math.min(updateState.transferred ?? 0, updateState.total))} / ${formatBytes(updateState.total)}`
+                      : `${formatBytes(updateState.transferred ?? 0)} (Calculating...)`
+                    }
                   </p>
                 </div>
 
