@@ -103,7 +103,7 @@ nsis:
   uninstallDisplayName: "Noxis Hub"
   allowElevation: true
   perMachine: false
-  differentialPackage: false
+  differentialPackage: true
 
 mac:
   icon: "build/icon.icns"
@@ -117,7 +117,7 @@ publish:
   provider: generic
   url: https://noxishub.app/updates/stable
   channel: stable
-  useMultipleRangeRequest: false
+  useMultipleRangeRequest: true
 
 # Rebuild native modules for the correct
 # Electron Node.js ABI version

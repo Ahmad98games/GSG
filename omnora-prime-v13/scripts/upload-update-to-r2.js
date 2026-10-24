@@ -185,16 +185,22 @@ async function main() {
 
   if (fs.existsSync(exePath)) {
     const mainTargetKey = `updates/stable/${exeName}`;
+    const blockmapPath = `${exePath}.blockmap`;
+
+    // 1a. Ensure blockmap is generated for rapid differential delta updates (2–5MB patches)
+    if (!fs.existsSync(blockmapPath)) {
+      try {
+        console.log(`📦 Generating differential blockmap for ${exeName}...`);
+        const { executeAppBuilderAsJson } = require('app-builder-lib/out/util/appBuilder');
+        executeAppBuilderAsJson(['blockmap', '--input', exePath, '--output', blockmapPath]);
+        console.log(`✓ Blockmap generated: ${(fs.statSync(blockmapPath).size / 1024).toFixed(1)} KB`);
+      } catch (bmErr) {
+        console.warn(`⚠️ Failed to generate blockmap: ${bmErr.message}`);
+      }
+    }
+
     if (!skipExe) {
       await uploadLargeMultipart(exePath, mainTargetKey, 'application/x-msdownload');
-
-      // 1b. Upload differential blockmap for rapid delta updates (2–5MB patches)
-      const blockmapPath = `${exePath}.blockmap`;
-      if (fs.existsSync(blockmapPath)) {
-        console.log(`📦 Uploading differential blockmap: ${path.basename(blockmapPath)} (${fs.statSync(blockmapPath).size} bytes)...`);
-        await uploadSmall(blockmapPath, `updates/stable/${exeName}.blockmap`, 'application/octet-stream');
-        await copyObjectServerSide(`updates/stable/${exeName}.blockmap`, `Noxis Setup ${version}.exe.blockmap`);
-      }
 
       // 2. Instant server-side copies to root download paths (instantaneous, 0 bandwidth!)
       await copyObjectServerSide(mainTargetKey, `Noxis Setup ${version}.exe`);
@@ -203,6 +209,13 @@ async function main() {
       await copyObjectServerSide(mainTargetKey, 'Noxis Setup 13.0.0.exe');
     } else {
       console.log(`⚡ Skipping EXE upload as requested (--skip-exe). Binary already live on R2.`);
+    }
+
+    // 1b. Always upload differential blockmap if present
+    if (fs.existsSync(blockmapPath)) {
+      console.log(`📦 Uploading differential blockmap: ${path.basename(blockmapPath)} (${fs.statSync(blockmapPath).size} bytes)...`);
+      await uploadSmall(blockmapPath, `updates/stable/${exeName}.blockmap`, 'application/octet-stream');
+      await copyObjectServerSide(`updates/stable/${exeName}.blockmap`, `Noxis Setup ${version}.exe.blockmap`);
     }
   } else {
     console.error(`❌ Could not find ${exePath}`);
