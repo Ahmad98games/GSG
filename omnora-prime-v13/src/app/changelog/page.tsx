@@ -4,9 +4,23 @@ import { Tag, Calendar, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-reac
 
 const RELEASES = [
   {
-    version: 'v14.0.0',
+    version: 'v14.0.12',
     date: 'October 2026',
     isCurrent: true,
+    title: 'Production Upgrade — Multi-User Auto-Sync, Public REST API & Webhook Dispatcher',
+    summary: 'Instant multi-terminal state synchronization, commercially ready Developer API Keys & Webhook engine with HMAC signatures, and seamless update transition splash.',
+    changes: [
+      'Multi-User Workstation Auto-Sync: Real-time broadcast and instant cache invalidation between web terminals and desktop software over local LAN.',
+      'Workstation Heartbeat Monitor: Live peer discovery tracking active terminal operators, last-seen timestamps, and latency across workstations.',
+      'Developer REST API v1: Public endpoints for inventory querying and invoice creation secured with high-entropy Bearer token auth.',
+      'HMAC-SHA256 Webhook Dispatcher: Live delivery engine notifying Shopify, WooCommerce, and custom webhooks with audit logging.',
+      'Seamless Update Restart: Persistent visual splash feedback during binary update execution eliminates the silent gap before relaunch.',
+    ],
+  },
+  {
+    version: 'v14.0.0',
+    date: 'October 2026',
+    isCurrent: false,
     title: 'Major Release — Noxis Mobile Hub & Sovereign Industrial Grid v14',
     summary: 'Full production launch of Noxis Mobile Hub for Android, Urdu & English AI Voice Khata, biometric attendance, Bluetooth thermal printing, and strict multi-tier device security.',
     changes: [
@@ -61,7 +75,7 @@ const RELEASES = [
 ]
 
 export default function ChangelogPage() {
-  const [openVersions, setOpenVersions] = useState<string[]>(['v14.0.0'])
+  const [openVersions, setOpenVersions] = useState<string[]>(['v14.0.12'])
 
   const toggleVersion = (v: string) => {
     setOpenVersions(prev =>

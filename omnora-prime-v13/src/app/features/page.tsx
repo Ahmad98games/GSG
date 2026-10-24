@@ -226,7 +226,7 @@ export default function FeaturesPage() {
           <div className="inline-flex items-center gap-2 bg-[#C5A059]/10 border border-[#C5A059]/25 px-4 py-1.5 rounded-full">
             <Sparkles size={14} className="text-[#C5A059]" />
             <span className="text-xs font-black text-[#C5A059] uppercase tracking-widest">
-              Industrial Feature Index · Noxis Hub v14.0.0
+              Industrial Feature Index · Noxis Hub v14.0.12
             </span>
           </div>
 
