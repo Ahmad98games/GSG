@@ -288,9 +288,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const isStandalonePortal = Boolean(
     pathname?.startsWith('/workstation') ||
-    pathname?.startsWith('/pos') ||
     pathname?.startsWith('/mobile') ||
-    pathname?.startsWith('/scanner')
+    pathname?.startsWith('/scanner') ||
+    (pathname?.startsWith('/pos') && typeof window !== 'undefined' && (window.location.search.includes('standalone=true') || window.location.search.includes('kiosk=true')))
   );
 
   // Hide internal shell components on public website pages
@@ -483,7 +483,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <ZoomSafetyPill />
       <div 
         className={cn(
-          "relative min-h-screen flex flex-col transition-all duration-300",
+          "relative flex flex-col transition-all duration-300",
+          pathname?.startsWith('/pos')
+            ? (isElectron ? "h-[calc(100vh-40px)] overflow-hidden" : "h-screen overflow-hidden")
+            : "min-h-screen",
           isCollapsed ? "sidebar-collapsed ps-[64px]" : "sidebar-expanded ps-[240px]"
         )}
         style={{
@@ -493,7 +496,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       >
         <GlobalTopBar />
         <IndustrialSidebar />
-        <div className="flex-1 w-full flex flex-col min-h-0 relative">
+        <div className={cn(
+          "flex-1 w-full flex flex-col min-h-0 relative",
+          pathname?.startsWith('/pos') && "overflow-hidden"
+        )}>
           <ExpiryBanner />
           <div
             className="fixed inset-0 pointer-events-none z-0 overflow-hidden"

@@ -21,7 +21,7 @@ import {
   CreditCard, Banknote, Smartphone,
   Users, Trash2, Tag, Percent,
   AlertTriangle, CheckCircle,
-  Printer, Share2,
+  Printer, Share2, Maximize2, Minimize2,
 } from 'lucide-react'
 import { createClient }
   from '@/lib/supabase/client'
@@ -107,6 +107,11 @@ export default function POSPage() {
 
   const searchRef = useRef<HTMLInputElement>(null)
   const searchTimeout = useRef<any>(null)
+
+  const isKiosk = typeof window !== 'undefined' && (
+    window.location.search.includes('standalone=true') || 
+    window.location.search.includes('kiosk=true')
+  )
 
   const { saveDraft, clearDraft } =
     useFormDraft('pos_cart')
@@ -627,8 +632,7 @@ export default function POSPage() {
   )
 
   return (
-    <div className="flex h-full overflow-hidden
-      bg-[#060708]">
+    <div className="flex flex-1 w-full h-full min-h-0 overflow-hidden bg-[#060708]">
 
       {/* ── LEFT: SEARCH + RESULTS ── */}
       <div className="w-80 flex-shrink-0
@@ -891,18 +895,38 @@ export default function POSPage() {
               </span>
             )}
           </div>
-          {cart.items.length > 0 && (
+          <div className="flex items-center gap-2">
             <button
-              onClick={() =>
-                setCart(createEmptyCart())}
-              className="flex items-center
-                gap-1 text-[10px] text-gray-600
-                hover:text-red-400
-                transition-colors">
-              <Trash2 size={11} />
-              Clear
+              onClick={() => {
+                if (isKiosk) {
+                  router.push('/pos');
+                } else {
+                  router.push('/pos?kiosk=true');
+                }
+              }}
+              title={isKiosk ? "Exit Kiosk (Show Navigation & Sidebar)" : "Enter Kiosk Mode (Full Screen Counter)"}
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-mono rounded border transition-colors ${
+                isKiosk 
+                  ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 hover:bg-cyan-500/30' 
+                  : 'bg-white/5 text-gray-400 border-white/10 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              {isKiosk ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+              <span>{isKiosk ? "Exit Kiosk" : "Kiosk Mode"}</span>
             </button>
-          )}
+            {cart.items.length > 0 && (
+              <button
+                onClick={() =>
+                  setCart(createEmptyCart())}
+                className="flex items-center
+                  gap-1 text-[10px] text-gray-600
+                  hover:text-red-400
+                  transition-colors ml-1">
+                <Trash2 size={11} />
+                Clear
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Cart items */}

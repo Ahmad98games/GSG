@@ -19,7 +19,7 @@ export function PageTransition({
   }, [pathname])
 
   return (
-    <div ref={containerRef} style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+    <div ref={containerRef} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, height: '100%' }}>
       {children}
     </div>
   )
