@@ -653,7 +653,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 <div class="brand-title">NOXIS HUB</div>
 <div class="brand-sub">
   <span>Industrial Intelligence</span>
-  <span class="brand-badge">v${electron_1.app.getVersion() || '14.0.10'}</span>
+  <span class="brand-badge">v${electron_1.app.getVersion() || '14.0.11'}</span>
 </div>
 
 <div class="progress-track">
@@ -1449,7 +1449,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             releaseName: latestUpdateInfo?.releaseName,
             releaseNotes: latestUpdateInfo?.releaseNotes,
             releaseDate: latestUpdateInfo?.releaseDate,
-            currentVersion: electron_1.app.isPackaged ? electron_1.app.getVersion() : '14.0.10',
+            currentVersion: electron_1.app.isPackaged ? electron_1.app.getVersion() : '14.0.11',
             baselineVersion: policy.baselineVersion,
             tier: policy.tier,
             maxAllowedMajor: policy.maxAllowedMajor,

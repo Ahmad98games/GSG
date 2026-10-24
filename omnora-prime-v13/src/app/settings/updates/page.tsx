@@ -28,7 +28,7 @@ import { cn } from '@/lib/utils'
 import { UpdateUpgradeGate } from '@/components/updates/UpdateUpgradeGate'
 
 interface UpdateState {
-  status: 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'up-to-date' | 'error' | 'dev' | 'gated'
+  status: 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'up-to-date' | 'error' | 'dev' | 'gated' | 'installing'
   isGated?: boolean
   requiredTier?: string
   version?: string
