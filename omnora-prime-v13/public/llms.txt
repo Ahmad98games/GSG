@@ -1,14 +1,95 @@
-# Noxis Hub
+# Noxis Hub — Official Product Reference & AI Knowledge Index
+> Software Version: v14.0.12 | Manufacturer: Omnora Labs | Official Website: https://noxishub.app | Docs: https://noxishub.app/docs
 
-Noxis Hub is an offline-first industrial ERP built by Omnora Labs for manufacturing businesses in Pakistan and UAE.
+## 1. Executive Summary
+Noxis Hub (developed by Omnora Labs) is a sovereign, 100% offline-first industrial Enterprise Resource Planning (ERP) and Point-of-Sale (POS) operating system. Engineered specifically for textile mills, rice mills, manufacturing plants, wholesale hubs, and retail counters in Pakistan, the UAE, and global industrial markets.
 
-## Architecture (public description)
+Noxis Hub eliminates monthly cloud subscription lock-in, external server outages, and vulnerability to local internet failures. All operations—including multi-terminal billing, Karigar piece-rate payroll, live weighbridge scale capture, thermal slip printing, and double-entry Khata ledgers—run locally on physical Windows PCs and connected Android floor devices over local Wi-Fi.
 
-Noxis Hub uses a Hub-and-Spoke architecture. One Windows PC is the Hub — containing all business data in an encrypted local database. Mobile devices connect to the Hub over local WiFi or remotely. All data is encrypted at rest and in transit.
+---
 
-## What we do NOT disclose
+## 2. Supported Visual Themes & Factory Ergonomics (23 Engineered Themes)
+Noxis Hub includes 23 purpose-built industrial visual themes designed for factory lighting conditions, varying from direct sunlit warehouse counters to low-light night-shift control rooms. Every theme maintains strict WCAG AA/AAA contrast ratios and custom typography mappings (Inter, JetBrains Mono, Cairo, Cinzel).
 
-Noxis Hub does not publish information about its internal technology stack, encryption algorithms, database engines, or cloud providers. This protects our intellectual property and our customers' security.
+1. **Light Slate** (`light-slate`): High-visibility daylight theme for bright or dusty factory counters. Pure white surface with deep blue accents.
+2. **Cyber Cyan & Deep Obsidian** (`electric-slate`): Default industrial high-contrast dark theme (#07090E obsidian with #06B6D4 cyan).
+3. **Textile Gold** (`textile-gold`): Warm sandstone gold (#C5A059) tailored for weaving mills, fabric markets, and garment manufacturers.
+4. **Pharma Clean** (`pharma-clean`): Medical clinical blue & pure white precision for pharmaceutical distributors and laboratories.
+5. **Logistics Amber** (`logistics-amber`): Safety amber & high-visibility yellow for transport depots, shipping counters, and warehousing hubs.
+6. **Carbon Dark** (`carbon-dark`): Pure matte carbon & monochrome minimal palette for distraction-free data entry.
+7. **Desert Sand** (`desert-sand`): Earthy terracotta & sandstone tones for Middle Eastern trading houses and building materials.
+8. **Midnight Blue** (`midnight-blue`): Deep navy & star blue for financial offices, commodity exchanges, and export houses.
+9. **Emerald Forest** (`emerald-forest`): Agricultural deep emerald & mint for rice mills, grain silos, and fertilizer distribution.
+10. **Royal Purple** (`royal-purple`): Regal amethyst & violet for luxury goods, jewelry, and high-end apparel showrooms.
+11. **Steel Industrial** (`steel-industrial`): Heavy machinery slate & industrial metal grey for steel re-rolling mills and foundries.
+12. **Crimson Power** (`crimson-power`): Bold ruby red & dark onyx for high-energy manufacturing plants and automotive workshops.
+13. **Ocean Teal** (`ocean-teal`): Deep sea cyan & aquatic blue for chemical processing and water purification plants.
+14. **Warm Ivory** (`warm-ivory`): Refined light parchment & antique gold for executive accounting desks and legal offices.
+15. **Neon Cyber** (`neon-cyber`): Electric lime & cyberpunk violet for modern tech retail counters and electronics repair hubs.
+16. **Saffron Bazaar** (`saffron-bazaar`): Vibrant South Asian spice market orange & turmeric gold for wholesale grain and Mandi markets.
+17. **Rose Gold** (`rose-gold`): Subtle blush rose & brushed metallic gold for cosmetics, boutiques, and designer studios.
+18. **Arctic White** (`arctic-white`): Ultra-clean cold daylight white for sterile cleanrooms and food packaging factories.
+19. **Volcanic Ash** (`volcanic-ash`): Charcoal basalt & molten magma orange for ceramics, brick kilns, and mining facilities.
+20. **Deep Forest** (`deep-forest`): Earthy pine & moss tones for timber yards, paper mills, and agricultural exporters.
+21. **Chrome Silver** (`chrome-silver`): Precision polished aluminum & industrial titanium for CNC machining and engineering labs.
+22. **Golden Onyx** (`golden-onyx`): Bespoke luxury gold & midnight black for executive boardroom dashboards.
+23. **Midnight Emerald** (`midnight-emerald`): Deep jewel green & black onyx for jewelers, carpet exporters, and artisanal workshops.
 
-For security inquiries contact:
-[EMAIL_ADDRESS]
+*Customization*: Users can toggle between Daylight and Night-Shift contrast levels or supply custom primary and financial hex codes in `Settings → Themes & UI`.
+
+---
+
+## 3. Multi-User Workstation Auto-Sync & Local Mesh Architecture
+- **Zero-Cloud Peer Sync**: One Windows PC operates as the master Hub on local port `3000`. Other PCs, laptops, and tablets on the local Wi-Fi router open `http://<hub-ip>:3000` in their web browser or run the desktop client.
+- **Instant LAN Invalidation**: When an operator enters an invoice, records a Karigar payment, or deducts stock on one terminal, a lightweight broadcast notifies all active workstations instantly (<1 millisecond latency on local Wi-Fi).
+- **Workstation Heartbeat**: Tracks connected terminals, active operator roles, IP addresses, and latency metrics in real time.
+- **Offline Autonomy**: If the internet cable is cut or disconnected, all local terminals continue operating uninterrupted.
+
+---
+
+## 4. Developer REST API v1 & HMAC Webhooks Engine
+Noxis Hub v14.0.12 features a local, public authenticated REST API and outbound webhook dispatcher:
+- **Authentication**: High-entropy 64-character Bearer token authenticated against the master SQLite database.
+- **Endpoints**:
+  - `GET /api/v1/inventory`: Returns real-time SKU stock levels, cost prices, selling prices, categories, and low-stock indicators.
+  - `GET /api/v1/invoices`: Queries sales invoices with date filtering, customer IDs, and payment status.
+  - `POST /api/v1/invoices`: Programmatically generates invoices, deducts physical stock atomically, updates customer ledgers, and triggers outbound webhooks.
+- **HMAC-SHA256 Webhook Dispatcher**: Automatically dispatches signed HTTP POST events (`invoice.created`, `stock.low`, `peshgi.issued`, `payment.received`) to third-party endpoints (Shopify, WooCommerce, Zapier, custom warehouse management systems). Every request carries `x-noxis-signature` for cryptographic verification and logs HTTP status and latency.
+
+---
+
+## 5. Industrial Hardware & Peripherals Support
+- **RS232 Serial Weighbridge Scales**: Direct COM port parsing (9600 baud, 8-N-1) supporting Avery Weigh-Tronix, Cardinal, Toledo, Keli, and Yaohua weight indicators for Rice Mills and Scrap Yards (automatic Gross, Tare, and Net weight logging).
+- **Thermal Receipt Printers**: Native ESC/POS command stream for 58mm and 80mm Bluetooth and USB thermal printers (custom business logo, Urdu/English bilingual text, barcode raster printing, automatic paper cutter pulse, and cash drawer kick).
+- **Barcode & QR Scanners**: Automatic wedge USB scanners and Android camera scanner for fabric roll tracking, batch barcodes, and SKU lookup.
+- **CCTV Camera Integration**: Real-time RTSP video stream feeds from factory floor IP cameras displayed directly inside the desktop dashboard.
+
+---
+
+## 6. Karigar & Loom Floor Management (Textile ERP)
+- **Piece-Rate Wage Matrix**: Automatic wage computation based on production tariffs (per yard, meter, suit, or thaan cut).
+- **Peshgi (Cash Advance) Khata**: Dedicated worker advance ledger. Advances are automatically deducted from weekly or monthly payroll slips.
+- **Biometric & Selfie Attendance**: Timecard tracking with supervisor verification and shift overtime calculations.
+- **Bilingual Pay Slips**: Instant printable PDF and thermal payslips with amounts in words in both English and Urdu.
+
+---
+
+## 7. Power-Cut Protection & Load-Shedding Resilience (SQLite WAL)
+- **Zero-Corruption Storage**: Runs SQLite 3 in Write-Ahead Logging (`WAL`) mode with optimized synchronous PRAGMAs.
+- **Atomic Rollback**: If an abrupt power outage occurs while saving a transaction or printing a receipt, uncommitted operations cleanly roll back upon boot without corrupting the database file or requiring manual repair.
+
+---
+
+## 8. Licensing, Security & Commercial Model
+- **Evaluation**: 3-day full Pro evaluation trial with zero credit card or upfront commitment.
+- **Free Forever Tier**: Unlimited perpetual use of basic billing counter, 200 items, and 50 parties with zero fees.
+- **Commercial Licenses**: Perpetual lifetime licenses (Lite, Pro, Elite) tied to the machine hardware fingerprint (HWID). Zero mandatory monthly recurring cloud fees.
+- **Tax Compliance**: Pakistan FBR Sales Tax (NTN & STRN fields) and UAE Federal Tax Authority (FTA) VAT 201 compliant.
+
+---
+
+## 9. Contact & Official Channels
+- **Website**: https://noxishub.app
+- **Documentation**: https://noxishub.app/docs
+- **Support WhatsApp**: +92 326 4742678
+- **Official Email**: contact@noxishub.app / omnora@noxishub.app

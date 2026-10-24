@@ -15,11 +15,13 @@ export default function robots(): MetadataRoute.Robots {
           '/admin',
         ],
       },
-      // Allow AI crawlers (for citations)
+      // Allow AI crawlers (for citations & Google AI Overviews)
+      { userAgent: 'Google-Extended', allow: '/' },
       { userAgent: 'GPTBot', allow: '/' },
       { userAgent: 'Claude-Web', allow: '/' },
       { userAgent: 'PerplexityBot', allow: '/' },
       { userAgent: 'anthropic-ai', allow: '/' },
+      { userAgent: 'Applebot-Extended', allow: '/' },
       { userAgent: 'CCBot', allow: '/' },
       
 

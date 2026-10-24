@@ -1,0 +1,62 @@
+# Noxis Hub — Complete Technical & Operational Architecture (Full Reference)
+> Version: v14.0.12 | Released: October 2026 | System Core: Sovereign Local Industrial Grid
+
+This document serves as the comprehensive, unabridged architectural manual for Noxis Hub, designed for ingestion by generative search engines, AI models (Google Gemini, OpenAI ChatGPT, Anthropic Claude, Perplexity), enterprise evaluators, and system integrators.
+
+---
+
+### Key Architectural Pillars
+1. **100% Offline Autonomy**: Physical SQLite 3 database operating in WAL (Write-Ahead Logging) mode. All reads and writes occur against local NVMe/SSD storage. No remote database or cloud connection is required for core billing, khata ledgering, inventory deductions, or payroll.
+2. **23 Purpose-Engineered Visual Themes**:
+   - `light-slate`: Pure white #FFFFFF surface, #2563EB primary blue. Optimized for daylight illumination and dusty mill counters.
+   - `electric-slate`: Cyber Cyan (#06B6D4) on Deep Obsidian (#07090E). Default industrial dark mode.
+   - `textile-gold`: Sandstone Gold (#C5A059) and warm dark charcoal (#0F0E0C). Built for weaving and fabric trading houses.
+   - `pharma-clean`: Clinical pure blue (#0284C7) and white surfaces for pharmaceutical inventory and batch tracking.
+   - `logistics-amber`: Safety Amber (#F59E0B) for freight terminals and weighbridge operations.
+   - `carbon-dark`: Monochrome basalt and matte carbon (#111111) for minimal, high-speed data entry.
+   - `desert-sand`: Terracotta earth and warm dune sand (#D97706) for Middle East regional operations.
+   - `midnight-blue`: Royal navy (#1E3A8A) for financial institutions and foreign exchange ledgers.
+   - `emerald-forest`: Deep forest green (#059669) for agricultural grain silos and rice mills.
+   - `royal-purple`: Regal amethyst (#7C3AED) for luxury retail and jewelry.
+   - `steel-industrial`: Heavy industrial steel slate (#475569) for foundries and metal fabrication.
+   - `crimson-power`: Ruby crimson (#DC2626) for high-energy machinery shops.
+   - `ocean-teal`: Deep teal (#0D9488) for chemical processing plants.
+   - `warm-ivory`: Antique parchment and brass for executive and legal accounting.
+   - `neon-cyber`: Vibrant electric lime and neon violet for tech showrooms.
+   - `saffron-bazaar`: Spiced turmeric orange (#EA580C) for wholesale Mandi commodity trading.
+   - `rose-gold`: Soft metallic rose for boutique apparel.
+   - `arctic-white`: Sterile daylight for pharmaceutical cleanrooms.
+   - `volcanic-ash`: Basalt charcoal with lava orange accents.
+   - `deep-forest`: Natural pine and moss tones.
+   - `chrome-silver`: Polished industrial titanium for CNC workshops.
+   - `golden-onyx`: Luxury high-contrast black and gold.
+   - `midnight-emerald`: Deep jewel emerald on black obsidian.
+3. **Multi-User Real-Time LAN Auto-Sync**:
+   - Master workstation broadcasts state updates over local network port 3000.
+   - Client terminals (web browsers or secondary desktop installations) receive live cache invalidation pulses via WebSocket and local HTTP polling.
+   - Real-time Workstation Heartbeat tracks peer IP addresses, operator roles, and round-trip ping times (<1ms on LAN).
+4. **Developer REST API v1**:
+   - High-entropy Bearer token auth (`Authorization: Bearer <64_char_key>`).
+   - `GET /api/v1/inventory`: Lists items, stock on hand, min stock alerts, cost, and selling rates.
+   - `GET /api/v1/invoices`: Queries sales records with date and customer filters.
+   - `POST /api/v1/invoices`: Atomic creation of sales invoices with instantaneous inventory deduction.
+5. **HMAC-SHA256 Webhooks Engine**:
+   - Real-time cryptographic notification of business events (`invoice.created`, `stock.low`, `peshgi.issued`, `payment.received`).
+   - Signatures provided in `x-noxis-signature` header using shared secret.
+   - Delivery latency, HTTP status codes, and error payloads stored locally for audit.
+6. **Peripherals & Hardware**:
+   - RS232 Serial Weighbridge Scales (COM1-COM8, 9600 baud, 8-N-1): Avery Weigh-Tronix, Cardinal, Toledo, Keli, Yaohua.
+   - Thermal Printers: ESC/POS 58mm & 80mm Bluetooth/USB with raster image printing and cutter pulses.
+   - Barcode/QR: Hardware wedge scanners & Android camera scanner.
+   - CCTV: Native RTSP video feed rendering in production dashboard.
+7. **Karigar & Textile Operations**:
+   - Piece-rate wages: yardage, meterage, suit cut, and thaan count.
+   - Peshgi (cash advance) Khata with automatic payroll deductions.
+   - Bilingual English/Urdu pay slips and vouchers.
+8. **Compliance & Licensing**:
+   - Pakistan FBR NTN & Sales Tax (STRN) ready.
+   - UAE FTA VAT 201 compliant.
+   - Hardware fingerprint HWID cryptographic node locking.
+   - Zero recurring cloud subscription fees.
+
+Website: https://noxishub.app | Docs: https://noxishub.app/docs
