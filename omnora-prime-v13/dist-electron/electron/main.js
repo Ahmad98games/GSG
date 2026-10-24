@@ -75,6 +75,22 @@ try {
 catch { }
 let mainWindow = null;
 let splashWindow = null;
+function safeSend(win, channel, ...args) {
+    if (!win)
+        return false;
+    try {
+        if (win.isDestroyed())
+            return false;
+        const wc = win.webContents;
+        if (!wc || wc.isDestroyed())
+            return false;
+        wc.send(channel, ...args);
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
 let nextServer = null;
 let visionProcess = null;
 let tunnelProcess = null;
@@ -232,7 +248,7 @@ function startCloudflaredTunnel() {
             tunnelUrl = urlMatch[0];
             startupLog(`[Tunnel] URL: ${tunnelUrl}`);
             process.env.CLOUDFLARE_TUNNEL_URL = tunnelUrl.replace('https://', '');
-            mainWindow?.webContents.send('tunnel-ready', { url: tunnelUrl });
+            safeSend(mainWindow, 'tunnel-ready', { url: tunnelUrl });
         }
     });
     tunnelProcess.stderr?.on('data', (data) => {
@@ -243,7 +259,7 @@ function startCloudflaredTunnel() {
             tunnelUrl = urlMatch[0];
             startupLog(`[Tunnel] URL: ${tunnelUrl}`);
             process.env.CLOUDFLARE_TUNNEL_URL = tunnelUrl.replace('https://', '');
-            mainWindow?.webContents.send('tunnel-ready', { url: tunnelUrl });
+            safeSend(mainWindow, 'tunnel-ready', { url: tunnelUrl });
         }
     });
     tunnelProcess.on('exit', (code) => {
@@ -269,7 +285,7 @@ function startQuickTunnel() {
             tunnelUrl = urlMatch[0];
             startupLog(`[QuickTunnel] URL: ${tunnelUrl}`);
             process.env.CLOUDFLARE_TUNNEL_URL = tunnelUrl.replace('https://', '');
-            mainWindow?.webContents.send('tunnel-ready', { url: tunnelUrl });
+            safeSend(mainWindow, 'tunnel-ready', { url: tunnelUrl });
         }
     });
     tunnelProcess.stderr?.on('data', (data) => {
@@ -636,7 +652,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 <div class="brand-title">NOXIS HUB</div>
 <div class="brand-sub">
   <span>Industrial Intelligence</span>
-  <span class="brand-badge">v${electron_1.app.getVersion() || '14.0.8'}</span>
+  <span class="brand-badge">v${electron_1.app.getVersion() || '14.0.10'}</span>
 </div>
 
 <div class="progress-track">
@@ -917,7 +933,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         // ── AUTO-UPDATER EVENT HANDLERS ──
         electron_updater_1.autoUpdater.on('checking-for-update', () => {
             startupLog('[Update] Checking for update...');
-            win.webContents.send('update-status', {
+            safeSend(win, 'update-status', {
                 status: 'checking',
                 message: 'Checking for updates...',
             });
@@ -944,13 +960,13 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                     tier: policy.tier,
                     hwid: policy.hwid,
                 };
-                win.webContents.send('update-status', gatedPayload);
-                win.webContents.send('update-gated', gatedPayload);
+                safeSend(win, 'update-status', gatedPayload);
+                safeSend(win, 'update-gated', gatedPayload);
                 return;
             }
             updateAvailable = true;
             latestUpdateInfo = info;
-            win.webContents.send('update-status', {
+            safeSend(win, 'update-status', {
                 status: 'available',
                 isGated: false,
                 version: info.version,
@@ -972,7 +988,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         });
         electron_updater_1.autoUpdater.on('update-not-available', () => {
             startupLog('[Update] Up to date');
-            win.webContents.send('update-status', {
+            safeSend(win, 'update-status', {
                 status: 'up-to-date',
                 message: 'You are on the latest version.',
             });
@@ -984,7 +1000,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             const pct = Math.min(100, Math.max(0, Math.round(progress.percent ?? (total > 0 ? (transferred / total) * 100 : 0))));
             downloadProgress = pct;
             startupLog(`[Update] Download: ${pct}% (${(transferred / 1048576).toFixed(1)}MB / ${(total / 1048576).toFixed(1)}MB)`);
-            win.webContents.send('update-status', {
+            safeSend(win, 'update-status', {
                 status: 'downloading',
                 version: latestUpdateInfo?.version || '14.0.0',
                 percent: pct,
@@ -997,7 +1013,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             startupLog(`[Update] Downloaded: v${info.version}`);
             updateDownloaded = true;
             downloadProgress = 100;
-            win.webContents.send('update-status', {
+            safeSend(win, 'update-status', {
                 status: 'ready',
                 version: info.version,
                 releaseName: info.releaseName || `Version ${info.version}`,
@@ -1021,7 +1037,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 err.message.includes('404') ||
                 err.message.includes('Unauthorized') ||
                 err.message.includes('net::');
-            win.webContents.send('update-status', {
+            safeSend(win, 'update-status', {
                 status: isMissingServerOrAuth ? 'up-to-date' : 'error',
                 message: isMissingServerOrAuth
                     ? 'Running latest version.'
@@ -1029,16 +1045,16 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             });
         });
         // Re-broadcast status whenever window finishes loading
-        win.webContents.on('did-finish-load', () => {
+        win.webContents?.on('did-finish-load', () => {
             if (updateDownloaded && latestUpdateInfo) {
-                win.webContents.send('update-status', {
+                safeSend(win, 'update-status', {
                     status: 'ready',
                     version: latestUpdateInfo.version,
                     releaseName: latestUpdateInfo.releaseName || `Version ${latestUpdateInfo.version}`,
                 });
             }
             else if (updateAvailable && latestUpdateInfo) {
-                win.webContents.send('update-status', {
+                safeSend(win, 'update-status', {
                     status: downloadProgress > 0 ? 'downloading' : 'available',
                     version: latestUpdateInfo.version,
                     percent: downloadProgress,
@@ -1091,12 +1107,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         if (warningTimer)
             clearTimeout(warningTimer);
         warningTimer = setTimeout(() => {
-            if (mainWindow && !mainWindow.isDestroyed())
-                mainWindow.webContents.send('session-expiring-warning');
+            safeSend(mainWindow, 'session-expiring-warning');
         }, SESSION_TIMEOUT_MS - WARNING_LEAD_MS);
         sessionTimeoutTimer = setTimeout(() => {
-            if (mainWindow && !mainWindow.isDestroyed())
-                mainWindow.webContents.send('session-timeout-logout');
+            safeSend(mainWindow, 'session-timeout-logout');
         }, SESSION_TIMEOUT_MS);
     }
     electron_1.ipcMain.on('user-activity', () => resetInactivityTimer());
@@ -1122,9 +1136,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                     `usage ${heapMB}MB — possible leak`);
             }
             // Pass memory stats to renderer for the performance monitor
-            if (mainWindow && !mainWindow.isDestroyed()) {
-                mainWindow.webContents.send('memory-stats', { heapMB, rssMB });
-            }
+            safeSend(mainWindow, 'memory-stats', { heapMB, rssMB });
         }, 30000);
     }
     // ─────────────────────────────────────────────
@@ -1406,7 +1418,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             releaseName: latestUpdateInfo?.releaseName,
             releaseNotes: latestUpdateInfo?.releaseNotes,
             releaseDate: latestUpdateInfo?.releaseDate,
-            currentVersion: electron_1.app.isPackaged ? electron_1.app.getVersion() : '14.0.8',
+            currentVersion: electron_1.app.isPackaged ? electron_1.app.getVersion() : '14.0.10',
             baselineVersion: policy.baselineVersion,
             tier: policy.tier,
             maxAllowedMajor: policy.maxAllowedMajor,
@@ -2302,8 +2314,13 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             mainWindow.show();
             mainWindow.focus();
         });
-        mainWindow.on('maximize', () => mainWindow?.webContents.send('maximize-changed', true));
-        mainWindow.on('unmaximize', () => mainWindow?.webContents.send('maximize-changed', false));
+        mainWindow.on('maximize', () => safeSend(mainWindow, 'maximize-changed', true));
+        mainWindow.on('unmaximize', () => safeSend(mainWindow, 'maximize-changed', false));
+        mainWindow.on('close', () => {
+            // Mark null early so timers don't attempt to send to destroyed window
+            const win = mainWindow;
+            mainWindow = null;
+        });
         mainWindow.on('closed', () => { mainWindow = null; });
         const serverUrl = `http://127.0.0.1:${PORT}`;
         const lockOn = (0, store_1.isAppLockEnabled)() || (0, store_1.isLocked)();
@@ -2390,6 +2407,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 (0, trialEngine_1.checkpointMonotonicElapsed)();
             }, 30000);
             process.on('uncaughtException', (error) => {
+                if (error && error.message && error.message.includes('Object has been destroyed')) {
+                    startupLog(`[Suppressed non-fatal destroyed window exception] ${error.message}`);
+                    return;
+                }
                 startupLog(`[CRITICAL] ${error.message}`);
                 if (error.stack)
                     startupLog(error.stack);
@@ -2646,11 +2667,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             nextServer.on('message', (msg) => {
                 try {
                     if (msg && msg.type === 'bridge-event') {
-                        if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
-                            mainWindow.webContents.send('bridge-event', { event: msg.event, data: msg.data });
-                            if (msg.event === 'messaging:new-message') {
-                                mainWindow.webContents.send('messaging:new-message', msg.data);
-                            }
+                        safeSend(mainWindow, 'bridge-event', { event: msg.event, data: msg.data });
+                        if (msg.event === 'messaging:new-message') {
+                            safeSend(mainWindow, 'messaging:new-message', msg.data);
                         }
                         if (msg.event === 'DEVICE_COUNT_CHANGED') {
                             lastBridgeStatus = {
@@ -2705,14 +2724,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 const storedVersion = (0, store_1.getLastSeenVersion)();
                 const currentVersion = electron_1.app.getVersion();
                 if (storedVersion !== currentVersion) {
-                    mainWindow.webContents.on('did-finish-load', () => {
-                        if (mainWindow && !mainWindow.isDestroyed()) {
-                            mainWindow.webContents.send('app:new-version', {
-                                previous: storedVersion,
-                                current: currentVersion,
-                            });
-                            (0, store_1.setLastSeenVersion)(currentVersion);
-                        }
+                    mainWindow.webContents?.on('did-finish-load', () => {
+                        safeSend(mainWindow, 'app:new-version', {
+                            previous: storedVersion,
+                            current: currentVersion,
+                        });
+                        (0, store_1.setLastSeenVersion)(currentVersion);
                     });
                 }
                 setTimeout(() => {
@@ -2751,14 +2768,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 // ── STEP 7: Send power-cut recovery signal to renderer ──
                 if (wasPowerCut) {
                     setTimeout(() => {
-                        if (mainWindow && !mainWindow.isDestroyed()) {
-                            const lastRoute = (0, store_1.getLastRoute)();
-                            mainWindow.webContents.send('ipc:power-cut-detected', {
-                                lastRoute,
-                                message: 'Noxis detected an ungraceful shutdown. Your unsaved work may be recoverable.',
-                            });
-                            startupLog(`[PowerCut] Recovery signal sent to renderer. Last route: ${lastRoute}`);
-                        }
+                        const lastRoute = (0, store_1.getLastRoute)();
+                        safeSend(mainWindow, 'ipc:power-cut-detected', {
+                            lastRoute,
+                            message: 'Noxis detected an ungraceful shutdown. Your unsaved work may be recoverable.',
+                        });
+                        startupLog(`[PowerCut] Recovery signal sent to renderer. Last route: ${lastRoute}`);
                     }, 2000); // give renderer time to fully mount
                 }
             }

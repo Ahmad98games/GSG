@@ -43,6 +43,7 @@ import BusinessModeSelector from '@/components/onboarding/BusinessModeSelector';
 import { useBusinessModeStore } from '@/stores/businessModeStore';
 import { PublicNavProvider } from '@/components/shell/PublicNavbar';
 import { NoxisSessionRecoveryModal } from '@/components/shell/NoxisSessionRecoveryModal';
+import { useWorkstationHeartbeat } from '@/hooks/useWorkstationHeartbeat';
 
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -77,6 +78,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [hasExistingBusiness, isBusinessModeConfigured, isCustomBusiness, profile?.business_name, profile?.phone, setMode]);
 
   useGlobalKeyboardShortcuts();
+  useWorkstationHeartbeat();
 
   const [showIntro, setShowIntro] = React.useState(false);
   const [introChecked, setIntroChecked] = React.useState(false);

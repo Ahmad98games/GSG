@@ -152,7 +152,24 @@ export default function POSPage() {
       setLocalInventory(cachedList)
     }
 
-    // Parallel fetch from Supabase to refresh inventory cache
+    // 1. Fetch from Master Local SQLite endpoint (/api/skus) for 0ms offline inventory
+    try {
+      const res = await fetch('/api/skus?limit=250');
+      if (res.ok) {
+        const localSkus = await res.json();
+        if (Array.isArray(localSkus) && localSkus.length > 0) {
+          setLocalInventory(localSkus);
+          if (typeof window !== 'undefined' && bizId) {
+            localStorage.setItem(`noxis_cached_skus_${bizId}`, JSON.stringify(localSkus));
+          }
+          return;
+        }
+      }
+    } catch (e) {
+      // continue to remote fallback
+    }
+
+    // 2. Parallel fetch from Supabase if online
     if (bizId) {
       try {
         const { data, error } = await supabase

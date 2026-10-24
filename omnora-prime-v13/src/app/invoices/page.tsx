@@ -74,7 +74,26 @@ export default function InvoiceListPage() {
         return res;
       };
 
-      // If offline, immediately return local cached invoices without network errors
+      // 1. First attempt: Query master local SQLite endpoint (/api/invoices) for 0ms offline invoices
+      try {
+        const localRes = await fetch(`/api/invoices?search=${encodeURIComponent(debouncedSearch)}&status=${encodeURIComponent(statusFilter)}&limit=150`);
+        if (localRes.ok) {
+          const localList = await localRes.json();
+          if (Array.isArray(localList) && localList.length > 0) {
+            setLastFetchedAt(new Date());
+            if (typeof window !== 'undefined' && !debouncedSearch && statusFilter === 'all') {
+              try {
+                localStorage.setItem(`noxis_cached_invoices_${businessId}`, JSON.stringify(localList));
+              } catch {}
+            }
+            return localList;
+          }
+        }
+      } catch (localErr) {
+        // Fall back to localInvoices or Supabase
+      }
+
+      // If offline and local API didn't return items, immediately return local cached invoices
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
         return applyFilters(localInvoices);
       }

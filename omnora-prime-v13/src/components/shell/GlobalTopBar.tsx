@@ -242,32 +242,61 @@ export default React.memo(function GlobalTopBar() {
   const [bridgeDeviceCount, setBridgeDeviceCount] = useState<number | null>(null);
 
   const refreshDeviceCount = async () => {
+    // 1. Check Electron IPC bridge status
     if ((window as any).electronAPI && typeof (window as any).electronAPI.getBridgeStatus === 'function') {
       try {
         const status = await (window as any).electronAPI.getBridgeStatus();
         if (status && typeof status.paired === 'number') {
           setBridgeDeviceCount(status.paired);
+          return;
         }
       } catch (err) {
-        console.error('Failed to get bridge status:', err);
+        // Fallback to REST API
       }
     }
+
+    // 2. Query /api/hub/devices REST API (works in both Electron and LAN browsers)
+    try {
+      const res = await fetch('/api/hub/devices');
+      if (res.ok) {
+        const data = await res.json();
+        const devices = Array.isArray(data) ? data : (data?.devices || []);
+        const activeNodes = devices.filter((d: any) => d.isActive === 1 || d.isLive);
+        setBridgeDeviceCount(activeNodes.length);
+      }
+    } catch {}
   };
 
   useEffect(() => {
     refreshDeviceCount();
-    if (!(window as any).electronAPI || typeof (window as any).electronAPI.on !== 'function') return;
 
-    const handleBridgeEvent = (_: any, payload: { event: string; data: any }) => {
-      if (payload.event === 'ATTENDANCE_LOGGED' || payload.event === 'PRODUCTION_LOGGED') {
-        queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      }
-      refreshDeviceCount();
-    };
+    // Fast 6s poll for live device count sync
+    const pollInterval = setInterval(refreshDeviceCount, 6000);
 
-    (window as any).electronAPI.on('bridge-event', handleBridgeEvent);
+    const handleCustomRefresh = () => refreshDeviceCount();
+    window.addEventListener('noxis:device_count_changed', handleCustomRefresh);
+
+    if ((window as any).electronAPI && typeof (window as any).electronAPI.on === 'function') {
+      const handleBridgeEvent = (_: any, payload: { event: string; data: any }) => {
+        if (payload?.event === 'ATTENDANCE_LOGGED' || payload?.event === 'PRODUCTION_LOGGED') {
+          queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+        }
+        refreshDeviceCount();
+      };
+
+      (window as any).electronAPI.on('bridge-event', handleBridgeEvent);
+      return () => {
+        clearInterval(pollInterval);
+        window.removeEventListener('noxis:device_count_changed', handleCustomRefresh);
+        try {
+          (window as any).electronAPI.off('bridge-event', handleBridgeEvent);
+        } catch {}
+      };
+    }
+
     return () => {
-      (window as any).electronAPI.off('bridge-event', handleBridgeEvent);
+      clearInterval(pollInterval);
+      window.removeEventListener('noxis:device_count_changed', handleCustomRefresh);
     };
   }, [queryClient]);
 

@@ -6,10 +6,102 @@ import { randomUUID } from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
+function getSqliteInstance() {
+  try {
+    return (db as any).$client || null;
+  } catch {
+    return null;
+  }
+}
+
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder'
 );
+
+/**
+ * GET /api/invoices
+ * Serves invoices and items directly from master local SQLite,
+ * allowing secondary browsers and LAN workstations to view all bills offline.
+ */
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const search = (searchParams.get('search') || '').trim();
+    const status = (searchParams.get('status') || 'all').trim();
+    const limit = Math.min(200, parseInt(searchParams.get('limit') || '100', 10));
+
+    const sqlite = getSqliteInstance();
+    if (!sqlite) {
+      return NextResponse.json([], { status: 200 });
+    }
+
+    const tableExists = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='invoices'").get();
+    if (!tableExists) {
+      return NextResponse.json([], { status: 200 });
+    }
+
+    let query = `
+      SELECT 
+        i.id,
+        i.business_id,
+        COALESCE(i.invoice_number, '') AS invoice_no,
+        COALESCE(i.invoice_number, '') AS invoice_number,
+        COALESCE(i.invoice_type, 'invoice') AS invoice_type,
+        i.party_id,
+        COALESCE(i.party_name, p.name, 'Walk-in Customer') AS party_name,
+        COALESCE(i.party_phone, p.phone, '') AS party_phone,
+        COALESCE(i.invoice_date, datetime('now')) AS invoice_date,
+        i.due_date,
+        COALESCE(i.status, 'posted') AS status,
+        COALESCE(i.subtotal, 0) AS subtotal,
+        COALESCE(i.discount_amount, 0) AS discount_amount,
+        COALESCE(i.tax_amount, 0) AS tax_amount,
+        COALESCE(i.total_amount, 0) AS total_amount,
+        COALESCE(i.amount_paid, 0) AS amount_paid,
+        COALESCE(i.balance_due, 0) AS balance_due,
+        COALESCE(i.notes, '') AS notes,
+        COALESCE(i.created_at, datetime('now')) AS created_at
+      FROM invoices i
+      LEFT JOIN parties p ON p.id = i.party_id
+      WHERE 1=1
+    `;
+    const params: any[] = [];
+
+    if (status !== 'all') {
+      query += ` AND i.status = ?`;
+      params.push(status);
+    }
+
+    if (search) {
+      query += ` AND (i.invoice_number LIKE ? OR i.party_name LIKE ? OR p.name LIKE ?)`;
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
+
+    query += ` ORDER BY i.created_at DESC LIMIT ?`;
+    params.push(limit);
+
+    const invoices = sqlite.prepare(query).all(...params);
+
+    // Format response to match Supabase schema expected by frontend
+    const formatted = invoices.map((inv: any) => ({
+      ...inv,
+      party: {
+        name: inv.party_name,
+        phone: inv.party_phone,
+      },
+    }));
+
+    return NextResponse.json(formatted, {
+      headers: {
+        'Cache-Control': 'no-store, max-age=0',
+      },
+    });
+  } catch (err: any) {
+    console.error('[API /api/invoices] Error reading local invoices:', err);
+    return NextResponse.json([], { status: 200 });
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,19 +120,26 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Invoice data and business_id are required' }, { status: 400 });
       }
 
-      // 1. Insert Invoice
-      const { data: invData, error: invErr } = await supabase
-        .from('invoices')
-        .insert(invoice)
-        .select('id')
-        .single();
+      let invoiceId = invoice.id || randomUUID();
+      let remoteSynced = false;
 
-      if (invErr) {
-        console.error('[API Invoices] Invoice insert error:', invErr);
-        return NextResponse.json({ error: invErr.message }, { status: 400 });
+      // 1. Try cloud sync if online, but never fail if offline
+      try {
+        const { data: invData, error: invErr } = await supabase
+          .from('invoices')
+          .insert(invoice)
+          .select('id')
+          .single();
+
+        if (!invErr && invData?.id) {
+          invoiceId = invData.id;
+          remoteSynced = true;
+        } else if (invErr) {
+          console.warn('[API Invoices] Cloud sync skipped/failed (offline):', invErr.message);
+        }
+      } catch (cloudErr: any) {
+        console.warn('[API Invoices] Network offline for cloud sync:', cloudErr.message);
       }
-
-      const invoiceId = invData.id;
 
       // 2. Insert Invoice Items (clean payload matching schema)
       if (items.length > 0) {
@@ -53,13 +152,16 @@ export async function POST(req: NextRequest) {
           unit_price: Number(item.unit_price) || 0
         }));
 
-        const { error: itemsErr } = await supabase
-          .from('invoice_items')
-          .insert(cleanItems);
+        try {
+          const { error: itemsErr } = await supabase
+            .from('invoice_items')
+            .insert(cleanItems);
 
-        if (itemsErr) {
-          console.error('[API Invoices] Invoice items insert error:', itemsErr);
-          return NextResponse.json({ error: itemsErr.message }, { status: 400 });
+          if (itemsErr) {
+            console.warn('[API Invoices] Invoice items remote insert warning:', itemsErr.message);
+          }
+        } catch (itemErr: any) {
+          console.warn('[API Invoices] Offline remote items insert skipped:', itemErr.message);
         }
       }
 
@@ -165,6 +267,23 @@ export async function POST(req: NextRequest) {
                 Number(it.unit_price || 0),
                 Number((it.qty || 1) * (it.unit_price || 0))
               );
+            }
+            // Also deduct quantities in local SQLite skus
+            if (sku_deductions.length > 0) {
+              for (const it of sku_deductions) {
+                if (it.sku_id && it.qty) {
+                  try {
+                    sqlite.prepare('UPDATE skus SET qty_on_hand = MAX(0, qty_on_hand - ?) WHERE id = ?').run(Number(it.qty), it.sku_id);
+                  } catch {}
+                }
+              }
+            }
+
+            // Also update local parties balance
+            if (invoice.party_id && party_balance_increment !== 0) {
+              try {
+                sqlite.prepare('UPDATE parties SET current_balance = current_balance + ? WHERE id = ?').run(Number(party_balance_increment), invoice.party_id);
+              } catch {}
             }
           }
         }

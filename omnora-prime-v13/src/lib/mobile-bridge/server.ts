@@ -1691,7 +1691,61 @@ export function broadcastToHubRenderer(event: string, data: any): void {
 // PUBLIC API
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-/** Returns live stats â€” used by /api/hub/info */
+interface LiveWorkstation {
+  nodeId: string;
+  deviceLabel: string;
+  path: string;
+  ip: string;
+  lastHeartbeat: number;
+  connectedAt: string;
+  tier?: string;
+}
+
+const liveWorkstations = new Map<string, LiveWorkstation>();
+
+export function registerWorkstationHeartbeat(params: {
+  nodeId: string;
+  deviceLabel?: string;
+  path?: string;
+  ip?: string;
+  tier?: string;
+}): void {
+  const now = Date.now();
+  const label = params.deviceLabel || (params.path === '/pos' ? 'POS Cashier Kiosk' : 'LAN Workstation Node');
+  const existing = liveWorkstations.get(params.nodeId);
+
+  liveWorkstations.set(params.nodeId, {
+    nodeId: params.nodeId,
+    deviceLabel: label,
+    path: params.path || '/workstation',
+    ip: params.ip || '127.0.0.1',
+    lastHeartbeat: now,
+    connectedAt: existing?.connectedAt || new Date().toISOString(),
+    tier: params.tier || 'elite',
+  });
+
+  // Prune dead workstations (> 25 seconds of silence)
+  let changed = false;
+  for (const [id, ws] of liveWorkstations.entries()) {
+    if (now - ws.lastHeartbeat > 25000) {
+      liveWorkstations.delete(id);
+      changed = true;
+    }
+  }
+
+  if (changed || !existing) {
+    broadcastToHubRenderer('DEVICE_COUNT_CHANGED', getBridgeStatus());
+  }
+}
+
+export function unregisterWorkstation(nodeId: string): void {
+  if (liveWorkstations.has(nodeId)) {
+    liveWorkstations.delete(nodeId);
+    broadcastToHubRenderer('DEVICE_COUNT_CHANGED', getBridgeStatus());
+  }
+}
+
+/** Returns live stats — used by /api/hub/info and device telemetry */
 export function getBridgeStatus(): {
   connected: number;
   paired: number;
@@ -1715,10 +1769,28 @@ export function getBridgeStatus(): {
       });
     }
   });
-  return { connected: clients.size, paired: getPairedCount(), pairedDevices };
+
+  // Include active browser workstations on LAN
+  const now = Date.now();
+  liveWorkstations.forEach((ws, id) => {
+    if (now - ws.lastHeartbeat <= 25000) {
+      pairedDevices.push({
+        deviceId: ws.nodeId,
+        deviceLabel: `${ws.deviceLabel} (${ws.ip})`,
+        connectedAt: ws.connectedAt,
+        lastHeartbeat: new Date(ws.lastHeartbeat).toISOString(),
+        tier: ws.tier || 'elite',
+      });
+    } else {
+      liveWorkstations.delete(id);
+    }
+  });
+
+  const totalPaired = getPairedCount() + liveWorkstations.size;
+  return { connected: clients.size + liveWorkstations.size, paired: totalPaired, pairedDevices };
 }
 
-/** Disconnect a specific device by deviceId â€” called from Hub UI revoke flow */
+/** Disconnect a specific device by deviceId — called from Hub UI revoke flow */
 export function disconnectDevice(deviceId: string): boolean {
   let found = false;
   clients.forEach((client, id) => {
@@ -1728,6 +1800,13 @@ export function disconnectDevice(deviceId: string): boolean {
       found = true;
     }
   });
+  if (liveWorkstations.has(deviceId)) {
+    liveWorkstations.delete(deviceId);
+    found = true;
+  }
+  if (found) {
+    broadcastToHubRenderer('DEVICE_COUNT_CHANGED', getBridgeStatus());
+  }
   return found;
 }
 
