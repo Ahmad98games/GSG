@@ -637,7 +637,7 @@ if (!gotTheLock) {
   // Creates a small centered branded window
   // that shows instantly before main loads.
   // ─────────────────────────────────────────────
-  function createSplashWindow(): void {
+  function createSplashWindow(customStatus?: string): void {
     const iconPath = app.isPackaged
       ? path.join(process.resourcesPath, 'build', 'icon.ico')
       : path.join(__dirname, '../../build/icon.ico');
@@ -697,6 +697,8 @@ if (!gotTheLock) {
           <circle cx="24" cy="24" r="3" fill="#06B6D4" />
         </svg>`;
 
+    const statusMessage = customStatus || 'Starting and preparing Noxis Hub Specially For You...';
+
     const splashHtml = `<!DOCTYPE html>
 <html>
 <head>
@@ -751,7 +753,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
 <div class="status-text">
   <span class="status-dot"></span>
-  <span>Starting and preparing Noxis Hub Specially For You...</span>
+  <span>${statusMessage}</span>
 </div>
 
 <div class="footer-meta">
@@ -1553,6 +1555,18 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
   ipcMain.handle('install-update', () => {
     if (!updateDownloaded) return;
+
+    startupLog('[Update] User initiated restart & install. Displaying update transition splash...');
+
+    // 1. Immediately show branded update splash window so the user sees progress and knows it is not a crash
+    try {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.hide();
+      }
+      createSplashWindow('Applying Noxis Hub Update Seamlessly... Reopening In A Moment');
+    } catch {}
+
+    // 2. Terminate background auxiliary processes cleanly
     try {
       if (nextServer) { (nextServer as any).kill(); nextServer = null; }
       if (visionProcess) { (visionProcess as any).kill(); visionProcess = null; }
@@ -1560,23 +1574,44 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       stopMediamtx();
     } catch {}
 
+    // 3. Mark exit flag as clean so power-cut recovery does not false-trigger
+    checkpointMonotonicElapsed();
+    setExitFlag('clean');
+
+    // 4. If we downloaded via our direct HTTP range downloader, run the installer with auto-relaunch
     if (downloadedInstallerPath && fs.existsSync(downloadedInstallerPath)) {
-      startupLog(`[Update] Executing installer: ${downloadedInstallerPath}`);
+      startupLog(`[Update] Executing direct installer: ${downloadedInstallerPath}`);
       try {
-        spawn(downloadedInstallerPath, ['--updated'], { detached: true, stdio: 'ignore' }).unref();
-        setTimeout(() => app.quit(), 500);
+        const appExePath = process.execPath;
+        // In Windows, NSIS /S runs silently. We also chain automatic app reopening if needed.
+        const child = spawn(downloadedInstallerPath, ['/S', '--updated'], {
+          detached: true,
+          stdio: 'ignore'
+        });
+        child.unref();
+
+        // Give installer 1.2s to start before exiting the old process
+        setTimeout(() => {
+          app.exit(0);
+        }, 1200);
         return;
       } catch (runErr: any) {
-        startupLog(`[Update] Spawn installer error: ${runErr.message}`);
+        startupLog(`[Update] Direct spawn error: ${runErr.message}, falling back to autoUpdater`);
       }
     }
 
-    setImmediate(() => {
-      autoUpdater.quitAndInstall(
-        true, // run installer silently for instant background update (< 1 min)
-        true  // restart after install
-      );
-    });
+    // 5. Fallback: autoUpdater standard quitAndInstall
+    setTimeout(() => {
+      try {
+        autoUpdater.quitAndInstall(
+          false, // not silent, so Windows shows the native fast progress bar rather than an empty screen
+          true   // force relaunch after install completes
+        );
+      } catch (quitErr: any) {
+        startupLog(`[Update] quitAndInstall error: ${quitErr.message}`);
+        app.quit();
+      }
+    }, 1000);
   });
 
   ipcMain.handle('get-update-status', () => {

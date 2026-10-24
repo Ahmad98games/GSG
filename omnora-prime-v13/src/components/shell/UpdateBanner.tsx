@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Download, RefreshCw, Sparkles, X, ArrowRight, CheckCircle2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 export function UpdateBanner() {
   const [updateInfo, setUpdateInfo] = useState<{
@@ -11,6 +12,7 @@ export function UpdateBanner() {
   } | null>(null)
   const [progress, setProgress] = useState<number | null>(null)
   const [readyToInstall, setReadyToInstall] = useState(false)
+  const [isInstalling, setIsInstalling] = useState(false)
   const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
@@ -51,6 +53,7 @@ export function UpdateBanner() {
   }, [])
 
   const handleInstall = () => {
+    setIsInstalling(true)
     const electron = (window as any).electronWindow || (window as any).electronAPI
     if (electron?.installUpdate) {
       electron.installUpdate()
@@ -101,11 +104,24 @@ export function UpdateBanner() {
           {readyToInstall ? (
             <button
               type="button"
+              disabled={isInstalling}
               onClick={handleInstall}
-              className="px-3 py-1 bg-gradient-to-r from-emerald-500 to-teal-400 text-black text-[10px] uppercase tracking-wider font-black hover:brightness-110 transition-all rounded shadow-[0_0_12px_rgba(16,185,129,0.3)] flex items-center gap-1 cursor-pointer"
+              className={cn(
+                "px-3 py-1 bg-gradient-to-r from-emerald-500 to-teal-400 text-black text-[10px] uppercase tracking-wider font-black hover:brightness-110 transition-all rounded shadow-[0_0_12px_rgba(16,185,129,0.3)] flex items-center gap-1 cursor-pointer",
+                isInstalling && "opacity-80 cursor-wait animate-pulse"
+              )}
             >
-              <span>Restart &amp; Install Now</span>
-              <ArrowRight size={11} />
+              {isInstalling ? (
+                <>
+                  <RefreshCw size={11} className="animate-spin text-black" />
+                  <span>Restarting &amp; Applying Update...</span>
+                </>
+              ) : (
+                <>
+                  <span>Restart &amp; Install Now</span>
+                  <ArrowRight size={11} />
+                </>
+              )}
             </button>
           ) : progress === null ? (
             <span className="text-[10px] text-slate-400 hidden sm:inline-block">

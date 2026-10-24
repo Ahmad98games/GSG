@@ -432,9 +432,8 @@ export default function UpdatesPage() {
 
   const installUpdate = () => {
     if (!isElectron) return
-    if (confirm('Noxis Hub will restart seamlessly and will take 2 minutes in background to finalize the installation. Proceed?')) {
-      ;(window as any).electronAPI.installUpdate()
-    }
+    setUpdateState((prev) => ({ ...prev, status: 'installing' }))
+    ;(window as any).electronAPI.installUpdate()
   }
 
   const handleChannelChange = async (newChannel: 'stable' | 'beta') => {
