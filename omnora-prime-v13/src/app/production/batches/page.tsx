@@ -69,7 +69,10 @@ export default function ProductionBatchesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, status, actual_qty }),
       });
-      if (!res.ok) throw new Error('Failed to update batch');
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Failed to update batch');
+      }
       return res.json();
     },
     onSuccess: () => {

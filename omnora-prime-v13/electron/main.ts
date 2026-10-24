@@ -116,13 +116,13 @@ autoUpdater.logger = log
 // Update channel — can be changed per license tier (Pro/Elite get beta channel)
 autoUpdater.channel = 'stable'
 autoUpdater.autoDownload = true;
-autoUpdater.disableDifferentialDownload = true;
+autoUpdater.disableDifferentialDownload = false;
 autoUpdater.allowPrerelease = false
 autoUpdater.allowDowngrade = true
 autoUpdater.setFeedURL({
   provider: 'generic',
   url: 'https://noxishub.app/updates/stable',
-  useMultipleRangeRequest: false,
+  useMultipleRangeRequest: true,
 } as any)
 
 // Track update state for IPC
@@ -134,6 +134,7 @@ let downloadedInstallerPath: string | null = null;
 let isCustomDownloading = false;
 let customTransferred = 0;
 let customTotal = 0;
+let isQuittingForUpdate = false;
 
 // ─────────────────────────────────────────────
 // 1. LOGGER
@@ -744,7 +745,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 <div class="brand-title">NOXIS HUB</div>
 <div class="brand-sub">
   <span>Industrial Intelligence</span>
-  <span class="brand-badge">v${app.getVersion() || '14.0.13'}</span>
+  <span class="brand-badge">v${app.getVersion() || '14.0.14'}</span>
 </div>
 
 <div class="progress-track">
@@ -1147,6 +1148,16 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       startupLog(`[Update] Downloaded: v${info.version}`);
       updateDownloaded = true;
       downloadProgress = 100;
+
+      try {
+        const auFile = (autoUpdater as any).installerPath || (autoUpdater as any).downloadedUpdateHelper?.file;
+        if (auFile && fs.existsSync(auFile)) {
+          downloadedInstallerPath = auFile;
+          startupLog(`[Update] AutoUpdater installer path confirmed: ${downloadedInstallerPath}`);
+        }
+      } catch (pathErr: any) {
+        startupLog(`[Update] Error inspecting installer path: ${pathErr?.message}`);
+      }
 
       safeSend(
         win,
@@ -1566,14 +1577,15 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   ipcMain.handle('install-update', () => {
     if (!updateDownloaded) return;
 
+    isQuittingForUpdate = true;
     startupLog('[Update] User initiated restart & install. Displaying update transition splash...');
 
-    // 1. Immediately show branded update splash window so the user sees progress and knows it is not a crash
+    // 1. Immediately show branded update splash window so the user sees progress and knows it is updating
     try {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.hide();
       }
-      createSplashWindow('Applying Noxis Hub Update Seamlessly... Reopening In A Moment');
+      createSplashWindow('Applying Noxis Hub Update... Reopening In Seconds');
     } catch {}
 
     // 2. Terminate background auxiliary processes cleanly
@@ -1588,40 +1600,69 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     checkpointMonotonicElapsed();
     setExitFlag('clean');
 
-    // 4. If we downloaded via our direct HTTP range downloader, run the installer with auto-relaunch
-    if (downloadedInstallerPath && fs.existsSync(downloadedInstallerPath)) {
-      startupLog(`[Update] Executing direct installer with auto-relaunch watcher: ${downloadedInstallerPath}`);
+    // 4. Resolve the installer executable path across all possible locations
+    let installerToRun: string | null = downloadedInstallerPath;
+    if (!installerToRun || !fs.existsSync(installerToRun)) {
+      const helperFile = (autoUpdater as any).installerPath || (autoUpdater as any).downloadedUpdateHelper?.file;
+      if (helperFile && fs.existsSync(helperFile)) {
+        installerToRun = helperFile;
+      }
+    }
+    if (!installerToRun || !fs.existsSync(installerToRun)) {
+      const localAppData = process.env.LOCALAPPDATA || '';
+      const pendingDir = path.join(localAppData, 'noxis-hub-updater', 'pending');
+      const installerExe = path.join(localAppData, 'noxis-hub-updater', 'installer.exe');
+      if (fs.existsSync(pendingDir)) {
+        try {
+          const files = fs.readdirSync(pendingDir).filter(f => f.toLowerCase().endsWith('.exe'));
+          if (files.length > 0) {
+            installerToRun = path.join(pendingDir, files[0]);
+          }
+        } catch {}
+      }
+      if (!installerToRun && fs.existsSync(installerExe)) {
+        installerToRun = installerExe;
+      }
+    }
+
+    startupLog(`[Update] Target installer path to execute: ${installerToRun}`);
+
+    if (installerToRun && fs.existsSync(installerToRun)) {
       try {
         const appExe = process.execPath;
-        // In Windows, run installer silently with /S, wait for it to finish, and immediately start Noxis Hub.exe
-        const cmd = `Start-Process -FilePath "${downloadedInstallerPath}" -ArgumentList "/S", "--updated" -Wait; Start-Process -FilePath "${appExe}"`;
+        // In Windows, run detached PowerShell watcher:
+        // Waits 1.2s, forces termination of any running Noxis Hub instance to release all file locks,
+        // runs installer silently with /S and --updated, waits for install completion, and relaunches Noxis Hub.exe
+        const cmd = `Start-Sleep -Milliseconds 1200; Get-Process -Name 'Noxis Hub' -ErrorAction SilentlyContinue | Stop-Process -Force; Start-Process -FilePath "${installerToRun}" -ArgumentList "/S", "--updated" -Wait; Start-Process -FilePath "${appExe}"`;
         const watcher = spawn('powershell.exe', ['-NoProfile', '-WindowStyle', 'Hidden', '-Command', cmd], {
           detached: true,
           stdio: 'ignore'
         });
         watcher.unref();
 
+        startupLog('[Update] Spawned seamless upgrade watcher script. Exiting app in 500ms to release file locks...');
         setTimeout(() => {
           app.exit(0);
-        }, 1200);
-        return;
+        }, 500);
+        return { success: true };
       } catch (runErr: any) {
-        startupLog(`[Update] Direct spawn error: ${runErr.message}, falling back to autoUpdater`);
+        startupLog(`[Update] Direct spawn error: ${runErr.message}, falling back to autoUpdater.quitAndInstall`);
       }
     }
 
-    // 5. Fallback: autoUpdater standard quitAndInstall with forced relaunch
+    // 5. Fallback: autoUpdater standard quitAndInstall with silent install & forced relaunch
     setTimeout(() => {
       try {
         autoUpdater.quitAndInstall(
-          false, // show fast progress bar
-          true   // force relaunch after install completes
+          true, // isSilent: true (silent background execution without interactive dialog locks)
+          true  // force relaunch after install completes
         );
       } catch (quitErr: any) {
         startupLog(`[Update] quitAndInstall error: ${quitErr.message}`);
-        app.quit();
+        app.exit(0);
       }
-    }, 1000);
+    }, 600);
+    return { success: true };
   });
 
   ipcMain.handle('get-update-status', () => {
@@ -1637,7 +1678,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       releaseName: latestUpdateInfo?.releaseName,
       releaseNotes: latestUpdateInfo?.releaseNotes,
       releaseDate: latestUpdateInfo?.releaseDate,
-      currentVersion: app.isPackaged ? app.getVersion() : '14.0.13',
+      currentVersion: app.isPackaged ? app.getVersion() : '14.0.14',
       baselineVersion: policy.baselineVersion,
       tier: policy.tier,
       maxAllowedMajor: policy.maxAllowedMajor,
@@ -3185,6 +3226,11 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     checkpointMonotonicElapsed();
     setExitFlag('clean');
     startupLog('[Electron] Exit flag set to clean ✓');
+
+    if (isQuittingForUpdate) {
+      startupLog('[Electron] Quitting for update — bypassing event.preventDefault() to release file locks immediately.');
+      return;
+    }
 
     if (nextServer || visionProcess || tunnelProcess) {
       event.preventDefault();

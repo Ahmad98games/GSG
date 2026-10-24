@@ -112,13 +112,13 @@ electron_updater_1.autoUpdater.logger = electron_log_1.default;
 // Update channel — can be changed per license tier (Pro/Elite get beta channel)
 electron_updater_1.autoUpdater.channel = 'stable';
 electron_updater_1.autoUpdater.autoDownload = true;
-electron_updater_1.autoUpdater.disableDifferentialDownload = true;
+electron_updater_1.autoUpdater.disableDifferentialDownload = false;
 electron_updater_1.autoUpdater.allowPrerelease = false;
 electron_updater_1.autoUpdater.allowDowngrade = true;
 electron_updater_1.autoUpdater.setFeedURL({
     provider: 'generic',
     url: 'https://noxishub.app/updates/stable',
-    useMultipleRangeRequest: false,
+    useMultipleRangeRequest: true,
 });
 // Track update state for IPC
 let updateAvailable = false;
@@ -129,6 +129,7 @@ let downloadedInstallerPath = null;
 let isCustomDownloading = false;
 let customTransferred = 0;
 let customTotal = 0;
+let isQuittingForUpdate = false;
 // ─────────────────────────────────────────────
 // 1. LOGGER
 // ─────────────────────────────────────────────
@@ -653,7 +654,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 <div class="brand-title">NOXIS HUB</div>
 <div class="brand-sub">
   <span>Industrial Intelligence</span>
-  <span class="brand-badge">v${electron_1.app.getVersion() || '14.0.13'}</span>
+  <span class="brand-badge">v${electron_1.app.getVersion() || '14.0.14'}</span>
 </div>
 
 <div class="progress-track">
@@ -1014,6 +1015,16 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             startupLog(`[Update] Downloaded: v${info.version}`);
             updateDownloaded = true;
             downloadProgress = 100;
+            try {
+                const auFile = electron_updater_1.autoUpdater.installerPath || electron_updater_1.autoUpdater.downloadedUpdateHelper?.file;
+                if (auFile && fs.existsSync(auFile)) {
+                    downloadedInstallerPath = auFile;
+                    startupLog(`[Update] AutoUpdater installer path confirmed: ${downloadedInstallerPath}`);
+                }
+            }
+            catch (pathErr) {
+                startupLog(`[Update] Error inspecting installer path: ${pathErr?.message}`);
+            }
             safeSend(win, 'update-status', {
                 status: 'ready',
                 version: info.version,
@@ -1384,13 +1395,14 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     electron_1.ipcMain.handle('install-update', () => {
         if (!updateDownloaded)
             return;
+        isQuittingForUpdate = true;
         startupLog('[Update] User initiated restart & install. Displaying update transition splash...');
-        // 1. Immediately show branded update splash window so the user sees progress and knows it is not a crash
+        // 1. Immediately show branded update splash window so the user sees progress and knows it is updating
         try {
             if (mainWindow && !mainWindow.isDestroyed()) {
                 mainWindow.hide();
             }
-            createSplashWindow('Applying Noxis Hub Update Seamlessly... Reopening In A Moment');
+            createSplashWindow('Applying Noxis Hub Update... Reopening In Seconds');
         }
         catch { }
         // 2. Terminate background auxiliary processes cleanly
@@ -1413,39 +1425,67 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         // 3. Mark exit flag as clean so power-cut recovery does not false-trigger
         (0, trialEngine_1.checkpointMonotonicElapsed)();
         (0, store_1.setExitFlag)('clean');
-        // 4. If we downloaded via our direct HTTP range downloader, run the installer with auto-relaunch
-        if (downloadedInstallerPath && fs.existsSync(downloadedInstallerPath)) {
-            startupLog(`[Update] Executing direct installer with auto-relaunch watcher: ${downloadedInstallerPath}`);
+        // 4. Resolve the installer executable path across all possible locations
+        let installerToRun = downloadedInstallerPath;
+        if (!installerToRun || !fs.existsSync(installerToRun)) {
+            const helperFile = electron_updater_1.autoUpdater.installerPath || electron_updater_1.autoUpdater.downloadedUpdateHelper?.file;
+            if (helperFile && fs.existsSync(helperFile)) {
+                installerToRun = helperFile;
+            }
+        }
+        if (!installerToRun || !fs.existsSync(installerToRun)) {
+            const localAppData = process.env.LOCALAPPDATA || '';
+            const pendingDir = path.join(localAppData, 'noxis-hub-updater', 'pending');
+            const installerExe = path.join(localAppData, 'noxis-hub-updater', 'installer.exe');
+            if (fs.existsSync(pendingDir)) {
+                try {
+                    const files = fs.readdirSync(pendingDir).filter(f => f.toLowerCase().endsWith('.exe'));
+                    if (files.length > 0) {
+                        installerToRun = path.join(pendingDir, files[0]);
+                    }
+                }
+                catch { }
+            }
+            if (!installerToRun && fs.existsSync(installerExe)) {
+                installerToRun = installerExe;
+            }
+        }
+        startupLog(`[Update] Target installer path to execute: ${installerToRun}`);
+        if (installerToRun && fs.existsSync(installerToRun)) {
             try {
                 const appExe = process.execPath;
-                // In Windows, run installer silently with /S, wait for it to finish, and immediately start Noxis Hub.exe
-                const cmd = `Start-Process -FilePath "${downloadedInstallerPath}" -ArgumentList "/S", "--updated" -Wait; Start-Process -FilePath "${appExe}"`;
+                // In Windows, run detached PowerShell watcher:
+                // Waits 1.2s, forces termination of any running Noxis Hub instance to release all file locks,
+                // runs installer silently with /S and --updated, waits for install completion, and relaunches Noxis Hub.exe
+                const cmd = `Start-Sleep -Milliseconds 1200; Get-Process -Name 'Noxis Hub' -ErrorAction SilentlyContinue | Stop-Process -Force; Start-Process -FilePath "${installerToRun}" -ArgumentList "/S", "--updated" -Wait; Start-Process -FilePath "${appExe}"`;
                 const watcher = (0, child_process_1.spawn)('powershell.exe', ['-NoProfile', '-WindowStyle', 'Hidden', '-Command', cmd], {
                     detached: true,
                     stdio: 'ignore'
                 });
                 watcher.unref();
+                startupLog('[Update] Spawned seamless upgrade watcher script. Exiting app in 500ms to release file locks...');
                 setTimeout(() => {
                     electron_1.app.exit(0);
-                }, 1200);
-                return;
+                }, 500);
+                return { success: true };
             }
             catch (runErr) {
-                startupLog(`[Update] Direct spawn error: ${runErr.message}, falling back to autoUpdater`);
+                startupLog(`[Update] Direct spawn error: ${runErr.message}, falling back to autoUpdater.quitAndInstall`);
             }
         }
-        // 5. Fallback: autoUpdater standard quitAndInstall with forced relaunch
+        // 5. Fallback: autoUpdater standard quitAndInstall with silent install & forced relaunch
         setTimeout(() => {
             try {
-                electron_updater_1.autoUpdater.quitAndInstall(false, // show fast progress bar
+                electron_updater_1.autoUpdater.quitAndInstall(true, // isSilent: true (silent background execution without interactive dialog locks)
                 true // force relaunch after install completes
                 );
             }
             catch (quitErr) {
                 startupLog(`[Update] quitAndInstall error: ${quitErr.message}`);
-                electron_1.app.quit();
+                electron_1.app.exit(0);
             }
-        }, 1000);
+        }, 600);
+        return { success: true };
     });
     electron_1.ipcMain.handle('get-update-status', () => {
         const policy = (0, autonomousUpdateEngine_1.getVersionPolicy)();
@@ -1460,7 +1500,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             releaseName: latestUpdateInfo?.releaseName,
             releaseNotes: latestUpdateInfo?.releaseNotes,
             releaseDate: latestUpdateInfo?.releaseDate,
-            currentVersion: electron_1.app.isPackaged ? electron_1.app.getVersion() : '14.0.13',
+            currentVersion: electron_1.app.isPackaged ? electron_1.app.getVersion() : '14.0.14',
             baselineVersion: policy.baselineVersion,
             tier: policy.tier,
             maxAllowedMajor: policy.maxAllowedMajor,
@@ -2843,6 +2883,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         (0, trialEngine_1.checkpointMonotonicElapsed)();
         (0, store_1.setExitFlag)('clean');
         startupLog('[Electron] Exit flag set to clean ✓');
+        if (isQuittingForUpdate) {
+            startupLog('[Electron] Quitting for update — bypassing event.preventDefault() to release file locks immediately.');
+            return;
+        }
         if (nextServer || visionProcess || tunnelProcess) {
             event.preventDefault();
             startupLog('[Electron] Shutting down...');

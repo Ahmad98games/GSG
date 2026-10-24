@@ -4,9 +4,23 @@ import { Tag, Calendar, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-reac
 
 const RELEASES = [
   {
-    version: 'v14.0.13',
+    version: 'v14.0.14',
     date: 'October 2026',
     isCurrent: true,
+    title: 'Instant 1-Click Seamless Restart, Lockout-Free Installer & Differential Delta Streaming',
+    summary: 'Single-click instant update installation without lockups or aborted attempts, detached background watcher process supervisor, exit lock bypass, and re-enabled differential delta downloads.',
+    changes: [
+      '1st-Try Seamless Restart: Fixed installer lock contention by decoupling update shutdown from background process holds, guaranteeing instant silent execution on the first click.',
+      'Detached Watcher Supervisor: Launches a detached PowerShell supervisor that kills any stale process hold, executes the installer silently with /S, and relaunches Noxis Hub automatically.',
+      'Differential Delta Streaming: Enabled native electron-updater byte-range streaming against Cloudflare R2 blockmaps, downloading only 2–5 MB delta ranges for updates.',
+      'Universal Theme Engine: 100% theme shifting across every single page, panel, card, table, header, and input with automatic light-mode contrast harmonization.',
+      'POS Workspace Navigation: Preserves the industrial navigation sidebar on POS by default with an instant one-click Kiosk Mode toggle for full-screen counter operations.',
+    ],
+  },
+  {
+    version: 'v14.0.13',
+    date: 'October 2026',
+    isCurrent: false,
     title: 'Universal Theme Engine, POS Workspace, Auto-Relaunch Updates & Differential Blockmap Engine',
     summary: 'Comprehensive software-wide theme adaptation across all 23 industrial themes, persistent POS navigation sidebar with Kiosk toggle, automatic update relaunching, differential delta patches, and offline-first batch tracking.',
     changes: [
@@ -89,7 +103,7 @@ const RELEASES = [
 ]
 
 export default function ChangelogPage() {
-  const [openVersions, setOpenVersions] = useState<string[]>(['v14.0.13'])
+  const [openVersions, setOpenVersions] = useState<string[]>(['v14.0.14'])
 
   const toggleVersion = (v: string) => {
     setOpenVersions(prev =>

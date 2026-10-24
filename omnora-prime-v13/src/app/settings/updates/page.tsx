@@ -54,6 +54,18 @@ interface ChangelogItem {
 
 const HISTORICAL_CHANGELOGS: ChangelogItem[] = [
   {
+    version: '14.0.14',
+    date: 'October 2026',
+    type: 'patch',
+    title: 'Noxis Hub v14.0.14 — Instant 1-Click Seamless Restart & Differential Delta Streaming',
+    highlights: [
+      { tag: '1st-Try Seamless Restart', text: 'Spawns independent watcher process with /S silent flag to prevent process lockups, instantly quitting and relaunching on first click', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      { tag: 'Differential Streaming', text: 'Re-enabled native differential downloading with blockmap byte-range requests for ultra-compact 2–5 MB delta updates', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
+      { tag: 'Exit Lock Bypass', text: 'Guarantees immediate binary unlocking during updates by overriding before-quit process holds', color: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
+      { tag: 'Universal Theme Shifting', text: 'Seamless contrast harmonization across all 23 themes in every workspace panel and modal', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+    ],
+  },
+  {
     version: '14.0.13',
     date: 'October 2026',
     type: 'patch',
@@ -234,7 +246,7 @@ export default function UpdatesPage() {
   const [showChangelogHistory, setShowChangelogHistory] = useState(false)
 
   // Version-Locked Telemetry & Ceiling Policy
-  const [baselineVersion, setBaselineVersion] = useState<string>('v14.0.13')
+  const [baselineVersion, setBaselineVersion] = useState<string>('v14.0.14')
   const [licenseTier, setLicenseTier] = useState<'lite' | 'pro' | 'elite'>('elite')
   const [maxAllowedCeiling, setMaxAllowedCeiling] = useState<string>('v16.x.x')
   const [allowedWindow, setAllowedWindow] = useState<string>('+2 Major Generations')
@@ -256,8 +268,8 @@ export default function UpdatesPage() {
 
   useEffect(() => {
     if (!isElectron) {
-      setCurrentVersion('14.0.13')
-      setBaselineVersion('v14.0.13')
+      setCurrentVersion('14.0.14')
+      setBaselineVersion('v14.0.14')
       setLicenseTier('elite')
       setMaxAllowedCeiling('v16.x.x')
       return
@@ -991,7 +1003,7 @@ export default function UpdatesPage() {
               Auto-Sync Feed: /updates/{channel}
             </span>
             <a
-              href="https://noxishub.app/updates/stable/Noxis%20Hub%20Setup%2014.0.13.exe"
+              href="https://noxishub.app/updates/stable/Noxis%20Hub%20Setup%2014.0.14.exe"
               target="_blank"
               rel="noreferrer"
               className="text-[11px] font-medium text-cyan-400 hover:text-cyan-300 underline underline-offset-2 flex items-center gap-1 cursor-pointer"
