@@ -1,17 +1,11 @@
 {
-  "version": "14.5.0",
   "latest_version": "14.5.0",
-  "releaseDate": "2026-10-25",
-  "tier": "stable",
-  "windowsUrl": "/api/download-software?trial=true&redirect=true",
+  "versionCode": 5,
+  "apk_filename": "noxis-preview.apk",
   "apk_url": "https://pub-8c464d0d92ff44abbf70c58c362ad258.r2.dev/noxis-preview.apk",
-  "hash": "86ac409f87fb5f115a7a0208f1bb376e8e3520b7209feba899fac2a0bf6d4991",
+  "hash": "1178cca2e8462ab7eb5817b8e6d3a843026cf2c4562e0c6dd4b7e8cdfd327798",
   "file_size": 121679446,
   "release_notes": "Official Noxis Hub Logo, Instant Zero-Lag Sync Engine, 2-Way Offline Persistence & Tactile Responsive UI",
-  "releaseNotes": [
-    "Official Noxis Hub Logo in Desktop Sidebar and Mobile Header",
-    "Instant Zero-Lag Local WebSocket Sync with Sub-15ms Latency",
-    "Full 2-Way Offline-to-Online Persistence without Data Loss",
-    "Enhanced Tactile UI with Responsive Buttons & High-Contrast Typography"
-  ]
+  "released_at": "2026-10-25T18:28:20.000Z",
+  "devices_ready": true
 }
