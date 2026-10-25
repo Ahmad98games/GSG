@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import PublicNavbar from '@/components/shell/PublicNavbar';
@@ -11,13 +11,13 @@ import {
   HardDrive, Cpu, Zap, Globe,
 } from 'lucide-react';
 
-// ── ALL BACKEND CONSTANTS PRESERVED ──
+// â”€â”€ ALL BACKEND CONSTANTS PRESERVED â”€â”€
 const DOWNLOAD_ZIP_URL = '/api/download-software?format=zip&trial=true&redirect=true';
 const CLOUDFLARE_APK_URL = 'https://pub-8c464d0d92ff44abbf70c58c362ad258.r2.dev/noxis-preview.apk';
 const APK_DOWNLOAD_URL = '/api/download-apk';
 const WHATSAPP_SUPPORT_URL = 'https://wa.me/923264742678?text=Salam%20Omnora,%20I%20have%20installed%20Noxis%20Hub%20and%20want%20to%20activate%20my%20license.%20My%20Machine%20ID%20is:%20';
 
-// ── ALL FAQ DATA PRESERVED ──
+// â”€â”€ ALL FAQ DATA PRESERVED â”€â”€
 const FAQS = [
   {
     q: "Do I need the internet to run Noxis Hub?",
@@ -41,7 +41,7 @@ const FAQS = [
   }
 ];
 
-// ── FEATURE TABLE DATA ──
+// â”€â”€ FEATURE TABLE DATA â”€â”€
 const FEATURE_ROWS = [
   {
     feature: 'Billing Counter & Receipt Printer',
@@ -69,7 +69,7 @@ const FEATURE_ROWS = [
   },
   {
     feature: 'WhatsApp Invoice Sending',
-    free: '—',
+    free: 'â€”',
     lite: 'Included',
     pro: 'Included'
   },
@@ -81,13 +81,13 @@ const FEATURE_ROWS = [
   },
   {
     feature: 'Security Camera Monitoring',
-    free: '—',
+    free: 'â€”',
     lite: '2 cameras',
     pro: 'Up to 6 cameras with motion alerts'
   },
   {
     feature: 'Stock Demand Predictions',
-    free: '—',
+    free: 'â€”',
     lite: 'Low stock alerts',
     pro: 'Auto reorder + 30-day forecasting'
   },
@@ -106,7 +106,7 @@ const FEATURE_ROWS = [
 ];
 
 export default function DownloadPage() {
-  // ── ALL STATE PRESERVED ──
+  // â”€â”€ ALL STATE PRESERVED â”€â”€
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [showModal, setShowModal] = useState(false);
   const [fullName, setFullName] = useState('');
@@ -117,7 +117,7 @@ export default function DownloadPage() {
   const [showApkQr, setShowApkQr] = useState(false);
   const [targetPlatform, setTargetPlatform] = useState<'windows' | 'android'>('windows');
 
-  // ── HANDLER PRESERVED EXACTLY ──
+  // â”€â”€ HANDLER PRESERVED EXACTLY â”€â”€
   const handleStartDownload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName.trim() || !phone.trim()) return;
@@ -152,9 +152,9 @@ export default function DownloadPage() {
     <div className="min-h-screen bg-[#030712] text-slate-300 selection:bg-[#08EBF6]/20 selection:text-white">
       <PublicNavbar />
 
-      {/* ═══════════════════════════════════════
+      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
           HERO
-      ═══════════════════════════════════════ */}
+      â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       <section className="relative pt-32 pb-20 px-6 max-w-5xl mx-auto">
 
         {/* Background glow */}
@@ -164,7 +164,7 @@ export default function DownloadPage() {
         <div className="flex justify-center mb-8">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[11px] font-mono text-zinc-400 tracking-wider">
             <div className="w-1.5 h-1.5 rounded-full bg-[#08EBF6] animate-pulse" />
-            Version 14.0.17 — Stable Release
+            Version 14.5.0 â€” Stable Release
           </div>
         </div>
 
@@ -179,7 +179,7 @@ export default function DownloadPage() {
           </h1>
           <p className="text-base sm:text-lg text-zinc-400 max-w-2xl mx-auto leading-relaxed">
             Noxis Hub runs on your Windows PC and connects to Android phones on
-            the factory floor — no internet, no monthly fees, no server required.
+            the factory floor â€” no internet, no monthly fees, no server required.
           </p>
         </div>
 
@@ -198,7 +198,7 @@ export default function DownloadPage() {
           ))}
         </div>
 
-        {/* ── DOWNLOAD CARDS ── */}
+        {/* â”€â”€ DOWNLOAD CARDS â”€â”€ */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
           {/* Windows PC Card */}
@@ -224,7 +224,7 @@ export default function DownloadPage() {
                     </span>
                   </div>
                   <p className="text-xs text-zinc-500">
-                    Main PC — stores all your business data
+                    Main PC â€” stores all your business data
                   </p>
                 </div>
               </div>
@@ -247,12 +247,12 @@ export default function DownloadPage() {
               {/* Setup steps */}
               <div className="bg-black/30 border border-white/5 rounded-xl p-4 space-y-3">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                  Ready in 2 steps — no installer
+                  Ready in 2 steps â€” no installer
                 </p>
                 <div className="space-y-2">
                   {[
-                    'Right-click the downloaded file → Extract All',
-                    'Open the folder → double-click NoxisHub.exe',
+                    'Right-click the downloaded file â†’ Extract All',
+                    'Open the folder â†’ double-click NoxisHub.exe',
                   ].map((step, i) => (
                     <div key={i} className="flex items-start gap-3 text-[12px] text-zinc-300">
                       <div className="w-5 h-5 rounded-md bg-[#08EBF6]/12 text-[#08EBF6] text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">
@@ -276,7 +276,7 @@ export default function DownloadPage() {
                 Download for Windows
               </button>
               <p className="text-center text-[10px] text-zinc-600 mt-2.5">
-                Portable file · runs without admin rights
+                Portable file Â· runs without admin rights
               </p>
             </div>
           </div>
@@ -352,7 +352,7 @@ export default function DownloadPage() {
                       Scan on your Android
                     </p>
                     <p className="text-[11px] text-zinc-600 leading-relaxed">
-                      Point your camera at this code to download straight to your phone — no cable needed.
+                      Point your camera at this code to download straight to your phone â€” no cable needed.
                     </p>
                   </div>
                 </div>
@@ -403,9 +403,9 @@ export default function DownloadPage() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════
+      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
           FEATURE TABLE
-      ═══════════════════════════════════════ */}
+      â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       <section className="py-20 px-6 max-w-5xl mx-auto">
 
         <div className="text-center mb-10 space-y-2">
@@ -468,9 +468,9 @@ export default function DownloadPage() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════
+      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
           HOW TRIAL + ACTIVATION WORKS
-      ═══════════════════════════════════════ */}
+      â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       <section className="py-20 px-6 max-w-4xl mx-auto">
 
         <div className="text-center mb-10 space-y-2">
@@ -487,11 +487,11 @@ export default function DownloadPage() {
           <div className="relative p-7 bg-[#070B12] border border-[#08EBF6]/20 rounded-2xl space-y-3 overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#08EBF6]/5 rounded-full blur-2xl pointer-events-none" />
             <div className="inline-block px-2.5 py-1 rounded-lg bg-[#08EBF6]/10 text-[#08EBF6] text-[10px] font-bold uppercase tracking-wider">
-              Days 1 – 7
+              Days 1 â€“ 7
             </div>
             <h3 className="text-base font-bold text-white">Everything unlocked</h3>
             <p className="text-sm text-zinc-400 leading-relaxed">
-              Download, extract, and run — no registration, no credit card. Every
+              Download, extract, and run â€” no registration, no credit card. Every
               feature is available so you can test it properly on your factory floor
               with your real workers and real stock.
             </p>
@@ -514,9 +514,9 @@ export default function DownloadPage() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════
+      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
           3-STEP ACTIVATION
-      ═══════════════════════════════════════ */}
+      â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       <section className="py-20 px-6 max-w-4xl mx-auto">
 
         <div className="text-center mb-12 space-y-2">
@@ -524,7 +524,7 @@ export default function DownloadPage() {
             How to activate your license
           </h2>
           <p className="text-sm text-zinc-500">
-            Works without internet · Permanent · Tied to your PC
+            Works without internet Â· Permanent Â· Tied to your PC
           </p>
         </div>
 
@@ -533,7 +533,7 @@ export default function DownloadPage() {
             {
               step: '01',
               title: 'Copy your machine ID',
-              body: 'Open Noxis Hub → Settings → License. Click "Copy Machine ID" — it is a unique code for your specific PC.',
+              body: 'Open Noxis Hub â†’ Settings â†’ License. Click "Copy Machine ID" â€” it is a unique code for your specific PC.',
               color: '#08EBF6',
             },
             {
@@ -545,7 +545,7 @@ export default function DownloadPage() {
             {
               step: '03',
               title: 'Paste and unlock',
-              body: 'We send a license key by WhatsApp. Paste it into Settings → License. Your plan unlocks permanently in seconds.',
+              body: 'We send a license key by WhatsApp. Paste it into Settings â†’ License. Your plan unlocks permanently in seconds.',
               color: '#60A5FA',
             },
           ].map(item => (
@@ -589,9 +589,9 @@ export default function DownloadPage() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════
+      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
           SYSTEM REQUIREMENTS
-      ═══════════════════════════════════════ */}
+      â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       <section className="py-20 px-6 max-w-4xl mx-auto">
 
         <div className="text-center mb-10 space-y-2">
@@ -616,7 +616,7 @@ export default function DownloadPage() {
               {[
                 ['Windows version', 'Windows 10 or 11 (64-bit)'],
                 ['Processor', 'Intel Core i3 (4th generation or newer)'],
-                ['Memory', '4 GB minimum — 8 GB recommended'],
+                ['Memory', '4 GB minimum â€” 8 GB recommended'],
                 ['Storage', '500 MB free space'],
               ].map(([label, value]) => (
                 <div key={label} className="flex items-center justify-between text-xs border-b border-white/4 pb-2.5">
@@ -652,9 +652,9 @@ export default function DownloadPage() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════
+      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
           FAQ
-      ═══════════════════════════════════════ */}
+      â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       <section className="py-20 px-6 max-w-3xl mx-auto">
 
         <div className="text-center mb-10 space-y-2">
@@ -693,9 +693,9 @@ export default function DownloadPage() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════
+      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
           BOTTOM CTA STRIP
-      ═══════════════════════════════════════ */}
+      â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       <section className="py-16 px-6 max-w-3xl mx-auto text-center space-y-6">
         <div className="space-y-3">
           <h2 className="text-2xl sm:text-3xl font-black text-white">
@@ -727,13 +727,13 @@ export default function DownloadPage() {
           </button>
         </div>
         <p className="text-xs text-zinc-600">
-          Free for 7 days · No data uploaded · Your PC stores everything
+          Free for 7 days Â· No data uploaded Â· Your PC stores everything
         </p>
       </section>
 
-      {/* ═══════════════════════════════════════
-          DOWNLOAD MODAL — ALL LOGIC PRESERVED
-      ═══════════════════════════════════════ */}
+      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+          DOWNLOAD MODAL â€” ALL LOGIC PRESERVED
+      â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/75 backdrop-blur-md">
           <div className="relative w-full max-w-md bg-[#070B12] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
@@ -768,7 +768,7 @@ export default function DownloadPage() {
                 </div>
               </div>
 
-              {/* Form — onSubmit handler preserved */}
+              {/* Form â€” onSubmit handler preserved */}
               <form onSubmit={handleStartDownload} className="space-y-4">
 
                 <div>
@@ -800,7 +800,7 @@ export default function DownloadPage() {
                     className="w-full px-4 py-2.5 bg-black/40 border border-white/8 rounded-xl text-sm text-white focus:outline-none focus:border-[#08EBF6]/50 transition-colors placeholder:text-zinc-600"
                   />
                   <p className="text-[10px] text-zinc-600 mt-1.5">
-                    Used only for license keys and support — never shared.
+                    Used only for license keys and support â€” never shared.
                   </p>
                 </div>
 
@@ -856,7 +856,7 @@ export default function DownloadPage() {
 
                 <div className="flex items-center justify-center gap-2 text-[10px] text-zinc-500 pt-1">
                   <Lock size={11} className="text-emerald-400" />
-                  No payment · Portable file · Runs offline
+                  No payment Â· Portable file Â· Runs offline
                 </div>
               </form>
             </div>
@@ -864,11 +864,11 @@ export default function DownloadPage() {
         </div>
       )}
 
-      {/* ═══════════════════════════════════════
+      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
           FOOTER
-      ═══════════════════════════════════════ */}
+      â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       <footer className="border-t border-white/5 bg-[#020304] py-7 text-center text-[11px] text-zinc-600">
-        <p>© {new Date().getFullYear()} Omnora — Industrial software for textile mills and wholesale traders.</p>
+        <p>Â© {new Date().getFullYear()} Omnora â€” Industrial software for textile mills and wholesale traders.</p>
       </footer>
     </div>
   );

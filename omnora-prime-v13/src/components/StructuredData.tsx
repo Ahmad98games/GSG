@@ -44,7 +44,7 @@ export function SoftwareSchema() {
       'Hardware Fingerprint Cryptographic Licensing (HWID tied, zero forced cloud dependency)',
     ],
     'screenshot': 'https://noxishub.app/screenshot.png',
-    'softwareVersion': '14.0.17',
+    'softwareVersion': '14.0.18',
     'datePublished': '2026-10-24',
     'author': {
       '@type': 'Organization',
@@ -137,7 +137,7 @@ export function FAQSchema() {
               'name': 'Does Noxis Hub have a Developer REST API and Webhooks?',
               'acceptedAnswer': {
                 '@type': 'Answer',
-                'text': 'Yes. Noxis Hub v14.0.17 includes a public authenticated Developer REST API v1 (/api/v1/inventory and /api/v1/invoices) secured with 64-character high-entropy Bearer tokens. It also features a built-in HMAC-SHA256 signed outbound webhook dispatcher that automatically broadcasts events (e.g. invoice.created, stock.low, payment.received) to external platforms like Shopify, WooCommerce, or custom ERP systems with real-time delivery logs and latency tracking.',
+                'text': 'Yes. Noxis Hub v14.0.18 includes a public authenticated Developer REST API v1 (/api/v1/inventory and /api/v1/invoices) secured with 64-character high-entropy Bearer tokens. It also features a built-in HMAC-SHA256 signed outbound webhook dispatcher that automatically broadcasts events (e.g. invoice.created, stock.low, payment.received) to external platforms like Shopify, WooCommerce, or custom ERP systems with real-time delivery logs and latency tracking.',
               },
             },
             {

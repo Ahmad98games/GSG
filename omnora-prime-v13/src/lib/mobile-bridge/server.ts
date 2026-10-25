@@ -815,7 +815,8 @@ async function handleMessage(
 
         // Connection metadata
         connectedDevices: getPairedCount(),
-        hubVersion: '14.0.0',
+        hubVersion: '14.0.18',
+        requestSync: true,
       };
 
       send(ws, ackPayload);
@@ -1190,9 +1191,34 @@ async function handleMessage(
       const table = msg.table;
       const op = msg.operation;
       const payload: any = msg.payload || msg.data;
+      const sqlite = getSqlite();
 
       if (table === 'karigars' && payload) {
         syncWorkerToSupabase(payload, client.businessId);
+        if (sqlite) {
+          try {
+            const kId = payload.id || randomUUID();
+            sqlite.prepare(`
+              INSERT OR REPLACE INTO karigars (id, business_id, name, karigar_code, phone, department, designation, wage_type, piece_rate, status, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(
+              kId,
+              payload.business_id || client.businessId || 'local',
+              payload.name || 'New Worker',
+              payload.karigar_code || null,
+              payload.phone || null,
+              payload.department || 'Production',
+              payload.designation || 'Karigar',
+              mapWageType(payload.wage_type),
+              Number(payload.piece_rate || payload.daily_rate || 0),
+              payload.status || 'active',
+              payload.created_at || new Date().toISOString(),
+              new Date().toISOString()
+            );
+          } catch (e: any) {
+            console.warn('[Bridge] crdt karigars SQLite error:', e.message);
+          }
+        }
         broadcastToHubRenderer('WORKER_CREATED', {
           deviceLabel: client.deviceLabel,
           deviceId: client.deviceId,
@@ -1202,6 +1228,51 @@ async function handleMessage(
         broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'karigars' });
       } else if (table === 'invoices' && payload) {
         syncInvoiceToSupabase(payload, client.businessId);
+        if (sqlite) {
+          try {
+            const invId = payload.id || randomUUID();
+            sqlite.prepare(`
+              INSERT OR REPLACE INTO invoices (id, business_id, invoice_number, invoice_type, party_id, party_name, party_phone, invoice_date, status, total_amount, amount_paid, balance_due, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(
+              invId,
+              payload.business_id || client.businessId || 'local',
+              payload.invoice_number || `INV-${Date.now().toString().slice(-6)}`,
+              payload.invoice_type || 'invoice',
+              payload.party_id || null,
+              payload.party_name || null,
+              payload.party_phone || null,
+              payload.invoice_date || payload.created_at || new Date().toISOString(),
+              mapInvoiceStatus(payload.status),
+              Number(payload.total_amount || payload.net_total || 0),
+              Number(payload.amount_paid || 0),
+              Number(payload.balance_due || payload.total_amount || 0),
+              payload.created_at || new Date().toISOString(),
+              new Date().toISOString()
+            );
+
+            if (Array.isArray(payload.items)) {
+              for (const it of payload.items) {
+                sqlite.prepare(`
+                  INSERT OR REPLACE INTO invoice_items (id, invoice_id, business_id, sku_id, description, quantity, unit, unit_price, total_price)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `).run(
+                  it.id || randomUUID(),
+                  invId,
+                  payload.business_id || client.businessId || 'local',
+                  it.sku_id || null,
+                  it.description || 'Item',
+                  Number(it.qty || it.quantity || 1),
+                  it.unit || 'Piece',
+                  Number(it.unit_price || 0),
+                  Number(it.total_price || (it.qty || 1) * (it.unit_price || 0))
+                );
+              }
+            }
+          } catch (e: any) {
+            console.warn('[Bridge] crdt invoices SQLite error:', e.message);
+          }
+        }
         broadcastToHubRenderer('INVOICE_CREATED', {
           deviceLabel: client.deviceLabel,
           deviceId: client.deviceId,
@@ -1211,6 +1282,28 @@ async function handleMessage(
         broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'invoices' });
       } else if (table === 'parties' && payload) {
         syncPartyToSupabase(payload, client.businessId);
+        if (sqlite) {
+          try {
+            const pId = payload.id || randomUUID();
+            sqlite.prepare(`
+              INSERT OR REPLACE INTO parties (id, business_id, name, party_type, phone, address, current_balance, is_active, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(
+              pId,
+              payload.business_id || client.businessId || 'local',
+              payload.name || 'New Party',
+              payload.party_type || 'customer',
+              payload.phone || null,
+              payload.address || payload.city || null,
+              Number(payload.current_balance || 0),
+              1,
+              payload.created_at || new Date().toISOString(),
+              new Date().toISOString()
+            );
+          } catch (e: any) {
+            console.warn('[Bridge] crdt parties SQLite error:', e.message);
+          }
+        }
         broadcastToHubRenderer('PARTY_CREATED', {
           deviceLabel: client.deviceLabel,
           deviceId: client.deviceId,
@@ -1218,6 +1311,68 @@ async function handleMessage(
           ...payload,
         });
         broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'parties' });
+      } else if (table === 'attendance_logs' && payload && sqlite) {
+        try {
+          sqlite.prepare(`
+            INSERT OR REPLACE INTO attendance_logs (id, business_id, karigar_id, date, status, check_in_time, check_out_time, overtime_hours, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            payload.id || randomUUID(),
+            payload.business_id || client.businessId || 'local',
+            payload.worker_id || payload.karigar_id,
+            payload.date || new Date().toISOString().split('T')[0],
+            payload.status || 'present',
+            payload.check_in_time || null,
+            payload.check_out_time || null,
+            Number(payload.overtime_hours || 0),
+            payload.created_at || new Date().toISOString()
+          );
+        } catch (e: any) {
+          console.warn('[Bridge] crdt attendance SQLite error:', e.message);
+        }
+        broadcastToHubRenderer('ATTENDANCE_LOGGED', { ...msg, deviceLabel: client.deviceLabel });
+        broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'attendance_today' });
+      } else if (table === 'peshgi_transactions' && payload && sqlite) {
+        try {
+          sqlite.prepare(`
+            INSERT OR REPLACE INTO peshgi_transactions (id, business_id, karigar_id, amount, notes, transaction_date, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            payload.id || randomUUID(),
+            payload.business_id || client.businessId || 'local',
+            payload.worker_id || payload.karigar_id,
+            Number(payload.amount || 0),
+            payload.notes || null,
+            payload.transaction_date || payload.date || new Date().toISOString().split('T')[0],
+            payload.created_at || new Date().toISOString()
+          );
+        } catch (e: any) {
+          console.warn('[Bridge] crdt peshgi SQLite error:', e.message);
+        }
+        broadcastToHubRenderer('ADVANCE_GIVEN', { ...msg, deviceLabel: client.deviceLabel });
+        broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'karigars' });
+      } else if ((table === 'karigar_production_logs' || table === 'production_logs') && payload && sqlite) {
+        try {
+          sqlite.prepare(`
+            INSERT OR REPLACE INTO production_logs (id, business_id, karigar_id, sku_id, quantity, rate, total_amount, date, notes, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            payload.id || randomUUID(),
+            payload.business_id || client.businessId || 'local',
+            payload.worker_id || payload.karigar_id,
+            payload.sku_id || null,
+            Number(payload.quantity || payload.pieces || 0),
+            Number(payload.rate || payload.rate_per_unit || 0),
+            Number(payload.total_amount || (payload.quantity || 0) * (payload.rate || 0)),
+            payload.date || new Date().toISOString().split('T')[0],
+            payload.notes || null,
+            payload.created_at || new Date().toISOString()
+          );
+        } catch (e: any) {
+          console.warn('[Bridge] crdt production SQLite error:', e.message);
+        }
+        broadcastToHubRenderer('PRODUCTION_LOGGED', { ...msg, deviceLabel: client.deviceLabel });
+        broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'production_log' });
       } else if (payload && table) {
         const admin = getAdmin();
         if (admin) {
@@ -1637,6 +1792,33 @@ async function handleMessage(
           console.error('[Bridge] Failed to mark MSG_READ:', err.message);
         }
       }
+      break;
+    }
+
+    case 'SYNC_OFFLINE_BATCH':
+    case 'BATCH_SYNC':
+    case 'OFFLINE_QUEUE_SYNC':
+    case 'SYNC_REPLAY': {
+      console.log(`[Bridge] Processing offline batch sync from ${client.deviceLabel}`);
+      const batch = Array.isArray(msg.batch) ? msg.batch : (Array.isArray(msg.items) ? msg.items : (Array.isArray(msg.actions) ? msg.actions : []));
+      let processed = 0;
+      for (const item of batch) {
+        if (!item || typeof item !== 'object') continue;
+        try {
+          await handleMessage(clientId, item as Record<string, unknown>, ws, pairingTimeout);
+          processed++;
+        } catch (itemErr: any) {
+          console.warn('[Bridge] Error processing batch item:', itemErr?.message);
+        }
+      }
+      send(ws, {
+        type: 'BATCH_SYNC_ACK',
+        syncId: msg.syncId || msg.batchId,
+        processed,
+        total: batch.length,
+        timestamp: Date.now(),
+      });
+      broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'all' });
       break;
     }
 

@@ -80,7 +80,7 @@ export function SyncProvider({
 
     // Run delta sync once on mount (only when truly online)
     const runSync = async () => {
-      if (typeof navigator !== 'undefined' && (!navigator.onLine || (window as any).__noxis_wan_online === false)) return
+      if (typeof navigator !== 'undefined' && !navigator.onLine && (window as any).__noxis_wan_online === false) return
       setIsSyncing(true)
       try {
         const result = await bootDeltaSync(profile.id)

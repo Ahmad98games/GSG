@@ -175,7 +175,7 @@ export function ShortcutHelp() {
             <div>
               <h2 className="text-sm font-bold text-white tracking-wide uppercase flex items-center gap-2">
                 Noxis Hub Shortcut Keys & Troubleshooter
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-normal lowercase">v14.0.17</span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-normal lowercase">v14.0.18</span>
               </h2>
               <p className="text-xs text-zinc-400 mt-0.5">
                 Master industrial navigation & resolve display zoom issues instantly

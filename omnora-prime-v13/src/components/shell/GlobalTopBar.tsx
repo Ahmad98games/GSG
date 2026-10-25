@@ -98,8 +98,8 @@ export default React.memo(function GlobalTopBar() {
       // 1. Try Google 204 captive portal probe (ultra-fast, zero redirects, 0-byte response)
       try {
         const controller = new AbortController()
-        const timer = setTimeout(() => controller.abort(), 1200)
-        await fetch('https://www.google.com/generate_204', {
+        const timer = setTimeout(() => controller.abort(), 3500)
+        await fetch('https://www.gstatic.com/generate_204', {
           method: 'GET',
           mode: 'no-cors',
           cache: 'no-store',
@@ -115,11 +115,11 @@ export default React.memo(function GlobalTopBar() {
         // Fallback to secondary probe
       }
 
-      // 2. Try Cloudflare cdn-cgi trace using GET (never HEAD to prevent 302 redirects)
+      // 2. Try Cloudflare trace using domain name (never raw 1.1.1.1 which Pakistani ISPs block)
       try {
         const controller2 = new AbortController()
-        const timer2 = setTimeout(() => controller2.abort(), 1000)
-        await fetch('https://1.1.1.1/cdn-cgi/trace', {
+        const timer2 = setTimeout(() => controller2.abort(), 3500)
+        await fetch('https://cloudflare.com/cdn-cgi/trace', {
           method: 'GET',
           mode: 'no-cors',
           cache: 'no-store',
@@ -132,10 +132,36 @@ export default React.memo(function GlobalTopBar() {
         }
         return
       } catch {
-        // Both probes failed: device is offline or on isolated LAN without WAN internet
+        // Fallback to Google DNS probe
       }
 
-      // 3. Probes unreachable: Mark as offline for zero-latency local-first operation
+      // 3. Fallback DNS probe
+      try {
+        const controller3 = new AbortController()
+        const timer3 = setTimeout(() => controller3.abort(), 3500)
+        await fetch('https://dns.google/resolve?name=example.com', {
+          method: 'GET',
+          mode: 'no-cors',
+          cache: 'no-store',
+          signal: controller3.signal,
+        })
+        clearTimeout(timer3)
+        if (mounted) {
+          setIsOnline(true)
+          if (typeof window !== 'undefined') (window as any).__noxis_wan_online = true
+        }
+        return
+      } catch {
+        // Probes failed
+      }
+
+      // If navigator.onLine is true and the app previously marked WAN online, retain online state
+      if (typeof window !== 'undefined' && (window as any).__noxis_wan_online === true) {
+        if (mounted) setIsOnline(true)
+        return
+      }
+
+      // 4. Probes unreachable: Mark as offline for zero-latency local-first operation
       if (mounted) {
         setIsOnline(false)
         if (typeof window !== 'undefined') {
@@ -153,14 +179,16 @@ export default React.memo(function GlobalTopBar() {
       }
       checkConnection().then(() => {
         if (mounted) {
-          const { drainOfflineQueue, getQueuedCount } = require('@/lib/sync/offlineQueue')
-          setIsSyncing(true)
-          drainOfflineQueue().finally(() => {
-            if (mounted) {
-              setIsSyncing(false)
-              setLocalQueueCount(getQueuedCount())
-            }
-          })
+          try {
+            const { drainOfflineQueue, getQueuedCount } = require('@/lib/sync/offlineQueue')
+            setIsSyncing(true)
+            drainOfflineQueue().finally(() => {
+              if (mounted) {
+                setIsSyncing(false)
+                setLocalQueueCount(getQueuedCount())
+              }
+            })
+          } catch {}
         }
       })
     }
@@ -170,8 +198,17 @@ export default React.memo(function GlobalTopBar() {
       setIsSyncing(false)
     }
 
+    const handleWanStatusChange = (e: any) => {
+      if (mounted && e?.detail?.online !== undefined) {
+        setIsOnline(Boolean(e.detail.online))
+        if (typeof window !== 'undefined') (window as any).__noxis_wan_online = Boolean(e.detail.online)
+      }
+    }
+
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
+    window.addEventListener('focus', checkConnection)
+    window.addEventListener('noxis_wan_status_change', handleWanStatusChange)
     
     // Heartbeat WAN probe every 15 seconds
     const interval = setInterval(checkConnection, 15000)
@@ -180,6 +217,8 @@ export default React.memo(function GlobalTopBar() {
       mounted = false
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('offline', handleOffline)
+      window.removeEventListener('focus', checkConnection)
+      window.removeEventListener('noxis_wan_status_change', handleWanStatusChange)
       clearInterval(interval)
     }
   }, [])

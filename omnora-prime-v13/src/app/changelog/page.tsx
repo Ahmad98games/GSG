@@ -4,9 +4,23 @@ import { Tag, Calendar, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-reac
 
 const RELEASES = [
   {
-    version: 'v14.0.17',
+    version: 'v14.0.18',
     date: 'October 2026',
     isCurrent: true,
+    title: 'Self-Healing Connectivity, Calculators Sidebar Fix, Invoice Lookup Resilience & Crash-Proof Bidirectional Mobile Sync',
+    summary: 'Self-healing WAN online detection with tolerant 3500ms probe timeouts, restored Industrial Calculators sidebar & navigation shell, case-insensitive UUID invoice lookup with local cache fallback, and robust two-way mobile sync.',
+    changes: [
+      'Self-Healing WAN Online Probe: Upgraded internet connectivity engine with realistic 3500ms timeouts, gstatic & Cloudflare domain endpoints, 15s heartbeats, and automatic online recovery whenever Supabase queries succeed.',
+      'Industrial Calculators Layout Restoration: Removed calculators from AppShell public marketing hiding rules, keeping sidebar and topbar permanently active.',
+      'Crash-Proof Invoice Lookup: Implemented case-insensitive UUID matching in SQLite and added Supabase fallback with automatic local caching, preventing false INVOICE NOT FOUND errors.',
+      'Bidirectional Mobile-PC Synchronization: Added offline queue batch ingestion, live query invalidations, and crash-proof WAL persistence across mobile handsets and host PC.',
+      'Software Update Delivery: Released packaged desktop build v14.0.18 with verified zero-latency offline performance.',
+    ],
+  },
+  {
+    version: 'v14.0.17',
+    date: 'October 2026',
+    isCurrent: false,
     title: 'Instant SQLite Invoice Finalization, Zero-Latency Offline Performance & Item Resilience',
     summary: 'Sub-millisecond invoice finalization saved directly to local SQLite WAL with full line items, stock deductions, party balances, and zero-latency offline performance under 1ms.',
     changes: [
@@ -146,7 +160,7 @@ const RELEASES = [
 ]
 
 export default function ChangelogPage() {
-  const [openVersions, setOpenVersions] = useState<string[]>(['v14.0.17'])
+  const [openVersions, setOpenVersions] = useState<string[]>(['v14.0.18'])
 
   const toggleVersion = (v: string) => {
     setOpenVersions(prev =>

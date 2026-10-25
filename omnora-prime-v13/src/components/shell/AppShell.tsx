@@ -319,8 +319,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/whats-new") ||
     pathname.startsWith("/purchase/success") ||
     pathname.startsWith("/success") ||
-    pathname.startsWith("/calculators") ||
-    pathname.startsWith("/converters") ||
     pathname.startsWith("/specs") ||
     pathname.startsWith("/portal") ||
     pathname.startsWith("/admin");

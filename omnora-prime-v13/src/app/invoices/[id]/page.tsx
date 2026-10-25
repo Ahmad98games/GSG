@@ -339,72 +339,93 @@ export default function InvoiceDetailPage() {
         console.warn('[Invoices View] Local fetch notice:', localErr);
       }
 
+      // Step 1.5: Check local React Query cache & localStorage cached invoices
+      if (!data && typeof window !== 'undefined') {
+        try {
+          const cachedList = queryClient.getQueryData<any[]>(['invoices', profile?.id]) ||
+                             queryClient.getQueryData<any[]>(['invoices', businessId]) || [];
+          let match = cachedList.find(c => 
+            String(c.id || '').toLowerCase() === invoiceId.toLowerCase() ||
+            String(c.invoice_no || '').toLowerCase() === invoiceId.toLowerCase() ||
+            String(c.invoice_number || '').toLowerCase() === invoiceId.toLowerCase()
+          );
+
+          if (!match) {
+            for (let i = 0; i < localStorage.length; i++) {
+              const k = localStorage.key(i);
+              if (k && k.startsWith('noxis_cached_invoices_')) {
+                try {
+                  const arr = JSON.parse(localStorage.getItem(k) || '[]');
+                  if (Array.isArray(arr)) {
+                    match = arr.find(c =>
+                      String(c.id || '').toLowerCase() === invoiceId.toLowerCase() ||
+                      String(c.invoice_no || '').toLowerCase() === invoiceId.toLowerCase() ||
+                      String(c.invoice_number || '').toLowerCase() === invoiceId.toLowerCase()
+                    );
+                    if (match) break;
+                  }
+                } catch {}
+              }
+            }
+          }
+
+          if (match) {
+            data = {
+              ...match,
+              invoice_no: match.invoice_no || match.invoice_number,
+              issue_date: match.issue_date || match.invoice_date,
+              total: Number(match.total ?? match.total_amount ?? 0),
+              subtotal: Number(match.subtotal ?? 0),
+              tax_amount: Number(match.tax_amount ?? 0),
+              tax_pct: Number(match.tax_pct ?? match.tax_rate ?? 0),
+              discount_amount: Number(match.discount_amount ?? 0),
+              paid_amount: Number(match.amount_paid ?? match.paid_amount ?? 0),
+              balance_due: Number(match.balance_due ?? 0),
+            };
+          }
+        } catch (cacheErr) {
+          console.warn('[Invoices View] Cache lookup notice:', cacheErr);
+        }
+      }
+
       const isUuid = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 
-      // Step 2: Try fetching by ID with joined party via Supabase (UUID only)
-      if (!data && isUuid(invoiceId)) {
+      // Step 2: Try fetching by ID or Number with joined party via Supabase
+      if (!data) {
         try {
-          const { data: byId } = await supabase
+          const { data: cloudRow } = await supabase
             .from('invoices')
             .select('*, party:parties(*)')
-            .eq('id', invoiceId)
+            .or(`id.ilike.${invoiceId},invoice_no.ilike.${invoiceId},invoice_number.ilike.${invoiceId}`)
             .maybeSingle();
-          if (byId) data = byId;
+          if (cloudRow) data = cloudRow;
         } catch {}
       }
 
-      // Step 3: Try fetching by invoice_no with joined party via Supabase
+      // Step 3: Fallback query without relationship join
       if (!data) {
         try {
-          const { data: byNo } = await supabase
+          const { data: rawInv } = await supabase
             .from('invoices')
-            .select('*, party:parties(*)')
-            .eq('invoice_no', invoiceId)
+            .select('*')
+            .or(`id.ilike.${invoiceId},invoice_no.ilike.${invoiceId},invoice_number.ilike.${invoiceId}`)
             .maybeSingle();
-          if (byNo) data = byNo;
-        } catch {}
-      }
-
-      // Step 4: Fallback query without relationship join
-      if (!data) {
-        let rawInv: any = null;
-        if (isUuid(invoiceId)) {
-          try {
-            const { data: byIdRaw } = await supabase
-              .from('invoices')
-              .select('*')
-              .eq('id', invoiceId)
-              .maybeSingle();
-            if (byIdRaw) rawInv = byIdRaw;
-          } catch {}
-        }
-
-        if (!rawInv) {
-          try {
-            const { data: rawByNo } = await supabase
-              .from('invoices')
-              .select('*')
-              .eq('invoice_no', invoiceId)
-              .maybeSingle();
-            if (rawByNo) rawInv = rawByNo;
-          } catch {}
-        }
-
-        if (rawInv) {
-          data = rawInv;
-          if (data.party_id) {
-            try {
-              const { data: partyData } = await supabase
-                .from('parties')
-                .select('*')
-                .eq('id', data.party_id)
-                .maybeSingle();
-              if (partyData) {
-                data.party = partyData;
-              }
-            } catch {}
+          if (rawInv) {
+            data = rawInv;
+            if (data.party_id) {
+              try {
+                const { data: partyData } = await supabase
+                  .from('parties')
+                  .select('*')
+                  .eq('id', data.party_id)
+                  .maybeSingle();
+                if (partyData) {
+                  data.party = partyData;
+                }
+              } catch {}
+            }
           }
-        }
+        } catch {}
       }
 
       if (!data) throw new Error('Invoice not found');

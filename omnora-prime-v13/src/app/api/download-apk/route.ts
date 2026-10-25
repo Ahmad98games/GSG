@@ -10,15 +10,20 @@ export async function GET(req: NextRequest) {
   if (info === 'true' || searchParams.get('json') === 'true') {
     return NextResponse.json({
       name: 'Noxis Mobile Terminal',
-      version: '14.0.0',
+      version: '14.5.0',
+      latest_version: '14.5.0',
       platform: 'Android 8.0+ (ARM64 & x86_64)',
-      filename: 'Noxis-Mobile-Terminal-v14.0.0.apk',
+      filename: 'noxis-preview.apk',
       file_size_mb: 116.04,
-      file_size_bytes: 121675350,
-      hash_sha256: '27f2f934d10181fe8a20c044d23b16b472b3f9825f18a9451c0ec4afc559f542',
+      file_size_bytes: 121679446,
+      hash: '86ac409f87fb5f115a7a0208f1bb376e8e3520b7209feba899fac2a0bf6d4991',
+      hash_sha256: '86ac409f87fb5f115a7a0208f1bb376e8e3520b7209feba899fac2a0bf6d4991',
       direct_download_url: CLOUDFLARE_APK_URL,
+      apk_url: CLOUDFLARE_APK_URL,
       manifest_url: CLOUDFLARE_VERSION_URL,
-      released_at: '2026-10-20T08:00:37.015Z',
+      release_notes: 'Official Noxis Hub Logo, Instant Zero-Lag Sync Engine, 2-Way Offline Persistence & Tactile Responsive UI',
+      released_at: new Date().toISOString(),
+      devices_ready: true,
     });
   }
 

@@ -20,7 +20,7 @@ export const queryClientOptions = {
       placeholderData: (prev: any) => prev,
       // Do not retry when offline to ensure instant UI responsiveness
       retry: (failureCount: number, error: any) => {
-        if (typeof window !== 'undefined' && ((window as any).__noxis_wan_online === false || (typeof navigator !== 'undefined' && !navigator.onLine))) {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
           return false;
         }
         if (error?.message?.includes('Offline') || error?.message?.includes('Failed to fetch')) {

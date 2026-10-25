@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { db } from '@/lib/db/client';
-import { broadcastSyncToMobileDevices } from '@/lib/mobile-bridge/server';
+import { broadcastSyncToMobileDevices, broadcastToHubRenderer } from '@/lib/mobile-bridge/server';
 import { randomUUID } from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
       let partyRow: any = null;
       if (sqlite) {
         try {
-          partyRow = sqlite.prepare('SELECT * FROM parties WHERE id = ?').get(partyId);
+          partyRow = sqlite.prepare('SELECT * FROM parties WHERE LOWER(id) = LOWER(?)').get(partyId);
         } catch (sqErr: any) {
           console.warn('[API Parties] Local SQLite single party query error:', sqErr.message);
         }
@@ -32,8 +32,29 @@ export async function GET(req: NextRequest) {
 
       if (!partyRow) {
         try {
-          const { data } = await supabase.from('parties').select('*').eq('id', partyId).maybeSingle();
-          if (data) partyRow = data;
+          const { data } = await supabase.from('parties').select('*').or(`id.ilike.${partyId}`).maybeSingle();
+          if (data) {
+            partyRow = data;
+            if (sqlite) {
+              try {
+                sqlite.prepare(`
+                  INSERT OR REPLACE INTO parties (id, business_id, name, party_type, phone, address, current_balance, is_active, created_at, updated_at)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `).run(
+                  data.id,
+                  data.business_id || 'local',
+                  data.name,
+                  data.party_type || 'customer',
+                  data.phone || null,
+                  data.address || null,
+                  Number(data.current_balance || 0),
+                  data.is_active ? 1 : 0,
+                  data.created_at || new Date().toISOString(),
+                  new Date().toISOString()
+                );
+              } catch {}
+            }
+          }
         } catch {}
       }
 
@@ -119,6 +140,7 @@ export async function POST(req: NextRequest) {
       try {
         broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'parties' });
         broadcastSyncToMobileDevices('PARTY_CREATED', { name: payload.name, party_type: payload.party_type });
+        broadcastToHubRenderer('PARTY_CREATED', { name: payload.name, party_type: payload.party_type, party: data || { id: pId, ...payload } });
       } catch {}
 
       return NextResponse.json({ success: true, data: data || { id: pId, ...payload } });
@@ -145,6 +167,7 @@ export async function POST(req: NextRequest) {
 
       try {
         broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'parties' });
+        broadcastToHubRenderer('DATA_INVALIDATED', { resource: 'parties' });
       } catch {}
 
       return NextResponse.json({ success: true });

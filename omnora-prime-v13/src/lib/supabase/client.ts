@@ -31,19 +31,29 @@ export function createClient() {
     };
 
     const fetchWithTimeout = (url: any, options: any = {}) => {
-      if (typeof navigator !== 'undefined' && (!navigator.onLine || (window as any).__noxis_wan_online === false)) {
+      if (typeof navigator !== 'undefined' && !navigator.onLine && (window as any).__noxis_wan_online === false) {
         return Promise.reject(new TypeError('Failed to fetch (Offline)'));
       }
       const urlStr = typeof url === 'string' ? url : (url?.url || '');
       const isUpload = urlStr.includes('/storage/') || urlStr.includes('/upload') || options?.body instanceof FormData || options?.body instanceof Blob;
-      // 30s for file uploads, 1200ms for cloud database queries so UI stays super-snappy and never freezes
-      const timeoutMs = isUpload ? 30000 : 1200;
+      // 30s for file uploads, 3500ms for cloud database queries so Pakistani broadband latency won't false-abort
+      const timeoutMs = isUpload ? 30000 : 3500;
       const controller = new AbortController();
       const id = setTimeout(() => controller.abort(), timeoutMs);
       return fetch(url, {
         ...options,
         signal: controller.signal,
       })
+        .then(res => {
+          // Self-healing: ANY successful network response from Supabase proves WAN is online!
+          if (typeof window !== 'undefined') {
+            if ((window as any).__noxis_wan_online !== true) {
+              (window as any).__noxis_wan_online = true;
+              window.dispatchEvent(new CustomEvent('noxis_wan_status_change', { detail: { online: true } }));
+            }
+          }
+          return res;
+        })
         .catch(err => {
           if (err?.name === 'AbortError') {
             throw new TypeError('Network timeout (Offline)');

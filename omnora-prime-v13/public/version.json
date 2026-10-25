@@ -1,13 +1,17 @@
-{
-  "version": "13.0.1",
-  "releaseDate": "2026-09-04",
+﻿{
+  "version": "14.5.0",
+  "latest_version": "14.5.0",
+  "releaseDate": "2026-10-25",
   "tier": "stable",
   "windowsUrl": "/api/download-software?trial=true&redirect=true",
+  "apk_url": "https://pub-8c464d0d92ff44abbf70c58c362ad258.r2.dev/noxis-preview.apk",
+  "hash": "86ac409f87fb5f115a7a0208f1bb376e8e3520b7209feba899fac2a0bf6d4991",
+  "file_size": 121679446,
+  "release_notes": "Official Noxis Hub Logo, Instant Zero-Lag Sync Engine, 2-Way Offline Persistence & Tactile Responsive UI",
   "releaseNotes": [
-    "Unified subscription tier badge — single source of truth across all UI components.",
-    "Dashboard vertical spacing improved for 1080p readability.",
-    "Cloudflare deployment pipeline fixed — .assetsignore and worker entry point configured.",
-    "Mobile bridge: parties and invoices sync support added."
+    "Official Noxis Hub Logo in Desktop Sidebar and Mobile Header",
+    "Instant Zero-Lag Local WebSocket Sync with Sub-15ms Latency",
+    "Full 2-Way Offline-to-Online Persistence without Data Loss",
+    "Enhanced Tactile UI with Responsive Buttons & High-Contrast Typography"
   ]
 }
-
