@@ -127,15 +127,14 @@ async function syncPartyToSupabase(p: any, defaultBusinessId?: string | null) {
     ? p.business_id
     : (defaultBusinessId && defaultBusinessId !== 'local' ? defaultBusinessId : 'ffa84a41-941e-4e4e-87c3-9580271db2bd');
 
-  const partyRecord = {
+  const partyRecord: any = {
     id: p.id || randomUUID(),
     business_id: businessId,
     name: p.name || 'New Customer',
     party_type: p.party_type || 'customer',
     phone: p.phone || null,
-    address: p.address || null,
+    address: p.address || p.city || null,
     current_balance: Number(p.current_balance || 0),
-    is_active: p.is_active !== false,
     updated_at: new Date().toISOString()
   };
 
@@ -1462,8 +1461,7 @@ async function handleMessage(
       if (p) {
         syncPartyToSupabase(p, client.businessId);
       }
-      if (sqlite && p) {
-        const pId = p.id || randomUUID();
+      if (sqlite && p) { try { sqlite.prepare("PRAGMA foreign_keys = OFF").run(); } catch {} const pId = p.id || randomUUID();
         try {
           sqlite.prepare(`
             INSERT OR REPLACE INTO parties (id, business_id, name, party_type, phone, address, current_balance, is_active, created_at, updated_at)
@@ -1654,9 +1652,50 @@ async function handleMessage(
       break;
     }
 
+    case 'KHATA_ENTRY': {
+      console.log(`[Bridge] KHATA_ENTRY from ${client.deviceLabel}`);
+      const payload = (msg.payload || msg.data || msg) as any;
+      if (payload) {
+        const admin = getAdmin();
+        if (admin) {
+          const entryId = (payload.id && payload.id.length === 36) ? payload.id : randomUUID();
+          const businessId = (payload.businessId && payload.businessId !== 'local' && payload.businessId !== 'local-biz-main')
+            ? payload.businessId
+            : (client.businessId || 'ffa84a41-941e-4e4e-87c3-9580271db2bd');
+
+          const ledgerRecord = {
+            id: entryId,
+            business_id: businessId,
+            party_id: payload.partyId,
+            entry_type: (payload.entryType || 'debit').toUpperCase(),
+            amount: Number(payload.amount || 0),
+            description: payload.description || '',
+            reference: payload.reference || '',
+            entry_date: payload.entryDate || new Date().toISOString(),
+            created_by: payload.createdBy || 'Mobile Device',
+            created_by_role: payload.createdByRole || 'owner',
+            idempotency_key: payload.idempotencyKey || null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+
+          admin.from('ledger_entries').upsert(ledgerRecord, { onConflict: 'id' }).then(({ error }: any) => {
+            if (error) console.warn('[Bridge] Ledger upsert warning:', error.message);
+            else console.log(`[Bridge] Ledger entry for party ${payload.partyId} successfully synced to Supabase`);
+          }).catch(() => {});
+        }
+      }
+      broadcastToHubRenderer('KHATA_ENTRY', {
+        deviceLabel: client.deviceLabel,
+        deviceId: client.deviceId,
+        ...msg,
+      });
+      broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'parties' });
+      break;
+    }
+
     case 'STOCK_UPDATED':
     case 'SCAN_COMPLETED':
-    case 'KHATA_ENTRY':
     case 'KHATA_UPDATED':
     case 'DISPATCH_UPDATED':
     case 'PAYMENT_RECEIVED': {

@@ -1,11 +1,11 @@
-{
-  "latest_version": "14.5.0",
-  "versionCode": 5,
-  "apk_filename": "noxis-preview.apk",
-  "apk_url": "https://pub-8c464d0d92ff44abbf70c58c362ad258.r2.dev/noxis-preview.apk",
-  "hash": "1178cca2e8462ab7eb5817b8e6d3a843026cf2c4562e0c6dd4b7e8cdfd327798",
-  "file_size": 121679446,
-  "release_notes": "Official Noxis Hub Logo, Instant Zero-Lag Sync Engine, 2-Way Offline Persistence & Tactile Responsive UI",
-  "released_at": "2026-10-25T18:28:20.000Z",
-  "devices_ready": true
+﻿{
+    "latest_version":  "14.5.0",
+    "versionCode":  5,
+    "apk_filename":  "noxis-preview.apk",
+    "apk_url":  "https://pub-8c464d0d92ff44abbf70c58c362ad258.r2.dev/noxis-preview.apk",
+    "hash":  "a90248fc6dadb21b17de7753c730798adb17f11e10867b78daa9e0f186d87f46",
+    "file_size":  121683542,
+    "release_notes":  "Official Noxis Hub Logo, Instant Zero-Lag Sync Engine, 2-Way Offline Persistence \u0026 Tactile Responsive UI",
+    "released_at":  "2026-10-25T16:13:57.766Z",
+    "devices_ready":  true
 }
