@@ -98,7 +98,7 @@ export default React.memo(function GlobalTopBar() {
       // 1. Try Google 204 captive portal probe (ultra-fast, zero redirects, 0-byte response)
       try {
         const controller = new AbortController()
-        const timer = setTimeout(() => controller.abort(), 3500)
+        const timer = setTimeout(() => controller.abort(), 1200)
         await fetch('https://www.google.com/generate_204', {
           method: 'GET',
           mode: 'no-cors',
@@ -118,7 +118,7 @@ export default React.memo(function GlobalTopBar() {
       // 2. Try Cloudflare cdn-cgi trace using GET (never HEAD to prevent 302 redirects)
       try {
         const controller2 = new AbortController()
-        const timer2 = setTimeout(() => controller2.abort(), 3000)
+        const timer2 = setTimeout(() => controller2.abort(), 1000)
         await fetch('https://1.1.1.1/cdn-cgi/trace', {
           method: 'GET',
           mode: 'no-cors',
@@ -132,15 +132,14 @@ export default React.memo(function GlobalTopBar() {
         }
         return
       } catch {
-        // Fallback to local network state
+        // Both probes failed: device is offline or on isolated LAN without WAN internet
       }
 
-      // 3. If external WAN probes timed out, but device is connected to local Wi-Fi / LAN
+      // 3. Probes unreachable: Mark as offline for zero-latency local-first operation
       if (mounted) {
-        const hasNetwork = typeof navigator !== 'undefined' ? navigator.onLine : true
-        setIsOnline(hasNetwork)
+        setIsOnline(false)
         if (typeof window !== 'undefined') {
-          (window as any).__noxis_wan_online = hasNetwork
+          (window as any).__noxis_wan_online = false
         }
       }
     }

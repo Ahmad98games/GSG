@@ -17,14 +17,19 @@ export const IndustrialMath = {
   toMinor: (major: number) => new Decimal(major).times(100).toNumber(),
   
   // Totals calculation
-  calculateInvoiceTotals: (items: { qty: number; price: number }[], discountPct = 0, taxPct = 0) => {
-    const subtotal = items.reduce((acc: Decimal, item: any) => {
-      return acc.plus(new Decimal(item.qty).times(item.price));
+  calculateInvoiceTotals: (items: { qty: number; price: number }[], discountPct: number | string = 0, taxPct: number | string = 0) => {
+    const validDiscount = Math.max(0, Math.min(100, Number(discountPct) || 0));
+    const validTax = Math.max(0, Number(taxPct) || 0);
+
+    const subtotal = (items || []).reduce((acc: Decimal, item: any) => {
+      const q = Math.max(0, Number(item?.qty) || 0);
+      const p = Math.max(0, Number(item?.price) || 0);
+      return acc.plus(new Decimal(q).times(p));
     }, new Decimal(0));
     
-    const discount = subtotal.times(new Decimal(discountPct).div(100));
+    const discount = subtotal.times(new Decimal(validDiscount).div(100));
     const subtotalAfterDiscount = subtotal.minus(discount);
-    const tax = subtotalAfterDiscount.times(new Decimal(taxPct).div(100));
+    const tax = subtotalAfterDiscount.times(new Decimal(validTax).div(100));
     const total = subtotalAfterDiscount.plus(tax);
     
     return {

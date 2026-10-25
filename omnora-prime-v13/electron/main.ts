@@ -745,7 +745,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 <div class="brand-title">NOXIS HUB</div>
 <div class="brand-sub">
   <span>Industrial Intelligence</span>
-  <span class="brand-badge">v${app.getVersion() || '14.0.16'}</span>
+  <span class="brand-badge">v${app.getVersion() || '14.0.17'}</span>
 </div>
 
 <div class="progress-track">
@@ -1678,7 +1678,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       releaseName: latestUpdateInfo?.releaseName,
       releaseNotes: latestUpdateInfo?.releaseNotes,
       releaseDate: latestUpdateInfo?.releaseDate,
-      currentVersion: app.isPackaged ? app.getVersion() : '14.0.16',
+      currentVersion: app.isPackaged ? app.getVersion() : '14.0.17',
       baselineVersion: policy.baselineVersion,
       tier: policy.tier,
       maxAllowedMajor: policy.maxAllowedMajor,

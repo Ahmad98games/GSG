@@ -18,9 +18,17 @@ export const queryClientOptions = {
       gcTime: 15 * 60 * 1000,
       // Keep previous data during background revalidations to avoid layout flashes
       placeholderData: (prev: any) => prev,
-      // Only retry once on failure, with a 2s delay
-      retry: 1,
-      retryDelay: 2000,
+      // Do not retry when offline to ensure instant UI responsiveness
+      retry: (failureCount: number, error: any) => {
+        if (typeof window !== 'undefined' && ((window as any).__noxis_wan_online === false || (typeof navigator !== 'undefined' && !navigator.onLine))) {
+          return false;
+        }
+        if (error?.message?.includes('Offline') || error?.message?.includes('Failed to fetch')) {
+          return false;
+        }
+        return failureCount < 1;
+      },
+      retryDelay: 1000,
       retryOnMount: false,
     },
     mutations: {

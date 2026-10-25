@@ -99,7 +99,7 @@ export default function MobileTerminalPage() {
               <div className="flex items-center gap-1.5">
                 <h1 className="text-sm font-black text-white tracking-wider uppercase">NOXIS MOBILE</h1>
                 <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold">
-                  HUB v{hubInfo?.version || '14.0.16'}
+                  HUB v{hubInfo?.version || '14.0.17'}
                 </span>
               </div>
               <p className="text-[10px] text-slate-400 font-mono tracking-tight">
@@ -288,7 +288,7 @@ export default function MobileTerminalPage() {
       {/* Industrial Footer */}
       <footer className="p-4 bg-[#080B11] border-t border-slate-900 text-center text-[11px] text-slate-500">
         <p className="font-medium text-slate-400">
-          Noxis Hub v{hubInfo?.version || '14.0.16'} · Host: <strong className="text-slate-200">{hubInfo?.hostname || 'Master PC'}</strong>
+          Noxis Hub v{hubInfo?.version || '14.0.17'} · Host: <strong className="text-slate-200">{hubInfo?.hostname || 'Master PC'}</strong>
         </p>
         <p className="text-[10px] text-slate-500 mt-0.5">Encrypted SQLite WAL replication with atomic auto-commit</p>
       </footer>

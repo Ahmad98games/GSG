@@ -339,54 +339,70 @@ export default function InvoiceDetailPage() {
         console.warn('[Invoices View] Local fetch notice:', localErr);
       }
 
-      // Step 2: Try fetching by ID with joined party via Supabase
-      if (!data) {
-        const { data: byId } = await supabase
-          .from('invoices')
-          .select('*, party:parties(*)')
-          .eq('id', invoiceId)
-          .maybeSingle();
-        if (byId) data = byId;
+      const isUuid = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
+      // Step 2: Try fetching by ID with joined party via Supabase (UUID only)
+      if (!data && isUuid(invoiceId)) {
+        try {
+          const { data: byId } = await supabase
+            .from('invoices')
+            .select('*, party:parties(*)')
+            .eq('id', invoiceId)
+            .maybeSingle();
+          if (byId) data = byId;
+        } catch {}
       }
 
       // Step 3: Try fetching by invoice_no with joined party via Supabase
       if (!data) {
-        const { data: byNo } = await supabase
-          .from('invoices')
-          .select('*, party:parties(*)')
-          .eq('invoice_no', invoiceId)
-          .maybeSingle();
-        if (byNo) data = byNo;
+        try {
+          const { data: byNo } = await supabase
+            .from('invoices')
+            .select('*, party:parties(*)')
+            .eq('invoice_no', invoiceId)
+            .maybeSingle();
+          if (byNo) data = byNo;
+        } catch {}
       }
 
       // Step 4: Fallback query without relationship join
       if (!data) {
-        let { data: rawInv } = await supabase
-          .from('invoices')
-          .select('*')
-          .eq('id', invoiceId)
-          .maybeSingle();
+        let rawInv: any = null;
+        if (isUuid(invoiceId)) {
+          try {
+            const { data: byIdRaw } = await supabase
+              .from('invoices')
+              .select('*')
+              .eq('id', invoiceId)
+              .maybeSingle();
+            if (byIdRaw) rawInv = byIdRaw;
+          } catch {}
+        }
 
         if (!rawInv) {
-          const { data: rawByNo } = await supabase
-            .from('invoices')
-            .select('*')
-            .eq('invoice_no', invoiceId)
-            .maybeSingle();
-          if (rawByNo) rawInv = rawByNo;
+          try {
+            const { data: rawByNo } = await supabase
+              .from('invoices')
+              .select('*')
+              .eq('invoice_no', invoiceId)
+              .maybeSingle();
+            if (rawByNo) rawInv = rawByNo;
+          } catch {}
         }
 
         if (rawInv) {
           data = rawInv;
           if (data.party_id) {
-            const { data: partyData } = await supabase
-              .from('parties')
-              .select('*')
-              .eq('id', data.party_id)
-              .maybeSingle();
-            if (partyData) {
-              data.party = partyData;
-            }
+            try {
+              const { data: partyData } = await supabase
+                .from('parties')
+                .select('*')
+                .eq('id', data.party_id)
+                .maybeSingle();
+              if (partyData) {
+                data.party = partyData;
+              }
+            } catch {}
           }
         }
       }
@@ -434,8 +450,9 @@ export default function InvoiceDetailPage() {
         }
       }
 
-      // 3. Fallback: Query Supabase
-      if (rawItems.length === 0) {
+      // 3. Fallback: Query Supabase ONLY if targetId is a valid UUID
+      const isUuid = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+      if (rawItems.length === 0 && isUuid(targetId)) {
         try {
           const { data, error } = await supabase
             .from('invoice_items')
