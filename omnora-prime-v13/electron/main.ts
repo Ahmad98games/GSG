@@ -27,6 +27,7 @@ import {
   calculateVersionEligibility,
   getVersionPolicy,
 } from './services/autonomousUpdateEngine'
+import { initCompanionAppCacher } from './services/companionAppCacher'
 // ── Store ─────────────────────────────────────────────────────────────────────
 import store, {
   saveSession,
@@ -3150,6 +3151,14 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             setupAutoUpdater(mainWindow);
           }
         }, 5000);
+
+        // Background Mobile Companion APK Cacher (ensures offline shop local Wi-Fi sharing without bloating installer)
+        try {
+          const publicFolder = app.isPackaged
+            ? path.join(process.resourcesPath, 'standalone', 'public')
+            : path.join(process.cwd(), 'public');
+          initCompanionAppCacher(publicFolder);
+        } catch {}
 
         setTimeout(() => {
           if (app.isPackaged) {

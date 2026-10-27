@@ -29,7 +29,7 @@ const ROOT = process.cwd();
 const STANDALONE = path.join(ROOT, '.next', 'standalone');
 
 // ── Helper: copy dir (warn if missing, never throw) ──────────────────────────
-function copyDir(src, dest, { required = false } = {}) {
+function copyDir(src, dest, { required = false, filter = null } = {}) {
   if (!fs.existsSync(src)) {
     if (required) {
       console.error(`[Electron Build] ✗ REQUIRED dir missing: ${src}`);
@@ -39,7 +39,11 @@ function copyDir(src, dest, { required = false } = {}) {
     return;
   }
   fs.mkdirSync(dest, { recursive: true });
-  fs.cpSync(src, dest, { recursive: true, force: true });
+  fs.cpSync(src, dest, { 
+    recursive: true, 
+    force: true,
+    filter: filter || undefined,
+  });
   console.log(`[Electron Build] ✓ Copied ${path.relative(ROOT, src)} → ${path.relative(ROOT, dest)}`);
 }
 
@@ -104,8 +108,23 @@ function prepareStandaloneBundle() {
     { required: true }
   );
 
-  // 2. Public folder
-  copyDir(path.join(ROOT, 'public'), path.join(STANDALONE, 'public'));
+  // 2. Public folder (Exclude heavy mobile .apk files to keep desktop installer lightweight at ~230MB)
+  copyDir(path.join(ROOT, 'public'), path.join(STANDALONE, 'public'), {
+    filter: (source) => !source.toLowerCase().endsWith('.apk')
+  });
+
+  // Ensure no stray .apk files remain in standalone public/downloads
+  const standaloneDownloads = path.join(STANDALONE, 'public', 'downloads');
+  if (fs.existsSync(standaloneDownloads)) {
+    for (const f of fs.readdirSync(standaloneDownloads)) {
+      if (f.toLowerCase().endsWith('.apk')) {
+        try {
+          fs.unlinkSync(path.join(standaloneDownloads, f));
+          console.log(`[Electron Build] ✓ Excluded companion mobile APK from desktop package: ${f}`);
+        } catch {}
+      }
+    }
+  }
 
   // 3. DB migrations
   copyDir(
