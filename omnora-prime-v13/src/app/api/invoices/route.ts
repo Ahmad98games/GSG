@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { db } from '@/lib/db/client';
 import { broadcastSyncToMobileDevices, broadcastToHubRenderer } from '@/lib/mobile-bridge/server';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
+import { enqueueWorkflowEvent } from '@/lib/workflows/outboxEngine';
 import { randomUUID } from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -484,6 +485,25 @@ export async function POST(req: NextRequest) {
           status: invoice.status || 'posted',
           items_count: items.length,
         }, invoice.business_id || 'local');
+
+        // ── STEP 2B: ZERO-LATENCY WORKFLOW OUTBOX ENQUEUE (< 0.2ms) ──
+        enqueueWorkflowEvent({
+          businessId: invoice.business_id || 'local',
+          eventType: 'invoice.posted',
+          entityId: invoiceId,
+          recipient: invoice.party_phone || invoice.party_id || undefined,
+          payload: {
+            invoice_id: invoiceId,
+            invoice_number: invNumber,
+            total_amount: invTotal,
+            party_name: invoice.party_name || 'Walk-in Customer',
+            party_phone: invoice.party_phone,
+            phone: invoice.party_phone,
+            status: invoice.status || 'posted',
+            balance_due: invBalance,
+            items_count: items.length,
+          },
+        });
       } catch {}
 
       // ── STEP 3: NON-BLOCKING BACKGROUND CLOUD SYNC ──

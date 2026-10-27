@@ -602,6 +602,51 @@ CREATE TABLE IF NOT EXISTS workflow_rules (
   created_at TEXT DEFAULT (datetime('now'))
 );
 
+-- WORKFLOW OUTBOX QUEUE (Decoupled Zero-Latency Counter Queue)
+CREATE TABLE IF NOT EXISTS workflow_event_queue (
+  id TEXT PRIMARY KEY,
+  business_id TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  entity_id TEXT NOT NULL,
+  event_hash TEXT NOT NULL UNIQUE,
+  payload TEXT NOT NULL,
+  recipient TEXT,
+  status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'processing', 'completed', 'failed', 'throttled')),
+  retry_count INTEGER DEFAULT 0,
+  error_message TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  processed_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_workflow_queue_status ON workflow_event_queue(status, created_at ASC);
+CREATE INDEX IF NOT EXISTS idx_workflow_queue_entity ON workflow_event_queue(business_id, entity_id);
+
+-- WORKFLOW RUNS & AUDIT LOGS
+CREATE TABLE IF NOT EXISTS workflow_runs (
+  id TEXT PRIMARY KEY,
+  business_id TEXT NOT NULL,
+  workflow_id TEXT,
+  workflow_name TEXT,
+  event_type TEXT NOT NULL,
+  event_hash TEXT,
+  recipient TEXT,
+  trigger_data TEXT,
+  actions_executed TEXT,
+  status TEXT NOT NULL CHECK(status IN ('completed', 'failed', 'throttled')),
+  error TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_workflow_runs_business ON workflow_runs(business_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_workflow_runs_recipient ON workflow_runs(recipient, created_at DESC);
+
+-- WORKFLOW RECIPIENT COOLDOWNS (Anti-Spam 24-hr Throttle)
+CREATE TABLE IF NOT EXISTS workflow_recipient_cooldowns (
+  recipient_key TEXT PRIMARY KEY,
+  event_type TEXT NOT NULL,
+  last_notified_at TEXT NOT NULL
+);
+
 -- FORESIGHT PREDICTIONS
 CREATE TABLE IF NOT EXISTS foresight_predictions (
   id TEXT PRIMARY KEY,

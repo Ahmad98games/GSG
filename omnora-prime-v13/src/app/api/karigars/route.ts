@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { db } from '@/lib/db/client';
 import { broadcastSyncToMobileDevices } from '@/lib/mobile-bridge/server';
+import { enqueueWorkflowEvent } from '@/lib/workflows/outboxEngine';
 import { randomUUID } from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -253,9 +254,10 @@ export async function POST(req: NextRequest) {
 
       const { new_advance_balance, ...insertPayload } = advance_data;
 
+      const newBalance = new_advance_balance !== undefined ? Number(new_advance_balance) : Number(advance_data.amount || 0);
+
       try {
         await supabase.from('karigar_advances').insert(insertPayload);
-        const newBalance = new_advance_balance !== undefined ? new_advance_balance : advance_data.amount;
         await supabase.from('karigars').update({
           current_advance: newBalance,
           updated_at: new Date().toISOString()
@@ -281,6 +283,22 @@ export async function POST(req: NextRequest) {
             UPDATE karigars SET peshgi_balance = COALESCE(peshgi_balance, 0) + ?, updated_at = ?
             WHERE id = ?
           `).run(amt, new Date().toISOString(), karigar_id);
+
+          // ── ZERO-LATENCY WORKFLOW OUTBOX ENQUEUE (< 0.2ms) ──
+          enqueueWorkflowEvent({
+            businessId: advance_data.business_id || 'local',
+            eventType: 'karigar.peshgi_exceeds',
+            entityId: karigar_id,
+            recipient: karigar_id,
+            payload: {
+              karigar_id,
+              karigar_name: advance_data.karigar_name || 'Karigar',
+              peshgi_balance: newBalance,
+              amount: amt,
+              advance_date: advance_data.advance_date,
+              phone: advance_data.phone,
+            },
+          });
         } catch {}
       }
 

@@ -6,7 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useBusinessProfile } from '@/hooks/useBusinessProfile'
 import { 
   Zap, Plus, Trash2, ChevronRight, 
-  CheckCircle, Play, Pause, AlertCircle, Info 
+  CheckCircle, Play, Pause, AlertCircle, Info,
+  ShieldAlert, Clock, RefreshCw, Filter, ShieldCheck
 } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -217,6 +218,38 @@ export default function WorkflowsPage() {
     type: string
     config: Record<string, any>
   } | null>(null)
+
+  const [activeTab, setActiveTab] = useState<'rules' | 'audit'>('rules')
+  const [auditFilter, setAuditFilter] = useState<'all' | 'completed' | 'throttled' | 'failed'>('all')
+  const [isReconciling, setIsReconciling] = useState(false)
+
+  const { data: auditData, isLoading: isLoadingAudit, refetch: refetchAudit } = useQuery({
+    queryKey: ['workflow-runs', auditFilter],
+    queryFn: async () => {
+      const res = await fetch(`/api/workflows/runs?status=${auditFilter}&limit=100`)
+      if (!res.ok) return { runs: [], stats: { total: 0, completed: 0, throttled: 0, failed: 0 } }
+      return res.json()
+    },
+    refetchInterval: activeTab === 'audit' ? 4000 : false,
+  })
+
+  const handleManualReconcile = async () => {
+    setIsReconciling(true)
+    try {
+      const res = await fetch('/api/workflows/reconcile', { method: 'POST' })
+      const data = await res.json()
+      if (data.success) {
+        toast.success(data.message || 'Reconciliation & overdue scan complete!')
+        refetchAudit()
+      } else {
+        toast.error(data.error || 'Reconciliation failed')
+      }
+    } catch (e: any) {
+      toast.error('Failed to trigger reconciliation: ' + e.message)
+    } finally {
+      setIsReconciling(false)
+    }
+  }
 
   const { data: workflows = [], isLoading } = useQuery({
     queryKey: ['workflows', bizId],
@@ -448,106 +481,252 @@ export default function WorkflowsPage() {
         </button>
       </div>
 
-      {/* Existing workflows */}
-      {isLoading ? (
-        <div className="space-y-2 animate-pulse">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="h-16 bg-white/[0.02] border border-white/5 rounded-sm" />
-          ))}
-        </div>
-      ) : workflows.length === 0 && !showBuilder ? (
-        <div className="p-12 text-center bg-[#0F1114] border border-white/5 rounded-sm max-w-xl mx-auto shadow-2xl">
-          <Zap size={32} className="text-gray-700 mx-auto mb-3 animate-pulse" />
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">
-            No automations configured
-          </p>
-          <p className="text-[11px] text-gray-600 mb-4">
-            Build custom automated flows to flag dashboard warnings or open WhatsApp messages instantly.
-          </p>
+      {/* Tab Switcher & Action Toolbar */}
+      <div className="flex items-center justify-between border-b border-white/8 pb-3">
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => setShowBuilder(true)}
-            className="px-4 py-2.5 bg-[#60A5FA] text-slate-950 text-xs font-black uppercase tracking-widest hover:bg-blue-400 transition-all rounded-sm"
+            onClick={() => setActiveTab('rules')}
+            className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-sm transition-all ${
+              activeTab === 'rules'
+                ? 'bg-white/10 text-white border-b-2 border-[#60A5FA]'
+                : 'text-gray-500 hover:text-gray-300'
+            }`}
           >
-            Create First Workflow
+            Active Automations ({workflows.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('audit')}
+            className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-sm transition-all ${
+              activeTab === 'audit'
+                ? 'bg-white/10 text-white border-b-2 border-[#60A5FA]'
+                : 'text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            Outbox & Audit Logs {auditData?.stats?.total ? `(${auditData.stats.total})` : ''}
           </button>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {workflows.map((wf: any) => {
-            const triggerMeta = TRIGGER_OPTIONS.find(
-              t => t.type === wf.trigger_type
-            )
-            return (
-              <div
-                key={wf.id}
-                className={`p-5 bg-[#0F1114] border rounded-sm transition-all hover:border-white/10 ${
-                  wf.is_active ? 'border-white/8 shadow-xl' : 'border-white/4 opacity-60'
-                }`}
+
+        {activeTab === 'audit' && (
+          <button
+            onClick={() => handleManualReconcile()}
+            disabled={isReconciling}
+            className="flex items-center gap-2 px-3 py-1.5 bg-[#161A1F] border border-white/10 text-xs font-bold text-[#60A5FA] hover:bg-white/5 rounded-sm transition-all disabled:opacity-50"
+          >
+            <RefreshCw size={12} className={isReconciling ? 'animate-spin' : ''} />
+            {isReconciling ? 'Reconciling...' : 'Run Overdue Scan Now'}
+          </button>
+        )}
+      </div>
+
+      {/* TAB 1: RULES VIEW */}
+      {activeTab === 'rules' && (
+        <>
+          {isLoading ? (
+            <div className="space-y-2 animate-pulse">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="h-16 bg-white/[0.02] border border-white/5 rounded-sm" />
+              ))}
+            </div>
+          ) : workflows.length === 0 && !showBuilder ? (
+            <div className="p-12 text-center bg-[#0F1114] border border-white/5 rounded-sm max-w-xl mx-auto shadow-2xl">
+              <Zap size={32} className="text-gray-700 mx-auto mb-3 animate-pulse" />
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">
+                No automations configured
+              </p>
+              <p className="text-[11px] text-gray-600 mb-4">
+                Build custom automated flows to flag dashboard warnings or open WhatsApp messages instantly.
+              </p>
+              <button
+                onClick={() => setShowBuilder(true)}
+                className="px-4 py-2.5 bg-[#60A5FA] text-slate-950 text-xs font-black uppercase tracking-widest hover:bg-blue-400 transition-all rounded-sm"
               >
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl bg-white/5 p-2 rounded-sm">
-                      {triggerMeta?.icon || '⚙'}
-                    </span>
-                    <div>
-                      <p className="text-xs font-bold text-white uppercase tracking-wider">
-                        {wf.name}
-                      </p>
-                      <p className="text-[10px] text-gray-500 mt-1 font-medium">
-                        Trigger:{' '}
-                        <span className="text-gray-400">{triggerMeta?.label || wf.trigger_type}</span>
-                        {' '}·{' '}
-                        {wf.actions?.length || 0}{' '}
-                        action{wf.actions?.length !== 1 ? 's' : ''}
-                      </p>
-                      {wf.trigger_count > 0 ? (
-                        <p className="text-[9px] text-[#60A5FA]/80 font-mono mt-0.5">
-                          Ran {wf.trigger_count} times
-                        </p>
-                      ) : (
-                        <p className="text-[9px] text-gray-700 font-mono mt-0.5">Never triggered</p>
-                      )}
+                Create First Workflow
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {workflows.map((wf: any) => {
+                const triggerMeta = TRIGGER_OPTIONS.find(
+                  t => t.type === wf.trigger_type
+                )
+                return (
+                  <div
+                    key={wf.id}
+                    className={`p-5 bg-[#0F1114] border rounded-sm transition-all hover:border-white/10 ${
+                      wf.is_active ? 'border-white/8 shadow-xl' : 'border-white/4 opacity-60'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl bg-white/5 p-2 rounded-sm">
+                          {triggerMeta?.icon || '⚙'}
+                        </span>
+                        <div>
+                          <p className="text-xs font-bold text-white uppercase tracking-wider">
+                            {wf.name}
+                          </p>
+                          <p className="text-[10px] text-gray-500 mt-1 font-medium">
+                            Trigger:{' '}
+                            <span className="text-gray-400">{triggerMeta?.label || wf.trigger_type}</span>
+                            {' '}·{' '}
+                            {wf.actions?.length || 0}{' '}
+                            action{wf.actions?.length !== 1 ? 's' : ''}
+                          </p>
+                          {wf.trigger_count > 0 ? (
+                            <p className="text-[9px] text-[#60A5FA]/80 font-mono mt-0.5">
+                              Ran {wf.trigger_count} times
+                            </p>
+                          ) : (
+                            <p className="text-[9px] text-gray-700 font-mono mt-0.5">Never triggered</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleTestRun(wf)}
+                          title="Simulate / trigger this workflow now"
+                          className="text-[9px] px-2.5 py-1 rounded-sm border border-[#60A5FA]/30 text-[#60A5FA] bg-[#60A5FA]/10 hover:bg-[#60A5FA]/20 font-bold uppercase tracking-widest transition-all flex items-center gap-1"
+                        >
+                          <Play size={10} className="fill-current" />
+                          Test Run
+                        </button>
+                        <button
+                          onClick={() =>
+                            toggleWorkflow.mutate({
+                              id: wf.id,
+                              isActive: !wf.is_active,
+                            })
+                          }
+                          className={`text-[9px] px-2.5 py-1 rounded-sm border font-black uppercase tracking-widest transition-all ${
+                            wf.is_active
+                              ? 'border-emerald-500/20 text-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/10'
+                              : 'border-white/10 text-gray-600 hover:border-white/20'
+                          }`}
+                        >
+                          {wf.is_active ? '● Active' : '○ Paused'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm(`Delete "${wf.name}"?`)) {
+                              deleteWorkflow.mutate(wf.id)
+                            }
+                          }}
+                          className="text-gray-600 hover:text-red-400 p-1.5 transition-colors border border-white/5 hover:border-red-500/20 rounded-sm"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleTestRun(wf)}
-                      title="Simulate / trigger this workflow now"
-                      className="text-[9px] px-2.5 py-1 rounded-sm border border-[#60A5FA]/30 text-[#60A5FA] bg-[#60A5FA]/10 hover:bg-[#60A5FA]/20 font-bold uppercase tracking-widest transition-all flex items-center gap-1"
-                    >
-                      <Play size={10} className="fill-current" />
-                      Test Run
-                    </button>
-                    <button
-                      onClick={() =>
-                        toggleWorkflow.mutate({
-                          id: wf.id,
-                          isActive: !wf.is_active,
-                        })
-                      }
-                      className={`text-[9px] px-2.5 py-1 rounded-sm border font-black uppercase tracking-widest transition-all ${
-                        wf.is_active
-                          ? 'border-emerald-500/20 text-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/10'
-                          : 'border-white/10 text-gray-600 hover:border-white/20'
-                      }`}
-                    >
-                      {wf.is_active ? '● Active' : '○ Paused'}
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (confirm(`Delete "${wf.name}"?`)) {
-                          deleteWorkflow.mutate(wf.id)
-                        }
-                      }}
-                      className="text-gray-600 hover:text-red-400 p-1.5 transition-colors border border-white/5 hover:border-red-500/20 rounded-sm"
-                    >
-                      <Trash2 size={13} />
-                    </button>
+                )
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* TAB 2: AUDIT LOGS & OUTBOX VIEW */}
+      {activeTab === 'audit' && (
+        <div className="space-y-4">
+          {/* Stats Bar */}
+          <div className="grid grid-cols-4 gap-3">
+            <div className="p-3 bg-[#0F1114] border border-white/8 rounded-sm">
+              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Total Runs</p>
+              <p className="text-xl font-black text-white font-mono mt-0.5">{auditData?.stats?.total || 0}</p>
+            </div>
+            <div className="p-3 bg-[#0F1114] border border-emerald-500/20 rounded-sm">
+              <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Completed</p>
+              <p className="text-xl font-black text-emerald-400 font-mono mt-0.5">{auditData?.stats?.completed || 0}</p>
+            </div>
+            <div className="p-3 bg-[#0F1114] border border-amber-500/20 rounded-sm">
+              <p className="text-[10px] font-bold text-amber-400 uppercase tracking-widest">Throttled (Anti-Spam)</p>
+              <p className="text-xl font-black text-amber-400 font-mono mt-0.5">{auditData?.stats?.throttled || 0}</p>
+            </div>
+            <div className="p-3 bg-[#0F1114] border border-red-500/20 rounded-sm">
+              <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Failed</p>
+              <p className="text-xl font-black text-red-400 font-mono mt-0.5">{auditData?.stats?.failed || 0}</p>
+            </div>
+          </div>
+
+          {/* Filter Pills */}
+          <div className="flex items-center gap-2">
+            {(['all', 'completed', 'throttled', 'failed'] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => setAuditFilter(f)}
+                className={`px-3 py-1 text-[11px] font-bold uppercase tracking-wider rounded-sm transition-all ${
+                  auditFilter === f
+                    ? 'bg-[#60A5FA] text-slate-950 font-black'
+                    : 'bg-[#161A1F] text-gray-500 hover:text-white border border-white/5'
+                }`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+
+          {/* Audit Logs List */}
+          {isLoadingAudit ? (
+            <div className="space-y-2 animate-pulse">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="h-14 bg-white/[0.02] border border-white/5 rounded-sm" />
+              ))}
+            </div>
+          ) : !auditData?.runs || auditData.runs.length === 0 ? (
+            <div className="p-12 text-center bg-[#0F1114] border border-white/5 rounded-sm">
+              <Clock size={28} className="text-gray-700 mx-auto mb-2" />
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">No audit records yet</p>
+              <p className="text-[11px] text-gray-600 mt-1">
+                Automations will log all trigger evaluations, deduplications, and alert dispatches here in real time.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {auditData.runs.map((run: any) => {
+                const isCompleted = run.status === 'completed'
+                const isThrottled = run.status === 'throttled'
+                return (
+                  <div
+                    key={run.id}
+                    className="p-3.5 bg-[#0F1114] border border-white/8 rounded-sm flex items-center justify-between gap-4 transition-all hover:border-white/15"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                        isCompleted ? 'bg-emerald-400' : isThrottled ? 'bg-amber-400' : 'bg-red-400'
+                      }`} />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-bold text-white truncate">{run.workflowName}</p>
+                          <span className="text-[9px] px-1.5 py-0.2 rounded font-mono bg-white/5 text-gray-400">
+                            {run.eventType}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-gray-500 mt-0.5 truncate">
+                          {run.recipient ? `Recipient: ${run.recipient} · ` : ''}
+                          {run.error ? run.error : `${run.actionsExecuted?.length || 0} action(s) executed`}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-right flex-shrink-0">
+                      <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-sm ${
+                        isCompleted
+                          ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
+                          : isThrottled
+                          ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
+                          : 'text-red-400 bg-red-500/10 border border-red-500/20'
+                      }`}>
+                        {run.status}
+                      </span>
+                      <p className="text-[9px] text-gray-600 font-mono mt-1">
+                        {new Date(run.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </div>
-            )
-          })}
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 

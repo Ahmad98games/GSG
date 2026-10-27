@@ -47,10 +47,24 @@ interface DeltaSyncResult {
   error?: string
 }
 
+let lastRunTimestamp = 0
+const MIN_DELTA_SYNC_INTERVAL_MS = 30000 // Enforce 30-second debounce between delta polls
+
 export async function runDeltaSync(
   businessId: string,
   lastSyncAt: number
 ): Promise<DeltaSyncResult> {
+  const now = Date.now()
+  if (now - lastRunTimestamp < MIN_DELTA_SYNC_INTERVAL_MS) {
+    console.log('[DeltaSync] Throttled — delta sync ran < 30s ago, preserving Supabase Disk IOPS')
+    return {
+      success: true,
+      tablesChecked: 0,
+      rowsPulled: 0,
+      durationMs: 0,
+    }
+  }
+
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
     return {
       success: true,
@@ -60,6 +74,7 @@ export async function runDeltaSync(
     }
   }
 
+  lastRunTimestamp = now
   const supabase = createClient()
   const startTime = Date.now()
   let totalRowsPulled = 0

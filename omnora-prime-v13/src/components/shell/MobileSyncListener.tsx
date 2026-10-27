@@ -2,6 +2,7 @@
 import React, { useEffect, useCallback, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useMobileSyncToast } from '@/hooks/useMobileSyncToast'
+import { notify } from '@/stores/notificationStore'
 
 // This component lives in the layout and handles all mobile sync notifications and instant live UI data refresh
 export function MobileSyncListener() {
@@ -62,6 +63,13 @@ export function MobileSyncListener() {
             queueInvalidation([data.resource])
           } else {
             queueInvalidation(['invoices', 'parties', 'karigars'])
+          }
+          break
+        case 'WORKFLOW_ALERT':
+          if (data) {
+            const sev = (data.severity as 'info' | 'warning' | 'error' | 'success') || 'info'
+            notify[sev](data.title || 'Workflow Alert', data.message || '', data.route)
+            queueInvalidation(['workflow-runs', 'workflows'])
           }
           break
       }

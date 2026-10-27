@@ -70,7 +70,24 @@ export async function clearOfflineQueue(): Promise<void> {
   }
 }
 
+let offlineDrainDebounceTimer: NodeJS.Timeout | null = null
+
+export function scheduleDebouncedOfflineDrain(delayMs = 25000): void {
+  if (offlineDrainDebounceTimer) return
+  offlineDrainDebounceTimer = setTimeout(async () => {
+    offlineDrainDebounceTimer = null
+    try {
+      await drainOfflineQueue()
+    } catch {}
+  }, delayMs)
+}
+
 export async function drainOfflineQueue(): Promise<{ drained: number; failed: number }> {
+  if (offlineDrainDebounceTimer) {
+    clearTimeout(offlineDrainDebounceTimer)
+    offlineDrainDebounceTimer = null
+  }
+
   const { createClient } = await import('@/lib/supabase/client')
   const supabase = createClient()
 
@@ -84,9 +101,10 @@ export async function drainOfflineQueue(): Promise<{ drained: number; failed: nu
     const queue: QueuedOperation[] = JSON.parse(raw)
     const remaining: QueuedOperation[] = []
 
+    // Filter eligible items vs retrying later
+    const eligible: QueuedOperation[] = []
     for (const op of queue) {
       if (op.attempts >= MAX_RETRIES) {
-        // Give up on this operation
         failed++
         notify.error(
           'Sync failed permanently',
@@ -94,16 +112,58 @@ export async function drainOfflineQueue(): Promise<{ drained: number; failed: nu
         )
         continue
       }
-
-      // Exponential backoff check
-      const delay = RETRY_DELAYS[
-        Math.min(op.attempts, RETRY_DELAYS.length - 1)
-      ]
-      if (op.lastAttemptAt && (Date.now() - op.lastAttemptAt < delay)) {
+      const delay = RETRY_DELAYS[Math.min(op.attempts, RETRY_DELAYS.length - 1)]
+      if (op.lastAttemptAt && Date.now() - op.lastAttemptAt < delay) {
         remaining.push(op)
         continue
       }
+      eligible.push(op)
+    }
 
+    if (eligible.length === 0) {
+      return { drained: 0, failed }
+    }
+
+    // Group eligible items by table for batch upsert
+    const upsertBatches: Record<string, QueuedOperation[]> = {}
+    const individualOps: QueuedOperation[] = []
+
+    for (const op of eligible) {
+      if ((op.operation === 'upsert' || op.operation === 'insert') && op.data && typeof op.data === 'object' && !Array.isArray(op.data)) {
+        if (!upsertBatches[op.table]) upsertBatches[op.table] = []
+        upsertBatches[op.table].push(op)
+      } else {
+        individualOps.push(op)
+      }
+    }
+
+    // 1. Process batch upserts (Bulk roundtrip per table)
+    for (const [table, batch] of Object.entries(upsertBatches)) {
+      if (batch.length === 1) {
+        // Just one item, fall to individual
+        individualOps.push(batch[0])
+        continue
+      }
+
+      try {
+        const payloadArray = batch.map((b) => b.data)
+        const { error } = await supabase.from(table).upsert(payloadArray, { onConflict: 'id', ignoreDuplicates: false })
+        if (error) throw error
+        drained += batch.length
+      } catch (err: any) {
+        // Fallback: retry as individual operations
+        batch.forEach((b) => {
+          b.attempts++
+          b.lastAttemptAt = Date.now()
+          b.error = err.message || String(err)
+          remaining.push(b)
+          failed++
+        })
+      }
+    }
+
+    // 2. Process individual / RPC / Delete / Update operations
+    for (const op of individualOps) {
       try {
         let result
 
@@ -142,13 +202,10 @@ export async function drainOfflineQueue(): Promise<{ drained: number; failed: nu
         }
 
         drained++
-        // Don't push to remaining — it's done
-
       } catch (err: any) {
         op.attempts++
         op.lastAttemptAt = Date.now()
         op.error = err.message || String(err)
-        // If unrecoverable business/validation error (e.g. INSUFFICIENT_STOCK, UNAUTHORIZED_BUSINESS, PRICE_MISMATCH), flag as permanent failure
         const errCode = err.error_code || ''
         if (['INSUFFICIENT_STOCK', 'UNAUTHORIZED_BUSINESS', 'PRICE_MISMATCH', 'INVALID_PAYLOAD'].includes(errCode) || op.attempts >= 5) {
           (op as any).status = 'FAILED_PERMANENT'
@@ -190,14 +247,13 @@ export function getQueuedCount(): number {
 }
 
 export async function pushOfflineOperation(op: any): Promise<void> {
-  return queueFailedOperation({ queryKey: [], variables: op, mutationFn: () => {} })
+  await queueFailedOperation({ queryKey: [], variables: op, mutationFn: () => {} })
+  scheduleDebouncedOfflineDrain(25000)
 }
 
-// Auto-drain when connection returns
+// Auto-drain with a 20-second debounce when connection returns (prevents reconnect IOPS spike)
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {
-    setTimeout(() => {
-      drainOfflineQueue()
-    }, 500)
+    scheduleDebouncedOfflineDrain(20000)
   })
 }

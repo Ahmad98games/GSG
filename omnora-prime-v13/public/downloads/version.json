@@ -1,0 +1,12 @@
+﻿{
+    "latest_version":  "15.0.1",
+    "min_required_version":  "15.0.0",
+    "versionCode":  7,
+    "apk_filename":  "noxis-preview.apk",
+    "apk_url":  "https://pub-8c464d0d92ff44abbf70c58c362ad258.r2.dev/noxis-preview.apk",
+    "hash":  "855afd411b80a730a121e10d88328b657295bcd07f9c8c19324d0f797eac7130",
+    "file_size":  125568342,
+    "release_notes":  "Noxis Enterprise OS v15.0.1 - Real-Time 2-Way Sync Engine, Robust PC Hub Pairing, Instant Offline Hydration",
+    "released_at":  "2026-10-25T20:17:58.223Z",
+    "devices_ready":  true
+}
