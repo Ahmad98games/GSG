@@ -30,7 +30,7 @@ function SuccessContent() {
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }} 
         animate={{ scale: 1, opacity: 1 }}
-        className="w-20 h-20 bg-[#08EBF6]/10 border border-[#08EBF6]/30 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(8,235,246,0.3)]"
+        className="w-20 h-20 bg-blue-600 text-white hover:bg-blue-500/10 border border-[#08EBF6]/30 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg"
       >
         <CheckCircle2 className="text-[#08EBF6] w-10 h-10" />
       </motion.div>
@@ -69,7 +69,7 @@ function SuccessContent() {
         <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
           <button 
             onClick={copyKey}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#08EBF6] hover:bg-[#08EBF6]/90 text-black font-black text-xs uppercase tracking-widest rounded-sm transition-all shadow-[0_0_20px_rgba(8,235,246,0.3)] cursor-pointer"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#08EBF6] hover:bg-[#08EBF6]/90 text-black font-black text-xs uppercase tracking-widest rounded-sm transition-all shadow-sm cursor-pointer"
           >
             {copied ? <Check size={16} /> : <Copy size={16} />}
             <span>{copied ? "Key Copied to Clipboard!" : "Copy License Key"}</span>

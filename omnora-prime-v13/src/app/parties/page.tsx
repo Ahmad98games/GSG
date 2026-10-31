@@ -178,17 +178,43 @@ export default function PartiesPage() {
         } catch {}
       }
 
+      // Check local SQLite first for 0ms offline retrieval
       try {
-        const { data, error } = await supabase
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 1200);
+        const localRes = await fetch(`/api/parties?business_id=${businessId}`, { signal: ctrl.signal });
+        clearTimeout(tid);
+        if (localRes.ok) {
+          const localJson = await localRes.json();
+          if (localJson?.data && Array.isArray(localJson.data) && localJson.data.length > 0) {
+            cachedData = localJson.data;
+          }
+        }
+      } catch {}
+
+      try {
+        const cloudPromise = supabase
           .from('parties')
           .select('*')
           .eq('business_id', businessId)
           .order('name');
-        if (!error && data) {
+        const timeoutPromise = new Promise<{ data: null; error: any }>((resolve) =>
+          setTimeout(() => resolve({ data: null, error: new Error('Remote query timed out') }), 1500)
+        );
+        const { data, error } = await Promise.race([cloudPromise, timeoutPromise]);
+        if (!error && data && Array.isArray(data)) {
           setLastFetchedAt(new Date());
           if (typeof window !== 'undefined' && businessId) {
             try { localStorage.setItem(`noxis_cached_parties_${businessId}`, JSON.stringify(data)); } catch {}
           }
+          // Fire-and-forget sync to local SQLite WAL
+          try {
+            fetch('/api/parties', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ operation: 'bulk_upsert', parties: data })
+            }).catch(() => {});
+          } catch {}
           return data;
         }
       } catch (err) {

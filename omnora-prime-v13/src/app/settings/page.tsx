@@ -1637,20 +1637,30 @@ export default function SettingsPage() {
                       </div>
 
                       <div className="p-6 bg-white/5 border border-white/10 rounded-2xl space-y-4">
-                        <div className="flex justify-between items-center">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                           <div>
-                            <h3 className="text-white font-bold text-sm">Guided Interface Tour</h3>
-                            <p className="text-slate-500 text-xs mt-0.5">Need a refresher on how the Noxis interface works?</p>
+                            <h3 className="text-white font-bold text-sm">Guided Interface Tour & Walkthrough</h3>
+                            <p className="text-slate-400 text-xs mt-0.5">Need a refresher on how the Noxis interface works?</p>
                           </div>
-                          <button
-                            onClick={() => {
-                              localStorage.removeItem('noxis-tour-completed')
-                              window.location.href = '/dashboard'
-                            }}
-                            className="text-xs text-[#60A5FA] hover:text-blue-300 transition-colors bg-[#60A5FA]/10 border border-[#60A5FA]/20 px-3 py-1.5 rounded-sm uppercase tracking-wider font-bold"
-                          >
-                            Replay product tour
-                          </button>
+                          <div className="flex items-center gap-2.5">
+                            <button
+                              onClick={() => {
+                                localStorage.removeItem('noxis-tour-completed');
+                                window.dispatchEvent(new CustomEvent('start-noxis-tour'));
+                              }}
+                              className="text-xs text-white bg-blue-600 hover:bg-blue-500 transition-colors px-3.5 py-2 rounded-md font-semibold cursor-pointer shadow-sm uppercase tracking-wider"
+                            >
+                              Replay product tour
+                            </button>
+                            <button
+                              onClick={() => {
+                                window.dispatchEvent(new CustomEvent('open-welcome-guide'));
+                              }}
+                              className="text-xs text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors px-3.5 py-2 rounded-md font-semibold cursor-pointer uppercase tracking-wider"
+                            >
+                              Workflow Guide
+                            </button>
+                          </div>
                         </div>
                       </div>
 

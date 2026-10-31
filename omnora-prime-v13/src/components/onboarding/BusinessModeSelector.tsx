@@ -67,26 +67,28 @@ export default function BusinessModeSelector() {
       setWhatsApp(prev => prev || localPhone || '')
     }
 
-    // 2. Query download lead endpoint to auto-detect if freshly installed
-    fetch('/api/download-lead')
-      .then(r => r.json())
-      .then(res => {
-        if (res?.found && res?.lead) {
-          if (!localLead && res.lead.fullName) {
-            setDetectedLeadName(res.lead.fullName)
+    // 2. Query download lead endpoint to auto-detect if freshly installed (only if online)
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      fetch('/api/download-lead')
+        .then(r => r.json())
+        .then(res => {
+          if (res?.found && res?.lead) {
+            if (!localLead && res.lead.fullName) {
+              setDetectedLeadName(res.lead.fullName)
+            }
+            if (res.lead.businessName) {
+              setShopName(prev => prev || res.lead.businessName)
+            }
+            if (res.lead.phone) {
+              setWhatsApp(prev => prev || res.lead.phone)
+            }
+            if (res.lead.city) {
+              setDetectedCity(res.lead.city)
+            }
           }
-          if (res.lead.businessName) {
-            setShopName(prev => prev || res.lead.businessName)
-          }
-          if (res.lead.phone) {
-            setWhatsApp(prev => prev || res.lead.phone)
-          }
-          if (res.lead.city) {
-            setDetectedCity(res.lead.city)
-          }
-        }
-      })
-      .catch(() => {})
+        })
+        .catch(() => {})
+    }
 
     const storedLicense = localStorage.getItem('noxis_license')
     let hasRealPerpetual = false
@@ -137,26 +139,45 @@ export default function BusinessModeSelector() {
   const handleDismiss = () => {
     // Quick exit: apply fallback profile and mark configured
     const finalShopName = shopName.trim() || 'My Business'
+    const finalOwnerName = detectedLeadName || finalShopName
     setMode(selectedMode || 'textile', finalShopName, whatsApp.trim())
+
+    const existing = useBusinessProfileStore.getState().profile || ({} as any)
+    const updatedProfile = {
+      ...existing,
+      id: existing.id || '00000000-0000-0000-0000-000000000000',
+      business_name: finalShopName,
+      owner_name: finalOwnerName,
+      phone: whatsApp.trim(),
+      industry_key: selectedMode || 'textile',
+      industry_type: selectedMode || 'textile',
+      onboarding_done: true,
+      onboarding_complete: true,
+    }
+    useBusinessProfileStore.getState().setProfile(updatedProfile)
+
     if (typeof window !== 'undefined') {
+      localStorage.setItem('noxis-business-profile', JSON.stringify(updatedProfile))
       localStorage.setItem('noxis_onboarded', 'true')
+      localStorage.setItem('noxis_first_run_complete', 'true')
     }
   }
 
   const handleComplete = () => {
     const finalShopName = shopName.trim() || 'My Business'
+    const existing = useBusinessProfileStore.getState().profile || ({} as any)
+    const finalOwnerName = detectedLeadName || existing.owner_name || finalShopName
     setIsSubmitting(true)
 
     // Save mode configuration
     setMode(selectedMode, finalShopName, whatsApp.trim())
 
     // Update business profile with custom shop name and contact
-    const existing = useBusinessProfileStore.getState().profile || ({} as any)
     const updatedProfile = {
       ...existing,
       id: existing.id || '00000000-0000-0000-0000-000000000000',
       business_name: finalShopName,
-      owner_name: finalShopName,
+      owner_name: finalOwnerName,
       phone: whatsApp.trim(),
       industry_key: selectedMode,
       industry_type: selectedMode,
@@ -218,13 +239,12 @@ export default function BusinessModeSelector() {
           <div>
             {/* Header */}
             <div className="px-8 pt-8 pb-4 text-center space-y-2.5">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#08EBF6]/10 border border-[#08EBF6]/30 text-[10px] font-mono font-bold text-[#08EBF6] uppercase tracking-widest">
-                <Sparkles size={11} className="text-[#08EBF6]" />
-                <span>Station Initialized</span>
-                <span className="text-zinc-500">·</span>
-                <span className="text-emerald-400 font-bold">7-Day Full Access Evaluation</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-xs font-medium text-blue-400">
+                <span>Workstation Setup</span>
+                <span className="text-zinc-600">·</span>
+                <span className="text-emerald-400 font-semibold">7-Day Full Access Evaluation</span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight font-mono">
+              <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
                 {detectedLeadName ? `Welcome, ${detectedLeadName}` : 'Welcome to Noxis Hub'}
               </h1>
               <p className="text-xs text-zinc-300 max-w-xl mx-auto leading-relaxed">
@@ -238,7 +258,7 @@ export default function BusinessModeSelector() {
                 )}
                 {hwid && (
                   <span className="px-2.5 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] font-mono text-zinc-400">
-                    Node ID: <span className="text-[#08EBF6] font-semibold">{hwid}</span>
+                    Workstation ID: <span className="text-blue-400 font-semibold">{hwid}</span>
                   </span>
                 )}
               </div>
@@ -310,7 +330,7 @@ export default function BusinessModeSelector() {
               <button
                 type="button"
                 onClick={handleContinue}
-                className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-lg font-mono font-bold text-xs uppercase tracking-wider bg-[#08EBF6] text-black hover:bg-[#5FA5FA] transition-colors cursor-pointer shadow-lg shadow-[#08EBF6]/20"
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-sans font-semibold text-xs tracking-wide bg-blue-600 text-white hover:bg-blue-500 transition-colors cursor-pointer shadow-sm"
               >
                 <span>Continue</span>
                 <ArrowRight size={14} />
@@ -319,7 +339,7 @@ export default function BusinessModeSelector() {
                 <button
                   type="button"
                   onClick={handleDismiss}
-                  className="px-5 py-3.5 rounded-lg font-mono font-bold text-xs uppercase tracking-wider border border-white/10 text-zinc-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                  className="px-5 py-3 rounded-lg font-sans font-medium text-xs border border-white/10 text-zinc-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
                 >
                   Skip
                 </button>
@@ -411,7 +431,7 @@ export default function BusinessModeSelector() {
                 type="button"
                 onClick={handleComplete}
                 disabled={isSubmitting}
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-lg font-mono font-bold text-xs uppercase tracking-wider bg-[#08EBF6] text-black hover:bg-[#5FA5FA] transition-colors cursor-pointer shadow-lg shadow-[#08EBF6]/20 disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-lg font-sans font-semibold text-xs tracking-wide bg-blue-600 text-white hover:bg-blue-500 transition-colors cursor-pointer shadow-sm disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <span>Configuring Clean Workspace...</span>

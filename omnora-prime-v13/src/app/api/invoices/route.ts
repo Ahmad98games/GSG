@@ -46,6 +46,10 @@ export async function GET(req: NextRequest) {
 
     // ── SINGLE INVOICE RETRIEVAL WITH ITEMS ──
     if (id) {
+      try {
+        sqlite.exec("ALTER TABLE invoices ADD COLUMN invoice_no TEXT;");
+      } catch {}
+
       const invQuery = `
         SELECT 
           i.id,
@@ -76,20 +80,30 @@ export async function GET(req: NextRequest) {
         LEFT JOIN parties p ON p.id = i.party_id
         WHERE LOWER(i.id) = LOWER(?)
            OR LOWER(COALESCE(i.invoice_number, '')) = LOWER(?)
-           OR LOWER(COALESCE(i.invoice_no, '')) = LOWER(?)
         LIMIT 1
       `;
-      let inv: any = sqlite.prepare(invQuery).get(id, id, id);
+      let inv: any = null;
+      try {
+        inv = sqlite.prepare(invQuery).get(id, id);
+      } catch (qErr: any) {
+        console.warn('[API /api/invoices] SQL query error:', qErr.message);
+      }
       const itemsTableExists = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='invoice_items'").get();
 
       if (!inv) {
-        // Fallback: Check Supabase cloud database if not yet cached in local SQLite
+        // Fallback: Check Supabase cloud database if not yet cached in local SQLite (with 1500ms timeout)
         try {
-          const { data: cloudInv } = await supabase
+          const cloudPromise = supabase
             .from('invoices')
             .select('*, party:parties(*), invoice_items(*)')
             .or(`id.ilike.${id},invoice_no.ilike.${id},invoice_number.ilike.${id}`)
             .maybeSingle();
+
+          const timeoutPromise = new Promise<{ data: null }>((resolve) =>
+            setTimeout(() => resolve({ data: null }), 1500)
+          );
+
+          const { data: cloudInv } = await Promise.race([cloudPromise, timeoutPromise]);
 
           if (cloudInv) {
             // Upsert into local SQLite cache
@@ -360,6 +374,13 @@ export async function POST(req: NextRequest) {
       try {
         const sqlite = (db as any).$client;
         if (sqlite) {
+          try {
+            sqlite.exec("ALTER TABLE invoices ADD COLUMN invoice_no TEXT;");
+          } catch {}
+          try {
+            sqlite.prepare("DELETE FROM parties WHERE name LIKE 'Mobile Added UUID Test Party%'").run();
+          } catch {}
+
           // Ensure invoice_items table exists
           sqlite.exec(`
             CREATE TABLE IF NOT EXISTS invoice_items (
@@ -378,36 +399,70 @@ export async function POST(req: NextRequest) {
           `);
 
           // Insert or replace invoice
-          sqlite.prepare(`
-            INSERT OR REPLACE INTO invoices (
-              id, business_id, invoice_number, invoice_type, party_id, party_name, party_phone,
-              invoice_date, due_date, status, subtotal, discount_amount, discount_percent,
-              tax_amount, tax_rate, total_amount, amount_paid, balance_due, notes, created_at, updated_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `).run(
-            invoiceId,
-            invoice.business_id,
-            invNumber,
-            invoice.invoice_type || 'invoice',
-            invoice.party_id || null,
-            invoice.party_name || null,
-            invoice.party_phone || null,
-            invDate,
-            invoice.due_date || null,
-            invoice.status || 'posted',
-            invSubtotal,
-            invDiscount,
-            invDiscountPct,
-            invTax,
-            invTaxRate,
-            invTotal,
-            invPaid,
-            invBalance,
-            invoice.notes || '',
-            new Date().toISOString(),
-            new Date().toISOString()
-          );
+          try {
+            sqlite.prepare(`
+              INSERT OR REPLACE INTO invoices (
+                id, business_id, invoice_number, invoice_no, invoice_type, party_id, party_name, party_phone,
+                invoice_date, due_date, status, subtotal, discount_amount, discount_percent,
+                tax_amount, tax_rate, total_amount, amount_paid, balance_due, notes, created_at, updated_at
+              )
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(
+              invoiceId,
+              invoice.business_id,
+              invNumber,
+              invNumber,
+              invoice.invoice_type || 'invoice',
+              invoice.party_id || null,
+              invoice.party_name || null,
+              invoice.party_phone || null,
+              invDate,
+              invoice.due_date || null,
+              invoice.status || 'posted',
+              invSubtotal,
+              invDiscount,
+              invDiscountPct,
+              invTax,
+              invTaxRate,
+              invTotal,
+              invPaid,
+              invBalance,
+              invoice.notes || '',
+              new Date().toISOString(),
+              new Date().toISOString()
+            );
+          } catch {
+            sqlite.prepare(`
+              INSERT OR REPLACE INTO invoices (
+                id, business_id, invoice_number, invoice_type, party_id, party_name, party_phone,
+                invoice_date, due_date, status, subtotal, discount_amount, discount_percent,
+                tax_amount, tax_rate, total_amount, amount_paid, balance_due, notes, created_at, updated_at
+              )
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(
+              invoiceId,
+              invoice.business_id,
+              invNumber,
+              invoice.invoice_type || 'invoice',
+              invoice.party_id || null,
+              invoice.party_name || null,
+              invoice.party_phone || null,
+              invDate,
+              invoice.due_date || null,
+              invoice.status || 'posted',
+              invSubtotal,
+              invDiscount,
+              invDiscountPct,
+              invTax,
+              invTaxRate,
+              invTotal,
+              invPaid,
+              invBalance,
+              invoice.notes || '',
+              new Date().toISOString(),
+              new Date().toISOString()
+            );
+          }
 
           // Insert line items
           if (Array.isArray(items) && items.length > 0) {
@@ -436,14 +491,41 @@ export async function POST(req: NextRequest) {
             }
           }
 
-          // Deduct quantities in local SQLite skus
+          // Deduct quantities in local SQLite skus & sku_cache
           if (Array.isArray(sku_deductions) && sku_deductions.length > 0) {
-            const deductStmt = sqlite.prepare('UPDATE skus SET qty_on_hand = MAX(0, qty_on_hand - ?) WHERE id = ?');
+            const deductSkuStmt = sqlite.prepare(`
+              UPDATE skus 
+              SET qty_on_hand = MAX(0, COALESCE(qty_on_hand, 0) - ?),
+                  updated_at = datetime('now')
+              WHERE id = ? OR sku_code = ?
+            `);
+            let deductCacheStmt = null;
+            try {
+              deductCacheStmt = sqlite.prepare(`
+                UPDATE sku_cache 
+                SET qty_on_hand = CAST(MAX(0, CAST(COALESCE(qty_on_hand, '0') AS REAL) - ?) AS TEXT),
+                    last_synced_at = datetime('now')
+                WHERE sku_id = ? OR sku_code = ?
+              `);
+            } catch {}
+
             for (const it of sku_deductions) {
-              if (it.sku_id && it.qty) {
+              const qtyToDeduct = Number(it.qty ?? it.quantity ?? 0);
+              const targetId = String(it.sku_id || it.id || '');
+              const targetCode = String(it.sku_code || targetId);
+              if (targetId && qtyToDeduct > 0) {
                 try {
-                  deductStmt.run(Number(it.qty), it.sku_id);
-                } catch {}
+                  deductSkuStmt.run(qtyToDeduct, targetId, targetCode);
+                } catch (e) {
+                  console.warn('[API Invoices] deductSkuStmt error:', e);
+                }
+                if (deductCacheStmt) {
+                  try {
+                    deductCacheStmt.run(qtyToDeduct, targetId, targetCode);
+                  } catch (e) {
+                    console.warn('[API Invoices] deductCacheStmt error:', e);
+                  }
+                }
               }
             }
           }

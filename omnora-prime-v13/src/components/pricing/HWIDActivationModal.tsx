@@ -202,7 +202,7 @@ export default function HWIDActivationModal({
             <div className="pt-2">
               <button
                 type="submit"
-                className="w-full flex items-center justify-center gap-2 bg-[#08EBF6] hover:bg-[#08EBF6]/90 text-black font-black text-xs uppercase tracking-wider py-4 rounded-sm transition-all shadow-[0_0_25px_rgba(8,235,246,0.35)] cursor-pointer"
+                className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs py-3 rounded-lg transition-colors shadow-sm cursor-pointer"
               >
                 <MessageSquare size={16} />
                 <span>Send via WhatsApp (+92 326 4742678)</span>

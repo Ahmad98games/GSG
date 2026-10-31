@@ -29,7 +29,7 @@ export default function WelcomeGuide({
   const [step, setStep] = useState(hasActivity ? 3 : 1);
   const router = useRouter();
 
-  const firstName = ownerName.split(' ')[0];
+  const firstName = (ownerName || 'User').split(' ')[0] || 'User';
 
   const handleAction = (path: string) => {
     onClose(false); // Mark onboarding as complete
@@ -119,48 +119,39 @@ export default function WelcomeGuide({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] bg-[#0A0A0B]/98 flex flex-col items-center justify-center p-6 overflow-y-auto holographic-grid"
+      className="fixed inset-0 z-[100] bg-[#07090E]/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 overflow-y-auto"
     >
-      {/* Hardware-accelerated Holographic Laser Scanline */}
-      <div className="laser-scanner-sweep" />
-
-      {/* Background Glows */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-500/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-1/2 -right-24 w-64 h-64 bg-[#C5A059]/5 rounded-full blur-[100px]" />
-      </div>
-
       <AnimatePresence mode="wait">
         {step === 1 && (
           <motion.div 
             key="step1"
-            initial={{ y: 20, opacity: 0 }}
+            initial={{ y: 15, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -20, opacity: 0 }}
-            className="max-w-2xl w-full text-center space-y-10 z-10"
+            exit={{ y: -15, opacity: 0 }}
+            className="max-w-xl w-full text-center space-y-8 z-10 bg-[#0B0F17] p-8 sm:p-10 rounded-xl border border-white/10 shadow-2xl"
           >
-            <div className="flex flex-col items-center space-y-6">
-              <div className="w-20 h-20 relative">
+            <div className="flex flex-col items-center space-y-5">
+              <div className="w-16 h-16 relative">
                 <Image src="/logos/noxis.png" alt="Noxis Logo" fill className="object-contain" />
               </div>
               <div className="space-y-2">
-                <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter">
-                  Welcome to Noxis, <span className="text-[#C5A059]">{firstName}.</span>
+                <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
+                  Welcome to Noxis, <span className="text-blue-400">{firstName}</span>
                 </h1>
-                <p className="text-xl text-gray-400 font-medium">
-                  Workspace for {businessName} is fully ready.
+                <p className="text-base text-slate-400 font-normal">
+                  Your workspace for <strong className="text-white">{businessName || 'Your Business'}</strong> is ready.
                 </p>
               </div>
-              <p className="text-gray-500 uppercase tracking-[0.2em] text-xs font-bold pt-4">
-                Let's take a quick look at how to use the ERP.
+              <p className="text-slate-400 text-xs font-medium">
+                Let's take a quick look at your daily workflow.
               </p>
             </div>
 
             <button 
               onClick={() => setStep(2)}
-              className="px-10 py-4 bg-[#C5A059] text-black text-xs font-black uppercase tracking-widest hover:bg-[#D4B06A] transition-all shadow-[0_0_20px_rgba(197,160,89,0.25)] group flex items-center mx-auto"
+              className="px-8 py-3.5 bg-blue-600 text-white text-xs font-semibold uppercase tracking-wider rounded-md hover:bg-blue-500 transition-colors shadow-sm group flex items-center mx-auto cursor-pointer"
             >
-              Start Quick Tutorial <ChevronRight className="ml-3 group-hover:translate-x-1 transition-transform" />
+              Start Quick Tutorial <ChevronRight className="ml-2 group-hover:translate-x-1 transition-transform" size={16} />
             </button>
           </motion.div>
         )}
@@ -168,53 +159,53 @@ export default function WelcomeGuide({
         {step === 2 && (
           <motion.div 
             key="step2"
-            initial={{ y: 20, opacity: 0 }}
+            initial={{ y: 15, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -20, opacity: 0 }}
-            className="max-w-4xl w-full space-y-8 z-10"
+            exit={{ y: -15, opacity: 0 }}
+            className="max-w-4xl w-full space-y-6 z-10 bg-[#0B0F17] p-8 rounded-xl border border-white/10 shadow-2xl"
           >
-            <div className="text-center space-y-2">
-              <h2 className="text-2xl font-black text-white uppercase tracking-tighter italic">
-                How to Use <span className="text-[#C5A059]">Noxis Hub</span>
+            <div className="text-center space-y-1.5">
+              <h2 className="text-xl font-bold text-white tracking-tight">
+                How to Use Noxis Hub
               </h2>
-              <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">
-                Your daily workflow in 4 simple steps
+              <p className="text-slate-400 text-xs font-medium">
+                Your daily factory workflow in 4 simple steps
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {tutorialSteps.map((tut, i) => (
                 <div 
                   key={i}
-                  className="bg-noxis-surface border border-noxis-border p-6 rounded relative group hover:border-white/10 transition-colors"
+                  className="bg-[#0E131F] border border-white/10 p-5 rounded-lg relative group hover:border-white/20 transition-colors"
                 >
-                  <div className="absolute top-4 right-4 font-mono font-bold text-lg text-white/5 group-hover:text-white/10 transition-colors">
+                  <div className="absolute top-4 right-4 font-mono font-bold text-sm text-slate-600">
                     {tut.num}
                   </div>
-                  <div className="flex items-center space-x-4 mb-3">
-                    <div className={cn("w-10 h-10 rounded flex items-center justify-center text-white", tut.bg, tut.color)}>
-                      <tut.icon size={20} />
+                  <div className="flex items-center space-x-3.5 mb-2.5">
+                    <div className={cn("w-9 h-9 rounded-md flex items-center justify-center text-white", tut.bg, tut.color)}>
+                      <tut.icon size={18} />
                     </div>
-                    <h3 className="text-sm font-black uppercase text-white tracking-wider">
+                    <h3 className="text-sm font-bold text-white tracking-wide">
                       {tut.title}
                     </h3>
                   </div>
-                  <p className="text-xs text-gray-400 leading-relaxed">
+                  <p className="text-xs text-slate-400 leading-relaxed font-normal">
                     {tut.desc}
                   </p>
                 </div>
               ))}
             </div>
 
-            <div className="pt-4 flex justify-between items-center border-t border-white/5">
-              <span className="text-[10px] font-mono text-gray-600 uppercase tracking-widest">
-                Step 2 of 3 • Learn Workflow
+            <div className="pt-4 flex justify-between items-center border-t border-white/10">
+              <span className="text-xs font-medium text-slate-500">
+                Step 2 of 3 • Workflow Overview
               </span>
               <button 
                 onClick={() => setStep(3)}
-                className="px-8 py-4 bg-[#C5A059] text-black text-xs font-black uppercase tracking-widest hover:bg-[#D4B06A] transition-all flex items-center shadow-[0_0_15px_rgba(197,160,89,0.25)]"
+                className="px-6 py-2.5 bg-blue-600 text-white text-xs font-semibold rounded-md hover:bg-blue-500 transition-colors flex items-center cursor-pointer shadow-sm"
               >
-                Proceed to Actions <ChevronRight className="ml-2" size={14} />
+                Proceed to Actions <ChevronRight className="ml-1.5" size={14} />
               </button>
             </div>
           </motion.div>
@@ -223,59 +214,59 @@ export default function WelcomeGuide({
         {step === 3 && (
           <motion.div 
             key="step3"
-            initial={{ y: 20, opacity: 0 }}
+            initial={{ y: 15, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -20, opacity: 0 }}
-            className="max-w-6xl w-full space-y-8 z-10"
+            exit={{ y: -15, opacity: 0 }}
+            className="max-w-5xl w-full space-y-6 z-10 bg-[#0B0F17] p-8 rounded-xl border border-white/10 shadow-2xl"
           >
-            <div className="text-center space-y-2">
-              <h2 className="text-2xl font-black text-white uppercase tracking-tighter italic">
-                Choose your first action
+            <div className="text-center space-y-1.5">
+              <h2 className="text-xl font-bold text-white tracking-tight">
+                Choose Your First Action
               </h2>
-              <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">
-                Get your business operational in minutes
+              <p className="text-slate-400 text-xs font-medium">
+                Get your business operations rolling in minutes
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {cards.map((card, i) => (
                 <motion.div 
                   key={i}
-                  whileHover={{ y: -5 }}
+                  whileHover={{ y: -3 }}
                   onClick={() => handleAction(card.path)}
                   className={cn(
-                    "bg-noxis-surface border border-noxis-border p-6 space-y-6 cursor-pointer transition-all relative group rounded",
+                    "bg-[#0E131F] border border-white/10 p-5 space-y-4 cursor-pointer transition-all relative group rounded-lg hover:border-blue-500/40",
                     card.border
                   )}
                 >
-                  <div className={cn("w-14 h-14 rounded flex items-center justify-center transition-colors", card.bg, card.color)}>
-                    <card.icon size={26} />
+                  <div className={cn("w-11 h-11 rounded-md flex items-center justify-center transition-colors", card.bg, card.color)}>
+                    <card.icon size={22} />
                   </div>
-                  <div className="space-y-2">
-                    <h3 className="text-base font-black text-white uppercase tracking-tight">
+                  <div className="space-y-1.5">
+                    <h3 className="text-sm font-bold text-white tracking-tight">
                       {card.title}
                     </h3>
-                    <p className="text-gray-500 text-xs leading-relaxed">
+                    <p className="text-slate-400 text-xs leading-relaxed">
                       {card.desc}
                     </p>
                   </div>
-                  <button className="flex items-center text-[10px] font-black uppercase tracking-[0.2em] text-[#C5A059] group-hover:translate-x-2 transition-transform">
-                    {card.button} <ArrowRight size={14} className="ml-2" />
-                  </button>
+                  <div className="flex items-center text-xs font-semibold text-blue-400 group-hover:translate-x-1 transition-transform">
+                    {card.button} <ArrowRight size={13} className="ml-1.5" />
+                  </div>
                 </motion.div>
               ))}
             </div>
 
-            <div className="pt-6 border-t border-white/5 flex flex-col space-y-4">
+            <div className="pt-4 border-t border-white/10 flex flex-col space-y-3">
               <button 
                 onClick={handleComplete}
-                className="w-full py-4 bg-[#C5A059] text-black text-xs font-black uppercase tracking-widest hover:bg-[#D4B06A] transition-all flex items-center justify-center shadow-[0_0_15px_rgba(197,160,89,0.25)]"
+                className="w-full py-3 bg-blue-600 text-white text-xs font-semibold rounded-md hover:bg-blue-500 transition-colors flex items-center justify-center shadow-sm cursor-pointer"
               >
-                Go to Dashboard <ChevronRight className="ml-3" size={14} />
+                Go to Dashboard <ChevronRight className="ml-2" size={14} />
               </button>
               <div className="text-center">
-                <span className="text-[10px] font-mono text-gray-600 uppercase tracking-widest">
-                  Step 3 of 3 • Initialize
+                <span className="text-xs text-slate-500 font-medium">
+                  Step 3 of 3 • Ready to Operate
                 </span>
               </div>
             </div>
@@ -285,7 +276,7 @@ export default function WelcomeGuide({
 
       <button 
         onClick={handleSkip}
-        className="absolute bottom-8 text-[9px] font-black uppercase tracking-[0.3em] text-gray-600 hover:text-white transition-colors"
+        className="mt-6 text-xs text-slate-500 hover:text-slate-300 font-medium transition-colors cursor-pointer"
       >
         Skip tutorial for now
       </button>

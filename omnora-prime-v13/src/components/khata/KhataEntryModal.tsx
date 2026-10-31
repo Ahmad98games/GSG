@@ -270,6 +270,28 @@ export function KhataEntryModal({
         } catch {}
       }
 
+      // Auto-record in Cheque Clearance & Bounce Engine if payment mode is Cheque
+      if (values.payment_mode === 'Cheque') {
+        try {
+          fetch('/api/cheques', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'record',
+              businessId: businessId || 'local',
+              partyId: selectedParty?.id,
+              partyName: selectedParty?.name || 'Customer',
+              partyPhone: selectedParty?.phone,
+              chequeNumber: values.reference_no || `CHQ-${Date.now().toString().slice(-6)}`,
+              bankName: 'Commercial Bank',
+              amount: values.amount,
+              chequeDate: values.date || new Date().toISOString().split('T')[0],
+              notes: values.description,
+            }),
+          }).catch(() => {});
+        } catch {}
+      }
+
       clearDraft();
       reset();
       onSuccess(`Transaction ${txRef} posted successfully`);

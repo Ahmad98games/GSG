@@ -9,7 +9,7 @@ import {
   FileText, Plus, Search, BookOpen, Layers,
   ArrowUpRight, ArrowDownLeft, Wallet,
   Printer, CheckCircle2, X, Trash2, Edit3, MessageSquare,
-  MapPin, UserPlus
+  MapPin, UserPlus, CreditCard
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Decimal } from 'decimal.js';
@@ -25,6 +25,7 @@ import { LedgerReceipt } from '@/components/khata/LedgerReceipt';
 import { MasterPinModal } from '@/components/khata/MasterPinModal';
 import { AddPartyModal } from '@/components/parties/AddPartyModal';
 import { EditPartyModal } from '@/components/parties/EditPartyModal';
+import { ChequeManagementTab } from '@/components/khata/ChequeManagementTab';
 import { KhataService } from '@/lib/khata/KhataService';
 
 // --- Types ---
@@ -93,7 +94,7 @@ export default function KhataPage() {
   const supabase = createClient();
   const queryClient = useQueryClient();
 
-  const [activeTab, setActiveTab] = useState<'entries' | 'accounts' | 'parties'>('entries');
+  const [activeTab, setActiveTab] = useState<'entries' | 'parties' | 'cheques' | 'accounts'>('entries');
   const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isPartyModalOpen, setIsPartyModalOpen] = useState(false);
@@ -556,6 +557,7 @@ export default function KhataPage() {
               {[
                 { id: 'entries', label: 'Ledger Entries', icon: FileText },
                 { id: 'parties', label: `Party Accounts (${parties.length})`, icon: Wallet },
+                { id: 'cheques', label: 'Cheques & Bounces', icon: CreditCard },
                 { id: 'accounts', label: 'Chart of Accounts', icon: Layers },
               ].map(tab => (
                 <button
@@ -988,6 +990,11 @@ export default function KhataPage() {
                 </table>
               </div>
             </div>
+          )}
+
+          {/* TAB CONTENT: 4. CHEQUES & BOUNCE MANAGEMENT */}
+          {activeTab === 'cheques' && (
+            <ChequeManagementTab businessId={profile?.id || businessId} />
           )}
         </div>
       </main>

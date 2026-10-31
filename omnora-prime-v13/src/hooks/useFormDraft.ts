@@ -49,6 +49,13 @@ export const DRAFT_REGISTRY: Record<string, { label: string; route: string; getS
       preview: `${d?.name || 'Unnamed Party'} ${d?.party_type ? `(${d.party_type})` : ''}`
     })
   },
+  'party-new': {
+    label: 'New Customer / Supplier Profile',
+    route: '/parties/new',
+    getSummary: (d) => ({
+      preview: `${d?.name || 'Unnamed Party'} ${d?.party_type ? `(${d.party_type})` : ''}`
+    })
+  },
   'karigar-new': {
     label: 'New Karigar / Craftsman Profile',
     route: '/karigars/new',
@@ -60,7 +67,7 @@ export const DRAFT_REGISTRY: Record<string, { label: string; route: string; getS
     label: 'Sales Invoice / Bill',
     route: '/invoices/new',
     getSummary: (d) => ({
-      preview: `Bill to: ${d?.customer_name || d?.party_id || 'Customer'} · ${d?.items?.length || 0} line items`
+      preview: `Bill to: ${d?.party_search || d?.customer_name || (d?.party_id ? 'Customer' : 'Pending')} · ${d?.items?.length || 0} line items`
     })
   },
   'recurring-invoice-new': {
@@ -76,7 +83,87 @@ export const DRAFT_REGISTRY: Record<string, { label: string; route: string; getS
     getSummary: (d) => ({
       preview: `Supplier bill · ${d?.items?.length || 0} items`
     })
+  },
+  'purchase-new-po': {
+    label: 'Purchase Order / Supplier Bill',
+    route: '/purchase/new',
+    getSummary: (d) => ({
+      preview: `Supplier bill · ${d?.items?.length || 0} items`
+    })
   }
+}
+
+/**
+ * Checks whether form data contains real user input.
+ * Prevents initial/empty form state from overwriting a preserved recovery draft.
+ */
+export function isMeaningfulDraftData(key: string, data: any): boolean {
+  if (!data || typeof data !== 'object') return false
+
+  if (key === 'invoice-new' || key === 'recurring-invoice-new') {
+    const hasParty = !!(data.party_id && String(data.party_id).trim() !== '') || 
+                     !!(data.party_search && String(data.party_search).trim() !== '')
+    const items = Array.isArray(data.items) ? data.items : []
+    const hasItems = items.some((i: any) => 
+      (i.description && String(i.description).trim() !== '') ||
+      (i.sku_id && String(i.sku_id).trim() !== '') ||
+      (Number(i.unit_price) > 0) ||
+      (Number(i.price) > 0)
+    ) || items.length > 1
+    const hasDiscount = Number(data.discount_pct || 0) > 0
+    return hasParty || hasItems || hasDiscount
+  }
+
+  if (key === 'pos_cart') {
+    const items = Array.isArray(data) ? data : (data?.items || [])
+    return items.length > 0
+  }
+
+  if (key === 'khata-entry') {
+    return Number(data.amount) > 0 || 
+           !!(data.description && String(data.description).trim() !== '') || 
+           !!(data.party_id && String(data.party_id).trim() !== '')
+  }
+
+  if (key === 'inventory-new') {
+    return !!(data.name && String(data.name).trim() !== '') || 
+           !!(data.sku && String(data.sku).trim() !== '') || 
+           Number(data.sale_price || 0) > 0 || 
+           Number(data.cost_price || 0) > 0
+  }
+
+  if (key === 'parties-new' || key === 'party-new') {
+    return !!(data.name && String(data.name).trim() !== '') || 
+           !!(data.phone && String(data.phone).trim() !== '') ||
+           !!(data.address && String(data.address).trim() !== '')
+  }
+
+  if (key === 'karigar-new') {
+    return !!(data.name && String(data.name).trim() !== '') || 
+           !!(data.phone && String(data.phone).trim() !== '')
+  }
+
+  if (key === 'purchase-new' || key === 'purchase-new-po') {
+    const items = Array.isArray(data.items) ? data.items : []
+    return !!(data.selectedSupplierId && String(data.selectedSupplierId).trim() !== '') || 
+           items.length > 0 || 
+           !!(data.notes && String(data.notes).trim() !== '')
+  }
+
+  // Fallback: check if any non-boilerplate field is populated
+  const boilerplate = [
+    'currency', 'payment_terms', 'exchange_rate', 'issue_date', 
+    'due_date', 'tax_pct', 'discount_pct', 'is_blocked', 'current_balance'
+  ]
+  for (const [k, v] of Object.entries(data)) {
+    if (boilerplate.includes(k)) continue
+    if (typeof v === 'string' && v.trim() !== '') return true
+    if (typeof v === 'number' && v > 0) return true
+    if (Array.isArray(v) && v.length > 0) return true
+    if (typeof v === 'object' && v !== null && Object.keys(v).length > 0) return true
+  }
+
+  return false
 }
 
 export function useFormDraft<T = any>(
@@ -96,6 +183,10 @@ export function useFormDraft<T = any>(
   const flushImmediately = useCallback((d: any) => {
     if (!d || typeof d !== 'object') return
     if (Object.keys(d as any).length === 0) return
+    if (!isMeaningfulDraftData(key, d)) {
+      // Guard against initial default blank forms overwriting saved drafts!
+      return
+    }
 
     // 1. LocalStorage mirror for zero-loss recovery
     if (typeof window !== 'undefined') {
@@ -114,6 +205,7 @@ export function useFormDraft<T = any>(
   useEffect(() => {
     if (!enabled || !data || typeof data !== 'object') return
     if (Object.keys(data as any).length === 0) return
+    if (!isMeaningfulDraftData(key, data)) return
 
     if (saveTimer.current) {
       clearTimeout(saveTimer.current)
@@ -150,13 +242,10 @@ export function useFormDraft<T = any>(
     // 1. Check Electron Store first
     if (isElectron) {
       const store = (window as any).electronAPI?.store
-      if (store?.getFormDraft) {
-        const d = await store.getFormDraft(key)
-        if (d) return d as T
-      } else if (store?.getDraft) {
-        const d = await store.getDraft(key)
-        if (d) return d as T
-      }
+      try {
+        const d = store?.getFormDraft ? await store.getFormDraft(key) : (store?.getDraft ? await store.getDraft(key) : null)
+        if (d && isMeaningfulDraftData(key, d)) return d as T
+      } catch {}
     }
 
     // 2. Fallback to LocalStorage
@@ -167,9 +256,20 @@ export function useFormDraft<T = any>(
           const parsed = JSON.parse(raw)
           // Valid up to 7 days
           if (parsed?.data && Date.now() - (parsed.savedAt || 0) < 86400000 * 7) {
-            return parsed.data as T
+            if (isMeaningfulDraftData(key, parsed.data)) {
+              return parsed.data as T
+            }
           }
         }
+      } catch {}
+    }
+
+    // 3. Fallback to raw Electron store data if it existed
+    if (isElectron) {
+      const store = (window as any).electronAPI?.store
+      try {
+        const d = store?.getFormDraft ? await store.getFormDraft(key) : (store?.getDraft ? await store.getDraft(key) : null)
+        if (d && typeof d === 'object') return d as T
       } catch {}
     }
 
@@ -213,7 +313,7 @@ export async function getAllActiveDrafts(): Promise<SavedDraftInfo[]> {
           const raw = localStorage.getItem(k)
           if (raw) {
             const parsed = JSON.parse(raw)
-            if (parsed?.data && now - (parsed.savedAt || 0) < maxAge) {
+            if (parsed?.data && now - (parsed.savedAt || 0) < maxAge && isMeaningfulDraftData(draftKey, parsed.data)) {
               const reg = DRAFT_REGISTRY[draftKey] || {
                 label: `Draft: ${draftKey}`,
                 route: `/${draftKey.replace('-', '/')}`
@@ -242,7 +342,7 @@ export async function getAllActiveDrafts(): Promise<SavedDraftInfo[]> {
       if (electronDrafts && typeof electronDrafts === 'object') {
         for (const [draftKey, obj] of Object.entries(electronDrafts)) {
           const val = obj as any
-          if (val?.data && now - (val.savedAt || 0) < maxAge) {
+          if (val?.data && now - (val.savedAt || 0) < maxAge && isMeaningfulDraftData(draftKey, val.data)) {
             const reg = DRAFT_REGISTRY[draftKey] || {
               label: `Draft: ${draftKey}`,
               route: `/${draftKey.replace('-', '/')}`

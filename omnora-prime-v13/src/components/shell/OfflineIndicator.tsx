@@ -43,13 +43,13 @@ export function OfflineIndicator() {
     <div
       className={`fixed bottom-4 right-6 z-[100] flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-2xl transition-all duration-300 pointer-events-none ${
         showReconnected
-          ? 'bg-emerald-500 text-black shadow-[0_0_15px_rgba(16,185,129,0.4)]'
-          : 'bg-[#0B0F17] border border-[#08EBF6]/40 text-[#08EBF6] shadow-[0_0_15px_rgba(8,235,246,0.25)]'
+          ? 'bg-emerald-600 text-white shadow-lg'
+          : 'bg-[#0F172A] border border-white/10 text-slate-200 shadow-xl'
       }`}
     >
       <div
         className={`w-2 h-2 rounded-full ${
-          showReconnected ? 'bg-black' : 'bg-[#08EBF6] animate-pulse'
+          showReconnected ? 'bg-white' : 'bg-emerald-400 animate-pulse'
         }`}
       />
       {showReconnected ? (

@@ -168,6 +168,18 @@ export function AddPartyModal({
         })
       }
 
+      // 1b. Sync into local SQLite WAL (< 1ms)
+      try {
+        fetch('/api/parties', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            operation: 'create',
+            payload: createdParty
+          })
+        }).catch(() => {});
+      } catch {}
+
       // 2. Post opening balance ledger entry if needed
       if (balanceAmount > 0 && createdParty?.id) {
         try {

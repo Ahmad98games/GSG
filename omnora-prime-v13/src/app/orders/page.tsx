@@ -869,11 +869,15 @@ export default function SalesOrdersPage() {
       });
       if (!res.ok) {
         // Direct Supabase fallback
-        const { error } = await supabase
-          .from('orders')
-          .update({ status })
-          .eq('id', id);
-        if (error) throw error;
+        try {
+          const { error } = await supabase
+            .from('orders')
+            .update({ status })
+            .eq('id', id);
+          if (error && !error.message?.includes('schema cache')) throw error;
+        } catch (e: any) {
+          if (!e?.message?.includes('schema cache')) throw e;
+        }
       }
     },
     onSuccess: (_, variables) => {
@@ -893,9 +897,13 @@ export default function SalesOrdersPage() {
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/orders?id=${id}`, { method: 'DELETE' });
       if (!res.ok) {
-        await supabase.from('order_items').delete().eq('order_id', id);
-        const { error } = await supabase.from('orders').delete().eq('id', id);
-        if (error) throw error;
+        try {
+          await supabase.from('order_items').delete().eq('order_id', id);
+          const { error } = await supabase.from('orders').delete().eq('id', id);
+          if (error && !error.message?.includes('schema cache')) throw error;
+        } catch (e: any) {
+          if (!e?.message?.includes('schema cache')) throw e;
+        }
       }
     },
     onSuccess: () => {

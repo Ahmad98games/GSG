@@ -807,4 +807,81 @@ CREATE TABLE IF NOT EXISTS batch_cost_items (
 );
 
 CREATE INDEX IF NOT EXISTS idx_batch_cost_items ON batch_cost_items(batch_id);
+
+-- CHEQUE TRANSACTIONS & BOUNCE ENGINE
+CREATE TABLE IF NOT EXISTS cheque_transactions (
+  id TEXT PRIMARY KEY,
+  business_id TEXT NOT NULL REFERENCES business_profiles(id) ON DELETE CASCADE,
+  party_id TEXT REFERENCES parties(id) ON DELETE SET NULL,
+  party_name TEXT NOT NULL,
+  party_phone TEXT,
+  invoice_id TEXT REFERENCES invoices(id) ON DELETE SET NULL,
+  cheque_number TEXT NOT NULL,
+  bank_name TEXT NOT NULL,
+  amount REAL NOT NULL DEFAULT 0,
+  cheque_date TEXT NOT NULL,
+  clearance_due_date TEXT,
+  status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'cleared', 'bounced', 'cancelled')),
+  bounced_reason TEXT,
+  bounce_penalty_fee REAL DEFAULT 0,
+  bounced_at TEXT,
+  cleared_at TEXT,
+  notes TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_cheques_business ON cheque_transactions(business_id);
+CREATE INDEX IF NOT EXISTS idx_cheques_status ON cheque_transactions(business_id, status);
+CREATE INDEX IF NOT EXISTS idx_cheques_party ON cheque_transactions(party_id);
+
+-- CARGO & BILTI ADDA TRACKING (Inter-City Wholesale Engine)
+CREATE TABLE IF NOT EXISTS cargo_dispatches (
+  id TEXT PRIMARY KEY,
+  business_id TEXT NOT NULL REFERENCES business_profiles(id) ON DELETE CASCADE,
+  invoice_id TEXT REFERENCES invoices(id) ON DELETE SET NULL,
+  invoice_number TEXT NOT NULL,
+  party_id TEXT REFERENCES parties(id) ON DELETE SET NULL,
+  party_name TEXT NOT NULL,
+  party_phone TEXT,
+  destination_city TEXT,
+  adda_name TEXT NOT NULL,
+  bilty_number TEXT NOT NULL,
+  nag_count INTEGER NOT NULL DEFAULT 1,
+  freight_type TEXT DEFAULT 'to_pay' CHECK(freight_type IN ('paid', 'to_pay')),
+  freight_amount REAL DEFAULT 0,
+  driver_phone TEXT,
+  status TEXT DEFAULT 'dispatched' CHECK(status IN ('dispatched', 'in_transit', 'delivered', 'cancelled')),
+  bilty_image_url TEXT,
+  notes TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_cargo_business ON cargo_dispatches(business_id);
+CREATE INDEX IF NOT EXISTS idx_cargo_invoice ON cargo_dispatches(invoice_id);
+CREATE INDEX IF NOT EXISTS idx_cargo_status ON cargo_dispatches(business_id, status);
+
+-- PARCHA / GATE PASS ENGINE (Theft & Security Gate Verification)
+CREATE TABLE IF NOT EXISTS gate_passes (
+  id TEXT PRIMARY KEY,
+  gate_pass_no TEXT NOT NULL UNIQUE,
+  business_id TEXT NOT NULL REFERENCES business_profiles(id) ON DELETE CASCADE,
+  invoice_id TEXT NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+  invoice_number TEXT NOT NULL,
+  party_name TEXT NOT NULL,
+  party_phone TEXT,
+  nag_count INTEGER NOT NULL DEFAULT 1,
+  vehicle_number TEXT,
+  driver_name TEXT,
+  items_summary TEXT,
+  security_status TEXT DEFAULT 'issued' CHECK(security_status IN ('issued', 'verified', 'exited', 'flagged')),
+  verified_by TEXT,
+  verified_at TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_gate_passes_business ON gate_passes(business_id);
+CREATE INDEX IF NOT EXISTS idx_gate_passes_status ON gate_passes(business_id, security_status);
+CREATE INDEX IF NOT EXISTS idx_gate_passes_invoice ON gate_passes(invoice_id);
 `;

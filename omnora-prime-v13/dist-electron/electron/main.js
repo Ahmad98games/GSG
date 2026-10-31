@@ -60,6 +60,7 @@ const tierEngine_1 = require("./services/tierEngine");
 const rbacEngine_1 = require("./bridge/rbacEngine");
 const server_1 = require("../src/lib/mobile-bridge/server");
 const autonomousUpdateEngine_1 = require("./services/autonomousUpdateEngine");
+const companionAppCacher_1 = require("./services/companionAppCacher");
 // ── Store ─────────────────────────────────────────────────────────────────────
 const store_1 = require("./store");
 // ─────────────────────────────────────────────
@@ -118,7 +119,7 @@ electron_updater_1.autoUpdater.allowDowngrade = true;
 electron_updater_1.autoUpdater.setFeedURL({
     provider: 'generic',
     url: 'https://noxishub.app/updates/stable',
-    useMultipleRangeRequest: true,
+    useMultipleRangeRequest: false,
 });
 // Track update state for IPC
 let updateAvailable = false;
@@ -583,6 +584,24 @@ else {
                 }
             }
         }
+        // Try to resolve user custom business name & avatar/logo from persistent store/sqlite
+        let businessName = 'Custom Industrial ERP';
+        let userAvatarUrl = '';
+        try {
+            const dbPath = path.join(electron_1.app.getPath('userData'), 'noxis.sqlite');
+            if (fs.existsSync(dbPath)) {
+                // Read directly or use fallback
+                const Database = require('better-sqlite3');
+                const db = new Database(dbPath, { readonly: true, fileMustExist: true });
+                const row = db.prepare('SELECT business_name, avatar_url FROM business_profiles LIMIT 1').get();
+                if (row?.business_name)
+                    businessName = row.business_name;
+                if (row?.avatar_url)
+                    userAvatarUrl = row.avatar_url;
+                db.close();
+            }
+        }
+        catch { }
         splashWindow = new electron_1.BrowserWindow({
             width: 560,
             height: 400,
@@ -601,19 +620,18 @@ else {
             },
             icon: iconPath,
         });
-        const logoHtml = logoDataUrl
-            ? `<img src="${logoDataUrl}" alt="Noxis Hub" style="width:58px;height:58px;object-fit:contain;filter:drop-shadow(0 0 16px rgba(6,182,212,0.65));border-radius:12px;" />`
-            : `<svg width="44" height="44" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M24 4L42 14V34L24 44L6 34V14L24 4Z" stroke="#06B6D4" stroke-width="2.5" stroke-linejoin="round"/>
-          <path d="M16 32V16L32 32V16" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-          <circle cx="24" cy="24" r="3" fill="#06B6D4" />
-        </svg>`;
-        const statusMessage = customStatus || 'Starting and preparing Noxis Hub Specially For You...';
+        const displayLogoUrl = userAvatarUrl || logoDataUrl;
+        const logoHtml = displayLogoUrl
+            ? `<img src="${displayLogoUrl}" alt="${businessName}" style="width:64px;height:64px;object-fit:cover;border-radius:16px;filter:drop-shadow(0 0 16px rgba(6,182,212,0.65));" />`
+            : `<div style="width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,#06B6D4,#3B82F6);display:flex;align-items:center;justify-content:center;color:white;font-weight:900;font-size:26px;letter-spacing:1px;box-shadow:0 0 20px rgba(6,182,212,0.5);">
+          ${(businessName.charAt(0) || 'N').toUpperCase()}
+        </div>`;
+        const statusMessage = customStatus || `Launching ${businessName}...`;
         const splashHtml = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>Noxis Hub</title>
+<title>${businessName}</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{width:100%;height:100%;background:#07090E;overflow:hidden;user-select:none;-webkit-app-region:drag;}
@@ -621,12 +639,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
 .glow-bg{position:absolute;width:280px;height:280px;background:radial-gradient(circle,rgba(6,182,212,0.22) 0%,rgba(99,102,241,0.12) 50%,transparent 70%);border-radius:50%;filter:blur(36px);pointer-events:none;animation:pulse 3.5s ease-in-out infinite alternate;}
 
-.logo-container{position:relative;width:96px;height:96px;display:flex;align-items:center;justify-content:center;margin-bottom:24px;}
+.logo-container{position:relative;width:96px;height:96px;display:flex;align-items:center;justify-content:center;margin-bottom:18px;}
 
 .noxis-badge{width:88px;height:88px;border-radius:22px;background:linear-gradient(135deg,#0C1322 0%,#060910 100%);border:1.5px solid rgba(6,182,212,0.55);display:flex;align-items:center;justify-content:center;box-shadow:0 0 35px rgba(6,182,212,0.3),inset 0 1px 0 rgba(255,255,255,0.1);position:relative;z-index:2;}
 
-.brand-title{font-size:26px;font-weight:900;letter-spacing:8px;text-transform:uppercase;background:linear-gradient(90deg,#FFFFFF 0%,#38BDF8 55%,#06B6D4 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px;}
-.brand-sub{font-size:9.5px;font-weight:700;letter-spacing:4.5px;color:#94A3B8;text-transform:uppercase;margin-bottom:28px;display:flex;align-items:center;gap:8px;}
+.brand-title{font-size:22px;font-weight:900;letter-spacing:4px;text-transform:uppercase;color:#FFFFFF;text-align:center;max-width:480px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px;text-shadow:0 0 20px rgba(255,255,255,0.2);}
+.brand-sub{font-size:9.5px;font-weight:700;letter-spacing:3px;color:#94A3B8;text-transform:uppercase;margin-bottom:24px;display:flex;align-items:center;gap:8px;}
 .brand-badge{font-size:8px;padding:2px 7px;background:rgba(6,182,212,0.15);border:1px solid rgba(6,182,212,0.4);color:#38BDF8;border-radius:999px;letter-spacing:1px;font-weight:800;}
 
 .progress-track{width:260px;height:3px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;position:relative;margin-bottom:14px;}
@@ -651,10 +669,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   </div>
 </div>
 
-<div class="brand-title">NOXIS HUB</div>
+<div class="brand-title">${businessName}</div>
 <div class="brand-sub">
-  <span>Industrial Intelligence</span>
-  <span class="brand-badge">v${electron_1.app.getVersion() || '14.0.18'}</span>
+  <span>Custom Enterprise Solution</span>
+  <span class="brand-badge">PRO EDITION</span>
 </div>
 
 <div class="progress-track">
@@ -667,8 +685,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 </div>
 
 <div class="footer-meta">
-  <span>OFFLINE-FIRST CORE</span>
-  <span>OMNORA LABS</span>
+  <span>POWERED BY OMNORA LABS</span>
+  <span>OFFLINE SECURE CORE</span>
 </div>
 </body>
 </html>`;
@@ -1500,7 +1518,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             releaseName: latestUpdateInfo?.releaseName,
             releaseNotes: latestUpdateInfo?.releaseNotes,
             releaseDate: latestUpdateInfo?.releaseDate,
-            currentVersion: electron_1.app.isPackaged ? electron_1.app.getVersion() : '14.0.18',
+            currentVersion: electron_1.app.getVersion() || '14.0.23',
             baselineVersion: policy.baselineVersion,
             tier: policy.tier,
             maxAllowedMajor: policy.maxAllowedMajor,
@@ -2819,6 +2837,14 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                         setupAutoUpdater(mainWindow);
                     }
                 }, 5000);
+                // Background Mobile Companion APK Cacher (ensures offline shop local Wi-Fi sharing without bloating installer)
+                try {
+                    const publicFolder = electron_1.app.isPackaged
+                        ? path.join(process.resourcesPath, 'standalone', 'public')
+                        : path.join(process.cwd(), 'public');
+                    (0, companionAppCacher_1.initCompanionAppCacher)(publicFolder);
+                }
+                catch { }
                 setTimeout(() => {
                     if (electron_1.app.isPackaged) {
                         if (process.env.CLOUDFLARE_TUNNEL_URL) {

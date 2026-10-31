@@ -305,7 +305,7 @@ export default function InvoiceDetailPage() {
     }
   };
 
-  // Queries
+    // Queries
   const { data: invoice, isLoading: invoiceLoading } = useQuery<Invoice>({
     queryKey: ['invoice', invoiceId],
     queryFn: async () => {
@@ -315,9 +315,31 @@ export default function InvoiceDetailPage() {
 
       let data: any = null;
 
+      // Step 0: Immediate in-memory cache check (0ms instant transition from /invoices/new)
+      try {
+        const inMemory = queryClient.getQueryData<any>(['invoice', invoiceId]);
+        if (inMemory && (inMemory.id || inMemory.invoice_no)) {
+          return {
+            ...inMemory,
+            invoice_no: inMemory.invoice_no || inMemory.invoice_number,
+            issue_date: inMemory.issue_date || inMemory.invoice_date,
+            total: Number(inMemory.total ?? inMemory.total_amount ?? 0),
+            subtotal: Number(inMemory.subtotal ?? 0),
+            tax_amount: Number(inMemory.tax_amount ?? 0),
+            tax_pct: Number(inMemory.tax_pct ?? inMemory.tax_rate ?? 0),
+            discount_amount: Number(inMemory.discount_amount ?? 0),
+            paid_amount: Number(inMemory.amount_paid ?? inMemory.paid_amount ?? 0),
+            balance_due: Number(inMemory.balance_due ?? 0),
+          } as Invoice;
+        }
+      } catch {}
+
       // Step 1: Try local SQLite API first (instant WAL response, works offline)
       try {
-        const localRes = await fetch(`/api/invoices?id=${encodeURIComponent(invoiceId)}`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1500);
+        const localRes = await fetch(`/api/invoices?id=${encodeURIComponent(invoiceId)}`, { signal: controller.signal });
+        clearTimeout(timeoutId);
         if (localRes.ok) {
           const localData = await localRes.json();
           if (localData && (localData.id || localData.invoice_no)) {
@@ -388,16 +410,16 @@ export default function InvoiceDetailPage() {
         }
       }
 
-      const isUuid = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
-
-      // Step 2: Try fetching by ID or Number with joined party via Supabase
+      // Step 2: Try fetching by ID or Number with joined party via Supabase (timeout protected)
       if (!data) {
         try {
-          const { data: cloudRow } = await supabase
+          const cloudPromise = supabase
             .from('invoices')
             .select('*, party:parties(*)')
             .or(`id.ilike.${invoiceId},invoice_no.ilike.${invoiceId},invoice_number.ilike.${invoiceId}`)
             .maybeSingle();
+          const timeoutPromise = new Promise<{ data: null }>((resolve) => setTimeout(() => resolve({ data: null }), 1500));
+          const { data: cloudRow } = await Promise.race([cloudPromise, timeoutPromise]);
           if (cloudRow) data = cloudRow;
         } catch {}
       }
@@ -405,11 +427,13 @@ export default function InvoiceDetailPage() {
       // Step 3: Fallback query without relationship join
       if (!data) {
         try {
-          const { data: rawInv } = await supabase
+          const cloudPromise = supabase
             .from('invoices')
             .select('*')
             .or(`id.ilike.${invoiceId},invoice_no.ilike.${invoiceId},invoice_number.ilike.${invoiceId}`)
             .maybeSingle();
+          const timeoutPromise = new Promise<{ data: null }>((resolve) => setTimeout(() => resolve({ data: null }), 1500));
+          const { data: rawInv } = await Promise.race([cloudPromise, timeoutPromise]);
           if (rawInv) {
             data = rawInv;
             if (data.party_id) {
@@ -451,15 +475,27 @@ export default function InvoiceDetailPage() {
       const targetId = invoice?.id || invoiceId;
       let rawItems: any[] = [];
 
+      // 0. Check in-memory queryClient cache first (0ms instant response)
+      try {
+        const inMemoryItems = queryClient.getQueryData<any[]>(['invoice_items', invoiceId]) ||
+                              queryClient.getQueryData<any[]>(['invoice_items', targetId]);
+        if (inMemoryItems && Array.isArray(inMemoryItems) && inMemoryItems.length > 0) {
+          rawItems = inMemoryItems;
+        }
+      } catch {}
+
       // 1. If invoice already arrived with items from local API:
-      if ((invoice as any)?.items && Array.isArray((invoice as any).items) && (invoice as any).items.length > 0) {
+      if (rawItems.length === 0 && (invoice as any)?.items && Array.isArray((invoice as any).items) && (invoice as any).items.length > 0) {
         rawItems = (invoice as any).items;
       }
 
       // 2. Query /api/invoices?id=... to fetch from local SQLite
       if (rawItems.length === 0) {
         try {
-          const localRes = await fetch(`/api/invoices?id=${encodeURIComponent(targetId)}`);
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 1500);
+          const localRes = await fetch(`/api/invoices?id=${encodeURIComponent(targetId)}`, { signal: controller.signal });
+          clearTimeout(timeoutId);
           if (localRes.ok) {
             const localJson = await localRes.json();
             if (localJson?.items && Array.isArray(localJson.items) && localJson.items.length > 0) {
@@ -471,14 +507,16 @@ export default function InvoiceDetailPage() {
         }
       }
 
-      // 3. Fallback: Query Supabase ONLY if targetId is a valid UUID
+      // 3. Fallback: Query Supabase ONLY if targetId is a valid UUID (with 1500ms timeout)
       const isUuid = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
       if (rawItems.length === 0 && isUuid(targetId)) {
         try {
-          const { data, error } = await supabase
+          const cloudPromise = supabase
             .from('invoice_items')
             .select('*, sku:skus(sku_code, name)')
             .eq('invoice_id', targetId);
+          const timeoutPromise = new Promise<{ data: null, error: any }>((resolve) => setTimeout(() => resolve({ data: null, error: new Error('timeout') }), 1500));
+          const { data, error } = await Promise.race([cloudPromise, timeoutPromise]);
           if (!error && data && data.length > 0) {
             rawItems = data;
           } else {
@@ -517,13 +555,19 @@ export default function InvoiceDetailPage() {
   const { data: payments } = useQuery<Payment[]>({
     queryKey: ['invoice_payments', invoiceId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('payments')
-        .select('*')
-        .eq('invoice_id', invoiceId)
-        .order('payment_date', { ascending: false });
-      if (error) throw error;
-      return (data as Payment[]) || [];
+      try {
+        const cloudPromise = supabase
+          .from('payments')
+          .select('*')
+          .eq('invoice_id', invoiceId)
+          .order('payment_date', { ascending: false });
+        const timeoutPromise = new Promise<{ data: null, error: any }>((resolve) => setTimeout(() => resolve({ data: null, error: new Error('timeout') }), 1500));
+        const { data, error } = await Promise.race([cloudPromise, timeoutPromise]);
+        if (error) return [];
+        return (data as Payment[]) || [];
+      } catch {
+        return [];
+      }
     },
     enabled: !!invoice
   });
@@ -531,13 +575,19 @@ export default function InvoiceDetailPage() {
   const { data: ledgerEntries } = useQuery<LedgerEntry[]>({
     queryKey: ['invoice_ledger', invoiceId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('ledger_entries')
-        .select('*, account:accounts(name, account_code)')
-        .eq('invoice_id', invoiceId)
-        .order('posted_at', { ascending: true });
-      if (error) return [];
-      return (data as LedgerEntry[]) || [];
+      try {
+        const cloudPromise = supabase
+          .from('ledger_entries')
+          .select('*, account:accounts(name, account_code)')
+          .eq('invoice_id', invoiceId)
+          .order('posted_at', { ascending: true });
+        const timeoutPromise = new Promise<{ data: null, error: any }>((resolve) => setTimeout(() => resolve({ data: null, error: new Error('timeout') }), 1500));
+        const { data, error } = await Promise.race([cloudPromise, timeoutPromise]);
+        if (error) return [];
+        return (data as LedgerEntry[]) || [];
+      } catch {
+        return [];
+      }
     },
     enabled: !!invoice
   });
@@ -545,13 +595,33 @@ export default function InvoiceDetailPage() {
   const { data: business } = useQuery<BusinessProfile>({
     queryKey: ['business_profile', businessId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('business_profiles')
-        .select('*')
-        .eq('id', businessId)
-        .single();
-      if (error) throw error;
-      return data as BusinessProfile;
+      try {
+        const cached = localStorage.getItem('noxis_cached_profile') || localStorage.getItem('noxis_business_profile');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && (parsed.id || parsed.business_name)) return parsed as BusinessProfile;
+        }
+      } catch {}
+
+      try {
+        const cloudPromise = supabase
+          .from('business_profiles')
+          .select('*')
+          .eq('id', businessId)
+          .single();
+        const timeoutPromise = new Promise<{ data: null, error: any }>((resolve) => setTimeout(() => resolve({ data: null, error: new Error('timeout') }), 1500));
+        const { data, error } = await Promise.race([cloudPromise, timeoutPromise]);
+        if (!error && data) return data as BusinessProfile;
+      } catch {}
+
+      return {
+        id: businessId,
+        business_name: profile?.business_name || 'GOLD SHE GARMENTS',
+        address: profile?.address || 'Industrial Zone Phase II, Karachi, Pakistan',
+        phone: profile?.phone || '',
+        currency: profile?.currency || 'PKR',
+        country_code: profile?.country_code || 'PK',
+      } as BusinessProfile;
     },
     enabled: !!businessId
   });
@@ -564,22 +634,25 @@ export default function InvoiceDetailPage() {
   // Load existing portal for this party on mount
   useEffect(() => {
     if (!invoice?.party_id) return;
-    supabase
-      .from('portal_sessions')
-      .select('token')
-      .eq('party_id', invoice.party_id)
-      .eq('is_revoked', false)
-      .gt('expires_at', new Date().toISOString())
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
-      .then(({ data }: any) => {
-        if (data?.token) {
-          setPortalUrl(
-            `${window.location.origin}/portal/${data.token}`
-          );
-        }
-      });
+    const timeoutPromise = new Promise<{ data: null }>((resolve) => setTimeout(() => resolve({ data: null }), 1500));
+    Promise.race([
+      supabase
+        .from('portal_sessions')
+        .select('token')
+        .eq('party_id', invoice.party_id)
+        .eq('is_revoked', false)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single(),
+      timeoutPromise
+    ]).then(({ data }: any) => {
+      if (data?.token) {
+        setPortalUrl(
+          `${window.location.origin}/portal/${data.token}`
+        );
+      }
+    }).catch(() => {});
   }, [invoice?.party_id, supabase]);
 
   const handleSendWhatsApp = async () => {

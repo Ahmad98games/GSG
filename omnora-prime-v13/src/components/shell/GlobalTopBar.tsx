@@ -85,7 +85,15 @@ export default React.memo(function GlobalTopBar() {
   useEffect(() => {
     let mounted = true
 
+    let lastCheckTime = 0;
     const checkConnection = async () => {
+      const now = Date.now();
+      // Throttle: don't hammer probes if checked in the last 20 seconds and already online
+      if (now - lastCheckTime < 20000 && (window as any)?.__noxis_wan_online === true) {
+        return;
+      }
+      lastCheckTime = now;
+
       // Hardware interface check (Wi-Fi / Ethernet adapter)
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
         if (mounted) {
@@ -210,8 +218,8 @@ export default React.memo(function GlobalTopBar() {
     window.addEventListener('focus', checkConnection)
     window.addEventListener('noxis_wan_status_change', handleWanStatusChange)
     
-    // Heartbeat WAN probe every 15 seconds
-    const interval = setInterval(checkConnection, 15000)
+    // Throttled Heartbeat WAN probe every 25 seconds when online
+    const interval = setInterval(checkConnection, 25000)
 
     return () => {
       mounted = false
@@ -367,6 +375,7 @@ export default React.memo(function GlobalTopBar() {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   }
 
+  const isPos = pathname?.startsWith('/pos');
   const isElectron = typeof window !== 'undefined' && !!(window as any).electronWindow;
 
   const activeDeviceCount = bridgeDeviceCount !== null ? bridgeDeviceCount : deviceCount;
@@ -376,7 +385,7 @@ export default React.memo(function GlobalTopBar() {
       <header 
         className={cn(
           "h-12 border-b flex items-center justify-between px-4 sticky z-40 w-full select-none font-inter transition-colors duration-200",
-          isElectron ? "top-10" : "top-0"
+          isPos ? "relative top-0 shrink-0" : (isElectron ? "sticky top-10" : "sticky top-0")
         )}
         style={{
           backgroundColor: 'var(--color-topbar-bg, #0B0E14)',
@@ -384,46 +393,32 @@ export default React.memo(function GlobalTopBar() {
         }}
       >
         {/* ── ZONE 1 (LEFT): Search & Shortcut Trigger ── */}
-        <div className="flex items-center gap-2">
-          <div className="relative group w-[220px]" data-tour="search-bar">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-slate-200 transition-colors" />
+        <div className="flex items-center gap-2.5">
+          <div className="relative group w-[260px] sm:w-[280px]" data-tour="search-bar">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-slate-200 transition-colors pointer-events-none" />
             <input 
               type="text"
               placeholder="Search anything..."
               onClick={() => window.dispatchEvent(new CustomEvent('open-global-search'))}
               readOnly
-              className="w-full h-8 pl-8 pr-12 rounded-[4px] text-xs transition-colors cursor-pointer"
-              style={{
-                backgroundColor: 'var(--color-input-bg, #131823)',
-                borderColor: 'var(--color-card-border, rgba(255,255,255,0.08))',
-                color: 'var(--color-text, #cbd5e1)',
-                borderWidth: '1px',
-                borderStyle: 'solid'
-              }}
+              className="w-full h-8 pl-8 pr-12 rounded-[4px] text-xs transition-all cursor-pointer border border-white/10 bg-[#121620] hover:border-white/20 text-slate-200 focus:outline-none"
             />
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 px-1 py-0.2 rounded-[2px] border border-white/[0.08] bg-white/[0.03] text-[9px] text-slate-400 font-mono">
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded-[2px] border border-white/10 bg-white/5 text-[9px] text-slate-400 font-mono pointer-events-none">
               Ctrl+K
             </div>
           </div>
           
           <button 
             onClick={() => window.dispatchEvent(new CustomEvent('sentinel:open'))}
-            className="h-8 w-8 flex items-center justify-center rounded-[4px] transition-colors relative cursor-pointer"
-            style={{
-              backgroundColor: 'var(--color-input-bg, #131823)',
-              borderColor: 'var(--color-card-border, rgba(255,255,255,0.08))',
-              color: 'var(--color-text-muted, #94a3b8)',
-              borderWidth: '1px',
-              borderStyle: 'solid'
-            }}
+            className="h-8 w-8 flex items-center justify-center rounded-[4px] border border-white/10 bg-[#121620] text-slate-400 hover:text-white hover:border-white/20 transition-colors relative cursor-pointer shrink-0"
             title="Sentinel AI Assistant (Ctrl+Shift+S)"
           >
             <Mic size={14} />
           </button>
         </div>
 
-        {/* ── ZONE 2 (CENTER): Consolidated Operational Status Pill ── */}
-        <div className="relative" data-tour="hub-status">
+        {/* ── ZONE 2 (CENTER): Consolidated Operational Status Pill (Centered Horizontally) ── */}
+        <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 items-center" data-tour="hub-status">
           <button
             onClick={() => setStatusFlyoutOpen(!statusFlyoutOpen)}
             className="flex items-center gap-2 px-2.5 py-1 rounded-[4px] transition-colors text-xs cursor-pointer select-none"

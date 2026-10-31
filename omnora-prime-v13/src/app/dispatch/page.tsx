@@ -18,6 +18,9 @@ import InvoiceSelector from "@/components/ui/InvoiceSelector";
 import { humanizeError } from '@/lib/utils/errors';
 import { Skeleton } from "@/components/ui/Skeleton";
 import { generateDeliveryChallan } from '@/lib/dispatch/generateChallan';
+import { CargoBiltyTracker } from '@/components/dispatch/CargoBiltyTracker';
+import { GatePassTerminal } from '@/components/dispatch/GatePassTerminal';
+import { ShieldCheck } from 'lucide-react';
 
 // --- Types ---
 interface DispatchOrder {
@@ -49,6 +52,7 @@ export default function DispatchCenterPage() {
   const [printingOrder, setPrintingOrder] = useState<any | null>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'orders' | 'cargo' | 'gatepass'>('orders');
 
   // State for the new dispatch modal
   const [newDispatchOpen, setNewDispatchOpen] = useState(false);
@@ -250,124 +254,173 @@ export default function DispatchCenterPage() {
         </header>
 
         <div className="flex-1 p-8 max-w-[1600px] mx-auto w-full space-y-8">
-           {/* Summary Cards */}
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <SummaryCard 
-                label="Pending Dispatch" 
-                value={stats.pending} 
-                icon={Package} 
-                color="text-amber-500" 
-                subtext="Invoices awaiting packing"
-              />
-              <SummaryCard 
-                label="Out for Delivery" 
-                value={stats.outForDelivery} 
-                icon={Truck} 
-                color="text-[#60A5FA]" 
-                subtext="Currently with transport"
-              />
-              <SummaryCard 
-                label="Delivered Today" 
-                value={stats.deliveredToday} 
-                icon={CheckCircle2} 
-                color="text-emerald" 
-                subtext="Successful handovers"
-              />
-           </div>
+            {/* Tab Navigation */}
+            <div className="flex items-center gap-2 border-b border-white/8 pb-3">
+              <button
+                onClick={() => setActiveTab('orders')}
+                className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-sm transition-all flex items-center gap-2 ${
+                  activeTab === 'orders'
+                    ? 'bg-white/10 text-white border-b-2 border-[#60A5FA]'
+                    : 'text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                <Package size={14} />
+                Delivery Challans ({orders.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('cargo')}
+                className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-sm transition-all flex items-center gap-2 ${
+                  activeTab === 'cargo'
+                    ? 'bg-white/10 text-white border-b-2 border-[#60A5FA]'
+                    : 'text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                <Truck size={14} />
+                Bilty &amp; Goods Adda Tracker
+              </button>
+              <button
+                onClick={() => setActiveTab('gatepass')}
+                className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-sm transition-all flex items-center gap-2 ${
+                  activeTab === 'gatepass'
+                    ? 'bg-white/10 text-white border-b-2 border-[#60A5FA]'
+                    : 'text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                <ShieldCheck size={14} className="text-emerald-400" />
+                Parcha / Gate Pass Mode
+              </button>
+            </div>
 
-           {/* Filters & Search */}
-           <div className="flex flex-col md:flex-row gap-4 items-center bg-white/5 border border-white/10 p-4 rounded-sm">
-              <div className="relative flex-1">
-                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-                 <input 
-                   type="text" 
-                   placeholder="Search Invoice # or Customer..." 
-                   className="w-full bg-[#0A0A0B] border border-white/10 pl-10 pr-4 py-2 text-xs text-white focus:border-[#60A5FA]/50 outline-none transition-all"
-                   value={searchTerm}
-                   onChange={(e) => setSearchTerm(e.target.value)}
-                 />
-              </div>
-              <div className="flex items-center space-x-3">
-                 <select 
-                   value={statusFilter}
-                   onChange={(e) => setStatusFilter(e.target.value)}
-                   className="bg-[#0A0A0B] border border-white/10 px-4 py-2 text-[10px] uppercase font-bold text-gray-400 outline-none focus:border-[#60A5FA]/50"
-                 >
-                    <option>All Status</option>
-                    <option>Pending</option>
-                    <option>Packed</option>
-                    <option>Dispatched</option>
-                    <option>Delivered</option>
-                    <option>Returned</option>
-                 </select>
-                  <button 
-                    onClick={() => {
-                      const sel = document.querySelector('select') as HTMLSelectElement;
-                      if (sel) sel.focus();
-                    }}
-                    className="p-2 border border-white/10 text-gray-500 hover:text-white transition-all"
-                    title="Focus status filter"
-                  >
-                     <Filter size={16} />
-                  </button>
-              </div>
-           </div>
+            {activeTab === 'cargo' && (
+              <CargoBiltyTracker businessId={profile?.id} />
+            )}
 
-           {/* Queue Table */}
-           <div className="bg-[#0F1114] border border-white/6 rounded-sm overflow-hidden">
-              <div className="p-4 border-b border-white/10 flex items-center justify-between">
-                 <h3 className="text-[10px] uppercase font-black text-gray-500 tracking-widest">Active Dispatch Queue</h3>
-                 <span className="text-[9px] text-gray-600 font-mono italic">Real-time sync active</span>
-              </div>
+            {activeTab === 'gatepass' && (
+              <GatePassTerminal businessName={profile?.business_name} businessId={profile?.id} />
+            )}
 
-              {loading ? (
-                <div className="p-4 space-y-3">
-                  {[1, 2, 3].map(i => (
-                    <div key={i} className="flex items-center justify-between p-4 bg-[#0F1114] border border-white/5 animate-pulse rounded-sm">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-white/5 rounded-sm" />
-                        <div className="space-y-2">
-                          <Skeleton className="h-4 w-32" />
-                          <Skeleton className="h-3 w-48" />
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Skeleton className="h-6 w-20 rounded-full" />
-                        <Skeleton className="h-8 w-24 rounded-sm" />
-                      </div>
-                    </div>
-                  ))}
+            {activeTab === 'orders' && (
+              <>
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <SummaryCard 
+                    label="Pending Dispatch" 
+                    value={stats.pending} 
+                    icon={Package} 
+                    color="text-amber-500" 
+                    subtext="Invoices awaiting packing"
+                  />
+                  <SummaryCard 
+                    label="Out for Delivery" 
+                    value={stats.outForDelivery} 
+                    icon={Truck} 
+                    color="text-[#60A5FA]" 
+                    subtext="Currently with transport"
+                  />
+                  <SummaryCard 
+                    label="Delivered Today" 
+                    value={stats.deliveredToday} 
+                    icon={CheckCircle2} 
+                    color="text-emerald" 
+                    subtext="Successful handovers"
+                  />
                 </div>
-              ) : filteredOrders.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-center">
-                  <div className="text-4xl mb-4">📦</div>
-                  <p className="text-sm font-medium text-white mb-2">
-                    No dispatch orders yet
-                  </p>
-                  <p className="text-xs text-gray-500 max-w-xs">
-                    Create a dispatch order when you are ready to send goods to a customer.
-                  </p>
-                  <button
-                    onClick={() => setNewDispatchOpen(true)}
-                    className="mt-5 px-5 py-2.5 text-xs font-bold bg-[#60A5FA] text-black hover:bg-blue-400 transition-colors"
-                  >
-                    + New Dispatch Order
-                  </button>
-                </div>
-              ) : (
-                <div className="p-4 space-y-2">
-                  {filteredOrders.map(order => (
-                    <DispatchOrderRow
-                      key={order.id}
-                      order={order}
-                      onStatusChange={loadOrders}
-                      businessId={profile?.id}
-                      onPrint={setPrintingOrder}
+
+                {/* Filters & Search */}
+                <div className="flex flex-col md:flex-row gap-4 items-center bg-white/5 border border-white/10 p-4 rounded-sm">
+                  <div className="relative flex-1">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                    <input 
+                      type="text" 
+                      placeholder="Search Invoice # or Customer..." 
+                      className="w-full bg-[#0A0A0B] border border-white/10 pl-10 pr-4 py-2 text-xs text-white focus:border-[#60A5FA]/50 outline-none transition-all"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
                     />
-                  ))}
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <select 
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="bg-[#0A0A0B] border border-white/10 px-4 py-2 text-[10px] uppercase font-bold text-gray-400 outline-none focus:border-[#60A5FA]/50"
+                    >
+                      <option>All Status</option>
+                      <option>Pending</option>
+                      <option>Packed</option>
+                      <option>Dispatched</option>
+                      <option>Delivered</option>
+                      <option>Returned</option>
+                    </select>
+                    <button 
+                      onClick={() => {
+                        const sel = document.querySelector('select') as HTMLSelectElement;
+                        if (sel) sel.focus();
+                      }}
+                      className="p-2 border border-white/10 text-gray-500 hover:text-white transition-all"
+                      title="Focus status filter"
+                    >
+                      <Filter size={16} />
+                    </button>
+                  </div>
                 </div>
-              )}
-           </div>
+
+                {/* Queue Table */}
+                <div className="bg-[#0F1114] border border-white/6 rounded-sm overflow-hidden">
+                  <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                    <h3 className="text-[10px] uppercase font-black text-gray-500 tracking-widest">Active Dispatch Queue</h3>
+                    <span className="text-[9px] text-gray-600 font-mono italic">Real-time sync active</span>
+                  </div>
+
+                  {loading ? (
+                    <div className="p-4 space-y-3">
+                      {[1, 2, 3].map(i => (
+                        <div key={i} className="flex items-center justify-between p-4 bg-[#0F1114] border border-white/5 animate-pulse rounded-sm">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-white/5 rounded-sm" />
+                            <div className="space-y-2">
+                              <Skeleton className="h-4 w-32" />
+                              <Skeleton className="h-3 w-48" />
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Skeleton className="h-6 w-20 rounded-full" />
+                            <Skeleton className="h-8 w-24 rounded-sm" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : filteredOrders.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-20 text-center">
+                      <div className="text-4xl mb-4">📦</div>
+                      <p className="text-sm font-medium text-white mb-2">
+                        No dispatch orders yet
+                      </p>
+                      <p className="text-xs text-gray-500 max-w-xs">
+                        Create a dispatch order when you are ready to send goods to a customer.
+                      </p>
+                      <button
+                        onClick={() => setNewDispatchOpen(true)}
+                        className="mt-5 px-5 py-2.5 text-xs font-bold bg-[#60A5FA] text-black hover:bg-blue-400 transition-colors"
+                      >
+                        + New Dispatch Order
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="p-4 space-y-2">
+                      {filteredOrders.map(order => (
+                        <DispatchOrderRow
+                          key={order.id}
+                          order={order}
+                          onStatusChange={loadOrders}
+                          businessId={profile?.id}
+                          onPrint={setPrintingOrder}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
         </div>
       </main>
 

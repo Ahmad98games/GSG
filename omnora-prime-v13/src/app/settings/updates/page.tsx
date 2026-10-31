@@ -54,10 +54,22 @@ interface ChangelogItem {
 
 const HISTORICAL_CHANGELOGS: ChangelogItem[] = [
   {
-    version: '14.0.18',
+    version: '14.0.23',
     date: 'October 2026',
     type: 'patch',
-    title: 'Noxis Hub v14.0.18 — Self-Healing Connectivity, Calculators Sidebar Fix, Invoice Lookup Resilience & Crash-Proof Bidirectional Mobile Sync',
+    title: 'Noxis Hub v14.0.23 - Zero-Data-Loss Form Resilience, Power-Cut Auto-Recovery & Sentinel AI Copilot 2.0',
+    highlights: [
+      { tag: 'Power-Cut Zero-Loss Recovery', text: 'Integrated atomic form draft hydration that instantly repopulates customer name, line items, quantities, and prices upon restarting the software after sudden shutdown', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      { tag: 'Blank Draft Overwrite Protection', text: 'Implemented isMeaningfulDraftData validation preventing default blank forms from ever overwriting preserved drafts in local storage or Electron cache', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
+      { tag: 'Sentinel AI Copilot 2.0', text: 'Deployed 14 interactive step-by-step autopilot walkthroughs guiding non-technical operators through sales, POS, khata, karigars, and inventory', color: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
+      { tag: 'Deep AI Knowledge Base Expansion', text: 'Added comprehensive guidance for 7-Day Trial policies, Free Forever mode, 1,000-5,000 row Excel bulk import, and offline local hub capabilities', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+    ],
+  },
+  {
+    version: '14.0.20',
+    date: 'October 2026',
+    type: 'patch',
+    title: 'Noxis Hub v14.0.20 — Pure Modern Enterprise UI, Connected Product Tour, Sentinel AI Auto-Pilot & Zero-Latency Offline Performance',
     highlights: [
       { tag: 'Self-Healing WAN Online Probe', text: 'Hardened network connectivity check with 3500ms tolerant timeouts, gstatic & Cloudflare domain endpoints, auto-reconnect intervals, and automatic online recovery on successful API queries', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
       { tag: 'Industrial Calculators Layout', text: 'Resolved AppShell route collision that hid the sidebar and navigation shell when opening Industrial Calculators and Converters', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
@@ -282,7 +294,7 @@ export default function UpdatesPage() {
   const [showChangelogHistory, setShowChangelogHistory] = useState(false)
 
   // Version-Locked Telemetry & Ceiling Policy
-  const [baselineVersion, setBaselineVersion] = useState<string>('v14.0.18')
+  const [baselineVersion, setBaselineVersion] = useState<string>('v14.0.23')
   const [licenseTier, setLicenseTier] = useState<'lite' | 'pro' | 'elite'>('elite')
   const [maxAllowedCeiling, setMaxAllowedCeiling] = useState<string>('v16.x.x')
   const [allowedWindow, setAllowedWindow] = useState<string>('+2 Major Generations')
@@ -304,8 +316,8 @@ export default function UpdatesPage() {
 
   useEffect(() => {
     if (!isElectron) {
-      setCurrentVersion('14.0.18')
-      setBaselineVersion('v14.0.18')
+      setCurrentVersion('14.0.23')
+      setBaselineVersion('v14.0.23')
       setLicenseTier('elite')
       setMaxAllowedCeiling('v16.x.x')
       return
@@ -1039,7 +1051,7 @@ export default function UpdatesPage() {
               Auto-Sync Feed: /updates/{channel}
             </span>
             <a
-              href="https://noxishub.app/updates/stable/Noxis%20Hub%20Setup%2014.0.18.exe"
+              href="https://noxishub.app/updates/stable/Noxis%20Hub%20Setup%2014.0.23.exe"
               target="_blank"
               rel="noreferrer"
               className="text-[11px] font-medium text-cyan-400 hover:text-cyan-300 underline underline-offset-2 flex items-center gap-1 cursor-pointer"

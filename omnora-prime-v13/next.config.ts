@@ -13,15 +13,18 @@ const getCSP = () => {
   const policy: Record<string, string[]> = {
     'default-src': ["'self'"],
     'script-src': ["'self'", "'unsafe-inline'", !isProd ? "'unsafe-eval'" : ""].filter(Boolean),
-    'style-src': ["'self'", "'unsafe-inline'"], // Required for Tailwind
+    'style-src': ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"], // Required for Tailwind & Urdu Google fonts
     'img-src': ["'self'", "data:", "blob:", "https://*.supabase.co"],
     'connect-src': [
       "'self'", 
       "https://*.supabase.co", 
       "wss://*.supabase.co", 
-      "https://api.stripe.com"
+      "https://api.stripe.com",
+      "https://www.gstatic.com",
+      "https://cloudflare.com",
+      "https://dns.google"
     ],
-    'font-src': ["'self'"],
+    'font-src': ["'self'", "data:", "https://fonts.gstatic.com"],
     'media-src': ["'self'", "blob:"],
     'frame-ancestors': [isElectron ? "'self'" : "'none'"],
   };

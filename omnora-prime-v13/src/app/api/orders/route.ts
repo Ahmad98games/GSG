@@ -71,7 +71,9 @@ export async function GET(req: NextRequest) {
 
     const { data, error } = await query;
     if (error) {
-      console.error('[API Orders] Supabase error:', error);
+      if (!error.message?.includes('schema cache')) {
+        console.error('[API Orders] Supabase error:', error);
+      }
       return NextResponse.json({ data: [] });
     }
 

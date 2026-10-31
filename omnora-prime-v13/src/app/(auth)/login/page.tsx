@@ -257,7 +257,7 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              className="w-full py-4 bg-gradient-to-r from-[#08EBF6] to-[#5FA5FA] text-black font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center group shadow-[0_0_20px_rgba(8,235,246,0.3)] hover:brightness-110 active:scale-95 cursor-pointer"
+              className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-colors rounded-lg flex items-center justify-center group shadow-sm cursor-pointer"
             >
               {isLoading ? (
                 <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Establishing Session...</>

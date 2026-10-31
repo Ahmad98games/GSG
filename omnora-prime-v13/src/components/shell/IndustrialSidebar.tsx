@@ -517,7 +517,7 @@ export default React.memo(function IndustrialSidebar() {
                   borderStyle: 'solid'
                 }}
               >
-                v14.0.18
+                v14.0.23
               </span>
             )}
           </div>
@@ -577,7 +577,7 @@ export default React.memo(function IndustrialSidebar() {
             const isGroupCollapsed = collapsedSections[group.id] && !isCollapsed
 
             return (
-              <div key={group.id} className="space-y-0.5">
+              <div key={group.id} className="space-y-0.5" data-tour={`sidebar-${group.id}`}>
                 {/* Section Header (Subtle, Tracked, Non-Aggressive) */}
                 {!isCollapsed && (
                   <button
@@ -741,7 +741,7 @@ const EnterpriseSidebarItem = React.memo(function EnterpriseSidebarItem({
   const linkContent = (
     <Link
       href={item.href}
-      prefetch={false}
+      prefetch={true}
       className={cn(
         'group relative flex items-center rounded-md px-2.5 py-1.5 text-[13px] font-normal transition-colors duration-150 ease-in-out cursor-pointer',
         isCollapsed ? 'justify-center px-0' : 'gap-2.5',

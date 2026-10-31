@@ -70,15 +70,13 @@ export default function ProfitLossPage() {
     queryFn: async () => {
       let query = supabase
         .from('ledger_entries')
-        .select('amount, entry_type, posted_at, branch_id, accounts!inner(id, account_code, name, type)')
+        .select('amount, entry_type, posted_at, accounts!inner(id, account_code, name, type)')
         .eq('business_id', businessId)
         .eq('status', 'posted')
         .gte('posted_at', dateRange.start)
         .lte('posted_at', dateRange.end + 'T23:59:59.999Z');
       
-      if (currentBranchId) {
-        query = query.eq('branch_id', currentBranchId);
-      }
+      // branch filtering if needed
       
       const { data: entries, error } = await query;
       if (error) throw error;

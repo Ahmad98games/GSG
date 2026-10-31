@@ -39,6 +39,12 @@ export function NoxisSessionRecoveryModal({
 
   const handleResumeDraft = (draft: SavedDraftInfo) => {
     onClose()
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem('noxis_trigger_restore', draft.key)
+        window.dispatchEvent(new CustomEvent('noxis:restore-draft', { detail: draft }))
+      } catch {}
+    }
     router.push(draft.route)
   }
 
@@ -55,6 +61,12 @@ export function NoxisSessionRecoveryModal({
   const handleResumeLastRoute = () => {
     onClose()
     if (powerCutInfo?.lastRoute) {
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem('noxis_trigger_restore_route', powerCutInfo.lastRoute)
+          window.dispatchEvent(new CustomEvent('noxis:restore-last-route', { detail: powerCutInfo }))
+        } catch {}
+      }
       router.push(powerCutInfo.lastRoute)
     }
   }

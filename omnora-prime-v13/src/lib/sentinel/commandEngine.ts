@@ -269,6 +269,15 @@ function parsePeriod(input: string): { from: string; to: string } {
 
 export function parseCommand(input: string): SentinelCommand | null {
   const text = input.toLowerCase().trim();
+
+  // If input is an inquiry, practical demo request, or explanatory question,
+  // do NOT intercept with a silent navigation command. Defer to processChatQuery!
+  const isQuestionOrHelp = 
+    /\b(kaise|kese|how|kya|what|kyun|why|samajh|samjh|nahi ata|ni ata|nahi aata|ni aata|seekhna|sikhao|sikhayein|batao|batayein|bataiye|tarika|tariqa|karna hai|explain|perform|dikhao|karke dikhao|guide|help|tour|walkthrough)\b/i.test(text);
+
+  if (isQuestionOrHelp) {
+    return null;
+  }
   
   // Intent matching — keyword patterns
   const patterns: Array<{

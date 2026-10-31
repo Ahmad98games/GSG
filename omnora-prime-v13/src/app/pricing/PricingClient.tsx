@@ -506,7 +506,7 @@ export default function PricingClient() {
           transition={{ duration: 0.6 }}
           className="text-center mb-12 pt-8"
         >
-          <div className="inline-flex items-center gap-2 bg-[#08EBF6]/10 border border-[#08EBF6]/30 px-4 py-1.5 rounded-full mb-6 shadow-[0_0_15px_rgba(8,235,246,0.15)]">
+          <div className="inline-flex items-center gap-2 bg-[#08EBF6]/10 border border-[#08EBF6]/30 px-4 py-1.5 rounded-full mb-6 shadow-sm">
             <ShieldCheck size={14} className="text-[#08EBF6]" />
             <span className="text-[10px] font-black text-[#08EBF6] uppercase tracking-widest">
               Built for Textile Mills &amp; Manufacturing · 100% Offline Local SQLite
@@ -527,7 +527,7 @@ export default function PricingClient() {
                 onClick={() => setBillingCycle('monthly')}
                 className={cn(
                   "px-5 sm:px-7 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all rounded-md cursor-pointer",
-                  billingCycle === 'monthly' ? 'bg-[#08EBF6] text-black shadow-[0_0_15px_rgba(8,235,246,0.4)]' : 'text-slate-400 hover:text-white'
+                  billingCycle === 'monthly' ? 'bg-[#08EBF6] text-black shadow-sm' : 'text-slate-400 hover:text-white'
                 )}
               >
                 Monthly Plan
@@ -548,7 +548,7 @@ export default function PricingClient() {
                 onClick={() => setBillingCycle('permanent')}
                 className={cn(
                   "px-5 sm:px-7 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all relative rounded-md cursor-pointer",
-                  billingCycle === 'permanent' ? 'bg-[#10B981] text-black shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'text-slate-400 hover:text-white'
+                  billingCycle === 'permanent' ? 'bg-[#10B981] text-black shadow-sm' : 'text-slate-400 hover:text-white'
                 )}
               >
                 Permanent License
@@ -1201,7 +1201,7 @@ export default function PricingClient() {
                   href="https://wa.me/923264742678?text=Assalam%20o%20Alaikum%2C%20we%20have%20a%20large%20industrial%20facility%20and%20need%20a%20custom%20Noxis%20Hub%20deployment%20quote."
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-6 py-3 bg-[#08EBF6] text-black font-black uppercase tracking-wider text-xs rounded-sm hover:bg-[#08EBF6]/90 transition-all flex items-center gap-2 shadow-[0_0_20px_rgba(8,235,246,0.25)]"
+                  className="px-6 py-3 bg-[#08EBF6] text-black font-black uppercase tracking-wider text-xs rounded-sm hover:bg-[#08EBF6]/90 transition-all flex items-center gap-2 shadow-sm"
                 >
                   <MessageCircle size={15} />
                   <span>Talk with Lead Engineer</span>
@@ -1311,7 +1311,7 @@ export default function PricingClient() {
                       onClick={() => setPaymentMethod(tab.id as any)}
                       className={cn(
                         "flex-1 py-2 text-[9px] font-black uppercase tracking-widest transition-all rounded-sm cursor-pointer",
-                        paymentMethod === tab.id ? 'bg-[#08EBF6] text-black font-black shadow-[0_0_12px_rgba(8,235,246,0.3)]' : 'text-gray-500 hover:text-gray-300'
+                        paymentMethod === tab.id ? 'bg-[#08EBF6] text-black font-black shadow-sm' : 'text-gray-500 hover:text-gray-300'
                       )}
                     >
                       {tab.label}
@@ -1468,7 +1468,7 @@ export default function PricingClient() {
                 <button
                   onClick={handleInstantKeyGeneration}
                   disabled={isGeneratingKey}
-                  className="w-full py-3.5 bg-[#08EBF6] text-black hover:bg-[#08EBF6]/90 transition-all text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(8,235,246,0.35)] cursor-pointer disabled:opacity-50"
+                  className="w-full py-3.5 bg-[#08EBF6] text-black hover:bg-[#08EBF6]/90 transition-all text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-sm cursor-pointer disabled:opacity-50"
                 >
                   {isGeneratingKey ? (
                     <>
@@ -1529,24 +1529,24 @@ function PricingCard({
       className={cn(
         "relative flex flex-col p-6 transition-all duration-300 rounded-md",
         popular 
-          ? "bg-gradient-to-b from-[#0B1522] via-[#070D16] to-[#03060C] border-2 border-[#00E5FF] shadow-[0_0_40px_rgba(0,229,255,0.25),inset_0_0_20px_rgba(0,229,255,0.05)] ring-1 ring-[#00E5FF]/50 z-10" 
+          ? "bg-gradient-to-b from-[#0B1522] via-[#070D16] to-[#03060C] border-2 border-blue-500/50 shadow-xl ring-1 ring-blue-500/20 z-10" 
           : primary
-            ? "bg-gradient-to-b from-[#08121D] to-[#03070E] border border-[#00E5FF]/40 hover:border-[#00E5FF] hover:shadow-[0_0_30px_rgba(0,229,255,0.2)]"
+            ? "bg-gradient-to-b from-[#08121D] to-[#03070E] border border-[#00E5FF]/40 hover:border-[#00E5FF] hover:shadow-lg"
             : tier === 'Lite Tier'
-              ? "bg-[#030712] border border-[#10B981]/40 hover:border-[#10B981] hover:shadow-[0_0_30px_rgba(16,185,129,0.2)]"
+              ? "bg-[#030712] border border-[#10B981]/40 hover:border-[#10B981] hover:shadow-lg"
               : "bg-[#030712] border border-white/10 hover:border-white/20"
       )}
     >
       {/* Top Banner on Most Popular */}
       {popular && (
-        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#00E5FF] to-[#10B981] text-black text-[9px] font-black uppercase tracking-[0.25em] px-4 py-1 whitespace-nowrap rounded-md shadow-[0_0_15px_rgba(0,229,255,0.6)]">
+        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#00E5FF] to-[#10B981] text-black text-[9px] font-black uppercase tracking-[0.25em] px-4 py-1 whitespace-nowrap rounded-md shadow-md">
           Most Popular for Mills
         </div>
       )}
 
       {/* Founders Offer / Launch Discount Badge */}
       {foundersOfferBadge ? (
-        <div className="mb-3.5 inline-flex items-center gap-2 px-3 py-1 rounded bg-[#00E5FF]/10 border border-[#00E5FF] text-[#00E5FF] text-[9px] font-black uppercase tracking-widest shadow-[0_0_15px_rgba(0,229,255,0.3)]">
+        <div className="mb-3.5 inline-flex items-center gap-2 px-3 py-1 rounded bg-[#00E5FF]/10 border border-[#00E5FF] text-[#00E5FF] text-[9px] font-black uppercase tracking-widest shadow-sm">
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#10B981] opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-[#10B981]"></span>
@@ -1554,7 +1554,7 @@ function PricingCard({
           <span>{foundersOfferBadge}</span>
         </div>
       ) : discountPercent ? (
-        <div className="mb-3.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-[#10B981]/10 border border-[#10B981]/30 text-[#10B981] text-[9px] font-black uppercase tracking-wider shadow-[0_0_10px_rgba(16,185,129,0.15)]">
+        <div className="mb-3.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-[#10B981]/10 border border-[#10B981]/30 text-[#10B981] text-[9px] font-black uppercase tracking-wider shadow-sm">
           <Sparkles size={11} className="text-[#00E5FF]" />
           <span>Launch Offer ({discountPercent})</span>
         </div>
@@ -1572,7 +1572,7 @@ function PricingCard({
             <span className="text-sm font-mono line-through text-slate-500 font-bold tracking-tight">
               {originalDisplayPrice}
             </span>
-            <span className="px-1.5 py-0.5 rounded text-[8.5px] font-black uppercase tracking-wider bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/40 shadow-[0_0_8px_rgba(16,185,129,0.2)]">
+            <span className="px-1.5 py-0.5 rounded text-[8.5px] font-black uppercase tracking-wider bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/40 shadow-sm">
               {discountPercent ? `${discountPercent} OFF` : 'LAUNCH DISCOUNT'}
             </span>
           </div>
@@ -1580,7 +1580,7 @@ function PricingCard({
 
         {/* Current Active Price */}
         <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="text-3xl sm:text-4xl font-mono font-black text-white tracking-tight drop-shadow-[0_0_15px_rgba(0,229,255,0.25)]">
+          <span className="text-3xl sm:text-4xl font-mono font-black text-white tracking-tight ">
             {displayPrice}
           </span>
           <span className="text-[10px] font-black text-[#00E5FF] uppercase tracking-wider">
@@ -1618,7 +1618,7 @@ function PricingCard({
 
       {/* Support & Assistance Tier Guarantee */}
       {supportPackage && (
-        <div className="mb-5 p-3 rounded bg-[#00E5FF]/5 border border-[#00E5FF]/25 shadow-[0_0_15px_rgba(0,229,255,0.08)]">
+        <div className="mb-5 p-3 rounded bg-[#00E5FF]/5 border border-[#00E5FF]/25 shadow-sm">
           <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-[#00E5FF] mb-1">
             <ShieldCheck size={13} className="text-[#10B981]" />
             <span>Guaranteed Technical Support</span>
@@ -1648,11 +1648,11 @@ function PricingCard({
           className={cn(
             "block w-full py-3.5 text-center text-[10px] font-black uppercase tracking-[0.2em] transition-all rounded-md cursor-pointer",
             popular 
-              ? "bg-gradient-to-r from-[#00E5FF] via-[#10B981] to-[#00E5FF] text-black hover:brightness-110 active:scale-95 shadow-[0_0_25px_rgba(0,229,255,0.4)]" 
+              ? "bg-gradient-to-r from-[#00E5FF] via-[#10B981] to-[#00E5FF] text-black hover:brightness-110 active:scale-95 shadow-sm" 
               : primary
-                ? "bg-gradient-to-r from-[#00E5FF] to-[#3B82F6] text-black hover:brightness-110 active:scale-95 shadow-[0_0_20px_rgba(0,229,255,0.3)]" 
+                ? "bg-gradient-to-r from-[#00E5FF] to-[#3B82F6] text-black hover:brightness-110 active:scale-95 shadow-sm" 
                 : tier === 'Lite Tier'
-                  ? "bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/50 hover:bg-[#10B981] hover:text-black active:scale-95 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
+                  ? "bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/50 hover:bg-[#10B981] hover:text-black active:scale-95 shadow-sm"
                   : "bg-white/10 text-white hover:bg-white/20 hover:text-[#00E5FF] border border-white/10 active:scale-95"
           )}
         >

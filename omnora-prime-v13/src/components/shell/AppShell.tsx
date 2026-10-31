@@ -15,6 +15,7 @@ import GlobalTopBar from "@/components/shell/GlobalTopBar";
 import TitleBar from "@/components/shell/TitleBar";
 import ThemePicker from "@/components/shell/ThemePicker";
 import SentinelAssistant from "@/components/sentinel/SentinelAssistant";
+import SentinelCopilot from "@/components/sentinel/SentinelCopilot";
 import { IntroAnimation } from "@/components/shell/IntroAnimation";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { useThemeStore } from "@/stores/themeStore";
@@ -40,6 +41,8 @@ import { PlanCompletionUpgradeModal } from '@/components/license/PlanCompletionU
 import { ActivationCelebration } from '@/components/license/ActivationCelebration';
 import HWIDActivationModal from "@/components/pricing/HWIDActivationModal";
 import BusinessModeSelector from '@/components/onboarding/BusinessModeSelector';
+import { ProductTour } from '@/components/onboarding/ProductTour';
+import WelcomeGuide from '@/components/onboarding/WelcomeGuide';
 import { useBusinessModeStore } from '@/stores/businessModeStore';
 import { PublicNavProvider } from '@/components/shell/PublicNavbar';
 import { NoxisSessionRecoveryModal } from '@/components/shell/NoxisSessionRecoveryModal';
@@ -51,6 +54,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { isConfigured: isBusinessModeConfigured, setMode } = useBusinessModeStore();
   const [mounted, setMounted] = React.useState(false);
+  const [showWelcomeGuide, setShowWelcomeGuide] = React.useState(false);
+
+  React.useEffect(() => {
+    const handleOpenGuide = () => setShowWelcomeGuide(true);
+    window.addEventListener('open-welcome-guide', handleOpenGuide);
+    return () => window.removeEventListener('open-welcome-guide', handleOpenGuide);
+  }, []);
   const { isCollapsed } = useSidebarState();
   const { isRTL } = useLanguageStore();
   const { profile } = useBusinessProfile();
@@ -425,6 +435,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <BusinessModeSelector />
       )}
 
+      {/* Guided Workstation Tour */}
+      {!shouldShowModeSelector && (
+        <ProductTour />
+      )}
+
       {!shouldShowModeSelector && introChecked && showIntro && (
         <IntroAnimation onComplete={handleIntroComplete} />
       )}
@@ -477,13 +492,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <ReleaseNotesModal />
       <ThemePicker hideTrigger={true} />
       <SentinelAssistant />
+      <SentinelCopilot />
       <ShortcutHelp />
       <ZoomSafetyPill />
+      <QuickActions />
+      {showWelcomeGuide && (
+        <WelcomeGuide
+          ownerName={profile?.owner_name || 'Administrator'}
+          businessName={profile?.business_name || 'My Business'}
+          industry={profile?.industry_type || 'textile'}
+          onClose={() => setShowWelcomeGuide(false)}
+        />
+      )}
       <div 
         className={cn(
           "relative flex flex-col transition-all duration-300",
           pathname?.startsWith('/pos')
-            ? (isElectron ? "h-[calc(100vh-40px)] overflow-hidden" : "h-screen overflow-hidden")
+            ? (isElectron ? "h-[calc(100vh-40px)] overflow-hidden overscroll-none" : "h-screen overflow-hidden overscroll-none")
             : "min-h-screen",
           isCollapsed ? "sidebar-collapsed ps-[64px]" : "sidebar-expanded ps-[240px]"
         )}
@@ -598,7 +623,7 @@ function ZoomSafetyPill() {
   if (!isZoomedOut) return null;
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[999] bg-[#0A0D14] border border-cyan-500/50 shadow-[0_0_30px_rgba(8,235,246,0.3)] px-4 py-2 rounded-full flex items-center gap-3 text-xs text-white">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[999] bg-[#0F172A] border border-white/10 shadow-2xl px-4 py-2 rounded-full flex items-center gap-3 text-xs text-white">
       <span className="text-amber-400 font-bold">🔍 Display Shrunken / Zoomed Out</span>
       <button
         onClick={() => {
@@ -609,7 +634,7 @@ function ZoomSafetyPill() {
           document.body.style.zoom = '100%';
           setIsZoomedOut(false);
         }}
-        className="px-2.5 py-1 bg-cyan-500 hover:bg-cyan-400 text-black font-bold rounded-full text-[11px] transition-all shadow-sm"
+        className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-full text-[11px] transition-colors shadow-sm cursor-pointer"
       >
         Reset to 100% (Ctrl+0)
       </button>

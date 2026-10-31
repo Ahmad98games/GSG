@@ -163,7 +163,7 @@ export function ShortcutHelp() {
       onClick={() => setOpen(false)}
     >
       <div
-        className="bg-[#0B0E14] border border-cyan-500/30 rounded-lg shadow-[0_0_50px_rgba(8,235,246,0.15)] w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]"
+        className="bg-[#0F172A] border border-white/10 rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]"
         onClick={e => e.stopPropagation()}
       >
         {/* ── HEADER ── */}
@@ -175,7 +175,7 @@ export function ShortcutHelp() {
             <div>
               <h2 className="text-sm font-bold text-white tracking-wide uppercase flex items-center gap-2">
                 Noxis Hub Shortcut Keys & Troubleshooter
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-normal lowercase">v14.0.18</span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-normal lowercase">v14.0.21</span>
               </h2>
               <p className="text-xs text-zinc-400 mt-0.5">
                 Master industrial navigation & resolve display zoom issues instantly
@@ -209,7 +209,7 @@ export function ShortcutHelp() {
           <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
             <button
               onClick={handleResetZoom}
-              className="px-3 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-bold rounded flex items-center gap-1.5 shadow-[0_0_15px_rgba(8,235,246,0.3)] transition-all"
+              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-md flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
             >
               <RotateCcw size={13} />
               <span>Reset to 100%</span>

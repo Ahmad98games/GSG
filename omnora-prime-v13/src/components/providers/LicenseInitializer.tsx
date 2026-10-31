@@ -98,47 +98,37 @@ export function LicenseInitializer() {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[9999] bg-[#07080A] flex items-center justify-center p-4 holographic-grid">
-        
-        {/* Animated Cyber Glows */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#7C3AED]/10 rounded-full blur-[140px] animate-float-slow" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#00E5FF]/5 rounded-full blur-[140px] animate-float-medium" />
-        </div>
-
+      <div className="fixed inset-0 z-[9999] bg-[#06080D]/90 backdrop-blur-sm flex items-center justify-center p-4">
         <motion.div
-          initial={{ opacity: 0, scale: 0.96, y: 15 }}
+          initial={{ opacity: 0, scale: 0.98, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          className="glass-panel max-w-2xl w-full p-8 rounded-sm relative overflow-hidden flex flex-col max-h-[90vh] z-10 border border-white/[0.08]"
+          className="bg-[#0B0F17] max-w-2xl w-full p-8 rounded-lg relative overflow-hidden flex flex-col max-h-[90vh] z-10 border border-white/10 shadow-2xl"
         >
-          {/* Hardware-accelerated Holographic Laser Scanline */}
-          <div className="laser-scanner-sweep" />
-
           {/* Top Info Header */}
-          <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/[0.06]">
+          <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-sm bg-white/[0.03] border border-white/10 flex items-center justify-center text-blue-400">
-                <Shield size={20} className="animate-glow-pulse" />
+              <div className="w-10 h-10 rounded-md bg-white/5 border border-white/10 flex items-center justify-center text-blue-400">
+                <Shield size={20} />
               </div>
               <div>
-                <h2 className="text-md font-black tracking-tight text-white uppercase italic">
-                  Noxis <span className="text-[#C5A059]">Console Consent</span>
+                <h2 className="text-base font-bold tracking-tight text-white">
+                  Noxis <span className="text-blue-400">Software Agreement</span>
                 </h2>
-                <p className="text-[9px] text-gray-500 uppercase tracking-widest font-mono font-bold">
-                  System Protocol Verification • v13.0
+                <p className="text-xs text-slate-400 font-medium">
+                  Terms of Use & Offline Workstation Policy
                 </p>
               </div>
             </div>
-            <div className="px-2.5 py-1 bg-blue-500/10 border border-blue-500/20 rounded-sm text-blue-400 text-[8px] font-mono tracking-widest uppercase font-bold">
-              Secure Local Node
+            <div className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded text-emerald-400 text-xs font-mono font-medium">
+              Verified Offline Node
             </div>
           </div>
 
-          {/* Middle Body - Interactive Console Panel */}
+          {/* Middle Body - Interactive Panel */}
           <div className="flex-1 flex flex-col md:flex-row gap-6 min-h-[300px] overflow-hidden my-2">
             
             {/* Sidebar Tabs */}
-            <div className="flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-x-visible shrink-0 pb-2 md:pb-0 border-b md:border-b-0 md:border-r border-white/[0.05] pr-0 md:pr-4 no-scrollbar">
+            <div className="flex flex-row md:flex-col gap-1.5 overflow-x-auto md:overflow-x-visible shrink-0 pb-2 md:pb-0 border-b md:border-b-0 md:border-r border-white/10 pr-0 md:pr-4 no-scrollbar">
               {tabs.map((tab) => {
                 const TabIcon = tab.icon;
                 const isActive = tab.id === activeTab;
@@ -147,13 +137,13 @@ export function LicenseInitializer() {
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
                     className={cn(
-                      "flex items-center space-x-3 px-4 py-3 rounded-sm text-left transition-all border shrink-0 text-xs font-bold uppercase tracking-wider font-mono",
+                      "flex items-center space-x-3 px-3.5 py-2.5 rounded-md text-left transition-colors border shrink-0 text-xs font-semibold",
                       isActive
-                        ? "bg-white/5 border-white/10 text-white shadow-[0_0_15px_rgba(255,255,255,0.02)]"
-                        : "border-transparent text-gray-500 hover:text-gray-300 hover:bg-white/[0.02]"
+                        ? "bg-white/10 border-white/15 text-white"
+                        : "border-transparent text-slate-400 hover:text-white hover:bg-white/5"
                     )}
                   >
-                    <TabIcon size={14} className={cn(isActive ? tab.color : "text-gray-500")} />
+                    <TabIcon size={15} className={cn(isActive ? "text-blue-400" : "text-slate-400")} />
                     <span className="hidden md:inline">{tab.label}</span>
                   </button>
                 );
@@ -168,29 +158,29 @@ export function LicenseInitializer() {
                   initial={{ opacity: 0, x: 10 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -10 }}
-                  transition={{ duration: 0.2 }}
+                  transition={{ duration: 0.15 }}
                   className="space-y-4"
                 >
-                  <div className="space-y-2">
-                    <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest block">
-                      Section Highlight
+                  <div className="space-y-1.5">
+                    <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
+                      Policy Overview
                     </span>
-                    <h3 className="text-base font-black text-white uppercase tracking-tight flex items-center gap-2">
+                    <h3 className="text-base font-bold text-white flex items-center gap-2">
                       <currentTab.icon size={16} className={currentTab.color} />
                       {currentTab.title}
                     </h3>
                   </div>
 
-                  <p className="text-xs text-gray-400 leading-relaxed font-medium">
+                  <p className="text-xs text-slate-300 leading-relaxed font-normal">
                     {currentTab.desc}
                   </p>
                 </motion.div>
               </AnimatePresence>
 
               {/* Dynamic Bottom Helper */}
-              <div className="mt-8 pt-4 border-t border-white/[0.04]">
-                <div className="flex items-center justify-between text-[10px] text-gray-500 font-mono font-bold uppercase">
-                  <span>Scroll for legal terms</span>
+              <div className="mt-8 pt-4 border-t border-white/10">
+                <div className="flex items-center justify-between text-xs text-slate-400 font-medium">
+                  <span>Legal Documentation</span>
                   <div className="flex gap-2">
                     <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
                       Terms of Service
@@ -206,10 +196,10 @@ export function LicenseInitializer() {
           </div>
 
           {/* Bottom Actions Consent Gate */}
-          <div className="mt-6 pt-6 border-t border-white/[0.06] space-y-4">
+          <div className="mt-6 pt-5 border-t border-white/10 space-y-4">
             
-            {/* Custom Glowing Checkbox Switch */}
-            <label className="flex items-start space-x-3.5 cursor-pointer group select-none">
+            {/* Standard Checkbox */}
+            <label className="flex items-start space-x-3 cursor-pointer group select-none">
               <div className="mt-0.5 relative flex items-center justify-center">
                 <input
                   type="checkbox"
@@ -217,38 +207,38 @@ export function LicenseInitializer() {
                   onChange={(e) => setIsChecked(e.target.checked)}
                   className="sr-only"
                 />
-                {/* Glowing switch circle */}
                 <div className={cn(
-                  "w-5 h-5 rounded-sm border flex items-center justify-center transition-all duration-300 relative",
+                  "w-4 h-4 rounded border flex items-center justify-center transition-colors",
                   isChecked 
-                    ? "bg-[#C5A059] border-[#C5A059] text-black shadow-[0_0_15px_rgba(197,160,89,0.3)]" 
-                    : "bg-white/5 border-white/10 group-hover:border-white/25"
+                    ? "bg-blue-600 border-blue-600 text-white" 
+                    : "bg-white/5 border-white/20 group-hover:border-white/40"
                 )}>
-                  {isChecked && <Check size={13} strokeWidth={3.5} />}
+                  {isChecked && <Check size={11} strokeWidth={3} />}
                 </div>
               </div>
               <div className="space-y-0.5">
-                <span className="text-xs text-gray-400 font-bold group-hover:text-gray-300 transition-colors uppercase tracking-wide block">
-                  Confirm Agreement
+                <span className="text-xs text-slate-200 font-semibold group-hover:text-white transition-colors block">
+                  I accept the terms and offline operation policy
                 </span>
-                <span className="text-[10px] text-gray-600 block leading-tight">
-                  I acknowledge I have read and agree to all sandbox localization guidelines and operational policies.
+                <span className="text-[11px] text-slate-400 block leading-normal">
+                  All transaction ledgers, inventory records, and Karigar payroll are stored locally on this machine.
                 </span>
               </div>
             </label>
 
-            {/* Glowing neon action button */}
+            {/* Modern Enterprise Action Button */}
             <button
               onClick={handleAccept}
               disabled={!isChecked}
               className={cn(
-                "w-full py-4 text-xs font-black uppercase tracking-[0.2em] transition-all duration-300 flex items-center justify-center border font-mono rounded-sm",
+                "w-full py-3 px-5 text-xs font-semibold transition-colors flex items-center justify-center rounded-md font-sans shadow-sm",
                 isChecked
-                  ? "bg-[#C5A059] text-black border-[#C5A059] hover:bg-[#D4B06A] cursor-pointer shadow-[0_0_25px_rgba(197,160,89,0.2)] active:scale-[0.99]"
-                  : "bg-white/[0.02] text-gray-700 border-white/[0.03] cursor-not-allowed"
+                  ? "bg-blue-600 text-white hover:bg-blue-500 cursor-pointer"
+                  : "bg-white/5 text-slate-500 border border-white/5 cursor-not-allowed"
               )}
             >
-              Verify Consent & Initialize Workspace <ChevronRight size={14} className="ml-2" />
+              <span>Accept & Continue to Workspace</span>
+              <ChevronRight size={15} className="ml-1.5" />
             </button>
           </div>
         </motion.div>

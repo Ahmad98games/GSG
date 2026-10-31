@@ -115,7 +115,10 @@ export default function InvoiceListPage() {
           query = query.eq('status', statusFilter);
         }
 
-        const { data, error } = await query;
+        const timeoutPromise = new Promise<{ data: null; error: any }>((resolve) =>
+          setTimeout(() => resolve({ data: null, error: new Error('Remote network query timed out') }), 1500)
+        );
+        const { data, error } = await Promise.race([query, timeoutPromise]);
         if (!error && data) {
           if (typeof window !== 'undefined' && !debouncedSearch && statusFilter === 'all') {
             try {

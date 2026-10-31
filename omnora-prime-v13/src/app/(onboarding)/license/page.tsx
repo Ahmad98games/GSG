@@ -227,10 +227,9 @@ export default function LicensePage() {
   return (
     <div className="min-h-screen bg-[#040608] flex items-center justify-center p-6 text-slate-300 font-sans selection:bg-cyan-500/20 selection:text-white relative">
       
-      {/* Background cyber glows */}
+      {/* Modern clean background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-cyan-500/[0.015] rounded-full blur-[120px]" />
-        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-[#C5A059]/[0.01] rounded-full blur-[120px]" />
+        <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-blue-600/[0.02] rounded-full blur-[120px]" />
       </div>
 
       <div className="w-full max-w-md z-10 space-y-8">
@@ -241,17 +240,17 @@ export default function LicensePage() {
             <img src="/logos/noxis.png" alt="Noxis Logo" width={28} height={28} className="object-contain" />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-white tracking-tight uppercase italic">
-              Noxis <span className="text-cyan-400">License Auth</span>
+            <h1 className="text-2xl font-bold text-white tracking-tight">
+              Noxis <span className="text-blue-400">Workstation Sign-In</span>
             </h1>
-            <p className="text-xs text-slate-500 font-medium">
-              Enter your account Login details to authorize this node.
+            <p className="text-xs text-slate-400 font-medium">
+              Enter your credentials to access this workstation.
             </p>
           </div>
         </div>
 
         {/* Form Box */}
-        <div className="bg-[#0A0D10] border border-white/[0.04] p-8 rounded-sm space-y-5">
+        <div className="bg-[#0B0F17] border border-white/10 p-8 rounded-xl space-y-5 shadow-2xl">
           
           <div className="space-y-2">
             <label className="block text-slate-500 text-[9px] font-bold tracking-widest uppercase">

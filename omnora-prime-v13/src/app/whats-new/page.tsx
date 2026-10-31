@@ -33,7 +33,7 @@ export default function WhatsNewPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#030712] text-slate-200 p-6 md:p-12 font-sans selection:bg-[#08EBF6] selection:text-black flex items-center justify-center">
+    <div className="min-h-screen bg-[#030712] text-slate-200 p-6 md:p-12 font-sans selection:bg-blue-600 text-white hover:bg-blue-500 selection:text-black flex items-center justify-center">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -41,14 +41,14 @@ export default function WhatsNewPage() {
       >
         {/* Glow Header */}
         <div className="flex items-center space-x-3 border-b border-white/10 pb-6">
-          <div className="p-3 bg-[#08EBF6]/10 text-[#08EBF6] rounded-xl border border-[#08EBF6]/30 shadow-[0_0_15px_rgba(8,235,246,0.3)]">
+          <div className="p-3 bg-[#08EBF6]/10 text-[#08EBF6] rounded-xl border border-[#08EBF6]/30 shadow-sm">
             <Sparkles size={24} />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-black tracking-tight text-white uppercase">What&apos;s New in Noxis Hub</h1>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#08EBF6] text-black">
-                v14.0.18
+                v14.0.23
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5 font-medium">
@@ -74,7 +74,7 @@ export default function WhatsNewPage() {
         <div className="pt-4 border-t border-white/10 flex justify-end">
           <button
             onClick={handleDismiss}
-            className="px-6 py-3 bg-[#08EBF6] text-black text-xs font-black uppercase tracking-widest rounded-xl hover:brightness-110 flex items-center gap-2 cursor-pointer shadow-[0_0_20px_rgba(8,235,246,0.3)] transition-all"
+            className="px-6 py-3 bg-[#08EBF6] text-black text-xs font-black uppercase tracking-widest rounded-xl hover:brightness-110 flex items-center gap-2 cursor-pointer shadow-sm transition-all"
           >
             <span>Got it, Continue to Workstation</span>
             <ArrowRight size={16} />

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import React from 'react';
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftRecoveryBanner } from '@/components/DraftRecoveryBanner';
@@ -62,6 +63,7 @@ export type InvoiceFormValues = z.infer<typeof invoiceSchema>;
 
 export default function NewInvoicePage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { t, region, fmt } = useIndustryConfig();
   const { profile } = useBusinessProfile();
   const businessCurrency = region.currency;
@@ -110,7 +112,9 @@ export default function NewInvoicePage() {
   const watchDiscountPct = watch("discount_pct") || 0;
   const watchTaxPct = watch("tax_pct") || 0;
 
-  const selectedParty = parties.find(p => p.id === watchValues.party_id);
+  const selectedParty = useMemo(() => {
+    return parties.find(p => p.id === watchValues.party_id) || null;
+  }, [parties, watchValues.party_id]);
   const selectedBranch = branches.find(b => b.id === watchValues.branch_id);
 
   // Sync profile defaults
@@ -123,11 +127,11 @@ export default function NewInvoicePage() {
 
   const totals = useMemo(() => {
     return IndustrialMath.calculateInvoiceTotals(
-      watchItems.map(i => ({ qty: i.qty || 0, price: i.unit_price || 0 })),
-      watchDiscountPct || 0,
-      watchTaxPct || 0
+      (watchValues.items || []).map(i => ({ qty: Number(i.qty || 0), price: Number(i.unit_price || 0) })),
+      Number(watchDiscountPct) || 0,
+      Number(watchTaxPct) || 0
     );
-  }, [watchItems, watchDiscountPct, watchTaxPct]);
+  }, [watchValues.items, watchDiscountPct, watchTaxPct]);
 
   const partySearchValue = watch("party_search") || "";
   const debouncedPartySearch = useDebounce(partySearchValue, 300);
@@ -140,6 +144,97 @@ export default function NewInvoicePage() {
     }, 100);
     return () => clearTimeout(handler);
   }, [totals]);
+
+  // Draft Auto-Restore & Hydration Logic for Power-Cut Resilience
+  const draftRestoredRef = useRef(false);
+
+  const applyDraftData = useCallback((draft: any) => {
+    if (!draft || typeof draft !== 'object') return false;
+
+    const hasParty = !!(draft.party_id || draft.party_search);
+    const items = Array.isArray(draft.items) ? draft.items : [];
+    const hasItems = items.some((i: any) => 
+      (i.description && String(i.description).trim() !== '') ||
+      (i.sku_id && String(i.sku_id).trim() !== '') ||
+      Number(i.unit_price) > 0 ||
+      Number(i.price) > 0
+    ) || items.length > 1;
+
+    if (!hasParty && !hasItems) return false;
+
+    // Resolve party_search if missing
+    let resolvedPartySearch = draft.party_search || '';
+    if (draft.party_id && (!resolvedPartySearch || resolvedPartySearch === '') && parties.length > 0) {
+      const matched = parties.find(p => p.id === draft.party_id);
+      if (matched) resolvedPartySearch = matched.name;
+    }
+
+    reset({
+      ...draft,
+      party_search: resolvedPartySearch,
+      items: items.length > 0 ? items.map((it: any) => ({
+        sku_id: it.sku_id || undefined,
+        description: it.description || '',
+        qty: Number(it.qty || it.quantity || 1),
+        unit: it.unit || 'piece',
+        unit_price: Number(it.unit_price || it.price || 0)
+      })) : [{ description: "", qty: 1, unit: "piece", unit_price: 0 }]
+    });
+
+    toast.success(`Invoice draft restored (${items.length} line item(s) recovered)`);
+
+    return true;
+  }, [parties, reset]);
+
+  // Auto-restore on mount
+  useEffect(() => {
+    if (draftRestoredRef.current) return;
+    let isMounted = true;
+
+    async function checkDraftOnMount() {
+      try {
+        const draft = await getDraft();
+        if (!isMounted || !draft) return;
+        const restored = applyDraftData(draft);
+        if (restored) {
+          draftRestoredRef.current = true;
+        }
+      } catch (err) {
+        console.warn("[Invoice Draft Restore warning]:", err);
+      }
+    }
+
+    const timer = setTimeout(checkDraftOnMount, 100);
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [getDraft, applyDraftData]);
+
+  // Listen for recovery modal event
+  useEffect(() => {
+    const handleRestoreEvent = async (e: any) => {
+      if (e?.detail?.key && e.detail.key !== DRAFT_KEY) return;
+      const draft = e?.detail?.data || await getDraft();
+      if (draft) {
+        applyDraftData(draft);
+        draftRestoredRef.current = true;
+      }
+    };
+
+    window.addEventListener('noxis:restore-draft', handleRestoreEvent);
+    return () => window.removeEventListener('noxis:restore-draft', handleRestoreEvent);
+  }, [getDraft, applyDraftData]);
+
+  // When parties list loads asynchronously, ensure party_search is populated if party_id is set
+  useEffect(() => {
+    if (watchValues.party_id && (!watchValues.party_search || watchValues.party_search === '')) {
+      const matched = parties.find(p => p.id === watchValues.party_id);
+      if (matched) {
+        setValue('party_search', matched.name, { shouldValidate: true, shouldDirty: false });
+      }
+    }
+  }, [parties, watchValues.party_id, watchValues.party_search, setValue]);
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -174,40 +269,79 @@ export default function NewInvoicePage() {
     return () => clearTimeout(t);
   }, [profile?.id, supabase, setValue]);
 
-  // Lazy load parties on search (Local SQLite WAL first for <1ms response)
+  // Offline-First Party Loader: Load all parties from localStorage + local SQLite WAL + Supabase
   useEffect(() => {
-    if (!profile?.id) return;
-    const searchParties = async () => {
+    const loadParties = async () => {
+      let merged: any[] = [];
+      const seenIds = new Set<string>();
+
+      // 1. Instant synchronous read from localStorage caches (0ms, 100% offline)
+      if (typeof window !== 'undefined') {
+        const cacheKeys = [
+          `noxis_cached_parties_${profile?.id}`,
+          `noxis_cached_parties_00000000-0000-0000-0000-000000000000`,
+          `noxis_cached_parties`
+        ];
+        for (const k of cacheKeys) {
+          try {
+            const raw = localStorage.getItem(k);
+            if (raw) {
+              const list = JSON.parse(raw);
+              if (Array.isArray(list)) {
+                for (const p of list) {
+                  if (p && p.name && !String(p.name).startsWith('Mobile Added UUID Test Party') && !seenIds.has(p.id)) {
+                    seenIds.add(p.id);
+                    merged.push(p);
+                  }
+                }
+              }
+            }
+          } catch {}
+        }
+      }
+
+      if (merged.length > 0) {
+        setParties([...merged]);
+      }
+
+      // 2. Fetch from local SQLite API (< 1ms WAL)
       try {
-        const localRes = await fetch(`/api/parties?business_id=${profile.id}`);
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 1200);
+        const localRes = await fetch(`/api/parties?business_id=${profile?.id || 'local'}`, { signal: ctrl.signal });
+        clearTimeout(tid);
         if (localRes.ok) {
           const localJson = await localRes.json();
-          if (localJson?.data && Array.isArray(localJson.data) && localJson.data.length > 0) {
-            let filtered = localJson.data;
-            if (debouncedPartySearch.trim()) {
-              const q = debouncedPartySearch.trim().toLowerCase();
-              filtered = filtered.filter((p: any) =>
-                (p.name && p.name.toLowerCase().includes(q)) ||
-                (p.phone && p.phone.includes(q))
-              );
+          if (localJson?.data && Array.isArray(localJson.data)) {
+            for (const p of localJson.data) {
+              if (p && p.name && !String(p.name).startsWith('Mobile Added UUID Test Party') && !seenIds.has(p.id)) {
+                seenIds.add(p.id);
+                merged.push(p);
+              }
             }
-            setParties(filtered.slice(0, 20));
-            return;
+            setParties([...merged]);
           }
         }
+      } catch (e) {}
 
-        let query = supabase.from('parties').select('*').eq('business_id', profile.id);
-        if (debouncedPartySearch.trim()) {
-          query = query.ilike('name', `%${debouncedPartySearch.trim()}%`);
-        }
-        const { data } = await query.limit(20);
-        if (data) setParties(data);
-      } catch (e) {
-        console.error('Failed to load parties:', e);
+      // 3. Fallback: Query Supabase if online (1500ms timeout)
+      if (profile?.id && typeof navigator !== 'undefined' && navigator.onLine) {
+        try {
+          const { data } = await supabase.from('parties').select('*').eq('business_id', profile.id).limit(100);
+          if (data && Array.isArray(data)) {
+            for (const p of data) {
+              if (p && p.name && !String(p.name).startsWith('Mobile Added UUID Test Party') && !seenIds.has(p.id)) {
+                seenIds.add(p.id);
+                merged.push(p);
+              }
+            }
+            setParties([...merged]);
+          }
+        } catch (e) {}
       }
     };
-    searchParties();
-  }, [debouncedPartySearch, profile?.id, supabase]);
+    loadParties();
+  }, [profile?.id, supabase]);
 
   // Lazy load SKUs on search (Local SQLite WAL first for <1ms response)
   useEffect(() => {
@@ -386,6 +520,56 @@ export default function NewInvoicePage() {
       }
 
       if (invId) {
+        const fullCachedInv = {
+          id: invId,
+          business_id: profile.id,
+          invoice_no: mainInvoicePayload.invoice_no,
+          invoice_number: mainInvoicePayload.invoice_no,
+          party_id: values.party_id,
+          party_name: mainInvoicePayload.party_name,
+          party_phone: mainInvoicePayload.party_phone,
+          party_address: selectedPartyObj?.address || '',
+          party: selectedPartyObj || { id: values.party_id, name: mainInvoicePayload.party_name, phone: mainInvoicePayload.party_phone, address: selectedPartyObj?.address || '' },
+          issue_date: values.issue_date,
+          invoice_date: values.issue_date,
+          due_date: values.due_date,
+          currency: values.currency,
+          exchange_rate: values.exchange_rate,
+          subtotal,
+          discount_amount: discAmt,
+          discount_pct: Number(values.discount_pct) || 0,
+          tax_amount: taxAmt,
+          tax_pct: Number(values.tax_pct) || 0,
+          total: netTotal,
+          total_amount: netTotal,
+          amount_paid: 0,
+          paid_amount: 0,
+          balance_due: netTotal,
+          status: 'posted',
+          items: serverItems,
+          notes: (values as any).notes || '',
+          created_at: new Date().toISOString()
+        };
+
+        // Cache into React Query immediately (< 1ms transition)
+        queryClient.setQueryData(['invoice', invId], fullCachedInv);
+        queryClient.setQueryData(['invoice_items', invId], serverItems);
+
+        // Cache into localStorage
+        if (typeof window !== 'undefined') {
+          const cacheKeys = [
+            `noxis_cached_invoices_${profile.id}`,
+            'noxis_cached_invoices_00000000-0000-0000-0000-000000000000',
+            'noxis_cached_invoices'
+          ];
+          cacheKeys.forEach(k => {
+            try {
+              const existingArr = JSON.parse(localStorage.getItem(k) || '[]');
+              localStorage.setItem(k, JSON.stringify([fullCachedInv, ...existingArr.filter((x: any) => x.id !== invId)]));
+            } catch {}
+          });
+        }
+
         await clearDraft();
         toast.success("Invoice created successfully");
         router.push(`/invoices/${invId}`);
@@ -555,8 +739,24 @@ export default function NewInvoicePage() {
       <main className={cn( "flex-1 flex flex-col transition-all duration-300 overflow-hidden")}>
         <DraftRecoveryBanner
           draftKey={DRAFT_KEY}
-          onRecover={(data) => reset(data)}
-          onDiscard={() => {}}
+          onRecover={(data) => applyDraftData(data)}
+          onDiscard={async () => {
+            await clearDraft();
+            reset({
+              party_id: "",
+              party_search: "",
+              invoice_no: `INV-${Date.now().toString().slice(-6)}`,
+              issue_date: new Date().toISOString().split('T')[0],
+              due_date: new Date().toISOString().split('T')[0],
+              items: [{ description: "", qty: 1, unit: "piece", unit_price: 0 }],
+              discount_pct: 0,
+              tax_pct: defaultTaxRate || 17,
+              payment_terms: "NET 30",
+              currency: (businessCurrency as CurrencyCode) || 'PKR',
+              exchange_rate: 1.0
+            });
+            toast.info("Invoice draft discarded.");
+          }}
         />
         {/* Header Bar */}
         <header className="h-14 border-b border-white/5 flex items-center px-6 bg-[#1A1D21]/80 backdrop-blur-xl z-40 shrink-0">
@@ -649,13 +849,16 @@ export default function NewInvoicePage() {
                   {debouncedPartySearch.length > 0 && !watch("party_id") && (
                     <div className="absolute top-full left-0 right-0 bg-[#1A1D21] border border-white/10 z-50 max-h-48 overflow-y-auto shadow-2xl">
                       {parties
-                        .filter(p => p.name.toLowerCase().includes(debouncedPartySearch.toLowerCase()))
+                        .filter(p => !String(p.name).startsWith('Mobile Added UUID') && (
+                          p.name.toLowerCase().includes(debouncedPartySearch.toLowerCase()) ||
+                          (p.phone && p.phone.includes(debouncedPartySearch))
+                        ))
                         .map(p => (
                           <div
                             key={p.id}
                             onClick={() => {
-                              setValue("party_id", p.id);
-                              setValue("party_search", p.name);
+                              setValue("party_id", p.id, { shouldValidate: true, shouldDirty: true });
+                              setValue("party_search", p.name, { shouldValidate: true, shouldDirty: true });
                             }}
                             className="px-4 py-2.5 text-xs hover:bg-white/5 cursor-pointer flex justify-between items-center border-b border-white/5"
                           >
@@ -706,14 +909,15 @@ export default function NewInvoicePage() {
                       <div className="flex items-start space-x-3">
                         <div className="flex-1 space-y-2">
                           <input 
-                            {...register(`items.${index}.description`)}
+                            {...register(`items.${index}.description`, {
+                              required: "Item description required",
+                              onChange: (e) => {
+                                setSkuSearch(e.target.value);
+                              }
+                            })}
                             placeholder="Item description or SKU..."
                             className="w-full bg-transparent border-none outline-none text-xs text-white placeholder:text-gray-700"
                             onFocus={() => setActiveSkuIndex(index)}
-                            onChange={(e) => {
-                              setValue(`items.${index}.description`, e.target.value);
-                              setSkuSearch(e.target.value);
-                            }}
                           />
                           <FieldError message={errors.items?.[index]?.description?.message} />
                           {/* Sku Search Results */}
@@ -723,10 +927,10 @@ export default function NewInvoicePage() {
                                 <div 
                                   key={s.id}
                                   onClick={() => {
-                                    setValue(`items.${index}.sku_id`, s.id);
-                                    setValue(`items.${index}.description`, s.name);
-                                    setValue(`items.${index}.unit_price`, s.sale_price);
-                                    setValue(`items.${index}.unit`, s.unit);
+                                    setValue(`items.${index}.sku_id`, s.id, { shouldDirty: true, shouldValidate: true });
+                                    setValue(`items.${index}.description`, s.name || s.sku_code, { shouldDirty: true, shouldValidate: true });
+                                    setValue(`items.${index}.unit_price`, Number(s.sale_price || 0), { shouldDirty: true, shouldValidate: true });
+                                    setValue(`items.${index}.unit`, s.unit || 'Piece', { shouldDirty: true, shouldValidate: true });
                                     setActiveSkuIndex(null);
                                     setSkuSearch("");
                                   }}
@@ -749,18 +953,18 @@ export default function NewInvoicePage() {
                       <div className="grid grid-cols-3 gap-3">
                         <div className="bg-[#0F1113] p-2 border border-white/5">
                            <span className="text-[8px] uppercase text-gray-600 font-bold block mb-1">Qty</span>
-                           <input type="number" {...register(`items.${index}.qty`)} className="w-full bg-transparent border-none outline-none text-xs font-mono text-white" />
+                           <input type="number" step="any" min="0.01" {...register(`items.${index}.qty`, { valueAsNumber: true, required: true, min: 0.01 })} className="w-full bg-transparent border-none outline-none text-xs font-mono text-white" />
                            <FieldError message={errors.items?.[index]?.qty?.message} />
                         </div>
                         <div className="bg-[#0F1113] p-2 border border-white/5">
                            <span className="text-[8px] uppercase text-gray-600 font-bold block mb-1">Unit Price</span>
-                           <input type="number" {...register(`items.${index}.unit_price`)} className="w-full bg-transparent border-none outline-none text-xs font-mono text-white" />
+                           <input type="number" step="any" min="0" {...register(`items.${index}.unit_price`, { valueAsNumber: true, required: true, min: 0 })} className="w-full bg-transparent border-none outline-none text-xs font-mono text-white" />
                            <FieldError message={errors.items?.[index]?.unit_price?.message} />
                         </div>
                         <div className="bg-[#0F1113] p-2 border border-white/5 flex flex-col justify-center items-end">
                            <span className="text-[8px] uppercase text-gray-600 font-bold block mb-1">Line Total</span>
                            <span className="text-xs font-mono text-gray-400">
-                             {new Decimal(watchValues.items[index]?.qty || 0).times(watchValues.items[index]?.unit_price || 0).toFixed(2)}
+                             {((Number(watchValues.items?.[index]?.qty) || 0) * (Number(watchValues.items?.[index]?.unit_price) || 0)).toFixed(2)}
                            </span>
                         </div>
                       </div>
@@ -842,10 +1046,10 @@ export default function NewInvoicePage() {
                     {watchValues.items.map((item, i) => (
                       <tr key={i} className="text-[11px]">
                         <td className="py-4 font-bold uppercase tracking-tight">{item.description || "—"}</td>
-                        <td className="py-4 text-center font-mono">{item.qty || 0}</td>
-                        <td className="py-4 text-right font-mono">{new Decimal(item.unit_price || 0).toFixed(2)}</td>
+                        <td className="py-4 text-center font-mono">{Number(item.qty || 0)}</td>
+                        <td className="py-4 text-right font-mono">{(Number(item.unit_price || 0)).toFixed(2)}</td>
                         <td className="py-4 text-right font-mono font-black">
-                          {new Decimal(item.qty || 0).times(item.unit_price || 0).toFixed(2)}
+                          {((Number(item.qty || 0)) * (Number(item.unit_price || 0))).toFixed(2)}
                         </td>
                       </tr>
                     ))}

@@ -15,7 +15,8 @@ function isUuid(str: string): boolean {
 
 async function safeRun(fn: () => PromiseLike<any>, fallback: { data: any[]; count: number } = { data: [], count: 0 }) {
   try {
-    const res = await fn()
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1200));
+    const res: any = await Promise.race([fn(), timeout]);
     if (!res || res.error) {
       return fallback
     }
@@ -127,28 +128,26 @@ export async function GET(req: Request) {
           }
         }
 
-        if (stockRows.length > 0 || karigarsList.length > 0 || invoicesMonthRows.length > 0) {
-          return NextResponse.json({
-            attendanceToday: attendanceRow?.count || 0,
-            totalKarigars: karigarsList.filter(k => k.status === 'active').length || karigarsList.length || 0,
-            karigarsList: karigarsList || [],
-            invoicesMonth: invoicesMonthRows || [],
-            receivables: receivablesRows || [],
-            stock: stockRows || [],
-            stockItems: stockRows || [],
-            lowStockCount: lowStockCount,
-            dispatchCount: dispatchRow?.count || 0,
-            purchaseCount: purchaseRow?.count || 0,
-            payroll: payrollRows || [],
-            peshgi: [],
-            recentInvoices: recentInvoicesRows || [],
-            recentAttendance: recentAttendanceRows || [],
-            topKarigars: [],
-            promises: promisesRows || [],
-            expiringCount: 0,
-            ledgerEntries: ledgerRows || [],
-          })
-        }
+        return NextResponse.json({
+          attendanceToday: attendanceRow?.count || 0,
+          totalKarigars: karigarsList.filter(k => k.status === 'active').length || karigarsList.length || 0,
+          karigarsList: karigarsList || [],
+          invoicesMonth: invoicesMonthRows || [],
+          receivables: receivablesRows || [],
+          stock: stockRows || [],
+          stockItems: stockRows || [],
+          lowStockCount: lowStockCount,
+          dispatchCount: dispatchRow?.count || 0,
+          purchaseCount: purchaseRow?.count || 0,
+          payroll: payrollRows || [],
+          peshgi: [],
+          recentInvoices: recentInvoicesRows || [],
+          recentAttendance: recentAttendanceRows || [],
+          topKarigars: [],
+          promises: promisesRows || [],
+          expiringCount: 0,
+          ledgerEntries: ledgerRows || [],
+        })
       }
     }
   } catch (sqliteErr) {

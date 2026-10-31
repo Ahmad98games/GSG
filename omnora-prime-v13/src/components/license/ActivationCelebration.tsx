@@ -120,10 +120,10 @@ export function ActivationCelebration() {
         ))}
       </div>
 
-      <div className="max-w-lg w-full bg-[#0D0F12] border border-[#C5A059]/40 rounded-xl p-6 sm:p-8 text-center space-y-6 relative z-10 shadow-[0_0_50px_rgba(197,160,89,0.2)] animate-in zoom-in-95 duration-400">
+      <div className="max-w-lg w-full bg-[#0D0F12] border border-[#C5A059]/40 rounded-xl p-6 sm:p-8 text-center space-y-6 relative z-10 shadow-2xl animate-in zoom-in-95 duration-400">
         
         {/* Animated Gold Checkmark */}
-        <div className="w-16 h-16 rounded-full bg-[#C5A059]/15 border-2 border-[#C5A059] flex items-center justify-center mx-auto shadow-[0_0_25px_rgba(197,160,89,0.35)] animate-bounce-subtle">
+        <div className="w-16 h-16 rounded-full bg-[#C5A059]/15 border-2 border-[#C5A059] flex items-center justify-center mx-auto shadow-md animate-bounce-subtle">
           <CheckCircle2 className="w-9 h-9 text-[#C5A059]" />
         </div>
 

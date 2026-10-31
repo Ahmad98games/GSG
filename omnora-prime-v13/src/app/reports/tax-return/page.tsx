@@ -33,20 +33,20 @@ export default function TaxReturnPage() {
       // Fetch Sales (Output Tax)
       const { data: sales } = await supabase
         .from('invoices')
-        .select('total_amount, subtotal, tax_amount, discount_amount, created_at, invoice_number, parties(name, tax_number)')
+        .select('total, total_amount, subtotal, tax_amount, discount_amount, created_at, invoice_no, invoice_number, party_id, parties:parties(name)')
         .eq('business_id', businessId)
-        .eq('status', 'posted')
+        .neq('status', 'cancelled')
         .gte('created_at', dateRange.from)
-        .lte('created_at', dateRange.to);
+        .lte('created_at', dateRange.to + 'T23:59:59.999Z');
 
       // Fetch Purchases (Input Tax)
       const { data: purchases } = await supabase
         .from('purchase_orders')
-        .select('total_amount, subtotal, tax_amount, created_at, po_number, parties(name, tax_number)')
+        .select('total, total_amount, subtotal, tax_amount, created_at, po_number')
         .eq('business_id', businessId)
-        .eq('status', 'posted')
+        .neq('status', 'cancelled')
         .gte('created_at', dateRange.from)
-        .lte('created_at', dateRange.to);
+        .lte('created_at', dateRange.to + 'T23:59:59.999Z');
 
       const outputTotal = (sales || []).reduce((acc: Decimal, s: any) => acc.plus(s.tax_amount || 0), new Decimal(0));
       const outputTaxable = (sales || []).reduce((acc: Decimal, s: any) => acc.plus((s.subtotal || 0) - (s.discount_amount || 0)), new Decimal(0));
@@ -81,7 +81,7 @@ export default function TaxReturnPage() {
   <Annexure_C>
     ${taxData.sales.map((s: any) => `
     <Invoice>
-      <Number>${s.invoice_number}</Number>
+      <Number>${(s.invoice_no || s.invoice_number || 'INV')}</Number>
       <Date>${s.created_at.split('T')[0]}</Date>
       <BuyerNTN>${s.parties?.tax_number || ""}</BuyerNTN>
       <Value>${s.subtotal - s.discount_amount}</Value>
@@ -196,10 +196,10 @@ export default function TaxReturnPage() {
                             </thead>
                             <tbody className="divide-y divide-white/[0.02]">
                                {taxData.sales.slice(0, 10).map((s: any) => (
-                                 <tr key={s.invoice_number} className="hover:bg-white/[0.01]">
+                                 <tr key={(s.invoice_no || s.invoice_number || 'INV')} className="hover:bg-white/[0.01]">
                                     <td className="px-6 py-4">
                                        <div className="flex flex-col">
-                                          <span className="text-white text-xs font-bold">{s.invoice_number}</span>
+                                          <span className="text-white text-xs font-bold">{(s.invoice_no || s.invoice_number || 'INV')}</span>
                                           <span className="text-[9px] text-gray-600 uppercase">{s.parties?.name}</span>
                                        </div>
                                     </td>

@@ -27,7 +27,7 @@ export default function TaxReportPage() {
     setLoading(true)
 
     const startDate = `${year}-01-01`
-    const endDate = `${year}-12-31`
+    const endDate = `${year}-12-31T23:59:59.999Z`
 
     try {
       // Pull all invoices for the year
@@ -37,7 +37,7 @@ export default function TaxReportPage() {
         .eq('business_id', profile.id)
         .gte('created_at', startDate)
         .lte('created_at', endDate)
-        .eq('status', 'posted')
+        .neq('status', 'cancelled')
 
       if (invError) throw invError;
 
@@ -52,28 +52,36 @@ export default function TaxReportPage() {
       if (purError) throw purError;
 
       // Pull payroll
-      const { data: payrolls, error: payError } = await supabase
-        .from('payroll_runs')
+      let payrolls: any[] = [];
+      const { data: runs } = await supabase
+        .from('payroll_periods')
         .select('*')
         .eq('business_id', profile.id)
         .gte('period_start', startDate)
-        .lte('period_end', endDate)
-
-      if (payError) throw payError;
+        .lte('period_end', endDate);
+      if (runs && runs.length > 0) {
+        payrolls = runs;
+      } else {
+        const { data: slips } = await supabase
+          .from('payroll_slips')
+          .select('*')
+          .eq('business_id', profile.id);
+        payrolls = slips || [];
+      }
 
       const totalSales = (invoices || [])
-        .reduce((s: number, i: any) => s + (i.total_amount || 0), 0)
+        .reduce((s: number, i: any) => s + Number(i.total || i.total_amount || 0), 0)
       const totalTaxable = totalSales
       const salesTax = totalTaxable * 0.17 // 17% GST
 
       const totalPurchases = (purchases || [])
-        .reduce((s: number, p: any) => s + (p.total_amount || 0), 0)
+        .reduce((s: number, p: any) => s + Number(p.total || p.total_amount || 0), 0)
       const inputTax = totalPurchases * 0.17
 
       const netTaxPayable = Math.max(0, salesTax - inputTax)
 
       const totalPayroll = (payrolls || [])
-        .reduce((s: number, p: any) => s + (p.total_net || 0), 0)
+        .reduce((s: number, p: any) => s + Number(p.total_payroll || p.total_net || p.net_payable || p.gross_earning || 0), 0)
 
       setData({
         year,
