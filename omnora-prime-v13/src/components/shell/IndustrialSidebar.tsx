@@ -523,7 +523,7 @@ export default React.memo(function IndustrialSidebar() {
                   borderStyle: 'solid'
                 }}
               >
-                v14.0.24
+                v14.0.25
               </span>
             )}
           </div>

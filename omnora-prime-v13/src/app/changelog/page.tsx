@@ -4,17 +4,17 @@ import { Tag, Calendar, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-reac
 
 const RELEASES = [
   {
-    version: 'v14.0.24',
-    date: 'October 2026',
+    version: 'v14.0.25',
+    date: 'November 2026',
     isCurrent: true,
-    title: 'Zero-Data-Loss Form Resilience, Power-Cut Auto-Recovery, Sentinel AI Copilot 2.0 & Transparent 7-Day Trial Transition',
-    summary: 'Guaranteed 100% zero-data-loss recovery for uncommitted invoices and carts after unexpected power loss, guarded draft overwrites, upgraded Sentinel Copilot with 14 interactive workflows, enhanced knowledge base, and rock-solid 7-day trial to Free Forever transition.',
+    title: 'Owner WhatsApp Zero-Loss Persistence, Fitness & Gym Vertical Integration & Direct Byte-Range Resumable Auto-Updater',
+    summary: 'Multi-layer persistence for Owner WhatsApp phone numbers across local SQLite, encrypted OS store, and cloud Supabase, end-to-end Fitness & Gym Sports Nutrition industry vertical, and seamless direct byte-range auto-updater eliminating Windows blockmap assembly stalls.',
     changes: [
-      'Power-Cut Zero-Loss Session Recovery: Integrated atomic form draft hydration that instantly repopulates customer name, line items, quantities, and prices upon restarting the software after sudden shutdown.',
-      'Blank Draft Overwrite Protection: Implemented isMeaningfulDraftData validation preventing default blank forms from ever overwriting preserved drafts.',
-      'Sentinel AI Copilot 2.0: Deployed 14 interactive step-by-step autopilot walkthroughs guiding non-technical operators through sales, POS, khata, karigars, and inventory.',
-      'Deep AI Knowledge Base Expansion: Added comprehensive guidance for 7-Day Trial policies, Free Forever mode, 1,000-5,000 row Excel bulk import, and offline local hub capabilities.',
-      'Software Update Delivery: Released official verified desktop production build v14.0.24.',
+      'Owner WhatsApp Zero-Loss Persistence: Synchronized owner phone numbers across local SQLite, OS encrypted store, and cloud Supabase, with automatic fallback and real-time UI state recovery.',
+      'Fitness & Sports Nutrition Vertical: Fully integrated Gym & Fitness Nutrition mode across calculators (margin, expiry, weight, EMI, delivery), terminology, and sidebar filters.',
+      'Resumable Byte-Range Auto-Updater: Disabled Windows NSIS differential delta blockmap loops to ensure smooth, freeze-free 100% update finalization.',
+      'Cloud Database Auto-Sync Trigger: Created automated Supabase database triggers keeping phone and owner_phone synchronized seamlessly across all business profiles.',
+      'Software Update Delivery: Released official verified desktop production build v14.0.25.',
     ],
   },
   {
@@ -174,7 +174,7 @@ const RELEASES = [
 ]
 
 export default function ChangelogPage() {
-  const [openVersions, setOpenVersions] = useState<string[]>(['v14.0.24'])
+  const [openVersions, setOpenVersions] = useState<string[]>(['v14.0.25'])
 
   const toggleVersion = (v: string) => {
     setOpenVersions(prev =>

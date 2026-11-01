@@ -309,27 +309,19 @@ async function main() {
   const sha512 = crypto.createHash('sha512').update(buf).digest('base64');
   const isoDate = new Date().toISOString();
 
-  const blockmapPath = `${exePath}.blockmap`;
-  let blockMapSize = null;
-  if (fs.existsSync(blockmapPath)) {
-    blockMapSize = fs.statSync(blockmapPath).size;
-  }
-
+  // Omit blockMapSize to ensure all clients stream the full binary cleanly without Windows differential lock hang
   let yaml = `version: ${version}\n` +
     `files:\n` +
     `  - url: ${exeName}\n` +
     `    sha512: ${sha512}\n` +
-    `    size: ${stat.size}\n`;
-  if (blockMapSize) {
-    yaml += `    blockMapSize: ${blockMapSize}\n`;
-  }
-  yaml += `path: ${exeName}\n` +
+    `    size: ${stat.size}\n` +
+    `path: ${exeName}\n` +
     `sha512: ${sha512}\n` +
     `releaseDate: '${isoDate}'\n`;
 
   fs.writeFileSync(latestYmlPath, yaml, 'utf8');
   fs.writeFileSync(stableYmlPath, yaml, 'utf8');
-  console.log(`📄 Generated latest.yml and stable.yml for v${version} (size: ${(stat.size/(1024*1024)).toFixed(1)}MB${blockMapSize ? `, blockmap: ${blockMapSize} bytes` : ''})`);
+  console.log(`📄 Generated clean latest.yml and stable.yml for v${version} (size: ${(stat.size/(1024*1024)).toFixed(1)}MB, direct streaming enabled)`);
 
   // Upload manifests (BOTH latest.yml and stable.yml so auto-updater sees update immediately)
   console.log(`📄 Uploading manifests for v${version}...`);

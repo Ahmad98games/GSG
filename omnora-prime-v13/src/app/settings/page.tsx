@@ -455,6 +455,17 @@ export default function SettingsPage() {
           if (profile.industry_last_changed_at) {
             await (window as any).electronAPI.setConfig('industry_last_changed_at', profile.industry_last_changed_at);
           }
+          const ph = (profile as any).owner_phone || profile.phone || '';
+          if (ph) {
+            await (window as any).electronAPI.setConfig('owner_phone', ph);
+            await (window as any).electronAPI.setConfig('phone', ph);
+          }
+          if (profile.business_name) {
+            await (window as any).electronAPI.setConfig('business_name', profile.business_name);
+          }
+          if ((profile as any).owner_name) {
+            await (window as any).electronAPI.setConfig('owner_name', (profile as any).owner_name);
+          }
         } catch (err) {
           console.error('Failed to set local SQLite config via electronAPI:', err);
         }

@@ -42,6 +42,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getHwid: () => ipcRenderer.invoke('license:getHWID'),
   fetchScaleWeight: () => ipcRenderer.invoke('fetchScaleWeight'),
   setConfig: (key: string, value: string) => ipcRenderer.invoke('set-config', key, value),
+  getConfig: (key: string) => ipcRenderer.invoke('get-config', key),
   getBridgeStatus: () => ipcRenderer.invoke('get-bridge-status'),
   on: (channel: string, callback: (...args: any[]) => void) => {
     const subscription = (_event: any, ...args: any[]) => callback(_event, ...args);

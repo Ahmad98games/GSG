@@ -814,7 +814,7 @@ async function handleMessage(
 
         // Connection metadata
         connectedDevices: getPairedCount(),
-        hubVersion: '14.0.24',
+        hubVersion: '14.0.25',
         requestSync: true,
       };
 

@@ -1694,7 +1694,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       releaseName: latestUpdateInfo?.releaseName,
       releaseNotes: latestUpdateInfo?.releaseNotes,
       releaseDate: latestUpdateInfo?.releaseDate,
-      currentVersion: app.getVersion() || '14.0.24',
+      currentVersion: app.getVersion() || '14.0.25',
       baselineVersion: policy.baselineVersion,
       tier: policy.tier,
       maxAllowedMajor: policy.maxAllowedMajor,
@@ -2346,6 +2346,24 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   });
 
   ipcMain.handle('get-app-data-path', () => app.getPath('userData'));
+
+  ipcMain.handle('set-config', (_, key: string, value: string) => {
+    try {
+      store.set(`config_${key}` as any, value);
+      return true;
+    } catch (e) {
+      console.error('Failed to set config:', e);
+      return false;
+    }
+  });
+
+  ipcMain.handle('get-config', (_, key: string) => {
+    try {
+      return (store.get(`config_${key}` as any) as string) || null;
+    } catch {
+      return null;
+    }
+  });
 
   // ── AUTH PERSISTENCE ──
   ipcMain.handle('store:saveSession', (_, session) => {
