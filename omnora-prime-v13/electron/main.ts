@@ -117,7 +117,7 @@ autoUpdater.logger = log
 // Update channel — can be changed per license tier (Pro/Elite get beta channel)
 autoUpdater.channel = 'stable'
 autoUpdater.autoDownload = true;
-autoUpdater.disableDifferentialDownload = false;
+autoUpdater.disableDifferentialDownload = true; // Use robust direct streaming to prevent Windows blockmap reassembly hang
 autoUpdater.allowPrerelease = false
 autoUpdater.allowDowngrade = true
 autoUpdater.setFeedURL({
