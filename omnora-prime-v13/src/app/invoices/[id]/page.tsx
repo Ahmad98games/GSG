@@ -206,20 +206,30 @@ export default function InvoiceDetailPage() {
         .eq('id', invoiceId);
       if (invError) throw invError;
 
+      let arAccountId: string | null = null;
+      try {
+        const { data: accs } = await supabase
+          .from('accounts')
+          .select('id, account_code')
+          .eq('business_id', profile.id);
+        if (accs && accs.length > 0) {
+          arAccountId = accs.find((a: any) => a.account_code === '1100')?.id || accs[0].id;
+        }
+      } catch {}
+
       const { error: ledgerError } = await supabase
         .from('ledger_entries')
         .insert({
           business_id: profile.id,
           invoice_id: invoiceId,
           party_id: variables.partyId,
-          entry_date: variables.paymentDate,
-          debit_amount: 0,
-          credit_amount: variables.amount,
-          debit_account: null,
-          credit_account: 'accounts_receivable',
-          account_code: '1100',
+          tx_ref: `PAY-INV-${variables.invoiceNo || Date.now().toString(36).toUpperCase()}`,
+          account_id: arAccountId,
+          entry_type: 'credit',
+          amount: variables.amount,
           description: `Payment received — INV ${variables.invoiceNo}`,
-          voucher_type: 'payment',
+          posted_at: variables.paymentDate ? new Date(variables.paymentDate).toISOString() : new Date().toISOString(),
+          status: 'posted',
           posted_by: profile.id,
         });
       if (ledgerError) throw ledgerError;

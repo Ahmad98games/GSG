@@ -1082,20 +1082,34 @@ export default function PartyDetailPage() {
                     setSavingPayment(true);
                     try {
                       const amount = parseFloat(paymentAmount);
+                      const txRef = `PAY-${Date.now().toString(36).toUpperCase()}`;
+                      const nowIso = new Date().toISOString();
+
+                      // Resolve Accounts Receivable account
+                      let arAccountId: string | null = null;
+                      try {
+                        const { data: accs } = await supabase
+                          .from('accounts')
+                          .select('id, account_code')
+                          .eq('business_id', profile?.id);
+                        if (accs && accs.length > 0) {
+                          arAccountId = accs.find((a: any) => a.account_code === '1100')?.id || accs[0].id;
+                        }
+                      } catch {}
 
                       // Record in ledger
                       const { error: ledgerErr } = await supabase
                         .from('ledger_entries')
                         .insert({
                           business_id: profile?.id,
-                          entry_type: 'payment_received',
+                          tx_ref: txRef,
+                          account_id: arAccountId,
+                          entry_type: 'credit',
                           party_id: party.id,
                           amount,
                           description: paymentNote || `Payment from ${party.name}`,
-                          debit_account: 'cash',
-                          credit_account: 'accounts_receivable',
-                          voucher_type: 'receipt',
-                          entry_date: new Date().toISOString(),
+                          posted_at: nowIso,
+                          status: 'posted'
                         });
 
                       if (ledgerErr) throw ledgerErr;
