@@ -9,7 +9,7 @@ import { persist, createJSONStorage } from 'zustand/middleware'
  * dashboard widgets, and feature modules based on the chosen mode.
  */
 
-export type BusinessMode = 'textile' | 'wholesale' | 'retail'
+export type BusinessMode = 'textile' | 'wholesale' | 'retail' | 'fitness'
 
 export interface BusinessModeFlags {
   // Textile & Garment Manufacturing
@@ -70,6 +70,22 @@ export const BUSINESS_MODE_CONFIGS: Record<BusinessMode, { label: string; taglin
     flags: {
       enableKarigarLedger: false,
       enablePieceRate: false,
+      enableFactoryFloor: false,
+      enableThanTracking: false,
+      enableWholesaleBilling: false,
+      enableBOM: false,
+      enableFastBarcode: true,
+      enableThermalChit: true,
+      defaultView: 'retail_pos',
+    },
+  },
+  fitness: {
+    label: 'Gym, Fitness & Sports Nutrition',
+    tagline: 'Member memberships, supplement batch & expiry, trainer payroll, shake bar POS',
+    emoji: '🏋️',
+    flags: {
+      enableKarigarLedger: true,
+      enablePieceRate: true,
       enableFactoryFloor: false,
       enableThanTracking: false,
       enableWholesaleBilling: false,

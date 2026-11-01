@@ -490,7 +490,7 @@ export const themes: Theme[] = [
     id: 'midnight-emerald',
     name: 'Midnight Emerald',
     description: 'Deep forest greens with sharp emerald accents',
-    industry: ['precision', 'operations', 'premium'],
+    industry: ['precision', 'operations', 'premium', 'fitness', 'gym', 'sports_goods'],
     colors: {
       background: '#020617',
       surface: '#0F172A',

@@ -5,6 +5,7 @@ export type IndustryKey =
   | 'auto'
   | 'garment'
   | 'food'
+  | 'fitness'
   | 'general'
 
 export interface IndustryConfig {
@@ -523,6 +524,69 @@ const general: IndustryConfig = {
   defaultPayTypes: ['monthly', 'daily'],
 }
 
+// ─────────────────────────────────────
+// FITNESS / GYM / SPORTS NUTRITION
+// ─────────────────────────────────────
+const fitness: IndustryConfig = {
+  key: 'fitness',
+  displayName: 'Gym, Fitness & Sports Nutrition',
+  emoji: '🏋️',
+  description: 'Member memberships, supplement batch & expiry, trainer payroll, shake bar POS',
+  defaultLandingRoute: '/pos',
+  accentColor: '#10B981',
+  accentColorDim: 'rgba(16,185,129,0.1)',
+  terms: {
+    worker: 'Trainer / Coach',
+    workers: 'Trainers & Coaches',
+    advance: 'Advance',
+    item: 'Supplement / Gear',
+    items: 'Supplements & Equipment',
+    itemCode: 'SKU / Barcode',
+    production: 'Training Sessions',
+    productionUnit: 'Sessions',
+    invoice: 'Membership Bill / Receipt',
+    invoices: 'Membership Bills & Receipts',
+    dispatch: 'Dispense / Delivery',
+    ledger: 'Member Khata',
+    supplier: 'Supplement Distributor',
+    customer: 'Member / Client',
+    batch: 'Batch & Lot',
+    qualityGrade: 'Authenticity Grade',
+    warehouseAction: 'Stocked / Dispensed',
+    reportTitle: 'Fitness & Supplement Operations',
+  },
+  sidebar: {
+    dashboard: 'Dashboard',
+    inventory: 'Supplement Stock',
+    workers: 'Trainers & Staff',
+    production: 'Training Sessions',
+    invoices: 'Billing & POS',
+    parties: 'Members & Vendors',
+    ledger: 'Member Khata',
+    payroll: 'Trainer Payroll',
+    dispatch: 'Dispense Log',
+    reports: 'Fitness Analytics',
+    purchase: 'Procurement',
+  },
+  features: {
+    pieceRateWages: true,
+    peshgiAdvances: true,
+    batchTracking: true,
+    expiryManagement: true,
+    yieldTracking: false,
+    variantTracking: true,
+    vinTracking: false,
+    coldChainLogging: false,
+    qualityGrading: false,
+    prescriptionMode: false,
+    weightBasedUnits: true,
+    laborLawCompliance: true,
+    cctvSentinel: true,
+  },
+  defaultUnits: ['Tub', 'Bottle', 'Box', 'Kg', 'Lbs', 'Pack', 'Month', 'Session', 'Scoop'],
+  defaultPayTypes: ['monthly', 'piece_rate', 'daily'],
+}
+
 export const INDUSTRY_CONFIGS: Record<IndustryKey, IndustryConfig> = {
   textile,
   rice,
@@ -530,6 +594,7 @@ export const INDUSTRY_CONFIGS: Record<IndustryKey, IndustryConfig> = {
   auto,
   garment,
   food,
+  fitness,
   general,
 }
 

@@ -4,7 +4,7 @@ export type IndustryId =
   // South Asian
   | 'textile' | 'garment' | 'pharma' | 'rice_mill'
   | 'flour_mill' | 'sugar_mill' | 'cotton_gin'
-  | 'leather' | 'surgical' | 'sports_goods'
+  | 'leather' | 'surgical' | 'sports_goods' | 'fitness'
   | 'auto_parts' | 'steel' | 'plastic' | 'printing'
   | 'furniture' | 'construction' | 'kiryana'
   | 'wholesale' | 'restaurant' | 'bakery'
@@ -519,6 +519,68 @@ export const INDUSTRIES: IndustryProfile[] = [
   },
 
   // ═══════════════════════════════
+  // FITNESS, GYM & SPORTS NUTRITION
+  // ═══════════════════════════════
+  {
+    id: 'fitness',
+    name: 'Gym, Fitness & Sports Nutrition',
+    nameLocal: 'فٹنس، جم اور سپلیمنٹس',
+    category: 'Healthcare',
+    region: 'south_asian',
+    icon: 'Dumbbell',
+    terms: {
+      worker: 'Trainer / Coach',
+      workers: 'Trainers & Coaches',
+      advance: 'Staff Advance',
+      inventory: 'Supplement Stock',
+      inventoryItem: 'Supplement / Gear',
+      production: 'Training Sessions',
+      productionLog: 'Session Log',
+      customer: 'Member / Client',
+      supplier: 'Nutrition Distributor',
+      order: 'Membership Order',
+      dispatch: 'Dispense / Pickup',
+      batch: 'Batch & Expiry',
+      quality: 'Grade / Authenticity',
+      unit: 'Tub / Bottle / Session',
+      payroll: 'Trainer Commissions & Wages',
+      attendance: 'Member & Staff Check-in',
+      parties: 'Members & Vendors',
+      sales: 'Billing & POS',
+      purchase: 'Stock Procurement',
+    },
+    modules: [
+      'dashboard', 'inventory', 'khata', 'karigars',
+      'payroll', 'invoices', 'parties', 'purchase',
+      'dispatch', 'audit', 'cctv', 'cashflow',
+      'reports', 'calculators', 'converters', 'messaging',
+      'pairing', 'settings', 'pos'
+    ],
+    calculators: ['margin_markup', 'delivery_planner'],
+    converters: ['weight', 'currency', 'margin', 'emi'],
+    suggestedTheme: 'midnight-emerald',
+    generators: ['invoice', 'challan', 'qr', 'payslip', 'stock_label', 'barcode', 'purchase_order'],
+    specialReports: ['member_retention_report', 'trainer_commission_report', 'supplement_sales_velocity', 'batch_expiry_report'],
+    emptyStates: {
+      '/inventory': {
+        title: 'No supplements or merchandise added yet',
+        body: 'Add your whey protein tubs, creatine, vitamins, gym gear, and beverages with batch and expiry tracking.',
+        action: 'Add First Supplement'
+      },
+      '/karigars': {
+        title: 'No Trainers or Staff registered',
+        body: 'Register your personal trainers, coaches, and front-desk staff with commission rates or monthly salaries.',
+        action: 'Register First Trainer'
+      },
+      '/parties': {
+        title: 'No Gym Members registered',
+        body: 'Add your active gym members, personal training clients, and wholesale supplement suppliers.',
+        action: 'Add First Member'
+      }
+    }
+  },
+
+  // ═══════════════════════════════
   // SPORTS GOODS
   // ═══════════════════════════════
   {
@@ -556,7 +618,131 @@ export const INDUSTRIES: IndustryProfile[] = [
   },
 
   // ═══════════════════════════════
+  // FITNESS, GYM & SPORTS NUTRITION
+  // ═══════════════════════════════
+  {
+    id: 'fitness',
+    name: 'Gym, Fitness & Sports Nutrition',
+    nameLocal: 'فٹنس، جم اور سپلیمنٹس',
+    category: 'Healthcare',
+    region: 'south_asian',
+    icon: 'Dumbbell',
+    terms: {
+      worker: 'Trainer / Coach',
+      workers: 'Trainers & Coaches',
+      advance: 'Staff Advance',
+      inventory: 'Supplement Stock',
+      inventoryItem: 'Supplement / Gear',
+      production: 'Training Sessions',
+      productionLog: 'Session Log',
+      customer: 'Member / Client',
+      supplier: 'Nutrition Distributor',
+      order: 'Membership Order',
+      dispatch: 'Dispense / Pickup',
+      batch: 'Batch & Expiry',
+      quality: 'Grade / Authenticity',
+      unit: 'Tub / Bottle / Session',
+      payroll: 'Trainer Commissions & Wages',
+      attendance: 'Member & Staff Check-in',
+      parties: 'Members & Vendors',
+      sales: 'Billing & POS',
+      purchase: 'Stock Procurement',
+    },
+    modules: [
+      'dashboard', 'inventory', 'khata', 'karigars',
+      'payroll', 'invoices', 'parties', 'purchase',
+      'dispatch', 'audit', 'cctv', 'cashflow',
+      'reports', 'calculators', 'converters', 'messaging',
+      'pairing', 'settings', 'pos'
+    ],
+    calculators: ['margin_markup', 'delivery_planner'],
+    converters: ['weight', 'currency', 'margin', 'emi'],
+    suggestedTheme: 'midnight-emerald',
+    generators: ['invoice', 'challan', 'qr', 'payslip', 'stock_label', 'barcode', 'purchase_order'],
+    specialReports: ['member_retention_report', 'trainer_commission_report', 'supplement_sales_velocity', 'batch_expiry_report'],
+    emptyStates: {
+      '/inventory': {
+        title: 'No supplements or merchandise added yet',
+        body: 'Add your whey protein tubs, creatine, vitamins, gym gear, and beverages with batch and expiry tracking.',
+        action: 'Add First Supplement'
+      },
+      '/karigars': {
+        title: 'No Trainers or Staff registered',
+        body: 'Register your personal trainers, coaches, and front-desk staff with commission rates or monthly salaries.',
+        action: 'Register First Trainer'
+      },
+      '/parties': {
+        title: 'No Gym Members registered',
+        body: 'Add your active gym members, personal training clients, and wholesale supplement suppliers.',
+        action: 'Add First Member'
+      }
+    }
+  },
+
+  // ═══════════════════════════════
   // AUTO PARTS
+  // ═══════════════════════════════
+  // FITNESS, GYM & SPORTS NUTRITION
+  // ═══════════════════════════════
+  {
+    id: 'fitness',
+    name: 'Gym, Fitness & Sports Nutrition',
+    nameLocal: 'فٹنس، جم اور سپلیمنٹس',
+    category: 'Healthcare',
+    region: 'south_asian',
+    icon: 'Dumbbell',
+    terms: {
+      worker: 'Trainer / Coach',
+      workers: 'Trainers & Coaches',
+      advance: 'Staff Advance',
+      inventory: 'Supplement Stock',
+      inventoryItem: 'Supplement / Gear',
+      production: 'Training Sessions',
+      productionLog: 'Session Log',
+      customer: 'Member / Client',
+      supplier: 'Nutrition Distributor',
+      order: 'Membership Order',
+      dispatch: 'Dispense / Pickup',
+      batch: 'Batch & Expiry',
+      quality: 'Grade / Authenticity',
+      unit: 'Tub / Bottle / Session',
+      payroll: 'Trainer Commissions & Wages',
+      attendance: 'Member & Staff Check-in',
+      parties: 'Members & Vendors',
+      sales: 'Billing & POS',
+      purchase: 'Stock Procurement',
+    },
+    modules: [
+      'dashboard', 'inventory', 'khata', 'karigars',
+      'payroll', 'invoices', 'parties', 'purchase',
+      'dispatch', 'audit', 'cctv', 'cashflow',
+      'reports', 'calculators', 'converters', 'messaging',
+      'pairing', 'settings', 'pos'
+    ],
+    calculators: ['margin_markup', 'delivery_planner'],
+    converters: ['weight', 'currency', 'margin', 'emi'],
+    suggestedTheme: 'midnight-emerald',
+    generators: ['invoice', 'challan', 'qr', 'payslip', 'stock_label', 'barcode', 'purchase_order'],
+    specialReports: ['member_retention_report', 'trainer_commission_report', 'supplement_sales_velocity', 'batch_expiry_report'],
+    emptyStates: {
+      '/inventory': {
+        title: 'No supplements or merchandise added yet',
+        body: 'Add your whey protein tubs, creatine, vitamins, gym gear, and beverages with batch and expiry tracking.',
+        action: 'Add First Supplement'
+      },
+      '/karigars': {
+        title: 'No Trainers or Staff registered',
+        body: 'Register your personal trainers, coaches, and front-desk staff with commission rates or monthly salaries.',
+        action: 'Register First Trainer'
+      },
+      '/parties': {
+        title: 'No Gym Members registered',
+        body: 'Add your active gym members, personal training clients, and wholesale supplement suppliers.',
+        action: 'Add First Member'
+      }
+    }
+  },
+
   // ═══════════════════════════════
   {
     id: 'auto_parts',
@@ -727,6 +913,68 @@ export const INDUSTRIES: IndustryProfile[] = [
     generators: ['invoice', 'challan', 'qr'],
     specialReports: ['karigar_productivity'],
     emptyStates: {}
+  },
+
+  // ═══════════════════════════════
+  // FITNESS, GYM & SPORTS NUTRITION
+  // ═══════════════════════════════
+  {
+    id: 'fitness',
+    name: 'Gym, Fitness & Sports Nutrition',
+    nameLocal: 'فٹنس، جم اور سپلیمنٹس',
+    category: 'Healthcare',
+    region: 'south_asian',
+    icon: 'Dumbbell',
+    terms: {
+      worker: 'Trainer / Coach',
+      workers: 'Trainers & Coaches',
+      advance: 'Staff Advance',
+      inventory: 'Supplement Stock',
+      inventoryItem: 'Supplement / Gear',
+      production: 'Training Sessions',
+      productionLog: 'Session Log',
+      customer: 'Member / Client',
+      supplier: 'Nutrition Distributor',
+      order: 'Membership Order',
+      dispatch: 'Dispense / Pickup',
+      batch: 'Batch & Expiry',
+      quality: 'Grade / Authenticity',
+      unit: 'Tub / Bottle / Session',
+      payroll: 'Trainer Commissions & Wages',
+      attendance: 'Member & Staff Check-in',
+      parties: 'Members & Vendors',
+      sales: 'Billing & POS',
+      purchase: 'Stock Procurement',
+    },
+    modules: [
+      'dashboard', 'inventory', 'khata', 'karigars',
+      'payroll', 'invoices', 'parties', 'purchase',
+      'dispatch', 'audit', 'cctv', 'cashflow',
+      'reports', 'calculators', 'converters', 'messaging',
+      'pairing', 'settings', 'pos'
+    ],
+    calculators: ['margin_markup', 'delivery_planner'],
+    converters: ['weight', 'currency', 'margin', 'emi'],
+    suggestedTheme: 'midnight-emerald',
+    generators: ['invoice', 'challan', 'qr', 'payslip', 'stock_label', 'barcode', 'purchase_order'],
+    specialReports: ['member_retention_report', 'trainer_commission_report', 'supplement_sales_velocity', 'batch_expiry_report'],
+    emptyStates: {
+      '/inventory': {
+        title: 'No supplements or merchandise added yet',
+        body: 'Add your whey protein tubs, creatine, vitamins, gym gear, and beverages with batch and expiry tracking.',
+        action: 'Add First Supplement'
+      },
+      '/karigars': {
+        title: 'No Trainers or Staff registered',
+        body: 'Register your personal trainers, coaches, and front-desk staff with commission rates or monthly salaries.',
+        action: 'Register First Trainer'
+      },
+      '/parties': {
+        title: 'No Gym Members registered',
+        body: 'Add your active gym members, personal training clients, and wholesale supplement suppliers.',
+        action: 'Add First Member'
+      }
+    }
   },
 
   // ═══════════════════════════════

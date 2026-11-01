@@ -845,6 +845,7 @@ export default function SettingsPage() {
                             <option value="medical">Medical & Pharmacy</option>
                             <option value="auto">Automotive Parts</option>
                             <option value="food">Food Processing</option>
+                            <option value="fitness">Gym, Fitness & Nutrition</option>
                             <option value="general">General / Wholesale</option>
                           </select>
                         </div>

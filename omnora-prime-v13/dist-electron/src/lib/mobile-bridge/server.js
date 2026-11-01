@@ -354,7 +354,7 @@ function attachMobileBridge(httpServer, customPort) {
         const pairingTimeout = setTimeout(() => {
             const client = clients.get(clientId);
             if (client && !client.paired) {
-                console.log(`[Bridge] Pairing timeout â€” dropping ${clientId}`);
+                console.log(`[Bridge] Pairing timeout  dropping ${clientId}`);
                 ws.close(1008, 'Pairing timeout: send PAIR_REQUEST within 30s');
                 clients.delete(clientId);
             }
@@ -413,7 +413,7 @@ function attachMobileBridge(httpServer, customPort) {
             if (client.paired) {
                 const elapsed = (now.getTime() - client.lastHeartbeat.getTime()) / 1000;
                 if (elapsed > 90) {
-                    console.log(`[Bridge] Heartbeat timeout â€” dropping ${client.deviceLabel}`);
+                    console.log(`[Bridge] Heartbeat timeout  dropping ${client.deviceLabel}`);
                     client.ws.close(1001, 'Heartbeat timeout');
                     clients.delete(id);
                     return;

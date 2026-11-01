@@ -11,6 +11,7 @@ import {
   Check, ShieldAlert, CheckCircle2, Factory,
   Package, Search, Smartphone, Globe, Upload,
   Scissors, Pill, Wrench, Wheat, Store, UtensilsCrossed,
+  Dumbbell,
   Sparkles, Lock, ArrowRight, Compass
 } from "lucide-react";
 import { useBusinessProfileStore } from "@/store/BusinessProfileStore";
@@ -200,6 +201,16 @@ const VERTICAL_OPTIONS: VerticalOption[] = [
     bgColor: 'bg-purple-500/10'
   },
   {
+    key: 'fitness',
+    title: 'Gym & Fitness Nutrition',
+    subtitle: 'Member khata, Supplement batch & expiry, Trainer payroll',
+    icon: Dumbbell,
+    badge: 'Fitness',
+    color: '#10B981',
+    borderColor: 'border-emerald-500/40',
+    bgColor: 'bg-emerald-500/10'
+  },
+  {
     key: 'food',
     title: 'Restaurant / Food',
     subtitle: 'Table billing, Kitchen tickets, Recipes',
@@ -331,7 +342,7 @@ export default function OnboardingPage() {
         country_code: values.country_code,
         industry_key: values.industry_key,
         industry: values.industry_key,
-        industry_type: values.industry_key === 'textile' ? 'textile' : values.industry_key === 'medical' ? 'medical' : values.industry_key === 'auto' ? 'auto' : 'general',
+        industry_type: values.industry_key === 'textile' ? 'textile' : values.industry_key === 'medical' ? 'medical' : values.industry_key === 'auto' ? 'auto' : values.industry_key === 'fitness' ? 'fitness' : 'general',
         tax_name: values.tax_system,
         tax_rate: values.tax_rate,
         tax_label: currentCountry.taxLabel,

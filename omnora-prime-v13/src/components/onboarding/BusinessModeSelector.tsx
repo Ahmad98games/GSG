@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import {
-  Factory, Package, Store, ArrowRight,
+  Factory, Package, Store, Dumbbell, ArrowRight,
   MessageCircle, X, Sparkles, Check, Crown, ShieldCheck
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -18,6 +18,7 @@ const MODE_ICONS: Record<BusinessMode, React.ComponentType<{ size?: number; clas
   textile: Factory,
   wholesale: Package,
   retail: Store,
+  fitness: Dumbbell,
 }
 
 const MODE_COLORS: Record<BusinessMode, { accent: string; border: string; bg: string }> = {
@@ -35,6 +36,11 @@ const MODE_COLORS: Record<BusinessMode, { accent: string; border: string; bg: st
     accent: 'text-emerald-400',
     border: 'border-emerald-500/50',
     bg: 'bg-emerald-500/10',
+  },
+  fitness: {
+    accent: 'text-teal-400',
+    border: 'border-teal-500/50',
+    bg: 'bg-teal-500/10',
   },
 }
 
@@ -248,7 +254,7 @@ export default function BusinessModeSelector() {
                 {detectedLeadName ? `Welcome, ${detectedLeadName}` : 'Welcome to Noxis Hub'}
               </h1>
               <p className="text-xs text-zinc-300 max-w-xl mx-auto leading-relaxed">
-                Noxis Hub is an offline industrial ERP built specifically for wholesale textile mills, garment production, and wholesale distribution counters. All ledgers, stock registers, and karigar wages operate securely on your local hard drive.
+                Noxis Hub is an offline industrial ERP built for manufacturing, wholesale trade, retail counters, and fitness & sports nutrition hubs. All ledgers, stock registers, and staff payroll operate securely on your local hard drive.
               </p>
               <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
                 {detectedLeadName && (

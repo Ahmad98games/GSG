@@ -409,6 +409,12 @@ export default React.memo(function IndustrialSidebar() {
             const retailHide = ['production', 'workers', 'dispatch', 'foresight', 'batch-recall', 'yield', 'cold-chain', 'workflows', 'audit']
             return !retailHide.includes(item.id)
 
+          case 'fitness':
+            // Fitness shows POS, supplement inventory, member khata, trainer payroll, batch/expiry alerts
+            // Hides factory loom production, mandi weighbridge, yield, cold-chain
+            const fitnessHide = ['production', 'yield', 'cold-chain', 'weight-entry']
+            return !fitnessHide.includes(item.id)
+
           case 'wholesale':
             // Wholesale hides: production, workers (karigar-specific), foresight, batch, yield, cold-chain, weight-entry
             const wholesaleHide = ['production', 'workers', 'foresight', 'batch-recall', 'yield', 'cold-chain', 'weight-entry']

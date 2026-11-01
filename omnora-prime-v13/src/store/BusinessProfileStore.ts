@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
 export type BusinessRole = 'manufacturer' | 'wholesaler' | 'retailer';
-export type IndustryType = 'textile' | 'medical' | 'auto' | 'general';
+export type IndustryType = 'textile' | 'medical' | 'auto' | 'fitness' | 'general';
 
 export interface BusinessProfile {
   id: string;
