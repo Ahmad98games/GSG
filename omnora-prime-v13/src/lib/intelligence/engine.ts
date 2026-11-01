@@ -110,8 +110,8 @@ export async function generateInsights(
       .eq('log_date', today),
 
     // This month payroll
-    supabase.from('payroll_runs')
-      .select('total_gross, total_net')
+    supabase.from('payroll_periods')
+      .select('total_payroll')
       .eq('business_id', businessId)
       .gte('period_start', monthStart),
 

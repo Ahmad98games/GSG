@@ -1694,7 +1694,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       releaseName: latestUpdateInfo?.releaseName,
       releaseNotes: latestUpdateInfo?.releaseNotes,
       releaseDate: latestUpdateInfo?.releaseDate,
-      currentVersion: app.getVersion() || '14.0.23',
+      currentVersion: app.getVersion() || '14.0.24',
       baselineVersion: policy.baselineVersion,
       tier: policy.tier,
       maxAllowedMajor: policy.maxAllowedMajor,

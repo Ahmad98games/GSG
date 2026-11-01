@@ -4,7 +4,7 @@ import { Tag, Calendar, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-reac
 
 const RELEASES = [
   {
-    version: 'v14.0.23',
+    version: 'v14.0.24',
     date: 'October 2026',
     isCurrent: true,
     title: 'Zero-Data-Loss Form Resilience, Power-Cut Auto-Recovery, Sentinel AI Copilot 2.0 & Transparent 7-Day Trial Transition',
@@ -14,7 +14,7 @@ const RELEASES = [
       'Blank Draft Overwrite Protection: Implemented isMeaningfulDraftData validation preventing default blank forms from ever overwriting preserved drafts.',
       'Sentinel AI Copilot 2.0: Deployed 14 interactive step-by-step autopilot walkthroughs guiding non-technical operators through sales, POS, khata, karigars, and inventory.',
       'Deep AI Knowledge Base Expansion: Added comprehensive guidance for 7-Day Trial policies, Free Forever mode, 1,000-5,000 row Excel bulk import, and offline local hub capabilities.',
-      'Software Update Delivery: Released official verified desktop production build v14.0.23.',
+      'Software Update Delivery: Released official verified desktop production build v14.0.24.',
     ],
   },
   {
@@ -174,7 +174,7 @@ const RELEASES = [
 ]
 
 export default function ChangelogPage() {
-  const [openVersions, setOpenVersions] = useState<string[]>(['v14.0.23'])
+  const [openVersions, setOpenVersions] = useState<string[]>(['v14.0.24'])
 
   const toggleVersion = (v: string) => {
     setOpenVersions(prev =>
