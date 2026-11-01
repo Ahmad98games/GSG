@@ -69,7 +69,7 @@ const FEATURE_ROWS = [
   },
   {
     feature: 'WhatsApp Invoice Sending',
-    free: 'â€”',
+    free: 'NO”',
     lite: 'Included',
     pro: 'Included'
   },
@@ -81,13 +81,13 @@ const FEATURE_ROWS = [
   },
   {
     feature: 'Security Camera Monitoring',
-    free: 'â€”',
+    free: 'NO”',
     lite: '2 cameras',
     pro: 'Up to 6 cameras with motion alerts'
   },
   {
     feature: 'Stock Demand Predictions',
-    free: 'â€”',
+    free: 'NO”',
     lite: 'Low stock alerts',
     pro: 'Auto reorder + 30-day forecasting'
   },
@@ -179,7 +179,7 @@ export default function DownloadPage() {
           </h1>
           <p className="text-base sm:text-lg text-zinc-400 max-w-2xl mx-auto leading-relaxed">
             Noxis Hub runs on your Windows PC and connects to Android phones on
-            the factory floor â€” no internet, no monthly fees, no server required.
+            the factory floor with no internet, no monthly fees, no server required.
           </p>
         </div>
 
@@ -224,7 +224,7 @@ export default function DownloadPage() {
                     </span>
                   </div>
                   <p className="text-xs text-zinc-500">
-                    Main PC â€” stores all your business data
+                    Main PC That stores all your business data
                   </p>
                 </div>
               </div>
@@ -247,7 +247,7 @@ export default function DownloadPage() {
               {/* Setup steps */}
               <div className="bg-black/30 border border-white/5 rounded-xl p-4 space-y-3">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                  Ready in 2 steps â€” no installer
+                  Ready in 2 steps with no installer
                 </p>
                 <div className="space-y-2">
                   {[
@@ -352,7 +352,7 @@ export default function DownloadPage() {
                       Scan on your Android
                     </p>
                     <p className="text-[11px] text-zinc-600 leading-relaxed">
-                      Point your camera at this code to download straight to your phone â€” no cable needed.
+                      Point your camera at this code to download straight to your phone no cable needed.
                     </p>
                   </div>
                 </div>
@@ -491,7 +491,7 @@ export default function DownloadPage() {
             </div>
             <h3 className="text-base font-bold text-white">Everything unlocked</h3>
             <p className="text-sm text-zinc-400 leading-relaxed">
-              Download, extract, and run â€” no registration, no credit card. Every
+              Download, extract, and run With no registration, no credit card. Every
               feature is available so you can test it properly on your factory floor
               with your real workers and real stock.
             </p>
@@ -533,7 +533,7 @@ export default function DownloadPage() {
             {
               step: '01',
               title: 'Copy your machine ID',
-              body: 'Open Noxis Hub â†’ Settings â†’ License. Click "Copy Machine ID" â€” it is a unique code for your specific PC.',
+              body: 'Open Noxis Hub â†’ Settings â†’ License. Click "Copy Machine ID"  it is a unique code for your specific PC.',
               color: '#08EBF6',
             },
             {
@@ -616,7 +616,7 @@ export default function DownloadPage() {
               {[
                 ['Windows version', 'Windows 10 or 11 (64-bit)'],
                 ['Processor', 'Intel Core i3 (4th generation or newer)'],
-                ['Memory', '4 GB minimum â€” 8 GB recommended'],
+                ['Memory', '4 GB minimum Or 8 GB recommended For Smoothness'],
                 ['Storage', '500 MB free space'],
               ].map(([label, value]) => (
                 <div key={label} className="flex items-center justify-between text-xs border-b border-white/4 pb-2.5">
@@ -732,7 +732,7 @@ export default function DownloadPage() {
       </section>
 
       {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-          DOWNLOAD MODAL â€” ALL LOGIC PRESERVED
+          DOWNLOAD MODAL  ALL LOGIC PRESERVED
       â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/75 backdrop-blur-md">
@@ -768,7 +768,7 @@ export default function DownloadPage() {
                 </div>
               </div>
 
-              {/* Form â€” onSubmit handler preserved */}
+              {/* Form  onSubmit handler preserved */}
               <form onSubmit={handleStartDownload} className="space-y-4">
 
                 <div>
@@ -800,7 +800,7 @@ export default function DownloadPage() {
                     className="w-full px-4 py-2.5 bg-black/40 border border-white/8 rounded-xl text-sm text-white focus:outline-none focus:border-[#08EBF6]/50 transition-colors placeholder:text-zinc-600"
                   />
                   <p className="text-[10px] text-zinc-600 mt-1.5">
-                    Used only for license keys and support â€” never shared.
+                    Used only for license keys and support  never shared.
                   </p>
                 </div>
 
@@ -868,7 +868,7 @@ export default function DownloadPage() {
           FOOTER
       â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       <footer className="border-t border-white/5 bg-[#020304] py-7 text-center text-[11px] text-zinc-600">
-        <p>Â© {new Date().getFullYear()} Omnora â€” Industrial software for textile mills and wholesale traders.</p>
+        <p>© {new Date().getFullYear()} Omnora Labs Industrial software for textile mills and wholesale traders.</p>
       </footer>
     </div>
   );
