@@ -113,7 +113,7 @@ electron_updater_1.autoUpdater.logger = electron_log_1.default;
 // Update channel — can be changed per license tier (Pro/Elite get beta channel)
 electron_updater_1.autoUpdater.channel = 'stable';
 electron_updater_1.autoUpdater.autoDownload = true;
-electron_updater_1.autoUpdater.disableDifferentialDownload = false;
+electron_updater_1.autoUpdater.disableDifferentialDownload = true; // Use robust direct streaming to prevent Windows blockmap reassembly hang
 electron_updater_1.autoUpdater.allowPrerelease = false;
 electron_updater_1.autoUpdater.allowDowngrade = true;
 electron_updater_1.autoUpdater.setFeedURL({
@@ -1518,7 +1518,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             releaseName: latestUpdateInfo?.releaseName,
             releaseNotes: latestUpdateInfo?.releaseNotes,
             releaseDate: latestUpdateInfo?.releaseDate,
-            currentVersion: electron_1.app.getVersion() || '14.0.23',
+            currentVersion: electron_1.app.getVersion() || '14.0.24',
             baselineVersion: policy.baselineVersion,
             tier: policy.tier,
             maxAllowedMajor: policy.maxAllowedMajor,

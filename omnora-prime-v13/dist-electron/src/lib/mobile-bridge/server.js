@@ -753,7 +753,7 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
                 countryCode: profile.country_code,
                 // Connection metadata
                 connectedDevices: getPairedCount(),
-                hubVersion: '14.0.23',
+                hubVersion: '14.0.24',
                 requestSync: true,
             };
             send(ws, ackPayload);

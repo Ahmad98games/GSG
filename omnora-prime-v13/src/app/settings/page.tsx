@@ -467,6 +467,7 @@ export default function SettingsPage() {
           business_name: profile.business_name,
           owner_name: (profile as any).owner_name,
           phone: (profile as any).owner_phone || profile.phone || null,
+          owner_phone: (profile as any).owner_phone || profile.phone || null,
           tax_number: profile.tax_number,
           address: profile.address,
           currency: profile.currency,
@@ -485,6 +486,11 @@ export default function SettingsPage() {
           }
         });
 
+      const resolvedOwnerPhone = (profile as any).owner_phone || profile.phone || "";
+      if (typeof window !== "undefined" && resolvedOwnerPhone) {
+        localStorage.setItem("noxis_owner_phone", resolvedOwnerPhone);
+      }
+
       // Sync to local SQLite backup for high-speed local offline loading
       fetch('/api/settings', {
         method: 'POST',
@@ -495,6 +501,8 @@ export default function SettingsPage() {
             business_id: profile.id,
             business_name: profile.business_name || '',
             owner_name: (profile as any).owner_name || '',
+            phone: (profile as any).owner_phone || profile.phone || '',
+            owner_phone: (profile as any).owner_phone || profile.phone || '',
             tax_number: profile.tax_number || '',
             currency: profile.currency || 'PKR',
             address: profile.address || '',
@@ -795,8 +803,8 @@ export default function SettingsPage() {
                           return (
                             <input
                               type="tel"
-                              value={(profile as any)?.owner_phone || ''}
-                              onChange={(e) => profile && setProfile({ ...profile, owner_phone: e.target.value } as any)}
+                              value={(profile as any)?.owner_phone || profile?.phone || ''}
+                              onChange={(e) => profile && setProfile({ ...profile, owner_phone: e.target.value, phone: e.target.value } as any)}
                               placeholder={`e.g. ${callingCode}3001234567`}
                               className="w-full bg-[#0E131F] border border-white/[0.09] text-slate-100 text-xs rounded-[6px] h-9 px-3 placeholder:text-slate-600 focus:outline-none focus:border-blue-500/70 focus:ring-1 focus:ring-blue-500/30 transition-all duration-100"
                             />

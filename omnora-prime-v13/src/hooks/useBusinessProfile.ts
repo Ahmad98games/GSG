@@ -139,7 +139,8 @@ export const useBusinessProfile = () => {
               tax_number: configMap.tax_number || existing.tax_number || '',
               tax_rate: Number(configMap.tax_rate ?? existing.tax_rate ?? 0),
               address: configMap.address || existing.address || '',
-              phone: configMap.phone || existing.phone || '',
+              phone: configMap.owner_phone || configMap.phone || (typeof window !== 'undefined' ? localStorage.getItem('noxis_owner_phone') : null) || existing.phone || existing.owner_phone || '',
+              owner_phone: configMap.owner_phone || configMap.phone || (typeof window !== 'undefined' ? localStorage.getItem('noxis_owner_phone') : null) || existing.owner_phone || existing.phone || '',
               logo_url: resolvedLogo,
               avatar_url: resolvedAvatar,
               avatar_type: (configMap.avatar_type || existing.avatar_type || 'custom') as any,
@@ -227,6 +228,8 @@ export const useBusinessProfile = () => {
                 tax_number: configMap.tax_number || existing.tax_number || '',
                 tax_rate: Number(configMap.tax_rate ?? existing.tax_rate ?? 0),
                 address: configMap.address || existing.address || '',
+                phone: configMap.owner_phone || configMap.phone || (typeof window !== 'undefined' ? localStorage.getItem('noxis_owner_phone') : null) || existing.phone || existing.owner_phone || '',
+                owner_phone: configMap.owner_phone || configMap.phone || (typeof window !== 'undefined' ? localStorage.getItem('noxis_owner_phone') : null) || existing.owner_phone || existing.phone || '',
                 preferred_locale: configMap.preferred_locale || existing.preferred_locale || 'en',
                 onboarding_done: Boolean(resolvedBusinessName && (typeof window !== 'undefined' && localStorage.getItem('noxis_onboarded') === 'true')),
                 industry_last_changed_at: configMap.industry_last_changed_at || (typeof window !== 'undefined' ? localStorage.getItem('noxis_industry_last_changed_at') : null) || existing.industry_last_changed_at || undefined,
@@ -251,12 +254,17 @@ export const useBusinessProfile = () => {
             industry_last_changed_at: resolvedIndustryLastChangedAt,
             logo_url: finalLogo,
             avatar_url: (data as any).avatar_url || finalLogo,
+            phone: (data as any).owner_phone || (data as any).phone || "",
             owner_phone: (data as any).owner_phone || (data as any).phone || ""
           });
           setOffline(false);
 
           // Persist business_id and details to local SQLite for background processes and fallbacks
           if (data?.id) {
+            const ownerPhoneVal = (data as any).owner_phone || (data as any).phone || "";
+            if (typeof window !== 'undefined' && ownerPhoneVal) {
+              localStorage.setItem('noxis_owner_phone', ownerPhoneVal);
+            }
             fetch('/api/settings', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -266,6 +274,8 @@ export const useBusinessProfile = () => {
                   business_id: data.id,
                   business_name: data.business_name || '',
                   owner_name: (data as any).owner_name || '',
+                  phone: ownerPhoneVal,
+                  owner_phone: ownerPhoneVal,
                   avatar_type: data.avatar_type || 'preset',
                   avatar_preset_id: data.avatar_preset_id || 1,
                   avatar_url: (data as any).avatar_url || finalLogo,
