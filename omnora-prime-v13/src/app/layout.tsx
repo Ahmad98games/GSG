@@ -17,6 +17,7 @@ import Script from "next/script";
 import ElectronMotionWrapper from "@/components/providers/ElectronMotionWrapper";
 import { SyncProvider } from '@/providers/SyncProvider';
 import { MobileSyncListener } from '@/components/shell/MobileSyncListener';
+import { OMNORA_ORGANIZATION_SCHEMA, NOXIS_SOFTWARE_SCHEMA } from '@/components/StructuredData';
 
 export const metadata: Metadata = {
   title: {
@@ -273,109 +274,9 @@ export default async function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify([
-              // Software Application schema
-              {
-                '@context': 'https://schema.org',
-                '@type': 'SoftwareApplication',
-                name: 'Noxis Hub',
-                alternateName: [
-                  'Noxis',
-                  'Noxis ERP',
-                  'Noxis Factory Software',
-                  'نوکسس ہب',
-                ],
-                description: 'Offline-first factory management ERP for textile mills, rice mills, garment factories, and manufacturing businesses in Pakistan and UAE. Features karigar management, piece-rate payroll, attendance tracking, WhatsApp billing, inventory management, and CCTV integration.',
-                applicationCategory: 'BusinessApplication',
-                operatingSystem: 'Windows 8.1, Windows 10, Windows 11',
-                url: 'https://noxishub.app',
-                downloadUrl: 'https://noxishub.app/download',
-                screenshot: 'https://noxishub.app/og',
-                featureList: [
-                  'Karigar (Worker) Management',
-                  'Piece-Rate Payroll Calculation',
-                  'Peshgi (Advance) Tracking',
-                  'Daily Attendance Marking',
-                  'Production Logging',
-                  'WhatsApp Invoice Sending',
-                  'Client Portal with Token-Based Access',
-                  'Offline-First with Cloud Sync',
-                  'Inventory Management with Barcode',
-                  'CCTV Camera Integration',
-                  'Multi-Industry Support',
-                  'Multi-Currency (PKR, AED, USD, GBP)',
-                  'GST and VAT Calculation',
-                  'FBR Tax Export',
-                  'Double-Entry Accounting',
-                  'Expiry Date Tracking',
-                  'Batch Number Management',
-                  'Mobile Companion App',
-                  'Foresight Business Predictions',
-                  'Workflow Automation Builder',
-                ],
-                offers: {
-                  '@type': 'AggregateOffer',
-                  priceCurrency: 'PKR',
-                  lowPrice: '25000',
-                  highPrice: '120000',
-                  offerCount: 3,
-                  offers: [
-                    {
-                      '@type': 'Offer',
-                      name: 'Lite Plan',
-                      price: '25000',
-                      priceCurrency: 'PKR',
-                      description: 'Up to 5 devices, 2 cameras, core factory management',
-                    },
-                    {
-                      '@type': 'Offer',
-                      name: 'Pro Plan',
-                      price: '60000',
-                      priceCurrency: 'PKR',
-                      description: 'Up to 15 devices, 4 cameras, advanced reports and intelligence',
-                    },
-                    {
-                      '@type': 'Offer',
-                      name: 'Elite Plan',
-                      price: '120000',
-                      priceCurrency: 'PKR',
-                      description: 'Up to 50 devices, 6 cameras, full enterprise features',
-                    },
-                  ],
-                },
-                author: {
-                  '@type': 'Organization',
-                  name: 'Omnora Labs',
-                  url: 'https://noxishub.app',
-                  contactPoint: {
-                    '@type': 'ContactPoint',
-                    telephone: '+92-326-474-2678',
-                    contactType: 'customer service',
-                    availableLanguage: ['English', 'Urdu'],
-                  },
-                },
-                inLanguage: ['en', 'ur'],
-                countryOfOrigin: 'PK',
-                availableInCountry: ['PK', 'AE', 'SA', 'BD', 'GB', 'US'],
-              },
-
-              // Organization schema
-              {
-                '@context': 'https://schema.org',
-                '@type': 'Organization',
-                name: 'Omnora Labs',
-                alternateName: 'Noxis Hub',
-                url: 'https://noxishub.app',
-                logo: 'https://noxishub.app/logo.png',
-                contactPoint: {
-                  '@type': 'ContactPoint',
-                  telephone: '+92-326-474-2678',
-                  contactType: 'sales',
-                  availableLanguage: ['English', 'Urdu'],
-                },
-                sameAs: [
-                  'https://www.youtube.com/@Pak_the_gamerz',
-                ],
-              },
+              // Fully Type-Safe Organization & SoftwareApplication Schemas (Schema.org / JSON-LD)
+              OMNORA_ORGANIZATION_SCHEMA,
+              NOXIS_SOFTWARE_SCHEMA,
 
               // FAQ schema — this appears in
               // Google search results as expandable
