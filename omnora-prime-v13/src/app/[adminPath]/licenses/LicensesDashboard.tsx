@@ -34,9 +34,9 @@ function generateLicenseKey(tier: string): string {
 }
 
 const TIER_CONFIG = {
-  lite:  { maxDevices: 5,  label: 'Lite (5 devices)',   monthlyPrice: 1999, yearlyPrice: 18000, lifetimePrice: 72000 },
-  pro:   { maxDevices: 15, label: 'Pro (15 devices)',    monthlyPrice: 4999, yearlyPrice: 45000, lifetimePrice: 135000 },
-  elite: { maxDevices: 50, label: 'Elite (50 devices)',  monthlyPrice: 9999, yearlyPrice: 90000, lifetimePrice: 225000 },
+  lite:  { maxDevices: 5,  label: 'Lite (5 devices)',   monthlyPrice: 1999, yearlyPrice: 18000, lifetimePrice: 45000 },
+  pro:   { maxDevices: 15, label: 'Pro (15 devices)',    monthlyPrice: 4999, yearlyPrice: 45000, lifetimePrice: 95000 },
+  elite: { maxDevices: 50, label: 'Elite (50 devices)',  monthlyPrice: 9999, yearlyPrice: 90000, lifetimePrice: 149999 },
 }
 
 function buildWhatsAppMessage(

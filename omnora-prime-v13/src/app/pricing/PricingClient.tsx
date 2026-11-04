@@ -23,11 +23,11 @@ const FAQS = [
   },
   { 
     q: "Do you offer a permanent (lifetime) license?", 
-    a: "Yes! For factories and businesses wanting full ownership with zero recurring renewals, we offer permanent offline licenses: Lite Permanent at Rs. 72,000, Pro Permanent at Rs. 135,000, and Elite Permanent at Rs. 225,000. Permanent licenses are bound to your PC motherboard, operate 100% offline indefinitely, and include our free hardware motherboard re-binding guarantee." 
+    a: "Yes! For factories and businesses wanting full ownership with zero recurring renewals, we offer permanent offline licenses: Lite Permanent at Rs. 45,000, Pro Permanent at Rs. 95,000, and Elite Permanent at Rs. 149,999. Permanent licenses are bound to your PC motherboard, operate 100% offline indefinitely, and include our free hardware motherboard re-binding guarantee." 
   },
   { 
     q: "Can I pay monthly or annually instead?", 
-    a: "Yes! You can choose Monthly, Annual, or Permanent billing anytime. Monthly launch plans give full flexibility (Lite: Rs. 1,999/mo, Pro: Rs. 4,999/mo, Elite: Rs. 9,999/mo). Annual plans offer big savings (Lite: Rs. 18,000/yr, Pro: Rs. 45,000/yr, Elite: Rs. 90,000/yr). Permanent licenses offer lifetime offline ownership with zero recurring fees forever (Lite: Rs. 72,000, Pro: Rs. 135,000, Elite: Rs. 225,000)." 
+    a: "Yes! You can choose Monthly, Annual, or Permanent billing anytime. Monthly launch plans give full flexibility (Lite: Rs. 1,999/mo, Pro: Rs. 4,999/mo, Elite: Rs. 9,999/mo). Annual plans offer big savings (Lite: Rs. 18,000/yr, Pro: Rs. 45,000/yr, Elite: Rs. 90,000/yr). Permanent licenses offer lifetime offline ownership with zero recurring fees forever (Lite: Rs. 45,000, Pro: Rs. 95,000, Elite: Rs. 149,999)." 
   },
   { 
     q: "Can I use Noxis Hub without an internet connection?", 
@@ -87,14 +87,14 @@ const PRICING_DATA = {
     originalMonthlyPKR: 2999,
     annualPKR: 18000,
     originalAnnualPKR: 25000,
-    permanentPKR: 72000,
-    originalPermanentPKR: 95000,
+    permanentPKR: 45000,
+    originalPermanentPKR: 65000,
     monthlyUSD: 10,
     originalMonthlyUSD: 15,
     annualUSD: 99,
     originalAnnualUSD: 150,
-    permanentUSD: 260,
-    originalPermanentUSD: 360,
+    permanentUSD: 160,
+    originalPermanentUSD: 230,
     monthlySavingsBadge: "Save Rs. 1,000 / mo (-33% Launch Offer)",
     annualSavingsBadge: "Save Rs. 5,988 / yr vs monthly (Was Rs. 25,000)",
     permanentSavingsBadge: "One-Time Payment · Lifetime Offline Ownership · Zero Renewals",
@@ -136,14 +136,14 @@ const PRICING_DATA = {
     originalMonthlyPKR: 6999,
     annualPKR: 45000,
     originalAnnualPKR: 60000,
-    permanentPKR: 135000,
-    originalPermanentPKR: 180000,
+    permanentPKR: 95000,
+    originalPermanentPKR: 135000,
     monthlyUSD: 25,
     originalMonthlyUSD: 35,
     annualUSD: 225,
     originalAnnualUSD: 360,
-    permanentUSD: 490,
-    originalPermanentUSD: 650,
+    permanentUSD: 340,
+    originalPermanentUSD: 480,
     foundersOfferBadge: "RECOMMENDED FOR MILLS (-30%)",
     monthlySavingsBadge: "Includes 7 days of dedicated technical assistance",
     annualSavingsBadge: "1 Month Full Setup Assistance + 6 Months Free Updates (Recommended)",
@@ -217,14 +217,14 @@ const PRICING_DATA = {
     originalMonthlyPKR: 13999,
     annualPKR: 90000,
     originalAnnualPKR: 120000,
-    permanentPKR: 225000,
-    originalPermanentPKR: 300000,
+    permanentPKR: 149999,
+    originalPermanentPKR: 215000,
     monthlyUSD: 50,
     originalMonthlyUSD: 70,
     annualUSD: 450,
     originalAnnualUSD: 720,
-    permanentUSD: 799,
-    originalPermanentUSD: 1100,
+    permanentUSD: 540,
+    originalPermanentUSD: 770,
     foundersOfferBadge: "ENTERPRISE VIP DEPLOYMENT",
     monthlySavingsBadge: "Includes 15 days of VIP priority support",
     annualSavingsBadge: "1.5 Months Onboarding Assistance + 12 Months Free Updates & Priority Support",
@@ -590,7 +590,7 @@ export default function PricingClient() {
             ) : billingCycle === 'annual' ? (
               <span>🎉 Showing <strong className="text-emerald-400">Annual rates</strong>. 12 months unlocked with maximum discount &amp; free hardware re-binding.</span>
             ) : (
-              <span>👑 Showing <strong className="text-[#08EBF6]">Permanent Lifetime License rates</strong>. Lite: <strong className="text-white">Rs. 72,000</strong> · Pro: <strong className="text-white">Rs. 135,000</strong> · Elite: <strong className="text-white">Rs. 225,000</strong>. One-time payment, lifetime offline ownership, zero renewal fees.</span>
+              <span>👑 Showing <strong className="text-[#08EBF6]">Permanent Lifetime License rates</strong>. Lite: <strong className="text-white">Rs. 45,000</strong> · Pro: <strong className="text-white">Rs. 95,000</strong> · Elite: <strong className="text-white">Rs. 149,999</strong>. One-time payment, lifetime offline ownership, zero renewal fees.</span>
             )}
           </p>
         </motion.div>

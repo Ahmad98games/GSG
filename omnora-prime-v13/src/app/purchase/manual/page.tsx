@@ -19,9 +19,9 @@ export default function ManualPaymentPage() {
   const cycle = searchParams.get('cycle') || 'monthly';
   
   const PLANS = {
-    lite: { name: 'Lite', pkr: 1999, annual: 18000, permanent: 72000 },
-    pro: { name: 'Pro', pkr: 4999, annual: 45000, permanent: 135000 },
-    elite: { name: 'Elite', pkr: 9999, annual: 90000, permanent: 225000 }
+    lite: { name: 'Lite', pkr: 1999, annual: 18000, permanent: 45000 },
+    pro: { name: 'Pro', pkr: 4999, annual: 45000, permanent: 95000 },
+    elite: { name: 'Elite', pkr: 9999, annual: 90000, permanent: 149999 }
   };
 
   const selectedPlanDetails = PLANS[plan as keyof typeof PLANS] || PLANS.pro;

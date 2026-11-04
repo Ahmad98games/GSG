@@ -27,8 +27,8 @@ const PLANS: PlanDetails[] = [
   {
     key: 'lite',
     name: 'Lite Tier',
-    pkrPrice: 'Rs. 72,000 Permanent (or Rs. 1,999/mo · 18k/yr)',
-    aedPrice: 'AED 999 Lifetime (or AED 350/yr)',
+    pkrPrice: 'Rs. 45,000 Permanent (or Rs. 1,999/mo · 18k/yr)',
+    aedPrice: 'AED 599 Lifetime (or AED 350/yr)',
     usdPrice: '$260 Lifetime (or $95/yr)',
     features: [
       'Permanent lifetime motherboard-locked license (Never expires)',
@@ -43,8 +43,8 @@ const PLANS: PlanDetails[] = [
   {
     key: 'pro',
     name: 'Pro Tier',
-    pkrPrice: 'Rs. 135,000 Permanent (or Rs. 4,999/mo · 45k/yr)',
-    aedPrice: 'AED 1,899 Lifetime (or AED 750/yr)',
+    pkrPrice: 'Rs. 95,000 Permanent (or Rs. 4,999/mo · 45k/yr)',
+    aedPrice: 'AED 1,299 Lifetime (or AED 750/yr)',
     usdPrice: '$490 Lifetime (or $205/yr)',
     popular: true,
     features: [
@@ -60,8 +60,8 @@ const PLANS: PlanDetails[] = [
   {
     key: 'elite',
     name: 'Elite Tier',
-    pkrPrice: 'Rs. 225,000 Permanent (or Rs. 9,999/mo · 90k/yr)',
-    aedPrice: 'AED 3,199 Lifetime (or AED 1,499/yr)',
+    pkrPrice: 'Rs. 149,999 Permanent (or Rs. 9,999/mo · 90k/yr)',
+    aedPrice: 'AED 1,999 Lifetime (or AED 1,499/yr)',
     usdPrice: '$799 Lifetime (or $410/yr)',
     features: [
       'Permanent enterprise cluster license (Never expires)',
@@ -313,7 +313,7 @@ export default function LicenseUpgradePage() {
             Upgrade Noxis Hub
           </h1>
           <p className="text-xs sm:text-sm text-zinc-400 max-w-lg mx-auto leading-relaxed">
-            Permanent lifetime licenses (Lite: Rs. 72,000 · Pro: Rs. 135,000 · Elite: Rs. 225,000) or flexible monthly/annual subscriptions.
+            Permanent lifetime licenses (Lite: Rs. 45,000 · Pro: Rs. 95,000 · Elite: Rs. 149,999) or flexible monthly/annual subscriptions.
           </p>
         </div>
 

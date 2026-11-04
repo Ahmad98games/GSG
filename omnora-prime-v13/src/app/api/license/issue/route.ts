@@ -35,9 +35,9 @@ const TIER_PRICES_ANNUAL: Record<string, number> = {
 };
 
 const TIER_PRICES_PERMANENT: Record<string, number> = {
-  lite: 72000,
-  pro: 135000,
-  elite: 225000,
+  lite: 45000,
+  pro: 95000,
+  elite: 149999,
 };
 
 export async function POST(req: NextRequest) {
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
 
     const maxDevices = TIER_DEVICES[cleanTier as keyof typeof TIER_DEVICES] || 15;
     const amountPaid = isPermanent
-      ? (TIER_PRICES_PERMANENT[cleanTier] || 135000)
+      ? (TIER_PRICES_PERMANENT[cleanTier] || 95000)
       : billingCycle === 'annual'
         ? (TIER_PRICES_ANNUAL[cleanTier] || 45000)
         : (TIER_PRICES_MONTHLY[cleanTier] || 4999);

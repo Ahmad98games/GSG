@@ -69,17 +69,17 @@ export const PLAN_PRICING = {
   lite: {
     monthly: 1999,
     yearly: 18000,
-    lifetime: 72000,
+    lifetime: 45000,
   },
   pro: {
     monthly: 4999,
     yearly: 45000,
-    lifetime: 135000,
+    lifetime: 95000,
   },
   elite: {
     monthly: 9999,
     yearly: 90000,
-    lifetime: 225000,
+    lifetime: 149999,
   },
 } as const;
 
