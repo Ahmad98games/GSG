@@ -196,6 +196,48 @@ export const db = new Proxy({} as Record<string, any>, {
                 delivered_at TEXT DEFAULT (datetime('now'))
               );
 
+              
+              CREATE TABLE IF NOT EXISTS invoices (
+                id TEXT PRIMARY KEY,
+                business_id TEXT DEFAULT 'local',
+                invoice_number TEXT,
+                invoice_no TEXT,
+                invoice_type TEXT DEFAULT 'invoice',
+                party_id TEXT,
+                party_name TEXT,
+                party_phone TEXT,
+                party_address TEXT,
+                invoice_date TEXT DEFAULT (datetime('now')),
+                issue_date TEXT DEFAULT (datetime('now')),
+                due_date TEXT,
+                status TEXT DEFAULT 'posted',
+                subtotal REAL DEFAULT 0,
+                discount_amount REAL DEFAULT 0,
+                discount_percent REAL DEFAULT 0,
+                tax_amount REAL DEFAULT 0,
+                tax_rate REAL DEFAULT 0,
+                total_amount REAL DEFAULT 0,
+                amount_paid REAL DEFAULT 0,
+                balance_due REAL DEFAULT 0,
+                notes TEXT,
+                created_at TEXT DEFAULT (datetime('now')),
+                updated_at TEXT DEFAULT (datetime('now'))
+              );
+
+              CREATE TABLE IF NOT EXISTS invoice_items (
+                id TEXT PRIMARY KEY,
+                invoice_id TEXT NOT NULL,
+                business_id TEXT DEFAULT 'local',
+                sku_id TEXT,
+                description TEXT NOT NULL,
+                quantity REAL NOT NULL DEFAULT 1,
+                unit TEXT DEFAULT 'Piece',
+                unit_price REAL NOT NULL DEFAULT 0,
+                total_price REAL NOT NULL DEFAULT 0,
+                discount_percent REAL DEFAULT 0,
+                created_at TEXT DEFAULT (datetime('now'))
+              );
+
               CREATE TABLE IF NOT EXISTS orders (
                 id TEXT PRIMARY KEY,
                 business_id TEXT DEFAULT 'local',

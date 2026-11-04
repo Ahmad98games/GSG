@@ -683,12 +683,54 @@ td {
   /* Hide UI chrome and interactive buttons */
   .no-print,
   .no-print *,
+  .print\:hidden,
+  .print\:hidden *,
+  .hidden-print,
+  .hidden-print *,
   nav,
   aside,
+  header,
+  footer,
   [data-sidebar],
+  [data-topbar],
+  .noxis-titlebar,
+  .toast-container,
+  .toast-container *,
+  [data-toast],
+  [data-toast] *,
+  [data-toast-container],
+  [data-toast-container] *,
+  [role="alert"],
+  [role="alert"] *,
+  [role="status"],
+  [role="status"] *,
+  .action-trail,
+  .action-trail *,
+  .quick-actions,
+  .quick-actions *,
+  .offline-indicator,
+  .offline-indicator *,
+  .zoom-safety-pill,
+  .zoom-safety-pill * {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    width: 0 !important;
+    pointer-events: none !important;
+  }
+
+  /* Reset outer layout wrappers so main page is never hidden */
   .sidebar-expanded,
   .sidebar-collapsed {
-    display: none !important;
+    display: block !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    padding-inline-start: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    min-height: auto !important;
+    background: transparent !important;
   }
 
   body {
@@ -1379,3 +1421,63 @@ tbody tr {
 .noxis-input:focus {
   border-color: var(--color-primary, #60A5FA);
 }
+@media print {
+  /* Printable containers (A4 Invoice & Statement) */
+  .invoice-container,
+  .invoice-preview,
+  [data-invoice-printable],
+  .printable-statement {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 6mm !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    visibility: visible !important;
+  }
+
+  /* Invoice Line Items Table & Rows Printing Integrity */
+  .invoice-preview table,
+  .invoice-container table,
+  [data-invoice-printable] table {
+    display: table !important;
+    width: 100% !important;
+    border-collapse: collapse !important;
+    visibility: visible !important;
+  }
+  .invoice-preview thead,
+  .invoice-container thead,
+  [data-invoice-printable] thead {
+    display: table-header-group !important;
+    visibility: visible !important;
+  }
+  .invoice-preview tbody,
+  .invoice-container tbody,
+  [data-invoice-printable] tbody {
+    display: table-row-group !important;
+    visibility: visible !important;
+  }
+  .invoice-preview tbody tr,
+  .invoice-container tbody tr,
+  [data-invoice-printable] tbody tr {
+    display: table-row !important;
+    visibility: visible !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  .invoice-preview td,
+  .invoice-preview th,
+  .invoice-container td,
+  .invoice-container th,
+  [data-invoice-printable] td,
+  [data-invoice-printable] th {
+    display: table-cell !important;
+    visibility: visible !important;
+    color: #000000 !important;
+  }
+}

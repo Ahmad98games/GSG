@@ -97,7 +97,7 @@ export default function QuickActions() {
         onClick={toggleOpen}
         data-tour="quick-add"
         className={cn(
-          "fixed bottom-6 right-6 w-14 h-14 bg-[#09090b] border border-cyan-500/40 text-cyan-400 flex items-center justify-center transition-all duration-200 z-[150] rounded-[4px] shadow-[0_0_15px_rgba(34,211,238,0.15),_inset_0_0_8px_rgba(34,211,238,0.1)] hover:border-cyan-400 hover:text-white hover:shadow-[0_0_20px_rgba(34,211,238,0.3)]"
+          "fixed bottom-6 right-6 w-14 h-14 bg-[#09090b] border border-cyan-500/40 text-cyan-400 flex items-center justify-center transition-all duration-200 z-[150] rounded-[4px] shadow-[0_0_15px_rgba(34,211,238,0.15),_inset_0_0_8px_rgba(34,211,238,0.1)] hover:border-cyan-400 hover:text-white hover:shadow-[0_0_20px_rgba(34,211,238,0.3)] print:hidden no-print"
         )}
       >
         <Plus size={24} className={cn("transition-transform duration-300", isOpen ? "rotate-45 text-red-400" : "rotate-0")} />

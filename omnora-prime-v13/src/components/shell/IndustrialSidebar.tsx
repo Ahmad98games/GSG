@@ -461,7 +461,7 @@ export default React.memo(function IndustrialSidebar() {
         animate={{ width: isCollapsed ? 64 : 240 }}
         transition={{ type: 'spring', stiffness: 350, damping: 35 }}
         className={cn(
-          'fixed bottom-0 start-0 z-[60] flex flex-col select-none font-inter antialiased transition-colors duration-200',
+          'fixed bottom-0 start-0 z-[60] flex flex-col select-none font-inter antialiased transition-colors duration-200 print:hidden no-print',
           isElectron ? 'top-10' : 'top-0'
         )}
         style={{
@@ -523,7 +523,7 @@ export default React.memo(function IndustrialSidebar() {
                   borderStyle: 'solid'
                 }}
               >
-                v14.0.25
+                {`v${process.env.NEXT_PUBLIC_APP_VERSION || '14.0.27'}`}
               </span>
             )}
           </div>

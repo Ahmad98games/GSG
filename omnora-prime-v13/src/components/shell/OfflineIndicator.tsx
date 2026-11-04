@@ -41,7 +41,7 @@ export function OfflineIndicator() {
 
   return (
     <div
-      className={`fixed bottom-4 right-6 z-[100] flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-2xl transition-all duration-300 pointer-events-none ${
+      className={`fixed bottom-4 right-6 z-[100] flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-2xl transition-all duration-300 pointer-events-none print:hidden no-print ${
         showReconnected
           ? 'bg-emerald-600 text-white shadow-lg'
           : 'bg-[#0F172A] border border-white/10 text-slate-200 shadow-xl'

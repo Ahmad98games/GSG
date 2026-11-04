@@ -40,7 +40,7 @@ export default React.memo(function TitleBar() {
 
   return (
     <div 
-      className="h-10 w-full border-b flex items-center justify-between z-[100] select-none sticky top-0 transition-colors duration-200"
+      className="h-10 w-full border-b flex items-center justify-between z-[100] select-none sticky top-0 transition-colors duration-200 print:hidden no-print"
       style={{ 
         backgroundColor: 'var(--color-topbar-bg, #0B0E14)',
         borderColor: 'var(--color-card-border, rgba(255,255,255,0.06))'

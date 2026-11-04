@@ -15,6 +15,8 @@ import { release } from 'os'
 import { deriveDbKey } from '../src/lib/security/dbKeyManager'
 import { registerOnvifHandlers } from './services/onvifService'
 import { registerMediamtxHandlers, stopMediamtx } from './services/mediamtxService'
+import { registerThermalPrintHandlers } from './services/thermalPrintService'
+import { registerScaleService, stopScaleService } from './services/scaleService'
 // ── Licensing & Security ──────────────────────────────────────────────────────
 import { verifyHWID, generateHWID, getCachedHWIDOrGenerate } from './services/hwid'
 import { initTrialEngine, checkpointMonotonicElapsed, getTrialState } from './services/trialEngine'
@@ -1151,7 +1153,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         'update-status',
         {
           status: 'downloading',
-          version: latestUpdateInfo?.version || '14.0.0',
+          version: latestUpdateInfo?.version || '14.0.25',
           percent: pct,
           transferred,
           total,
@@ -1374,75 +1376,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     return mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents.getZoomFactor() : 1.0;
   });
 
-  // Serial port for weighbridge
-  ipcMain.handle('fetchScaleWeight', async () => {
-    try {
-      // Most Pakistani weighbridges output
-      // a simple string like "0044.50 KG"
-      // via RS232/COM port
-      // Check which COM port is available
-      const { SerialPort } = require('serialport')
-      const ports = await SerialPort.list()
-      const weightPort = ports.find(
-        (p: any) =>
-          p.manufacturer?.includes('Prolific') ||
-          p.path?.includes('COM')
-      )
+  // ── Thermal Printing & RS-232 Weighbridge Subsystems ───────────────────────
+  registerThermalPrintHandlers(() => mainWindow);
+  registerScaleService(() => mainWindow);
 
-      if (!weightPort) {
-        return {
-          success: false,
-          reason: 'No weighbridge detected'
-        }
-      }
-
-      const port = new SerialPort({
-        path: weightPort.path,
-        baudRate: 9600,
-      })
-
-      return new Promise((resolve) => {
-        let data = ''
-        const timeout = setTimeout(() => {
-          try { port.close() } catch { }
-          resolve({
-            success: false,
-            reason: 'Weighbridge timeout'
-          })
-        }, 3000)
-
-        port.on('data', (chunk: Buffer) => {
-          data += chunk.toString()
-          const match = data.match(
-            /(\d+\.?\d*)\s*(KG|kg|Kg)/
-          )
-          if (match) {
-            clearTimeout(timeout)
-            try { port.close() } catch { }
-            resolve({
-              success: true,
-              weight: parseFloat(match[1]),
-              unit: 'KG',
-            })
-          }
-        })
-
-        port.on('error', (err: any) => {
-          clearTimeout(timeout)
-          try { port.close() } catch { }
-          resolve({
-            success: false,
-            reason: err.message || 'Port error'
-          })
-        })
-      })
-    } catch {
-      return {
-        success: false,
-        reason: 'SerialPort not available'
-      }
-    }
-  });
   const executeUpdateCheck = async (simulateTargetVersion?: string) => {
     try {
       const policy = getVersionPolicy();
@@ -2922,6 +2859,25 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         });
       }
 
+      let devServerAlreadyRunning = false;
+      if (isDev) {
+        devServerAlreadyRunning = await new Promise<boolean>((resolve) => {
+          const testReq = http.get(`http://127.0.0.1:${PORT}`, () => resolve(true));
+          testReq.on('error', () => resolve(false));
+          testReq.setTimeout(800, () => {
+            testReq.destroy();
+            resolve(false);
+          });
+        });
+      }
+
+      if (isDev && devServerAlreadyRunning) {
+        startupLog(`[Electron] Active development server detected on http://127.0.0.1:${PORT}. Connecting directly.`);
+        createSplashWindow();
+        await createMainWindow();
+        return;
+      }
+
       await killAnyProcessOnPort(PORT);
 
       // Find port
@@ -3293,6 +3249,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         tunnelProcess ? killProcess(tunnelProcess, 'Cloudflare Tunnel') : Promise.resolve(),
       ]).then(() => {
         stopMediamtx();
+        stopScaleService();
         visionProcess = null;
         nextServer = null;
         tunnelProcess = null;

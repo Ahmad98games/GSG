@@ -384,7 +384,7 @@ export default React.memo(function GlobalTopBar() {
     <>
       <header 
         className={cn(
-          "h-12 border-b flex items-center justify-between px-4 sticky z-40 w-full select-none font-inter transition-colors duration-200",
+          "h-12 border-b flex items-center justify-between px-4 sticky z-40 w-full select-none font-inter transition-colors duration-200 print:hidden no-print",
           isPos ? "relative top-0 shrink-0" : (isElectron ? "sticky top-10" : "sticky top-0")
         )}
         style={{

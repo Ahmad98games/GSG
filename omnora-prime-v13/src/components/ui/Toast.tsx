@@ -16,7 +16,10 @@ export const ToastContainer: React.FC = () => {
   const { toasts, removeToast } = useToastStore();
 
   return (
-    <div className="fixed bottom-6 right-6 z-[200] flex flex-col space-y-3 pointer-events-none w-full max-w-sm">
+    <div 
+      data-toast-container
+      className="fixed bottom-6 right-6 z-[200] flex flex-col space-y-3 pointer-events-none w-full max-w-sm print:hidden no-print hidden-print"
+    >
       <AnimatePresence mode="popLayout">
         {toasts.map((toast) => (
           <ToastItem 
@@ -53,11 +56,12 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onClose }) => {
   return (
     <motion.div
       layout
+      data-toast
       initial={{ opacity: 0, x: 20, scale: 0.95 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: 20, scale: 0.95 }}
       className={cn(
-        "pointer-events-auto bg-[#1A1D21] border border-white/10 border-l-4 p-4 shadow-2xl flex items-start space-x-3",
+        "pointer-events-auto bg-[#1A1D21] border border-white/10 border-l-4 p-4 shadow-2xl flex items-start space-x-3 print:hidden no-print hidden-print",
         borderColors[toast.type]
       )}
     >

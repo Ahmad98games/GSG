@@ -41,6 +41,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAppDataPath: () => ipcRenderer.invoke('get-app-data-path'),
   getHwid: () => ipcRenderer.invoke('license:getHWID'),
   fetchScaleWeight: () => ipcRenderer.invoke('fetchScaleWeight'),
+  getScaleStatus: () => ipcRenderer.invoke('scale:get-status'),
+  onScaleWeight: (callback: (data: { weight: number; unit: string; raw: string; port?: string; timestamp?: number }) => void) => {
+    const listener = (_: any, data: any) => callback(data);
+    ipcRenderer.on('scale:weight-stream', listener);
+    return () => {
+      ipcRenderer.removeListener('scale:weight-stream', listener);
+    };
+  },
+  printThermalSilent: (payload: { htmlContent: string; printerName?: string; width?: string }) =>
+    ipcRenderer.invoke('print:thermal-silent', payload),
+  getPrinters: () => ipcRenderer.invoke('printers:get-list'),
   setConfig: (key: string, value: string) => ipcRenderer.invoke('set-config', key, value),
   getConfig: (key: string) => ipcRenderer.invoke('get-config', key),
   getBridgeStatus: () => ipcRenderer.invoke('get-bridge-status'),

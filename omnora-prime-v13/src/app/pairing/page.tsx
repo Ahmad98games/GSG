@@ -631,7 +631,7 @@ export default function PairingPage() {
               <Info size={14} className="text-blue-400 flex-shrink-0 mt-0.5" />
               <div>
                 <p>Host Machine: <span className="text-slate-300 font-bold">{hubInfo?.hostname || 'Host PC'}</span></p>
-                <p className="mt-0.5">Software Engine: <span className="text-slate-300 font-bold">Noxis v{hubInfo?.version || '14.0.0'}</span></p>
+                <p className="mt-0.5">Software Engine: <span className="text-slate-300 font-bold">Noxis v{hubInfo?.version || process.env.NEXT_PUBLIC_APP_VERSION || '14.0.27'}</span></p>
               </div>
             </div>
           </div>

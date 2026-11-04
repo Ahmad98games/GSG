@@ -90,33 +90,43 @@ export function POSThermalReceipt({
               html, body {
                 margin: 0 !important;
                 padding: 0 !important;
-                background: #ffffff !important;
-                color: #000000 !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
+                background: #fff !important;
+                width: 80mm !important;
               }
-              body * {
+              /* Hide everything on screen except thermal print root */
+              body > *:not(#pos-print-root) {
+                display: none !important;
+              }
+              nav, header, aside, footer, [data-sidebar], [data-topbar], .no-print, .noxis-resilience-banner, [data-resilience-banner] {
+                display: none !important;
                 visibility: hidden !important;
               }
-              #pos-thermal-slip, #pos-thermal-slip * {
-                visibility: visible !important;
+              /* Show ONLY the thermal receipt container */
+              #pos-print-root {
+                display: block !important;
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 80mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #fff !important;
               }
               #pos-thermal-slip {
+                display: block !important;
+                visibility: visible !important;
                 position: absolute !important;
                 left: 0 !important;
                 top: 0 !important;
                 width: 78mm !important;
-                max-width: 78mm !important;
-                margin: 0 auto !important;
-                padding: 4mm 3mm 15mm 3mm !important;
-                background: #ffffff !important;
-                color: #000000 !important;
-                font-family: 'Courier New', Courier, monospace, monospace !important;
-                font-size: 11px !important;
-                line-height: 1.35 !important;
-                display: block !important;
-                z-index: 99999999 !important;
-                box-sizing: border-box !important;
+                margin: 0 !important;
+                padding: 4mm !important;
+                color: #000 !important;
+                background: #fff !important;
+              }
+              #pos-thermal-slip * {
+                visibility: visible !important;
+                color: #000 !important;
               }
               .thermal-screen-only {
                 display: none !important;
@@ -128,7 +138,7 @@ export function POSThermalReceipt({
 
       {/* POS Slip DOM Container (Visible both in Modal Preview & Isolated in Print) */}
       <div
-        id="pos-thermal-slip"
+        id="pos-thermal-slip" data-rendered-items={items.length}
         className="w-[300px] max-w-[300px] bg-white text-black p-4 rounded shadow-2xl font-mono text-[11px] leading-[1.35] select-text mx-auto"
         style={{ color: '#000000' }}
       >
@@ -205,7 +215,7 @@ export function POSThermalReceipt({
               const itemDisc = Number(item.discountAmount) || 0
 
               return (
-                <div key={idx} className="space-y-0.5">
+                <div key={idx} className="space-y-0.5 pos-item-row">
                   <div className="font-bold text-[11px] uppercase leading-tight">
                     {item.name || item.sku_code || 'Product Item'}
                   </div>

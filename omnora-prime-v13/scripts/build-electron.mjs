@@ -16,6 +16,10 @@
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Load .env.local if it exists — but NEVER crash if it doesn't
 try {
@@ -25,7 +29,7 @@ try {
   console.warn('[Electron Build] dotenv not available or .env.local missing — continuing without it');
 }
 
-const ROOT = process.cwd();
+const ROOT = path.resolve(__dirname, '..');
 const STANDALONE = path.join(ROOT, '.next', 'standalone');
 
 // ── Helper: copy dir (warn if missing, never throw) ──────────────────────────
@@ -233,6 +237,7 @@ try {
   console.log('[Electron Build] ══════════════════════════════════════════\n');
 
   execSync('npx next build --webpack', {
+    cwd: ROOT,
     stdio: 'inherit',
     env: {
       ...process.env,

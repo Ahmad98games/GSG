@@ -72,7 +72,7 @@ export function UpdateNotification() {
 
   if (state === 'downloading') {
     return (
-      <div className="fixed bottom-4 right-4 z-50 bg-[#0F1114] border border-white/10 rounded-sm p-4 w-72 shadow-[0_8px_32px_rgba(0,0,0,0.8)] animate-in slide-in-from-bottom-2 duration-300">
+      <div className="fixed bottom-4 right-4 z-50 bg-[#0F1114] border border-white/10 rounded-sm p-4 w-72 shadow-[0_8px_32px_rgba(0,0,0,0.8)] animate-in slide-in-from-bottom-2 duration-300 print:hidden no-print">
         <div className="flex items-center gap-2 mb-3">
           <Download size={14} className="text-[#60A5FA] animate-bounce" />
           <p className="text-xs font-semibold text-white">Downloading v{info.version}...</p>
@@ -91,7 +91,7 @@ export function UpdateNotification() {
 
   if (state === 'ready') {
     return (
-      <div className="fixed bottom-4 right-4 z-50 bg-[#0F1114] border border-emerald-500/30 rounded-sm p-4 w-72 shadow-[0_8px_32px_rgba(0,0,0,0.8)] animate-in slide-in-from-bottom-2 duration-300">
+      <div className="fixed bottom-4 right-4 z-50 bg-[#0F1114] border border-emerald-500/30 rounded-sm p-4 w-72 shadow-[0_8px_32px_rgba(0,0,0,0.8)] animate-in slide-in-from-bottom-2 duration-300 print:hidden no-print">
         <button onClick={() => setDismissed(true)} className="absolute top-3 right-3 text-gray-500 hover:text-white">
           <X size={12} />
         </button>

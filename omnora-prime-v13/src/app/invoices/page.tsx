@@ -79,7 +79,7 @@ export default function InvoiceListPage() {
         const localRes = await fetch(`/api/invoices?search=${encodeURIComponent(debouncedSearch)}&status=${encodeURIComponent(statusFilter)}&limit=150`);
         if (localRes.ok) {
           const localList = await localRes.json();
-          if (Array.isArray(localList) && localList.length > 0) {
+          if (Array.isArray(localList)) {
             setLastFetchedAt(new Date());
             if (typeof window !== 'undefined' && !debouncedSearch && statusFilter === 'all') {
               try {
@@ -139,7 +139,7 @@ export default function InvoiceListPage() {
         return applyFilters(localInvoices);
       }
     },
-    enabled: !!businessId && (debouncedSearch.length >= 2 || debouncedSearch.length === 0)
+    enabled: (debouncedSearch.length >= 2 || debouncedSearch.length === 0)
   });
 
   React.useEffect(() => {

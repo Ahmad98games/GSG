@@ -4,15 +4,18 @@ import {
   useRef, memo, useMemo,
 } from 'react'
 import { useRouter } from 'next/navigation'
+import { createPortal } from 'react-dom'
 import { useToastStore } from '@/hooks/useToast'
 
 const toast = Object.assign(
-  (msg: string, _opts?: any) => {
-    useToastStore.getState().addToast({ type: 'warning', title: msg })
+  (msg: string, desc?: any) => {
+    useToastStore.getState().addToast({ type: 'warning', title: msg, message: typeof desc === 'string' ? desc : undefined })
   },
   {
-    success: (msg: string) => useToastStore.getState().addToast({ type: 'success', title: msg }),
-    error: (msg: string) => useToastStore.getState().addToast({ type: 'error', title: msg }),
+    success: (title: string, desc?: any) => useToastStore.getState().addToast({ type: 'success', title, message: typeof desc === 'string' ? desc : undefined }),
+    error: (title: string, desc?: any) => useToastStore.getState().addToast({ type: 'error', title, message: typeof desc === 'string' ? desc : undefined }),
+    warning: (title: string, desc?: any) => useToastStore.getState().addToast({ type: 'warning', title, message: typeof desc === 'string' ? desc : undefined }),
+    info: (title: string, desc?: any) => useToastStore.getState().addToast({ type: 'info', title, message: typeof desc === 'string' ? desc : undefined }),
   }
 )
 import {
@@ -47,10 +50,10 @@ import { formatCurrency }
   from '@/lib/i18n/currencies'
 import { buildWhatsAppInvoiceMessage }
   from '@/lib/invoices/whatsappBuilder'
-import { generateThermalReceipt }
+import { generateThermalReceipt, generateThermalPDF }
   from '@/lib/pdf/generateThermal'
-import { generateInvoicePDF }
-  from '@/lib/accounting/generateInvoice'
+import { generateA4Invoice }
+  from '@/lib/invoices/generateA4Invoice'
 import { POSThermalReceipt }
   from '@/components/pos/POSThermalReceipt'
 
@@ -79,6 +82,10 @@ const PAYMENT_METHODS = [
 ]
 
 export default function POSPage() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const supabase = createClient()
   const router = useRouter()
   const { profile } = useBusinessProfile()
@@ -244,9 +251,7 @@ export default function POSPage() {
       }
       if (e.key === 'F9') {
         e.preventDefault()
-        if (lastInvoice) {
-          window.print()
-        }
+        handlePrintThermal()
       }
       if (e.key === 'F10') {
         e.preventDefault()
@@ -637,10 +642,108 @@ export default function POSPage() {
     )
   }, [lastInvoice, profile])
 
-  const handlePrintThermal = useCallback(() => {
-    if (!lastInvoice) return
-    window.print()
-  }, [lastInvoice])
+  const handlePrintThermal = useCallback(async () => {
+    if (!lastInvoice) {
+      toast.error('Print Failed', 'No active invoice available to print');
+      return;
+    }
+
+    // Safety check: wait up to 500ms for #pos-thermal-slip to mount and contain rendered items
+    let slipElement = document.getElementById('pos-thermal-slip');
+    for (let attempts = 0; attempts < 5 && !slipElement; attempts++) {
+      await new Promise((r) => setTimeout(r, 100));
+      slipElement = document.getElementById('pos-thermal-slip');
+    }
+
+    if (!slipElement) {
+      toast.error('Print Error', 'Thermal receipt layout failed to render in DOM');
+      return;
+    }
+
+    // Verify receipt has valid rendered content
+    const renderedItemsCount = slipElement.querySelectorAll('.pos-item-row').length;
+    const hasItems = renderedItemsCount > 0 || (lastInvoice.items && lastInvoice.items.length > 0);
+    if (!hasItems) {
+      toast.error('Print Halted', 'Thermal receipt contains no line items');
+      return;
+    }
+
+    // ── Retrieve Saved Default Thermal Printer ──
+    const electronAPI = typeof window !== 'undefined' ? (window as any).electronAPI : null;
+    let savedPrinterName: string | null = null;
+    if (typeof window !== 'undefined') {
+      savedPrinterName = localStorage.getItem('noxis_thermal_printer') || localStorage.getItem('default_thermal_printer');
+    }
+    if (!savedPrinterName && electronAPI && typeof electronAPI.getConfig === 'function') {
+      try {
+        savedPrinterName = await electronAPI.getConfig('thermal_printer');
+      } catch {}
+    }
+
+    // ── Multi-Tier Fallback Flow ──
+    if (electronAPI && typeof electronAPI.printThermalSilent === 'function') {
+      try {
+        const res = await electronAPI.printThermalSilent({
+          htmlContent: slipElement.outerHTML,
+          printerName: savedPrinterName && savedPrinterName.trim() ? savedPrinterName.trim() : undefined,
+          width: '80mm',
+        });
+        if (res && res.success) {
+          toast.success('Thermal Print Dispatched', 'Receipt printed silently to thermal roll');
+          return;
+        }
+
+        // Silent print rejected, offline, or timed out — immediately fallback to 80mm PDF
+        console.warn('[POS] Silent print failed, falling back to 80mm PDF:', res?.error);
+        await generateThermalPDF(
+          lastInvoice,
+          lastInvoice.items || [],
+          profile,
+          {
+            currency,
+            cashierName: currentUser?.name || currentUser?.email || 'Terminal Operator',
+            autoPrint: false,
+          }
+        );
+        toast.warning('Printer Offline', 'Printer offline - receipt saved as PDF');
+      } catch (err: any) {
+        console.error('[POS] Electron silent print error, falling back to 80mm PDF:', err);
+        try {
+          await generateThermalPDF(
+            lastInvoice,
+            lastInvoice.items || [],
+            profile,
+            {
+              currency,
+              cashierName: currentUser?.name || currentUser?.email || 'Terminal Operator',
+              autoPrint: false,
+            }
+          );
+          toast.warning('Printer Offline', 'Printer offline - receipt saved as PDF');
+        } catch (pdfErr) {
+          console.error('[POS] Fallback PDF generation also failed:', pdfErr);
+          window.print();
+        }
+      }
+    } else {
+      // ── Web Browser Fallback ──
+      try {
+        window.print();
+      } catch {
+        await generateThermalPDF(
+          lastInvoice,
+          lastInvoice.items || [],
+          profile,
+          {
+            currency,
+            cashierName: currentUser?.name || currentUser?.email || 'Terminal Operator',
+            autoPrint: false,
+          }
+        );
+        toast.info('Receipt Saved', 'Printer offline - receipt saved as PDF');
+      }
+    }
+  }, [lastInvoice, profile, currency, currentUser]);
 
   const handleDownloadThermalPDF = useCallback(async () => {
     if (!lastInvoice) return
@@ -655,19 +758,64 @@ export default function POSPage() {
     )
   }, [lastInvoice, profile, currency, currentUser])
 
-  const handlePrintA4 = useCallback(async () => {
-    if (!lastInvoice) return
-    await generateInvoicePDF({
-      ...lastInvoice,
-      items: lastInvoice.items || [],
-      businessName: profile?.business_name,
-      businessAddress: profile?.address,
-      businessPhone: profile?.phone,
-      ntnNumber: (profile as any)?.ntn_number,
-      strnNumber: (profile as any)?.strn_number,
-      currency,
-    })
-  }, [lastInvoice, profile, currency])
+  const handlePrintA4 = useCallback(() => {
+    if (!lastInvoice) {
+      toast.error('Print Failed', 'No active invoice completed yet');
+      return;
+    }
+
+    try {
+      console.log('[POS] Initiating A4 Invoice export for:', lastInvoice.invoice_number);
+
+      const items = (lastInvoice.items || []).map((item: any) => ({
+        name: item.name || item.description || item.sku_code || 'Product Item',
+        description: item.description || item.name || '',
+        quantity: Number(item.quantity) || 1,
+        unit: item.unit || 'Suits',
+        rate: Number(item.unitPrice ?? item.unit_price ?? item.price ?? item.rate ?? 0),
+        price: Number(item.unitPrice ?? item.unit_price ?? item.price ?? item.rate ?? 0),
+        total: Number(item.lineTotal ?? item.line_total ?? (Number(item.quantity || 1) * Number(item.unitPrice ?? item.price ?? 0))),
+        discount: Number(item.discountAmount || item.discount || 0),
+      }));
+
+      const grandTotal = Number(lastInvoice.total_amount ?? lastInvoice.grandTotal ?? lastInvoice.total ?? 0);
+      const subtotal = Number(lastInvoice.subtotal ?? grandTotal);
+      const discount = Number(lastInvoice.discountAmount ?? lastInvoice.discount ?? 0);
+      const tax = Number(lastInvoice.taxAmount ?? lastInvoice.tax ?? 0);
+      const amountPaid = Number(lastInvoice.amount_paid ?? grandTotal);
+      const balanceDue = Number(lastInvoice.balance_due ?? (grandTotal > amountPaid ? grandTotal - amountPaid : 0));
+
+      generateA4Invoice({
+        invoiceNumber: String(lastInvoice.invoice_number || lastInvoice.invoiceNumber || lastInvoice.id || 'INV-000000'),
+        invoiceDate: lastInvoice.createdAt ? new Date(lastInvoice.createdAt).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' }) : new Date().toLocaleDateString('en-PK'),
+        dueDate: lastInvoice.dueDate || undefined,
+        customer: lastInvoice.partyName || 'Walk-in Customer',
+        customerPhone: lastInvoice.partyPhone || undefined,
+        customerAddress: lastInvoice.partyAddress || undefined,
+        businessName: profile?.business_name || 'NOXIS RETAIL',
+        businessAddress: profile?.address || undefined,
+        businessPhone: profile?.phone || undefined,
+        ntn: (profile as any)?.ntn_number || (profile as any)?.ntn || undefined,
+        strn: (profile as any)?.strn_number || (profile as any)?.strn || undefined,
+        items,
+        subtotal,
+        discount,
+        tax,
+        total: grandTotal,
+        amountPaid,
+        balanceDue,
+        currency,
+        paymentMethod: Array.isArray(lastInvoice.payments) && lastInvoice.payments.length > 0
+          ? lastInvoice.payments.map((p: any) => p.method?.toUpperCase()).join(' / ')
+          : undefined,
+      });
+
+      toast.success('A4 PDF Generated', `Invoice_${lastInvoice.invoice_number || 'Sale'}.pdf`);
+    } catch (err: any) {
+      console.error('A4 Generation Error:', err);
+      toast.error('A4 PDF Generation Failed', err?.message || 'Could not export A4 Invoice');
+    }
+  }, [lastInvoice, profile, currency]);
 
   // Focus search without scrolling ancestor viewport
   useEffect(() => {
@@ -1358,16 +1506,30 @@ export default function POSPage() {
         </div>
       )}
 
-      {/* Hidden Thermal Slip for direct F9 / Print execution even if modal closed */}
-      {!showReceipt && lastInvoice && (
-        <div className="hidden">
-          <POSThermalReceipt
-            invoice={lastInvoice}
-            profile={profile}
-            currency={currency}
-            cashierName={currentUser?.name || currentUser?.email || 'Terminal Cashier'}
-          />
-        </div>
+      {/* ── ROOT-LEVEL THERMAL PRINT SLIP (ALWAYS READY FOR F9 & PRINT) ── */}
+      {mounted && typeof document !== 'undefined' && lastInvoice ? (
+        createPortal(
+          <div id="pos-print-root" className="hidden print:block">
+            <POSThermalReceipt
+              invoice={lastInvoice}
+              profile={profile}
+              currency={currency}
+              cashierName={currentUser?.name || currentUser?.email || 'Terminal Cashier'}
+            />
+          </div>,
+          document.body
+        )
+      ) : (
+        lastInvoice && (
+          <div id="pos-print-root" className="hidden print:block">
+            <POSThermalReceipt
+              invoice={lastInvoice}
+              profile={profile}
+              currency={currency}
+              cashierName={currentUser?.name || currentUser?.email || 'Terminal Cashier'}
+            />
+          </div>
+        )
       )}
     </div>
   )

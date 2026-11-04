@@ -52,6 +52,8 @@ const os_1 = require("os");
 const dbKeyManager_1 = require("../src/lib/security/dbKeyManager");
 const onvifService_1 = require("./services/onvifService");
 const mediamtxService_1 = require("./services/mediamtxService");
+const thermalPrintService_1 = require("./services/thermalPrintService");
+const scaleService_1 = require("./services/scaleService");
 // ── Licensing & Security ──────────────────────────────────────────────────────
 const hwid_1 = require("./services/hwid");
 const trialEngine_1 = require("./services/trialEngine");
@@ -62,7 +64,7 @@ const server_1 = require("../src/lib/mobile-bridge/server");
 const autonomousUpdateEngine_1 = require("./services/autonomousUpdateEngine");
 const companionAppCacher_1 = require("./services/companionAppCacher");
 // ── Store ─────────────────────────────────────────────────────────────────────
-const store_1 = require("./store");
+const store_1 = __importStar(require("./store"));
 // ─────────────────────────────────────────────
 // 0. GLOBAL REFERENCES
 // ─────────────────────────────────────────────
@@ -1022,7 +1024,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             startupLog(`[Update] Download: ${pct}% (${(transferred / 1048576).toFixed(1)}MB / ${(total / 1048576).toFixed(1)}MB)`);
             safeSend(win, 'update-status', {
                 status: 'downloading',
-                version: latestUpdateInfo?.version || '14.0.0',
+                version: latestUpdateInfo?.version || '14.0.25',
                 percent: pct,
                 transferred,
                 total,
@@ -1214,75 +1216,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     electron_1.ipcMain.handle('app:get-zoom-factor', () => {
         return mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents.getZoomFactor() : 1.0;
     });
-    // Serial port for weighbridge
-    electron_1.ipcMain.handle('fetchScaleWeight', async () => {
-        try {
-            // Most Pakistani weighbridges output
-            // a simple string like "0044.50 KG"
-            // via RS232/COM port
-            // Check which COM port is available
-            const { SerialPort } = require('serialport');
-            const ports = await SerialPort.list();
-            const weightPort = ports.find((p) => p.manufacturer?.includes('Prolific') ||
-                p.path?.includes('COM'));
-            if (!weightPort) {
-                return {
-                    success: false,
-                    reason: 'No weighbridge detected'
-                };
-            }
-            const port = new SerialPort({
-                path: weightPort.path,
-                baudRate: 9600,
-            });
-            return new Promise((resolve) => {
-                let data = '';
-                const timeout = setTimeout(() => {
-                    try {
-                        port.close();
-                    }
-                    catch { }
-                    resolve({
-                        success: false,
-                        reason: 'Weighbridge timeout'
-                    });
-                }, 3000);
-                port.on('data', (chunk) => {
-                    data += chunk.toString();
-                    const match = data.match(/(\d+\.?\d*)\s*(KG|kg|Kg)/);
-                    if (match) {
-                        clearTimeout(timeout);
-                        try {
-                            port.close();
-                        }
-                        catch { }
-                        resolve({
-                            success: true,
-                            weight: parseFloat(match[1]),
-                            unit: 'KG',
-                        });
-                    }
-                });
-                port.on('error', (err) => {
-                    clearTimeout(timeout);
-                    try {
-                        port.close();
-                    }
-                    catch { }
-                    resolve({
-                        success: false,
-                        reason: err.message || 'Port error'
-                    });
-                });
-            });
-        }
-        catch {
-            return {
-                success: false,
-                reason: 'SerialPort not available'
-            };
-        }
-    });
+    // ── Thermal Printing & RS-232 Weighbridge Subsystems ───────────────────────
+    (0, thermalPrintService_1.registerThermalPrintHandlers)(() => mainWindow);
+    (0, scaleService_1.registerScaleService)(() => mainWindow);
     const executeUpdateCheck = async (simulateTargetVersion) => {
         try {
             const policy = (0, autonomousUpdateEngine_1.getVersionPolicy)();
@@ -1518,7 +1454,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             releaseName: latestUpdateInfo?.releaseName,
             releaseNotes: latestUpdateInfo?.releaseNotes,
             releaseDate: latestUpdateInfo?.releaseDate,
-            currentVersion: electron_1.app.getVersion() || '14.0.24',
+            currentVersion: electron_1.app.getVersion() || '14.0.25',
             baselineVersion: policy.baselineVersion,
             tier: policy.tier,
             maxAllowedMajor: policy.maxAllowedMajor,
@@ -2123,6 +2059,24 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         }
     });
     electron_1.ipcMain.handle('get-app-data-path', () => electron_1.app.getPath('userData'));
+    electron_1.ipcMain.handle('set-config', (_, key, value) => {
+        try {
+            store_1.default.set(`config_${key}`, value);
+            return true;
+        }
+        catch (e) {
+            console.error('Failed to set config:', e);
+            return false;
+        }
+    });
+    electron_1.ipcMain.handle('get-config', (_, key) => {
+        try {
+            return store_1.default.get(`config_${key}`) || null;
+        }
+        catch {
+            return null;
+        }
+    });
     // ── AUTH PERSISTENCE ──
     electron_1.ipcMain.handle('store:saveSession', (_, session) => {
         (0, store_1.saveSession)(session);
@@ -2611,6 +2565,23 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                     }
                 });
             }
+            let devServerAlreadyRunning = false;
+            if (isDev) {
+                devServerAlreadyRunning = await new Promise((resolve) => {
+                    const testReq = http.get(`http://127.0.0.1:${PORT}`, () => resolve(true));
+                    testReq.on('error', () => resolve(false));
+                    testReq.setTimeout(800, () => {
+                        testReq.destroy();
+                        resolve(false);
+                    });
+                });
+            }
+            if (isDev && devServerAlreadyRunning) {
+                startupLog(`[Electron] Active development server detected on http://127.0.0.1:${PORT}. Connecting directly.`);
+                createSplashWindow();
+                await createMainWindow();
+                return;
+            }
             await killAnyProcessOnPort(PORT);
             // Find port
             PORT = await reserveAvailablePort(PORT);
@@ -2931,6 +2902,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 tunnelProcess ? killProcess(tunnelProcess, 'Cloudflare Tunnel') : Promise.resolve(),
             ]).then(() => {
                 (0, mediamtxService_1.stopMediamtx)();
+                (0, scaleService_1.stopScaleService)();
                 visionProcess = null;
                 nextServer = null;
                 tunnelProcess = null;

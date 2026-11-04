@@ -453,7 +453,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       {powerCutNotice && !showRecoveryModal && (
-        <div className="bg-[#0B0F19] border-b border-cyan-500/30 px-4 py-2 flex items-center justify-between text-xs font-mono z-[70] shadow-lg sticky top-10">
+        <div className="bg-[#0B0F19] border-b border-cyan-500/30 px-4 py-2 flex items-center justify-between text-xs font-mono z-[70] shadow-lg sticky top-10 print:hidden noxis-resilience-banner" data-resilience-banner="true">
           <div className="flex items-center gap-2.5 text-cyan-300">
             <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
             <span className="font-bold uppercase tracking-wider text-white">Noxis Resilience:</span>
@@ -531,7 +531,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         >
           <ExpiryBanner />
           <div
-            className="fixed inset-0 pointer-events-none z-0 overflow-hidden"
+            className="fixed inset-0 pointer-events-none z-0 overflow-hidden print:hidden no-print"
             aria-hidden="true"
           >
             {/* Noxis Hub watermark */}
@@ -623,7 +623,7 @@ function ZoomSafetyPill() {
   if (!isZoomedOut) return null;
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[999] bg-[#0F172A] border border-white/10 shadow-2xl px-4 py-2 rounded-full flex items-center gap-3 text-xs text-white">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[999] bg-[#0F172A] border border-white/10 shadow-2xl px-4 py-2 rounded-full flex items-center gap-3 text-xs text-white print:hidden no-print">
       <span className="text-amber-400 font-bold">🔍 Display Shrunken / Zoomed Out</span>
       <button
         onClick={() => {

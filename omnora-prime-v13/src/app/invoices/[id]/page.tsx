@@ -479,7 +479,7 @@ export default function InvoiceDetailPage() {
     }
   });
 
-  const { data: items } = useQuery<InvoiceItem[]>({
+  const { data: items, isLoading: itemsLoading } = useQuery<InvoiceItem[]>({
     queryKey: ['invoice_items', invoiceId],
     queryFn: async () => {
       const targetId = invoice?.id || invoiceId;
@@ -796,6 +796,20 @@ export default function InvoiceDetailPage() {
     }
   };
 
+  
+  const handlePrintInvoice = () => {
+    if (itemsLoading) {
+      toast.info('Compiling Items', 'Please wait for all invoice items to load before printing.');
+      return;
+    }
+    const currentItems = items || (invoice as any)?.items || [];
+    if (currentItems.length === 0) {
+      toast.error('Print Cancelled', 'No line items found for this invoice.');
+      return;
+    }
+    window.print();
+  };
+
   const handleDownloadPDF = async () => {
     if (!invoice) return;
     try {
@@ -863,7 +877,7 @@ export default function InvoiceDetailPage() {
            <h1 className="text-[10px] uppercase font-black tracking-[0.3em] text-gray-400">Statement of Account: {invoice.invoice_no}</h1>
            
            <div className="ml-auto flex items-center space-x-3">
-              <button onClick={() => window.print()} className="flex items-center space-x-2 bg-white/5 hover:bg-white/10 px-4 py-2 text-[10px] uppercase font-black tracking-widest border border-white/5 transition-all">
+              <button onClick={handlePrintInvoice} disabled={itemsLoading} className="flex items-center space-x-2 bg-white/5 hover:bg-white/10 px-4 py-2 text-[10px] uppercase font-black tracking-widest border border-white/5 transition-all disabled:opacity-50">
                  <Printer size={12} />
                  <span>Print</span>
               </button>
@@ -873,7 +887,7 @@ export default function InvoiceDetailPage() {
         <div className="p-8 max-w-[1600px] mx-auto w-full flex flex-col lg:flex-row gap-8 print:p-0 print:max-w-none">
            {/* LEFT: INVOICE DOCUMENT (60%) */}
            <section className="flex-1 lg:max-w-[1000px] print:w-full">
-              <div className="invoice-preview bg-white text-black min-h-[1100px] p-12 shadow-2xl shadow-black/50 flex flex-col print:shadow-none print:p-8">
+              <div data-invoice-printable="true" className="invoice-preview bg-white text-black min-h-[1100px] p-12 shadow-2xl shadow-black/50 flex flex-col print:shadow-none print:p-8">
                  {/* Header */}
                  <div className="flex justify-between items-start mb-16">
                     <div className="space-y-4">
@@ -947,7 +961,7 @@ export default function InvoiceDetailPage() {
                           </tr>
                        </thead>
                        <tbody className="text-[11px]">
-                          {items?.map((item: InvoiceItem) => (
+                          {(items && items.length > 0 ? items : ((invoice as any)?.items || [])).map((item: InvoiceItem) => (
                             <tr key={item.id} className="border-b border-gray-100 group">
                                <td className="py-4 px-2">
                                   <p className="font-bold uppercase">{item.sku?.name || item.description}</p>

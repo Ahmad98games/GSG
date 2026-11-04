@@ -81,7 +81,7 @@ const TABS = [
   { id: 'staff', label: 'Staff & Users', icon: Users, href: '/settings/users' },
   { id: 'branches', label: 'Factory Branches', icon: Building2, href: '/settings/branches' },
   { id: 'opening-balances', label: 'Opening Balances', icon: DollarSign, href: '/settings/opening-balances' },
-  { id: 'hardware', label: 'Hardware Integrations', icon: Zap },
+  { id: 'hardware', label: 'Hardware Integrations', icon: Zap, href: '/settings/hardware' },
   { id: 'data', label: 'Data Management', icon: Database },
   { id: 'backup', label: 'Backup & Restore', icon: Download, href: '/settings/backup' },
   { id: 'updates', label: 'Software Updates', icon: RefreshCw, href: '/settings/updates' },
@@ -311,7 +311,7 @@ export default function SettingsPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             licenseKey: cleanKey,
-            appVersion: '13.0.0',
+            appVersion: process.env.NEXT_PUBLIC_APP_VERSION || '14.0.27',
             nonce,
           }),
         });

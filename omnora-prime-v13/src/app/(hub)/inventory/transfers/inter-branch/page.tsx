@@ -228,7 +228,7 @@ export default function InterBranchTransferPage() {
           </div>
           <div>
             <h1 className="text-xl font-black text-white uppercase tracking-[0.2em]">Inter-Branch Logistics</h1>
-            <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">Cross-Site Asset Orchestration v13.0</p>
+            <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">Cross-Site Asset Orchestration v{process.env.NEXT_PUBLIC_APP_VERSION || '14.0.27'}</p>
           </div>
         </div>
       </div>

@@ -15,7 +15,7 @@ import {
   ArrowUpRight
 } from 'lucide-react'
 
-const CURRENT_VERSION = '13.0.1'
+const CURRENT_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '14.0.27'
 const STORAGE_KEY = 'noxis_last_viewed_version'
 
 interface FixItem {
@@ -31,8 +31,8 @@ const FIXES: FixItem[] = [
     icon: <Sparkles className="text-emerald-400" size={18} />,
     tag: 'Production Release',
     tagColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-    title: 'Noxis Hub v13.0.1 — Official Production Gold Master',
-    description: 'Initial production rollout featuring full industrial ERP dual-entry Khata ledger with interactive voucher print preview, offline cache persistence, and hardware-bound security.'
+    title: `Noxis Hub v${CURRENT_VERSION} — Industrial Edition Gold Master`,
+    description: 'Enterprise release featuring silent thermal receipt printing via Electron IPC, RS-232 industrial weighbridge telemetry stream, full A4 PDF invoice generation, and double-entry ledger resilience.'
   },
   {
     icon: <Zap className="text-cyan-400" size={18} />,
@@ -177,7 +177,7 @@ export default function ReleaseNotesModal() {
                   Update Applied • v{CURRENT_VERSION}
                 </span>
                 <span className="text-[10px] font-mono text-gray-500">
-                  Build 2026.09
+                  Build 2026.11
                 </span>
               </div>
               <h2 className="text-lg font-bold text-white tracking-tight uppercase italic flex items-center gap-2">

@@ -571,6 +571,7 @@ export default function NewInvoicePage() {
         }
 
         await clearDraft();
+        queryClient.invalidateQueries({ queryKey: ['invoices'] });
         toast.success("Invoice created successfully");
         router.push(`/invoices/${invId}`);
         return;

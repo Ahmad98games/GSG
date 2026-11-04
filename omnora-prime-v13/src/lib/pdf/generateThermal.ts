@@ -1,3 +1,80 @@
+
+export function buildThermalHtmlReceipt(
+  invoice: any,
+  items: any[] = [],
+  profile: any = {},
+  options?: { currency?: string; cashierName?: string }
+): string {
+  const currency = options?.currency || profile?.base_currency || 'Rs.';
+  const cashierName = options?.cashierName || 'Cashier';
+  const businessName = profile?.business_name || 'NOXIS RETAIL';
+  const address = profile?.address || '';
+  const phone = profile?.phone || '';
+  const ntn = profile?.ntn_number || profile?.ntn || '';
+  const strn = profile?.strn_number || profile?.strn || '';
+  const dateStr = invoice?.createdAt ? new Date(invoice.createdAt).toLocaleString('en-PK') : new Date().toLocaleString('en-PK');
+  const grandTotal = Number(invoice?.total_amount ?? invoice?.grandTotal ?? invoice?.total ?? 0);
+  const amountPaid = Number(invoice?.amount_paid ?? grandTotal);
+  const change = Number(invoice?.change ?? (amountPaid > grandTotal ? amountPaid - grandTotal : 0));
+  const balanceDue = Number(invoice?.balance_due ?? (grandTotal > amountPaid ? grandTotal - amountPaid : 0));
+
+  const itemsHtml = items.map((it: any) => {
+    const qty = Number(it.quantity || it.qty || 1);
+    const unitPrice = Number(it.unitPrice || it.unit_price || 0);
+    const lineTotal = Number(it.lineTotal || it.line_total || qty * unitPrice);
+    return `
+      <div class="pos-item-row" style="margin-bottom: 6px;">
+        <div style="font-weight: bold; text-transform: uppercase;">${it.name || it.description || it.sku_code || 'Item'}</div>
+        <div style="display: flex; justify-content: space-between; font-size: 11px;">
+          <span>${qty} ${it.unit || 'pcs'} x ${unitPrice.toFixed(2)}</span>
+          <span style="font-weight: bold;">${currency} ${lineTotal.toFixed(2)}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div id="pos-thermal-slip" data-rendered-items="${items.length}" style="width: 100%; max-width: 80mm; font-family: monospace; font-size: 12px; padding: 4px; color: black; background: white;">
+      <div style="text-align: center; border-bottom: 1px dashed black; padding-bottom: 8px; margin-bottom: 8px;">
+        <h2 style="font-size: 16px; margin: 0; font-weight: 900; text-transform: uppercase;">${businessName}</h2>
+        ${address ? `<p style="margin: 2px 0; font-size: 10px;">${address}</p>` : ''}
+        ${phone ? `<p style="margin: 2px 0; font-size: 10px;">Tel: ${phone}</p>` : ''}
+        ${(ntn || strn) ? `<p style="margin: 2px 0; font-size: 9px;">NTN: ${ntn} ${strn ? '| STRN: ' + strn : ''}</p>` : ''}
+      </div>
+      <div style="border-bottom: 1px dashed black; padding-bottom: 6px; margin-bottom: 8px; font-size: 11px;">
+        <div><b>RECEIPT #:</b> ${invoice?.invoice_number || invoice?.invoice_no || 'N/A'}</div>
+        <div><b>DATE:</b> ${dateStr}</div>
+        <div><b>CASHIER:</b> ${cashierName}</div>
+        ${invoice?.partyName ? `<div><b>CUSTOMER:</b> ${invoice.partyName}</div>` : ''}
+      </div>
+      <div style="border-bottom: 1px solid black; padding-bottom: 4px; margin-bottom: 6px; font-weight: bold; display: flex; justify-content: space-between; font-size: 11px;">
+        <span>ITEM</span>
+        <span>TOTAL</span>
+      </div>
+      <div style="border-bottom: 1px dashed black; padding-bottom: 6px; margin-bottom: 6px;">
+        ${itemsHtml}
+      </div>
+      <div style="font-size: 12px; line-height: 1.5; margin-bottom: 8px;">
+        <div style="display: flex; justify-content: space-between; font-weight: 900; font-size: 14px; border-top: 1px solid black; padding-top: 4px;">
+          <span>TOTAL:</span>
+          <span>${currency} ${grandTotal.toFixed(2)}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span>PAID:</span>
+          <span>${currency} ${amountPaid.toFixed(2)}</span>
+        </div>
+        ${change > 0 ? `<div style="display: flex; justify-content: space-between;"><span>CHANGE:</span><span>${currency} ${change.toFixed(2)}</span></div>` : ''}
+        ${balanceDue > 0 ? `<div style="display: flex; justify-content: space-between; color: red;"><span>BALANCE DUE:</span><span>${currency} ${balanceDue.toFixed(2)}</span></div>` : ''}
+      </div>
+      <div style="text-align: center; border-top: 1px dashed black; padding-top: 8px; font-size: 10px;">
+        <p style="margin: 2px 0;">Exchange within 7 days with receipt.</p>
+        <p style="margin: 2px 0; font-weight: bold;">THANK YOU FOR YOUR VISIT</p>
+        <p style="margin: 2px 0; font-size: 8px;">NOXIS HUB INDUSTRIAL POS</p>
+      </div>
+    </div>
+  `;
+}
+
 import jsPDF from 'jspdf'
 
 export interface ThermalReceiptOptions {
@@ -251,21 +328,39 @@ export async function generateThermalReceipt(
   doc.text('NOXIS HUB INDUSTRIAL POS • OMNORA LABS', PAGE_W / 2, y, { align: 'center' })
 
   if (options?.autoPrint) {
-    doc.autoPrint()
-    const blobUrl = doc.output('bloburl')
-    const iframe = document.createElement('iframe')
-    iframe.style.position = 'fixed'
-    iframe.style.right = '0'
-    iframe.style.bottom = '0'
-    iframe.style.width = '0'
-    iframe.style.height = '0'
-    iframe.style.border = '0'
-    iframe.src = String(blobUrl)
-    document.body.appendChild(iframe)
+    const electronAPI = typeof window !== 'undefined' ? (window as any).electronAPI : null;
+    if (electronAPI && typeof electronAPI.printThermalSilent === 'function') {
+      try {
+        const thermalHtml = buildThermalHtmlReceipt(invoice, items, profile, options);
+        const result = await electronAPI.printThermalSilent({
+          htmlContent: thermalHtml,
+          width: '80mm',
+        });
+        if (result && result.success) {
+          return;
+        }
+      } catch (e) {
+        console.warn('[ThermalPDF] Silent print failed, falling back to iframe print:', e);
+      }
+    }
+
+    doc.autoPrint();
+    const blobUrl = doc.output('bloburl');
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.src = String(blobUrl);
+    document.body.appendChild(iframe);
     setTimeout(() => {
-      iframe.contentWindow?.print()
-    }, 500)
+      iframe.contentWindow?.print();
+    }, 500);
   } else {
-    doc.save(`Thermal-${invoice?.invoice_number || 'Receipt'}.pdf`)
+    doc.save(`Thermal-${invoice?.invoice_number || 'Receipt'}.pdf`);
   }
 }
+
+export const generateThermalPDF = generateThermalReceipt;
