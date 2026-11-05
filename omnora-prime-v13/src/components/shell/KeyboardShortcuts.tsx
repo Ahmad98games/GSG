@@ -171,7 +171,7 @@ export default function KeyboardShortcuts() {
 
             <div className="mt-12 pt-6 border-t border-white/5 text-center">
               <p className="text-[9px] text-gray-600 font-bold uppercase tracking-widest">
-                Noxis OS v{process.env.NEXT_PUBLIC_APP_VERSION || '14.0.27'} • Optimized for Industrial Workflow
+                Noxis OS v{process.env.NEXT_PUBLIC_APP_VERSION || '14.0.28'} • Optimized for Industrial Workflow
               </p>
             </div>
           </motion.div>

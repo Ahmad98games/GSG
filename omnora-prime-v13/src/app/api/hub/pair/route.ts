@@ -11,7 +11,7 @@ export async function GET() {
   return NextResponse.json({
     status: 'ok',
     message: 'Pairing endpoint ready',
-    version: process.env.NEXT_PUBLIC_APP_VERSION || '14.0.27',
+    version: process.env.NEXT_PUBLIC_APP_VERSION || '14.0.28',
     port: 7447,
   });
 }

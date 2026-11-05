@@ -753,7 +753,7 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
                 countryCode: profile.country_code,
                 // Connection metadata
                 connectedDevices: getPairedCount(),
-                hubVersion: '14.0.27',
+                hubVersion: '14.0.28',
                 requestSync: true,
             };
             send(ws, ackPayload);
@@ -1041,7 +1041,7 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
                                 totalKarigars: kCount,
                                 presentToday: aCount,
                                 pendingDispatch: dCount,
-                                hubVersion: process.env.NEXT_PUBLIC_APP_VERSION || '14.0.27',
+                                hubVersion: process.env.NEXT_PUBLIC_APP_VERSION || '14.0.28',
                                 tier: client.tier,
                                 connectedDevices: getPairedCount()
                             }];

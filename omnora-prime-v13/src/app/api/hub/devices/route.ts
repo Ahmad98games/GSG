@@ -204,7 +204,7 @@ export async function POST(req: Request) {
       status: 'paired',
       deviceId: rawDeviceId,
       deviceLabel: rawLabel,
-      hubVersion: process.env.NEXT_PUBLIC_APP_VERSION || '14.0.27',
+      hubVersion: process.env.NEXT_PUBLIC_APP_VERSION || '14.0.28',
       timestamp: Date.now(),
     });
   } catch (error: any) {

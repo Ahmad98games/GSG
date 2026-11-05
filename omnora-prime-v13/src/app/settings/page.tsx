@@ -311,7 +311,7 @@ export default function SettingsPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             licenseKey: cleanKey,
-            appVersion: process.env.NEXT_PUBLIC_APP_VERSION || '14.0.27',
+            appVersion: process.env.NEXT_PUBLIC_APP_VERSION || '14.0.28',
             nonce,
           }),
         });

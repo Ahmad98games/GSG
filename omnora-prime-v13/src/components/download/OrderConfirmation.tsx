@@ -28,7 +28,7 @@ export function OrderConfirmation({
       const params = new URLSearchParams();
       if (orderId) params.append('orderId', orderId);
       if (licenseKey) params.append('licenseKey', licenseKey);
-      params.append('fileName', `Noxis Setup ${process.env.NEXT_PUBLIC_APP_VERSION || '14.0.27'}.exe`);
+      params.append('fileName', `Noxis Setup ${process.env.NEXT_PUBLIC_APP_VERSION || '14.0.28'}.exe`);
 
       const response = await fetch(`/api/download-software?${params.toString()}`);
       const data = await response.json();
@@ -40,7 +40,7 @@ export function OrderConfirmation({
       // Trigger direct browser download
       const link = document.createElement('a');
       link.href = data.downloadUrl;
-      link.setAttribute('download', `Noxis Setup ${process.env.NEXT_PUBLIC_APP_VERSION || '14.0.27'}.exe`);
+      link.setAttribute('download', `Noxis Setup ${process.env.NEXT_PUBLIC_APP_VERSION || '14.0.28'}.exe`);
       link.target = '_blank';
       document.body.appendChild(link);
       link.click();

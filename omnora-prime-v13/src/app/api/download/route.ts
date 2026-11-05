@@ -39,7 +39,7 @@ export async function GET(req: Request) {
   // 3. Generate Signed URL for installer
   const { data: urlData, error: uError } = await supabase.storage
     .from("installers")
-    .createSignedUrl(`NOXIS_Prime_v${process.env.NEXT_PUBLIC_APP_VERSION || '14.0.27'}_x64.exe`, 900); // 15 mins
+    .createSignedUrl(`NOXIS_Prime_v${process.env.NEXT_PUBLIC_APP_VERSION || '14.0.28'}_x64.exe`, 900); // 15 mins
 
   if (uError || !urlData) {
     return NextResponse.json({ error: "Storage connection failure" }, { status: 500 });

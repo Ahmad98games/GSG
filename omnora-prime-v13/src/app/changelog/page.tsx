@@ -4,7 +4,7 @@ import { Tag, Calendar, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-reac
 
 const RELEASES = [
   {
-    version: 'v14.0.27',
+    version: 'v14.0.28',
     date: 'November 2026',
     isCurrent: true,
     title: 'Owner WhatsApp Zero-Loss Persistence, Fitness & Gym Vertical Integration & Direct Byte-Range Resumable Auto-Updater',
@@ -14,7 +14,7 @@ const RELEASES = [
       'Fitness & Sports Nutrition Vertical: Fully integrated Gym & Fitness Nutrition mode across calculators (margin, expiry, weight, EMI, delivery), terminology, and sidebar filters.',
       'Resumable Byte-Range Auto-Updater: Disabled Windows NSIS differential delta blockmap loops to ensure smooth, freeze-free 100% update finalization.',
       'Cloud Database Auto-Sync Trigger: Created automated Supabase database triggers keeping phone and owner_phone synchronized seamlessly across all business profiles.',
-      'Software Update Delivery: Released official verified desktop production build v14.0.27.',
+      'Software Update Delivery: Released official verified desktop production build v14.0.28.',
     ],
   },
   {
@@ -174,7 +174,7 @@ const RELEASES = [
 ]
 
 export default function ChangelogPage() {
-  const [openVersions, setOpenVersions] = useState<string[]>(['v14.0.27'])
+  const [openVersions, setOpenVersions] = useState<string[]>(['v14.0.28'])
 
   const toggleVersion = (v: string) => {
     setOpenVersions(prev =>
