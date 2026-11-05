@@ -21,7 +21,8 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const search = (searchParams.get('search') || '').trim();
     const barcode = (searchParams.get('barcode') || '').trim();
-    const limit = Math.min(250, parseInt(searchParams.get('limit') || '100', 10));
+    const businessId = (searchParams.get('business_id') || '').trim();
+    const limit = Math.min(5000, parseInt(searchParams.get('limit') || '1000', 10));
 
     const sqlite = getSqliteInstance();
     if (!sqlite) {
@@ -54,6 +55,11 @@ export async function GET(req: NextRequest) {
         WHERE is_active = 1
       `;
       const params: any[] = [];
+
+      if (businessId && businessId !== 'local') {
+        query += ` AND (business_id = ? OR business_id = 'local' OR business_id IS NULL)`;
+        params.push(businessId);
+      }
 
       if (barcode) {
         query += ` AND barcode = ?`;

@@ -1,6 +1,9 @@
 "use client";
 
 import React, { useState, useRef, useMemo } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { 
   Upload, Database, CheckCircle2, AlertTriangle, 
   Loader2, Download, Table, Users, Briefcase, 
@@ -103,6 +106,8 @@ const SCHEMAS: Record<ImportEntity, EntitySchema> = {
 export default function BulkDataImportPage() {
   const { businessId } = usePersona();
   const { success, error: toastError } = useToast();
+  const queryClient = useQueryClient();
+  const router = useRouter();
 
   const [activeEntity, setActiveEntity] = useState<ImportEntity>('parties');
   const [file, setFile] = useState<File | null>(null);
@@ -294,6 +299,40 @@ export default function BulkDataImportPage() {
       if (!res.ok || data.error) {
         throw new Error(data.error || "Failed to commit import");
       }
+
+      const importedRecords = data.records || mappedData;
+      const bizKey = businessId || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : 'local');
+
+      if (typeof window !== 'undefined' && bizKey) {
+        try {
+          if (activeEntity === 'skus') {
+            const cacheKey = `noxis_cached_skus_${bizKey}`;
+            const existing = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+            const map = new Map(existing.map((s: any) => [s.id || s.sku_code, s]));
+            importedRecords.forEach((r: any) => map.set(r.id || r.sku_code, r));
+            localStorage.setItem(cacheKey, JSON.stringify(Array.from(map.values())));
+          } else if (activeEntity === 'karigars') {
+            const cacheKey = `noxis_cached_karigars_${bizKey}`;
+            const existing = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+            const map = new Map(existing.map((k: any) => [k.id || k.karigar_code || k.name, k]));
+            importedRecords.forEach((r: any) => map.set(r.id || r.karigar_code || r.name, r));
+            localStorage.setItem(cacheKey, JSON.stringify(Array.from(map.values())));
+          } else if (activeEntity === 'parties') {
+            const cacheKey = `noxis_cached_parties_${bizKey}`;
+            const existing = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+            const map = new Map(existing.map((p: any) => [p.id || p.name, p]));
+            importedRecords.forEach((r: any) => map.set(r.id || r.name, r));
+            localStorage.setItem(cacheKey, JSON.stringify(Array.from(map.values())));
+          }
+        } catch (cErr) {
+          console.warn('[Import Wizard] Local cache sync warning:', cErr);
+        }
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['karigars'] });
+      queryClient.invalidateQueries({ queryKey: ['parties'] });
+      queryClient.invalidateQueries({ queryKey: ['parties_registry'] });
 
       setImportResult({
         imported: data.imported || mappedData.length,
@@ -636,7 +675,7 @@ export default function BulkDataImportPage() {
 
               {/* Result Badge */}
               {importResult && (
-                <div className="bg-emerald-500/15 border border-emerald-500/30 p-5 rounded-xl flex items-center justify-between">
+                <div className="bg-emerald-500/15 border border-emerald-500/30 p-5 rounded-xl flex flex-wrap items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
                     <CheckCircle className="text-emerald-400" size={24} />
                     <div>
@@ -646,9 +685,18 @@ export default function BulkDataImportPage() {
                       </p>
                     </div>
                   </div>
-                  <span className="text-xs font-mono font-bold text-emerald-400 px-3 py-1 rounded bg-emerald-500/20 border border-emerald-500/30">
-                    100% Ingested
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-mono font-bold text-emerald-400 px-3 py-1.5 rounded bg-emerald-500/20 border border-emerald-500/30">
+                      100% Ingested
+                    </span>
+                    <Link
+                      href={activeEntity === 'skus' ? '/inventory' : activeEntity === 'karigars' ? '/karigars' : activeEntity === 'parties' ? '/parties' : '/dashboard'}
+                      className="px-4 py-2 bg-emerald text-black text-xs font-black uppercase tracking-wider rounded-sm hover:brightness-110 flex items-center gap-2 transition-all shadow-lg"
+                    >
+                      <span>View in {activeEntity === 'skus' ? 'Inventory' : activeEntity === 'karigars' ? 'Workers Registry' : 'Parties'}</span>
+                      <ArrowRight size={14} />
+                    </Link>
+                  </div>
                 </div>
               )}
             </motion.div>

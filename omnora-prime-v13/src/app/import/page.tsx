@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useBusinessProfile } from '@/hooks/useBusinessProfile'
 import { PersonaEngine } from '@/lib/persona/PersonaEngine'
@@ -137,6 +138,7 @@ function makeBlankRow(entity: EntityKey) {
 // ─── MAIN COMPONENT ───
 export default function SmartImportPage() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const supabase = createClient()
   const { profile } = useBusinessProfile()
   const toast = useToast()
@@ -371,9 +373,10 @@ export default function SmartImportPage() {
     if (file) parseFile(file)
   }
 
-  // Import rows to Supabase
+  // Import rows to local SQLite & cloud in high-performance batch
   const runImport = async () => {
-    if (!profile?.id) return
+    const bizId = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : 'local');
+    if (!bizId) return
 
     // Filter out completely empty rows
     const filledRows = rows.filter(row =>
@@ -393,6 +396,7 @@ export default function SmartImportPage() {
     let success = 0
     let failed = 0
     const errors: string[] = []
+    const validRecords: any[] = []
 
     for (let i = 0; i < filledRows.length; i++) {
       const row = filledRows[i]
@@ -404,28 +408,64 @@ export default function SmartImportPage() {
         continue
       }
 
+      validRecords.push(config.buildRow(row, bizId, i))
+    }
+
+    if (validRecords.length > 0) {
       try {
-        const record = config.buildRow(row, profile.id, i);
-        // Persist directly via /api/import to local SQLite + cloud
         const res = await fetch('/api/import', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             entity: entity === 'skus' ? 'skus' : entity === 'parties' ? 'parties' : 'karigars',
-            rows: [record],
-            businessId: profile.id
+            rows: validRecords,
+            businessId: bizId
           })
         });
+
         const json = await res.json();
         if (res.ok && json.success) {
-          success++;
+          success = json.imported || validRecords.length;
+          const importedRecords = json.records || validRecords;
+
+          // Update local cache
+          if (typeof window !== 'undefined' && bizId) {
+            try {
+              if (entity === 'skus') {
+                const cacheKey = `noxis_cached_skus_${bizId}`;
+                const existing = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+                const map = new Map(existing.map((s: any) => [s.id || s.sku_code, s]));
+                importedRecords.forEach((r: any) => map.set(r.id || r.sku_code, r));
+                localStorage.setItem(cacheKey, JSON.stringify(Array.from(map.values())));
+              } else if (entity === 'karigars') {
+                const cacheKey = `noxis_cached_karigars_${bizId}`;
+                const existing = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+                const map = new Map(existing.map((k: any) => [k.id || k.karigar_code || k.name, k]));
+                importedRecords.forEach((r: any) => map.set(r.id || r.karigar_code || r.name, r));
+                localStorage.setItem(cacheKey, JSON.stringify(Array.from(map.values())));
+              } else if (entity === 'parties') {
+                const cacheKey = `noxis_cached_parties_${bizId}`;
+                const existing = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+                const map = new Map(existing.map((p: any) => [p.id || p.name, p]));
+                importedRecords.forEach((r: any) => map.set(r.id || r.name, r));
+                localStorage.setItem(cacheKey, JSON.stringify(Array.from(map.values())));
+              }
+            } catch (cErr) {
+              console.warn('[Smart Import] Local cache sync warning:', cErr);
+            }
+          }
+
+          queryClient.invalidateQueries({ queryKey: ['inventory'] });
+          queryClient.invalidateQueries({ queryKey: ['karigars'] });
+          queryClient.invalidateQueries({ queryKey: ['parties'] });
+          queryClient.invalidateQueries({ queryKey: ['parties_registry'] });
         } else {
-          failed++;
-          errors.push(`Row ${i+1}: ${json.error || 'Failed to save to local database'}`);
+          failed += validRecords.length;
+          errors.push(json.error || 'Failed to save to local database');
         }
       } catch (err: any) {
-        failed++;
-        errors.push(`Row ${i+1}: ${humanizeError(err)}`);
+        failed += validRecords.length;
+        errors.push(humanizeError(err));
       }
     }
 

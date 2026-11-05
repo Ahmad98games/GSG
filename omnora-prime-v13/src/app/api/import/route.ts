@@ -155,16 +155,21 @@ export async function POST(req: NextRequest) {
     if (sqlite) {
       ensureLocalSchema(sqlite);
       try {
-        const existingProfile = sqlite.prepare('SELECT id FROM business_profiles WHERE id = ?').get(effectiveBizId);
-        if (!existingProfile) {
+        if (effectiveBizId !== 'local') {
+          // Ensure the passed businessId exists in local SQLite business_profiles
+          sqlite.prepare(`
+            INSERT OR IGNORE INTO business_profiles (id, user_id, business_name, created_at, updated_at)
+            VALUES (?, 'system', 'My Business', datetime('now'), datetime('now'))
+          `).run(effectiveBizId);
+        } else {
           const firstProfile = sqlite.prepare('SELECT id FROM business_profiles LIMIT 1').get();
           if (firstProfile && firstProfile.id) {
             effectiveBizId = firstProfile.id;
           } else {
             sqlite.prepare(`
               INSERT OR IGNORE INTO business_profiles (id, user_id, business_name, created_at, updated_at)
-              VALUES (?, 'system', 'My Business', datetime('now'), datetime('now'))
-            `).run(effectiveBizId);
+              VALUES ('local', 'system', 'My Business', datetime('now'), datetime('now'))
+            `).run();
           }
         }
       } catch (bpErr: any) {
@@ -178,6 +183,8 @@ export async function POST(req: NextRequest) {
       failed: 0,
       errors: [] as string[]
     };
+
+    let processedRecords: any[] = [];
 
     // ── 1. SKUS / PRODUCTS ──────────────────────────────────────────
     if (entity === 'skus') {
@@ -271,9 +278,41 @@ export async function POST(req: NextRequest) {
       // Background Cloud Sync if Supabase is connected
       if (supabase && effectiveBizId !== 'local' && effectiveBizId !== '00000000-0000-0000-0000-000000000000') {
         try {
-          await supabase.from('skus').upsert(records, { onConflict: 'business_id,sku_code' });
-        } catch (supaErr) {
-          console.warn('[API Import] Cloud backup sync skipped:', supaErr);
+          const { data: existingCloud } = await supabase
+            .from('skus')
+            .select('id, sku_code')
+            .eq('business_id', effectiveBizId);
+
+          const cloudMap = new Map((existingCloud || []).map((s: any) => [s.sku_code?.toLowerCase(), s.id]));
+          const cloudRecords = records.map((r: any) => {
+            const matchedId = cloudMap.get(r.sku_code?.toLowerCase());
+            return {
+              id: matchedId || r.id,
+              business_id: effectiveBizId,
+              sku_code: r.sku_code,
+              barcode: r.barcode,
+              name: r.name,
+              category: r.category,
+              unit: r.unit,
+              qty_on_hand: r.qty_on_hand,
+              cost_price: r.cost_price,
+              sale_price: r.sale_price,
+              reorder_level: r.reorder_level,
+              current_location: 'warehouse',
+              is_active: true
+            };
+          });
+
+          const { error: upsertErr } = await supabase.from('skus').upsert(cloudRecords, { onConflict: 'id' });
+          if (upsertErr) {
+            console.warn('[API Import] Supabase upsert failed, inserting new SKUs:', upsertErr.message);
+            const newOnly = cloudRecords.filter((cr: any) => !cloudMap.has(cr.sku_code?.toLowerCase()));
+            if (newOnly.length > 0) {
+              await supabase.from('skus').insert(newOnly);
+            }
+          }
+        } catch (supaErr: any) {
+          console.warn('[API Import] Cloud backup sync skipped:', supaErr?.message || supaErr);
         }
       }
 
@@ -361,9 +400,38 @@ export async function POST(req: NextRequest) {
       // Background Cloud Sync if Supabase is connected
       if (supabase && effectiveBizId !== 'local' && effectiveBizId !== '00000000-0000-0000-0000-000000000000') {
         try {
-          await supabase.from('parties').upsert(records, { onConflict: 'business_id,name' });
-        } catch (supaErr) {
-          console.warn('[API Import] Cloud party backup sync skipped:', supaErr);
+          const { data: existingCloud } = await supabase
+            .from('parties')
+            .select('id, name')
+            .eq('business_id', effectiveBizId);
+
+          const nameMap = new Map((existingCloud || []).map((p: any) => [p.name?.toLowerCase(), p.id]));
+          const cloudRecords = records.map((r: any) => {
+            const matchedId = nameMap.get(r.name?.toLowerCase());
+            return {
+              id: matchedId || r.id,
+              business_id: effectiveBizId,
+              name: r.name,
+              party_type: r.party_type,
+              phone: r.phone,
+              email: r.email,
+              address: r.address,
+              current_balance: r.current_balance,
+              credit_limit: r.credit_limit,
+              is_active: true
+            };
+          });
+
+          const { error: upsertErr } = await supabase.from('parties').upsert(cloudRecords, { onConflict: 'id' });
+          if (upsertErr) {
+            console.warn('[API Import] Supabase parties upsert failed, inserting new:', upsertErr.message);
+            const newOnly = cloudRecords.filter((cr: any) => !nameMap.has(cr.name?.toLowerCase()));
+            if (newOnly.length > 0) {
+              await supabase.from('parties').insert(newOnly);
+            }
+          }
+        } catch (supaErr: any) {
+          console.warn('[API Import] Cloud party backup sync skipped:', supaErr?.message || supaErr);
         }
       }
 
@@ -451,9 +519,40 @@ export async function POST(req: NextRequest) {
       // Background Cloud Sync if Supabase is connected
       if (supabase && effectiveBizId !== 'local' && effectiveBizId !== '00000000-0000-0000-0000-000000000000') {
         try {
-          await supabase.from('karigars').upsert(records, { onConflict: 'business_id,karigar_code' });
-        } catch (supaErr) {
-          console.warn('[API Import] Cloud karigar backup sync skipped:', supaErr);
+          const { data: existingCloud } = await supabase
+            .from('karigars')
+            .select('id, karigar_code, name')
+            .eq('business_id', effectiveBizId);
+
+          const codeMap = new Map((existingCloud || []).map((k: any) => [k.karigar_code?.toLowerCase(), k.id]));
+          const nameMap = new Map((existingCloud || []).map((k: any) => [k.name?.toLowerCase(), k.id]));
+
+          const cloudRecords = records.map((r: any) => {
+            const matchedId = codeMap.get(r.karigar_code?.toLowerCase()) || nameMap.get(r.name?.toLowerCase());
+            return {
+              id: matchedId || r.id,
+              business_id: effectiveBizId,
+              karigar_code: r.karigar_code,
+              name: r.name,
+              phone: r.phone,
+              wage_type: r.wage_type,
+              monthly_salary: r.monthly_salary,
+              daily_rate: r.daily_wage,
+              piece_rate: r.piece_rate,
+              status: 'active'
+            };
+          });
+
+          const { error: upsertErr } = await supabase.from('karigars').upsert(cloudRecords, { onConflict: 'id' });
+          if (upsertErr) {
+            console.warn('[API Import] Supabase karigars upsert failed, inserting new:', upsertErr.message);
+            const newOnly = cloudRecords.filter((cr: any) => !codeMap.has(cr.karigar_code?.toLowerCase()));
+            if (newOnly.length > 0) {
+              await supabase.from('karigars').insert(newOnly);
+            }
+          }
+        } catch (supaErr: any) {
+          console.warn('[API Import] Cloud karigar backup sync skipped:', supaErr?.message || supaErr);
         }
       }
 
@@ -479,6 +578,7 @@ export async function POST(req: NextRequest) {
           effective_date: effectiveDate
         };
       });
+      processedRecords = records;
 
       if (sqlite) {
         try {
@@ -524,6 +624,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       entity,
+      records: processedRecords,
       ...results
     });
 

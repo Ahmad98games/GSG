@@ -926,6 +926,32 @@ export default function KarigarsPage() {
         } catch {}
       }
 
+      const mergedMap = new Map<string, Karigar>();
+      cachedData.forEach(item => {
+        const key = item.id || item.karigar_code || item.name;
+        if (key) mergedMap.set(key, item);
+      });
+
+      // 1. Fetch from local SQLite API (/api/karigars)
+      try {
+        const localCtrl = new AbortController();
+        const localTid = setTimeout(() => localCtrl.abort(), 1500);
+        const localRes = await fetch(`/api/karigars?business_id=${bizId}`, { signal: localCtrl.signal });
+        clearTimeout(localTid);
+        if (localRes.ok) {
+          const localJson = await localRes.json();
+          if (Array.isArray(localJson?.data)) {
+            localJson.data.forEach((item: any) => {
+              const key = item.id || item.karigar_code || item.name;
+              if (key) mergedMap.set(key, item);
+            });
+          }
+        }
+      } catch (sqErr) {
+        console.warn('[Karigars] Local SQLite /api/karigars fetch error:', sqErr);
+      }
+
+      // 2. Fetch from Supabase Cloud
       try {
         const fetchPromise = (async () => {
           let { data, error } = await supabase
@@ -951,17 +977,22 @@ export default function KarigarsPage() {
 
         const data = await Promise.race([fetchPromise, timeoutPromise]);
 
-        if (data && Array.isArray(data) && data.length > 0) {
-          if (typeof window !== 'undefined') {
-            try { localStorage.setItem(`noxis_cached_karigars_${bizId}`, JSON.stringify(data)); } catch {}
-          }
-          return data as Karigar[];
+        if (data && Array.isArray(data)) {
+          data.forEach((item: any) => {
+            const key = item.id || item.karigar_code || item.name;
+            if (key) mergedMap.set(key, item);
+          });
         }
       } catch (err) {
         console.warn('[Karigars] Fetch failed, returning cached karigars:', err);
       }
 
-      return cachedData;
+      const mergedList = Array.from(mergedMap.values());
+      if (typeof window !== 'undefined' && mergedList.length > 0) {
+        try { localStorage.setItem(`noxis_cached_karigars_${bizId}`, JSON.stringify(mergedList)); } catch {}
+      }
+
+      return mergedList.length > 0 ? mergedList : cachedData;
     },
     initialData: () => {
       if (typeof window === 'undefined') return undefined;

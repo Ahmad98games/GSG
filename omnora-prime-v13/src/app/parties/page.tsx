@@ -178,6 +178,12 @@ export default function PartiesPage() {
         } catch {}
       }
 
+      const mergedMap = new Map<string, Party>();
+      cachedData.forEach(item => {
+        const key = item.id || item.name;
+        if (key) mergedMap.set(key, item);
+      });
+
       // Check local SQLite first for 0ms offline retrieval
       try {
         const ctrl = new AbortController();
@@ -186,8 +192,11 @@ export default function PartiesPage() {
         clearTimeout(tid);
         if (localRes.ok) {
           const localJson = await localRes.json();
-          if (localJson?.data && Array.isArray(localJson.data) && localJson.data.length > 0) {
-            cachedData = localJson.data;
+          if (localJson?.data && Array.isArray(localJson.data)) {
+            localJson.data.forEach((p: any) => {
+              const key = p.id || p.name;
+              if (key) mergedMap.set(key, p);
+            });
           }
         }
       } catch {}
@@ -204,9 +213,10 @@ export default function PartiesPage() {
         const { data, error } = await Promise.race([cloudPromise, timeoutPromise]);
         if (!error && data && Array.isArray(data)) {
           setLastFetchedAt(new Date());
-          if (typeof window !== 'undefined' && businessId) {
-            try { localStorage.setItem(`noxis_cached_parties_${businessId}`, JSON.stringify(data)); } catch {}
-          }
+          data.forEach((p: any) => {
+            const key = p.id || p.name;
+            if (key) mergedMap.set(key, p);
+          });
           // Fire-and-forget sync to local SQLite WAL
           try {
             fetch('/api/parties', {
@@ -215,13 +225,17 @@ export default function PartiesPage() {
               body: JSON.stringify({ operation: 'bulk_upsert', parties: data })
             }).catch(() => {});
           } catch {}
-          return data;
         }
       } catch (err) {
         console.warn('[Parties] Query failed, using cached data:', err);
       }
 
-      return cachedData;
+      const mergedList = Array.from(mergedMap.values());
+      if (typeof window !== 'undefined' && businessId && mergedList.length > 0) {
+        try { localStorage.setItem(`noxis_cached_parties_${businessId}`, JSON.stringify(mergedList)); } catch {}
+      }
+
+      return mergedList.length > 0 ? mergedList : cachedData;
     },
     enabled: !!businessId,
     staleTime: 1000,

@@ -258,6 +258,32 @@ export default function InventoryPage() {
         }
       }
 
+      const mergedMap = new Map<string, SKU>();
+      cachedData.forEach(item => {
+        const key = item.id || item.sku_code;
+        if (key) mergedMap.set(key, item);
+      });
+
+      // 1. Fetch from local SQLite API (/api/skus) for instant sovereign data
+      try {
+        const localCtrl = new AbortController();
+        const localTid = setTimeout(() => localCtrl.abort(), 1500);
+        const localRes = await fetch(`/api/skus?business_id=${bizId}&limit=5000`, { signal: localCtrl.signal });
+        clearTimeout(localTid);
+        if (localRes.ok) {
+          const localSkus = await localRes.json();
+          if (Array.isArray(localSkus)) {
+            localSkus.forEach((item: any) => {
+              const key = item.id || item.sku_code;
+              if (key) mergedMap.set(key, item);
+            });
+          }
+        }
+      } catch (localErr) {
+        console.warn('[Inventory] Local SQLite /api/skus fetch error:', localErr);
+      }
+
+      // 2. Fetch from Supabase Cloud
       try {
         const fetchPromise = supabase
           .from('skus')
@@ -272,16 +298,21 @@ export default function InventoryPage() {
         const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
 
         if (!error && Array.isArray(data)) {
-          if (typeof window !== 'undefined') {
-            try { localStorage.setItem(`noxis_cached_skus_${bizId}`, JSON.stringify(data)); } catch {}
-          }
-          return data as SKU[];
+          data.forEach((item: any) => {
+            const key = item.id || item.sku_code;
+            if (key) mergedMap.set(key, item);
+          });
         }
       } catch (err) {
-        console.warn('[Inventory] Query failed, using cached data:', err);
+        console.warn('[Inventory] Remote cloud query failed, using local & cache:', err);
       }
 
-      return cachedData;
+      const mergedList = Array.from(mergedMap.values());
+      if (typeof window !== 'undefined' && mergedList.length > 0) {
+        try { localStorage.setItem(`noxis_cached_skus_${bizId}`, JSON.stringify(mergedList)); } catch {}
+      }
+
+      return mergedList.length > 0 ? mergedList : cachedData;
     },
     initialData: () => {
       if (typeof window === 'undefined') return undefined;
@@ -539,7 +570,7 @@ export default function InventoryPage() {
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     initialState: {
-      pagination: { pageSize: 50 }
+      pagination: { pageSize: 500 }
     }
   });
   const { rows } = table.getRowModel();
@@ -765,20 +796,40 @@ export default function InventoryPage() {
                     </table>
                     
                     {/* Pagination */}
-                    <div className="p-4 border-t border-white/5 flex items-center justify-between text-[10px] uppercase font-bold text-gray-600">
-                       <div className="flex items-center space-x-2">
-                          <span>Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}</span>
+                    <div className="p-4 border-t border-white/5 flex flex-wrap items-center justify-between gap-4 text-[11px] uppercase font-bold text-gray-500">
+                       <div className="flex items-center space-x-3">
+                          <span className="text-white">
+                            Showing {filteredData.length === 0 ? 0 : table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} - {Math.min((table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize, filteredData.length)} of {filteredData.length} items
+                          </span>
+                          <span className="text-gray-600">|</span>
+                          <div className="flex items-center space-x-1.5">
+                            <span className="text-[10px] text-gray-400">Rows per page:</span>
+                            <select
+                              value={table.getState().pagination.pageSize}
+                              onChange={(e) => table.setPageSize(Number(e.target.value))}
+                              aria-label="Rows per page"
+                              className="bg-onyx border border-white/10 text-emerald font-mono px-2 py-0.5 rounded-sm outline-none cursor-pointer hover:border-emerald/50 transition-colors"
+                            >
+                              <option value={50}>50</option>
+                              <option value={100}>100</option>
+                              <option value={250}>250</option>
+                              <option value={500}>500 (Default)</option>
+                              <option value={1000}>1000</option>
+                              <option value={5000}>All (5000)</option>
+                            </select>
+                          </div>
                        </div>
-                       <div className="flex items-center space-x-1">
+                       <div className="flex items-center space-x-2">
+                          <span className="text-[10px] text-gray-400">Page {table.getState().pagination.pageIndex + 1} of {Math.max(1, table.getPageCount())}</span>
                           <button 
                             disabled={!table.getCanPreviousPage()}
                             onClick={() => table.previousPage()}
-                            className="px-3 py-1 bg-onyx border border-white/5 hover:bg-white/5 disabled:opacity-30"
+                            className="px-3 py-1 bg-onyx border border-white/10 text-gray-300 hover:text-white hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all rounded-sm"
                           >Prev</button>
                           <button 
                             disabled={!table.getCanNextPage()}
                             onClick={() => table.nextPage()}
-                            className="px-3 py-1 bg-onyx border border-white/5 hover:bg-white/5 disabled:opacity-30"
+                            className="px-3 py-1 bg-onyx border border-white/10 text-gray-300 hover:text-white hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all rounded-sm"
                           >Next</button>
                        </div>
                     </div>
