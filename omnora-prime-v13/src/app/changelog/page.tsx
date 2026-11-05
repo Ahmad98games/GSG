@@ -4,17 +4,20 @@ import { Tag, Calendar, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-reac
 
 const RELEASES = [
   {
-    version: 'v14.0.29',
+    version: 'v14.0.30',
     date: 'November 2026',
     isCurrent: true,
-    title: 'Owner WhatsApp Zero-Loss Persistence, Fitness & Gym Vertical Integration & Direct Byte-Range Resumable Auto-Updater',
-    summary: 'Multi-layer persistence for Owner WhatsApp phone numbers across local SQLite, encrypted OS store, and cloud Supabase, end-to-end Fitness & Gym Sports Nutrition industry vertical, and seamless direct byte-range auto-updater eliminating Windows blockmap assembly stalls.',
+    title: 'Excel Data Import Full-Persistence, 500 Rows/Page Grid, POS Kiosk Fullscreen & Inventory Action Isolation',
+    summary: 'Two-way Excel & CSV data import landing reliably in local SQLite and Supabase with instant cache invalidation, 500 rows per page table pagination, POS Kiosk fullscreen toggle with Esc exit, inventory action menu event isolation, drawer window frame height fixes, and target product projection in Stock Correction.',
     changes: [
-      'Owner WhatsApp Zero-Loss Persistence: Synchronized owner phone numbers across local SQLite, OS encrypted store, and cloud Supabase, with automatic fallback and real-time UI state recovery.',
-      'Fitness & Sports Nutrition Vertical: Fully integrated Gym & Fitness Nutrition mode across calculators (margin, expiry, weight, EMI, delivery), terminology, and sidebar filters.',
-      'Resumable Byte-Range Auto-Updater: Disabled Windows NSIS differential delta blockmap loops to ensure smooth, freeze-free 100% update finalization.',
-      'Cloud Database Auto-Sync Trigger: Created automated Supabase database triggers keeping phone and owner_phone synchronized seamlessly across all business profiles.',
-      'Software Update Delivery: Released official verified desktop production build v14.0.29.',
+      'Excel Full-Persistence Ingestion: Fixed Supabase upsert conflict constraints and added concurrent local SQLite WAL and Supabase synchronization, ensuring all imported SKUs, Karigars, and Parties appear immediately at their destinations.',
+      'Instant Local Cache Updating: Smart Import and Import Wizard now automatically update localStorage and invalidate React Query keys upon commit with direct navigation shortcuts.',
+      '500 Rows Per Page Table Pagination: Defaulted inventory grid pagination to 500 rows per page with user-selectable dropdown [50, 100, 250, 500, 1000, 5000] and live record range indicators.',
+      'POS Reactive Kiosk Mode: Enabled seamless borderless OS fullscreen and kiosk mode with keyboard shortcut and Esc key exit.',
+      'Inventory Action Dropdown Event Isolation: Stopped event bubbling on action menus so clicking options no longer unintentionally opens the SKU detail panel.',
+      'Drawer TitleBar Collision Fix: Dynamically adjusted side drawer top offset and height under Electron frameless window chrome to eliminate bottom cutoff.',
+      'Target Product Display in Inventory Correction: Added prominent target product card, SKU selector, and live adjusted calculation projection in Stock Correction modal.',
+      'Software Update Delivery: Released official verified desktop production build v14.0.30.',
     ],
   },
   {
@@ -174,7 +177,7 @@ const RELEASES = [
 ]
 
 export default function ChangelogPage() {
-  const [openVersions, setOpenVersions] = useState<string[]>(['v14.0.29'])
+  const [openVersions, setOpenVersions] = useState<string[]>(['v14.0.30'])
 
   const toggleVersion = (v: string) => {
     setOpenVersions(prev =>
