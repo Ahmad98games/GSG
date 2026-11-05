@@ -37,13 +37,67 @@ export default function QuickEntryPage() {
 
   // 1. Fetch Today's Logs for Activity Feed
   const fetchTodayActivity = async () => {
-    if (!businessId) return;
+    setIsActivityLoading(true);
+    try {
+      // 1. Try local SQLite API first
+      const res = await fetch('/api/quick-entry');
+      if (res.ok) {
+        const json = await res.json();
+        const items: ActivityItem[] = [];
+
+        (json.prodLogs || []).forEach((p: any) => {
+          items.push({
+            id: `prod-${p.id}`,
+            type: "production",
+            title: "Output / Session Logged",
+            desc: `${p.qty_produced} units (${p.quality_grade}) for ${p.worker_name || "Staff"}`,
+            time: new Date(p.posted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            timestamp: new Date(p.posted_at)
+          });
+        });
+
+        (json.payLogs || []).forEach((p: any) => {
+          items.push({
+            id: `pay-${p.id}`,
+            type: "payment",
+            title: "Payment Recorded",
+            desc: `PKR ${Number(p.amount).toLocaleString()} via ${(p.payment_method || 'cash').toUpperCase()} for ${p.party_name || "Party"}`,
+            time: new Date(p.posted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            timestamp: new Date(p.posted_at)
+          });
+        });
+
+        (json.attLogs || []).forEach((a: any) => {
+          items.push({
+            id: `att-${a.id}`,
+            type: "attendance",
+            title: "Attendance Logged",
+            desc: `${(a.status || 'present').toUpperCase()} for ${a.worker_name || "Staff"}`,
+            time: new Date(a.posted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            timestamp: new Date(a.posted_at)
+          });
+        });
+
+        if (items.length > 0) {
+          setLocalActivityList(items);
+          setIsActivityLoading(false);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('[QuickEntry] Local API activity fetch error:', e);
+    }
+
+    if (!businessId) {
+      setIsActivityLoading(false);
+      return;
+    }
+
     try {
       const todayISO = new Date();
       todayISO.setHours(0, 0, 0, 0);
       const todayStr = todayISO.toISOString();
 
-      // Fetch logs
       const [prodRes, payRes, attRes] = await Promise.all([
         supabase
           .from("karigar_production_logs")
@@ -75,8 +129,8 @@ export default function QuickEntryPage() {
           id: `prod-${p.id}`,
           type: "production",
           title: "Production Logged",
-          desc: `${p.qty_produced} units (Grade ${p.quality_grade}) for ${p.karigars?.name || "Unknown"}`,
-          time: new Date(p.posted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+          desc: `${p.qty_produced} units (Grade ${p.quality_grade}) for ${p.karigars?.name || "Staff"}`,
+          time: new Date(p.posted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           timestamp: new Date(p.posted_at)
         });
       });
@@ -86,30 +140,25 @@ export default function QuickEntryPage() {
           id: `pay-${p.id}`,
           type: "payment",
           title: "Payment Recorded",
-          desc: `PKR ${p.amount.toLocaleString()} via ${p.payment_method.toUpperCase()} for ${p.parties?.name || "Unknown"}`,
-          time: new Date(p.posted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+          desc: `PKR ${Number(p.amount).toLocaleString()} via ${p.payment_method.toUpperCase()} for ${p.parties?.name || "Customer"}`,
+          time: new Date(p.posted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           timestamp: new Date(p.posted_at)
         });
       });
 
       (attRes.data || []).forEach((p: any) => {
-        const formattedStatus = p.status.replace("_", " ").toUpperCase();
         items.push({
           id: `att-${p.id}`,
           type: "attendance",
           title: "Attendance Logged",
-          desc: `${p.karigars?.name || "Unknown"} marked as ${formattedStatus}`,
-          time: new Date(p.posted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+          desc: `${p.status.toUpperCase()} for ${p.karigars?.name || "Staff"}`,
+          time: new Date(p.posted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           timestamp: new Date(p.posted_at)
         });
       });
 
-      // Sort and slice
-      items.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-      setLocalActivityList(items.slice(0, 10));
-    } catch (e) {
-      console.error("Failed to load activity list:", e);
-    } finally {
+      setLocalActivityList(items);
+    } catch {} finally {
       setIsActivityLoading(false);
     }
   };
@@ -130,7 +179,7 @@ export default function QuickEntryPage() {
           </div>
           <div>
             <h1 className="text-sm font-black text-white uppercase tracking-widest">Quick Entry Console</h1>
-            <p className="text-[9px] text-gray-500 font-bold uppercase tracking-tighter">Factory Floor Real-Time Input</p>
+            <p className="text-[9px] text-gray-500 font-bold uppercase tracking-tighter">{t.production || "Operations"} Real-Time Input</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -247,13 +296,17 @@ export default function QuickEntryPage() {
 // 1. PRODUCTION FORM
 // ────────────────────────────────────────────────────────────────────────
 function ProductionForm({ onSaved }: { onSaved: () => void }) {
+  const { t } = useIndustryConfig();
   const [karigarSearch, setKarigarSearch] = useState("");
   const [qty, setQty] = useState("");
   const [grade, setGrade] = useState("");
+  const isFitness = (t.worker || '').toLowerCase().includes('trainer') || (t.production || '').toLowerCase().includes('training');
+  const gradeOptions = isFitness
+    ? ["Completed", "Personal", "Group Class", "Trial"]
+    : ["A", "B", "C", "Rejected"];
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { profile } = useBusinessProfile();
   const businessId = profile?.id;
-  const { t } = useIndustryConfig();
   const { success, error } = useToast();
   const supabase = createClient();
   const queryClient = useQueryClient();
@@ -262,31 +315,41 @@ function ProductionForm({ onSaved }: { onSaved: () => void }) {
     queryKey: ["quick_karigars", karigarSearch],
     queryFn: async () => {
       if (karigarSearch.length < 2) return [];
-      const { data } = await supabase
-        .from("karigars")
-        .select("id, name")
-        .eq("business_id", businessId)
-        .ilike("name", `%${karigarSearch}%`)
-        .limit(5);
-      return data || [];
+      try {
+        const res = await fetch(`/api/quick-entry?type=workers&search=${encodeURIComponent(karigarSearch)}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.workers && json.workers.length > 0) return json.workers;
+        }
+      } catch {}
+
+      try {
+        const { data } = await supabase
+          .from("karigars")
+          .select("id, name")
+          .ilike("name", `%${karigarSearch}%`)
+          .limit(5);
+        if (data && data.length > 0) return data;
+      } catch {}
+
+      return [];
     },
-    enabled: !!businessId && karigarSearch.length >= 2,
+    enabled: karigarSearch.length >= 2,
   });
 
   // Today's Production Total
   const { data: todayTotal = 0, refetch: refetchTotal } = useQuery({
     queryKey: ["today_prod_total", businessId],
     queryFn: async () => {
-      const todayISO = new Date();
-      todayISO.setHours(0, 0, 0, 0);
-      const { data } = await supabase
-        .from("karigar_production_logs")
-        .select("qty_produced")
-        .eq("business_id", businessId)
-        .gte("posted_at", todayISO.toISOString());
-      return (data || []).reduce((sum: number, p: any) => sum + (p.qty_produced || 0), 0);
-    },
-    enabled: !!businessId
+      try {
+        const res = await fetch('/api/quick-entry');
+        if (res.ok) {
+          const json = await res.json();
+          return json.totalToday || 0;
+        }
+      } catch {}
+      return 0;
+    }
   });
 
   const [selectedKarigar, setSelectedKarigar] = useState<{ id: string; name: string } | null>(null);
@@ -297,24 +360,34 @@ function ProductionForm({ onSaved }: { onSaved: () => void }) {
 
     setIsSubmitting(true);
     try {
-      const { error: pError } = await supabase.from("karigar_production_logs").insert({
-        business_id: businessId,
-        karigar_id: selectedKarigar.id,
-        qty_produced: Number(qty),
-        quality_grade: grade,
-        posted_at: new Date().toISOString()
+      const res = await fetch('/api/quick-entry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'production',
+          business_id: businessId || 'local',
+          karigar_id: selectedKarigar.id,
+          qty: Number(qty),
+          grade: grade,
+        })
       });
 
-      if (pError) throw pError;
+      if (!res.ok) {
+        await supabase.from("karigar_production_logs").insert({
+          business_id: businessId,
+          karigar_id: selectedKarigar.id,
+          qty_produced: Number(qty),
+          quality_grade: grade,
+          posted_at: new Date().toISOString()
+        });
+      }
 
-      success(`${qty} units logged for ${selectedKarigar.name} ✓`);
+      success(`${qty} ${t.productionUnit || 'units'} logged for ${selectedKarigar.name} ✓`);
       setQty("");
       setKarigarSearch("");
       setSelectedKarigar(null);
       setGrade("");
       
-      // Update states
-      queryClient.invalidateQueries({ queryKey: ["dept_stats"] });
       refetchTotal();
       onSaved();
     } catch (err: any) {
@@ -398,7 +471,7 @@ function ProductionForm({ onSaved }: { onSaved: () => void }) {
         <div className="space-y-2">
           <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Quality Grade</label>
           <div className="grid grid-cols-4 gap-2">
-            {["A", "B", "C", "Rejected"].map((g) => (
+            {gradeOptions.map((g) => (
               <button
                 key={g}
                 type="button"

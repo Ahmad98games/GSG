@@ -5,6 +5,7 @@ import React from 'react';
 import { useRouter, useSearchParams } from "next/navigation";
 import { usePersona } from "@/hooks/usePersona";
 import { useSuppliers, useCreatePO, useSupplierScorecards } from "@/hooks/usePurchaseQueries";
+import { useToast } from "@/hooks/useToast";
 import { createClient } from "@/lib/supabase/client";
 import { 
   Plus, Trash2, Save, ShoppingCart, 
@@ -38,6 +39,7 @@ export default function NewPurchaseOrder() {
   const { data: suppliers } = useSuppliers();
   const { data: scorecards } = useSupplierScorecards();
   const createPO = useCreatePO();
+  const toast = useToast();
 
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
   const [isAddSupplierModalOpen, setIsAddSupplierModalOpen] = useState(false);
@@ -137,27 +139,28 @@ export default function NewPurchaseOrder() {
     const clean = query?.trim() || "";
     setIsSearchingSkus(true);
     try {
-      let q = supabase
-        .from('skus')
-        .select('*');
-
-      if (persona?.id) {
-        q = q.eq('business_id', persona.id);
+      // 1. Try local SQLite API first
+      const res = await fetch(`/api/skus?search=${encodeURIComponent(clean)}`);
+      if (res.ok) {
+        const json = await res.json();
+        const results = Array.isArray(json) ? json : (json.data || json.skus || []);
+        if (results && results.length > 0) {
+          setSkuSearchResults(results);
+          setIsSearchingSkus(false);
+          return;
+        }
       }
 
-      if (clean) {
-        q = q.or(`sku_code.ilike.%${clean}%,name.ilike.%${clean}%`);
-      }
-
+      // 2. Supabase fallback
+      let q = supabase.from('skus').select('*');
+      if (persona?.id) q = q.eq('business_id', persona.id);
+      if (clean) q = q.or(`sku_code.ilike.%${clean}%,name.ilike.%${clean}%`);
       const { data, error } = await q.limit(10);
       if (!error && data && data.length > 0) {
         setSkuSearchResults(data);
       } else {
-        // Fallback without business_id if scoped query returned nothing
         let fb = supabase.from('skus').select('*');
-        if (clean) {
-          fb = fb.or(`sku_code.ilike.%${clean}%,name.ilike.%${clean}%`);
-        }
+        if (clean) fb = fb.or(`sku_code.ilike.%${clean}%,name.ilike.%${clean}%`);
         const { data: fbData } = await fb.limit(10);
         setSkuSearchResults(fbData || []);
       }
@@ -182,41 +185,46 @@ export default function NewPurchaseOrder() {
 
   const handleSave = async (status: 'draft' | 'sent') => {
     if (!selectedSupplierId) {
-      alert("Please select a supplier");
+      toast.error("Supplier Required", "Please select a supplier before proceeding.");
       return;
     }
     if (items.length === 0) {
-      alert("Please add at least one item");
+      toast.error("Items Required", "Please add at least one line item to this purchase order.");
       return;
     }
 
+    const supplierObj = suppliers?.find((s: any) => s.id === selectedSupplierId);
+
     const payload = {
-      business_id: persona?.id,
+      business_id: persona?.id || 'local',
       supplier_id: selectedSupplierId,
-      status,
+      supplier_name: supplierObj?.name || '',
+      status: status === 'draft' ? 'draft' : 'pending',
       expected_by: expectedBy || null,
       subtotal: totals.subtotal.toNumber(),
       tax_pct: persona?.tax_rate || 0,
       tax_amount: totals.taxAmount.toNumber(),
-      total: totals.total.toNumber(),
+      total_amount: totals.total.toNumber(),
       notes,
       items: items.map(i => ({
         sku_id: i.sku_id || null,
+        sku_code: i.sku_code || '',
         description: i.description,
         qty_ordered: i.qty_ordered,
         unit: i.unit,
-        unit_cost: i.unit_cost
+        unit_cost: i.unit_cost,
+        line_total: i.line_total
       }))
     };
 
     createPO.mutate(payload, {
       onSuccess: () => {
         clearDraft();
-        alert("Purchase Order created successfully");
+        toast.success("Order Saved", "Purchase order successfully registered in local registry.");
         router.push("/purchase");
       },
       onError: (err: any) => {
-        alert("Failed to create PO: " + err.message);
+        toast.error("Failed to save PO", err.message);
       }
     });
   };

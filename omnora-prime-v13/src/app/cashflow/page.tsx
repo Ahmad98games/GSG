@@ -94,152 +94,116 @@ export default function CashFlowForecastPage() {
         console.warn('[Cashflow] Server RPC unavailable, synthesizing from database transactions:', e);
       }
 
-      // 2. Fallback: Aggregate live database tables
+      // 2. Fallback: Aggregate live local SQLite transactions
       try {
-        const [invRes, poRes, karigarRes] = await Promise.allSettled([
-          supabase.from('invoices').select('id, total_amount, paid_amount, due_date, created_at, party:parties(name)').eq('business_id', businessId || 'default').limit(100),
-          supabase.from('purchase_orders').select('id, total, created_at, supplier:parties(name)').eq('business_id', businessId || 'default').limit(100),
-          supabase.from('karigars').select('id, name, wage_type, monthly_salary, daily_rate').eq('business_id', businessId || 'default').eq('status', 'active')
+        const [invRes, poRes, expRes] = await Promise.allSettled([
+          fetch('/api/invoices?limit=100').then(r => r.ok ? r.json() : []),
+          fetch('/api/purchase?limit=100').then(r => r.ok ? r.json() : { data: [] }),
+          fetch('/api/expenses?limit=100').then(r => r.ok ? r.json() : { data: [] })
         ]);
 
-        const dbInvoices = invRes.status === 'fulfilled' ? invRes.value.data || [] : [];
-        const dbPOs = poRes.status === 'fulfilled' ? poRes.value.data || [] : [];
-        const dbKarigars = karigarRes.status === 'fulfilled' ? karigarRes.value.data || [] : [];
+        const dbInvoices = invRes.status === 'fulfilled' ? (Array.isArray(invRes.value) ? invRes.value : (invRes.value?.data || [])) : [];
+        const dbPOs = poRes.status === 'fulfilled' ? (poRes.value?.data || []) : [];
+        const dbExpenses = expRes.status === 'fulfilled' ? (expRes.value?.data || []) : [];
 
-        // Realistic initial liquid balance for garment factory operations
-        let runningBalance = 385000;
+        // Compute starting cash position from settled historical transactions
+        let collectedCash = dbInvoices.reduce((sum: number, inv: any) => sum + (Number(inv.amount_paid) || 0), 0);
+        let disbursedCash = dbExpenses.reduce((sum: number, exp: any) => sum + (Number(exp.amount) || 0), 0);
+        let poDisbursed = dbPOs
+          .filter((po: any) => po.status === 'received')
+          .reduce((sum: number, po: any) => sum + (Number(po.total_amount || po.total) || 0), 0);
+
+        let runningBalance = (collectedCash - disbursedCash - poDisbursed);
+        if (runningBalance <= 0) {
+          runningBalance = 250000; // Standard initial operating reserve
+        }
+
         const result: CashflowForecast[] = [];
         const today = new Date();
-
-        // Calculate weekly payroll burden from active karigars
-        const karigarCount = Math.max(dbKarigars.length, 4);
-        const weeklyPayrollAmount = karigarCount * 14500; // Average weekly piece-rate stitching payout
 
         for (let i = 0; i < days; i++) {
           const currentDate = addDays(today, i);
           const dateStr = format(currentDate, 'yyyy-MM-dd');
-          const dayOfWeek = currentDate.getDay(); // 0 = Sun, 6 = Sat
+          const dayOfWeek = currentDate.getDay();
 
           const inflowSources: CashflowSource[] = [];
           const outflowSources: CashflowSource[] = [];
           let dayInflow = 0;
           let dayOutflow = 0;
 
-          // Check if DB invoices match this date or nearby
+          // Check live invoices matching this date
           dbInvoices.forEach((inv: any) => {
-            const dueDate = inv.due_date ? new Date(inv.due_date) : addDays(new Date(inv.created_at || today), 15);
+            const dueDate = inv.due_date ? new Date(inv.due_date) : addDays(new Date(inv.invoice_date || inv.created_at || today), 15);
             if (format(dueDate, 'yyyy-MM-dd') === dateStr) {
-              const unpaid = Math.max(0, Number(inv.total_amount || 0) - Number(inv.paid_amount || 0));
+              const unpaid = Math.max(0, (Number(inv.balance_due) || (Number(inv.total_amount || 0) - Number(inv.amount_paid || 0))));
               if (unpaid > 0) {
                 inflowSources.push({
                   type: 'invoice',
                   amount: unpaid,
-                  party: inv.party?.name || 'Retail Wholesale Buyer',
-                  invoice_number: `INV-${inv.id?.slice(0, 5) || '104'}`
+                  party: inv.party_name || inv.customer_name || 'Counter Customer',
+                  invoice_number: inv.invoice_number || inv.invoice_no || `INV-${inv.id?.slice(0, 5) || '101'}`
                 });
                 dayInflow += unpaid;
               }
             }
           });
 
-          // Check DB POs matching
+          // Check live POs matching this date
           dbPOs.forEach((po: any) => {
-            const billDate = addDays(new Date(po.created_at || today), 14);
-            if (format(billDate, 'yyyy-MM-dd') === dateStr) {
-              const amount = Number(po.total || 0);
+            const billDate = po.expected_date ? new Date(po.expected_date) : addDays(new Date(po.order_date || po.created_at || today), 14);
+            if (format(billDate, 'yyyy-MM-dd') === dateStr && po.status !== 'cancelled' && po.status !== 'received') {
+              const amount = Number(po.total_amount || po.total || 0);
               if (amount > 0) {
                 outflowSources.push({
                   type: 'purchase_order',
                   amount: amount,
-                  supplier: po.supplier?.name || 'Fabric Textile Mill'
+                  supplier: po.supplier_name || po.supplier?.name || 'Supply Partner'
                 });
                 dayOutflow += amount;
               }
             }
           });
 
-          // If no specific DB invoice hits on this day, apply realistic garment industry pattern
-          if (dayInflow === 0) {
-            // Consignment collections arrive typically on Tuesdays & Thursdays
-            if (dayOfWeek === 2 && (i % 6 === 0 || i === 2)) {
-              const amt = 185000 + (i * 2400);
+          // Check live recurring or upcoming expenses
+          dbExpenses.forEach((exp: any) => {
+            const expDate = exp.expense_date ? new Date(exp.expense_date) : new Date(exp.created_at || today);
+            if (format(expDate, 'yyyy-MM-dd') === dateStr) {
+              const amount = Number(exp.amount || 0);
+              if (amount > 0) {
+                outflowSources.push({
+                  type: 'other',
+                  amount: amount,
+                  note: `${exp.category}: ${exp.description}`
+                });
+                dayOutflow += amount;
+              }
+            }
+          });
+
+          // If no specific entries on this date, project realistic category-aware flow
+          if (dayInflow === 0 && (dayOfWeek === 2 || dayOfWeek === 4 || dayOfWeek === 6)) {
+            // Bi-weekly settlements
+            if (i % 7 === 0 || i === 3) {
+              const projectedAmount = 45000 + (i * 1200);
               inflowSources.push({
                 type: 'invoice',
-                amount: amt,
-                party: i === 2 ? 'Lahore Anarkali Garments' : 'Tariq Road Retailers Karachi',
-                invoice_number: `INV-REC-${1040 + i}`
+                amount: projectedAmount,
+                party: `Projected ${t('customer', 'Client')} Settlements`,
+                invoice_number: `EST-REC-${1000 + i}`
               });
-              dayInflow += amt;
-            } else if (dayOfWeek === 4 && (i % 7 === 0 || i === 11)) {
-              const amt = 240000;
-              inflowSources.push({
-                type: 'invoice',
-                amount: amt,
-                party: 'Faisalabad Textile Dist.',
-                invoice_number: `INV-REC-${1050 + i}`
-              });
-              dayInflow += amt;
-            } else if (i === 18 || i === 25) {
-              const amt = 310000;
-              inflowSources.push({
-                type: 'invoice',
-                amount: amt,
-                party: 'Export Boutique Order #882',
-                invoice_number: `INV-REC-EXP-${i}`
-              });
-              dayInflow += amt;
+              dayInflow += projectedAmount;
             }
           }
 
-          // Outflows: Karigar payroll every Saturday
-          if (dayOfWeek === 6) {
-            outflowSources.push({
-              type: 'payroll',
-              amount: weeklyPayrollAmount,
-              note: `Weekly Floor Wages (${karigarCount} Active Karigars)`
-            });
-            dayOutflow += weeklyPayrollAmount;
-          }
-
-          // Outflows: Raw fabric purchase & yarn bills on days 7, 16, 24
-          if (i === 7) {
-            const amt = 165000;
-            outflowSources.push({
-              type: 'purchase_order',
-              amount: amt,
-              supplier: 'Kohinoor Grey Fabric Mills',
-              note: '68x68 Cotton Lawn 1,000m'
-            });
-            dayOutflow += amt;
-          } else if (i === 16) {
-            const amt = 210000;
-            outflowSources.push({
-              type: 'purchase_order',
-              amount: amt,
-              supplier: 'Sapphire Finishing & Dyeing',
-              note: 'Reactive Dyeing Batch #D-402'
-            });
-            dayOutflow += amt;
-          } else if (i === 24) {
-            const amt = 125000;
-            outflowSources.push({
-              type: 'purchase_order',
-              amount: amt,
-              supplier: 'YKK Zippers & Threads PK',
-              note: 'Industrial Trim & Packaging'
-            });
-            dayOutflow += amt;
-          }
-
-          // End of month overhead (electricity & facility) on day 28
-          if (i === 28) {
-            const amt = 95000;
+          // Operational facility & utility projection on alternate weeks
+          if (dayOutflow === 0 && (i === 15 || i === 28)) {
+            const estOut = i === 15 ? 35000 : 55000;
             outflowSources.push({
               type: 'other',
-              amount: amt,
-              note: 'Factory Industrial Power & Generator Fuel'
+              amount: estOut,
+              note: i === 15 ? 'Facility Utilities & Energy Reserve' : 'Monthly Operational Overhead'
             });
-            dayOutflow += amt;
+            dayOutflow += estOut;
           }
 
           const net = dayInflow - dayOutflow;
@@ -297,7 +261,7 @@ export default function CashFlowForecastPage() {
           outSources.push({
             type: 'purchase_order',
             amount: 250000,
-            supplier: 'Pre-Season Bulk Greige Fabric Booking'
+            supplier: 'Pre-Season Bulk Inventory & Supplies Booking'
           });
         }
       }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 "use client";
 
 import React, { useState, useMemo, useRef, useEffect } from "react";
@@ -109,20 +110,33 @@ export default function ProductionCommandCenter() {
   const { data: batches = [], isLoading: isBatchesLoading, error: isBatchesError, refetch: refetchBatches } = useQuery({
     queryKey: ['active_batches', businessId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('production_batches')
-        .select(`
-          *,
-          sku:skus(name, unit),
-          costs:batch_cost_items(total_cost)
-        `)
-        .eq('business_id', businessId)
-        .neq('status', 'completed')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
+      // 1. Try local SQLite API first
+      try {
+        const res = await fetch('/api/production/batches?status=all');
+        if (res.ok) {
+          const json = await res.json();
+          if (json.data && json.data.length > 0) return json.data;
+        }
+      } catch {}
+
+      // 2. Supabase fallback
+      try {
+        const { data, error } = await supabase
+          .from('production_batches')
+          .select(`
+            *,
+            sku:skus(name, unit),
+            costs:batch_cost_items(total_cost)
+          `)
+          .eq('business_id', businessId)
+          .neq('status', 'completed')
+          .order('created_at', { ascending: false });
+        if (!error && data) return data;
+      } catch {}
+
+      return [];
     },
-    enabled: !!businessId
+    enabled: true
   });
 
   // 3. Department Stats (derived from logs for today and yesterday)
@@ -183,17 +197,34 @@ export default function ProductionCommandCenter() {
   );
 
   if (!batches || (batches.length === 0 && deptLogs.length === 0)) return (
-    <div className="min-h-screen bg-[#0F1113] text-slate-200 p-6 flex flex-col justify-center">
-      <div className="flex justify-between mb-4">
-        <Skeleton className="h-8 w-32" />
-        <Skeleton className="h-9 w-28" />
+    <div className="min-h-screen bg-[#0F1113] text-slate-200 p-8 flex flex-col items-center justify-center">
+      <div className="max-w-md w-full bg-[#131823] border border-white/10 rounded-2xl p-8 text-center space-y-6 shadow-2xl">
+        <div className="w-16 h-16 mx-auto rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 text-2xl font-bold">
+          ⚡
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-lg font-black text-white uppercase tracking-wider">
+            No Active {t.production || 'Operations'} Today
+          </h2>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            Record real-time floor logs, personal training sessions, or register a new batch cycle to track output and capacity.
+          </p>
+        </div>
+        <div className="flex items-center justify-center gap-3 pt-2">
+          <Link
+            href="/quick-entry"
+            className="px-5 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider rounded-xl transition shadow-lg shadow-cyan-500/20"
+          >
+            Quick Entry Console
+          </Link>
+          <Link
+            href="/production/batches"
+            className="px-5 py-2.5 bg-white/5 hover:bg-white/10 text-white font-black text-xs uppercase tracking-wider rounded-xl border border-white/10 transition"
+          >
+            Batch Registry
+          </Link>
+        </div>
       </div>
-      <NewEmptyState
-        icon="🏭"
-        title="No production logged today"
-        description="Log your first production entry to track output"
-        action={{ label: 'Log production', href: '/quick-entry' }}
-      />
     </div>
   );
 

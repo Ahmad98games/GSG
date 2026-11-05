@@ -189,30 +189,9 @@ export async function GET(req: NextRequest) {
 
       let rows = sqlite.prepare(query).all(...params);
 
-      // Seed initial production batch if empty
-      if (!rows || rows.length === 0) {
-        let sampleSku: any = null;
-        try {
-          sampleSku = sqlite.prepare(`SELECT id, name, unit FROM skus LIMIT 1`).get();
-        } catch {}
-
-        const sampleId = 'BAT-INITIAL-001';
-        const sampleBatchNo = 'BAT-2026-001';
-        const planned = 500;
-        const actual = 175;
-        const bId = businessId || 'local';
-        const skuId = sampleSku?.id || null;
-
-        try {
-          sqlite.prepare(`
-            INSERT OR REPLACE INTO production_batches (id, business_id, batch_no, sku_id, planned_qty, actual_qty, status, notes)
-            VALUES (?, ?, ?, ?, ?, ?, 'in_progress', 'Initial manufacturing production run')
-          `).run(sampleId, bId, sampleBatchNo, skuId, planned, actual);
-
-          rows = sqlite.prepare(query).all(...params);
-        } catch (insertErr: any) {
-          console.error('[API Batches] Seed insert error:', insertErr);
-        }
+      // Return real batches or empty array
+      if (!rows) {
+        rows = [];
       }
 
       const formatted = (rows || []).map((row: any) => ({
@@ -258,7 +237,7 @@ export async function POST(req: NextRequest) {
 
     const id = 'batch-' + randomUUID();
     const count = sqlite.prepare(`SELECT COUNT(*) as total FROM production_batches`).get()?.total || 0;
-    const finalBatchNo = batch_no || `BAT-${new Date().getFullYear()}-${String(count + 1).padStart(3, '0')}`;
+    const finalBatchNo = batch_no || `BAT-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
     const bId = business_id || 'local';
 
     sqlite.prepare(`
@@ -298,14 +277,9 @@ export async function PATCH(req: NextRequest) {
 
     ensureBatchesTable(sqlite);
 
-    // If batch doesn't exist yet, insert it first so updates never fail
     const existing = sqlite.prepare(`SELECT * FROM production_batches WHERE id = ?`).get(id);
     if (!existing) {
-      sqlite.prepare(`
-        INSERT INTO production_batches (id, business_id, batch_no, sku_id, planned_qty, actual_qty, status, notes)
-        VALUES (?, 'local', 'BAT-2026-001', NULL, 500, ?, ?, ?)
-      `).run(id, Number(actual_qty) || 175, status || 'in_progress', notes || 'Initial production run');
-      return NextResponse.json({ success: true, actual_qty: Number(actual_qty) || 175, status: status || 'in_progress' });
+      return NextResponse.json({ error: 'Batch not found' }, { status: 404 });
     }
 
     const updates: string[] = [];

@@ -311,6 +311,75 @@ exports.db = new Proxy({}, {
                 total_cost REAL DEFAULT 0,
                 created_at TEXT DEFAULT (datetime('now'))
               );
+
+              CREATE TABLE IF NOT EXISTS expenses (
+                id TEXT PRIMARY KEY,
+                business_id TEXT DEFAULT 'local',
+                category TEXT NOT NULL,
+                description TEXT NOT NULL,
+                amount REAL NOT NULL DEFAULT 0,
+                expense_date TEXT NOT NULL,
+                payment_method TEXT DEFAULT 'cash',
+                party_id TEXT,
+                party_name TEXT,
+                reference TEXT,
+                receipt_url TEXT,
+                is_recurring INTEGER DEFAULT 0,
+                created_by TEXT,
+                created_at TEXT DEFAULT (datetime('now'))
+              );
+
+              CREATE TABLE IF NOT EXISTS purchase_orders (
+                id TEXT PRIMARY KEY,
+                business_id TEXT DEFAULT 'local',
+                po_number TEXT NOT NULL,
+                supplier_id TEXT,
+                supplier_name TEXT,
+                order_date TEXT NOT NULL,
+                expected_date TEXT,
+                status TEXT DEFAULT 'pending',
+                subtotal REAL DEFAULT 0,
+                tax_amount REAL DEFAULT 0,
+                tax_rate REAL DEFAULT 0,
+                total_amount REAL DEFAULT 0,
+                notes TEXT,
+                created_at TEXT DEFAULT (datetime('now')),
+                updated_at TEXT DEFAULT (datetime('now'))
+              );
+
+              CREATE TABLE IF NOT EXISTS purchase_order_items (
+                id TEXT PRIMARY KEY,
+                po_id TEXT NOT NULL,
+                business_id TEXT DEFAULT 'local',
+                sku_id TEXT,
+                sku_code TEXT,
+                description TEXT NOT NULL,
+                ordered_qty REAL NOT NULL DEFAULT 1,
+                received_qty REAL DEFAULT 0,
+                unit TEXT DEFAULT 'Piece',
+                unit_cost REAL DEFAULT 0,
+                total_price REAL DEFAULT 0
+              );
+
+              CREATE TABLE IF NOT EXISTS karigar_production_logs (
+                id TEXT PRIMARY KEY,
+                business_id TEXT DEFAULT 'local',
+                karigar_id TEXT,
+                batch_id TEXT,
+                qty_produced REAL DEFAULT 0,
+                quality_grade TEXT DEFAULT 'A',
+                notes TEXT,
+                posted_at TEXT DEFAULT (datetime('now'))
+              );
+
+              CREATE TABLE IF NOT EXISTS attendance_logs (
+                id TEXT PRIMARY KEY,
+                business_id TEXT DEFAULT 'local',
+                karigar_id TEXT,
+                status TEXT DEFAULT 'present',
+                log_date TEXT,
+                posted_at TEXT DEFAULT (datetime('now'))
+              );
             `);
                         const alterTableSafe = (table, colDef) => {
                             try {

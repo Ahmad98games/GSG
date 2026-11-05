@@ -43,17 +43,18 @@ export default function PurchaseOrdersPage() {
   }, [pos, debouncedSearch]);
 
   const summary = useMemo(() => {
-    if (!pos) return { open: 0, pending: 0, monthValue: 0 };
+    if (!pos || !Array.isArray(pos)) return { open: 0, pending: 0, monthValue: 0 };
     
     const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     return {
-      open: pos.filter((p: any) => p.status === 'sent' || p.status === 'partially_received').length,
-      pending: pos.filter((p: any) => p.status === 'sent').length,
+      open: pos.filter((p: any) => p.status === 'sent' || p.status === 'pending' || p.status === 'partially_received').length,
+      pending: pos.filter((p: any) => p.status === 'sent' || p.status === 'pending').length,
       monthValue: pos
-        .filter((p: any) => new Date(p.order_date) >= firstDayOfMonth && p.status !== 'cancelled')
-        .reduce((acc: number, p: any) => acc + Number(p.total), 0)
+        .filter((p: any) => new Date(p.order_date || p.created_at) >= thirtyDaysAgo && p.status !== 'cancelled')
+        .reduce((acc: number, p: any) => acc + (Number(p.total_amount) || Number(p.total) || 0), 0)
     };
   }, [pos]);
 
@@ -181,7 +182,7 @@ export default function PurchaseOrdersPage() {
                             </div>
                          </td>
                          <td className="px-6 py-4 text-right font-mono text-sm text-white font-bold">
-                            {fmt(po.total)}
+                            {fmt(po.total_amount || po.total || 0)}
                          </td>
                          <td className="px-6 py-4 text-center">
                             <POStatusBadge status={po.status} />
@@ -195,14 +196,24 @@ export default function PurchaseOrdersPage() {
                                >
                                   <Eye size={14} />
                                </Link>
-                               {['sent', 'partially_received'].includes(po.status) && (
-                                 <Link 
-                                   href={`/purchase/grn/new?poId=${po.id}`}
-                                   className="p-2 hover:bg-emerald/10 rounded-sm text-emerald/60 hover:text-emerald transition-all"
-                                   title="Receive Stock"
-                                 >
-                                    <PackageCheck size={14} />
-                                 </Link>
+                               {['sent', 'pending', 'partially_received'].includes(po.status) && (
+                                 <button 
+  className="p-2 hover:bg-emerald-500/10 rounded text-emerald-400 hover:text-emerald-300 transition-all cursor-pointer flex items-center gap-1"
+  title="Mark as Received (Add to Stock)"
+  onClick={async (e) => {
+    e.stopPropagation();
+    if (confirm(`Receive stock for Purchase Order ${po.po_number}? This will update your inventory stock.`)) {
+      try {
+        await updateStatus.mutateAsync({ id: po.id, status: 'received' });
+        toast.success("Stock Received", `Items from ${po.po_number} successfully added to inventory.`);
+      } catch (err: any) {
+        toast.error('Reception failed', err.message);
+      }
+    }
+  }}
+>
+  <PackageCheck size={14} />
+</button>
                                )}
                                {po.status === 'draft' && (
                                  <button 
