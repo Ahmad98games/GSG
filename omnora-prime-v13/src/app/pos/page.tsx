@@ -115,10 +115,67 @@ export default function POSPage() {
   const searchRef = useRef<HTMLInputElement>(null)
   const searchTimeout = useRef<any>(null)
 
-  const isKiosk = typeof window !== 'undefined' && (
-    window.location.search.includes('standalone=true') || 
-    window.location.search.includes('kiosk=true')
-  )
+  const [isKiosk, setIsKiosk] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return (
+        localStorage.getItem('noxis_pos_kiosk') === 'true' ||
+        window.location.search.includes('standalone=true') ||
+        window.location.search.includes('kiosk=true')
+      );
+    }
+    return false;
+  });
+
+  const toggleKiosk = useCallback((targetState?: boolean) => {
+    setIsKiosk(prev => {
+      const next = typeof targetState === 'boolean' ? targetState : !prev;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('noxis_pos_kiosk', String(next));
+        window.dispatchEvent(new CustomEvent('noxis:kiosk_toggle', { detail: { kiosk: next } }));
+
+        // Fullscreen toggle in Electron
+        if ((window as any).electronWindow?.toggleFullScreen) {
+          (window as any).electronWindow.toggleFullScreen(next);
+        } else if (next && document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        } else if (!next && document.fullscreenElement && document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        }
+
+        // Update URL query cleanly without page reload
+        try {
+          const url = new URL(window.location.href);
+          if (next) {
+            url.searchParams.set('kiosk', 'true');
+          } else {
+            url.searchParams.delete('kiosk');
+            url.searchParams.delete('standalone');
+          }
+          window.history.replaceState({}, '', url.toString());
+        } catch {}
+      }
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isKiosk) {
+        toggleKiosk(false);
+      }
+    };
+    const handleFsChange = () => {
+      if (typeof document !== 'undefined' && !document.fullscreenElement && isKiosk) {
+        toggleKiosk(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('fullscreenchange', handleFsChange);
+    };
+  }, [isKiosk, toggleKiosk]);
 
   const { saveDraft, clearDraft } =
     useFormDraft('pos_cart')
@@ -1104,22 +1161,16 @@ export default function POSPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                if (isKiosk) {
-                  router.push('/pos');
-                } else {
-                  router.push('/pos?kiosk=true');
-                }
-              }}
-              title={isKiosk ? "Exit Kiosk (Show Navigation & Sidebar)" : "Enter Kiosk Mode (Full Screen Counter)"}
-              className={`flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-mono rounded border transition-colors ${
+              onClick={() => toggleKiosk()}
+              title={isKiosk ? "Exit Kiosk Mode (Esc) - Restore Sidebar and Navigation" : "Enter Fullscreen Kiosk Mode - Dedicated Cashier Terminal"}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-mono rounded border transition-all duration-150 cursor-pointer active:scale-95 select-none ${
                 isKiosk 
-                  ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 hover:bg-cyan-500/30' 
-                  : 'bg-white/5 text-gray-400 border-white/10 hover:text-white hover:bg-white/10'
+                  ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400/60 hover:bg-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.35)]' 
+                  : 'bg-white/5 text-gray-300 border-white/10 hover:text-white hover:bg-white/10 hover:border-cyan-500/30'
               }`}
             >
-              {isKiosk ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
-              <span>{isKiosk ? "Exit Kiosk" : "Kiosk Mode"}</span>
+              {isKiosk ? <Minimize2 size={13} className="text-cyan-400" /> : <Maximize2 size={13} />}
+              <span className="font-semibold tracking-wide">{isKiosk ? "Exit Kiosk (Esc)" : "Kiosk Mode"}</span>
             </button>
             {cart.items.length > 0 && (
               <button

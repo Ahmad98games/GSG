@@ -275,6 +275,34 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const [isPosKiosk, setIsPosKiosk] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const syncKiosk = () => {
+      const isPos = pathname?.startsWith('/pos');
+      const inQuery = window.location.search.includes('standalone=true') || window.location.search.includes('kiosk=true');
+      const inStore = localStorage.getItem('noxis_pos_kiosk') === 'true';
+      setIsPosKiosk(Boolean(isPos && (inQuery || inStore)));
+    };
+    syncKiosk();
+
+    const handleKioskEvent = (e: any) => {
+      if (pathname?.startsWith('/pos')) {
+        setIsPosKiosk(Boolean(e.detail?.kiosk));
+      } else {
+        setIsPosKiosk(false);
+      }
+    };
+
+    window.addEventListener('noxis:kiosk_toggle', handleKioskEvent);
+    window.addEventListener('popstate', syncKiosk);
+    return () => {
+      window.removeEventListener('noxis:kiosk_toggle', handleKioskEvent);
+      window.removeEventListener('popstate', syncKiosk);
+    };
+  }, [pathname]);
+
   const handleIntroComplete = () => {
     setShowIntro(false);
   };
@@ -300,7 +328,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname?.startsWith('/workstation') ||
     pathname?.startsWith('/mobile') ||
     pathname?.startsWith('/scanner') ||
-    (pathname?.startsWith('/pos') && typeof window !== 'undefined' && (window.location.search.includes('standalone=true') || window.location.search.includes('kiosk=true')))
+    (pathname?.startsWith('/pos') && isPosKiosk)
   );
 
   // Hide internal shell components on public website pages
@@ -375,9 +403,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         className="min-h-screen w-screen flex flex-col bg-[#07090E] select-none text-zinc-100 overflow-hidden"
         style={{ backgroundColor: 'var(--color-bg, #07090E)' }}
       >
-        {isElectron && <TitleBar />}
+        {isElectron && !isPosKiosk && <TitleBar />}
         <ToastContainer />
-        <main className="flex-1 w-full overflow-y-auto">
+        <main className={cn(
+          "flex-1 w-full",
+          pathname?.startsWith('/pos') ? "flex flex-col min-h-0 overflow-hidden" : "overflow-y-auto"
+        )}>
           {children}
         </main>
       </div>

@@ -281,6 +281,8 @@ contextBridge.exposeInMainWorld('electronWindow', {
   minimize: () => ipcRenderer.send('window-minimize'),
   maximize: () => ipcRenderer.send('window-maximize'),
   close: () => ipcRenderer.send('window-close'),
+  toggleFullScreen: (explicit?: boolean) => ipcRenderer.send('window-toggle-fullscreen', explicit),
+  isFullScreen: () => ipcRenderer.invoke('window-is-fullscreen'),
   isMaximized: () => 
     ipcRenderer.invoke('window-is-maximized'),
   onMaximizeChange: (cb: (max: boolean) => void) => {

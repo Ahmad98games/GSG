@@ -1338,6 +1338,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   });
   ipcMain.on('window-close', () => mainWindow?.close());
   ipcMain.handle('window-is-maximized', () => mainWindow?.isMaximized() ?? false);
+  ipcMain.on('window-toggle-fullscreen', (_, explicit?: boolean) => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    const next = typeof explicit === 'boolean' ? explicit : !mainWindow.isFullScreen();
+    mainWindow.setFullScreen(next);
+  });
+  ipcMain.handle('window-is-fullscreen', () => mainWindow?.isFullScreen() ?? false);
 
   // ─────────────────────────────────────────────
   // 8B. DISPLAY & ZOOM CONTROLS (Ctrl+0 Reset)
