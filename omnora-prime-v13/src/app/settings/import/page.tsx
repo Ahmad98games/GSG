@@ -382,7 +382,7 @@ export default function BulkDataImportPage() {
                 <div className="flex items-center gap-3">
                   <h1 className="text-3xl font-black text-white tracking-tight">Bulk Data Import</h1>
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold">
-                    Auto-Detection v{process.env.NEXT_PUBLIC_APP_VERSION || '14.0.28'}
+                    Auto-Detection v{process.env.NEXT_PUBLIC_APP_VERSION || '14.0.29'}
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 font-medium mt-1">

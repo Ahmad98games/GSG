@@ -814,7 +814,7 @@ async function handleMessage(
 
         // Connection metadata
         connectedDevices: getPairedCount(),
-        hubVersion: '14.0.28',
+        hubVersion: '14.0.29',
         requestSync: true,
       };
 
@@ -1103,7 +1103,7 @@ async function handleMessage(
               totalKarigars: kCount,
               presentToday: aCount,
               pendingDispatch: dCount,
-              hubVersion: process.env.NEXT_PUBLIC_APP_VERSION || '14.0.28',
+              hubVersion: process.env.NEXT_PUBLIC_APP_VERSION || '14.0.29',
               tier: client.tier,
               connectedDevices: getPairedCount()
             }];

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
@@ -100,9 +101,6 @@ export default function CashFlowForecastPage() {
           .reduce((sum: number, po: any) => sum + (Number(po.total_amount || po.total) || 0), 0);
 
         let runningBalance = (collectedCash - disbursedCash - poDisbursed);
-        if (runningBalance <= 0) {
-          runningBalance = 250000; // Standard initial operating reserve
-        }
 
         const result: CashflowForecast[] = [];
         const today = new Date();
@@ -110,7 +108,6 @@ export default function CashFlowForecastPage() {
         for (let i = 0; i < days; i++) {
           const currentDate = addDays(today, i);
           const dateStr = format(currentDate, 'yyyy-MM-dd');
-          const dayOfWeek = currentDate.getDay();
 
           const inflowSources: CashflowSource[] = [];
           const outflowSources: CashflowSource[] = [];
@@ -166,38 +163,14 @@ export default function CashFlowForecastPage() {
             }
           });
 
-          // If no specific entries on this date, project realistic category-aware flow
-          if (dayInflow === 0 && (dayOfWeek === 2 || dayOfWeek === 4 || dayOfWeek === 6)) {
-            // Bi-weekly settlements
-            if (i % 7 === 0 || i === 3) {
-              const projectedAmount = 45000 + (i * 1200);
-              inflowSources.push({
-                type: 'invoice',
-                amount: projectedAmount,
-                party: `Projected ${t('customer', 'Client')} Settlements`,
-                invoice_number: `EST-REC-${1000 + i}`
-              });
-              dayInflow += projectedAmount;
-            }
-          }
-
-          // Operational facility & utility projection on alternate weeks
-          if (dayOutflow === 0 && (i === 15 || i === 28)) {
-            const estOut = i === 15 ? 35000 : 55000;
-            outflowSources.push({
-              type: 'other',
-              amount: estOut,
-              note: i === 15 ? 'Facility Utilities & Energy Reserve' : 'Monthly Operational Overhead'
-            });
-            dayOutflow += estOut;
-          }
+          // Note: Strictly no synthetic/dummy numbers. Only genuine transactions from the ledger are forecasted.
 
           const net = dayInflow - dayOutflow;
           runningBalance += net;
 
           let riskLevel: 'healthy' | 'warning' | 'critical' = 'healthy';
-          if (runningBalance < 50000 && runningBalance >= 0) riskLevel = 'warning';
-          else if (runningBalance < 0) riskLevel = 'critical';
+          if (runningBalance < 0) riskLevel = 'critical';
+          else if (runningBalance < 50000 && (dayInflow > 0 || dayOutflow > 0)) riskLevel = 'warning';
 
           result.push({
             forecast_date: dateStr,
@@ -224,7 +197,7 @@ export default function CashFlowForecastPage() {
   const forecast = useMemo(() => {
     if (!rawForecast || rawForecast.length === 0) return [];
 
-    let currentCash = rawForecast[0]?.cumulative_position || 385000;
+    let currentCash = rawForecast[0]?.cumulative_position || 0;
     // Base cash before day 0 flows
     let baseCash = currentCash - (rawForecast[0]?.net_position || 0);
 
@@ -295,13 +268,12 @@ export default function CashFlowForecastPage() {
 
   const displayedForecast = useMemo(() => {
     if (filterMode === 'actionable') {
-      const active = forecast.filter(d => 
+      return forecast.filter(d => 
         Number(d.expected_inflows) > 0 || 
         Number(d.expected_outflows) > 0 || 
         d.inflow_sources.length > 0 || 
         d.outflow_sources.length > 0
       );
-      return active.length > 0 ? active : forecast;
     }
     return forecast;
   }, [forecast, filterMode]);
@@ -608,7 +580,7 @@ export default function CashFlowForecastPage() {
 
            {/* Detail Table */}
            <div className="bg-[#1A1D21] border border-white/5 rounded-sm overflow-hidden shadow-xl">
-              <div className="p-6 border-b border-white/5 flex items-center justify-between">
+              <div className="p-6 border-b border-white/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                  <div>
                     <h3 className="text-xs font-black text-white uppercase tracking-widest">
                       Daily Cash Flow Registry
@@ -617,9 +589,29 @@ export default function CashFlowForecastPage() {
                       Click any day to expand invoice and expenditure source manifests
                     </p>
                  </div>
-                 <div className="flex items-center space-x-2">
+                 <div className="flex items-center space-x-3">
+                    <div className="flex bg-white/5 p-0.5 rounded-sm border border-white/5">
+                      <button
+                        onClick={() => setFilterMode('actionable')}
+                        className={cn(
+                          "px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-sm transition-all",
+                          filterMode === 'actionable' ? "bg-[#0070F3] text-white shadow-lg" : "text-gray-500 hover:text-white"
+                        )}
+                      >
+                        Actionable Events Only
+                      </button>
+                      <button
+                        onClick={() => setFilterMode('all')}
+                        className={cn(
+                          "px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-sm transition-all",
+                          filterMode === 'all' ? "bg-[#0070F3] text-white shadow-lg" : "text-gray-500 hover:text-white"
+                        )}
+                      >
+                        All {days} Days
+                      </button>
+                    </div>
                     <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest font-mono">
-                      {forecast.length} Days Projected
+                      {displayedForecast.length} Days Displayed
                     </span>
                  </div>
               </div>
@@ -637,7 +629,38 @@ export default function CashFlowForecastPage() {
                        </tr>
                     </thead>
                     <tbody className="divide-y divide-white/[0.02]">
-                       {displayedForecast.map((d: CashflowForecast) => (
+                       {displayedForecast.length === 0 ? (
+                         <tr>
+                           <td colSpan={7} className="px-6 py-16 text-center">
+                             <div className="flex flex-col items-center justify-center space-y-3 max-w-md mx-auto">
+                               <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-500">
+                                 <Calendar size={20} />
+                               </div>
+                               <h4 className="text-xs font-black uppercase tracking-widest text-white">
+                                 No Cash Flow Events Scheduled
+                               </h4>
+                               <p className="text-[11px] text-gray-400 leading-relaxed">
+                                 Your cash flow ledger strictly reflects your actual transactions. When you issue invoices with due dates, create purchase orders, or log expenses, they will automatically appear here.
+                               </p>
+                               <div className="flex items-center gap-3 pt-2">
+                                 <Link
+                                   href="/invoices/new"
+                                   className="px-3.5 py-1.5 bg-[#0070F3] hover:brightness-110 text-white text-[10px] font-black uppercase tracking-widest rounded-sm"
+                                 >
+                                   Create Invoice
+                                 </Link>
+                                 <Link
+                                   href="/purchase/new"
+                                   className="px-3.5 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-[10px] font-black uppercase tracking-widest rounded-sm"
+                                 >
+                                   New Purchase Order
+                                 </Link>
+                               </div>
+                             </div>
+                           </td>
+                         </tr>
+                       ) : (
+                         displayedForecast.map((d: CashflowForecast) => (
                          <React.Fragment key={d.forecast_date}>
                            <tr 
                              className="hover:bg-white/[0.02] transition-colors cursor-pointer group" 
@@ -702,7 +725,7 @@ export default function CashFlowForecastPage() {
                              </tr>
                            )}
                          </React.Fragment>
-                       ))}
+                       )))}
                     </tbody>
                  </table>
               </div>
@@ -962,7 +985,13 @@ function Recommendation({ forecast, fmt, type }: {
              Receivables Acceleration
           </h4>
           <p className="text-xs text-slate-300 font-medium leading-relaxed">
-            Projected customer receivables total <span className="font-bold text-emerald-400">{fmt(totalOutstandingInflows)}</span> over this period. Offering a 2% early-settlement incentive to wholesale buyers will bolster cash buffers by 14 days.
+            {totalOutstandingInflows > 0 ? (
+              <>
+                Projected customer receivables total <span className="font-bold text-emerald-400">{fmt(totalOutstandingInflows)}</span> over this period. Offering a 2% early-settlement incentive to wholesale buyers will bolster cash buffers by 14 days.
+              </>
+            ) : (
+              "No pending customer receivables due in this cycle. Invoices issued with future payment due dates will automatically register here."
+            )}
           </p>
        </div>
      );
@@ -980,7 +1009,13 @@ function Recommendation({ forecast, fmt, type }: {
              Payroll Liquidity Ring-Fence
           </h4>
           <p className="text-xs text-slate-300 font-medium leading-relaxed">
-            Weekly karigar piece-rate wages total <span className="font-bold text-amber-400">{fmt(totalPayroll)}</span>. Ring-fence this amount into operational reserves every Monday to prevent Saturday factory floor disputes.
+            {totalPayroll > 0 ? (
+              <>
+                Scheduled piece-rate & staff wages total <span className="font-bold text-amber-400">{fmt(totalPayroll)}</span>. Ring-fence this amount into operational reserves every cycle to ensure timely wage clearance.
+              </>
+            ) : (
+              "No scheduled wage disbursements in this window. Log payroll commitments in the Karigar & Staff ledger to ring-fence liquid capital."
+            )}
           </p>
        </div>
      );
@@ -995,10 +1030,16 @@ function Recommendation({ forecast, fmt, type }: {
        <div className="bg-blue-500/5 border border-blue-500/20 p-6 space-y-3 rounded-sm">
           <h4 className="text-[10px] font-black text-[#0070F3] uppercase tracking-widest flex items-center">
              <ArrowRight size={14} className="mr-2" />
-             Fabric Mill Credit Terms
+             Supplier & Procurement Terms
           </h4>
           <p className="text-xs text-slate-300 font-medium leading-relaxed">
-            Upcoming raw fabric payments total <span className="font-bold text-[#0070F3]">{fmt(totalSupplierOutflows)}</span>. Maintain 30-day revolving credit with weaving mills to prevent lump-sum liquidity compression.
+            {totalSupplierOutflows > 0 ? (
+              <>
+                Upcoming supplier payables total <span className="font-bold text-[#0070F3]">{fmt(totalSupplierOutflows)}</span>. Maintain 30-day revolving credit terms with primary distributors to prevent lump-sum liquidity compression.
+              </>
+            ) : (
+              "No upcoming supplier payables recorded. Purchase orders created in Procurement will automatically plot settlement milestones here."
+            )}
           </p>
        </div>
      );

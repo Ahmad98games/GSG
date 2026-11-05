@@ -287,7 +287,7 @@ export default function NetworkPreviewClient() {
 
       {/* Footer */}
       <footer className="border-t border-white/5 bg-[#0C0F12] px-6 py-8 text-center text-xs text-gray-600 font-bold uppercase tracking-widest relative z-20">
-        <p>© {new Date().getFullYear()} Omnora Labs. All Rights Reserved. Noxis Sovereign Industrial Grid v{process.env.NEXT_PUBLIC_APP_VERSION || '14.0.28'}</p>
+        <p>© {new Date().getFullYear()} Omnora Labs. All Rights Reserved. Noxis Sovereign Industrial Grid v{process.env.NEXT_PUBLIC_APP_VERSION || '14.0.29'}</p>
       </footer>
     </div>
   );

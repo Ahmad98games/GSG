@@ -195,7 +195,7 @@ export default function LicenseUpgradePage() {
           body: JSON.stringify({
             licenseKey: cleanKey,
             machineInfo,
-            appVersion: process.env.NEXT_PUBLIC_APP_VERSION || '14.0.28',
+            appVersion: process.env.NEXT_PUBLIC_APP_VERSION || '14.0.29',
             nonce,
           }),
           signal: AbortSignal.timeout(10000),
