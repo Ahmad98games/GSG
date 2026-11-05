@@ -808,6 +808,8 @@ export default function InventoryPage() {
          {adjustingSKU && (
            <AdjustStockModal 
              sku={adjustingSKU} 
+             allSkus={skus}
+             onSelectSku={(s) => setAdjustingSKU(s)}
              onClose={() => setAdjustingSKU(null)} 
              onAdjust={adjustStock}
              onSuccess={(msg) => { setSuccessToast(msg); setAdjustingSKU(null); }}
@@ -1826,11 +1828,30 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
   );
 }
 
-function AdjustStockModal({ sku, onClose, onAdjust, onSuccess }: { sku: SKU, onClose: () => void, onAdjust: (v: any) => Promise<void>, onSuccess: (msg: string) => void }) {
-  const supabase = createClient();
+function AdjustStockModal({ 
+  sku, 
+  allSkus,
+  onSelectSku,
+  onClose, 
+  onAdjust, 
+  onSuccess 
+}: { 
+  sku: SKU; 
+  allSkus?: SKU[];
+  onSelectSku?: (s: SKU) => void;
+  onClose: () => void; 
+  onAdjust: (v: any) => Promise<void>; 
+  onSuccess: (msg: string) => void;
+}) {
   const toast = useToast();
+  const [activeSku, setActiveSku] = useState<SKU>(sku);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { register, handleSubmit, formState: { errors } } = useForm<AdjustStockValues>({
+
+  useEffect(() => {
+    setActiveSku(sku);
+  }, [sku]);
+
+  const { register, handleSubmit, watch, formState: { errors } } = useForm<AdjustStockValues>({
     resolver: zodResolver(adjustStockSchema),
     defaultValues: {
       type: 'add',
@@ -1838,10 +1859,18 @@ function AdjustStockModal({ sku, onClose, onAdjust, onSuccess }: { sku: SKU, onC
     }
   });
 
+  const watchType = watch("type") || 'add';
+  const watchQty = Number(watch("quantity")) || 0;
+
+  let projectedQty = activeSku.qty_on_hand;
+  if (watchType === 'add') projectedQty = activeSku.qty_on_hand + watchQty;
+  if (watchType === 'remove') projectedQty = Math.max(0, activeSku.qty_on_hand - watchQty);
+  if (watchType === 'set') projectedQty = Math.max(0, watchQty);
+
   const onSubmit = async (values: AdjustStockValues) => {
     setIsSubmitting(true);
     try {
-      let newQty = sku.qty_on_hand;
+      let newQty = activeSku.qty_on_hand;
       if (values.type === 'add') newQty += values.quantity;
       if (values.type === 'remove') newQty = Math.max(0, newQty - values.quantity);
       if (values.type === 'set') newQty = values.quantity;
@@ -1850,14 +1879,14 @@ function AdjustStockModal({ sku, onClose, onAdjust, onSuccess }: { sku: SKU, onC
         table: 'skus',
         operation: 'update',
         matchColumn: 'id',
-        matchValue: sku.id,
+        matchValue: activeSku.id,
         data: { qty_on_hand: newQty },
-        skuId: sku.id,
+        skuId: activeSku.id,
         qty_on_hand: newQty,
-        previousQty: sku.qty_on_hand
+        previousQty: activeSku.qty_on_hand
       });
 
-      onSuccess(`Updated ${sku.name} quantity to ${newQty}`);
+      onSuccess(`Updated ${activeSku.name} quantity to ${newQty} ${activeSku.unit}`);
     } catch (err: unknown) {
       toast.error("Adjustment Failed", humanizeError(err, 'adjust stock'));
     } finally {
@@ -1878,38 +1907,121 @@ function AdjustStockModal({ sku, onClose, onAdjust, onSuccess }: { sku: SKU, onC
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
-        className="max-w-md w-full bg-surface border border-white/10 shadow-2xl overflow-hidden"
+        className="max-w-md w-full bg-surface border border-white/10 shadow-2xl overflow-hidden rounded-sm"
        >
-          <div className="p-6 bg-onyx border-b border-white/5 flex items-center justify-between">
+          {/* Header */}
+          <div className="p-5 bg-onyx border-b border-white/5 flex items-center justify-between">
              <div className="flex items-center space-x-3">
-                <History className="text-electric-blue" size={18} />
-                <h3 className="text-sm font-bold text-white uppercase tracking-widest">Inventory Correction</h3>
+                <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded">
+                   <History size={18} />
+                </div>
+                <div>
+                   <h3 className="text-sm font-bold text-white uppercase tracking-wider">Inventory Correction</h3>
+                   <p className="text-[10px] text-gray-500 font-mono">Manual physical count & ledger audit</p>
+                </div>
              </div>
-             <button onClick={onClose} className="text-gray-500 hover:text-white"><X size={20} /></button>
+             <button onClick={onClose} className="p-1.5 text-gray-500 hover:text-white rounded hover:bg-white/5 transition-colors cursor-pointer">
+                <X size={18} />
+             </button>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="p-8 space-y-6">
+          {/* Active Product Identifier Card */}
+          <div className="px-6 pt-5 pb-0">
+             <div className="p-3.5 bg-black/40 border border-white/10 rounded-sm space-y-2">
+                <div className="flex items-center justify-between">
+                   <div className="flex items-center space-x-2">
+                      <Package size={14} className="text-[#60A5FA]" />
+                      <span className="text-[10px] uppercase font-bold tracking-widest text-gray-400">Target Product</span>
+                   </div>
+                   <span className="font-mono text-xs font-bold text-[#C5A059] bg-[#C5A059]/10 px-2 py-0.5 rounded-sm">
+                      {activeSku.sku_code}
+                   </span>
+                </div>
+
+                {allSkus && allSkus.length > 1 ? (
+                   <div className="pt-1">
+                      <select
+                        value={activeSku.id}
+                        onChange={(e) => {
+                          const found = allSkus.find(s => s.id === e.target.value);
+                          if (found) {
+                            setActiveSku(found);
+                            onSelectSku?.(found);
+                          }
+                        }}
+                        className="w-full bg-[#121418] border border-white/10 rounded-sm px-3 py-2 text-xs font-bold text-white outline-none focus:border-[#60A5FA]/60 cursor-pointer"
+                      >
+                        {allSkus.map(s => (
+                          <option key={s.id} value={s.id}>
+                            {s.name} ({s.sku_code}) — {s.qty_on_hand} {s.unit} on hand
+                          </option>
+                        ))}
+                      </select>
+                   </div>
+                ) : (
+                   <h4 className="text-sm font-bold text-white">{activeSku.name}</h4>
+                )}
+
+                <div className="flex items-center justify-between pt-2 border-t border-white/5 text-xs">
+                   <span className="text-gray-400 text-[11px]">Current Stock On Hand:</span>
+                   <span className="font-mono font-bold text-emerald-400 text-sm">
+                      {activeSku.qty_on_hand} {activeSku.unit}
+                   </span>
+                </div>
+             </div>
+          </div>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-5">
              <div className="space-y-4">
+                {/* Action Type Toggle */}
                 <div className="flex space-x-2">
-                   {['add', 'remove', 'set'].map((t) => (
-                     <label key={t} className="flex-1">
-                        <input type="radio" {...register("type")} value={t} className="hidden peer" />
-                        <div className="py-2 text-[10px] uppercase font-bold text-center border border-white/5 text-gray-500 peer-checked:bg-electric-blue peer-checked:text-onyx peer-checked:border-electric-blue cursor-pointer transition-all">
-                           {t}
-                        </div>
-                     </label>
+                   {[
+                     { key: 'add', label: 'ADD (+)' },
+                     { key: 'remove', label: 'REMOVE (-)' },
+                     { key: 'set', label: 'SET EXACT (=)' }
+                   ].map((t) => (
+                      <label key={t.key} className="flex-1">
+                         <input type="radio" {...register("type")} value={t.key} className="hidden peer" />
+                         <div className="py-2.5 text-[10px] uppercase font-bold text-center border border-white/10 text-gray-400 peer-checked:bg-emerald-500 peer-checked:text-black peer-checked:font-black peer-checked:border-emerald-500 cursor-pointer transition-all rounded-sm">
+                            {t.label}
+                         </div>
+                      </label>
                    ))}
                 </div>
 
-                <div className="space-y-2">
-                   <Label>Quantity to Adjust</Label>
-                   <input type="number" {...register("quantity")} className="w-full bg-onyx border border-white/10 p-4 text-2xl font-mono text-center text-white focus:border-electric-blue outline-none transition-all" placeholder="0.00" />
+                {/* Quantity Input */}
+                <div className="space-y-1.5">
+                   <div className="flex items-center justify-between">
+                      <Label>Quantity to Adjust ({activeSku.unit})</Label>
+                      <span className="text-[10px] font-mono text-gray-500">Unit: {activeSku.unit}</span>
+                   </div>
+                   <input 
+                     type="number" 
+                     step="any"
+                     {...register("quantity")} 
+                     className="w-full bg-onyx border border-white/10 p-3.5 text-2xl font-mono text-center text-white focus:border-emerald-500 outline-none transition-all rounded-sm" 
+                     placeholder="0.00" 
+                     autoFocus
+                   />
                    {errors.quantity && <ErrorMsg>{errors.quantity.message}</ErrorMsg>}
                 </div>
 
-                <div className="space-y-2">
-                   <Label>Reason Code</Label>
-                   <select {...register("reason")} className="w-full bg-onyx border border-white/10 p-3 text-xs text-white outline-none">
+                {/* Real-time Calculation Projection */}
+                <div className="p-3 bg-white/[0.02] border border-white/5 rounded-sm flex items-center justify-between text-xs font-mono">
+                   <span className="text-gray-400 text-[11px]">Audit Result:</span>
+                   <div className="flex items-center space-x-2 font-bold">
+                      <span className="text-gray-500">{activeSku.qty_on_hand}</span>
+                      <span className="text-gray-600">➔</span>
+                      <span className={projectedQty > activeSku.qty_on_hand ? "text-emerald-400 text-sm font-bold" : projectedQty < activeSku.qty_on_hand ? "text-red-400 text-sm font-bold" : "text-white text-sm font-bold"}>
+                         {projectedQty} {activeSku.unit}
+                      </span>
+                   </div>
+                </div>
+
+                {/* Reason Code */}
+                <div className="space-y-1.5">
+                   <Label>Reason Code / Audit Justification</Label>
+                   <select {...register("reason")} className="w-full bg-onyx border border-white/10 p-2.5 text-xs text-white outline-none rounded-sm cursor-pointer">
                       <option>Purchase Received</option>
                       <option>Sale Return</option>
                       <option>Damaged</option>
@@ -1923,9 +2035,9 @@ function AdjustStockModal({ sku, onClose, onAdjust, onSuccess }: { sku: SKU, onC
              <button 
               type="submit" 
               disabled={isSubmitting}
-              className="w-full py-4 bg-sandstone-gold text-onyx text-[10px] font-black uppercase tracking-[0.2em] hover:brightness-110 transition-all disabled:opacity-50"
+              className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-black text-[11px] font-black uppercase tracking-[0.2em] transition-all disabled:opacity-50 shadow-lg cursor-pointer rounded-sm"
              >
-                {isSubmitting ? "Recalculating..." : "Finalize Correction"}
+                {isSubmitting ? "Recalculating..." : `Commit Correction for ${activeSku.name}`}
              </button>
           </form>
        </motion.div>
