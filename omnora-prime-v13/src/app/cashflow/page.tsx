@@ -55,6 +55,7 @@ export default function CashFlowForecastPage() {
   const supabase = createClient();
   const [days, setDays] = useState(30);
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
+  const [filterMode, setFilterMode] = useState<"actionable" | "all">("actionable");
   const [scenario, setScenario] = useState<'standard' | 'delayed_receivables' | 'bulk_purchase'>('standard');
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [customEvents, setCustomEvents] = useState<CustomEvent[]>(() => {
@@ -79,22 +80,7 @@ export default function CashFlowForecastPage() {
   const { data: rawForecast = [], isFetching, refetch } = useQuery<CashflowForecast[]>({
     queryKey: ['cashflow_forecast', businessId, days],
     queryFn: async () => {
-      try {
-        // 1. Try server RPC
-        const { data, error } = await supabase.rpc('get_cashflow_forecast', {
-          p_business_id: businessId || 'default',
-          p_days: days
-        });
-
-        if (!error && data && Array.isArray(data) && data.length > 0) {
-          const hasNonZero = data.some(d => Number(d.expected_inflows) > 0 || Number(d.expected_outflows) > 0 || Number(d.cumulative_position) !== 0);
-          if (hasNonZero) return data;
-        }
-      } catch (e) {
-        console.warn('[Cashflow] Server RPC unavailable, synthesizing from database transactions:', e);
-      }
-
-      // 2. Fallback: Aggregate live local SQLite transactions
+      // Aggregate live local SQLite transactions directly (0ms local mesh)
       try {
         const [invRes, poRes, expRes] = await Promise.allSettled([
           fetch('/api/invoices?limit=100').then(r => r.ok ? r.json() : []),
@@ -307,6 +293,19 @@ export default function CashFlowForecastPage() {
     });
   }, [rawForecast, scenario, customEvents]);
 
+  const displayedForecast = useMemo(() => {
+    if (filterMode === 'actionable') {
+      const active = forecast.filter(d => 
+        Number(d.expected_inflows) > 0 || 
+        Number(d.expected_outflows) > 0 || 
+        d.inflow_sources.length > 0 || 
+        d.outflow_sources.length > 0
+      );
+      return active.length > 0 ? active : forecast;
+    }
+    return forecast;
+  }, [forecast, filterMode]);
+
   const summary = useMemo(() => {
     if (forecast.length === 0) return null;
     const currentCash = Number(forecast[0].cumulative_position) - (Number(forecast[0].expected_inflows) - Number(forecast[0].expected_outflows));
@@ -514,7 +513,7 @@ export default function CashFlowForecastPage() {
                 value={fmt(summary?.outflows || 0)} 
                 icon={TrendingDown} 
                 color={Number(summary?.outflows) > Number(summary?.inflows) ? "text-red-500" : "text-gray-400"}
-                sub="Fabric POs & Karigar Wages"
+                sub="Vendor POs & Operational Outflows"
               />
               <SummaryCard 
                 label={`Net ${days}-Day Position`} 
@@ -638,7 +637,7 @@ export default function CashFlowForecastPage() {
                        </tr>
                     </thead>
                     <tbody className="divide-y divide-white/[0.02]">
-                       {forecast.map((d: CashflowForecast) => (
+                       {displayedForecast.map((d: CashflowForecast) => (
                          <React.Fragment key={d.forecast_date}>
                            <tr 
                              className="hover:bg-white/[0.02] transition-colors cursor-pointer group" 
