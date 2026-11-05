@@ -134,12 +134,23 @@ const SKURow = React.memo(
     return (
       <tr
         key={row.id}
-        onClick={onSelect}
+        onClick={(e) => {
+          const target = e.target as HTMLElement;
+          if (target.closest('button') || target.closest('a') || target.closest('[data-no-row-select]')) {
+            return;
+          }
+          onSelect();
+        }}
         className="border-b border-white/4 hover:bg-white/[0.02] transition-colors cursor-pointer"
       >
         {row.getVisibleCells().map((cell: any) => (
           <td
             key={cell.id}
+            onClick={(e) => {
+              if (cell.column.id === 'actions') {
+                e.stopPropagation();
+              }
+            }}
             className="px-4 py-2.5 text-sm text-gray-200 border-b border-white/[0.04]"
           >
             {flexRender(
@@ -477,13 +488,35 @@ export default function InventoryPage() {
     columnHelper.display({
       id: "actions",
       cell: (info) => (
-        <TableActions 
-          sku={info.row.original} 
-          onView={() => setSelectedSku(info.row.original)}
-          onAdjust={() => setAdjustingSKU(info.row.original)} 
-          onEdit={() => setEditingSKU(info.row.original)}
-          onPrintLabel={() => setPrintingSku(info.row.original)}
-        />
+        <div onClick={(e) => e.stopPropagation()} className="relative flex justify-end" data-no-row-select>
+          <TableActions 
+            sku={info.row.original} 
+            onView={() => {
+              setEditingSKU(null);
+              setAdjustingSKU(null);
+              setPrintingSku(null);
+              setSelectedSku(info.row.original);
+            }}
+            onAdjust={() => {
+              setSelectedSku(null);
+              setEditingSKU(null);
+              setPrintingSku(null);
+              setAdjustingSKU(info.row.original);
+            }} 
+            onEdit={() => {
+              setSelectedSku(null);
+              setAdjustingSKU(null);
+              setPrintingSku(null);
+              setEditingSKU(info.row.original);
+            }}
+            onPrintLabel={() => {
+              setSelectedSku(null);
+              setEditingSKU(null);
+              setAdjustingSKU(null);
+              setPrintingSku(info.row.original);
+            }}
+          />
+        </div>
       ),
     }),
   // fmt is intentionally excluded — it is NOT used in column definitions (only in voice intents)
@@ -617,7 +650,16 @@ export default function InventoryPage() {
                   </button>
 
                   <button 
-                    onClick={() => setAdjustingSKU(skus[0])} // Just a shortcut for quick adjustment
+                    onClick={() => {
+                      if (selectedSku) {
+                        setAdjustingSKU(selectedSku);
+                        setSelectedSku(null);
+                      } else if (skus.length > 0) {
+                        setAdjustingSKU(skus[0]);
+                      } else {
+                        toast.info('No products available to adjust');
+                      }
+                    }}
                     className="flex items-center space-x-2 px-4 py-2 border border-white/10 text-white text-[10px] uppercase tracking-widest font-bold hover:bg-white/5 transition-all"
                   >
                       <Zap size={14} />
@@ -774,7 +816,7 @@ export default function InventoryPage() {
           onClose={() => setSelectedSku(null)}
           onModify={() => { setEditingSKU(selectedSku); setSelectedSku(null); }}
           onAdjust={() => { setAdjustingSKU(selectedSku); setSelectedSku(null); }}
-          onPrintLabel={() => setPrintingSku(selectedSku)}
+          onPrintLabel={() => { setPrintingSku(selectedSku); setSelectedSku(null); }}
           onQuickAdjust={async (delta) => {
             const newQty = Math.max(0, Number(selectedSku.qty_on_hand) + delta);
             adjustStock({ skuId: selectedSku.id, qty_on_hand: newQty, previousQty: selectedSku.qty_on_hand });
@@ -1214,10 +1256,14 @@ const TableActions = React.memo(function TableActions({
   };
 
   return (
-    <div className="relative flex justify-end" ref={containerRef}>
+    <div className="relative flex justify-end" ref={containerRef} data-no-row-select>
        <button 
-        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
-        className="p-2 text-gray-600 hover:text-white transition-colors cursor-pointer"
+        onClick={(e) => { 
+          e.stopPropagation(); 
+          e.preventDefault(); 
+          setOpen(!open); 
+        }}
+        className="p-2 text-gray-400 hover:text-white transition-colors cursor-pointer rounded hover:bg-white/5 active:scale-95"
         title="More actions"
        >
           <MoreVertical size={16} />
@@ -1225,39 +1271,63 @@ const TableActions = React.memo(function TableActions({
 
        {open && (
          <div 
-           className="absolute right-0 top-10 w-52 bg-[#121418] border border-white/10 shadow-2xl z-50 py-1 rounded-sm divide-y divide-white/5"
-           onClick={(e) => e.stopPropagation()}
+           className="absolute right-0 top-10 w-56 bg-[#121418] border border-white/10 shadow-2xl z-50 py-1.5 rounded-md divide-y divide-white/5 backdrop-blur-xl"
+           onClick={(e) => {
+             e.stopPropagation();
+             e.preventDefault();
+           }}
+           data-no-row-select
          >
             <div className="py-1">
               {onView && (
                 <button
-                  onClick={() => { onView(); setOpen(false); }}
-                  className="w-full px-4 py-2 text-left text-[10px] uppercase font-bold text-gray-300 hover:text-white hover:bg-white/5 flex items-center space-x-3 cursor-pointer"
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    e.preventDefault(); 
+                    setOpen(false); 
+                    onView(); 
+                  }}
+                  className="w-full px-4 py-2.5 text-left text-[11px] uppercase font-bold text-gray-300 hover:text-white hover:bg-white/10 flex items-center space-x-3 cursor-pointer transition-colors"
                 >
-                  <Eye size={13} className="text-[#60A5FA]" />
+                  <Eye size={14} className="text-[#60A5FA]" />
                   <span>View Details</span>
                 </button>
               )}
               <button
-                onClick={() => { onEdit(); setOpen(false); }}
-                className="w-full px-4 py-2 text-left text-[10px] uppercase font-bold text-gray-300 hover:text-white hover:bg-white/5 flex items-center space-x-3 cursor-pointer"
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  e.preventDefault(); 
+                  setOpen(false); 
+                  onEdit(); 
+                }}
+                className="w-full px-4 py-2.5 text-left text-[11px] uppercase font-bold text-gray-300 hover:text-white hover:bg-white/10 flex items-center space-x-3 cursor-pointer transition-colors"
               >
-                <Edit size={13} className="text-[#60A5FA]" />
+                <Edit size={14} className="text-[#60A5FA]" />
                 <span>Modify / Edit SKU</span>
               </button>
               <button 
-                onClick={() => { onAdjust(); setOpen(false); }} 
-                className="w-full px-4 py-2 text-left text-[10px] uppercase font-bold text-gray-300 hover:text-white hover:bg-white/5 flex items-center space-x-3 cursor-pointer"
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  e.preventDefault(); 
+                  setOpen(false); 
+                  onAdjust(); 
+                }} 
+                className="w-full px-4 py-2.5 text-left text-[11px] uppercase font-bold text-gray-300 hover:text-white hover:bg-white/10 flex items-center space-x-3 cursor-pointer transition-colors"
               >
-                <History size={13} className="text-emerald-400" />
+                <History size={14} className="text-emerald-400" />
                 <span>Adjust Stock</span>
               </button>
               {onPrintLabel && (
                 <button 
-                  onClick={() => { onPrintLabel(); setOpen(false); }} 
-                  className="w-full px-4 py-2 text-left text-[10px] uppercase font-bold text-gray-300 hover:text-white hover:bg-white/5 flex items-center space-x-3 cursor-pointer"
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    e.preventDefault(); 
+                    setOpen(false); 
+                    onPrintLabel(); 
+                  }} 
+                  className="w-full px-4 py-2.5 text-left text-[11px] uppercase font-bold text-gray-300 hover:text-white hover:bg-white/10 flex items-center space-x-3 cursor-pointer transition-colors"
                 >
-                  <Barcode size={13} className="text-purple-400" />
+                  <Barcode size={14} className="text-purple-400" />
                   <span>Print Barcode Label</span>
                 </button>
               )}
@@ -1266,23 +1336,30 @@ const TableActions = React.memo(function TableActions({
             <div className="py-1">
               {sku.qty_on_hand <= (sku.reorder_level || 0) && (
                 <button 
-                  onClick={() => {
-                    const phone = useBusinessProfileStore.getState().profile?.phone || '';
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    const phone = useBusinessProfileStore.getState().profile?.phone || profile?.phone || '';
                     const msg = ALERT_TEMPLATES.low_stock({ name: sku.name, qty: String(sku.qty_on_hand), unit: sku.unit, reorderLevel: String(sku.reorder_level) });
                     sendWhatsAppAlert(phone, msg);
+                    toast.success('WhatsApp alert prepared', `Low stock notification for ${sku.name}`);
                     setOpen(false);
                   }}
-                  className="w-full px-4 py-2 text-left text-[10px] uppercase font-bold text-[#25D366] hover:bg-[#25D366]/5 flex items-center space-x-3 cursor-pointer"
+                  className="w-full px-4 py-2.5 text-left text-[11px] uppercase font-bold text-[#25D366] hover:bg-[#25D366]/10 flex items-center space-x-3 cursor-pointer transition-colors"
                 >
-                  <MessageCircle size={13} />
+                  <MessageCircle size={14} />
                   <span>Low Stock Alert</span>
                 </button>
               )}
               <button 
-                onClick={handleDelete} 
-                className="w-full px-4 py-2 text-left text-[10px] uppercase font-bold text-red-400 hover:bg-red-500/10 flex items-center space-x-3 cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  handleDelete(e);
+                }} 
+                className="w-full px-4 py-2.5 text-left text-[11px] uppercase font-bold text-red-400 hover:bg-red-500/10 flex items-center space-x-3 cursor-pointer transition-colors"
               >
-                <Trash2 size={13} />
+                <Trash2 size={14} />
                 <span>Delete SKU</span>
               </button>
             </div>
