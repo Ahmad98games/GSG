@@ -1,5 +1,11 @@
-
 "use client";
+
+const isElectronApp = typeof window !== 'undefined' && (
+  !!(window as any).electronWindow || 
+  !!(window as any).electron ||
+  navigator.userAgent.toLowerCase().includes('electron')
+);
+
 
 import React, { useMemo, useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -342,7 +348,10 @@ const RegisterKarigarModal = forwardRef<
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex justify-end bg-black/60 backdrop-blur-sm"
+      className={cn(
+        "fixed right-0 bottom-0 left-0 z-[100] flex justify-end bg-black/60 backdrop-blur-sm",
+        isElectronApp ? "top-10 h-[calc(100vh-40px)]" : "top-0 h-screen"
+      )}
       onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
     >
        <div className="w-full max-w-xl bg-surface border-l border-white/5 h-full flex flex-col shadow-2xl animate-in slide-in-from-right duration-200">

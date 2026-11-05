@@ -1,5 +1,11 @@
 "use client";
 
+const isElectronApp = typeof window !== 'undefined' && (
+  !!(window as any).electronWindow || 
+  !!(window as any).electron ||
+  navigator.userAgent.toLowerCase().includes('electron')
+);
+
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Link from "next/link";
@@ -927,13 +933,19 @@ function SkuDetailPanel({
   const marginPercent = cost > 0 && sale > 0 ? (((sale - cost) / cost) * 100).toFixed(1) : null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs" onClick={onClose}>
+    <div 
+      className={cn(
+        "fixed right-0 bottom-0 left-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs",
+        isElectronApp ? "top-10 h-[calc(100vh-40px)]" : "top-0 h-screen"
+      )} 
+      onClick={onClose}
+    >
       <motion.div
         initial={{ x: "100%" }}
         animate={{ x: 0 }}
         exit={{ x: "100%" }}
         transition={{ type: "spring", damping: 28, stiffness: 300 }}
-        className="w-full max-w-md h-full bg-[#0F1114] border-l border-white/10 flex flex-col shadow-2xl"
+        className="w-full max-w-md h-full bg-[#0F1114] border-l border-white/10 flex flex-col shadow-2xl overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -1613,13 +1625,18 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
   if (typeof document === 'undefined') return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex justify-end bg-black/60 backdrop-blur-sm">
+    <div 
+      className={cn(
+        "fixed right-0 bottom-0 left-0 z-[100] flex justify-end bg-black/60 backdrop-blur-sm",
+        isElectronApp ? "top-10 h-[calc(100vh-40px)]" : "top-0 h-screen"
+      )}
+    >
        <motion.div 
         initial={{ x: "100%" }}
         animate={{ x: 0 }}
         exit={{ x: "100%" }}
         transition={{ type: "spring", damping: 30, stiffness: 300 }}
-        className="w-full max-w-xl bg-surface border-l border-white/5 h-full flex flex-col shadow-[-20px_0_40px_rgba(0,0,0,0.5)]"
+        className="w-full max-w-xl bg-surface border-l border-white/5 h-full flex flex-col shadow-[-20px_0_40px_rgba(0,0,0,0.5)] overflow-hidden"
        >
           <div className="p-8 border-b border-white/5 flex items-center justify-between">
              <div className="flex items-center space-x-3">
@@ -1851,7 +1868,12 @@ function AdjustStockModal({ sku, onClose, onAdjust, onSuccess }: { sku: SKU, onC
   if (typeof document === 'undefined') return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+    <div 
+      className={cn(
+        "fixed right-0 bottom-0 left-0 z-[110] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm",
+        isElectronApp ? "top-10 h-[calc(100vh-40px)]" : "top-0 h-screen"
+      )}
+    >
        <motion.div 
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
