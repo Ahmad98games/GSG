@@ -141,18 +141,15 @@ export default function InventoryImportPage() {
     let failed = 0;
     const errors: { row: number; msg: string }[] = [];
 
+    const mappedRows: any[] = [];
     for (let i = 0; i < parsedData.length; i++) {
       const row = parsedData[i];
       const mappedRow: any = { business_id: businessId, is_active: true };
       
-      // Apply mapping
       Object.entries(mapping).forEach(([csvHeader, noxisField]) => {
-        if (noxisField) {
-          mappedRow[noxisField] = row[csvHeader];
-        }
+        if (noxisField) mappedRow[noxisField] = row[csvHeader];
       });
 
-      // Validation
       const missingRequired = INVENTORY_FIELDS.filter(f => f.required && !mappedRow[f.key]);
       if (missingRequired.length > 0) {
         failed++;
@@ -160,28 +157,31 @@ export default function InventoryImportPage() {
         continue;
       }
 
-      // Upsert
-      const { data: existing } = await supabase
-        .from('skus')
-        .select('id')
-        .eq('business_id', businessId)
-        .eq('sku_code', mappedRow.sku_code)
-        .single();
-
-      const { error } = await supabase
-        .from('skus')
-        .upsert(mappedRow, { onConflict: 'business_id,sku_code' });
-
-      if (error) {
-        failed++;
-        errors.push({ row: i + 1, msg: humanizeError(error) });
-      } else {
-        if (existing) updated++;
-        else success++;
-      }
-
-      setImportProgress(Math.round(((i + 1) / parsedData.length) * 100));
+      mappedRows.push(mappedRow);
+      setImportProgress(Math.round(((i + 1) / parsedData.length) * 50));
     }
+
+    if (mappedRows.length > 0) {
+      try {
+        const res = await fetch('/api/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entity: 'skus', rows: mappedRows, businessId })
+        });
+        const json = await res.json();
+        if (res.ok && json.success) {
+          success = json.imported || mappedRows.length;
+          failed += (json.failed || 0);
+        } else {
+          failed += mappedRows.length;
+          errors.push({ row: 0, msg: json.error || 'Failed to save inventory' });
+        }
+      } catch (err: any) {
+        failed += mappedRows.length;
+        errors.push({ row: 0, msg: err.message });
+      }
+    }
+    setImportProgress(100);
 
     setImportResults({ success, updated, failed, errors });
     setIsImporting(false);

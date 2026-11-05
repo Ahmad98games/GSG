@@ -405,35 +405,27 @@ export default function SmartImportPage() {
       }
 
       try {
-        const record = config.buildRow(
-          row, profile.id, i
-        )
-        const { error } = await supabase
-          .from(config.tableName)
-          .upsert(record, {
-            onConflict: entity === 'skus'
-              ? 'business_id,sku_code'
-              : entity === 'karigars'
-              ? 'business_id,karigar_code'
-              : 'business_id,name',
+        const record = config.buildRow(row, profile.id, i);
+        // Persist directly via /api/import to local SQLite + cloud
+        const res = await fetch('/api/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            entity: entity === 'skus' ? 'skus' : entity === 'parties' ? 'parties' : 'karigars',
+            rows: [record],
+            businessId: profile.id
           })
-
-        if (error) {
-          failed++
-          const msg = error.message.includes('duplicate')
-            ? `Row ${i+1}: ${row.name || row.sku_code} already exists — updated`
-            : `Row ${i+1}: ${humanizeError(error)}`
-          errors.push(msg)
-          if (error.message.includes('duplicate')) {
-            success++ // Upsert = still a success
-            failed--
-          }
+        });
+        const json = await res.json();
+        if (res.ok && json.success) {
+          success++;
         } else {
-          success++
+          failed++;
+          errors.push(`Row ${i+1}: ${json.error || 'Failed to save to local database'}`);
         }
       } catch (err: any) {
-        failed++
-        errors.push(`Row ${i+1}: ${humanizeError(err)}`)
+        failed++;
+        errors.push(`Row ${i+1}: ${humanizeError(err)}`);
       }
     }
 
