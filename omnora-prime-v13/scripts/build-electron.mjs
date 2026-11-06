@@ -176,6 +176,33 @@ function pruneStandaloneNodeModules() {
   const nmDir = path.join(STANDALONE, 'node_modules');
   if (!fs.existsSync(nmDir)) return;
   console.log('[Electron Build] Pruning redundant source maps, docs, and test files for instant installer extraction...');
+    const deadDirs = [
+    "caniuse-lite",
+    "next/dist/build",
+    "next/dist/export",
+    "next/dist/telemetry",
+    "next/dist/trace",
+    "next/dist/diagnostics",
+    "next/dist/cli",
+    "drizzle-orm/pg",
+    "drizzle-orm/postgres-js",
+    "drizzle-orm/mysql2",
+    "drizzle-orm/planetscale-serverless",
+    "drizzle-orm/neon-serverless",
+    "drizzle-orm/neon-http",
+    "drizzle-orm/bun-sqlite",
+    "drizzle-orm/d1",
+    "drizzle-orm/libsql",
+    "drizzle-orm/expo-sqlite",
+    "drizzle-orm/op-sqlite"
+];
+  for (const d of deadDirs) {
+    const p = path.join(nmDir, ...d.split("/"));
+    if (fs.existsSync(p)) {
+      try { fs.rmSync(p, { recursive: true, force: true }); console.log(`[Electron Build] ✓ Pruned unused standalone directory: ${d}`); } catch {}
+    }
+  }
+
   let prunedCount = 0;
   function walk(dir) {
     let entries;

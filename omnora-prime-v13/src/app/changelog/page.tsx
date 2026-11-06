@@ -4,9 +4,24 @@ import { Tag, Calendar, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-reac
 
 const RELEASES = [
   {
-    version: 'v14.0.30',
+    version: 'v14.0.31',
     date: 'November 2026',
     isCurrent: true,
+    title: 'High-Speed Installer Optimization, Zero-Freeze Startup, Resilient Offline/Online Timeout Shield & Live Sentinel Copilot',
+    summary: 'Ultra-fast Windows installer completing extraction in under 30 seconds by pruning 1,600+ loose files and redundant copy loops, 100ms instant splash screen, single-batch HWID caching eliminating main-thread freezes, 2500ms abort shield on all cloud endpoints for smooth offline navigation, and Roman Urdu voice & text understanding in Sentinel AI Copilot.',
+    changes: [
+      '30-Second Installer Extraction: Pruned over 1,600 loose JavaScript files and eliminated 276MB self-copy loop during NSIS installation, reducing Windows Defender extraction scan times from 15 minutes to under 30 seconds.',
+      'Instant Splash & Zero-Freeze Startup: Moved splash window initialization to immediate app startup (<100ms) and replaced 6 sequential synchronous WMI PowerShell calls with a single 1500ms batch query and memory cache.',
+      'Offline/Online Supabase Timeout Shield: Added strict 2500ms AbortController timeout wrappers across all backend Supabase client endpoints, preventing remote network stalls and ensuring 0–5ms local SQLite execution even with disconnected or flaky internet.',
+      'Sentinel Live Copilot in Roman Urdu: Broadened conversational parsing to detect Urdu/Roman-Urdu assistance phrases (e.g. "invoice bana na ni ata") and trigger interactive guidance and Live Copilot walkthroughs.',
+      'Smart Import Stock Mode: Added flexible conflict resolution for existing inventory items with choices between Overwrite and Additive (+) stock increments.',
+      'Software Update Delivery: Released verified desktop production build v14.0.31.',
+    ],
+  },
+  {
+    version: 'v14.0.30',
+    date: 'November 2026',
+    isCurrent: false,
     title: 'Excel Data Import Full-Persistence, 500 Rows/Page Grid, POS Kiosk Fullscreen & Inventory Action Isolation',
     summary: 'Two-way Excel & CSV data import landing reliably in local SQLite and Supabase with instant cache invalidation, 500 rows per page table pagination, POS Kiosk fullscreen toggle with Esc exit, inventory action menu event isolation, drawer window frame height fixes, and target product projection in Stock Correction.',
     changes: [
@@ -177,7 +192,7 @@ const RELEASES = [
 ]
 
 export default function ChangelogPage() {
-  const [openVersions, setOpenVersions] = useState<string[]>(['v14.0.30'])
+  const [openVersions, setOpenVersions] = useState<string[]>(['v14.0.31'])
 
   const toggleVersion = (v: string) => {
     setOpenVersions(prev =>

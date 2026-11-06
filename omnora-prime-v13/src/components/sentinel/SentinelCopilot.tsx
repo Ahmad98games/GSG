@@ -217,7 +217,7 @@ export default function SentinelCopilot() {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 30, scale: 0.95 }}
         transition={{ duration: 0.2 }}
-        className="fixed bottom-6 right-6 z-[95] w-full max-w-[440px] bg-slate-900/95 backdrop-blur-md border border-blue-500/30 rounded-xl shadow-2xl shadow-black/60 overflow-hidden font-sans text-slate-100"
+        className="fixed bottom-6 right-6 z-[105] w-full max-w-[440px] bg-slate-900/95 backdrop-blur-md border border-blue-500/30 rounded-xl shadow-2xl shadow-black/60 overflow-hidden font-sans text-slate-100"
       >
         {/* Header Bar */}
         <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-900/60 via-slate-900 to-slate-900 border-b border-white/10">

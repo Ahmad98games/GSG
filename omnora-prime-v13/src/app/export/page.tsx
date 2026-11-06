@@ -72,7 +72,7 @@ export default function ExportPage() {
               </div>
               <div>
                  <h1 className="text-xl font-black text-white uppercase tracking-wider">{t('export.title') || "Data Export Center"}</h1>
-                 <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">Industrial Extraction System v{process.env.NEXT_PUBLIC_APP_VERSION || '14.0.30'}</p>
+                 <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">Industrial Extraction System v{process.env.NEXT_PUBLIC_APP_VERSION || '14.0.31'}</p>
               </div>
            </div>
         </header>

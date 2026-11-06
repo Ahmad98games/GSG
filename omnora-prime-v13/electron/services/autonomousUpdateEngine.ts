@@ -124,7 +124,7 @@ export function calculateVersionEligibility(
  * and active tier to both encrypted store and SQLite.
  */
 export function initAutonomousUpdateBaseline(currentVersion?: string): VersionPolicyStatus {
-  const appVer = currentVersion || (app && typeof app.getVersion === 'function' && app.getVersion() ? app.getVersion() : '14.0.30')
+  const appVer = currentVersion || (app && typeof app.getVersion === 'function' && app.getVersion() ? app.getVersion() : '14.0.31')
   const hwid = getCachedHWIDOrGenerate()
 
   // Determine active tier from signed license or fallback to Pro evaluation / Elite

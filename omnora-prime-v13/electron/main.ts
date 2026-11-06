@@ -538,6 +538,7 @@ if (!gotTheLock) {
   // 3. HELPERS
   // ─────────────────────────────────────────────
   let portHolder: net.Server | null = null;
+  let serverCrashError: string | null = null;
 
   function reserveAvailablePort(startPort: number, attempt = 0): Promise<number> {
     return new Promise((resolve, reject) => {
@@ -601,6 +602,11 @@ if (!gotTheLock) {
 
       const check = () => {
         if (done) return;
+        if (serverCrashError) {
+          done = true;
+          reject(new Error(serverCrashError));
+          return;
+        }
         if (Date.now() - start > timeout) {
           done = true;
           reject(new Error(`Server did not start within ${timeout / 1000}s`));
@@ -642,6 +648,9 @@ if (!gotTheLock) {
   // that shows instantly before main loads.
   // ─────────────────────────────────────────────
   function createSplashWindow(customStatus?: string): void {
+    if (splashWindow && !splashWindow.isDestroyed()) {
+      return;
+    }
     const iconPath = app.isPackaged
       ? path.join(process.resourcesPath, 'build', 'icon.ico')
       : path.join(__dirname, '../../build/icon.ico');
@@ -2696,6 +2705,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   // ─────────────────────────────────────────────
   app.whenReady().then(async () => {
     try {
+      // ── STEP 0: Show splash immediately within 100ms ──
+      createSplashWindow();
+
       // Load env from all possible locations (inline parser — no dotenv dependency)
       loadEnvFile(path.join(__dirname, '../../.env'));
       loadEnvFile(path.join(process.resourcesPath, '.env'));
@@ -3095,6 +3107,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         } catch { }
         startupLog(`[Next.js] Last buffered output:\n${serverLog.slice(-1000)}`)
         if (code !== 0) {
+          serverCrashError = `Server process exited with code ${code}.\n${serverLog.slice(-500) || '(Check server-stderr.log in application data directory)'}`;
           destroySplash();
           dialog.showErrorBox(
             'Server Crashed',

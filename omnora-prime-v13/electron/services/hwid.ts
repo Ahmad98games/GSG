@@ -20,50 +20,35 @@ import {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function wmicQuery(query: string): string {
+let inMemoryHWID: string | null = null;
+
+function queryWindowsHWID(): { systemUUID: string; motherboardSerial: string; cpuProcessorId: string } {
+  let systemUUID = '';
+  let motherboardSerial = '';
+  let cpuProcessorId = '';
+
+  // Fast single batch PowerShell query with 1500ms strict timeout to prevent startup hangs
   try {
-    const output = execSync(query, {
-      timeout: 5000,
+    const batchCmd = 'powershell -NoProfile -NonInteractive -Command "$u=(Get-CimInstance Win32_ComputerSystemProduct).UUID; $s=(Get-CimInstance Win32_BaseBoard).SerialNumber; $c=(Get-CimInstance Win32_Processor).ProcessorId; Write-Output ($u+\'`t\'+$s+\'`t\'+$c)"';
+    const output = execSync(batchCmd, {
+      timeout: 1500,
       windowsHide: true,
       encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'], // suppress stderr warnings
-    })
-    const lines = output.split('\n')
-    for (const line of lines) {
-      const trimmed = line.trim()
-      if (!trimmed || trimmed.toLowerCase().startsWith('uuid') ||
-          trimmed.toLowerCase().startsWith('serialnumber') ||
-          trimmed.toLowerCase().startsWith('processorid')) {
-        const eqIdx = trimmed.indexOf('=')
-        if (eqIdx !== -1) {
-          const val = trimmed.slice(eqIdx + 1).trim()
-          if (val && val !== '' && val.toLowerCase() !== 'to be filled by o.e.m.' &&
-              val.toLowerCase() !== 'none' && val !== '0') {
-            return val
-          }
-        }
-      }
+      stdio: ['ignore', 'pipe', 'ignore']
+    }).trim();
+
+    if (output) {
+      const parts = output.split('\t');
+      if (parts[0] && !parts[0].toLowerCase().includes('o.e.m') && parts[0] !== '0') systemUUID = parts[0].trim();
+      if (parts[1] && !parts[1].toLowerCase().includes('o.e.m') && parts[1] !== '0') motherboardSerial = parts[1].trim();
+      if (parts[2] && !parts[2].toLowerCase().includes('o.e.m') && parts[2] !== '0') cpuProcessorId = parts[2].trim();
+      return { systemUUID, motherboardSerial, cpuProcessorId };
     }
   } catch {
-    // wmic failed — fall back to PowerShell Get-CimInstance on Windows 11
+    // If PowerShell is blocked or restricted, continue with zero-cost fallback
   }
 
-  // PowerShell CIM fallback (Windows 11 compatible)
-  try {
-    let psCmd = ''
-    if (query.includes('csproduct')) psCmd = 'powershell -NoProfile -Command "(Get-CimInstance Win32_ComputerSystemProduct).UUID"'
-    else if (query.includes('baseboard')) psCmd = 'powershell -NoProfile -Command "(Get-CimInstance Win32_BaseBoard).SerialNumber"'
-    else if (query.includes('cpu')) psCmd = 'powershell -NoProfile -Command "(Get-CimInstance Win32_Processor).ProcessorId"'
-
-    if (psCmd) {
-      const val = execSync(psCmd, { timeout: 5000, windowsHide: true, encoding: 'utf8' }).trim()
-      if (val && val.toLowerCase() !== 'to be filled by o.e.m.' && val.toLowerCase() !== 'none' && val !== '0') {
-        return val
-      }
-    }
-  } catch {}
-
-  return ''
+  return { systemUUID, motherboardSerial, cpuProcessorId };
 }
 
 function getPrimaryMAC(): string {
@@ -99,41 +84,45 @@ export interface HWIDComponents {
 
 export function collectHWIDComponents(): HWIDComponents {
   const isWin = process.platform === 'win32'
+  const winHw = isWin ? queryWindowsHWID() : { systemUUID: '', motherboardSerial: '', cpuProcessorId: '' }
+  const primaryMAC = getPrimaryMAC()
+  const hostname = os.hostname()
 
-  const systemUUID      = isWin ? wmicQuery('wmic csproduct get UUID /value')        : ''
-  const motherboardSerial = isWin ? wmicQuery('wmic baseboard get SerialNumber /value') : ''
-  const cpuProcessorId  = isWin ? wmicQuery('wmic cpu get ProcessorId /value')       : ''
-  const primaryMAC      = getPrimaryMAC()
-  const hostname        = os.hostname()
-
-  return { systemUUID, motherboardSerial, cpuProcessorId, primaryMAC, hostname }
+  return {
+    systemUUID: winHw.systemUUID,
+    motherboardSerial: winHw.motherboardSerial,
+    cpuProcessorId: winHw.cpuProcessorId,
+    primaryMAC,
+    hostname
+  }
 }
 
 /**
- * Generates HWID as SHA-256 hex of "UUID|MotherboardSerial|CpuId|MAC|Hostname".
- * Non-empty components only — a missing wmic value does not contribute.
+ * Generates HWID as SHA-256 hex of "UUID|MotherboardSerial|CpuId|MAC|Hostname|CPUModel".
+ * Non-empty components only — cached in-memory for instant 0ms subsequent returns.
  */
 export function generateHWID(): string {
-  const c = collectHWIDComponents()
+  if (inMemoryHWID) return inMemoryHWID;
 
+  const c = collectHWIDComponents()
   const parts = [
     c.systemUUID,
     c.motherboardSerial,
     c.cpuProcessorId,
     c.primaryMAC,
     c.hostname,
+    os.cpus()[0]?.model || '',
+    os.arch(),
+    os.platform()
   ].filter(Boolean)
 
-  // Require at least 2 hardware identifiers to generate a meaningful HWID
-  if (parts.length < 2) {
-    // Fallback for dev/CI: use hostname + arch + platform
-    parts.push(os.arch(), os.platform())
-  }
-
-  return crypto
+  const hash = crypto
     .createHash('sha256')
     .update(parts.join('|'))
-    .digest('hex')
+    .digest('hex');
+
+  inMemoryHWID = hash;
+  return hash;
 }
 
 /**

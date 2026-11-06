@@ -270,79 +270,81 @@ function parsePeriod(input: string): { from: string; to: string } {
 export function parseCommand(input: string): SentinelCommand | null {
   const text = input.toLowerCase().trim();
 
-  // If input is an inquiry, practical demo request, or explanatory question,
-  // do NOT intercept with a silent navigation command. Defer to processChatQuery!
+  // If input is an inquiry, tutorial/learning request, question, or conversational sentence,
+  // do NOT intercept with a silent navigation command. Defer to processChatQuery & Sentinel Brain!
   const isQuestionOrHelp = 
-    /\b(kaise|kese|how|kya|what|kyun|why|samajh|samjh|nahi ata|ni ata|nahi aata|ni aata|seekhna|sikhao|sikhayein|batao|batayein|bataiye|tarika|tariqa|karna hai|explain|perform|dikhao|karke dikhao|guide|help|tour|walkthrough)\b/i.test(text);
+    /\b(kaise|kese|how|kya|what|kyun|why|samajh|samjh|nahi ata|ni ata|nahi aata|ni aata|nae ata|nhi ata|ata nahi|aata nahi|ata ni|aata ni|bana na|banana|seekhna|sikhao|sikhayein|batao|batayein|bataiye|tarika|tariqa|karna hai|karna nahi|explain|perform|dikhao|karke dikhao|krke dikhao|guide|help|tour|walkthrough|kya karu|kya karein)\b/i.test(text) ||
+    text.includes('?') ||
+    (text.split(/\s+/).length > 3 && !text.startsWith('go to') && !text.startsWith('open'));
 
   if (isQuestionOrHelp) {
     return null;
   }
   
-  // Intent matching — keyword patterns
+  // Intent matching — keyword patterns (strictly for direct navigation/actions)
   const patterns: Array<{
     keywords: string[];
     intent: string;
     entities?: Record<string, string>;
   }> = [
     // Reports
-    { keywords: ['profit', 'loss', 'p&l', 'pnl', 'munafa', 'nuqsan', 'report'],
+    { keywords: ['profit loss', 'p&l', 'pnl report', 'munafa report', 'loss report'],
       intent: 'profit_loss' },
-    { keywords: ['trial balance', 'trial', 'balance sheet'],
+    { keywords: ['trial balance', 'balance sheet'],
       intent: 'trial_balance' },
-    { keywords: ['cash flow', 'cashflow', 'liquidity', 'nakdi'],
+    { keywords: ['cash flow report', 'cashflow report', 'liquidity report'],
       intent: 'cash_flow' },
     // Navigation  
-    { keywords: ['stock', 'inventory', 'maal', 'kitna', 'check stock', 'how much'],
+    { keywords: ['go to inventory', 'open inventory', 'inventory list', 'stock list', 'view stock', 'check stock'],
       intent: 'go_inventory' },
-    { keywords: ['dashboard', 'home', 'ghar', 'main page', 'back to start'],
+    { keywords: ['go to dashboard', 'open dashboard', 'show dashboard', 'home page', 'main page'],
       intent: 'go_dashboard' },
-    { keywords: ['intelligence', 'business intelligence', 'bi', 'insights', 'analytics'],
+    { keywords: ['business intelligence', 'open intelligence', 'bi analytics'],
       intent: 'go_intelligence' },
-    { keywords: ['order', 'orders', 'sales order', 'booking', 'order list'],
+    { keywords: ['go to orders', 'open orders', 'sales orders list'],
       intent: 'go_orders' },
-    { keywords: ['mandi', 'cotton rate', 'yarn rate', 'market rate'],
+    { keywords: ['mandi rates', 'cotton rates', 'yarn rates', 'market rates'],
       intent: 'go_mandi' },
-    { keywords: ['import', 'excel import', 'upload excel', 'import wizard'],
+    { keywords: ['data import wizard', 'open import', 'upload excel', 'import wizard'],
       intent: 'go_import' },
-    { keywords: ['backup', 'restore', 'usb backup', 'save db'],
+    { keywords: ['backup and restore', 'open backup', 'usb backup'],
       intent: 'go_backup' },
-    { keywords: ['diagnostics', 'health', 'network check', 'sqlite check'],
+    { keywords: ['system diagnostics', 'open diagnostics', 'health check'],
       intent: 'go_diagnostics' },
-    { keywords: ['branch', 'branches', 'factory branch', 'shed'],
+    { keywords: ['factory branches', 'open branches'],
       intent: 'go_branches' },
-    { keywords: ['settings', 'config', 'tarteeb', 'change setting'],
+    { keywords: ['system settings', 'open settings', 'app settings'],
       intent: 'go_settings' },
-    { keywords: ['cashflow', 'cash position', 'nakdi', 'paisa kitna'],
+    { keywords: ['cash flow forecast', 'open cashflow'],
       intent: 'go_cashflow' },
-    { keywords: ['dispatch', 'delivery', 'bhejna', 'shipment'],
+    { keywords: ['dispatch terminal', 'open dispatch', 'gate pass list'],
       intent: 'go_dispatch' },
-    { keywords: ['attendance', 'haazri', 'kaun aya', 'who came'],
+    { keywords: ['mark attendance', 'haazri lagao'],
       intent: 'mark_attendance' },
-    { keywords: ['purchase', 'kharidna', 'supplier'],
+    { keywords: ['go to purchase', 'open purchase', 'purchases list'],
       intent: 'go_purchase' },
-    { keywords: ['help', 'madad', 'how', 'kaise', 'kya karna'],
+    { keywords: ['open help', 'system help'],
       intent: 'open_help' },
-    { keywords: ['karigar', 'worker', 'staff', 'mazdoor', 'employees'],
+    { keywords: ['go to karigars', 'open karigars', 'karigar list', 'workers list', 'staff list'],
       intent: 'go_karigars' },
-    { keywords: ['invoice', 'bill', 'receipt', 'raseed', 'billing'],
+    { keywords: ['go to invoices', 'open invoices', 'invoices list', 'view invoices', 'all invoices'],
       intent: 'go_invoices' },
-    { keywords: ['payroll', 'salary', 'tankhwa', 'wages', 'pay'],
+    { keywords: ['go to payroll', 'open payroll', 'payroll list', 'wages list'],
       intent: 'go_payroll' },
-    { keywords: ['cctv', 'camera', 'security', 'sentinel', 'monitor'],
+    { keywords: ['cctv feeds', 'open cctv', 'security cameras'],
       intent: 'go_cctv' },
     // Actions
-    { keywords: ['new invoice', 'create invoice', 'naya bill', 'invoice banao'],
+    { keywords: ['new invoice', 'create invoice', 'naya bill banao', 'invoice banao'],
       intent: 'new_invoice' },
-    { keywords: ['new purchase', 'order purchase', 'kharid purchase'],
+    { keywords: ['new purchase', 'create purchase'],
       intent: 'new_purchase' },
-    { keywords: ['payslip', 'pay slip', 'salary slip', 'tankhwa slip'],
+    { keywords: ['generate payslip', 'print payslip', 'salary slip'],
       intent: 'generate_payslip' },
-    { keywords: ['qr code', 'qr', 'barcode'],
+    { keywords: ['generate qr', 'create barcode', 'print barcode'],
       intent: 'generate_qr' },
-    { keywords: ['low stock', 'reorder', 'khatam', 'running out'],
+    { keywords: ['low stock items', 'reorder alerts'],
       intent: 'low_stock' },
-    { keywords: ['overdue', 'unpaid', 'baqi', 'outstanding', 'aging'],
+    { keywords: ['overdue invoices', 'unpaid bills', 'aging report'],
       intent: 'overdue_invoices' },
   ];
   

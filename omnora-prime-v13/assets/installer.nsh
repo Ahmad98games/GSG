@@ -10,13 +10,9 @@
   Sleep 2000
 !macroend
 
-; Seed installer into updater cache directory so future updates use differential downloads
-!macro customInstall
-  CreateDirectory "$LOCALAPPDATA\noxis-hub-updater"
-  CopyFiles /SILENT "$EXEPATH" "$LOCALAPPDATA\noxis-hub-updater\installer.exe"
-!macroend
-
-; Automatically relaunch updated application upon silent or standard installation completion
+; Launch application cleanly upon silent update completion without double-launching on standard GUI installs
 !macro customInstallEnd
-  ExecShell "" "$INSTDIR\Noxis Hub.exe"
+  ${if} ${isSilent}
+    ExecShell "" "$INSTDIR\Noxis Hub.exe"
+  ${endif}
 !macroend

@@ -1,14 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 /**
- * Supabase Admin Client (Service Role)
- * WARNING: This client bypasses RLS. Use ONLY for server-side logic
- * that requires system-level access (e.g., portal token verification).
+ * Offline-safe fetch wrapper with strict timeout to prevent hangs when offline or on poor network.
  */
-const fetchWithTimeout = (url: any, options: any = {}) => {
-  const timeout = 5000; // 5 seconds timeout
+const fetchWithTimeout = (url: any, options: any = {}, timeoutMs = 3000) => {
   const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
+  const id = setTimeout(() => controller.abort(), timeoutMs);
   return fetch(url, {
     ...options,
     signal: controller.signal
@@ -19,16 +16,11 @@ const fetchWithTimeout = (url: any, options: any = {}) => {
 
 /**
  * Supabase Admin Client (Service Role)
- * WARNING: This client bypasses RLS. Use ONLY for server-side logic
- * that requires system-level access (e.g., portal token verification).
+ * Safe for both online and offline usage — never blocks indefinitely.
  */
-export const createAdminClient = () => {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !key) {
-    throw new Error('[Supabase] Missing URL or Service Role Key');
-  }
+export const createAdminClient = (timeoutMs = 3000): SupabaseClient => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy-key';
 
   return createClient(
     url,
@@ -39,7 +31,7 @@ export const createAdminClient = () => {
         persistSession: false
       },
       global: {
-        fetch: fetchWithTimeout,
+        fetch: (u, o) => fetchWithTimeout(u, o, timeoutMs),
       }
     }
   );

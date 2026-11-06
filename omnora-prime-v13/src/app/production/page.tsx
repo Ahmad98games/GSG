@@ -270,7 +270,7 @@ export default function ProductionCommandCenter() {
             <h1 className="text-xl font-semibold tracking-tight text-white uppercase italic">
               {t.production} CommandCenter
             </h1>
-            <p className="text-xxs font-semibold tracking-wide-md uppercase text-gray-500">Live Intelligence Stream • Noxis v{process.env.NEXT_PUBLIC_APP_VERSION || '14.0.30'}</p>
+            <p className="text-xxs font-semibold tracking-wide-md uppercase text-gray-500">Live Intelligence Stream • Noxis v{process.env.NEXT_PUBLIC_APP_VERSION || '14.0.31'}</p>
           </div>
 
           <div className="ml-auto flex items-center space-x-6">

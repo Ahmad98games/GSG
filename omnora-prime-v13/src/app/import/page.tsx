@@ -144,6 +144,7 @@ export default function SmartImportPage() {
   const toast = useToast()
 
   const [entity, setEntity] = useState<EntityKey>('skus')
+  const [stockMode, setStockMode] = useState<'replace' | 'add'>('replace')
   const [rows, setRows] = useState<Record<string, string>[]>([
     makeBlankRow('skus'),
     makeBlankRow('skus')
@@ -419,14 +420,17 @@ export default function SmartImportPage() {
           body: JSON.stringify({
             entity: entity === 'skus' ? 'skus' : entity === 'parties' ? 'parties' : 'karigars',
             rows: validRecords,
-            businessId: bizId
+            businessId: bizId,
+            stock_mode: stockMode
           })
         });
 
         const json = await res.json();
         if (res.ok && json.success) {
           success = json.imported || validRecords.length;
-          const importedRecords = json.records || validRecords;
+          const importedRecords = (Array.isArray(json.records) && json.records.length > 0)
+            ? json.records
+            : validRecords;
 
           // Update local cache
           if (typeof window !== 'undefined' && bizId) {
@@ -559,6 +563,20 @@ export default function SmartImportPage() {
         </button>
 
         <div className="ml-auto flex items-center gap-3">
+          {entity === 'skus' && (
+            <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 px-2.5 py-1 text-[11px] rounded">
+              <span className="text-gray-400 font-medium">Existing Items Stock:</span>
+              <select
+                value={stockMode}
+                onChange={e => setStockMode(e.target.value as 'replace' | 'add')}
+                className="bg-[#0B0F17] text-white border border-white/20 rounded px-2 py-0.5 text-xs font-semibold focus:outline-none focus:border-blue-500 cursor-pointer"
+              >
+                <option value="replace">Overwrite / Set to imported qty</option>
+                <option value="add">Add (+) to existing stock</option>
+              </select>
+            </div>
+          )}
+
           <button
             onClick={addRow}
             className="flex items-center gap-1.5

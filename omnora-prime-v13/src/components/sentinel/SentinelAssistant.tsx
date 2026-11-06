@@ -113,9 +113,9 @@ export default function SentinelAssistant() {
         };
         setResult(actionData);
 
-        // If user explicitly asked "karke dikhao" or "perform", auto-launch Auto-Pilot!
-        const isDirectPerform = /\b(perform|karke dikhao|krke dikhao|chala ke dikhao|demo|show me|sikhao)\b/i.test(text);
-        if (isDirectPerform && chatRes.practicalAction.route) {
+        // If user expressed learning need, tutorial request, or "karke dikhao", auto-launch Live Auto-Pilot directly!
+        const shouldAutoPilot = /\b(ni ata|nahi ata|nahi aata|ni aata|nae ata|nhi ata|ata nahi|aata nahi|bana na|banana|seekhna|sikhao|sikhayein|perform|dikhao|karke dikhao|krke dikhao|chala ke dikhao|demo|show me|guide|walkthrough)\b/i.test(text);
+        if (shouldAutoPilot && chatRes.practicalAction.route) {
           setTimeout(() => {
             launchAutoPilot(
               actionData.route,
@@ -123,7 +123,7 @@ export default function SentinelAssistant() {
               actionData.steps,
               actionData.actionId
             );
-          }, 900);
+          }, 600);
         }
       } else {
         setResult(null);

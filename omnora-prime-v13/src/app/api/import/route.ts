@@ -11,8 +11,14 @@ const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PU
 
 function getAdminClient() {
   if (!SUPABASE_URL || !SERVICE_KEY) return null;
+  const fetchWithTimeout = (url: any, options: any = {}) => {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 2500);
+    return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(id));
+  };
   return createClient(SUPABASE_URL, SERVICE_KEY, {
-    auth: { persistSession: false }
+    auth: { persistSession: false },
+    global: { fetch: fetchWithTimeout }
   });
 }
 
@@ -141,7 +147,8 @@ function ensureLocalSchema(sqlite: any) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { entity, rows, businessId } = body;
+    const { entity, rows, businessId, stock_mode } = body;
+    const stockMode = stock_mode === 'add' ? 'add' : 'replace';
 
     if (!entity || !Array.isArray(rows) || rows.length === 0) {
       return NextResponse.json({ error: 'Valid entity and non-empty rows array required' }, { status: 400 });
@@ -218,7 +225,7 @@ export async function POST(req: NextRequest) {
       // Save into local SQLite database
       if (sqlite) {
         try {
-          const findStmt = sqlite.prepare('SELECT id FROM skus WHERE sku_code = ? OR name = ? LIMIT 1');
+          const findStmt = sqlite.prepare('SELECT id, qty_on_hand FROM skus WHERE sku_code = ? OR name = ? LIMIT 1');
           const insertStmt = sqlite.prepare(`
             INSERT INTO skus (
               id, business_id, sku_code, barcode, name, category, unit, 
@@ -240,13 +247,19 @@ export async function POST(req: NextRequest) {
 
           const transaction = sqlite.transaction((items: typeof records) => {
             for (const item of items) {
-              const existing = findStmt.get(item.sku_code, item.name);
+              const existing = findStmt.get(item.sku_code, item.name) as any;
               let targetId = item.id;
+              let finalQty = item.qty_on_hand;
+
               if (existing && existing.id) {
                 targetId = existing.id;
+                if (stockMode === 'add') {
+                  const currentStock = parseFloat(existing.qty_on_hand || '0') || 0;
+                  finalQty = currentStock + item.qty_on_hand;
+                }
                 updateStmt.run(
                   item.name, item.barcode, item.category, item.unit,
-                  item.qty_on_hand, item.cost_price, item.sale_price, item.reorder_level,
+                  finalQty, item.cost_price, item.sale_price, item.reorder_level,
                   targetId
                 );
               } else {
@@ -259,9 +272,15 @@ export async function POST(req: NextRequest) {
 
               cacheStmt.run(
                 targetId, item.sku_code, item.name, item.category,
-                item.qty_on_hand.toString(), item.unit,
+                finalQty.toString(), item.unit,
                 item.cost_price.toString(), item.sale_price.toString()
               );
+
+              processedRecords.push({
+                ...item,
+                id: targetId,
+                qty_on_hand: finalQty
+              });
             }
           });
 
@@ -272,6 +291,7 @@ export async function POST(req: NextRequest) {
           results.errors.push(`SQLite: ${sqliteErr.message}`);
         }
       } else {
+        processedRecords = records;
         results.imported = records.length;
       }
 
@@ -371,7 +391,8 @@ export async function POST(req: NextRequest) {
 
           const transaction = sqlite.transaction((items: typeof records) => {
             for (const item of items) {
-              const existing = findStmt.get(item.name, item.phone);
+              const existing = findStmt.get(item.name, item.phone) as any;
+              const targetId = existing?.id || item.id;
               if (existing && existing.id) {
                 updateStmt.run(
                   item.party_type, item.phone, item.email, item.address,
@@ -384,6 +405,7 @@ export async function POST(req: NextRequest) {
                   item.current_balance, item.credit_limit
                 );
               }
+              processedRecords.push({ ...item, id: targetId });
             }
           });
 
@@ -394,6 +416,7 @@ export async function POST(req: NextRequest) {
           results.errors.push(`SQLite: ${sqliteErr.message}`);
         }
       } else {
+        processedRecords = records;
         results.imported = records.length;
       }
 
@@ -489,7 +512,8 @@ export async function POST(req: NextRequest) {
 
           const transaction = sqlite.transaction((items: typeof records) => {
             for (const item of items) {
-              const existing = findStmt.get(item.karigar_code, item.name);
+              const existing = findStmt.get(item.karigar_code, item.name) as any;
+              const targetId = existing?.id || item.id;
               if (existing && existing.id) {
                 updateStmt.run(
                   item.name, item.phone, item.wage_type,
@@ -503,6 +527,7 @@ export async function POST(req: NextRequest) {
                   item.daily_wage, item.piece_rate
                 );
               }
+              processedRecords.push({ ...item, id: targetId });
             }
           });
 
@@ -513,6 +538,7 @@ export async function POST(req: NextRequest) {
           results.errors.push(`SQLite: ${sqliteErr.message}`);
         }
       } else {
+        processedRecords = records;
         results.imported = records.length;
       }
 

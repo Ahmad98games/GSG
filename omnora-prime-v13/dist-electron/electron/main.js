@@ -455,6 +455,7 @@ else {
     // 3. HELPERS
     // ─────────────────────────────────────────────
     let portHolder = null;
+    let serverCrashError = null;
     function reserveAvailablePort(startPort, attempt = 0) {
         return new Promise((resolve, reject) => {
             if (attempt > 20) {
@@ -516,6 +517,11 @@ else {
             const check = () => {
                 if (done)
                     return;
+                if (serverCrashError) {
+                    done = true;
+                    reject(new Error(serverCrashError));
+                    return;
+                }
                 if (Date.now() - start > timeout) {
                     done = true;
                     reject(new Error(`Server did not start within ${timeout / 1000}s`));
@@ -556,6 +562,9 @@ else {
     // that shows instantly before main loads.
     // ─────────────────────────────────────────────
     function createSplashWindow(customStatus) {
+        if (splashWindow && !splashWindow.isDestroyed()) {
+            return;
+        }
         const iconPath = electron_1.app.isPackaged
             ? path.join(process.resourcesPath, 'build', 'icon.ico')
             : path.join(__dirname, '../../build/icon.ico');
@@ -2417,6 +2426,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     // ─────────────────────────────────────────────
     electron_1.app.whenReady().then(async () => {
         try {
+            // ── STEP 0: Show splash immediately within 100ms ──
+            createSplashWindow();
             // Load env from all possible locations (inline parser — no dotenv dependency)
             loadEnvFile(path.join(__dirname, '../../.env'));
             loadEnvFile(path.join(process.resourcesPath, '.env'));
@@ -2774,6 +2785,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 catch { }
                 startupLog(`[Next.js] Last buffered output:\n${serverLog.slice(-1000)}`);
                 if (code !== 0) {
+                    serverCrashError = `Server process exited with code ${code}.\n${serverLog.slice(-500) || '(Check server-stderr.log in application data directory)'}`;
                     destroySplash();
                     electron_1.dialog.showErrorBox('Server Crashed', `Server exited with code ${code}.\n\nLast server output:\n${serverLog.slice(-500) || '(no output — see server-stderr.log in userData folder)'}`);
                 }
