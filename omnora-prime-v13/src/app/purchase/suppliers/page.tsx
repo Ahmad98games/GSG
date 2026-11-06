@@ -73,7 +73,7 @@ export default function SupplierScorecardPage() {
           </div>
           <div>
             <h1 className="text-2xl font-black text-white uppercase tracking-tighter">Supplier Intelligence Hub</h1>
-            <p className="text-[10px] text-gray-500 uppercase tracking-[0.2em] font-black">Performance Analytics • Noxis Industrial v{process.env.NEXT_PUBLIC_APP_VERSION || '14.0.31'}</p>
+            <p className="text-[10px] text-gray-500 uppercase tracking-[0.2em] font-black">Performance Analytics • Noxis Industrial v{process.env.NEXT_PUBLIC_APP_VERSION || '14.0.32'}</p>
           </div>
         </div>
       </header>

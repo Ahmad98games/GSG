@@ -4,9 +4,21 @@ import { Tag, Calendar, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-reac
 
 const RELEASES = [
   {
-    version: 'v14.0.31',
+    version: 'v14.0.32',
     date: 'November 2026',
     isCurrent: true,
+    title: 'Next.js Server Standalone Integrity & Production Runtime Stabilization',
+    summary: 'Restored full Next.js server runtime logging and internal module dependencies in standalone Electron distribution, preventing Server Crashed MODULE_NOT_FOUND errors on fresh launch.',
+    changes: [
+      'Next.js Runtime Integrity: Preserved complete next/dist server modules in standalone packaging, ensuring ../build/output/log and telemetry hooks load flawlessly.',
+      'Build Verification Smoke Test: Added automatic pre-packaging smoke test in verify-build pipeline that validates Next.js server runtime resolution.',
+      'Software Update Delivery: Released verified desktop production build v14.0.32.',
+    ],
+  },
+  {
+    version: 'v14.0.31',
+    date: 'November 2026',
+    isCurrent: false,
     title: 'High-Speed Installer Optimization, Zero-Freeze Startup, Resilient Offline/Online Timeout Shield & Live Sentinel Copilot',
     summary: 'Ultra-fast Windows installer completing extraction in under 30 seconds by pruning 1,600+ loose files and redundant copy loops, 100ms instant splash screen, single-batch HWID caching eliminating main-thread freezes, 2500ms abort shield on all cloud endpoints for smooth offline navigation, and Roman Urdu voice & text understanding in Sentinel AI Copilot.',
     changes: [
@@ -192,7 +204,7 @@ const RELEASES = [
 ]
 
 export default function ChangelogPage() {
-  const [openVersions, setOpenVersions] = useState<string[]>(['v14.0.31'])
+  const [openVersions, setOpenVersions] = useState<string[]>(['v14.0.32'])
 
   const toggleVersion = (v: string) => {
     setOpenVersions(prev =>

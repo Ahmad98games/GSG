@@ -15,7 +15,7 @@ import {
   ArrowUpRight
 } from 'lucide-react'
 
-const CURRENT_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '14.0.31'
+const CURRENT_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '14.0.32'
 const STORAGE_KEY = 'noxis_last_viewed_version'
 
 interface FixItem {

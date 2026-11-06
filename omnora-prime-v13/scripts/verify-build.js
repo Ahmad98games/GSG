@@ -62,6 +62,19 @@ console.log(
 )
 if (!sqliteFound) allGood = false
 
+
+// Smoke test Next.js server runtime resolution
+try {
+  const nextServerPath = path.resolve('.next/standalone/node_modules/next/dist/server/next.js');
+  if (fs.existsSync(nextServerPath)) {
+    require(nextServerPath);
+    console.log('✓ Next.js server runtime smoke test passed');
+  }
+} catch (err) {
+  console.error('✗ Next.js server runtime smoke test FAILED:', err.message);
+  allGood = false;
+}
+
 // Check .env.local
 const envExists = fs.existsSync('.env.local')
 console.log(
