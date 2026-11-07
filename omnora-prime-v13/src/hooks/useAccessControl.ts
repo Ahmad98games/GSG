@@ -63,7 +63,7 @@ export function useAccessControl() {
           userName,
           businessName: brandName,
           phone,
-          appVersion: process.env.NEXT_PUBLIC_APP_VERSION || '14.0.32'
+          appVersion: process.env.NEXT_PUBLIC_APP_VERSION || '14.0.33'
         })
       });
 

@@ -23,7 +23,7 @@ const getSupabase = () => {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
-    const { hwid, userName, businessName, phone, appVersion = '14.0.32' } = body;
+    const { hwid, userName, businessName, phone, appVersion = '14.0.33' } = body;
 
     if (!hwid) {
       return NextResponse.json({ error: 'HWID is required' }, { status: 400 });
