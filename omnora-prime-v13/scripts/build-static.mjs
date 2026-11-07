@@ -83,9 +83,9 @@ try {
       ...process.env,
       CLOUDFLARE_DEPLOY: 'true',
       NEXT_PUBLIC_CLOUDFLARE_DEPLOY: 'true',
-      NEXT_PUBLIC_SUPABASE_URL: 'https://dummy.supabase.co',
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: 'dummy',
-      SUPABASE_SERVICE_ROLE_KEY: 'dummy'
+      NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://zgxmvwxzjmpmesqliwxl.supabase.co',
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_cGJQMAam_R4JU3X4IEIrkQ_EPeSsQIt',
+      SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || ''
     }
   });
 

@@ -1,0 +1,228 @@
+-- ==============================================================================
+-- NOXIS HUB — COMMERCIAL LICENSING, HWID TELEMETRY & REMOTE ACCESS CONTROL
+-- Script: supabase-schema-v14.sql
+-- Run this script directly in the Supabase SQL Editor.
+-- ==============================================================================
+
+-- 1. ENSURE LICENSES TABLE HAS COMPLETE COMMERCIAL COLUMNS
+CREATE TABLE IF NOT EXISTS licenses (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  license_key text UNIQUE NOT NULL,
+  tier text NOT NULL DEFAULT 'trial',
+  max_devices integer DEFAULT 1,
+  business_id uuid,
+  customer_name text,
+  customer_email text,
+  customer_phone text,
+  customer_whatsapp text,
+  brand_name text,
+  city text,
+  hwid text,
+  validity_type text DEFAULT 'trial',
+  is_trial boolean DEFAULT true,
+  is_active boolean DEFAULT true,
+  is_deactivated boolean DEFAULT false,
+  payment_method text,
+  payment_reference text,
+  amount_paid numeric DEFAULT 0,
+  currency text DEFAULT 'PKR',
+  months integer DEFAULT 1,
+  notes text,
+  activated_at timestamptz,
+  expires_at timestamptz,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- Add missing columns safely if table already exists
+ALTER TABLE licenses ADD COLUMN IF NOT EXISTS customer_whatsapp text;
+ALTER TABLE licenses ADD COLUMN IF NOT EXISTS customer_phone text;
+ALTER TABLE licenses ADD COLUMN IF NOT EXISTS brand_name text;
+ALTER TABLE licenses ADD COLUMN IF NOT EXISTS city text;
+ALTER TABLE licenses ADD COLUMN IF NOT EXISTS hwid text;
+ALTER TABLE licenses ADD COLUMN IF NOT EXISTS validity_type text DEFAULT 'trial';
+ALTER TABLE licenses ADD COLUMN IF NOT EXISTS is_trial boolean DEFAULT true;
+ALTER TABLE licenses ADD COLUMN IF NOT EXISTS is_deactivated boolean DEFAULT false;
+ALTER TABLE licenses ADD COLUMN IF NOT EXISTS is_active boolean DEFAULT true;
+ALTER TABLE licenses ADD COLUMN IF NOT EXISTS months integer DEFAULT 1;
+ALTER TABLE licenses ADD COLUMN IF NOT EXISTS payment_method text;
+ALTER TABLE licenses ADD COLUMN IF NOT EXISTS payment_reference text;
+ALTER TABLE licenses ADD COLUMN IF NOT EXISTS amount_paid numeric DEFAULT 0;
+ALTER TABLE licenses ADD COLUMN IF NOT EXISTS currency text DEFAULT 'PKR';
+ALTER TABLE licenses ADD COLUMN IF NOT EXISTS notes text;
+ALTER TABLE licenses ADD COLUMN IF NOT EXISTS activated_at timestamptz;
+ALTER TABLE licenses ADD COLUMN IF NOT EXISTS expires_at timestamptz;
+ALTER TABLE licenses ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
+-- 2. CREATE INDEXES FOR FAST HWID AND PHONE LOOKUPS
+CREATE INDEX IF NOT EXISTS idx_licenses_key ON licenses(license_key);
+CREATE INDEX IF NOT EXISTS idx_licenses_hwid ON licenses(hwid);
+CREATE INDEX IF NOT EXISTS idx_licenses_phone ON licenses(customer_phone);
+CREATE INDEX IF NOT EXISTS idx_licenses_whatsapp ON licenses(customer_whatsapp);
+CREATE INDEX IF NOT EXISTS idx_licenses_deactivated ON licenses(is_deactivated);
+CREATE INDEX IF NOT EXISTS idx_licenses_tier ON licenses(tier);
+
+-- 3. AUTO-UPDATE TRIGGER FOR updated_at
+CREATE OR REPLACE FUNCTION update_licenses_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_update_licenses_timestamp ON licenses;
+CREATE TRIGGER trigger_update_licenses_timestamp
+BEFORE UPDATE ON licenses
+FOR EACH ROW
+EXECUTE FUNCTION update_licenses_timestamp();
+
+-- 4. CONFIGURE ROW LEVEL SECURITY (RLS)
+ALTER TABLE licenses ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "anon_insert_leads" ON licenses;
+DROP POLICY IF EXISTS "anon_select_licenses" ON licenses;
+DROP POLICY IF EXISTS "anon_update_device" ON licenses;
+DROP POLICY IF EXISTS "service_role_all" ON licenses;
+
+CREATE POLICY "anon_insert_leads"
+ON licenses FOR INSERT
+TO anon
+WITH CHECK (true);
+
+CREATE POLICY "anon_select_licenses"
+ON licenses FOR SELECT
+TO anon
+USING (true);
+
+CREATE POLICY "anon_update_device"
+ON licenses FOR UPDATE
+TO anon
+USING (true)
+WITH CHECK (true);
+
+CREATE POLICY "service_role_all"
+ON licenses FOR ALL
+TO service_role
+USING (true)
+WITH CHECK (true);
+
+-- 5. CONVENIENT VIEWS FOR ADMIN DASHBOARD
+CREATE OR REPLACE VIEW live_workstations_view AS
+SELECT
+  id,
+  license_key,
+  customer_name AS user_name,
+  COALESCE(brand_name, 'Standard Business') AS brand_name,
+  COALESCE(city, 'Pakistan') AS city,
+  COALESCE(customer_whatsapp, customer_phone) AS whatsapp_number,
+  COALESCE(hwid, 'Pending First Run') AS hardware_id,
+  tier,
+  validity_type,
+  is_trial,
+  CASE WHEN is_deactivated = true THEN 'BANNED' ELSE 'ACTIVE' END AS access_status,
+  is_deactivated AS is_banned,
+  expires_at,
+  created_at,
+  updated_at
+FROM licenses
+ORDER BY created_at DESC;
+
+-- View for banned workstations
+CREATE OR REPLACE VIEW banned_workstations_view AS
+SELECT * FROM live_workstations_view WHERE is_banned = true;
+
+-- View for active trials
+CREATE OR REPLACE VIEW active_trials_view AS
+SELECT * FROM live_workstations_view WHERE is_trial = true AND is_banned = false;
+
+-- Grant permissions for views
+GRANT SELECT ON live_workstations_view TO anon, authenticated, service_role;
+GRANT SELECT ON banned_workstations_view TO anon, authenticated, service_role;
+GRANT SELECT ON active_trials_view TO anon, authenticated, service_role;
+
+-- 6. ADMIN STORED PROCEDURES
+
+-- Ban workstation
+CREATE OR REPLACE FUNCTION ban_workstation(p_key text, p_reason text DEFAULT 'Violated terms of service')
+RETURNS json AS $$
+DECLARE
+  v_row licenses%ROWTYPE;
+BEGIN
+  UPDATE licenses
+  SET is_deactivated = true,
+      notes = COALESCE(notes, '') || ' | BANNED: ' || p_reason || ' (' || now()::text || ')'
+  WHERE license_key = p_key OR hwid = p_key OR customer_phone = p_key OR customer_whatsapp = p_key
+  RETURNING * INTO v_row;
+  
+  IF FOUND THEN
+    RETURN json_build_object('success', true, 'message', 'Workstation banned successfully', 'key', v_row.license_key);
+  ELSE
+    RETURN json_build_object('success', false, 'message', 'Workstation not found');
+  END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Unban workstation
+CREATE OR REPLACE FUNCTION unban_workstation(p_key text)
+RETURNS json AS $$
+DECLARE
+  v_row licenses%ROWTYPE;
+BEGIN
+  UPDATE licenses
+  SET is_deactivated = false,
+      notes = COALESCE(notes, '') || ' | UNBANNED: Restored by admin (' || now()::text || ')'
+  WHERE license_key = p_key OR hwid = p_key OR customer_phone = p_key OR customer_whatsapp = p_key
+  RETURNING * INTO v_row;
+  
+  IF FOUND THEN
+    RETURN json_build_object('success', true, 'message', 'Workstation unbanned successfully', 'key', v_row.license_key);
+  ELSE
+    RETURN json_build_object('success', false, 'message', 'Workstation not found');
+  END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Upgrade workstation
+CREATE OR REPLACE FUNCTION upgrade_workstation(
+  p_key text,
+  p_tier text,
+  p_validity text DEFAULT 'yearly',
+  p_months integer DEFAULT 12
+)
+RETURNS json AS $$
+DECLARE
+  v_row licenses%ROWTYPE;
+  v_expiry timestamptz;
+BEGIN
+  IF lower(p_validity) = 'lifetime' OR lower(p_validity) = 'permanent' THEN
+    v_expiry := '2099-12-31 23:59:59+00'::timestamptz;
+  ELSE
+    v_expiry := now() + (p_months || ' months')::interval;
+  END IF;
+
+  UPDATE licenses
+  SET tier = lower(p_tier),
+      is_trial = false,
+      validity_type = lower(p_validity),
+      months = p_months,
+      expires_at = v_expiry,
+      is_active = true,
+      is_deactivated = false
+  WHERE license_key = p_key OR hwid = p_key OR customer_phone = p_key OR customer_whatsapp = p_key
+  RETURNING * INTO v_row;
+
+  IF FOUND THEN
+    RETURN json_build_object(
+      'success', true,
+      'message', 'Upgraded to ' || p_tier || ' (' || p_validity || ')',
+      'key', v_row.license_key,
+      'tier', v_row.tier,
+      'expires_at', v_row.expires_at
+    );
+  ELSE
+    RETURN json_build_object('success', false, 'message', 'Workstation not found');
+  END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+

@@ -47,6 +47,8 @@ import { useBusinessModeStore } from '@/stores/businessModeStore';
 import { PublicNavProvider } from '@/components/shell/PublicNavbar';
 import { NoxisSessionRecoveryModal } from '@/components/shell/NoxisSessionRecoveryModal';
 import { useWorkstationHeartbeat } from '@/hooks/useWorkstationHeartbeat';
+import { useAccessControl } from '@/hooks/useAccessControl';
+import BannedLockdownModal from '@/components/license/BannedLockdownModal';
 
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -55,6 +57,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const { isConfigured: isBusinessModeConfigured, setMode } = useBusinessModeStore();
   const [mounted, setMounted] = React.useState(false);
   const [showWelcomeGuide, setShowWelcomeGuide] = React.useState(false);
+  const { isBanned, banReason, hwid: banHwid, userName: banUser, brandName: banBrand, recheck: recheckBan } = useAccessControl();
 
   React.useEffect(() => {
     const handleOpenGuide = () => setShowWelcomeGuide(true);
@@ -609,6 +612,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <PlanCompletionUpgradeModal />
       <ActivationCelebration />
       <OfflineIndicator />
+
+      {isBanned && (
+        <BannedLockdownModal
+          hwid={banHwid}
+          userName={banUser}
+          brandName={banBrand}
+          reason={banReason}
+          onRefresh={recheckBan}
+        />
+      )}
     </>
   );
 }

@@ -1,27 +1,25 @@
 'use client'
+
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
   AlertTriangle,
-  ArrowRight,
   Building2,
-  Calendar,
   CheckCircle2,
-  Clock,
   Copy,
-  ExternalLink,
-  Flame,
+  Laptop,
   MessageCircle,
-  Plus,
+  PhoneCall,
   RefreshCw,
   Search,
   ShieldAlert,
   Sparkles,
   Zap,
+  Ban,
+  UserCheck,
+  UserX,
 } from 'lucide-react'
-
-const ADMIN_TOKEN = 'noxis-admin-2026'
 
 function generateLicenseKey(tier: string): string {
   const prefix =
@@ -39,71 +37,62 @@ const TIER_CONFIG = {
   elite: { maxDevices: 50, label: 'Elite (50 devices)',  monthlyPrice: 9999, yearlyPrice: 90000, lifetimePrice: 149999 },
 }
 
+function extractHwid(notes: string = '', licenseKey: string = ''): string {
+  const match = notes.match(/HWID:\s*([^\s|]+)/i)
+  if (match && match[1]) return match[1].trim()
+  if (licenseKey.startsWith('NOX-') || licenseKey.startsWith('HW-')) return licenseKey
+  return 'Auto-Bound On First Boot'
+}
+
+function extractBrand(notes: string = '', customerName: string = ''): string {
+  const match = notes.match(/Brand:\s*([^|]+)/i)
+  if (match && match[1]) return match[1].trim()
+  return `${customerName}'s Business`
+}
+
 function buildWhatsAppMessage(
   customerName: string,
+  brandName: string,
   key: string,
   tier: string,
   months: string
 ) {
   const tierLabel = TIER_CONFIG[tier as keyof typeof TIER_CONFIG]?.label || tier
   return encodeURIComponent(
-    `Assalam o Alaikum ${customerName},\n\n` +
-    `Shukriya for choosing Noxis Hub! 🙏\n\n` +
-    `Your license key is ready:\n\n` +
-    `*${key}*\n\n` +
+    `Assalam o Alaikum ${customerName} (${brandName}),\n\n` +
+    `Your Noxis Hub workstation license is active! 🚀\n\n` +
+    `*License Key: ${key}*\n` +
     `Plan: ${tierLabel}\n` +
     `Duration: ${months} month${parseInt(months) > 1 ? 's' : ''}\n\n` +
-    `To activate:\n` +
-    `1. Download: noxishub.app/download\n` +
-    `2. Enter this key on the download page\n` +
-    `3. Install Noxis Hub on your Windows PC\n` +
-    `4. Enter the same key when the app opens\n\n` +
-    `Need help? Reply to this message.\n\n` +
-    `_Noxis Hub | Omnora Labs_`
-  )
-}
-
-function buildRenewalWhatsAppOffer(
-  customerName: string,
-  tier: string,
-  cycle: string,
-  expiresAt: string | null
-) {
-  const tierName = tier.charAt(0).toUpperCase() + tier.slice(1)
-  const expiredDate = expiresAt ? new Date(expiresAt).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' }) : 'recently'
-  const config = TIER_CONFIG[tier as keyof typeof TIER_CONFIG] || TIER_CONFIG.pro
-
-  return encodeURIComponent(
-    `Assalam o Alaikum ${customerName},\n\n` +
-    `This is Ahmad from Noxis Hub / Omnora Labs. 👋\n\n` +
-    `We noticed your *${tierName} (${cycle})* software plan completed on ${expiredDate}, and your workstation has automatically switched to Free mode.\n\n` +
-    `Your store data and POS billing remain 100% safe. Here is a special renewal offer to restore Cloud Sync, Multi-Device, and CCTV AI:\n\n` +
-    `• *Monthly Renewal:* PKR ${config.monthlyPrice.toLocaleString()}/mo\n` +
-    `• *Annual Plan (Save 25%):* PKR ${config.yearlyPrice.toLocaleString()}/year\n\n` +
-    `Would you like me to extend your license today? Reply here and I'll send your activation confirmation immediately.\n\n` +
-    `_Noxis Hub Support Desk | +92 326 4742678_`
+    `Installation Instructions:\n` +
+    `1. Download software: noxishub.app/download\n` +
+    `2. Launch Noxis Hub on your Windows PC\n` +
+    `3. Your Hardware ID will automatically bind to this license.\n\n` +
+    `Need setup assistance? Reply to this message.\n\n` +
+    `_Noxis Hub Security Desk | Omnora Labs_`
   )
 }
 
 function AdminLicensesContent() {
-  const params = useSearchParams()
   const supabase = createClient()
   const [licenses, setLicenses] = useState<any[]>([])
-  const [alerts, setAlerts] = useState<any[]>([])
-  const [filterTab, setFilterTab] = useState<'all' | 'ended' | 'expiring' | 'monthly' | 'yearly'>('all')
+  const [filterTab, setFilterTab] = useState<'all' | 'banned' | 'active' | 'expiring' | 'trials'>('all')
   const [searchQuery, setSearchQuery] = useState('')
 
+  // Clean Zero-Email Form: Pure User Name, Brand Name, WhatsApp & Hardware ID
   const [form, setForm] = useState({
-    tier: 'pro',
-    billing_cycle: 'monthly',
     customer_name: '',
+    brand_name: '',
     customer_whatsapp: '',
-    customer_email: '',
+    hwid: '',
+    tier: 'elite',
+    billing_cycle: 'monthly',
     payment_method: 'jazzcash',
     amount_paid: '4999',
     months: '1',
     notes: '',
   })
+
   const [creating, setCreating] = useState(false)
   const [newKey, setNewKey] = useState('')
   const [copied, setCopied] = useState(false)
@@ -112,7 +101,6 @@ function AdminLicensesContent() {
 
   useEffect(() => {
     loadLicenses()
-    loadExpiryAlerts()
   }, [])
 
   const loadLicenses = async () => {
@@ -121,21 +109,9 @@ function AdminLicensesContent() {
       .from('licenses')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(100)
+      .limit(150)
     setLicenses(data || [])
     setLoadingLicenses(false)
-  }
-
-  const loadExpiryAlerts = async () => {
-    try {
-      const res = await fetch('/api/license/notify-expiry')
-      if (res.ok) {
-        const json = await res.json()
-        setAlerts(json.alerts || [])
-      }
-    } catch (e) {
-      console.warn('Failed to fetch plan alerts:', e)
-    }
   }
 
   // Quick Action: Extend license duration (+1 Month or +1 Year)
@@ -151,13 +127,13 @@ function AdminLicensesContent() {
         .update({
           expires_at: baseDate.toISOString(),
           is_deactivated: false,
-          notes: `${lic.notes || ''} | Extended +${addedMonths}mo on ${new Date().toISOString()}`.trim(),
+          is_active: true,
+          notes: `${lic.notes || ''} | Extended +${addedMonths}mo on ${new Date().toLocaleDateString('en-PK')}`.trim(),
         })
         .eq('id', lic.id)
 
       if (error) throw error
       await loadLicenses()
-      await loadExpiryAlerts()
     } catch (err: any) {
       alert('Extension failed: ' + err.message)
     } finally {
@@ -165,23 +141,30 @@ function AdminLicensesContent() {
     }
   }
 
-  // Quick Action: Toggle Deactivation
-  const toggleDeactivate = async (lic: any) => {
+  // Master Access Control: BAN or UNBAN Machine / User
+  const toggleBanStatus = async (lic: any) => {
     setActionLoadingId(lic.id)
     try {
-      const nextState = !lic.is_deactivated
-      const { error } = await supabase
-        .from('licenses')
-        .update({
-          is_deactivated: nextState,
-          notes: `${lic.notes || ''} | ${nextState ? 'Manually Deactivated' : 'Manually Reactivated'} on ${new Date().toISOString()}`.trim(),
-        })
-        .eq('id', lic.id)
+      const currentlyBanned = Boolean(lic.is_deactivated || lic.is_active === false)
+      const nextBanned = !currentlyBanned
 
-      if (error) throw error
+      const res = await fetch('/api/license/ban', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          licenseId: lic.id,
+          action: nextBanned ? 'ban' : 'unban',
+          reason: nextBanned ? 'Suspended by Administrator' : 'Access Restored',
+        })
+      })
+
+      if (!res.ok) {
+        throw new Error('Failed to update ban status')
+      }
+
       await loadLicenses()
     } catch (err: any) {
-      alert('Status change failed: ' + err.message)
+      alert('Action failed: ' + err.message)
     } finally {
       setActionLoadingId(null)
     }
@@ -199,6 +182,12 @@ function AdminLicensesContent() {
       expiresAt.setMonth(expiresAt.getMonth() + months)
 
       const isLifetime = form.billing_cycle === 'lifetime'
+      let cleanPhone = form.customer_whatsapp.trim().replace(/[\s-]/g, '')
+      if (cleanPhone.startsWith('0')) cleanPhone = '92' + cleanPhone.slice(1)
+
+      const brandFormatted = form.brand_name.trim() || `${form.customer_name.trim()}'s Business`
+      const hwidFormatted = form.hwid.trim() ? `HWID: ${form.hwid.trim().toUpperCase()}` : ''
+      const notesFormatted = `Brand: ${brandFormatted} ${hwidFormatted ? '| ' + hwidFormatted : ''} | Billing: ${form.billing_cycle.toUpperCase()} ${form.notes ? '| ' + form.notes : ''}`.trim()
 
       const { error } = await supabase
         .from('licenses')
@@ -209,24 +198,28 @@ function AdminLicensesContent() {
           max_devices: TIER_CONFIG[form.tier as keyof typeof TIER_CONFIG].maxDevices,
           expires_at: isLifetime ? null : expiresAt.toISOString(),
           customer_name: form.customer_name.trim(),
-          customer_email: form.customer_email.trim() || null,
-          customer_whatsapp: form.customer_whatsapp.trim() || null,
+          customer_whatsapp: cleanPhone || null,
+          customer_phone: cleanPhone || null,
+          customer_email: null, // ZERO EMAIL
           payment_method: form.payment_method,
           amount_paid: form.amount_paid ? parseFloat(form.amount_paid) : null,
           currency: 'PKR',
-          notes: `Billing: ${form.billing_cycle.toUpperCase()} | ${form.notes.trim()}`.trim(),
+          notes: notesFormatted,
+          is_active: true,
+          is_deactivated: false,
         })
 
       if (error) throw error
 
       setNewKey(key)
-      loadLicenses()
+      await loadLicenses()
 
       setForm(p => ({
         ...p,
         customer_name: '',
+        brand_name: '',
         customer_whatsapp: '',
-        customer_email: '',
+        hwid: '',
         amount_paid: '4999',
         notes: '',
       }))
@@ -245,27 +238,25 @@ function AdminLicensesContent() {
     const durationDays = expiresMs ? Math.max(1, Math.round((expiresMs - createdMs) / 86400000)) : 9999
     const isExpired = expiresMs ? now >= expiresMs : false
     const daysLeft = expiresMs ? Math.ceil((expiresMs - now) / 86400000) : 9999
-    const isDeactivated = Boolean(lic.is_deactivated || isExpired)
+    const isBanned = Boolean(lic.is_deactivated || lic.is_active === false)
 
     let cycle = 'monthly'
     if (!expiresMs) cycle = 'lifetime'
     else if (durationDays > 100) cycle = 'yearly'
     else if (lic.is_trial) cycle = 'trial'
 
-    let percentElapsed = 0
-    if (expiresMs && expiresMs > createdMs) {
-      percentElapsed = Math.min(100, Math.max(0, Math.round(((now - createdMs) / (expiresMs - createdMs)) * 100)))
-      if (isExpired) percentElapsed = 100
-    }
+    const hwid = extractHwid(lic.notes, lic.license_key)
+    const brand = extractBrand(lic.notes, lic.customer_name)
 
     return {
       ...lic,
       cycle,
+      hwid,
+      brand,
       durationDays,
       daysLeft,
       isExpired,
-      isDeactivated,
-      percentElapsed,
+      isBanned,
     }
   })
 
@@ -274,233 +265,176 @@ function AdminLicensesContent() {
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
       const matchName = lic.customer_name?.toLowerCase().includes(q)
+      const matchBrand = lic.brand?.toLowerCase().includes(q)
       const matchKey = lic.license_key?.toLowerCase().includes(q)
+      const matchHwid = lic.hwid?.toLowerCase().includes(q)
       const matchPhone = lic.customer_whatsapp?.includes(q)
-      if (!matchName && !matchKey && !matchPhone) return false
+      if (!matchName && !matchBrand && !matchKey && !matchHwid && !matchPhone) return false
     }
 
-    if (filterTab === 'ended') return lic.isExpired || lic.is_deactivated
+    if (filterTab === 'banned') return lic.isBanned
+    if (filterTab === 'active') return !lic.isBanned && !lic.isExpired
     if (filterTab === 'expiring') return !lic.isExpired && lic.daysLeft <= 7 && lic.daysLeft >= 0
-    if (filterTab === 'monthly') return lic.cycle === 'monthly'
-    if (filterTab === 'yearly') return lic.cycle === 'yearly'
+    if (filterTab === 'trials') return lic.is_trial
     return true
   })
 
-  // High urgency plan ended alerts
-  const expiredPlans = analyzedLicenses.filter(l => l.isExpired || l.is_deactivated)
-  const expiringSoonPlans = analyzedLicenses.filter(l => !l.isExpired && l.daysLeft <= 7 && l.daysLeft >= 0)
+  const bannedCount = analyzedLicenses.filter(l => l.isBanned).length
+  const activeCount = analyzedLicenses.filter(l => !l.isBanned && !l.isExpired).length
+  const trialCount = analyzedLicenses.filter(l => l.is_trial).length
 
-  const monthlyCount = analyzedLicenses.filter(l => l.cycle === 'monthly' && !l.isExpired).length
-  const yearlyCount = analyzedLicenses.filter(l => l.cycle === 'yearly' && !l.isExpired).length
-  const totalRevenue = licenses.filter(l => !l.is_trial).reduce((sum, l) => sum + (l.amount_paid || 0), 0)
-
-  const FIELD = `w-full bg-[#0A0C0F] border border-white/8 text-white text-sm px-3 py-2.5 outline-none focus:border-[#60A5FA]/50 transition-colors rounded-sm`
-  const LABEL = `text-[10px] font-semibold uppercase tracking-widest text-gray-500 block mb-1.5`
+  const FIELD = `w-full bg-[#0A0C0F] border border-white/10 text-white text-xs px-3 py-2 outline-none focus:border-red-500/60 transition-colors rounded`
+  const LABEL = `text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1`
 
   return (
-    <div className="min-h-screen bg-[#060708] text-white">
-      {/* Top bar */}
-      <div className="border-b border-white/[0.05] px-6 h-12 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-500">
-            Intelligence Center · Admin
-          </span>
-          <span className="text-[10px] text-gray-700">|</span>
-          <span className="text-[10px] text-gray-400 font-mono">Noxis Licensing & Plan Watchdog</span>
-        </div>
-        <div className="flex items-center gap-4 text-xs font-mono">
-          <span className="text-gray-400">
-            Active MRR: <strong className="text-white">PKR {(monthlyCount * 4999).toLocaleString()}</strong>
-          </span>
-          <span className="text-gray-700">|</span>
-          <span className="text-gray-400">
-            Total Revenue: <strong className="text-emerald-400">PKR {totalRevenue.toLocaleString()}</strong>
-          </span>
-        </div>
-      </div>
+    <div className="min-h-screen bg-[#07090D] text-white p-6 sm:p-8 font-sans">
+      <div className="max-w-7xl mx-auto space-y-6">
 
-      <div className="max-w-6xl mx-auto px-6 py-6 space-y-6">
-
-        {/* ─── LIVE NOTIFICATION BAR: PLAN ENDED ALERTS ─── */}
-        {expiredPlans.length > 0 && (
-          <div className="p-4 bg-red-500/10 border border-red-500/25 rounded-sm shadow-xl animate-in slide-in-from-top-2 duration-300">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2.5">
-                <ShieldAlert size={18} className="text-red-400 animate-bounce" />
-                <h3 className="text-sm font-black text-red-300 tracking-wide">
-                  🚨 {expiredPlans.length} User Plan{expiredPlans.length > 1 ? 's' : ''} Ended & Software Deactivated
-                </h3>
-              </div>
-              <span className="text-[10px] font-mono text-red-400/80 uppercase tracking-widest">
-                Action Required · 1-Click Renewal Desk
-              </span>
+        {/* Top Header & Sovereign Master Security Banner */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
+          <div>
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="w-6 h-6 text-red-500" />
+              <h1 className="text-xl sm:text-2xl font-black uppercase tracking-wider text-white">
+                Sovereign Machine Access & License Control
+              </h1>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {expiredPlans.slice(0, 3).map((lic) => (
-                <div key={lic.id} className="p-3 bg-[#0F1114] border border-red-500/20 rounded-sm flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between text-xs font-bold text-white mb-1">
-                      <span className="truncate">{lic.customer_name || 'Customer'}</span>
-                      <span className="text-[9px] font-mono uppercase bg-red-500/20 text-red-400 px-1.5 py-0.2 rounded">
-                        {lic.tier} · {lic.cycle}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-gray-400 font-mono">
-                      Completed: {lic.expires_at ? new Date(lic.expires_at).toLocaleDateString('en-PK') : 'Expired'}
-                    </p>
-                    <p className="text-[10px] text-gray-500 mt-0.5">
-                      Timespan: {lic.durationDays} Days · Deactivated to Free
-                    </p>
-                  </div>
-
-                  <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between gap-2">
-                    {lic.customer_whatsapp ? (
-                      <a
-                        href={`https://wa.me/${lic.customer_whatsapp.replace(/\D/g, '').replace(/^0/, '92')}?text=${buildRenewalWhatsAppOffer(lic.customer_name || 'Customer', lic.tier, lic.cycle, lic.expires_at)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 py-1 px-2 bg-[#25D366]/15 hover:bg-[#25D366]/25 border border-[#25D366]/30 text-[#25D366] text-[10px] font-bold rounded-sm text-center flex items-center justify-center gap-1 transition-colors"
-                      >
-                        <MessageCircle size={12} />
-                        <span>Send WhatsApp Offer</span>
-                      </a>
-                    ) : (
-                      <span className="text-[10px] text-gray-600">No WhatsApp</span>
-                    )}
-
-                    <button
-                      onClick={() => extendLicense(lic, 1)}
-                      disabled={actionLoadingId === lic.id}
-                      className="py-1 px-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 text-[10px] font-bold rounded-sm transition-colors"
-                      title="Add 1 Month duration"
-                    >
-                      +1 Mo
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ─── INTELLIGENCE RADAR SUMMARY ─── */}
-        <div className="grid grid-cols-4 gap-4">
-          <div className="p-4 bg-[#0F1114] border border-white/8 rounded-sm">
-            <div className="flex items-center justify-between text-gray-500 text-[10px] font-semibold uppercase tracking-wider mb-2">
-              <span>Monthly Subscribers</span>
-              <Calendar size={13} className="text-blue-400" />
-            </div>
-            <p className="text-2xl font-mono font-bold text-white">{monthlyCount}</p>
-            <p className="text-[10px] text-gray-600 mt-1">30-day recurring active plans</p>
+            <p className="text-xs text-zinc-400 mt-1">
+              Real-time Hardware ID (HWID) telemetry, customer brand tracking, and 1-click machine banning across all installed workstations.
+            </p>
           </div>
 
-          <div className="p-4 bg-[#0F1114] border border-white/8 rounded-sm">
-            <div className="flex items-center justify-between text-gray-500 text-[10px] font-semibold uppercase tracking-wider mb-2">
-              <span>Annual Subscribers</span>
-              <Sparkles size={13} className="text-purple-400" />
-            </div>
-            <p className="text-2xl font-mono font-bold text-white">{yearlyCount}</p>
-            <p className="text-[10px] text-gray-600 mt-1">365-day annual commitments</p>
-          </div>
-
-          <div className="p-4 bg-[#0F1114] border border-white/8 rounded-sm">
-            <div className="flex items-center justify-between text-gray-500 text-[10px] font-semibold uppercase tracking-wider mb-2">
-              <span>Expiring in 7 Days</span>
-              <Clock size={13} className="text-amber-400" />
-            </div>
-            <p className="text-2xl font-mono font-bold text-amber-400">{expiringSoonPlans.length}</p>
-            <p className="text-[10px] text-gray-600 mt-1">Renewal reach-out window</p>
-          </div>
-
-          <div className="p-4 bg-[#0F1114] border border-white/8 rounded-sm">
-            <div className="flex items-center justify-between text-gray-500 text-[10px] font-semibold uppercase tracking-wider mb-2">
-              <span>Ended / Deactivated</span>
-              <AlertTriangle size={13} className="text-red-400" />
-            </div>
-            <p className="text-2xl font-mono font-bold text-red-400">{expiredPlans.length}</p>
-            <p className="text-[10px] text-gray-600 mt-1">Requires immediate renewal reach-out</p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={loadLicenses}
+              className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <RefreshCw size={13} className={loadingLicenses ? 'animate-spin' : ''} />
+              Sync Telemetry
+            </button>
           </div>
         </div>
 
-        {/* ─── MAIN TWO-COLUMN CONTENT ─── */}
+        {/* Global Access Metrics Bar */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="bg-[#0D1017] border border-white/10 p-4 rounded-xl">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Total Workstations</span>
+            <p className="text-2xl font-black text-white mt-1">{analyzedLicenses.length}</p>
+          </div>
+          <div className="bg-[#0D1017] border border-emerald-500/20 p-4 rounded-xl">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Active Systems</span>
+            <p className="text-2xl font-black text-emerald-400 mt-1">{activeCount}</p>
+          </div>
+          <div className="bg-[#0D1017] border border-red-500/30 bg-red-950/10 p-4 rounded-xl">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-red-400">Banned / Locked</span>
+            <p className="text-2xl font-black text-red-400 mt-1">{bannedCount}</p>
+          </div>
+          <div className="bg-[#0D1017] border border-cyan-500/20 p-4 rounded-xl">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-cyan-400">Trial Installs</span>
+            <p className="text-2xl font-black text-cyan-400 mt-1">{trialCount}</p>
+          </div>
+        </div>
+
+        {/* Two-Column Grid: Left Create / Issue — Right Explorer */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-          {/* Left Column: Generate License (5 cols) */}
-          <div className="lg:col-span-5 bg-[#0F1114] border border-white/8 p-6 rounded-sm space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-white/5">
-              <h2 className="text-sm font-bold text-white">Generate Intelligent License</h2>
-              <span className="text-[10px] text-gray-500 font-mono">HWID-Bound</span>
+          {/* Left Column: Direct License Generator (Zero Email) */}
+          <div className="lg:col-span-4 bg-[#0D1017] border border-white/10 p-5 rounded-xl space-y-4 h-fit">
+            <div className="border-b border-white/10 pb-3">
+              <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <Zap size={14} className="text-amber-400" />
+                Issue Workstation License
+              </h2>
+              <p className="text-[11px] text-zinc-400 mt-0.5">
+                Generate and bind a license key without requiring email.
+              </p>
             </div>
 
-            {/* Plan Tier */}
+            {/* Customer User Name */}
             <div>
-              <label className={LABEL}>Plan Tier</label>
-              <select
-                value={form.tier}
-                onChange={e => {
-                  const t = e.target.value
-                  const cycle = form.billing_cycle
-                  const price = cycle === 'yearly' ? TIER_CONFIG[t as keyof typeof TIER_CONFIG].yearlyPrice : TIER_CONFIG[t as keyof typeof TIER_CONFIG].monthlyPrice
-                  setForm(p => ({ ...p, tier: t, amount_paid: String(price) }))
-                }}
-                className={FIELD}
-              >
-                <option value="lite">Lite — 5 Devices (PKR 1,999/mo · 18k/yr)</option>
-                <option value="pro">Pro — 15 Devices + CCTV (PKR 4,999/mo · 45k/yr)</option>
-                <option value="elite">Elite — 50 Devices + Multi-Branch (PKR 9,999/mo · 90k/yr)</option>
-              </select>
-            </div>
-
-            {/* Billing Cycle / Timespan */}
-            <div>
-              <label className={LABEL}>Billing Cycle / Timespan</label>
-              <select
-                value={form.billing_cycle}
-                onChange={e => {
-                  const cycle = e.target.value
-                  const t = form.tier as keyof typeof TIER_CONFIG
-                  const price = cycle === 'yearly' ? TIER_CONFIG[t].yearlyPrice : cycle === 'lifetime' ? TIER_CONFIG[t].lifetimePrice : TIER_CONFIG[t].monthlyPrice
-                  setForm(p => ({ ...p, billing_cycle: cycle, amount_paid: String(price) }))
-                }}
-                className={FIELD}
-              >
-                <option value="monthly">Monthly Subscription (30 Days Active Timespan)</option>
-                <option value="yearly">Annual Subscription (365 Days · Save 25%)</option>
-                <option value="lifetime">Permanent Lifetime License (Motherboard-Locked)</option>
-              </select>
-            </div>
-
-            {/* Customer Name */}
-            <div>
-              <label className={LABEL}>Customer / Business Name *</label>
+              <label className={LABEL}>Customer / User Name *</label>
               <input
                 type="text"
                 value={form.customer_name}
                 onChange={e => setForm(p => ({ ...p, customer_name: e.target.value }))}
-                placeholder="e.g. Tariq Textiles Faisalabad"
+                placeholder="e.g. Ahmad Mahboob"
                 className={FIELD}
               />
             </div>
 
-            {/* WhatsApp */}
+            {/* Brand / Company Name */}
             <div>
-              <label className={LABEL}>WhatsApp Number (for automated delivery)</label>
+              <label className={LABEL}>Brand / Company / Store Name</label>
               <input
-                type="tel"
+                type="text"
+                value={form.brand_name}
+                onChange={e => setForm(p => ({ ...p, brand_name: e.target.value }))}
+                placeholder="e.g. Gold She Garments"
+                className={FIELD}
+              />
+            </div>
+
+            {/* WhatsApp / Phone Number */}
+            <div>
+              <label className={LABEL}>WhatsApp / Phone Number</label>
+              <input
+                type="text"
                 value={form.customer_whatsapp}
                 onChange={e => setForm(p => ({ ...p, customer_whatsapp: e.target.value }))}
-                placeholder="03001234567"
+                placeholder="e.g. 03264742678"
                 className={FIELD}
               />
             </div>
 
-            {/* Amount Paid */}
+            {/* Machine HWID (Optional or Pre-bound) */}
+            <div>
+              <label className={LABEL}>Machine Hardware ID (Optional)</label>
+              <input
+                type="text"
+                value={form.hwid}
+                onChange={e => setForm(p => ({ ...p, hwid: e.target.value }))}
+                placeholder="e.g. BFEBFBFF000906E9 (or leave blank to auto-bind)"
+                className={FIELD}
+              />
+            </div>
+
+            {/* Plan Tier & Billing Cycle */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={LABEL}>Plan Tier</label>
+                <select 
+                  value={form.tier} 
+                  onChange={e => setForm(p => ({ ...p, tier: e.target.value }))} 
+                  className={FIELD}
+                >
+                  <option value="elite">Elite (Gold Master)</option>
+                  <option value="pro">Pro Edition</option>
+                  <option value="lite">Lite Edition</option>
+                </select>
+              </div>
+              <div>
+                <label className={LABEL}>Billing Cycle</label>
+                <select 
+                  value={form.billing_cycle} 
+                  onChange={e => setForm(p => ({ ...p, billing_cycle: e.target.value }))} 
+                  className={FIELD}
+                >
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Annual (1 Year)</option>
+                  <option value="lifetime">Permanent (Lifetime)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Payment & Internal Notes */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={LABEL}>Payment Method</label>
-                <select value={form.payment_method} onChange={e => setForm(p => ({ ...p, payment_method: e.target.value }))} className={FIELD}>
+                <select 
+                  value={form.payment_method} 
+                  onChange={e => setForm(p => ({ ...p, payment_method: e.target.value }))} 
+                  className={FIELD}
+                >
                   <option value="jazzcash">JazzCash</option>
                   <option value="easypaisa">EasyPaisa</option>
                   <option value="nayapay">NayaPay</option>
@@ -519,33 +453,21 @@ function AdminLicensesContent() {
               </div>
             </div>
 
-            {/* Internal Notes */}
-            <div>
-              <label className={LABEL}>Internal Notes (Optional)</label>
-              <input
-                type="text"
-                value={form.notes}
-                onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
-                placeholder="e.g. Referred by Imran; 2 thermal printers"
-                className={FIELD}
-              />
-            </div>
-
             <button
               onClick={createLicense}
               disabled={creating || !form.customer_name.trim()}
-              className="w-full py-3 bg-[#60A5FA] hover:bg-blue-400 text-black font-bold text-xs uppercase tracking-wider rounded-sm transition-all disabled:opacity-50"
+              className="w-full py-2.5 bg-red-600 hover:bg-red-500 text-white font-bold text-xs uppercase tracking-wider rounded transition-all disabled:opacity-50 cursor-pointer shadow-lg shadow-red-950/40"
             >
-              {creating ? 'Issuing & Binding...' : '⚡ Generate & Activate License'}
+              {creating ? 'Binding & Registering...' : '⚡ Generate & Activate Key'}
             </button>
 
             {/* Key Generated Result */}
             {newKey && (
-              <div className="p-4 bg-emerald-500/10 border border-emerald-500/25 rounded-sm space-y-3">
+              <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded space-y-2.5">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 flex items-center gap-1.5">
-                  <CheckCircle2 size={13} /> Key Generated Successfully
+                  <CheckCircle2 size={13} /> Workstation Key Generated
                 </p>
-                <p className="text-sm font-mono font-bold text-white tracking-widest select-all bg-black/40 p-2 rounded">
+                <p className="text-xs font-mono font-bold text-white tracking-widest select-all bg-black/60 p-2 rounded">
                   {newKey}
                 </p>
                 <div className="flex gap-2">
@@ -561,7 +483,7 @@ function AdminLicensesContent() {
                   </button>
                   {form.customer_whatsapp && (
                     <a
-                      href={`https://wa.me/${form.customer_whatsapp.replace(/\D/g, '').replace(/^0/, '92')}?text=${buildWhatsAppMessage(form.customer_name, newKey, form.tier, form.billing_cycle === 'yearly' ? '12' : '1')}`}
+                      href={`https://wa.me/${form.customer_whatsapp.replace(/\D/g, '').replace(/^0/, '92')}?text=${buildWhatsAppMessage(form.customer_name, form.brand_name || 'Business', newKey, form.tier, form.billing_cycle === 'yearly' ? '12' : '1')}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex-1 py-1.5 text-xs font-bold bg-[#25D366] text-black rounded text-center flex items-center justify-center gap-1"
@@ -574,195 +496,190 @@ function AdminLicensesContent() {
             )}
           </div>
 
-          {/* Right Column: Licenses List with Intelligence Indicators (7 cols) */}
-          <div className="lg:col-span-7 bg-[#0F1114] border border-white/8 p-6 rounded-sm flex flex-col">
-            {/* Header & Filter Tabs */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-white/5">
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold text-white">License Lifecycle Explorer</h2>
-                <span className="text-xs text-gray-500 font-mono">({filteredLicenses.length})</span>
+          {/* Right Column: Workstations Explorer & Access Control (8 cols) */}
+          <div className="lg:col-span-8 bg-[#0D1017] border border-white/10 p-5 rounded-xl flex flex-col space-y-4">
+
+            {/* Filter Tabs & Search Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+              <div className="flex items-center gap-1.5 overflow-x-auto text-[10px] font-mono">
+                {[
+                  { key: 'all', label: `All Systems (${analyzedLicenses.length})` },
+                  { key: 'active', label: `Active (${activeCount})` },
+                  { key: 'banned', label: `Banned (${bannedCount})`, badge: bannedCount > 0 ? 'text-red-400 font-bold' : '' },
+                  { key: 'trials', label: `Trials (${trialCount})` },
+                ].map(tab => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setFilterTab(tab.key as any)}
+                    className={`px-3 py-1.5 rounded uppercase tracking-wider transition-colors cursor-pointer ${
+                      filterTab === tab.key
+                        ? 'bg-red-600 text-white font-bold'
+                        : 'bg-white/5 text-zinc-400 hover:bg-white/10'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
               </div>
 
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <Search size={12} className="absolute left-2.5 top-2.5 text-gray-500" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    placeholder="Search customer, key..."
-                    className="pl-7 pr-3 py-1.5 text-xs bg-[#060708] border border-white/10 text-white rounded-sm outline-none focus:border-blue-400 w-36"
-                  />
-                </div>
-                <button
-                  onClick={() => { loadLicenses(); loadExpiryAlerts(); }}
-                  className="p-1.5 text-gray-400 hover:text-white bg-white/5 rounded-sm"
-                  title="Refresh"
-                >
-                  <RefreshCw size={13} />
-                </button>
+              <div className="relative">
+                <Search size={12} className="absolute left-2.5 top-2.5 text-zinc-500" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Search user, brand, HWID, phone..."
+                  className="pl-7 pr-3 py-1.5 text-xs bg-[#060708] border border-white/10 text-white rounded outline-none focus:border-red-500/50 w-full sm:w-56"
+                />
               </div>
             </div>
 
-            {/* Filter Pills */}
-            <div className="flex items-center gap-1.5 mb-4 overflow-x-auto pb-1 text-[10px] font-mono">
-              {[
-                { key: 'all', label: 'All Licenses' },
-                { key: 'ended', label: `Plan Ended (${expiredPlans.length})`, badge: expiredPlans.length > 0 ? 'bg-red-500/20 text-red-300' : '' },
-                { key: 'expiring', label: `Expiring Soon (${expiringSoonPlans.length})` },
-                { key: 'monthly', label: `Monthly (${monthlyCount})` },
-                { key: 'yearly', label: `Annual (${yearlyCount})` },
-              ].map(tab => (
-                <button
-                  key={tab.key}
-                  onClick={() => setFilterTab(tab.key as any)}
-                  className={`px-2.5 py-1 rounded-sm uppercase tracking-wider transition-colors ${
-                    filterTab === tab.key
-                      ? 'bg-blue-600 text-white font-bold'
-                      : 'bg-white/5 text-gray-400 hover:bg-white/10'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* List */}
-            <div className="space-y-3 overflow-y-auto flex-1 max-h-[620px] pr-1">
+            {/* Workstations List */}
+            <div className="space-y-3 overflow-y-auto flex-1 max-h-[640px] pr-1">
               {loadingLicenses ? (
                 <div className="space-y-2">
                   {[1, 2, 3, 4].map(i => (
-                    <div key={i} className="h-20 bg-white/5 rounded-sm animate-pulse" />
+                    <div key={i} className="h-24 bg-white/5 rounded animate-pulse" />
                   ))}
                 </div>
               ) : filteredLicenses.length === 0 ? (
-                <div className="text-center py-16 text-gray-600 text-xs">
-                  No licenses matching filter.
+                <div className="text-center py-20 text-zinc-500 text-xs">
+                  No workstations matching this filter.
                 </div>
               ) : (
                 filteredLicenses.map(lic => {
                   return (
                     <div
                       key={lic.id}
-                      className={`p-3.5 bg-[#14171C] border rounded-sm transition-all ${
-                        lic.isExpired || lic.is_deactivated
-                          ? 'border-red-500/30 bg-red-950/10'
-                          : lic.daysLeft <= 7
-                          ? 'border-amber-500/30'
-                          : 'border-white/6 hover:border-white/15'
+                      className={`p-4 rounded-xl border transition-all ${
+                        lic.isBanned
+                          ? 'border-red-500/40 bg-red-950/20'
+                          : 'border-white/10 bg-[#12151C] hover:border-white/20'
                       }`}
                     >
+                      {/* Top Row: User & Brand Details + Status Badge */}
                       <div className="flex items-start justify-between gap-3 mb-2">
                         <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-white text-xs">
-                              {lic.customer_name || 'Anonymous User'}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-white text-sm">
+                              {lic.customer_name || 'Workstation User'}
                             </span>
-                            <span className={`text-[8px] font-black uppercase px-1.5 py-0.2 rounded ${
-                              lic.tier === 'elite' ? 'bg-[#C5A059]/20 text-[#C5A059]'
+                            <span className="text-[11px] font-semibold text-zinc-300 bg-white/5 px-2 py-0.5 rounded border border-white/5">
+                              🏢 {lic.brand}
+                            </span>
+                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${
+                              lic.tier === 'elite' ? 'bg-amber-500/20 text-amber-400'
                               : lic.tier === 'pro' ? 'bg-blue-500/20 text-blue-400'
-                              : 'bg-white/10 text-gray-300'
+                              : 'bg-white/10 text-zinc-300'
                             }`}>
                               {lic.tier}
                             </span>
-                            <span className="text-[8px] font-mono uppercase bg-white/5 text-gray-400 px-1.5 py-0.2 rounded">
-                              {lic.cycle}
-                            </span>
                           </div>
-                          <p className="text-[10px] font-mono text-gray-400 mt-0.5">
-                            Key: <strong className="text-gray-200">{lic.license_key}</strong>
-                            {lic.customer_whatsapp && ` · 📲 ${lic.customer_whatsapp}`}
-                          </p>
+
+                          {/* Machine HWID & Phone */}
+                          <div className="flex items-center gap-3 mt-1.5 text-xs font-mono text-zinc-400 flex-wrap">
+                            <span className="flex items-center gap-1 text-[11px] bg-black/40 px-2 py-0.5 rounded border border-white/5">
+                              <Laptop size={12} className="text-cyan-400" />
+                              <strong className="text-zinc-300 font-normal">HWID:</strong>
+                              <span className="text-cyan-300 select-all">{lic.hwid}</span>
+                            </span>
+
+                            {lic.customer_whatsapp && (
+                              <span className="flex items-center gap-1 text-[11px] bg-black/40 px-2 py-0.5 rounded border border-white/5">
+                                <PhoneCall size={11} className="text-emerald-400" />
+                                <span className="text-zinc-300">{lic.customer_whatsapp}</span>
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         {/* Status Badge */}
-                        <div className="text-right">
-                          <span className={`text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded-full inline-block ${
-                            lic.isExpired || lic.is_deactivated
-                              ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                              : lic.daysLeft <= 7
-                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                              : 'bg-emerald-500/20 text-emerald-400'
+                        <div className="text-right flex flex-col items-end gap-1">
+                          <span className={`text-[10px] font-mono font-bold uppercase px-2.5 py-1 rounded-full flex items-center gap-1 ${
+                            lic.isBanned
+                              ? 'bg-red-500/20 text-red-400 border border-red-500/40 animate-pulse'
+                              : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                           }`}>
-                            {lic.isExpired ? 'Plan Ended (Deactivated)' : lic.cycle === 'lifetime' ? 'Permanent' : `${lic.daysLeft}d Remaining`}
+                            {lic.isBanned ? (
+                              <>
+                                <Ban size={11} />
+                                BANNED / RESTRICTED
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle2 size={11} />
+                                ACTIVE WORKSTATION
+                              </>
+                            )}
+                          </span>
+
+                          <span className="text-[10px] font-mono text-zinc-500">
+                            Key: {lic.license_key}
                           </span>
                         </div>
                       </div>
 
-                      {/* Visual Timespan Progress Bar */}
-                      {lic.cycle !== 'lifetime' && (
-                        <div className="my-2 space-y-1">
-                          <div className="flex justify-between text-[9px] font-mono text-gray-500">
-                            <span>Timespan: {lic.durationDays}d</span>
-                            <span>{lic.percentElapsed}% Elapsed</span>
-                          </div>
-                          <div className="w-full h-1.5 bg-black/60 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full transition-all ${
-                                lic.isExpired ? 'bg-red-500' : lic.daysLeft <= 7 ? 'bg-amber-400' : 'bg-emerald-400'
-                              }`}
-                              style={{ width: `${lic.percentElapsed}%` }}
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Action Bar */}
-                      <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs font-mono">
-                        <span className="text-[10px] text-gray-500">
-                          {lic.amount_paid ? `PKR ${Number(lic.amount_paid).toLocaleString()} via ${lic.payment_method}` : 'Comp / Trial'}
+                      {/* Action Bar: BAN / UNBAN, WhatsApp, Extend */}
+                      <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-2 flex-wrap">
+                        <span className="text-[11px] font-mono text-zinc-400">
+                          Expires: {lic.expires_at ? new Date(lic.expires_at).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Permanent'}
                         </span>
 
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-2">
                           {lic.customer_whatsapp && (
                             <a
-                              href={`https://wa.me/${lic.customer_whatsapp.replace(/\D/g, '').replace(/^0/, '92')}?text=${buildRenewalWhatsAppOffer(lic.customer_name || 'Customer', lic.tier, lic.cycle, lic.expires_at)}`}
+                              href={`https://wa.me/${lic.customer_whatsapp.replace(/\D/g, '').replace(/^0/, '92')}?text=${encodeURIComponent(`Salam ${lic.customer_name} (${lic.brand}), this is Noxis Hub administration regarding your software access.`)}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="px-2 py-1 bg-[#25D366]/15 hover:bg-[#25D366]/25 text-[#25D366] text-[10px] rounded transition-colors"
-                              title="Send WhatsApp renewal offer"
+                              className="px-2.5 py-1.5 bg-[#25D366]/15 hover:bg-[#25D366]/25 text-[#25D366] text-xs font-bold rounded flex items-center gap-1 transition-colors"
+                              title="Chat on WhatsApp"
                             >
-                              📲 Offer
+                              <MessageCircle size={12} />
+                              WhatsApp
                             </a>
                           )}
 
                           <button
                             onClick={() => extendLicense(lic, 1)}
                             disabled={actionLoadingId === lic.id}
-                            className="px-2 py-1 bg-white/5 hover:bg-white/10 text-gray-300 text-[10px] rounded transition-colors"
+                            className="px-2.5 py-1.5 bg-white/5 hover:bg-white/10 text-zinc-300 text-xs font-semibold rounded transition-colors cursor-pointer"
                             title="Extend plan by 1 month"
                           >
                             +1 Mo
                           </button>
 
+                          {/* MASTER ACCESS CONTROL BUTTON: BAN or UNBAN */}
                           <button
-                            onClick={() => extendLicense(lic, 12)}
+                            onClick={() => toggleBanStatus(lic)}
                             disabled={actionLoadingId === lic.id}
-                            className="px-2 py-1 bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 text-[10px] rounded transition-colors"
-                            title="Extend plan by 1 year"
-                          >
-                            +1 Yr
-                          </button>
-
-                          <button
-                            onClick={() => toggleDeactivate(lic)}
-                            disabled={actionLoadingId === lic.id}
-                            className={`px-2 py-1 text-[10px] rounded transition-colors ${
-                              lic.is_deactivated
-                                ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'
-                                : 'bg-red-500/10 text-red-400 hover:bg-red-500/20'
+                            className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded flex items-center gap-1.5 transition-all cursor-pointer ${
+                              lic.isBanned
+                                ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-950/40'
+                                : 'bg-red-600/90 hover:bg-red-500 text-white shadow-lg shadow-red-950/40'
                             }`}
-                            title="Toggle active / deactivated status"
+                            title={lic.isBanned ? 'Restore workstation access' : 'Lockdown and block this machine immediately'}
                           >
-                            {lic.is_deactivated ? 'Activate' : 'Deactivate'}
+                            {lic.isBanned ? (
+                              <>
+                                <UserCheck size={13} />
+                                Unban Machine
+                              </>
+                            ) : (
+                              <>
+                                <UserX size={13} />
+                                Ban Machine
+                              </>
+                            )}
                           </button>
                         </div>
                       </div>
+
                     </div>
                   )
                 })
               )}
             </div>
+
           </div>
         </div>
 
@@ -774,8 +691,8 @@ function AdminLicensesContent() {
 export default function AdminLicensesPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#060708] flex items-center justify-center">
-        <div className="w-2 h-2 rounded-full bg-[#60A5FA] animate-ping" />
+      <div className="min-h-screen bg-[#07090D] flex items-center justify-center">
+        <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
       </div>
     }>
       <AdminLicensesContent />

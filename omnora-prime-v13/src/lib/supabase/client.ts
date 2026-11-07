@@ -4,8 +4,8 @@ import { resetAllStores } from '@/stores'
 let _client: ReturnType<typeof createBrowserClient> | null = null
 
 export function createClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://dummy.supabase.co';
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy';
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://zgxmvwxzjmpmesqliwxl.supabase.co';
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_cGJQMAam_R4JU3X4IEIrkQ_EPeSsQIt';
 
   if (typeof window === 'undefined') {
     return createBrowserClient(

@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { db } from '@/lib/db/client';
 import { randomUUID } from 'crypto';
 import { broadcastToHubRenderer } from '@/lib/mobile-bridge/server';
+import { validateDataEntry } from '@/lib/license/tierEngine';
 
 export const dynamic = 'force-dynamic';
 
@@ -193,16 +194,40 @@ export async function POST(req: NextRequest) {
 
     let processedRecords: any[] = [];
 
+    const userTier = body.tier || req.headers.get('x-user-tier') || 'free';
+
     // ── 1. SKUS / PRODUCTS ──────────────────────────────────────────
     if (entity === 'skus') {
+      // Check tier quota limit: if exceeded, software strictly blocks adding even 1KB of data
+      if (sqlite) {
+        let currentSkuCount = 0;
+        try {
+          const countRow = sqlite.prepare("SELECT COUNT(*) AS c FROM skus WHERE is_active = 1").get();
+          currentSkuCount = (countRow as any)?.c || 0;
+        } catch {}
+
+        const quotaCheck = validateDataEntry('max_skus', currentSkuCount, userTier, rows.length);
+        if (!quotaCheck.allowed) {
+          return NextResponse.json({
+            error: quotaCheck.error,
+            code: 'QUOTA_EXCEEDED',
+            currentCount: currentSkuCount,
+            limit: quotaCheck.limit
+          }, { status: 403 });
+        }
+      }
       const records = rows.map((r: any, idx: number) => {
-        const skuCode = (r.sku_code || r.code || r.item_code || `SKU-${Date.now() + idx}`).toString().trim();
-        const name = (r.name || r.item_name || r.title || `Item ${skuCode}`).toString().trim();
+        const skuCode = (r.sku_code || r.code || r.item_code || r.barcode || '').toString().trim();
+        const name = (r.name || r.item_name || r.Item_Name || r.product_name || r.Product || r.item || r.title || r.description || `Item ${idx + 1}`).toString().trim();
         const category = (r.category || r.type || 'General').toString().trim();
         const unit = (r.unit || 'pcs').toString().trim();
-        const qty = parseFloat(r.qty_on_hand || r.stock_qty || r.qty || '0') || 0;
-        const costPrice = parseFloat(r.cost_price || r.cost || '0') || 0;
-        const salePrice = parseFloat(r.sale_price || r.price || r.sale || '0') || 0;
+        
+        // Smart Quantity Detection: Checks all possible Excel column variants
+        const rawQty = r.qty_on_hand ?? r.stock ?? r.Stock ?? r.quantity ?? r.Quantity ?? r.qty ?? r.Qty ?? r.stock_qty ?? r.current_stock ?? r.opening_stock ?? r.balance ?? r.pieces ?? r.units ?? '0';
+        const qty = parseFloat(String(rawQty).replace(/,/g, '').trim()) || 0;
+        
+        const costPrice = parseFloat(r.cost_price || r.cost || r.purchase_price || r.buying_price || '0') || 0;
+        const salePrice = parseFloat(r.sale_price || r.price || r.sale || r.rate || r.retail_price || '0') || 0;
         const reorderLevel = parseFloat(r.reorder_level || r.reorder || '10') || 10;
         const barcode = (r.barcode || '').toString().trim() || null;
 
@@ -225,7 +250,14 @@ export async function POST(req: NextRequest) {
       // Save into local SQLite database
       if (sqlite) {
         try {
-          const findStmt = sqlite.prepare('SELECT id, qty_on_hand FROM skus WHERE sku_code = ? OR name = ? LIMIT 1');
+          // Robust case-insensitive and trimmed matcher by SKU code, barcode, or Name
+          const findStmt = sqlite.prepare(`
+            SELECT id, sku_code, name, qty_on_hand, cost_price, sale_price, category, unit, barcode, reorder_level 
+            FROM skus 
+            WHERE (? != '' AND (LOWER(TRIM(sku_code)) = LOWER(TRIM(?)) OR barcode = ?))
+               OR LOWER(TRIM(name)) = LOWER(TRIM(?))
+            LIMIT 1
+          `);
           const insertStmt = sqlite.prepare(`
             INSERT INTO skus (
               id, business_id, sku_code, barcode, name, category, unit, 
@@ -246,32 +278,51 @@ export async function POST(req: NextRequest) {
           `);
 
           const transaction = sqlite.transaction((items: typeof records) => {
-            for (const item of items) {
-              const existing = findStmt.get(item.sku_code, item.name) as any;
+            for (let i = 0; i < items.length; i++) {
+              const item = items[i];
+              const cleanCode = item.sku_code.trim();
+              const cleanName = item.name.trim();
+              const existing = (cleanCode || cleanName)
+                ? findStmt.get(cleanCode, cleanCode, cleanCode, cleanName) as any
+                : null;
+
               let targetId = item.id;
+              let finalCode = cleanCode;
               let finalQty = item.qty_on_hand;
 
               if (existing && existing.id) {
                 targetId = existing.id;
+                finalCode = existing.sku_code || cleanCode || `SKU-${Date.now() + i}`;
+
                 if (stockMode === 'add') {
                   const currentStock = parseFloat(existing.qty_on_hand || '0') || 0;
                   finalQty = currentStock + item.qty_on_hand;
+                } else {
+                  // Replace / Overwrite with incoming Excel stock value (e.g. from 0 to 1000)
+                  finalQty = item.qty_on_hand;
                 }
+
+                const finalCost = item.cost_price > 0 ? item.cost_price : (existing.cost_price || 0);
+                const finalSale = item.sale_price > 0 ? item.sale_price : (existing.sale_price || 0);
+                const finalCategory = item.category && item.category !== 'General' ? item.category : (existing.category || 'General');
+                const finalUnit = item.unit && item.unit !== 'pcs' ? item.unit : (existing.unit || 'pcs');
+
                 updateStmt.run(
-                  item.name, item.barcode, item.category, item.unit,
-                  finalQty, item.cost_price, item.sale_price, item.reorder_level,
+                  item.name, item.barcode || existing.barcode, finalCategory, finalUnit,
+                  finalQty, finalCost, finalSale, item.reorder_level || existing.reorder_level || 10,
                   targetId
                 );
               } else {
+                finalCode = cleanCode || `SKU-${Date.now() + i}`;
                 insertStmt.run(
-                  targetId, item.business_id, item.sku_code, item.barcode,
+                  targetId, item.business_id, finalCode, item.barcode,
                   item.name, item.category, item.unit, item.qty_on_hand,
                   item.cost_price, item.sale_price, item.reorder_level
                 );
               }
 
               cacheStmt.run(
-                targetId, item.sku_code, item.name, item.category,
+                targetId, finalCode, item.name, item.category,
                 finalQty.toString(), item.unit,
                 item.cost_price.toString(), item.sale_price.toString()
               );
@@ -279,6 +330,7 @@ export async function POST(req: NextRequest) {
               processedRecords.push({
                 ...item,
                 id: targetId,
+                sku_code: finalCode,
                 qty_on_hand: finalQty
               });
             }
@@ -295,19 +347,23 @@ export async function POST(req: NextRequest) {
         results.imported = records.length;
       }
 
-      // Background Cloud Sync if Supabase is connected
+      // Background Cloud Sync if Supabase is connected (Matches by both sku_code and name)
       if (supabase && effectiveBizId !== 'local' && effectiveBizId !== '00000000-0000-0000-0000-000000000000') {
         try {
           const { data: existingCloud } = await supabase
             .from('skus')
-            .select('id, sku_code')
+            .select('id, sku_code, name')
             .eq('business_id', effectiveBizId);
 
-          const cloudMap = new Map((existingCloud || []).map((s: any) => [s.sku_code?.toLowerCase(), s.id]));
-          const cloudRecords = records.map((r: any) => {
-            const matchedId = cloudMap.get(r.sku_code?.toLowerCase());
+          const cloudCodeMap = new Map((existingCloud || []).map((s: any) => [s.sku_code?.toLowerCase().trim(), s.id]));
+          const cloudNameMap = new Map((existingCloud || []).map((s: any) => [s.name?.toLowerCase().trim(), s.id]));
+
+          const cloudRecords = processedRecords.map((r: any) => {
+            const matchedId = (r.sku_code && cloudCodeMap.get(r.sku_code?.toLowerCase().trim())) ||
+                              (r.name && cloudNameMap.get(r.name?.toLowerCase().trim())) ||
+                              r.id;
             return {
-              id: matchedId || r.id,
+              id: matchedId,
               business_id: effectiveBizId,
               sku_code: r.sku_code,
               barcode: r.barcode,
@@ -326,7 +382,7 @@ export async function POST(req: NextRequest) {
           const { error: upsertErr } = await supabase.from('skus').upsert(cloudRecords, { onConflict: 'id' });
           if (upsertErr) {
             console.warn('[API Import] Supabase upsert failed, inserting new SKUs:', upsertErr.message);
-            const newOnly = cloudRecords.filter((cr: any) => !cloudMap.has(cr.sku_code?.toLowerCase()));
+            const newOnly = cloudRecords.filter((cr: any) => !cloudCodeMap.has(cr.sku_code?.toLowerCase().trim()));
             if (newOnly.length > 0) {
               await supabase.from('skus').insert(newOnly);
             }
@@ -341,6 +397,24 @@ export async function POST(req: NextRequest) {
 
     // ── 2. PARTIES (CUSTOMERS & SUPPLIERS) ──────────────────────────
     else if (entity === 'parties') {
+      // Check tier quota limit: if exceeded, software strictly blocks adding even 1KB of data
+      if (sqlite) {
+        let currentPartyCount = 0;
+        try {
+          const countRow = sqlite.prepare("SELECT COUNT(*) AS c FROM parties WHERE is_active = 1").get();
+          currentPartyCount = (countRow as any)?.c || 0;
+        } catch {}
+
+        const quotaCheck = validateDataEntry('max_parties', currentPartyCount, userTier, rows.length);
+        if (!quotaCheck.allowed) {
+          return NextResponse.json({
+            error: quotaCheck.error,
+            code: 'QUOTA_EXCEEDED',
+            currentCount: currentPartyCount,
+            limit: quotaCheck.limit
+          }, { status: 403 });
+        }
+      }
       const records = rows.map((r: any) => {
         const name = (r.name || r.party_name || r.company_name || r.client_name || 'Unnamed Party').toString().trim();
         let partyType = (r.party_type || r.type || 'customer').toString().trim().toLowerCase();

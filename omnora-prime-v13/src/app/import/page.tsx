@@ -7,6 +7,9 @@ import { createClient } from '@/lib/supabase/client'
 import { useBusinessProfile } from '@/hooks/useBusinessProfile'
 import { PersonaEngine } from '@/lib/persona/PersonaEngine'
 import * as XLSX from 'xlsx'
+import { FIELD_ALIASES } from '@/lib/import/columnMapper'
+import { useTierStore } from '@/stores/tierStore'
+import { validateFileUpload } from '@/lib/license/tierEngine'
 import { useToast } from '@/hooks/useToast'
 import { humanizeError } from '@/lib/utils/errors'
 import {
@@ -25,7 +28,7 @@ const ENTITIES = {
     icon: '📦',
     desc: 'Add multiple products at once',
     fields: [
-      { key: 'sku_code',    label: 'Code',      required: true,  hint: 'e.g. FAB-001', type: 'text', width: 120 },
+      { key: 'sku_code',    label: 'Code',      required: false, hint: 'e.g. FAB-001 (auto)', type: 'text', width: 120 },
       { key: 'name',        label: 'Name',       required: true,  hint: 'e.g. Khaddar Blue', type: 'text', width: 200 },
       { key: 'category',    label: 'Category',   required: false, hint: 'Fabric / Thread etc', type: 'text', width: 140 },
       { key: 'unit',        label: 'Unit',       required: false, hint: 'meter / pcs / kg', type: 'text', width: 100 },
@@ -37,7 +40,7 @@ const ENTITIES = {
     tableName: 'skus',
     buildRow: (row: any, businessId: string, index: number) => ({
       business_id: businessId,
-      sku_code: row.sku_code?.trim(),
+      sku_code: row.sku_code?.trim() || '',
       name: row.name?.trim(),
       category: row.category?.trim() || null,
       unit: row.unit?.trim() || 'pcs',
@@ -48,7 +51,6 @@ const ENTITIES = {
       is_active: true,
     }),
     validate: (row: any) => {
-      if (!row.sku_code?.trim()) return 'Code is required'
       if (!row.name?.trim()) return 'Name is required'
       return null
     },
@@ -288,6 +290,13 @@ export default function SmartImportPage() {
 
   // Parse Excel or CSV file
   const parseFile = (file: File) => {
+    const currentTier = useTierStore.getState().tier;
+    const fileCheck = validateFileUpload(file, currentTier || 'free');
+    if (!fileCheck.allowed) {
+      toast.error('File Upload Blocked', fileCheck.error || 'File size exceeds tier limits');
+      return;
+    }
+
     const reader = new FileReader()
     reader.onload = (e) => {
       try {
@@ -313,26 +322,38 @@ export default function SmartImportPage() {
           r.some(c => c !== '')
         )
 
-        // Auto-map headers to field keys
+        // Auto-map headers to field keys using smart aliases
         const fields = config.fields
         const fieldMap: Record<number, string> = {}
+        const entityAliases = (FIELD_ALIASES as any)[entity] || {}
 
         fileHeaders.forEach((header, colIdx) => {
+          const cleanHeader = header.toLowerCase().trim()
+          const normalized = cleanHeader.replace(/[^a-z0-9]/g, '_')
+
           // Try exact match first
           const exactMatch = fields.find(f =>
-            f.key.toLowerCase() === header ||
-            f.label.toLowerCase() === header
+            f.key.toLowerCase() === cleanHeader ||
+            f.label.toLowerCase() === cleanHeader ||
+            f.key === normalized
           )
           if (exactMatch) {
             fieldMap[colIdx] = exactMatch.key
             return
           }
+
+          // Try alias dictionary match
+          for (const [canonicalKey, aliases] of Object.entries(entityAliases)) {
+            if (Array.isArray(aliases) && aliases.some(a => cleanHeader === a || cleanHeader.includes(a) || normalized.includes(a.replace(/\s+/g, '_')))) {
+              fieldMap[colIdx] = canonicalKey
+              return
+            }
+          }
+
           // Try partial match
           const partialMatch = fields.find(f =>
-            header.includes(f.key.toLowerCase()) ||
-            header.includes(
-              f.label.toLowerCase().slice(0, 4)
-            )
+            cleanHeader.includes(f.key.toLowerCase()) ||
+            cleanHeader.includes(f.label.toLowerCase().slice(0, 4))
           )
           if (partialMatch) {
             fieldMap[colIdx] = partialMatch.key
@@ -414,6 +435,7 @@ export default function SmartImportPage() {
 
     if (validRecords.length > 0) {
       try {
+        const currentTier = useTierStore.getState().tier || 'free';
         const res = await fetch('/api/import', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -421,7 +443,8 @@ export default function SmartImportPage() {
             entity: entity === 'skus' ? 'skus' : entity === 'parties' ? 'parties' : 'karigars',
             rows: validRecords,
             businessId: bizId,
-            stock_mode: stockMode
+            stock_mode: stockMode,
+            tier: currentTier
           })
         });
 

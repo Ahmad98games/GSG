@@ -166,6 +166,19 @@ export default function BusinessModeSelector() {
       localStorage.setItem('noxis-business-profile', JSON.stringify(updatedProfile))
       localStorage.setItem('noxis_onboarded', 'true')
       localStorage.setItem('noxis_first_run_complete', 'true')
+      
+      // Auto-register HWID & User Profile in Supabase
+      fetch('/api/license/sync-device', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hwid: hwid || localStorage.getItem('noxis_hwid') || 'HW-NEW-STATION',
+          userName: finalOwnerName,
+          businessName: finalShopName,
+          phone: whatsApp.trim(),
+          appVersion: '14.0.32'
+        })
+      }).catch(() => {})
     }
   }
 
@@ -206,6 +219,19 @@ export default function BusinessModeSelector() {
       localStorage.setItem('noxis-business-profile', JSON.stringify(updatedProfile))
       localStorage.setItem('noxis_onboarded', 'true')
       localStorage.setItem('noxis_first_run_complete', 'true')
+      
+      // Auto-register HWID & User Profile in Supabase
+      fetch('/api/license/sync-device', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hwid: hwid || localStorage.getItem('noxis_hwid') || 'HW-NEW-STATION',
+          userName: finalOwnerName,
+          businessName: finalShopName,
+          phone: whatsApp.trim(),
+          appVersion: '14.0.32'
+        })
+      }).catch(() => {})
     }
 
     setTimeout(() => {

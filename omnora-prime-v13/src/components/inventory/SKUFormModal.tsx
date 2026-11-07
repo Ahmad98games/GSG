@@ -17,6 +17,7 @@ import { useBusinessProfile } from '@/hooks/useBusinessProfile'
 import { useToastStore } from '@/hooks/useToast'
 import { UniversalLabelGenerator, LabelData, StickerDimension } from '@/components/common/UniversalLabelGenerator'
 import { useLicense } from '@/hooks/useLicense'
+import { validateFileUpload } from '@/lib/license/tierEngine'
 import { SoftLimitModal } from '@/components/license/SoftLimitModal'
 import QRCode from 'react-qr-code'
 
@@ -61,7 +62,8 @@ export const SKUFormModal: React.FC<SKUFormModalProps> = ({
 }) => {
   const supabase = createClient()
   const { profile } = useBusinessProfile()
-  const { atLimit } = useLicense()
+  const { atLimit, tier } = useLicense()
+  const isQuotaLocked = !initialData?.id && atLimit('max_skus')
   const [showSoftLimit, setShowSoftLimit] = useState(false)
 
   const [form, setForm] = useState({
@@ -123,8 +125,9 @@ export const SKUFormModal: React.FC<SKUFormModalProps> = ({
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        toast.error('Image must be under 2MB')
+      const check = validateFileUpload(file, tier || 'free')
+      if (!check.allowed) {
+        toast.error(check.error || 'File size exceeds plan limits')
         return
       }
       setSelectedFile(file)
@@ -312,6 +315,16 @@ export const SKUFormModal: React.FC<SKUFormModalProps> = ({
           {/* FORM FIELDS */}
           <div className="lg:col-span-8 space-y-4">
             
+            {/* QUOTA HARD LOCKOUT BANNER */}
+            {isQuotaLocked && (
+              <div className="p-3 bg-red-500/15 border border-red-500/30 rounded-lg flex items-center gap-3 text-red-400 text-xs">
+                <Sparkles size={18} className="shrink-0 text-red-400" />
+                <div>
+                  <span className="font-bold">DATA ENTRY LOCKED:</span> {tier.toUpperCase()} plan limit reached. Software cannot add even 1KB of additional item data. Please upgrade to continue.
+                </div>
+              </div>
+            )}
+
             {/* ITEM NAME */}
             <div>
               <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
@@ -583,11 +596,11 @@ export const SKUFormModal: React.FC<SKUFormModalProps> = ({
           </button>
           <button
             onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs rounded-lg shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50"
+            disabled={saving || isQuotaLocked}
+            className="flex items-center gap-2 px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs rounded-lg shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Save size={14} />
-            {saving ? 'Saving...' : initialData ? 'Update SKU' : 'Save SKU'}
+            {saving ? 'Saving...' : isQuotaLocked ? 'Quota Exceeded' : initialData ? 'Update SKU' : 'Save SKU'}
           </button>
         </div>
 

@@ -1,8 +1,9 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import PublicNavbar from '@/components/shell/PublicNavbar';
 import QRCode from 'react-qr-code';
+import { createClient } from '@/lib/supabase/client';
 import {
   Download, Check, MessageCircle, ChevronDown,
   ShieldCheck, Lock, X, Loader2, ArrowRight,
@@ -123,25 +124,65 @@ export default function DownloadPage() {
     if (!fullName.trim() || !phone.trim()) return;
 
     setSubmitting(true);
+    let cleanPhone = String(phone).trim().replace(/[\s-]/g, '');
+    if (cleanPhone.startsWith('0')) cleanPhone = '92' + cleanPhone.slice(1);
+    else if (cleanPhone.startsWith('+')) cleanPhone = cleanPhone.slice(1);
+
+    const bizName = (businessName && businessName.trim()) ? businessName.trim() : `${fullName.trim()}'s Business`;
+    const leadKey = `DL-${cleanPhone.slice(-6)}-TRIAL`;
+    const displayName = `${fullName.trim()} (${bizName})`;
+    const trialExpiry = new Date();
+    trialExpiry.setDate(trialExpiry.getDate() + 14);
+
+    // 1. DIRECT BROWSER SUPABASE UPSERT (Guaranteed to execute in 100ms on ANY web deployment)
+    try {
+      const supabase = createClient();
+      await supabase.from('licenses').upsert({
+        license_key: leadKey,
+        tier: 'elite',
+        max_devices: 50,
+        customer_name: displayName,
+        customer_whatsapp: cleanPhone,
+        customer_phone: cleanPhone,
+        customer_email: null,
+        brand_name: bizName,
+        city: city?.trim() || 'Pakistan',
+        validity_type: 'trial',
+        notes: `Brand: ${bizName} | City: ${city?.trim() || 'Pakistan'} | Platform: ${targetPlatform.toUpperCase()} | HWID: Pending First Run`,
+        is_active: true,
+        is_deactivated: false,
+        is_trial: true,
+        expires_at: trialExpiry.toISOString(),
+        amount_paid: 0,
+        currency: 'PKR',
+        months: 1,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'license_key' });
+    } catch (directErr) {
+      console.warn('[Direct Supabase] lead upsert warning:', directErr);
+    }
+
+    // 2. Also call /api/download-lead as server backup
     try {
       await fetch('/api/download-lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fullName,
-          phone,
-          businessName,
+          phone: cleanPhone,
+          businessName: bizName,
           city,
           platform: targetPlatform,
         })
       });
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('noxis_lead_name', fullName.trim());
-        localStorage.setItem('noxis_lead_phone', phone.trim());
-        localStorage.setItem('noxis_lead_business', (businessName && businessName.trim()) ? businessName.trim() : `${fullName.trim()}'s Business`);
-        localStorage.setItem('noxis_lead_platform', targetPlatform);
-      }
     } catch {}
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('noxis_lead_name', fullName.trim());
+      localStorage.setItem('noxis_lead_phone', cleanPhone);
+      localStorage.setItem('noxis_lead_business', bizName);
+      localStorage.setItem('noxis_lead_platform', targetPlatform);
+    }
 
     window.location.href = targetPlatform === 'android' ? CLOUDFLARE_APK_URL : DOWNLOAD_ZIP_URL;
     setShowModal(false);

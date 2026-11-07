@@ -148,13 +148,75 @@ export const FEATURE_MATRIX: Record<FeatureKey, Record<Tier, boolean>> = {
 
 export type ResourceKey = 'max_skus' | 'max_parties' | 'max_karigars' | 'max_devices' | 'max_cameras' | 'max_branches'
 
+export const TIER_FILE_LIMITS: Record<Tier, number> = {
+  free: 1024,                  // 1 KB strict limit for Free plan
+  lite: 2 * 1024 * 1024,       // 2 MB for Lite plan
+  pro: 10 * 1024 * 1024,       // 10 MB for Pro plan
+  elite: 50 * 1024 * 1024,     // 50 MB for Elite plan
+  free_trial: 50 * 1024 * 1024 // 50 MB for active trial
+};
+
+export function validateFileUpload(file: { size: number }, currentTier: Tier | string): { allowed: boolean; error?: string } {
+  const normTier: Tier =
+    currentTier === 'elite' ? 'elite' :
+    currentTier === 'pro' ? 'pro' :
+    currentTier === 'lite' ? 'lite' :
+    currentTier === 'free_trial' ? 'free_trial' : 'free';
+
+  const maxBytes = TIER_FILE_LIMITS[normTier] ?? 1024;
+  if (file.size > maxBytes) {
+    if (normTier === 'free') {
+      return {
+        allowed: false,
+        error: `Free Plan Limit: File is ${(file.size / 1024).toFixed(1)} KB. Free plan strictly limits uploads to 1 KB. Upgrade to Lite, Pro, or Elite to upload files.`
+      };
+    }
+    return {
+      allowed: false,
+      error: `File size exceeds the ${(maxBytes / (1024 * 1024)).toFixed(0)} MB limit for your ${normTier.toUpperCase()} plan. Upgrade to increase upload capacity.`
+    };
+  }
+  return { allowed: true };
+}
+
 export const TIER_LIMITS: Record<Tier, Record<ResourceKey, number>> = {
   //                         skus   parties  karigars  devices  cameras  branches
   free_trial: { max_skus: -1,    max_parties: -1,    max_karigars: -1,    max_devices: 50, max_cameras: 6,  max_branches: 99 },
-  free:       { max_skus: 200,   max_parties: 50,    max_karigars: 0,     max_devices: 1,  max_cameras: 0,  max_branches: 1  },
-  lite:       { max_skus: -1,    max_parties: -1,    max_karigars: 0,     max_devices: 5,  max_cameras: 0,  max_branches: 1  },
-  pro:        { max_skus: -1,    max_parties: -1,    max_karigars: -1,    max_devices: 15, max_cameras: 4,  max_branches: 1  },
+  free:       { max_skus: 50,    max_parties: 20,    max_karigars: 0,     max_devices: 1,  max_cameras: 0,  max_branches: 1  },
+  lite:       { max_skus: 500,   max_parties: 100,   max_karigars: 0,     max_devices: 5,  max_cameras: 0,  max_branches: 1  },
+  pro:        { max_skus: 5000,  max_parties: 1000,  max_karigars: -1,    max_devices: 15, max_cameras: 4,  max_branches: 1  },
   elite:      { max_skus: -1,    max_parties: -1,    max_karigars: -1,    max_devices: 50, max_cameras: 6,  max_branches: 99 },
+};
+
+/**
+ * Validate data entry against tier quotas.
+ * If quota is reached in Free or Lite, software strictly blocks adding even 1KB of new data.
+ */
+export function validateDataEntry(
+  resource: ResourceKey,
+  currentCount: number,
+  currentTier: Tier | string,
+  incomingCount: number = 1
+): { allowed: boolean; limit: number; error?: string } {
+  const normTier: Tier =
+    currentTier === 'elite' ? 'elite' :
+    currentTier === 'pro' ? 'pro' :
+    currentTier === 'lite' ? 'lite' :
+    currentTier === 'free_trial' ? 'free_trial' : 'free';
+
+  const limits = TIER_LIMITS[normTier];
+  const limit = limits[resource] ?? -1;
+
+  if (limit !== -1 && (currentCount + incomingCount > limit)) {
+    const resourceName = resource === 'max_skus' ? 'items/SKUs' : resource === 'max_parties' ? 'customers/parties' : 'records';
+    return {
+      allowed: false,
+      limit,
+      error: `${normTier.toUpperCase()} Quota Exceeded: Your plan allows a maximum of ${limit} ${resourceName}. Data entry is strictly locked (not even 1KB can be added). Upgrade to ${normTier === 'free' ? 'Lite, Pro, or Elite' : 'Pro or Elite'} to continue.`
+    };
+  }
+
+  return { allowed: true, limit };
 }
 
 // ── Upgrade Messages ──────────────────────────────────────────────────────────

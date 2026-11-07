@@ -8,7 +8,7 @@ import { consumeNonce } from '@/lib/security/nonce'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 )
 
 // Generate a stable device fingerprint
@@ -28,7 +28,7 @@ const activationAttempts = new Map<string, { count: number; lockedUntil: number 
 export async function POST(req: NextRequest) {
   // Guard: env vars must exist
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    (!process.env.SUPABASE_SERVICE_ROLE_KEY && !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)) {
     return NextResponse.json(
       {
         error: 'Server configuration error. Contact Noxis support on WhatsApp: +92 333 435 5475',

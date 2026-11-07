@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://zgxmvwxzjmpmesqliwxl.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -51,6 +51,41 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       console.warn('[DownloadLead] Supabase record warning:', error.message);
+    }
+
+    // 2. Also register in licenses so it immediately shows on the Admin Workstation Control Dashboard
+    const trialExpiry = new Date();
+    trialExpiry.setDate(trialExpiry.getDate() + 14);
+    const leadKey = `DL-${cleanPhone.slice(-6)}-TRIAL`;
+    const displayName = `${fullName.trim()} (${bizName})`;
+
+    try {
+      const { error: licErr } = await supabase.from('licenses').upsert({
+        license_key: leadKey,
+        tier: 'elite',
+        max_devices: 50,
+        customer_name: displayName,
+        customer_whatsapp: cleanPhone,
+        customer_phone: cleanPhone,
+        customer_email: null,
+        brand_name: bizName,
+        city: city?.trim() || 'Pakistan',
+        validity_type: 'trial',
+        notes: `Brand: ${bizName} | City: ${city?.trim() || 'Pakistan'} | Platform: ${platform.toUpperCase()} | HWID: Pending First Run`,
+        is_active: true,
+        is_deactivated: false,
+        is_trial: true,
+        expires_at: trialExpiry.toISOString(),
+        amount_paid: 0,
+        currency: 'PKR',
+        months: 1,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'license_key' });
+      if (licErr) {
+        console.warn('[DownloadLead] Supabase licenses upsert warning:', licErr.message);
+      }
+    } catch (e: any) {
+      console.warn('[DownloadLead] Exception inserting lead license:', e.message);
     }
 
     console.log(`[DownloadLead] Registered ${platform.toUpperCase()} download lead: ${fullName} (${cleanPhone}) for ${bizName}`);

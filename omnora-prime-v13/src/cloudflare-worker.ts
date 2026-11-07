@@ -111,6 +111,218 @@ export default {
       }
     }
 
+    // 1.5. API: Website Free Trial Download Lead
+    if (url.pathname === '/api/download-lead' && request.method === 'POST') {
+      try {
+        const body = await request.json() as any;
+        const { fullName = 'Trial User', phone = '', businessName = '', city = 'Pakistan', platform = 'windows' } = body;
+
+        let cleanPhone = String(phone).trim().replace(/[\s-]/g, '');
+        if (cleanPhone.startsWith('0')) cleanPhone = '92' + cleanPhone.slice(1);
+        else if (cleanPhone.startsWith('+')) cleanPhone = cleanPhone.slice(1);
+
+        const bizName = (businessName && businessName.trim()) ? businessName.trim() : `${fullName.trim()}'s Business`;
+        const leadKey = `DL-${cleanPhone.slice(-6) || 'TRIAL'}-TRIAL`;
+        const displayName = `${fullName.trim()} (${bizName})`;
+        const trialExpiry = new Date();
+        trialExpiry.setDate(trialExpiry.getDate() + 14);
+
+        const supabaseUrl = 'https://zgxmvwxzjmpmesqliwxl.supabase.co';
+        const supabaseKey = 'sb_publishable_cGJQMAam_R4JU3X4IEIrkQ_EPeSsQIt';
+
+        const leadPayload = {
+          license_key: leadKey,
+          tier: 'elite',
+          max_devices: 50,
+          customer_name: displayName,
+          customer_whatsapp: cleanPhone,
+          customer_phone: cleanPhone,
+          customer_email: null,
+          brand_name: bizName,
+          city: city || 'Pakistan',
+          validity_type: 'trial',
+          notes: `Brand: ${bizName} | City: ${city} | Platform: ${platform.toUpperCase()} | HWID: Pending First Run`,
+          is_active: true,
+          is_deactivated: false,
+          is_trial: true,
+          expires_at: trialExpiry.toISOString(),
+          amount_paid: 0,
+          currency: 'PKR',
+          months: 1,
+          updated_at: new Date().toISOString()
+        };
+
+        const res = await fetch(`${supabaseUrl}/rest/v1/licenses?on_conflict=license_key`, {
+          method: 'POST',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'resolution=merge-duplicates,return=minimal'
+          },
+          body: JSON.stringify(leadPayload)
+        });
+
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Lead registered live in Supabase',
+          leadKey,
+          status: res.status
+        }), {
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      } catch (leadErr: any) {
+        return new Response(JSON.stringify({ error: leadErr?.message || 'Failed to record lead' }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    // 1.8. API: Device Telemetry & Access Control Sync
+    if (url.pathname === '/api/license/sync-device' && request.method === 'POST') {
+      try {
+        const body = await request.json() as any;
+        const hwid = (body.hwid || '').trim().toUpperCase();
+        if (!hwid) {
+          return new Response(JSON.stringify({ error: 'HWID required' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+          });
+        }
+
+        const cleanPhone = String(body.phone || '').trim().replace(/[\s-]/g, '');
+        const cleanUser = (body.userName || '').trim() || 'Store Owner';
+        const cleanBrand = (body.businessName || '').trim() || 'My Business';
+        const phoneLast7 = cleanPhone.length >= 7 ? cleanPhone.slice(-7) : '';
+
+        const supabaseUrl = 'https://zgxmvwxzjmpmesqliwxl.supabase.co';
+        const supabaseKey = 'sb_publishable_cGJQMAam_R4JU3X4IEIrkQ_EPeSsQIt';
+
+        // Query existing licenses
+        const licRes = await fetch(`${supabaseUrl}/rest/v1/licenses?select=*&order=created_at.desc`, {
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`
+          }
+        });
+        const allLicenses = licRes.ok ? await licRes.json() as any[] : [];
+
+        const existing = (allLicenses || []).find((lic: any) => {
+          const licHwid = (lic.hwid || '').trim().toUpperCase();
+          const licKey = (lic.license_key || '').trim().toUpperCase();
+          const licPhone = String(lic.customer_whatsapp || lic.customer_phone || '').replace(/[\s-]/g, '');
+          const notes = (lic.notes || '').toUpperCase();
+
+          if (licHwid && licHwid === hwid) return true;
+          if (licKey && licKey === hwid) return true;
+          if (notes.includes(hwid)) return true;
+          if (phoneLast7 && licPhone && (licPhone === cleanPhone || licPhone.endsWith(phoneLast7))) return true;
+          if (cleanBrand && cleanBrand !== 'My Business' && lic.brand_name) {
+            if (String(lic.brand_name).trim().toLowerCase() === cleanBrand.toLowerCase() && (!licHwid || licHwid === 'PENDING FIRST RUN')) {
+              return true;
+            }
+          }
+          return false;
+        });
+
+        if (existing) {
+          const isBanned = Boolean(existing.is_deactivated || existing.is_active === false);
+          const isTrial = Boolean(existing.is_trial);
+          const months = existing.months || 1;
+          const billingCycle = isTrial ? 'trial' : (months === 12 ? 'yearly' : months >= 99 ? 'lifetime' : 'monthly');
+
+          // Update latest device HWID
+          await fetch(`${supabaseUrl}/rest/v1/licenses?id=eq.${existing.id}`, {
+            method: 'PATCH',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({
+              hwid,
+              brand_name: cleanBrand || existing.brand_name || 'Standard Business',
+              customer_whatsapp: cleanPhone || existing.customer_whatsapp,
+              customer_phone: cleanPhone || existing.customer_phone,
+              updated_at: new Date().toISOString()
+            })
+          });
+
+          return new Response(JSON.stringify({
+            success: true,
+            isBanned,
+            status: isBanned ? 'banned' : (isTrial ? 'trial' : 'active'),
+            tier: existing.tier || 'elite',
+            isTrial,
+            months,
+            billingCycle,
+            licenseKey: existing.license_key,
+            expiresAt: existing.expires_at,
+            hwid
+          }), {
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+          });
+        }
+
+        // Auto-register new workstation
+        const trialExpires = new Date();
+        trialExpires.setDate(trialExpires.getDate() + 14);
+        const newKey = `HWID-${hwid.slice(-8)}`;
+
+        await fetch(`${supabaseUrl}/rest/v1/licenses`, {
+          method: 'POST',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({
+            license_key: newKey,
+            tier: 'elite',
+            max_devices: 50,
+            customer_name: cleanBrand !== 'My Business' ? `${cleanUser} (${cleanBrand})` : cleanUser,
+            customer_whatsapp: cleanPhone || null,
+            customer_phone: cleanPhone || null,
+            customer_email: null,
+            brand_name: cleanBrand,
+            hwid,
+            validity_type: 'trial',
+            is_active: true,
+            is_deactivated: false,
+            is_trial: true,
+            expires_at: trialExpires.toISOString(),
+            amount_paid: 0,
+            currency: 'PKR',
+            months: 1,
+            created_at: new Date().toISOString()
+          })
+        });
+
+        return new Response(JSON.stringify({
+          success: true,
+          isBanned: false,
+          status: 'trial',
+          tier: 'elite',
+          licenseKey: newKey,
+          expiresAt: trialExpires.toISOString(),
+          hwid
+        }), {
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      } catch (syncErr: any) {
+        return new Response(JSON.stringify({ error: syncErr?.message || 'Sync failed' }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
+    }
+
     // 2. API: License Issue (Instant Checkout)
     if (url.pathname === '/api/license/issue' && request.method === 'POST') {
       try {

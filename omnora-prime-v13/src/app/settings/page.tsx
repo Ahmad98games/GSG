@@ -46,6 +46,7 @@ import ThemePicker from "@/components/shell/ThemePicker";
 import { useThemeStore } from "@/stores/themeStore";
 import { useToast } from "@/hooks/useToast";
 import { useTierStore } from "@/stores/tierStore";
+import { validateFileUpload } from "@/lib/license/tierEngine";
 import { saveLicenseToLocal } from "../(onboarding)/license/actions";
 import { getRegionConfig } from "@/lib/industry/regionConfigs";
 import { humanizeError } from '@/lib/utils/errors';

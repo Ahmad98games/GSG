@@ -17,12 +17,16 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { FIELD_ALIASES } from "@/lib/import/columnMapper";
+import { useTierStore } from "@/stores/tierStore";
+import { validateFileUpload } from "@/lib/license/tierEngine";
+
 const INVENTORY_FIELDS = [
-  { key: 'sku_code', label: 'SKU Code', required: true },
   { key: 'name', label: 'Name', required: true },
-  { key: 'unit', label: 'Unit', required: true },
-  { key: 'category', label: 'Category', required: false },
   { key: 'qty_on_hand', label: 'Stock Level', required: false },
+  { key: 'sku_code', label: 'SKU Code', required: false },
+  { key: 'unit', label: 'Unit', required: false },
+  { key: 'category', label: 'Category', required: false },
   { key: 'cost_price', label: 'Cost Price', required: false },
   { key: 'sale_price', label: 'Sale Price', required: false },
   { key: 'reorder_level', label: 'Reorder Level', required: false },
@@ -80,6 +84,14 @@ export default function InventoryImportPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const currentTier = useTierStore.getState().tier;
+    const fileCheck = validateFileUpload(file, currentTier || 'free');
+    if (!fileCheck.allowed) {
+      toast.error('File Upload Blocked', fileCheck.error || 'File size exceeds tier limits');
+      e.target.value = '';
+      return;
+    }
+
     setIsParsing(true);
     const fileName = file.name.toLowerCase();
 
@@ -116,14 +128,33 @@ export default function InventoryImportPage() {
   const processParsedData = (data: any[]) => {
     setParsedData(data);
     
-    // Auto-map headers
+    // Auto-map headers with intelligent Pakistani trade and standard aliases
     const headers = Object.keys(data[0] || {});
     const newMapping: Record<string, string> = {};
     
     headers.forEach(header => {
-      const normalized = header.toLowerCase().replace(/[^a-z0-9]/g, '_');
-      const field = INVENTORY_FIELDS.find(f => f.key === normalized || f.key === header);
-      if (field) newMapping[header] = field.key;
+      const cleanHeader = header.toLowerCase().trim();
+      const normalized = cleanHeader.replace(/[^a-z0-9]/g, '_');
+      
+      let matchedKey = '';
+      const directField = INVENTORY_FIELDS.find(f => 
+        f.key === normalized || 
+        f.key === cleanHeader || 
+        f.label.toLowerCase() === cleanHeader
+      );
+
+      if (directField) {
+        matchedKey = directField.key;
+      } else {
+        for (const [canonicalKey, aliases] of Object.entries(FIELD_ALIASES.skus || {})) {
+          if (aliases.some(a => cleanHeader === a || cleanHeader.includes(a) || normalized.includes(a.replace(/\s+/g, '_')))) {
+            matchedKey = canonicalKey;
+            break;
+          }
+        }
+      }
+
+      if (matchedKey) newMapping[header] = matchedKey;
     });
     
     setMapping(newMapping);
@@ -150,6 +181,9 @@ export default function InventoryImportPage() {
         if (noxisField) mappedRow[noxisField] = row[csvHeader];
       });
 
+      if (!mappedRow.unit) mappedRow.unit = 'pcs';
+      if (!mappedRow.sku_code) mappedRow.sku_code = '';
+
       const missingRequired = INVENTORY_FIELDS.filter(f => f.required && !mappedRow[f.key]);
       if (missingRequired.length > 0) {
         failed++;
@@ -163,10 +197,11 @@ export default function InventoryImportPage() {
 
     if (mappedRows.length > 0) {
       try {
+        const currentTier = useTierStore.getState().tier || 'free';
         const res = await fetch('/api/import', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ entity: 'skus', rows: mappedRows, businessId })
+          body: JSON.stringify({ entity: 'skus', rows: mappedRows, businessId, stock_mode: 'replace', tier: currentTier })
         });
         const json = await res.json();
         if (res.ok && json.success) {

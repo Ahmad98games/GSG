@@ -376,6 +376,7 @@ export const db = new Proxy({} as Record<string, any>, {
             alterTableSafe('order_items', 'unit TEXT DEFAULT "Piece"');
             alterTableSafe('order_items', 'unit_price REAL DEFAULT 0');
             alterTableSafe('order_items', 'total_price REAL DEFAULT 0');
+            alterTableSafe('sku_cache', 'category TEXT');
             alterTableSafe('sku_cache', 'oem_number TEXT');
             alterTableSafe('sku_cache', 'compatible_vehicles TEXT');
             alterTableSafe('sku_cache', 'commission_rate TEXT DEFAULT "0"');
