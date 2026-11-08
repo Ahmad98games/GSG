@@ -1918,7 +1918,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       trialStatus: hasPaidLicense ? null : trialState.status,
       trialDaysLeft: hasPaidLicense ? 0 : trialState.daysLeft,
       graceDaysLeft: hasPaidLicense ? 0 : trialState.graceDaysLeft,
-      hwid: generateHWID(),
+      hwid: (getInstallationHWID() || generateHWID()).toUpperCase(),
       licenseActive: hasPaidLicense,
       isPermanent: hasPaidLicense && (!license?.expiresAt || license.expiresAt === 0),
       isExpired,
@@ -1983,7 +1983,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
   // Returns the current HWID for display in Settings (user copies this to send for key generation)
   ipcMain.handle('license:getHWID', () => {
-    return getInstallationHWID() || getCachedHWIDOrGenerate();
+    return (getInstallationHWID() || getCachedHWIDOrGenerate()).toUpperCase();
   });
 
   // Returns full trial state

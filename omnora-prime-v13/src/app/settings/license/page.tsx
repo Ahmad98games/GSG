@@ -101,7 +101,7 @@ export default function LicenseUpgradePage() {
         const api = (window as any).electronAPI || (window as any).electron;
         const machineId = await (api?.license?.getHWID?.() || api?.getHwid?.());
         if (isMounted && machineId && typeof machineId === 'string') {
-          setHwid(machineId);
+          setHwid(machineId.trim().toUpperCase());
           return;
         }
       } catch (err) {
@@ -113,7 +113,7 @@ export default function LicenseUpgradePage() {
         fallback = 'HWID-' + Math.random().toString(36).substring(2, 10).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
         localStorage.setItem('noxis_hwid', fallback);
       }
-      if (isMounted) setHwid(fallback);
+      if (isMounted) setHwid(fallback.trim().toUpperCase());
     }
 
     fetchHwid();
@@ -137,7 +137,7 @@ export default function LicenseUpgradePage() {
 
   const handleCopyHwid = () => {
     if (!hwid) return;
-    navigator.clipboard.writeText(hwid);
+    navigator.clipboard.writeText(hwid.toUpperCase());
     setCopiedHwid(true);
     setTimeout(() => setCopiedHwid(false), 2500);
     toast.success("Machine ID Copied", "Your Machine ID has been copied to clipboard");
@@ -437,7 +437,7 @@ export default function LicenseUpgradePage() {
                 <input
                   type="text"
                   readOnly
-                  value={hwid || 'Loading Machine ID...'}
+                  value={hwid ? hwid.toUpperCase() : 'Loading Machine ID...'}
                   className="flex-1 bg-black/60 border border-white/10 px-3 py-2 text-xs font-mono text-cyan-400 rounded-sm outline-none"
                 />
                 <button

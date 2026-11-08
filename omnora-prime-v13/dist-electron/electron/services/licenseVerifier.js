@@ -123,17 +123,18 @@ function verifyLicense(keyString) {
         if (payload.tier !== tierStr) {
             return { valid: false, error: 'TIER_MISMATCH' };
         }
-        // 5. Verify HWID binding
-        const currentHWID = (0, hwid_1.generateHWID)();
-        const cachedHWID = (0, store_1.getCachedHWID)();
-        const installHWID = (0, store_1.getInstallationHWID)();
-        const isMatch = payload.hwid === currentHWID ||
-            (cachedHWID && payload.hwid === cachedHWID) ||
-            (installHWID && payload.hwid === installHWID);
+        // 5. Verify HWID binding (Always case-insensitive uppercase comparison)
+        const currentHWID = ((0, hwid_1.generateHWID)() || '').trim().toUpperCase();
+        const cachedHWID = ((0, store_1.getCachedHWID)() || '').trim().toUpperCase();
+        const installHWID = ((0, store_1.getInstallationHWID)() || '').trim().toUpperCase();
+        const targetHWID = (payload.hwid || '').trim().toUpperCase();
+        const isMatch = targetHWID === currentHWID ||
+            (cachedHWID && targetHWID === cachedHWID) ||
+            (installHWID && targetHWID === installHWID);
         if (!isMatch) {
             // If machine has not yet been bound to another HWID, bind this cryptographically valid key's HWID
             if (!installHWID) {
-                (0, store_1.setInstallationHWID)(payload.hwid);
+                (0, store_1.setInstallationHWID)(targetHWID);
             }
             else {
                 return { valid: false, error: 'HWID_MISMATCH' };

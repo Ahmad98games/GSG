@@ -1738,7 +1738,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             trialStatus: hasPaidLicense ? null : trialState.status,
             trialDaysLeft: hasPaidLicense ? 0 : trialState.daysLeft,
             graceDaysLeft: hasPaidLicense ? 0 : trialState.graceDaysLeft,
-            hwid: (0, hwid_1.generateHWID)(),
+            hwid: ((0, store_1.getInstallationHWID)() || (0, hwid_1.generateHWID)()).toUpperCase(),
             licenseActive: hasPaidLicense,
             isPermanent: hasPaidLicense && (!license?.expiresAt || license.expiresAt === 0),
             isExpired,
@@ -1798,7 +1798,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     });
     // Returns the current HWID for display in Settings (user copies this to send for key generation)
     electron_1.ipcMain.handle('license:getHWID', () => {
-        return (0, store_1.getInstallationHWID)() || (0, hwid_1.getCachedHWIDOrGenerate)();
+        return ((0, store_1.getInstallationHWID)() || (0, hwid_1.getCachedHWIDOrGenerate)()).toUpperCase();
     });
     // Returns full trial state
     electron_1.ipcMain.handle('trial:getState', () => {

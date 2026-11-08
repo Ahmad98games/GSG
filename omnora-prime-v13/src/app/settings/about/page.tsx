@@ -25,7 +25,7 @@ export default function AboutPage() {
 
   React.useEffect(() => {
     if (typeof window !== 'undefined' && (window as any).electronAPI?.license?.getHWID) {
-      (window as any).electronAPI.license.getHWID().then((id: string) => setHwid(id || ''));
+      (window as any).electronAPI.license.getHWID().then((id: string) => setHwid((id || '').toUpperCase()));
     }
   }, []);
 
@@ -70,9 +70,11 @@ export default function AboutPage() {
               {hwid && (
                 <div className="pt-2">
                   <span className="text-[9px] text-gray-500 uppercase font-bold tracking-widest block">Hardware ID (HWID)</span>
-                  <span className="text-[10px] text-electric-blue font-mono select-all bg-electric-blue/10 border border-electric-blue/20 px-3 py-1 rounded-md inline-block mt-1">
-                    {hwid}
-                  </span>
+                  <div className="flex items-center justify-center gap-2 mt-1">
+                    <span className="text-[10px] text-electric-blue font-mono select-all bg-electric-blue/10 border border-electric-blue/20 px-3 py-1 rounded-md tracking-wider">
+                      {hwid.toUpperCase()}
+                    </span>
+                  </div>
                 </div>
               )}
             </div>

@@ -124,20 +124,21 @@ export function verifyLicense(keyString: string): VerifyResult {
       return { valid: false, error: 'TIER_MISMATCH' }
     }
 
-    // 5. Verify HWID binding
-    const currentHWID = generateHWID()
-    const cachedHWID = getCachedHWID()
-    const installHWID = getInstallationHWID()
+    // 5. Verify HWID binding (Always case-insensitive uppercase comparison)
+    const currentHWID = (generateHWID() || '').trim().toUpperCase()
+    const cachedHWID = (getCachedHWID() || '').trim().toUpperCase()
+    const installHWID = (getInstallationHWID() || '').trim().toUpperCase()
+    const targetHWID = (payload.hwid || '').trim().toUpperCase()
 
     const isMatch =
-      payload.hwid === currentHWID ||
-      (cachedHWID && payload.hwid === cachedHWID) ||
-      (installHWID && payload.hwid === installHWID)
+      targetHWID === currentHWID ||
+      (cachedHWID && targetHWID === cachedHWID) ||
+      (installHWID && targetHWID === installHWID)
 
     if (!isMatch) {
       // If machine has not yet been bound to another HWID, bind this cryptographically valid key's HWID
       if (!installHWID) {
-        setInstallationHWID(payload.hwid)
+        setInstallationHWID(targetHWID)
       } else {
         return { valid: false, error: 'HWID_MISMATCH' }
       }

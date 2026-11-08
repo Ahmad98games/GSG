@@ -250,7 +250,7 @@ export default function SettingsPage() {
 
     // Fetch HWID for display in settings
     if (typeof window !== 'undefined' && (window as any).electronAPI?.license?.getHWID) {
-      (window as any).electronAPI.license.getHWID().then((id: string) => setHwid(id || ''));
+      (window as any).electronAPI.license.getHWID().then((id: string) => setHwid((id || '').toUpperCase()));
     }
   }, []);
 
@@ -1788,7 +1788,7 @@ export default function SettingsPage() {
                       <div className="p-5 bg-white/[0.03] border border-white/10 rounded-xl flex items-start gap-4">
                         <div className="space-y-1 flex-1">
                           <span className="text-[10px] uppercase font-bold text-gray-500 tracking-widest">Hardware ID (HWID)</span>
-                          <p className="text-xs font-mono text-slate-300 break-all">{hwid}</p>
+                          <p className="text-xs font-mono text-slate-300 break-all">{hwid.toUpperCase()}</p>
                           <p className="text-[9px] text-gray-600 uppercase tracking-tighter">This machine's unique hardware fingerprint — tied to your license</p>
                         </div>
                       </div>

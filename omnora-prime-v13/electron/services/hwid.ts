@@ -22,33 +22,29 @@ import {
 
 let inMemoryHWID: string | null = null;
 
-function queryWindowsHWID(): { systemUUID: string; motherboardSerial: string; cpuProcessorId: string } {
-  let systemUUID = '';
-  let motherboardSerial = '';
-  let cpuProcessorId = '';
-
-  // Fast single batch PowerShell query with 1500ms strict timeout to prevent startup hangs
+function wmicQuery(q: string): string {
   try {
-    const batchCmd = 'powershell -NoProfile -NonInteractive -Command "$u=(Get-CimInstance Win32_ComputerSystemProduct).UUID; $s=(Get-CimInstance Win32_BaseBoard).SerialNumber; $c=(Get-CimInstance Win32_Processor).ProcessorId; Write-Output ($u+\'`t\'+$s+\'`t\'+$c)"';
-    const output = execSync(batchCmd, {
-      timeout: 1500,
-      windowsHide: true,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore']
-    }).trim();
-
-    if (output) {
-      const parts = output.split('\t');
-      if (parts[0] && !parts[0].toLowerCase().includes('o.e.m') && parts[0] !== '0') systemUUID = parts[0].trim();
-      if (parts[1] && !parts[1].toLowerCase().includes('o.e.m') && parts[1] !== '0') motherboardSerial = parts[1].trim();
-      if (parts[2] && !parts[2].toLowerCase().includes('o.e.m') && parts[2] !== '0') cpuProcessorId = parts[2].trim();
-      return { systemUUID, motherboardSerial, cpuProcessorId };
+    const o = execSync(q, { timeout: 3000, windowsHide: true, encoding: 'utf8', stdio: ['ignore','pipe','ignore'] });
+    for (const line of o.split('\n')) {
+      const t = line.trim();
+      const eqIdx = t.indexOf('=');
+      if (eqIdx !== -1) {
+        const val = t.slice(eqIdx + 1).trim();
+        if (val && val.toLowerCase() !== 'to be filled by o.e.m.' && val.toLowerCase() !== 'none' && val !== '0') return val;
+      }
     }
-  } catch {
-    // If PowerShell is blocked or restricted, continue with zero-cost fallback
-  }
-
-  return { systemUUID, motherboardSerial, cpuProcessorId };
+  } catch {}
+  try {
+    let psCmd = '';
+    if (q.includes('csproduct')) psCmd = 'powershell -NoProfile -NonInteractive -Command "(Get-CimInstance Win32_ComputerSystemProduct).UUID"';
+    else if (q.includes('baseboard')) psCmd = 'powershell -NoProfile -NonInteractive -Command "(Get-CimInstance Win32_BaseBoard).SerialNumber"';
+    else if (q.includes('cpu')) psCmd = 'powershell -NoProfile -NonInteractive -Command "(Get-CimInstance Win32_Processor).ProcessorId"';
+    if (psCmd) {
+      const val = execSync(psCmd, { timeout: 3000, windowsHide: true, encoding: 'utf8', stdio: ['ignore','pipe','ignore'] }).trim();
+      if (val) return val;
+    }
+  } catch {}
+  return '';
 }
 
 function getPrimaryMAC(): string {
@@ -84,21 +80,23 @@ export interface HWIDComponents {
 
 export function collectHWIDComponents(): HWIDComponents {
   const isWin = process.platform === 'win32'
-  const winHw = isWin ? queryWindowsHWID() : { systemUUID: '', motherboardSerial: '', cpuProcessorId: '' }
+  const systemUUID = isWin ? wmicQuery('wmic csproduct get UUID /value') : ''
+  const motherboardSerial = isWin ? wmicQuery('wmic baseboard get SerialNumber /value') : ''
+  const cpuProcessorId = isWin ? wmicQuery('wmic cpu get ProcessorId /value') : ''
   const primaryMAC = getPrimaryMAC()
   const hostname = os.hostname()
 
   return {
-    systemUUID: winHw.systemUUID,
-    motherboardSerial: winHw.motherboardSerial,
-    cpuProcessorId: winHw.cpuProcessorId,
+    systemUUID,
+    motherboardSerial,
+    cpuProcessorId,
     primaryMAC,
     hostname
   }
 }
 
 /**
- * Generates HWID as SHA-256 hex of "UUID|MotherboardSerial|CpuId|MAC|Hostname|CPUModel".
+ * Generates HWID as SHA-256 hex of "UUID|MotherboardSerial|CpuId|PrimaryMAC|Hostname".
  * Non-empty components only — cached in-memory for instant 0ms subsequent returns.
  */
 export function generateHWID(): string {
@@ -110,16 +108,18 @@ export function generateHWID(): string {
     c.motherboardSerial,
     c.cpuProcessorId,
     c.primaryMAC,
-    c.hostname,
-    os.cpus()[0]?.model || '',
-    os.arch(),
-    os.platform()
+    c.hostname
   ].filter(Boolean)
+
+  if (parts.length < 2) {
+    parts.push(os.arch(), os.platform());
+  }
 
   const hash = crypto
     .createHash('sha256')
     .update(parts.join('|'))
-    .digest('hex');
+    .digest('hex')
+    .toUpperCase();
 
   inMemoryHWID = hash;
   return hash;
@@ -130,9 +130,9 @@ export function generateHWID(): string {
  */
 export function getCachedHWIDOrGenerate(): string {
   const cached = getCachedHWID()
-  if (cached) return cached
+  if (cached) return cached.toUpperCase()
 
-  const hwid = generateHWID()
+  const hwid = generateHWID().toUpperCase()
   setCachedHWID(hwid)
   return hwid
 }
