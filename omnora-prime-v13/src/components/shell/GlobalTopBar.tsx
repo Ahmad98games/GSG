@@ -312,7 +312,19 @@ export default React.memo(function GlobalTopBar() {
       }
     } catch {}
 
-    // 2. Check Electron IPC bridge status
+    // 2. Query port 7447 directly
+    try {
+      const res7447 = await fetch('http://127.0.0.1:7447/api/hub/devices');
+      if (res7447.ok) {
+        const data7447 = await res7447.json();
+        if (typeof data7447?.paired === 'number') {
+          setBridgeDeviceCount(data7447.paired);
+          return;
+        }
+      }
+    } catch {}
+
+    // 3. Check Electron IPC bridge status
     if ((window as any).electronAPI && typeof (window as any).electronAPI.getBridgeStatus === 'function') {
       try {
         const status = await (window as any).electronAPI.getBridgeStatus();
@@ -330,8 +342,8 @@ export default React.memo(function GlobalTopBar() {
   useEffect(() => {
     refreshDeviceCount();
 
-    // 5s poll for snappy live device count sync
-    const pollInterval = setInterval(refreshDeviceCount, 5000);
+    // 4s poll for snappy live device count sync
+    const pollInterval = setInterval(refreshDeviceCount, 4000);
 
     const handleCustomRefresh = () => refreshDeviceCount();
     window.addEventListener('noxis:device_count_changed', handleCustomRefresh);
@@ -349,12 +361,32 @@ export default React.memo(function GlobalTopBar() {
       const payload = args.length > 1 ? args[1] : args[0];
       const eventType = payload?.event || payload?.type;
 
+      if (eventType === 'DEVICE_PAIRED') {
+        const devLabel = payload?.data?.deviceLabel || payload?.deviceLabel || 'Mobile Terminal';
+        toast.success(`Mobile Connected: ${devLabel}`);
+        refreshDeviceCount();
+      }
+      if (eventType === 'DEVICE_UNPAIRED' || eventType === 'DEVICE_DISCONNECTED') {
+        const devLabel = payload?.data?.deviceLabel || payload?.deviceLabel || 'Mobile Terminal';
+        toast.info(`Mobile Disconnected: ${devLabel}`);
+        refreshDeviceCount();
+      }
+      if (eventType === 'DEVICE_COUNT_CHANGED') {
+        const count = typeof payload?.paired === 'number' ? payload.paired : (typeof payload?.data?.paired === 'number' ? payload.data.paired : null);
+        if (count !== null) setBridgeDeviceCount(count);
+        refreshDeviceCount();
+      }
+
       if (eventType === 'ATTENDANCE_LOGGED' || eventType === 'PRODUCTION_LOGGED') {
         queryClient.invalidateQueries({ queryKey: ['dashboard'] });
         queryClient.invalidateQueries({ queryKey: ['attendance'] });
         queryClient.invalidateQueries({ queryKey: ['production'] });
       }
       if (eventType === 'KHATA_ENTRY' || eventType === 'KHATA_UPDATED') {
+        const amt = payload?.amount || payload?.data?.amount;
+        if (amt) {
+          toast.success(`Mobile Khata Sync: PKR ${Number(amt).toLocaleString()}`);
+        }
         queryClient.invalidateQueries({ queryKey: ['ledger_entries'] });
         queryClient.invalidateQueries({ queryKey: ['parties'] });
         queryClient.invalidateQueries({ queryKey: ['dashboard'] });

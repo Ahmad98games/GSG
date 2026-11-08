@@ -122,10 +122,11 @@ export function KhataEntryModal({
   }, [editingEntry, preselectedPartyId, partiesList, setValue, isOpen, getDraft]);
 
   const filteredParties = useMemo(() => {
-    if (!partySearch) return partiesList;
-    const q = partySearch.toLowerCase();
-    return partiesList.filter(p =>
-      p.name?.toLowerCase().includes(q) || p.phone?.includes(q)
+    if (!partySearch || typeof partySearch !== 'string') return partiesList || [];
+    const q = partySearch.toLowerCase().trim();
+    if (!q) return partiesList || [];
+    return (partiesList || []).filter(p =>
+      Boolean(p && ((p.name ? String(p.name).toLowerCase().includes(q) : false) || (p.phone ? String(p.phone).includes(q) : false)))
     );
   }, [partiesList, partySearch]);
 

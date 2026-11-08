@@ -428,6 +428,22 @@ export function attachMobileBridge(httpServer?: Server, customPort?: number): We
             res.end(JSON.stringify(data));
             return;
           }
+          if (pathname === '/api/hub/devices' || pathname === '/api/devices') {
+            const status = getBridgeStatus();
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+              paired: status.paired,
+              devices: (status.pairedDevices || []).map(d => ({
+                deviceId: d.deviceId,
+                deviceLabel: d.deviceLabel,
+                isActive: 1,
+                isLive: true,
+                lastSeen: d.lastHeartbeat,
+                connectedAt: d.connectedAt,
+              }))
+            }));
+            return;
+          }
         }
 
         // 2.5 Broadcast change to all mobile devices

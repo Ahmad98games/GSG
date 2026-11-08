@@ -381,6 +381,7 @@ export default function KhataPage() {
   const filteredTransactions = useMemo(() => {
     const now = new Date();
     return groupedTransactions.filter(tx => {
+      if (!tx) return false;
       const q = (debouncedSearch || '').toLowerCase().trim();
       const matchesSearch =
         !q ||
@@ -390,16 +391,20 @@ export default function KhataPage() {
         (tx.party_phone ? String(tx.party_phone).includes(q) : false);
 
       let matchesDate = true;
-      if (datePreset !== 'all') {
-        const txDate = parseISO(tx.date);
-        if (datePreset === 'today') {
-          matchesDate = format(txDate, 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd');
-        } else if (datePreset === 'yesterday') {
-          matchesDate = format(txDate, 'yyyy-MM-dd') === format(subDays(now, 1), 'yyyy-MM-dd');
-        } else if (datePreset === 'week') {
-          matchesDate = txDate >= startOfWeek(now);
-        } else if (datePreset === 'month') {
-          matchesDate = txDate >= startOfMonth(now);
+      if (datePreset !== 'all' && tx.date) {
+        try {
+          const txDate = parseISO(tx.date);
+          if (datePreset === 'today') {
+            matchesDate = format(txDate, 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd');
+          } else if (datePreset === 'yesterday') {
+            matchesDate = format(txDate, 'yyyy-MM-dd') === format(subDays(now, 1), 'yyyy-MM-dd');
+          } else if (datePreset === 'week') {
+            matchesDate = txDate >= startOfWeek(now);
+          } else if (datePreset === 'month') {
+            matchesDate = txDate >= startOfMonth(now);
+          }
+        } catch {
+          matchesDate = true;
         }
       }
 
@@ -422,6 +427,7 @@ export default function KhataPage() {
   // Filtered Parties for Party Accounts Tab
   const filteredPartiesList = useMemo(() => {
     return parties.filter((p: Party) => {
+      if (!p) return false;
       const q = (debouncedSearch || '').toLowerCase().trim();
       const matchesSearch =
         !q ||
@@ -734,7 +740,13 @@ export default function KhataPage() {
                           return (
                             <tr key={tx.tx_ref} className={cn('h-10 border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors duration-100', isReversed && 'opacity-40 line-through')}>
                               <td className="px-3.5 py-2 text-slate-400 font-mono tabular-nums text-[11px] whitespace-nowrap">
-                                {format(new Date(tx.date), 'dd MMM yyyy, HH:mm')}
+                                {(() => {
+                                  try {
+                                    return tx.date ? format(new Date(tx.date), 'dd MMM yyyy, HH:mm') : '—';
+                                  } catch {
+                                    return '—';
+                                  }
+                                })()}
                               </td>
                               <td className="px-3.5 py-2">
                                 <span className="font-medium text-slate-200 block truncate max-w-[180px]">{tx.party}</span>

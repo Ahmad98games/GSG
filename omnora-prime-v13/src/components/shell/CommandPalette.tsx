@@ -177,13 +177,13 @@ export function CommandPalette() {
     },
 
     // Recent parties
-    ...recentParties.map(p => ({
-      id: `party-${p.id}`,
-      label: p.name,
+    ...(recentParties || []).map(p => ({
+      id: `party-${p?.id || Math.random()}`,
+      label: p?.name || 'Party',
       category: 'Recent Parties',
-      keywords: [p.name.toLowerCase(), p.party_type],
-      icon: p.party_type === 'customer' ? '🛒' : '🏭',
-      action: () => router.push(`/parties/${p.id}`),
+      keywords: [(p?.name ? String(p.name).toLowerCase() : ''), p?.party_type || ''],
+      icon: p?.party_type === 'customer' ? '🛒' : '🏭',
+      action: () => p?.id && router.push(`/parties/${p.id}`),
     })),
   ], [t, nav, recentParties, router])
 
