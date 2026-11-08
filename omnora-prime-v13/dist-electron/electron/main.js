@@ -435,12 +435,17 @@ function killProcess(child, name) {
 // ─────────────────────────────────────────────
 // 2. SINGLE INSTANCE LOCK
 // ─────────────────────────────────────────────
-const gotTheLock = electron_1.app.isPackaged ? electron_1.app.requestSingleInstanceLock() : true;
+const gotTheLock = electron_1.app.requestSingleInstanceLock();
 if (!gotTheLock) {
-    electron_1.app.on('ready', () => {
-        electron_1.dialog.showErrorBox('Noxis Hub Already Running', 'An instance of Noxis Hub is already active.\n\nCheck your system tray or Task Manager and close it first.');
+    if (electron_1.app.isPackaged) {
+        electron_1.app.on('ready', () => {
+            electron_1.dialog.showErrorBox('Noxis Hub Already Running', 'An instance of Noxis Hub is already active.\n\nCheck your system tray or Task Manager and close it first.');
+            electron_1.app.quit();
+        });
+    }
+    else {
         electron_1.app.quit();
-    });
+    }
 }
 else {
     electron_1.app.on('second-instance', () => {
@@ -2213,8 +2218,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             const mem = process.memoryUsage();
             startupLog(`[FREEZE] Memory at freeze: ` +
                 `heap ${Math.round(mem.heapUsed / 1024 / 1024)}MB`);
-            // Log all active IPC channels
-            startupLog('[FREEZE] Checking for hung IPC...');
+            if (!electron_1.app.isPackaged) {
+                startupLog('[FREEZE] Dev renderer busy (Next.js compilation / HMR) — skipping modal');
+                return;
+            }
             // Give it 15 seconds to recover
             const recoveryTimeout = setTimeout(() => {
                 if (mainWindow && !mainWindow.isDestroyed()) {

@@ -522,16 +522,20 @@ function killProcess(child: ChildProcess | UtilityProcess | null, name: string):
 // ─────────────────────────────────────────────
 // 2. SINGLE INSTANCE LOCK
 // ─────────────────────────────────────────────
-const gotTheLock = app.isPackaged ? app.requestSingleInstanceLock() : true;
+const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
-  app.on('ready', () => {
-    dialog.showErrorBox(
-      'Noxis Hub Already Running',
-      'An instance of Noxis Hub is already active.\n\nCheck your system tray or Task Manager and close it first.'
-    );
+  if (app.isPackaged) {
+    app.on('ready', () => {
+      dialog.showErrorBox(
+        'Noxis Hub Already Running',
+        'An instance of Noxis Hub is already active.\n\nCheck your system tray or Task Manager and close it first.'
+      );
+      app.quit();
+    });
+  } else {
     app.quit();
-  });
+  }
 } else {
 
   app.on('second-instance', () => {
@@ -2452,8 +2456,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         `heap ${Math.round(mem.heapUsed / 1024 / 1024)}MB`
       )
 
-      // Log all active IPC channels
-      startupLog('[FREEZE] Checking for hung IPC...')
+      if (!app.isPackaged) {
+        startupLog('[FREEZE] Dev renderer busy (Next.js compilation / HMR) — skipping modal');
+        return;
+      }
 
       // Give it 15 seconds to recover
       const recoveryTimeout = setTimeout(() => {

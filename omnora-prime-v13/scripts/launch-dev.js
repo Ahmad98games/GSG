@@ -16,3 +16,4 @@ const child = spawn(electronBinary, ['.'], {
 child.on('close', (code) => {
   process.exit(code || 0);
 });
+

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
 import { useTierStore } from '@/stores/tierStore';
 import { createClient } from '@/lib/supabase/client';
@@ -20,8 +20,21 @@ export function useAccessControl() {
   const brandName = profile?.business_name || (typeof window !== 'undefined' ? localStorage.getItem('noxis_lead_business') : '') || 'My Business';
   const phone = profile?.phone || (typeof window !== 'undefined' ? localStorage.getItem('noxis_lead_phone') : '') || '';
 
-  const syncAndCheck = useCallback(async (currentHwid?: string) => {
+  const isSyncingRef = useRef(false);
+  const lastSyncTimeRef = useRef(0);
+  const latestProfileRef = useRef({ userName, brandName, phone });
+  latestProfileRef.current = { userName, brandName, phone };
+
+  const syncAndCheck = useCallback(async (currentHwid?: string, force = false) => {
     if (typeof window === 'undefined') return;
+
+    // Throttle checks to once every 60 seconds unless forced
+    const now = Date.now();
+    if (!force && (now - lastSyncTimeRef.current < 60000 || isSyncingRef.current)) {
+      return;
+    }
+    isSyncingRef.current = true;
+    lastSyncTimeRef.current = now;
 
     let targetHwid = currentHwid || hwid;
     if (!targetHwid) {
@@ -48,10 +61,15 @@ export function useAccessControl() {
         targetHwid = `HW-${Math.abs(window.navigator.userAgent.split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0)).toString(16).toUpperCase().padStart(8, '0')}`;
         localStorage.setItem('noxis_hwid', targetHwid);
       }
-      setHwid(targetHwid);
+      setHwid((prev) => (prev !== targetHwid ? targetHwid : prev));
     }
 
-    if (!targetHwid) return;
+    if (!targetHwid) {
+      isSyncingRef.current = false;
+      return;
+    }
+
+    const { userName: uName, brandName: bName, phone: ph } = latestProfileRef.current;
 
     // Send telemetry & check ban state against Supabase
     try {
@@ -60,10 +78,10 @@ export function useAccessControl() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           hwid: targetHwid,
-          userName,
-          businessName: brandName,
-          phone,
-          appVersion: process.env.NEXT_PUBLIC_APP_VERSION || '14.0.33'
+          userName: uName,
+          businessName: bName,
+          phone: ph,
+          appVersion: process.env.NEXT_PUBLIC_APP_VERSION || '14.0.35'
         })
       });
 
@@ -83,7 +101,10 @@ export function useAccessControl() {
             const normTier: 'lite' | 'pro' | 'elite' =
               rawTier === 'elite' ? 'elite' : rawTier === 'pro' ? 'pro' : 'lite';
 
-            useTierStore.getState().setTier(normTier, json.expiresAt, json.isTrial);
+            const curTier = useTierStore.getState().tier;
+            if (curTier !== normTier) {
+              useTierStore.getState().setTier(normTier, json.expiresAt, json.isTrial);
+            }
             localStorage.setItem('noxis_tier', normTier);
             localStorage.setItem('noxis_license', JSON.stringify({
               key: json.licenseKey || `HWID-${targetHwid.slice(-8)}`,
@@ -94,14 +115,9 @@ export function useAccessControl() {
               months: json.months || 1,
               hwid: targetHwid
             }));
-
-            // Sync with Electron if running on desktop
-            const api = (window as any).electronAPI || (window as any).electron;
-            if (api?.syncTier) {
-              api.syncTier({ tier: normTier, expiresAt: json.expiresAt, isTrial: Boolean(json.isTrial) });
-            }
           }
         }
+        isSyncingRef.current = false;
         return;
       }
       throw new Error(`API route status ${res.status}`);
@@ -129,10 +145,14 @@ export function useAccessControl() {
                 const normTier: 'lite' | 'pro' | 'elite' =
                   String(lic.tier).toLowerCase() === 'elite' ? 'elite' :
                   String(lic.tier).toLowerCase() === 'pro' ? 'pro' : 'lite';
-                useTierStore.getState().setTier(normTier, lic.expires_at, lic.is_trial);
+                const curTier = useTierStore.getState().tier;
+                if (curTier !== normTier) {
+                  useTierStore.getState().setTier(normTier, lic.expires_at, lic.is_trial);
+                }
                 localStorage.setItem('noxis_tier', normTier);
               }
             }
+            isSyncingRef.current = false;
             return;
           }
         }
@@ -141,20 +161,22 @@ export function useAccessControl() {
       // Offline fallback: honor previously stored ban flag
       const storedBan = localStorage.getItem('noxis_banned') === 'true';
       setIsBanned(storedBan);
+    } finally {
+      isSyncingRef.current = false;
     }
-  }, [hwid, userName, brandName, phone]);
+  }, [hwid]);
 
   useEffect(() => {
     syncAndCheck();
 
-    // Check periodically every 2 minutes when online
+    // Check periodically every 5 minutes when online
     const interval = setInterval(() => {
       if (typeof navigator !== 'undefined' && navigator.onLine) {
         syncAndCheck();
       }
-    }, 120000);
+    }, 300000);
 
-    const onOnline = () => syncAndCheck();
+    const onOnline = () => syncAndCheck(undefined, true);
     window.addEventListener('online', onOnline);
 
     return () => {
@@ -169,6 +191,6 @@ export function useAccessControl() {
     hwid,
     userName,
     brandName,
-    recheck: syncAndCheck
+    recheck: () => syncAndCheck(undefined, true)
   };
 }
