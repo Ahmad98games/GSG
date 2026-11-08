@@ -327,7 +327,202 @@ async function getLocalProfile(): Promise<{
 
 export function attachMobileBridge(httpServer?: Server, customPort?: number): WebSocketServer {
   if (wss) return wss;
-  const options: any = customPort ? { port: customPort } : httpServer ? { server: httpServer, path: '/mobile-bridge' } : { port: 7447 };
+  const port = customPort || 7447;
+  let serverInstance: Server | undefined = httpServer;
+
+  if (!serverInstance) {
+    try {
+      const http = require('http');
+      serverInstance = http.createServer(async (req: any, res: any) => {
+        // CORS headers for local LAN mobile devices
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-device-id');
+
+        if (req.method === 'OPTIONS') {
+          res.writeHead(200);
+          res.end();
+          return;
+        }
+
+        const host = req.headers.host || '127.0.0.1';
+        const hostIp = host.split(':')[0];
+        const parsedUrl = new URL(req.url || '/', `http://${host}`);
+        const pathname = parsedUrl.pathname;
+
+        // 1. Hub info & health check
+        if (pathname === '/api/hub/info') {
+          const profile = await getLocalProfile();
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            status: 'online',
+            hubOnline: true,
+            businessId: profile?.id || 'default-hub',
+            businessName: profile?.business_name || 'Noxis Hub',
+            tier: profile?.tier || 'elite',
+            maxDevices: profile?.maxDevices || 50,
+            connectedDevices: getPairedCount(),
+            pairedDevices: getPairedCount(),
+            version: '14.0.35'
+          }));
+          return;
+        }
+
+        // 2. Direct REST Pull Endpoints (Instant LAN Fallback)
+        if (req.method === 'GET') {
+          const sqlite = getSqlite();
+          if (pathname === '/api/parties') {
+            let data: any[] = [];
+            if (sqlite) {
+              try { data = sqlite.prepare("SELECT * FROM parties WHERE is_active = 1 OR is_active IS NULL ORDER BY name ASC").all(); } catch {}
+            }
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(data));
+            return;
+          }
+
+          if (pathname === '/api/skus') {
+            let data: any[] = [];
+            if (sqlite) {
+              try { data = sqlite.prepare("SELECT * FROM skus WHERE is_active = 1 OR is_active IS NULL ORDER BY name ASC").all(); } catch {}
+            }
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(data));
+            return;
+          }
+
+          if (pathname === '/api/invoices') {
+            let data: any[] = [];
+            if (sqlite) {
+              try { data = sqlite.prepare("SELECT * FROM invoices ORDER BY invoice_date DESC, created_at DESC LIMIT 100").all(); } catch {}
+            }
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(data));
+            return;
+          }
+
+          if (pathname === '/api/karigars' || pathname === '/api/workers') {
+            let data: any[] = [];
+            if (sqlite) {
+              try { data = sqlite.prepare("SELECT * FROM karigars WHERE status = 'active' OR status IS NULL ORDER BY name ASC").all(); } catch {}
+            }
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(data));
+            return;
+          }
+
+          if (pathname === '/api/khata' || pathname === '/api/ledger') {
+            let data: any[] = [];
+            if (sqlite) {
+              try {
+                data = sqlite.prepare(`
+                  SELECT l.*, p.name as party_name, p.phone as party_phone
+                  FROM ledger_entries l
+                  LEFT JOIN parties p ON l.party_id = p.id
+                  ORDER BY l.entry_date DESC, l.created_at DESC
+                  LIMIT 200
+                `).all();
+              } catch {}
+            }
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(data));
+            return;
+          }
+        }
+
+        // 3. Direct REST Push Fallback (/api/sync)
+        if (req.method === 'POST' && pathname === '/api/sync') {
+          let body = '';
+          req.on('data', (chunk: any) => { body += chunk; });
+          req.on('end', async () => {
+            try {
+              const item = JSON.parse(body);
+              const sqlite = getSqlite();
+              const profile = await getLocalProfile();
+              const bizId = profile?.id || 'ffa84a41-941e-4e4e-87c3-9580271db2bd';
+
+              if (item.table === 'parties' && item.payload && sqlite) {
+                const p = item.payload;
+                sqlite.prepare(`
+                  INSERT OR REPLACE INTO parties (id, business_id, name, party_type, phone, address, current_balance, is_active, created_at, updated_at)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+                `).run(p.id || randomUUID(), p.business_id || bizId, p.name || 'New Party', p.party_type || 'customer', p.phone || null, p.address || p.city || null, Number(p.current_balance || 0), 1);
+                syncPartyToSupabase(p, bizId);
+                broadcastToHubRenderer('PARTY_CREATED', p);
+                broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'parties' });
+              } else if (item.table === 'ledger_entries' && item.payload && sqlite) {
+                const l = item.payload;
+                const amt = Number(l.amount || 0);
+                const et = (l.entry_type || l.entryType || 'debit').toUpperCase();
+                sqlite.prepare(`
+                  INSERT OR REPLACE INTO ledger_entries (
+                    id, business_id, party_id, entry_type, entry_date, description,
+                    debit, credit, reference, created_by, created_by_role, created_at
+                  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+                `).run(
+                  l.id || randomUUID(),
+                  l.business_id || bizId,
+                  l.party_id || l.partyId || null,
+                  et.toLowerCase(),
+                  l.entry_date || l.entryDate || new Date().toISOString(),
+                  l.description || '',
+                  et === 'DEBIT' ? amt : 0,
+                  et === 'CREDIT' ? amt : 0,
+                  l.reference || '',
+                  l.created_by || 'Mobile Terminal',
+                  l.created_by_role || 'owner'
+                );
+                if (l.party_id || l.partyId) {
+                  const balChange = et === 'DEBIT' ? amt : -amt;
+                  sqlite.prepare(`UPDATE parties SET current_balance = COALESCE(current_balance, 0) + ?, updated_at = datetime('now') WHERE id = ?`).run(balChange, l.party_id || l.partyId);
+                }
+                broadcastToHubRenderer('KHATA_ENTRY', l);
+                broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'parties', table: 'ledger_entries' });
+              } else if (item.table === 'invoices' && item.payload && sqlite) {
+                const inv = item.payload;
+                sqlite.prepare(`
+                  INSERT OR REPLACE INTO invoices (id, business_id, invoice_number, invoice_type, party_id, party_name, invoice_date, status, total_amount, balance_due, created_at, updated_at)
+                  VALUES (?, ?, ?, 'invoice', ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+                `).run(inv.id || randomUUID(), inv.business_id || bizId, inv.invoice_no || inv.invoice_number || 'INV', inv.party_id || null, inv.party_name || null, inv.invoice_date || new Date().toISOString(), mapInvoiceStatus(inv.status), Number(inv.total ?? inv.total_amount ?? 0), Number(inv.balance_due ?? inv.total ?? 0));
+                syncInvoiceToSupabase(inv, bizId);
+                broadcastToHubRenderer('INVOICE_CREATED', inv);
+                broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'invoices' });
+              } else if (item.table === 'karigars' && item.payload && sqlite) {
+                const k = item.payload;
+                sqlite.prepare(`
+                  INSERT OR REPLACE INTO karigars (id, business_id, name, karigar_code, phone, wage_type, piece_rate, status, created_at, updated_at)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, 'active', datetime('now'), datetime('now'))
+                `).run(k.id || randomUUID(), k.business_id || bizId, k.name || 'Worker', k.karigar_code || null, k.phone || null, mapWageType(k.wage_type), Number(k.piece_rate || 0));
+                syncWorkerToSupabase(k, bizId);
+                broadcastToHubRenderer('WORKER_CREATED', k);
+                broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'karigars' });
+              }
+
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ success: true, processed: 1 }));
+            } catch (err: any) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: err.message }));
+            }
+          });
+          return;
+        }
+
+        // Default redirect to workstation port 3000
+        const targetPort = process.env.PORT || 3000;
+        res.writeHead(302, { Location: `http://${hostIp}:${targetPort}/workstation` });
+        res.end();
+      });
+
+      serverInstance?.listen(port, '0.0.0.0', () => {
+        console.log(`[Bridge] Mobile Bridge HTTP & WebSocket Server listening on port ${port}`);
+      });
+    } catch (e: any) {
+      console.warn('[Bridge] HTTP wrapper fallback:', e.message);
+    }
+  }
+
+  const options: any = serverInstance ? { server: serverInstance } : { port };
   wss = new WebSocketServer(options);
 
   wss.on('connection', (ws, req) => {
@@ -1162,6 +1357,38 @@ async function handleMessage(
             break;
           }
 
+          case 'khata':
+          case 'ledger':
+          case 'ledger_entries': {
+            if (sqlite) {
+              try {
+                data = sqlite.prepare(`
+                  SELECT l.*, p.name as party_name, p.phone as party_phone
+                  FROM ledger_entries l
+                  LEFT JOIN parties p ON l.party_id = p.id
+                  ORDER BY l.entry_date DESC, l.created_at DESC
+                  LIMIT 250
+                `).all();
+              } catch (e: any) {
+                console.warn('[Bridge] Local ledger select error:', e.message);
+              }
+            }
+            if (!data || data.length === 0) {
+              const admin = getAdmin();
+              if (admin) {
+                try {
+                  const { data: resData } = await admin
+                    .from('ledger_entries')
+                    .select('*, parties(name, phone)')
+                    .order('entry_date', { ascending: false })
+                    .limit(250);
+                  data = resData || [];
+                } catch {}
+              }
+            }
+            break;
+          }
+
           default:
             error = `Unknown resource: ${resource}. Fetch detailed data directly from Supabase.`;
             data = [];
@@ -1372,6 +1599,79 @@ async function handleMessage(
         }
         broadcastToHubRenderer('PRODUCTION_LOGGED', { ...msg, deviceLabel: client.deviceLabel });
         broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'production_log' });
+      } else if (table === 'ledger_entries' && payload) {
+        const entryId = (payload.id && payload.id.length === 36) ? payload.id : randomUUID();
+        const businessId = (payload.business_id && payload.business_id !== 'local' && payload.business_id !== 'local-biz-main')
+          ? payload.business_id
+          : (client.businessId || 'ffa84a41-941e-4e4e-87c3-9580271db2bd');
+
+        const amount = Number(payload.amount || 0);
+        const entryType = (payload.entry_type || payload.entryType || 'debit').toUpperCase();
+        const debit = entryType === 'DEBIT' ? amount : 0;
+        const credit = entryType === 'CREDIT' ? amount : 0;
+        const partyId = payload.party_id || payload.partyId || null;
+        const entryDate = payload.entry_date || payload.entryDate || new Date().toISOString();
+        const description = payload.description || '';
+        const reference = payload.reference || '';
+
+        if (sqlite) {
+          try {
+            sqlite.prepare(`
+              INSERT OR REPLACE INTO ledger_entries (
+                id, business_id, party_id, entry_type, entry_date, description,
+                debit, credit, reference, created_by, created_by_role, device_id, created_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(
+              entryId,
+              businessId,
+              partyId,
+              entryType.toLowerCase(),
+              entryDate,
+              description,
+              debit,
+              credit,
+              reference,
+              payload.created_by || client.deviceLabel || 'Mobile Device',
+              payload.created_by_role || 'owner',
+              client.deviceId || null,
+              new Date().toISOString()
+            );
+
+            if (partyId) {
+              const balChange = entryType === 'DEBIT' ? amount : -amount;
+              sqlite.prepare(`
+                UPDATE parties 
+                SET current_balance = COALESCE(current_balance, 0) + ?,
+                    updated_at = datetime('now')
+                WHERE id = ?
+              `).run(balChange, partyId);
+            }
+            console.log(`[Bridge] crdt_sync_event saved to SQLite ledger_entries: ${entryId}`);
+          } catch (e: any) {
+            console.warn('[Bridge] crdt ledger_entries SQLite error:', e.message);
+          }
+        }
+
+        const admin = getAdmin();
+        if (admin) {
+          const { vector_clock, synced_at, ...cleanRecord } = payload;
+          admin.from('ledger_entries').upsert({
+            ...cleanRecord,
+            id: entryId,
+            business_id: businessId,
+            party_id: partyId,
+            entry_type: entryType,
+            amount,
+          }, { onConflict: 'id' }).then().catch(() => {});
+        }
+
+        broadcastToHubRenderer('KHATA_ENTRY', {
+          deviceLabel: client.deviceLabel,
+          deviceId: client.deviceId,
+          ...payload,
+        });
+        broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'parties', table: 'ledger_entries' });
+        broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'khata' });
       } else if (payload && table) {
         const admin = getAdmin();
         if (admin) {
@@ -1656,23 +1956,74 @@ async function handleMessage(
       console.log(`[Bridge] KHATA_ENTRY from ${client.deviceLabel}`);
       const payload = (msg.payload || msg.data || msg) as any;
       if (payload) {
+        const sqlite = getSqlite();
+        const entryId = (payload.id && payload.id.length === 36) ? payload.id : randomUUID();
+        const businessId = (payload.businessId && payload.businessId !== 'local' && payload.businessId !== 'local-biz-main')
+          ? payload.businessId
+          : (client.businessId || 'ffa84a41-941e-4e4e-87c3-9580271db2bd');
+
+        const amount = Number(payload.amount || 0);
+        const entryType = (payload.entryType || payload.entry_type || 'debit').toUpperCase();
+        const debit = entryType === 'DEBIT' ? amount : 0;
+        const credit = entryType === 'CREDIT' ? amount : 0;
+        const partyId = payload.partyId || payload.party_id || null;
+        const entryDate = payload.entryDate || payload.entry_date || new Date().toISOString();
+        const description = payload.description || '';
+        const reference = payload.reference || '';
+
+        // 1. Direct SQLite insertion
+        if (sqlite) {
+          try {
+            sqlite.prepare(`
+              INSERT OR REPLACE INTO ledger_entries (
+                id, business_id, party_id, entry_type, entry_date, description,
+                debit, credit, reference, created_by, created_by_role, device_id, created_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(
+              entryId,
+              businessId,
+              partyId,
+              entryType.toLowerCase(),
+              entryDate,
+              description,
+              debit,
+              credit,
+              reference,
+              payload.createdBy || client.deviceLabel || 'Mobile Device',
+              payload.createdByRole || 'owner',
+              client.deviceId || null,
+              new Date().toISOString()
+            );
+
+            // Update party balance in SQLite
+            if (partyId) {
+              const balChange = entryType === 'DEBIT' ? amount : -amount;
+              sqlite.prepare(`
+                UPDATE parties 
+                SET current_balance = COALESCE(current_balance, 0) + ?,
+                    updated_at = datetime('now')
+                WHERE id = ?
+              `).run(balChange, partyId);
+            }
+            console.log(`[Bridge] Successfully inserted KHATA_ENTRY to local SQLite: ${entryId} for party ${partyId}`);
+          } catch (sqlErr: any) {
+            console.error('[Bridge] SQLite KHATA_ENTRY error:', sqlErr.message);
+          }
+        }
+
+        // 2. Supabase Cloud Sync
         const admin = getAdmin();
         if (admin) {
-          const entryId = (payload.id && payload.id.length === 36) ? payload.id : randomUUID();
-          const businessId = (payload.businessId && payload.businessId !== 'local' && payload.businessId !== 'local-biz-main')
-            ? payload.businessId
-            : (client.businessId || 'ffa84a41-941e-4e4e-87c3-9580271db2bd');
-
           const ledgerRecord = {
             id: entryId,
             business_id: businessId,
-            party_id: payload.partyId,
-            entry_type: (payload.entryType || 'debit').toUpperCase(),
-            amount: Number(payload.amount || 0),
-            description: payload.description || '',
-            reference: payload.reference || '',
-            entry_date: payload.entryDate || new Date().toISOString(),
-            created_by: payload.createdBy || 'Mobile Device',
+            party_id: partyId,
+            entry_type: entryType,
+            amount: amount,
+            description: description,
+            reference: reference,
+            entry_date: entryDate,
+            created_by: payload.createdBy || client.deviceLabel || 'Mobile Device',
             created_by_role: payload.createdByRole || 'owner',
             idempotency_key: payload.idempotencyKey || null,
             created_at: new Date().toISOString(),
@@ -1681,16 +2032,25 @@ async function handleMessage(
 
           admin.from('ledger_entries').upsert(ledgerRecord, { onConflict: 'id' }).then(({ error }: any) => {
             if (error) console.warn('[Bridge] Ledger upsert warning:', error.message);
-            else console.log(`[Bridge] Ledger entry for party ${payload.partyId} successfully synced to Supabase`);
+            else console.log(`[Bridge] Ledger entry for party ${partyId} successfully synced to Supabase`);
           }).catch(() => {});
         }
       }
+
       broadcastToHubRenderer('KHATA_ENTRY', {
         deviceLabel: client.deviceLabel,
         deviceId: client.deviceId,
         ...msg,
       });
-      broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'parties' });
+      broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'parties', table: 'ledger_entries' });
+      broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'khata' });
+
+      send(ws, {
+        type: 'KHATA_ACK',
+        success: true,
+        idempotencyKey: payload?.idempotencyKey,
+        timestamp: Date.now(),
+      });
       break;
     }
 

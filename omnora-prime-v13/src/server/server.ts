@@ -41,7 +41,16 @@ export function startHubServer(onActivity?: () => void) {
   // 1b. Mobile WebSocket Bridge for Handheld Devices
   try {
     const { attachMobileBridge, setIpcEmitter } = require('../lib/mobile-bridge/server');
-    if (typeof process !== 'undefined' && typeof process.send === 'function') {
+    const parentPort = (process as any).parentPort;
+    if (parentPort && typeof parentPort.postMessage === 'function') {
+      setIpcEmitter((event: string, data: any) => {
+        try {
+          parentPort.postMessage({ type: 'bridge-event', event, data });
+        } catch (e: any) {
+          logger.warn('[Bridge] parentPort.postMessage failed: ' + e.message);
+        }
+      });
+    } else if (typeof process !== 'undefined' && typeof process.send === 'function') {
       setIpcEmitter((event: string, data: any) => {
         try {
           process.send!({ type: 'bridge-event', event, data });

@@ -298,7 +298,21 @@ export default React.memo(function GlobalTopBar() {
   const [bridgeDeviceCount, setBridgeDeviceCount] = useState<number | null>(null);
 
   const refreshDeviceCount = async () => {
-    // 1. Check Electron IPC bridge status
+    // 1. Query /api/hub/devices REST API (authoritative live count from SQLite & Bridge)
+    try {
+      const res = await fetch('/api/hub/devices');
+      if (res.ok) {
+        const data = await res.json();
+        const devices = Array.isArray(data) ? data : (data?.devices || []);
+        const activeNodes = devices.filter((d: any) => d.isActive === 1 || d.isLive);
+        if (activeNodes.length > 0) {
+          setBridgeDeviceCount(activeNodes.length);
+          return;
+        }
+      }
+    } catch {}
+
+    // 2. Check Electron IPC bridge status
     if ((window as any).electronAPI && typeof (window as any).electronAPI.getBridgeStatus === 'function') {
       try {
         const status = await (window as any).electronAPI.getBridgeStatus();
@@ -307,53 +321,76 @@ export default React.memo(function GlobalTopBar() {
           return;
         }
       } catch (err) {
-        // Fallback to REST API
+        // Fallback
       }
     }
-
-    // 2. Query /api/hub/devices REST API (works in both Electron and LAN browsers)
-    try {
-      const res = await fetch('/api/hub/devices');
-      if (res.ok) {
-        const data = await res.json();
-        const devices = Array.isArray(data) ? data : (data?.devices || []);
-        const activeNodes = devices.filter((d: any) => d.isActive === 1 || d.isLive);
-        setBridgeDeviceCount(activeNodes.length);
-      }
-    } catch {}
+    setBridgeDeviceCount(0);
   };
 
   useEffect(() => {
     refreshDeviceCount();
 
-    // Relaxed 15s poll for live device count sync
-    const pollInterval = setInterval(refreshDeviceCount, 15000);
+    // 5s poll for snappy live device count sync
+    const pollInterval = setInterval(refreshDeviceCount, 5000);
 
     const handleCustomRefresh = () => refreshDeviceCount();
     window.addEventListener('noxis:device_count_changed', handleCustomRefresh);
     window.addEventListener('focus', handleCustomRefresh);
 
-    if ((window as any).electronAPI && typeof (window as any).electronAPI.on === 'function') {
-      const handleBridgeEvent = (_: any, payload: { event: string; data: any }) => {
-        if (payload?.event === 'ATTENDANCE_LOGGED' || payload?.event === 'PRODUCTION_LOGGED') {
-          queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-        }
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel('noxis_bridge_channel');
+      bc.onmessage = (ev) => {
         refreshDeviceCount();
       };
+    } catch {}
 
+    const handleBridgeEvent = (...args: any[]) => {
+      const payload = args.length > 1 ? args[1] : args[0];
+      const eventType = payload?.event || payload?.type;
+
+      if (eventType === 'ATTENDANCE_LOGGED' || eventType === 'PRODUCTION_LOGGED') {
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+        queryClient.invalidateQueries({ queryKey: ['attendance'] });
+        queryClient.invalidateQueries({ queryKey: ['production'] });
+      }
+      if (eventType === 'KHATA_ENTRY' || eventType === 'KHATA_UPDATED') {
+        queryClient.invalidateQueries({ queryKey: ['ledger_entries'] });
+        queryClient.invalidateQueries({ queryKey: ['parties'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard_kpis'] });
+      }
+      if (eventType === 'INVOICE_CREATED' || eventType === 'INVOICE_UPDATED') {
+        queryClient.invalidateQueries({ queryKey: ['invoices'] });
+        queryClient.invalidateQueries({ queryKey: ['parties'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard_kpis'] });
+      }
+      if (eventType === 'PARTY_CREATED' || eventType === 'PARTY_UPDATED') {
+        queryClient.invalidateQueries({ queryKey: ['parties'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      }
+      if (eventType === 'WORKER_CREATED' || eventType === 'KARIGAR_CREATED') {
+        queryClient.invalidateQueries({ queryKey: ['karigars'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      }
+      refreshDeviceCount();
+    };
+
+    if ((window as any).electronAPI && typeof (window as any).electronAPI.on === 'function') {
       (window as any).electronAPI.on('bridge-event', handleBridgeEvent);
-      return () => {
-        clearInterval(pollInterval);
-        window.removeEventListener('noxis:device_count_changed', handleCustomRefresh);
-        try {
-          (window as any).electronAPI.off('bridge-event', handleBridgeEvent);
-        } catch {}
-      };
     }
 
     return () => {
       clearInterval(pollInterval);
       window.removeEventListener('noxis:device_count_changed', handleCustomRefresh);
+      window.removeEventListener('focus', handleCustomRefresh);
+      if (bc) bc.close();
+      if ((window as any).electronAPI && typeof (window as any).electronAPI.off === 'function') {
+        try {
+          (window as any).electronAPI.off('bridge-event', handleBridgeEvent);
+        } catch {}
+      }
     };
   }, [queryClient]);
 

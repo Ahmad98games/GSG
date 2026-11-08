@@ -381,12 +381,13 @@ export default function KhataPage() {
   const filteredTransactions = useMemo(() => {
     const now = new Date();
     return groupedTransactions.filter(tx => {
-      const q = debouncedSearch.toLowerCase();
+      const q = (debouncedSearch || '').toLowerCase().trim();
       const matchesSearch =
-        tx.tx_ref.toLowerCase().includes(q) ||
-        tx.description.toLowerCase().includes(q) ||
-        tx.party.toLowerCase().includes(q) ||
-        (tx.party_phone && tx.party_phone.includes(q));
+        !q ||
+        (tx.tx_ref ? String(tx.tx_ref).toLowerCase().includes(q) : false) ||
+        (tx.description ? String(tx.description).toLowerCase().includes(q) : false) ||
+        (tx.party ? String(tx.party).toLowerCase().includes(q) : false) ||
+        (tx.party_phone ? String(tx.party_phone).includes(q) : false);
 
       let matchesDate = true;
       if (datePreset !== 'all') {
@@ -421,13 +422,13 @@ export default function KhataPage() {
   // Filtered Parties for Party Accounts Tab
   const filteredPartiesList = useMemo(() => {
     return parties.filter((p: Party) => {
-      const q = debouncedSearch.toLowerCase();
+      const q = (debouncedSearch || '').toLowerCase().trim();
       const matchesSearch =
         !q ||
-        p.name?.toLowerCase().includes(q) ||
-        p.phone?.includes(q) ||
-        p.secondary_phone?.includes(q) ||
-        p.city?.toLowerCase().includes(q);
+        (p.name ? String(p.name).toLowerCase().includes(q) : false) ||
+        (p.phone ? String(p.phone).includes(q) : false) ||
+        (p.secondary_phone ? String(p.secondary_phone).includes(q) : false) ||
+        (p.city ? String(p.city).toLowerCase().includes(q) : false);
 
       const matchesType =
         partyTypeFilter === 'all' ||

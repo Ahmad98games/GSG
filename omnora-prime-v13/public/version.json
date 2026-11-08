@@ -1,12 +1,12 @@
-﻿{
-    "latest_version":  "15.0.1",
-    "min_required_version":  "15.0.0",
-    "versionCode":  7,
-    "apk_filename":  "noxis-preview.apk",
-    "apk_url":  "https://pub-8c464d0d92ff44abbf70c58c362ad258.r2.dev/noxis-preview.apk",
-    "hash":  "e370b518c55bcec949a919804eb66f3a8e55d8d03d3c1d9de876f5bf3d3d5fdf",
-    "file_size":  125572438,
-    "release_notes":  "Noxis Enterprise OS v15.0.1 - Real-Time 2-Way Sync Engine, Robust PC Hub Pairing, Instant Offline Hydration",
-    "released_at":  "2026-10-25T21:16:45.956Z",
-    "devices_ready":  true
+{
+  "latest_version": "15.0.2",
+  "min_required_version": "15.0.0",
+  "versionCode": 8,
+  "apk_filename": "noxis-preview.apk",
+  "apk_url": "https://pub-8c464d0d92ff44abbf70c58c362ad258.r2.dev/noxis-preview.apk",
+  "hash": "18468b4dde27f6cff199e13b2b34f096a222334215e6c673fb4f6fbf3edd6f94",
+  "file_size": 128083499,
+  "release_notes": "Noxis Enterprise OS v15.0.2 - Official Brand Splash Screens (Omnora Labs parent company logo & Noxis Hub cyber logo), 2-Way Real-Time Khata & Ledger Sync, Local Hub Bridge",
+  "released_at": "2026-11-08T18:02:15.017Z",
+  "devices_ready": true
 }

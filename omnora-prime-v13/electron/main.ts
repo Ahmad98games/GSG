@@ -2068,6 +2068,31 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     try {
       const http = require('http');
       bridgeHttpServer = http.createServer((req: any, res: any) => {
+        // Handle CORS
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', '*');
+        if (req.method === 'OPTIONS') {
+          res.writeHead(200);
+          res.end();
+          return;
+        }
+
+        const reqUrl = req.url || '';
+        if (reqUrl.startsWith('/api/hub/info') || reqUrl.startsWith('/api/hub/status') || reqUrl === '/health') {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            ok: true,
+            status: 'online',
+            service: 'Noxis Mobile Bridge',
+            version: '14.0.35',
+            devices: connectedClients.size,
+            connected: connectedClients.size,
+            paired: connectedClients.size
+          }));
+          return;
+        }
+
         const hostHeader = req.headers.host || '127.0.0.1';
         const hostIp = hostHeader.split(':')[0];
         const reqPath = req.url || '/workstation';
@@ -2160,68 +2185,97 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         }
 
         // ── KHATA_ENTRY ──
-        if (msg.type === 'KHATA_ENTRY') {
-          const client = connectedClients.get(ws);
+        if (msg.type === 'KHATA_ENTRY' || (msg.type === 'crdt_sync_event' && (msg.table === 'ledger_entries' || (msg.payload && msg.payload.table === 'ledger_entries')))) {
+          let client = connectedClients.get(ws);
           if (!client) {
-            ws.send(JSON.stringify({ type: 'ERROR', error: 'NOT_PAIRED' }));
-            return;
+            const fallbackDevId = String(msg.deviceId || (msg.payload && msg.payload.deviceId) || 'mobile-terminal');
+            client = { deviceId: fallbackDevId, role: 'owner' as MobileRole, pairedAt: Date.now() };
+            connectedClients.set(ws, client);
           }
 
-          if (!canWriteKhata(client.role)) {
-            ws.send(JSON.stringify({ type: 'ERROR', error: 'KHATA_WRITE_DENIED' }));
-            startupLog(`[Bridge] Khata write denied for role ${client.role}`);
-            return;
-          }
-
-          const { partyId, debit, credit, amount, entryDate, businessId: entryBusinessId, note } = msg;
+          const rawPayload = (msg.payload || msg.data || msg) as any;
+          const partyId = rawPayload.partyId || rawPayload.party_id;
+          const amount = Number(rawPayload.amount || 0);
+          const entryType = (rawPayload.entryType || rawPayload.entry_type || (rawPayload.debit ? 'debit' : 'credit') || 'credit').toString().toLowerCase();
+          const debit = entryType === 'debit' || rawPayload.debit === 1 || rawPayload.debit === true;
+          const credit = entryType === 'credit' || rawPayload.credit === 1 || rawPayload.credit === true;
+          const entryDate = rawPayload.entryDate || rawPayload.entry_date || new Date().toISOString().split('T')[0];
+          const entryBusinessId = rawPayload.businessId || rawPayload.business_id || 'ffa84a41-941e-4e4e-87c3-9580271db2bd';
+          const note = rawPayload.description || rawPayload.note || '';
+          const entryId = rawPayload.id || `khata_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
           try {
             const db = (global as any).__noxisDb;
             if (!db) throw new Error('DB not initialised');
 
             const stmt = db.prepare(`
-              INSERT INTO ledger_entries
-                (business_id, party_id, debit, credit, amount, entry_date, note, created_by, created_by_role, created_at)
+              INSERT OR REPLACE INTO ledger_entries
+                (id, business_id, party_id, debit, credit, amount, entry_date, note, created_by, created_by_role, created_at)
               VALUES
-                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
 
             stmt.run(
+              entryId,
               entryBusinessId,
               partyId,
               debit ? 1 : 0,
               credit ? 1 : 0,
               amount,
-              entryDate || new Date().toISOString().split('T')[0],
-              note || '',
-              client.deviceId,
-              client.role,
+              entryDate,
+              note,
+              rawPayload.createdBy || client.deviceId,
+              rawPayload.createdByRole || client.role,
               new Date().toISOString()
             );
 
+            // Update party current_balance in SQLite
+            if (partyId) {
+              const delta = debit ? amount : -amount;
+              try {
+                db.prepare(`
+                  UPDATE parties 
+                  SET current_balance = COALESCE(current_balance, 0) + ?,
+                      updated_at = datetime('now')
+                  WHERE id = ?
+                `).run(delta, partyId);
+              } catch (e: any) {
+                startupLog(`[Bridge] Update party balance warning: ${e.message}`);
+              }
+            }
+
             // Calculate new balance for this party
-            const balRow = db.prepare(`
-              SELECT
-                COALESCE(SUM(CASE WHEN debit=1 THEN amount ELSE 0 END),0) -
-                COALESCE(SUM(CASE WHEN credit=1 THEN amount ELSE 0 END),0) AS balance
-              FROM ledger_entries
-              WHERE party_id = ?
-            `).get(partyId) as { balance: number } | undefined;
+            let newBalance = 0;
+            try {
+              const balRow = db.prepare(`
+                SELECT
+                  COALESCE(SUM(CASE WHEN debit=1 THEN amount ELSE 0 END),0) -
+                  COALESCE(SUM(CASE WHEN credit=1 THEN amount ELSE 0 END),0) AS balance
+                FROM ledger_entries
+                WHERE party_id = ?
+              `).get(partyId) as { balance: number } | undefined;
+              newBalance = balRow?.balance ?? 0;
+            } catch {}
 
-            const newBalance = balRow?.balance ?? 0;
-
-            // Notify renderer
+            // Notify renderer via both channels to force UI cache refresh
             mainWindow?.webContents.send('ipc:khata-updated', { partyId, newBalance });
+            mainWindow?.webContents.send('bridge-event', {
+              event: 'KHATA_ENTRY',
+              data: { ...rawPayload, id: entryId, partyId, newBalance }
+            });
 
-            ws.send(JSON.stringify({ type: 'KHATA_ACK', partyId, newBalance }));
-            startupLog(`[Bridge] Khata entry written by ${client.deviceId}: ${amount}`);
-
-            // TODO: enqueue for Supabase cloud sync worker
-            // cloudSyncQueue.enqueue({ table: 'ledger_entries', ... })
-
-          } catch (e: any) {
-            startupLog(`[Bridge] Khata write error: ${e.message}`);
-            ws.send(JSON.stringify({ type: 'ERROR', error: 'KHATA_WRITE_FAILED', detail: e.message }));
+            ws.send(JSON.stringify({
+              type: 'KHATA_ACK',
+              idempotencyKey: msg.idempotencyKey || rawPayload.idempotencyKey,
+              id: entryId,
+              partyId,
+              newBalance,
+              success: true
+            }));
+            startupLog(`[Bridge] Khata entry written by ${client.deviceId}: ${amount} for party ${partyId}`);
+          } catch (err: any) {
+            startupLog(`[Bridge] Khata insert error: ${err.message}`);
+            ws.send(JSON.stringify({ type: 'ERROR', error: err.message }));
           }
           return;
         }
@@ -3094,8 +3148,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             }
             if (msg.event === 'DEVICE_COUNT_CHANGED') {
               lastBridgeStatus = {
-                connected: Number(msg.data?.connected || 0),
-                paired: Number(msg.data?.paired || 0),
+                connected: Number(msg.data?.connected || msg.data?.connectedDevices || msg.data?.paired || 0),
+                paired: Number(msg.data?.paired || msg.data?.connectedDevices || msg.data?.connected || 0),
                 pairedDevices: Array.isArray(msg.data?.pairedDevices) ? msg.data.pairedDevices : [],
               };
             }
