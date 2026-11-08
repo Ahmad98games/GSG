@@ -1,10 +1,11 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 
-interface CurrentUser {
+export interface CurrentUser {
   id: string
   name: string
-  email: string
+  username?: string
+  email?: string
   role: string
   businessId: string
 }
@@ -12,6 +13,7 @@ interface CurrentUser {
 interface CurrentUserState {
   currentUser: CurrentUser | null
   setCurrentUser: (user: CurrentUser | null) => void
+  clearCurrentUser: () => void
 }
 
 export const useCurrentUserStore = create<CurrentUserState>()(
@@ -19,6 +21,7 @@ export const useCurrentUserStore = create<CurrentUserState>()(
     (set) => ({
       currentUser: null,
       setCurrentUser: (user) => set({ currentUser: user }),
+      clearCurrentUser: () => set({ currentUser: null }),
     }),
     {
       name: 'noxis-current-user',

@@ -7,8 +7,10 @@ import {
   Search, Bell, Smartphone, Cloud, 
   ChevronRight, AlertTriangle, CheckCircle2,
   Settings, User, LogOut, Info, ShieldAlert,
-  Wifi, WifiOff, Mic, Zap
+  Wifi, WifiOff, Mic, Zap, ArrowRightLeft, Lock, ShieldCheck, ChevronsUpDown
 } from 'lucide-react'
+import { usePermissions } from '@/hooks/usePermissions'
+import { UserSwitchModal } from './UserSwitchModal'
 import { useBusinessProfile } from '@/hooks/useBusinessProfile'
 import { useBranchStore } from '@/stores/branchStore'
 import { usePersona } from '@/hooks/usePersona'
@@ -38,6 +40,8 @@ export default React.memo(function GlobalTopBar() {
   const { locale, isRTL } = useNoxisLocale()
   const t = useTranslations()
   const supabase = createClient()
+  const { isOwner, currentUser, roleLabel } = usePermissions()
+  const [isSwitchUserOpen, setIsSwitchUserOpen] = useState(false)
 
   const [updateReady, setUpdateReady] = useState(false)
   const [updateVersion, setUpdateVersion] = useState('')
@@ -630,6 +634,36 @@ export default React.memo(function GlobalTopBar() {
 
           <div className="h-4 w-[1px] bg-white/[0.08]" />
 
+          {/* Active Operator Switcher Button */}
+          <button
+            type="button"
+            onClick={() => setIsSwitchUserOpen(true)}
+            className={cn(
+              "flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] border text-[11px] font-mono transition-colors cursor-pointer",
+              isOwner
+                ? "bg-blue-500/10 border-blue-500/20 text-blue-400 hover:bg-blue-500/20"
+                : "bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25"
+            )}
+            title="Click to Switch User / Operator Profile"
+          >
+            {isOwner ? (
+              <>
+                <ShieldCheck size={12} className="text-blue-400" />
+                <span>Owner</span>
+                <ArrowRightLeft size={10} className="opacity-60 ml-0.5" />
+              </>
+            ) : (
+              <>
+                <Lock size={12} className="text-amber-400" />
+                <span className="font-semibold truncate max-w-[90px]">{currentUser?.name}</span>
+                <span className="text-[9px] uppercase px-1 rounded bg-amber-500/20 text-amber-300 font-bold">{roleLabel}</span>
+                <ArrowRightLeft size={10} className="opacity-80 ml-0.5" />
+              </>
+            )}
+          </button>
+
+          <div className="h-4 w-[1px] bg-white/[0.08]" />
+
           {/* User Workspace Dropdown */}
           <div className="relative">
             <button 
@@ -679,7 +713,7 @@ export default React.memo(function GlobalTopBar() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 4, scale: 0.98 }}
                     transition={{ duration: 0.1 }}
-                    className="absolute right-0 mt-1.5 w-48 rounded-[6px] shadow-2xl z-50 py-1"
+                    className="absolute right-0 mt-1.5 w-52 rounded-[6px] shadow-2xl z-50 py-1"
                     style={{
                       backgroundColor: 'var(--color-card-bg, #131823)',
                       borderColor: 'var(--color-card-border, rgba(255,255,255,0.08))',
@@ -698,24 +732,62 @@ export default React.memo(function GlobalTopBar() {
                       >
                         {profile?.business_name || 'My Business'}
                       </p>
-                      <p 
-                        className="text-[10px] font-mono mt-0.5"
-                        style={{ color: 'var(--color-text-muted, #94a3b8)' }}
-                      >
-                        {profile?.owner_name || 'Administrator'}
-                      </p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span 
+                          className="text-[10px] font-mono truncate"
+                          style={{ color: 'var(--color-text-muted, #94a3b8)' }}
+                        >
+                          {isOwner ? (profile?.owner_name || 'Administrator') : currentUser?.name}
+                        </span>
+                        <span className={cn(
+                          "text-[9px] font-mono uppercase px-1.5 py-0.2 rounded font-bold",
+                          isOwner ? "text-blue-400 bg-blue-500/15" : "text-amber-400 bg-amber-500/15"
+                        )}>
+                          {isOwner ? 'Owner' : roleLabel}
+                        </span>
+                      </div>
                     </div>
                     
-                    <Link 
-                      href="/settings"
-                      prefetch={true}
-                      onClick={() => setIsProfileOpen(false)}
-                      className="flex items-center w-full px-3 py-1.5 text-xs hover:bg-black/5 dark:hover:bg-white/[0.04] transition-colors"
-                      style={{ color: 'var(--color-text, #cbd5e1)' }}
+                    {/* Switch User Profile */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsProfileOpen(false)
+                        setIsSwitchUserOpen(true)
+                      }}
+                      className="flex items-center w-full px-3 py-2 text-xs text-blue-400 hover:bg-blue-500/10 transition-colors text-left font-mono font-semibold cursor-pointer"
                     >
-                      <Settings className="w-3.5 h-3.5 mr-2 text-slate-400" />
-                      Settings & Hub
-                    </Link>
+                      <ArrowRightLeft className="w-3.5 h-3.5 mr-2" />
+                      Switch User Profile
+                    </button>
+
+                    {!isOwner && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsProfileOpen(false)
+                          setIsSwitchUserOpen(true)
+                        }}
+                        className="flex items-center w-full px-3 py-1.5 text-xs text-amber-400 hover:bg-amber-500/10 transition-colors text-left font-mono cursor-pointer"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5 mr-2" />
+                        Switch to Owner 👑
+                      </button>
+                    )}
+
+                    {isOwner && (
+                      <Link 
+                        href="/settings"
+                        prefetch={true}
+                        onClick={() => setIsProfileOpen(false)}
+                        className="flex items-center w-full px-3 py-1.5 text-xs hover:bg-black/5 dark:hover:bg-white/[0.04] transition-colors"
+                        style={{ color: 'var(--color-text, #cbd5e1)' }}
+                      >
+                        <Settings className="w-3.5 h-3.5 mr-2 text-slate-400" />
+                        Settings & Hub
+                      </Link>
+                    )}
+
                     <button 
                       onClick={async () => {
                         setIsProfileOpen(false);
@@ -750,6 +822,11 @@ export default React.memo(function GlobalTopBar() {
         isOpen={feedbackOpen}
         onClose={() => setFeedbackOpen(false)}
         trigger="manual"
+      />
+
+      <UserSwitchModal
+        isOpen={isSwitchUserOpen}
+        onClose={() => setIsSwitchUserOpen(false)}
       />
     </>
   )

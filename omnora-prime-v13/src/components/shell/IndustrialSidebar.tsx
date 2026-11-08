@@ -52,6 +52,7 @@ import {
 
 import { usePersona } from '@/hooks/usePersona'
 import { useStaff } from '@/hooks/useStaff'
+import { usePermissions } from '@/hooks/usePermissions'
 import { useTranslation } from '@/hooks/useTranslation'
 import { useIndustryConfig } from '@/hooks/useIndustryConfig'
 import { useSidebarState } from '@/hooks/useSidebarState'
@@ -88,7 +89,9 @@ export default React.memo(function IndustrialSidebar() {
   const { t } = useTranslation()
   const { profile } = useBusinessProfile()
   const { businessId } = usePersona()
-  const { role } = useStaff(businessId)
+  const { role: staffRole } = useStaff(businessId)
+  const { role: permissionsRole, isOwner, currentUser, roleLabel } = usePermissions()
+  const effectiveRole = permissionsRole || staffRole || 'owner'
   const { nav, features, industry } = useIndustryConfig()
   const { mode: businessMode, flags: modeFlags } = useBusinessModeStore()
   const [mounted, setMounted] = useState(false)
@@ -430,11 +433,33 @@ export default React.memo(function IndustrialSidebar() {
       })
     }
 
+        const filterByRole = (items: SidebarNavItem[]): SidebarNavItem[] => {
+      if (isOwner) return items
+      return items.filter((item) => {
+        if (effectiveRole === 'viewer') {
+          const allowed = ['dashboard', 'inventory', 'stock', 'reports', 'analytics', 'network', 'intelligence']
+          return allowed.includes(item.id)
+        }
+        if (effectiveRole === 'supervisor') {
+          const allowed = ['dashboard', 'production', 'karigars', 'workers', 'payroll', 'dispatch', 'stock', 'inventory', 'network', 'weight-entry']
+          return allowed.includes(item.id)
+        }
+        if (effectiveRole === 'accountant') {
+          const forbidden = ['configuration', 'production', 'yield', 'cctv', 'hardware']
+          return !forbidden.includes(item.id)
+        }
+        if (effectiveRole === 'manager') {
+          return item.id !== 'configuration'
+        }
+        return true
+      })
+    }
+
     return [
-      { id: 'operations', title: 'Operations', items: filterByMode(operationsItems) },
-      { id: 'finance', title: 'Finance & Admin', items: filterByMode(financeItems) },
-      { id: 'system', title: 'System & Telemetry', items: filterByMode(systemItems) },
-    ]
+      { id: 'operations', title: 'Operations', items: filterByRole(filterByMode(operationsItems)) },
+      { id: 'finance', title: 'Finance & Admin', items: filterByRole(filterByMode(financeItems)) },
+      { id: 'system', title: 'System & Telemetry', items: filterByRole(filterByMode(systemItems)) },
+    ].filter(g => g.items.length > 0)
   }, [nav, features, industry, businessMode, modeFlags])
 
   const isElectron = typeof window !== 'undefined' && !!(window as any).electronWindow
@@ -680,14 +705,11 @@ export default React.memo(function IndustrialSidebar() {
                     className="text-[12px] font-medium truncate"
                     style={{ color: 'var(--color-text, #e2e8f0)' }}
                   >
-                    {profile?.owner_name || 'Administrator'}
+                    {isOwner ? (profile?.owner_name || 'Administrator') : currentUser?.name}
                   </span>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span 
-                      className="text-[10px] capitalize"
-                      style={{ color: 'var(--color-text-muted, #94a3b8)' }}
-                    >
-                      {role || 'Administrator'}
+                    <span className={cn('text-[9px] uppercase font-mono font-bold px-1.5 py-0.2 rounded', isOwner ? 'text-blue-400 bg-blue-500/15' : 'text-amber-400 bg-amber-500/15')}>
+                      {isOwner ? 'Owner' : roleLabel}
                     </span>
                     <span className="text-slate-600">•</span>
                     <TierBadge />

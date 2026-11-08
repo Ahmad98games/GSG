@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
@@ -32,6 +32,7 @@ import { DataHealthCard } from '@/components/dashboard/DataHealthCard'
 import { AutoStartRecoveryBanner } from '@/components/shell/AutoStartRecoveryBanner'
 import { CloudBackupNudge } from '@/components/license/CloudBackupNudge'
 import { useTierStore } from '@/stores/tierStore'
+import { usePermissions } from '@/hooks/usePermissions'
 
 interface DashboardData {
   businessName: string
@@ -138,6 +139,28 @@ export default function OwnerDashboard() {
   })
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
   const [activeTab, setActiveTab] = useState<'overview' | 'people' | 'finance' | 'stock'>('overview')
+  const { role, isOwner, can, cannot, roleLabel, currentUser } = usePermissions()
+
+  const allowedTabs = useMemo(() => {
+    const tabs: Array<['overview' | 'people' | 'finance' | 'stock', string]> = [
+      ['overview', 'Overview'],
+    ]
+    if (isOwner || role === 'manager' || role === 'supervisor') {
+      tabs.push(['people', 'People'])
+    }
+    if (isOwner || role === 'manager' || role === 'accountant') {
+      tabs.push(['finance', 'Finance'])
+    }
+    tabs.push(['stock', 'Stock'])
+    return tabs
+  }, [isOwner, role])
+
+  // Automatically enforce view restrictions
+  useEffect(() => {
+    if (!allowedTabs.some(([t]) => t === activeTab)) {
+      setActiveTab('overview')
+    }
+  }, [allowedTabs, activeTab])
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -410,14 +433,23 @@ export default function OwnerDashboard() {
           </div>
         </div>
 
+        {!isOwner && (
+          <div className="mb-6 p-3 bg-amber-500/10 border border-amber-500/30 rounded-md flex items-center justify-between text-xs text-amber-300">
+            <div className="flex items-center gap-2.5">
+              <ShieldAlert size={16} className="text-amber-400 shrink-0" />
+              <span>
+                Operating in restricted profile: <strong>{currentUser?.name || roleLabel}</strong> ({roleLabel.toUpperCase()}). Financial data and sensitive controls are locked.
+              </span>
+            </div>
+            <span className="text-[10px] font-mono uppercase bg-amber-500/20 px-2 py-0.5 rounded font-bold text-amber-200">
+              {roleLabel} View
+            </span>
+          </div>
+        )}
+
         {/* Tab Navigation */}
         <div className="flex border-b border-white/[0.04] mb-8 overflow-x-auto scrollbar-none">
-          {([
-            ['overview', 'Overview'],
-            ['people', 'People'],
-            ['finance', 'Finance'],
-            ['stock', 'Stock'],
-          ] as const).map(([tab, label]) => (
+          {allowedTabs.map(([tab, label]) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -495,19 +527,19 @@ export default function OwnerDashboard() {
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <KpiCard
                   label="Revenue This Month"
-                  value={fmtCompact(data.revenueThisMonth)}
-                  sub={`${data.invoiceCount} issued ${t.invoices.toLowerCase()}`}
-                  accent="text-emerald-400"
-                  icon={<TrendingUp className="w-4 h-4 text-emerald-400" />}
+                  value={can('view:revenue') ? fmtCompact(data.revenueThisMonth) : '••••••'}
+                  sub={can('view:revenue') ? `${data.invoiceCount} issued ${t.invoices.toLowerCase()}` : 'Restricted for your role'}
+                  accent={can('view:revenue') ? "text-emerald-400" : "text-slate-600"}
+                  icon={<TrendingUp className={`w-4 h-4 ${can('view:revenue') ? "text-emerald-400" : "text-slate-600"}`} />}
                 />
                 <KpiCard
                   label="Outstanding Receivables"
-                  value={fmtCompact(data.pendingReceivables)}
-                  sub={`${data.overdueCount} overdue items`}
-                  accent={data.overdueCount > 0 ? "text-red-400" : "text-slate-500"}
-                  icon={<DollarSign className="w-4 h-4 text-cyan-400" />}
+                  value={can('view:party_balances') ? fmtCompact(data.pendingReceivables) : '••••••'}
+                  sub={can('view:party_balances') ? `${data.overdueCount} overdue items` : 'Restricted for your role'}
+                  accent={can('view:party_balances') ? (data.overdueCount > 0 ? "text-red-400" : "text-slate-500") : "text-slate-600"}
+                  icon={<DollarSign className={`w-4 h-4 ${can('view:party_balances') ? "text-cyan-400" : "text-slate-600"}`} />}
                 />
-                {(features.pieceRateWages || features.peshgiAdvances) && (
+                {(features.pieceRateWages || features.peshgiAdvances) && can('view:karigars') && (
                   <KpiCard
                     label="Present Today"
                     value={`${data.presentToday} / ${data.totalKarigars}`}
@@ -517,9 +549,9 @@ export default function OwnerDashboard() {
                   />
                 )}
                 <KpiCard
-                  label="Valued Stock"
-                  value={fmtCompact(data.stockValue)}
-                  sub={`${data.lowStockCount} items at low level`}
+                  label={can('view:inventory_costs') ? "Valued Stock" : "Stock Items"}
+                  value={can('view:inventory_costs') ? fmtCompact(data.stockValue) : `${data.lowStockCount} Low Level`}
+                  sub={can('view:inventory_costs') ? `${data.lowStockCount} items at low level` : "Quantities monitored"}
                   accent="text-white"
                   icon={<Package className="w-4 h-4 text-slate-500" />}
                 />
@@ -530,7 +562,7 @@ export default function OwnerDashboard() {
                   accent="text-white"
                   icon={<Truck className="w-4 h-4 text-slate-500" />}
                 />
-                {features.peshgiAdvances && (
+                {features.peshgiAdvances && can('view:payroll_amounts') && (
                   <KpiCard
                     label={`${t.advance} Outstanding`}
                     value={fmtCompact(data.totalPeshgiOutstanding)}
