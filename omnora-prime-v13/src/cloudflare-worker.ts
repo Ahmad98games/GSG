@@ -41,40 +41,34 @@ export default {
   async fetch(request: Request, env: any, ctx: any): Promise<Response> {
     const url = new URL(request.url);
 
-    // 0. Electron Auto-Updater Endpoint
+    // 0. Electron Auto-Updater & Telemetry Endpoint (Direct Edge Proxy with Full HTTP Range Support)
     if (url.pathname.startsWith('/updates/')) {
-      const key = decodeURIComponent(url.pathname.replace(/^\//, '')); // e.g. "updates/stable/Noxis Hub Setup 13.1.0.exe"
+      const publicR2Url = `https://pub-8c464d0d92ff44abbf70c58c362ad258.r2.dev${url.pathname}`;
       try {
-        const command = new GetObjectCommand({
-          Bucket: R2_BUCKET_NAME,
-          Key: key,
+        const r2Resp = await fetch(publicR2Url, {
+          method: request.method,
+          headers: request.headers,
         });
-        const res = await r2Client.send(command);
-        const headers: Record<string, string> = {
-          'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'no-cache',
-        };
-        if (key.endsWith('.yml') || key.endsWith('.yaml') || key.endsWith('.json')) {
-          const body = await res.Body?.transformToString();
-          headers['Content-Type'] = 'text/yaml; charset=utf-8';
-          return new Response(body, { headers });
-        }
-        if (key.endsWith('.exe')) {
-          headers['Content-Type'] = 'application/x-msdownload';
-        } else if (key.endsWith('.blockmap')) {
-          headers['Content-Type'] = 'application/octet-stream';
-        }
-        if (res.ContentLength) {
-          headers['Content-Length'] = String(res.ContentLength);
-        }
-        const stream = (res.Body as any)?.transformToWebStream?.() || (res.Body as any);
-        return new Response(stream, { headers });
+
+        // Clone response headers and enforce CORS & Cache-Control
+        const newHeaders = new Headers(r2Resp.headers);
+        newHeaders.set('Access-Control-Allow-Origin', '*');
+        newHeaders.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+        newHeaders.set('Access-Control-Allow-Headers', '*');
+        newHeaders.set('Accept-Ranges', 'bytes');
+        newHeaders.set('Cache-Control', 'no-cache');
+
+        return new Response(r2Resp.body, {
+          status: r2Resp.status,
+          statusText: r2Resp.statusText,
+          headers: newHeaders,
+        });
       } catch (err: any) {
-        return new Response('Update file not found: ' + (err?.message || ''), { status: 404 });
+        return new Response('Update streaming error: ' + (err?.message || ''), { status: 502 });
       }
     }
 
-    // 1. API: Download Software
+    // 1. API: Instant Software Download (Direct CDN Delivery for v14.0.33)
     if (
       url.pathname === '/api/download-software' ||
       url.pathname.startsWith('/api/download-software') ||
@@ -83,9 +77,11 @@ export default {
       url.pathname.startsWith('/download/stable')
     ) {
       try {
-        const fileParam = url.searchParams.get('fileName') || 'Noxis Setup 13.0.1.exe';
-        const downloadUrl = await generateDownloadUrl(fileParam, 900);
-        const redirect = url.searchParams.get('redirect') === 'true' || url.pathname.startsWith('/download/stable');
+        const format = url.searchParams.get('format');
+        const isZip = format === 'zip' || url.searchParams.get('zip') === 'true';
+        const targetFile = isZip ? 'Noxis-Setup-14.0.33.zip' : 'Noxis Hub Setup 14.0.33.exe';
+        const downloadUrl = `https://pub-8c464d0d92ff44abbf70c58c362ad258.r2.dev/updates/stable/${encodeURIComponent(targetFile)}`;
+        const redirect = url.searchParams.get('redirect') === 'true' || url.pathname.startsWith('/download/stable') || isZip;
 
         if (redirect) {
           return Response.redirect(downloadUrl, 302);
@@ -94,8 +90,10 @@ export default {
         return new Response(JSON.stringify({
           success: true,
           downloadUrl,
+          version: '14.0.33',
+          fileName: targetFile,
           tier: 'TRIAL_ELITE',
-          expiresInSeconds: 900,
+          expiresInSeconds: 3600,
           timestamp: new Date().toISOString()
         }), {
           headers: {

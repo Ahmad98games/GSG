@@ -766,6 +766,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         const fileName = latestUpdateInfo.files?.[0]?.url || `Noxis Hub Setup ${targetVersion}.exe`;
         const encodedFileName = encodeURIComponent(fileName);
         const candidateUrls = [
+            `https://pub-8c464d0d92ff44abbf70c58c362ad258.r2.dev/updates/stable/${encodedFileName}`,
             `https://noxishub.app/updates/stable/${encodedFileName}`,
             `https://download.omnora.com/updates/stable/${encodedFileName}`
         ];
@@ -845,6 +846,13 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                     resumedFrom: startByte,
                 });
                 const req = https.get(currentUrl, { headers }, (res) => {
+                    if (res.statusCode === 301 || res.statusCode === 302 || res.statusCode === 307 || res.statusCode === 308) {
+                        const redirectUrl = res.headers.location;
+                        if (redirectUrl) {
+                            startupLog(`[Update] Following redirect to: ${redirectUrl}`);
+                            return attemptDownload(redirectUrl);
+                        }
+                    }
                     if (res.statusCode !== 200 && res.statusCode !== 206) {
                         urlIndex++;
                         if (urlIndex < candidateUrls.length) {

@@ -335,9 +335,9 @@ var init_schemaDeserializationMiddleware = __esm({
     schemaDeserializationMiddleware = (config) => (next, context) => async (args) => {
       const { response } = await next(args);
       const { operationSchema } = getSmithyContext(context);
-      const [, ns, n2, t8, i2, o2] = operationSchema ?? [];
+      const [, ns, n2, t2, i2, o2] = operationSchema ?? [];
       try {
-        const parsed = await config.protocol.deserializeResponse(operation(ns, n2, t8, i2, o2), {
+        const parsed = await config.protocol.deserializeResponse(operation(ns, n2, t2, i2, o2), {
           ...config,
           ...context
         }, response);
@@ -401,9 +401,9 @@ var init_schemaSerializationMiddleware = __esm({
     init_operation();
     schemaSerializationMiddleware = (config) => (next, context) => async (args) => {
       const { operationSchema } = getSmithyContext(context);
-      const [, ns, n2, t8, i2, o2] = operationSchema ?? [];
+      const [, ns, n2, t2, i2, o2] = operationSchema ?? [];
       const endpoint = context.endpointV2 ? async () => toEndpointV1(context.endpointV2) : config.endpoint;
-      const request = await config.protocol.serializeRequest(operation(ns, n2, t8, i2, o2), args.input, {
+      const request = await config.protocol.serializeRequest(operation(ns, n2, t2, i2, o2), args.input, {
         ...config,
         ...context,
         endpoint
@@ -2612,17 +2612,6 @@ var init_index_browser = __esm({
   }
 });
 
-// node_modules/@smithy/core/dist-es/submodules/serde/util-stream/checksum/ChecksumStream.browser.js
-var ReadableStreamRef, ChecksumStream;
-var init_ChecksumStream_browser = __esm({
-  "node_modules/@smithy/core/dist-es/submodules/serde/util-stream/checksum/ChecksumStream.browser.js"() {
-    ReadableStreamRef = typeof ReadableStream === "function" ? ReadableStream : function() {
-    };
-    ChecksumStream = class extends ReadableStreamRef {
-    };
-  }
-});
-
 // node_modules/@smithy/core/dist-es/submodules/serde/util-stream/stream-type-check.js
 var isReadableStream, isBlob;
 var init_stream_type_check = __esm({
@@ -2631,185 +2620,6 @@ var init_stream_type_check = __esm({
     isBlob = (blob) => {
       return typeof Blob === "function" && (blob?.constructor?.name === Blob.name || blob instanceof Blob);
     };
-  }
-});
-
-// node_modules/@smithy/core/dist-es/submodules/serde/util-stream/checksum/createChecksumStream.browser.js
-var createChecksumStream;
-var init_createChecksumStream_browser = __esm({
-  "node_modules/@smithy/core/dist-es/submodules/serde/util-stream/checksum/createChecksumStream.browser.js"() {
-    init_toBase64_browser();
-    init_stream_type_check();
-    init_ChecksumStream_browser();
-    createChecksumStream = ({ expectedChecksum, checksum, source, checksumSourceLocation, base64Encoder }) => {
-      if (!isReadableStream(source)) {
-        throw new Error(`@smithy/util-stream: unsupported source type ${source?.constructor?.name ?? source} in ChecksumStream.`);
-      }
-      const encoder = base64Encoder ?? toBase64;
-      if (typeof TransformStream !== "function") {
-        throw new Error("@smithy/util-stream: unable to instantiate ChecksumStream because API unavailable: ReadableStream/TransformStream.");
-      }
-      const transform = new TransformStream({
-        start() {
-        },
-        async transform(chunk, controller) {
-          checksum.update(chunk);
-          controller.enqueue(chunk);
-        },
-        async flush(controller) {
-          const digest2 = await checksum.digest();
-          const received = encoder(digest2);
-          if (expectedChecksum !== received) {
-            const error = new Error(`Checksum mismatch: expected "${expectedChecksum}" but received "${received}" in response header "${checksumSourceLocation}".`);
-            controller.error(error);
-          } else {
-            controller.terminate();
-          }
-        }
-      });
-      source.pipeThrough(transform);
-      const readable = transform.readable;
-      Object.setPrototypeOf(readable, ChecksumStream.prototype);
-      return readable;
-    };
-  }
-});
-
-// node_modules/@smithy/core/dist-es/submodules/serde/util-stream/ByteArrayCollector.js
-var ByteArrayCollector;
-var init_ByteArrayCollector = __esm({
-  "node_modules/@smithy/core/dist-es/submodules/serde/util-stream/ByteArrayCollector.js"() {
-    ByteArrayCollector = class {
-      allocByteArray;
-      byteLength = 0;
-      byteArrays = [];
-      constructor(allocByteArray) {
-        this.allocByteArray = allocByteArray;
-      }
-      push(byteArray) {
-        this.byteArrays.push(byteArray);
-        this.byteLength += byteArray.byteLength;
-      }
-      flush() {
-        if (this.byteArrays.length === 1) {
-          const bytes = this.byteArrays[0];
-          this.reset();
-          return bytes;
-        }
-        const aggregation = this.allocByteArray(this.byteLength);
-        let cursor = 0;
-        for (let i2 = 0; i2 < this.byteArrays.length; ++i2) {
-          const bytes = this.byteArrays[i2];
-          aggregation.set(bytes, cursor);
-          cursor += bytes.byteLength;
-        }
-        this.reset();
-        return aggregation;
-      }
-      reset() {
-        this.byteArrays = [];
-        this.byteLength = 0;
-      }
-    };
-  }
-});
-
-// node_modules/@smithy/core/dist-es/submodules/serde/util-stream/createBufferedReadable.browser.js
-function createBufferedReadableStream(upstream, size, logger2) {
-  const reader = upstream.getReader();
-  let streamBufferingLoggedWarning = false;
-  let bytesSeen = 0;
-  const buffers = ["", new ByteArrayCollector((size2) => new Uint8Array(size2))];
-  let mode = -1;
-  const pull = async (controller) => {
-    const { value, done } = await reader.read();
-    const chunk = value;
-    if (done) {
-      if (mode !== -1) {
-        const remainder = flush(buffers, mode);
-        if (sizeOf(remainder) > 0) {
-          controller.enqueue(remainder);
-        }
-      }
-      controller.close();
-    } else {
-      const chunkMode = modeOf(chunk, false);
-      if (mode !== chunkMode) {
-        if (mode >= 0) {
-          controller.enqueue(flush(buffers, mode));
-        }
-        mode = chunkMode;
-      }
-      if (mode === -1) {
-        controller.enqueue(chunk);
-        return;
-      }
-      const chunkSize = sizeOf(chunk);
-      bytesSeen += chunkSize;
-      const bufferSize = sizeOf(buffers[mode]);
-      if (chunkSize >= size && bufferSize === 0) {
-        controller.enqueue(chunk);
-      } else {
-        const newSize = merge(buffers, mode, chunk);
-        if (!streamBufferingLoggedWarning && bytesSeen > size * 2) {
-          streamBufferingLoggedWarning = true;
-          logger2?.warn(`@smithy/util-stream - stream chunk size ${chunkSize} is below threshold of ${size}, automatically buffering.`);
-        }
-        if (newSize >= size) {
-          controller.enqueue(flush(buffers, mode));
-        } else {
-          await pull(controller);
-        }
-      }
-    }
-  };
-  return new ReadableStream({
-    pull
-  });
-}
-function merge(buffers, mode, chunk) {
-  switch (mode) {
-    case 0:
-      buffers[0] += chunk;
-      return sizeOf(buffers[0]);
-    case 1:
-    case 2:
-      buffers[mode].push(chunk);
-      return sizeOf(buffers[mode]);
-  }
-}
-function flush(buffers, mode) {
-  switch (mode) {
-    case 0:
-      const s2 = buffers[0];
-      buffers[0] = "";
-      return s2;
-    case 1:
-    case 2:
-      return buffers[mode].flush();
-  }
-  throw new Error(`@smithy/util-stream - invalid index ${mode} given to flush()`);
-}
-function sizeOf(chunk) {
-  return chunk?.byteLength ?? chunk?.length ?? 0;
-}
-function modeOf(chunk, allowBuffer = true) {
-  if (allowBuffer && typeof Buffer !== "undefined" && chunk instanceof Buffer) {
-    return 2;
-  }
-  if (chunk instanceof Uint8Array) {
-    return 1;
-  }
-  if (typeof chunk === "string") {
-    return 0;
-  }
-  return -1;
-}
-var createBufferedReadable;
-var init_createBufferedReadable_browser = __esm({
-  "node_modules/@smithy/core/dist-es/submodules/serde/util-stream/createBufferedReadable.browser.js"() {
-    init_ByteArrayCollector();
-    createBufferedReadable = createBufferedReadableStream;
   }
 });
 
@@ -2967,8 +2777,6 @@ var init_index_browser2 = __esm({
     init_toUint8Array_browser();
     init_concatBytes();
     init_is_array_buffer();
-    init_createChecksumStream_browser();
-    init_createBufferedReadable_browser();
     init_getAwsChunkedEncodingStream_browser();
     init_sdk_stream_mixin_browser();
     init_stream_collector_browser();
@@ -3278,21 +3086,21 @@ var init_Sha256Js = __esm({
             w2[i2] = (buffer[i2 * 4] & 255) << 24 | (buffer[i2 * 4 + 1] & 255) << 16 | (buffer[i2 * 4 + 2] & 255) << 8 | buffer[i2 * 4 + 3] & 255;
           } else {
             let u2 = w2[i2 - 2];
-            const t13 = (u2 >>> 17 | u2 << 15) ^ (u2 >>> 19 | u2 << 13) ^ u2 >>> 10;
+            const t12 = (u2 >>> 17 | u2 << 15) ^ (u2 >>> 19 | u2 << 13) ^ u2 >>> 10;
             u2 = w2[i2 - 15];
-            const t23 = (u2 >>> 7 | u2 << 25) ^ (u2 >>> 18 | u2 << 14) ^ u2 >>> 3;
-            w2[i2] = (t13 + w2[i2 - 7] | 0) + (t23 + w2[i2 - 16] | 0);
+            const t22 = (u2 >>> 7 | u2 << 25) ^ (u2 >>> 18 | u2 << 14) ^ u2 >>> 3;
+            w2[i2] = (t12 + w2[i2 - 7] | 0) + (t22 + w2[i2 - 16] | 0);
           }
-          const t12 = (((s4 >>> 6 | s4 << 26) ^ (s4 >>> 11 | s4 << 21) ^ (s4 >>> 25 | s4 << 7)) + (s4 & s5 ^ ~s4 & s6) | 0) + (s7 + (K[i2] + w2[i2] | 0) | 0) | 0;
-          const t22 = ((s0 >>> 2 | s0 << 30) ^ (s0 >>> 13 | s0 << 19) ^ (s0 >>> 22 | s0 << 10)) + (s0 & s1 ^ s0 & s2 ^ s1 & s2) | 0;
+          const t1 = (((s4 >>> 6 | s4 << 26) ^ (s4 >>> 11 | s4 << 21) ^ (s4 >>> 25 | s4 << 7)) + (s4 & s5 ^ ~s4 & s6) | 0) + (s7 + (K[i2] + w2[i2] | 0) | 0) | 0;
+          const t2 = ((s0 >>> 2 | s0 << 30) ^ (s0 >>> 13 | s0 << 19) ^ (s0 >>> 22 | s0 << 10)) + (s0 & s1 ^ s0 & s2 ^ s1 & s2) | 0;
           s7 = s6;
           s6 = s5;
           s5 = s4;
-          s4 = s3 + t12 | 0;
+          s4 = s3 + t1 | 0;
           s3 = s2;
           s2 = s1;
           s1 = s0;
-          s0 = t12 + t22 | 0;
+          s0 = t1 + t2 | 0;
         }
         state[0] += s0;
         state[1] += s1;
@@ -4472,10 +4280,6 @@ var RequestChecksumCalculation = {
   WHEN_REQUIRED: "WHEN_REQUIRED"
 };
 var DEFAULT_REQUEST_CHECKSUM_CALCULATION = RequestChecksumCalculation.WHEN_SUPPORTED;
-var ResponseChecksumValidation = {
-  WHEN_SUPPORTED: "WHEN_SUPPORTED",
-  WHEN_REQUIRED: "WHEN_REQUIRED"
-};
 var DEFAULT_RESPONSE_CHECKSUM_VALIDATION = RequestChecksumCalculation.WHEN_SUPPORTED;
 var ChecksumAlgorithm;
 (function(ChecksumAlgorithm2) {
@@ -5430,8 +5234,8 @@ var HttpBindingProtocol = class extends HttpProtocol {
         continue;
       }
       if (memberTraits.httpPayload) {
-        const isStreaming2 = memberNs.isStreaming();
-        if (isStreaming2) {
+        const isStreaming = memberNs.isStreaming();
+        if (isStreaming) {
           const isEventStream = memberNs.isStructSchema();
           if (isEventStream) {
             if (input[memberName]) {
@@ -5587,8 +5391,8 @@ var HttpBindingProtocol = class extends HttpProtocol {
       const memberTraits = memberSchema.getMemberTraits();
       if (memberTraits.httpPayload) {
         discardResponseBody = false;
-        const isStreaming2 = memberSchema.isStreaming();
-        if (isStreaming2) {
+        const isStreaming = memberSchema.isStreaming();
+        if (isStreaming) {
           const isEventStream = memberSchema.isStructSchema();
           if (isEventStream) {
             dataObject[memberName] = await this.deserializeEventStream({
@@ -6305,8 +6109,8 @@ var DefaultRateLimiter = class _DefaultRateLimiter {
     this.availableTokens = Math.min(this.availableTokens, this.maxCapacity);
   }
   updateMeasuredRate() {
-    const t8 = this.getCurrentTimeInSeconds();
-    const timeBucket = Math.floor(t8 * 2) / 2;
+    const t2 = this.getCurrentTimeInSeconds();
+    const timeBucket = Math.floor(t2 * 2) / 2;
     this.requestCount++;
     if (timeBucket > this.lastTxRateBucket) {
       const currentRate = this.requestCount / (timeBucket - this.lastTxRateBucket);
@@ -7599,495 +7403,6 @@ var resolveAwsRegionExtensionConfiguration = (awsRegionExtensionConfiguration) =
 // node_modules/@aws-sdk/core/dist-es/submodules/client/index.browser.js
 var no5 = Symbol.for("node-only");
 
-// node_modules/@aws-sdk/checksums/dist-es/submodules/flexible-checksums/flexibleChecksumsMiddleware.js
-init_index_browser2();
-
-// node_modules/@aws-sdk/checksums/dist-es/submodules/flexible-checksums/getChecksumAlgorithmForRequest.js
-var getChecksumAlgorithmForRequest = (input, { requestChecksumRequired, requestAlgorithmMember, requestChecksumCalculation }) => {
-  if (!requestAlgorithmMember) {
-    return requestChecksumCalculation === RequestChecksumCalculation.WHEN_SUPPORTED || requestChecksumRequired ? DEFAULT_CHECKSUM_ALGORITHM : void 0;
-  }
-  if (!input[requestAlgorithmMember]) {
-    return void 0;
-  }
-  const checksumAlgorithm = input[requestAlgorithmMember];
-  return checksumAlgorithm;
-};
-
-// node_modules/@aws-sdk/checksums/dist-es/submodules/flexible-checksums/getChecksumLocationName.js
-var getChecksumLocationName = (algorithm) => algorithm === ChecksumAlgorithm.MD5 ? "content-md5" : `x-amz-checksum-${algorithm.toLowerCase()}`;
-
-// node_modules/@aws-sdk/checksums/dist-es/submodules/flexible-checksums/hasHeader.js
-var hasHeader = (header, headers) => {
-  const soughtHeader = header.toLowerCase();
-  for (const headerName of Object.keys(headers)) {
-    if (soughtHeader === headerName.toLowerCase()) {
-      return true;
-    }
-  }
-  return false;
-};
-
-// node_modules/@aws-sdk/checksums/dist-es/submodules/flexible-checksums/hasHeaderWithPrefix.js
-var hasHeaderWithPrefix = (headerPrefix, headers) => {
-  const soughtHeaderPrefix = headerPrefix.toLowerCase();
-  for (const headerName of Object.keys(headers)) {
-    if (headerName.toLowerCase().startsWith(soughtHeaderPrefix)) {
-      return true;
-    }
-  }
-  return false;
-};
-
-// node_modules/@aws-sdk/checksums/dist-es/submodules/flexible-checksums/isStreaming.js
-init_index_browser2();
-var isStreaming = (body) => body !== void 0 && typeof body !== "string" && !ArrayBuffer.isView(body) && !isArrayBuffer(body);
-
-// node_modules/@aws-sdk/checksums/dist-es/submodules/crc/crc32c/Crc32cJs.js
-var T2 = new Uint32Array(256);
-for (let i2 = 0; i2 < 256; ++i2) {
-  let c2 = i2;
-  for (let j2 = 0; j2 < 8; ++j2) {
-    c2 = c2 & 1 ? 2197175160 ^ c2 >>> 1 : c2 >>> 1;
-  }
-  T2[i2] = c2 >>> 0;
-}
-var Crc32cJs = class {
-  digestLength = 4;
-  crc = 4294967295;
-  update(data) {
-    let crc = this.crc;
-    for (let i2 = 0; i2 < data.length; ++i2) {
-      crc = crc >>> 8 ^ T2[(crc ^ data[i2]) & 255];
-    }
-    this.crc = crc;
-  }
-  async digest() {
-    const value = (this.crc ^ 4294967295) >>> 0;
-    const out = new Uint8Array(4);
-    out[0] = value >>> 24;
-    out[1] = value >>> 16 & 255;
-    out[2] = value >>> 8 & 255;
-    out[3] = value & 255;
-    return out;
-  }
-  reset() {
-    this.crc = 4294967295;
-  }
-};
-
-// node_modules/@aws-sdk/checksums/dist-es/submodules/crc/crc64-nvme/Crc64NvmeJs.js
-var generateCRC64NVMETable = () => {
-  const sliceLength = 8;
-  const tables = new Array(sliceLength);
-  for (let slice = 0; slice < sliceLength; slice++) {
-    const table = new Array(512);
-    for (let i2 = 0; i2 < 256; i2++) {
-      let crc = BigInt(i2);
-      for (let j2 = 0; j2 < 8 * (slice + 1); j2++) {
-        if (crc & 1n) {
-          crc = crc >> 1n ^ 0x9a6c9329ac4bc9b5n;
-        } else {
-          crc = crc >> 1n;
-        }
-      }
-      table[i2 * 2] = Number(crc >> 32n & 0xffffffffn);
-      table[i2 * 2 + 1] = Number(crc & 0xffffffffn);
-    }
-    tables[slice] = new Uint32Array(table);
-  }
-  return tables;
-};
-var CRC64_NVME_REVERSED_TABLE;
-var t0;
-var t1;
-var t2;
-var t3;
-var t4;
-var t5;
-var t6;
-var t7;
-var ensureTablesInitialized = () => {
-  if (!CRC64_NVME_REVERSED_TABLE) {
-    CRC64_NVME_REVERSED_TABLE = generateCRC64NVMETable();
-    [t0, t1, t2, t3, t4, t5, t6, t7] = CRC64_NVME_REVERSED_TABLE;
-  }
-};
-var Crc64NvmeJs = class {
-  c1 = 0;
-  c2 = 0;
-  constructor() {
-    ensureTablesInitialized();
-    this.reset();
-  }
-  update(data) {
-    const len = data.length;
-    let i2 = 0;
-    let crc1 = this.c1;
-    let crc2 = this.c2;
-    while (i2 + 8 <= len) {
-      const idx0 = ((crc2 ^ data[i2++]) & 255) << 1;
-      const idx1 = ((crc2 >>> 8 ^ data[i2++]) & 255) << 1;
-      const idx2 = ((crc2 >>> 16 ^ data[i2++]) & 255) << 1;
-      const idx3 = ((crc2 >>> 24 ^ data[i2++]) & 255) << 1;
-      const idx4 = ((crc1 ^ data[i2++]) & 255) << 1;
-      const idx5 = ((crc1 >>> 8 ^ data[i2++]) & 255) << 1;
-      const idx6 = ((crc1 >>> 16 ^ data[i2++]) & 255) << 1;
-      const idx7 = ((crc1 >>> 24 ^ data[i2++]) & 255) << 1;
-      crc1 = t7[idx0] ^ t6[idx1] ^ t5[idx2] ^ t4[idx3] ^ t3[idx4] ^ t2[idx5] ^ t1[idx6] ^ t0[idx7];
-      crc2 = t7[idx0 + 1] ^ t6[idx1 + 1] ^ t5[idx2 + 1] ^ t4[idx3 + 1] ^ t3[idx4 + 1] ^ t2[idx5 + 1] ^ t1[idx6 + 1] ^ t0[idx7 + 1];
-    }
-    while (i2 < len) {
-      const idx = ((crc2 ^ data[i2]) & 255) << 1;
-      crc2 = (crc2 >>> 8 | (crc1 & 255) << 24) >>> 0;
-      crc1 = crc1 >>> 8 ^ t0[idx];
-      crc2 ^= t0[idx + 1];
-      ++i2;
-    }
-    this.c1 = crc1;
-    this.c2 = crc2;
-  }
-  async digest() {
-    const c1 = this.c1 ^ 4294967295;
-    const c2 = this.c2 ^ 4294967295;
-    return new Uint8Array([
-      c1 >>> 24,
-      c1 >>> 16 & 255,
-      c1 >>> 8 & 255,
-      c1 & 255,
-      c2 >>> 24,
-      c2 >>> 16 & 255,
-      c2 >>> 8 & 255,
-      c2 & 255
-    ]);
-  }
-  reset() {
-    this.c1 = 4294967295;
-    this.c2 = 4294967295;
-  }
-};
-
-// node_modules/@aws-sdk/checksums/dist-es/submodules/crc/index.browser.js
-init_index_browser3();
-var no6 = Symbol.for("node-only");
-
-// node_modules/@aws-sdk/checksums/dist-es/submodules/flexible-checksums/types.js
-var CLIENT_SUPPORTED_ALGORITHMS = [
-  ChecksumAlgorithm.CRC32,
-  ChecksumAlgorithm.CRC32C,
-  ChecksumAlgorithm.CRC64NVME,
-  ChecksumAlgorithm.SHA1,
-  ChecksumAlgorithm.SHA256
-];
-var PRIORITY_ORDER_ALGORITHMS = [
-  ChecksumAlgorithm.SHA256,
-  ChecksumAlgorithm.SHA1,
-  ChecksumAlgorithm.CRC32,
-  ChecksumAlgorithm.CRC32C,
-  ChecksumAlgorithm.CRC64NVME
-];
-
-// node_modules/@aws-sdk/checksums/dist-es/submodules/flexible-checksums/selectChecksumAlgorithmFunction.js
-var selectChecksumAlgorithmFunction = (checksumAlgorithm, config) => {
-  const { checksumAlgorithms = {} } = config;
-  switch (checksumAlgorithm) {
-    case ChecksumAlgorithm.MD5:
-      return checksumAlgorithms?.MD5 ?? config.md5;
-    case ChecksumAlgorithm.CRC32:
-      return checksumAlgorithms?.CRC32 ?? Crc32Js;
-    case ChecksumAlgorithm.CRC32C:
-      return checksumAlgorithms?.CRC32C ?? Crc32cJs;
-    case ChecksumAlgorithm.CRC64NVME:
-      return checksumAlgorithms?.CRC64NVME ?? Crc64NvmeJs;
-    case ChecksumAlgorithm.SHA1:
-      return checksumAlgorithms?.SHA1 ?? config.sha1;
-    case ChecksumAlgorithm.SHA256:
-      return checksumAlgorithms?.SHA256 ?? config.sha256;
-    default:
-      if (checksumAlgorithms?.[checksumAlgorithm]) {
-        return checksumAlgorithms[checksumAlgorithm];
-      }
-      throw new Error(`The checksum algorithm "${checksumAlgorithm}" is not supported by the client. Select one of ${CLIENT_SUPPORTED_ALGORITHMS}, or provide an implementation to  the client constructor checksums field.`);
-  }
-};
-
-// node_modules/@aws-sdk/checksums/dist-es/submodules/flexible-checksums/stringHasher.js
-init_index_browser2();
-var stringHasher = (checksumAlgorithmFn, body) => {
-  const hash = new checksumAlgorithmFn();
-  hash.update(toUint8Array(body || ""));
-  return hash.digest();
-};
-
-// node_modules/@aws-sdk/checksums/dist-es/submodules/flexible-checksums/flexibleChecksumsMiddleware.js
-var flexibleChecksumsMiddlewareOptions = {
-  name: "flexibleChecksumsMiddleware",
-  step: "build",
-  tags: ["BODY_CHECKSUM"],
-  override: true
-};
-var flexibleChecksumsMiddleware = (config, middlewareConfig) => (next, context) => async (args) => {
-  if (!HttpRequest.isInstance(args.request)) {
-    return next(args);
-  }
-  if (hasHeaderWithPrefix("x-amz-checksum-", args.request.headers)) {
-    return next(args);
-  }
-  const { request, input } = args;
-  const { body: requestBody, headers } = request;
-  const { base64Encoder, streamHasher } = config;
-  const { requestChecksumRequired, requestAlgorithmMember } = middlewareConfig;
-  const requestChecksumCalculation = await config.requestChecksumCalculation();
-  const requestAlgorithmMemberName = requestAlgorithmMember?.name;
-  const requestAlgorithmMemberHttpHeader = requestAlgorithmMember?.httpHeader;
-  if (requestAlgorithmMemberName && !input[requestAlgorithmMemberName]) {
-    if (requestChecksumCalculation === RequestChecksumCalculation.WHEN_SUPPORTED || requestChecksumRequired) {
-      input[requestAlgorithmMemberName] = DEFAULT_CHECKSUM_ALGORITHM;
-      if (requestAlgorithmMemberHttpHeader) {
-        headers[requestAlgorithmMemberHttpHeader] = DEFAULT_CHECKSUM_ALGORITHM;
-      }
-    }
-  }
-  const checksumAlgorithm = getChecksumAlgorithmForRequest(input, {
-    requestChecksumRequired,
-    requestAlgorithmMember: requestAlgorithmMember?.name,
-    requestChecksumCalculation
-  });
-  let updatedBody = requestBody;
-  let updatedHeaders = headers;
-  if (checksumAlgorithm) {
-    switch (checksumAlgorithm) {
-      case ChecksumAlgorithm.CRC32:
-        setFeature2(context, "FLEXIBLE_CHECKSUMS_REQ_CRC32", "U");
-        break;
-      case ChecksumAlgorithm.CRC32C:
-        setFeature2(context, "FLEXIBLE_CHECKSUMS_REQ_CRC32C", "V");
-        break;
-      case ChecksumAlgorithm.CRC64NVME:
-        setFeature2(context, "FLEXIBLE_CHECKSUMS_REQ_CRC64", "W");
-        break;
-      case ChecksumAlgorithm.SHA1:
-        setFeature2(context, "FLEXIBLE_CHECKSUMS_REQ_SHA1", "X");
-        break;
-      case ChecksumAlgorithm.SHA256:
-        setFeature2(context, "FLEXIBLE_CHECKSUMS_REQ_SHA256", "Y");
-        break;
-    }
-    const checksumLocationName = getChecksumLocationName(checksumAlgorithm);
-    const checksumAlgorithmFn = selectChecksumAlgorithmFunction(checksumAlgorithm, config);
-    if (isStreaming(requestBody)) {
-      const { getAwsChunkedEncodingStream: getAwsChunkedEncodingStream2, bodyLengthChecker } = config;
-      updatedBody = getAwsChunkedEncodingStream2(typeof config.requestStreamBufferSize === "number" && config.requestStreamBufferSize >= 8 * 1024 ? createBufferedReadable(requestBody, config.requestStreamBufferSize, context.logger) : requestBody, {
-        base64Encoder,
-        bodyLengthChecker,
-        checksumLocationName,
-        checksumAlgorithmFn,
-        streamHasher
-      });
-      updatedHeaders = {
-        ...headers,
-        "content-encoding": headers["content-encoding"] ? `${headers["content-encoding"]},aws-chunked` : "aws-chunked",
-        "transfer-encoding": "chunked",
-        "x-amz-decoded-content-length": headers["content-length"],
-        "x-amz-content-sha256": "STREAMING-UNSIGNED-PAYLOAD-TRAILER",
-        "x-amz-trailer": checksumLocationName
-      };
-      delete updatedHeaders["content-length"];
-    } else if (!hasHeader(checksumLocationName, headers)) {
-      const rawChecksum = await stringHasher(checksumAlgorithmFn, requestBody);
-      updatedHeaders = {
-        ...headers,
-        [checksumLocationName]: base64Encoder(rawChecksum)
-      };
-    }
-  }
-  try {
-    const result = await next({
-      ...args,
-      request: {
-        ...request,
-        headers: updatedHeaders,
-        body: updatedBody
-      }
-    });
-    return result;
-  } catch (e2) {
-    if (e2 instanceof Error && e2.name === "InvalidChunkSizeError") {
-      try {
-        if (!e2.message.endsWith(".")) {
-          e2.message += ".";
-        }
-        e2.message += " Set [requestStreamBufferSize=number e.g. 65_536] in client constructor to instruct AWS SDK to buffer your input stream.";
-      } catch (ignored) {
-      }
-    }
-    throw e2;
-  }
-};
-
-// node_modules/@aws-sdk/checksums/dist-es/submodules/flexible-checksums/flexibleChecksumsInputMiddleware.js
-var flexibleChecksumsInputMiddlewareOptions = {
-  name: "flexibleChecksumsInputMiddleware",
-  toMiddleware: "serializerMiddleware",
-  relation: "before",
-  tags: ["BODY_CHECKSUM"],
-  override: true
-};
-var flexibleChecksumsInputMiddleware = (config, middlewareConfig) => (next, context) => async (args) => {
-  const input = args.input;
-  const { requestValidationModeMember } = middlewareConfig;
-  const requestChecksumCalculation = await config.requestChecksumCalculation();
-  const responseChecksumValidation = await config.responseChecksumValidation();
-  switch (requestChecksumCalculation) {
-    case RequestChecksumCalculation.WHEN_REQUIRED:
-      setFeature2(context, "FLEXIBLE_CHECKSUMS_REQ_WHEN_REQUIRED", "a");
-      break;
-    case RequestChecksumCalculation.WHEN_SUPPORTED:
-      setFeature2(context, "FLEXIBLE_CHECKSUMS_REQ_WHEN_SUPPORTED", "Z");
-      break;
-  }
-  switch (responseChecksumValidation) {
-    case ResponseChecksumValidation.WHEN_REQUIRED:
-      setFeature2(context, "FLEXIBLE_CHECKSUMS_RES_WHEN_REQUIRED", "c");
-      break;
-    case ResponseChecksumValidation.WHEN_SUPPORTED:
-      setFeature2(context, "FLEXIBLE_CHECKSUMS_RES_WHEN_SUPPORTED", "b");
-      break;
-  }
-  if (requestValidationModeMember && !input[requestValidationModeMember]) {
-    if (responseChecksumValidation === ResponseChecksumValidation.WHEN_SUPPORTED) {
-      input[requestValidationModeMember] = "ENABLED";
-    }
-  }
-  return next(args);
-};
-
-// node_modules/@aws-sdk/checksums/dist-es/submodules/flexible-checksums/getChecksumAlgorithmListForResponse.js
-var getChecksumAlgorithmListForResponse = (responseAlgorithms = []) => {
-  const validChecksumAlgorithms = [];
-  let i2 = PRIORITY_ORDER_ALGORITHMS.length;
-  for (const algorithm of responseAlgorithms) {
-    const priority = PRIORITY_ORDER_ALGORITHMS.indexOf(algorithm);
-    if (priority !== -1) {
-      validChecksumAlgorithms[priority] = algorithm;
-    } else {
-      validChecksumAlgorithms[i2++] = algorithm;
-    }
-  }
-  return validChecksumAlgorithms.filter(Boolean);
-};
-
-// node_modules/@aws-sdk/checksums/dist-es/submodules/flexible-checksums/isChecksumWithPartNumber.js
-var isChecksumWithPartNumber = (checksum) => {
-  const lastHyphenIndex = checksum.lastIndexOf("-");
-  if (lastHyphenIndex !== -1) {
-    const numberPart = checksum.slice(lastHyphenIndex + 1);
-    if (!numberPart.startsWith("0")) {
-      const number = parseInt(numberPart, 10);
-      if (!isNaN(number) && number >= 1 && number <= 1e4) {
-        return true;
-      }
-    }
-  }
-  return false;
-};
-
-// node_modules/@aws-sdk/checksums/dist-es/submodules/flexible-checksums/validateChecksumFromResponse.js
-init_index_browser2();
-
-// node_modules/@aws-sdk/checksums/dist-es/submodules/flexible-checksums/getChecksum.js
-var getChecksum = async (body, { checksumAlgorithmFn, base64Encoder }) => base64Encoder(await stringHasher(checksumAlgorithmFn, body));
-
-// node_modules/@aws-sdk/checksums/dist-es/submodules/flexible-checksums/validateChecksumFromResponse.js
-var validateChecksumFromResponse = async (response, { config, responseAlgorithms, logger: logger2 }) => {
-  const checksumAlgorithms = getChecksumAlgorithmListForResponse(responseAlgorithms);
-  const { body: responseBody, headers: responseHeaders } = response;
-  for (const algorithm of checksumAlgorithms) {
-    const responseHeader = getChecksumLocationName(algorithm);
-    const checksumFromResponse = responseHeaders[responseHeader];
-    if (checksumFromResponse) {
-      let checksumAlgorithmFn;
-      try {
-        checksumAlgorithmFn = selectChecksumAlgorithmFunction(algorithm, config);
-      } catch (error) {
-        if (algorithm === ChecksumAlgorithm.CRC64NVME) {
-          logger2?.warn(`Skipping ${ChecksumAlgorithm.CRC64NVME} checksum validation: ${error.message}`);
-          continue;
-        }
-        throw error;
-      }
-      const { base64Encoder } = config;
-      if (isStreaming(responseBody)) {
-        response.body = createChecksumStream({
-          expectedChecksum: checksumFromResponse,
-          checksumSourceLocation: responseHeader,
-          checksum: new checksumAlgorithmFn(),
-          source: responseBody,
-          base64Encoder
-        });
-        return;
-      }
-      const checksum = await getChecksum(responseBody, { checksumAlgorithmFn, base64Encoder });
-      if (checksum === checksumFromResponse) {
-        break;
-      }
-      throw new Error(`Checksum mismatch: expected "${checksum}" but received "${checksumFromResponse}" in response header "${responseHeader}".`);
-    }
-  }
-};
-
-// node_modules/@aws-sdk/checksums/dist-es/submodules/flexible-checksums/flexibleChecksumsResponseMiddleware.js
-var flexibleChecksumsResponseMiddlewareOptions = {
-  name: "flexibleChecksumsResponseMiddleware",
-  toMiddleware: "deserializerMiddleware",
-  relation: "after",
-  tags: ["BODY_CHECKSUM"],
-  override: true
-};
-var flexibleChecksumsResponseMiddleware = (config, middlewareConfig) => (next, context) => async (args) => {
-  if (!HttpRequest.isInstance(args.request)) {
-    return next(args);
-  }
-  const input = args.input;
-  const result = await next(args);
-  const response = result.response;
-  const { requestValidationModeMember, responseAlgorithms } = middlewareConfig;
-  if (requestValidationModeMember && input[requestValidationModeMember] === "ENABLED") {
-    const { clientName, commandName } = context;
-    const customChecksumAlgorithms = Object.keys(config.checksumAlgorithms ?? {}).filter((algorithm) => {
-      const responseHeader = getChecksumLocationName(algorithm);
-      return response.headers[responseHeader] !== void 0;
-    });
-    const algoList = getChecksumAlgorithmListForResponse([
-      ...responseAlgorithms ?? [],
-      ...customChecksumAlgorithms
-    ]);
-    const isS3WholeObjectMultipartGetResponseChecksum = clientName === "S3Client" && commandName === "GetObjectCommand" && algoList.every((algorithm) => {
-      const responseHeader = getChecksumLocationName(algorithm);
-      const checksumFromResponse = response.headers[responseHeader];
-      return !checksumFromResponse || isChecksumWithPartNumber(checksumFromResponse);
-    });
-    if (isS3WholeObjectMultipartGetResponseChecksum) {
-      return result;
-    }
-    await validateChecksumFromResponse(response, {
-      config,
-      responseAlgorithms: algoList,
-      logger: context.logger
-    });
-  }
-  return result;
-};
-
-// node_modules/@aws-sdk/checksums/dist-es/submodules/flexible-checksums/getFlexibleChecksumsPlugin.js
-var getFlexibleChecksumsPlugin = (config, middlewareConfig) => ({
-  applyToStack: (clientStack) => {
-    clientStack.add(flexibleChecksumsMiddleware(config, middlewareConfig), flexibleChecksumsMiddlewareOptions);
-    clientStack.addRelativeTo(flexibleChecksumsInputMiddleware(config, middlewareConfig), flexibleChecksumsInputMiddlewareOptions);
-    clientStack.addRelativeTo(flexibleChecksumsResponseMiddleware(config, middlewareConfig), flexibleChecksumsResponseMiddlewareOptions);
-  }
-});
-
 // node_modules/@aws-sdk/checksums/dist-es/submodules/flexible-checksums/resolveFlexibleChecksumsConfig.js
 var resolveFlexibleChecksumsConfig = (input) => {
   const { requestChecksumCalculation, responseChecksumValidation, requestStreamBufferSize } = input;
@@ -8304,39 +7619,6 @@ var resolveS3Config = (input, { session }) => {
     expectContinueHeader: expectContinueHeader ?? 2097152
   });
 };
-
-// node_modules/@aws-sdk/middleware-sdk-s3/dist-es/submodules/s3/middleware-s3-expires/s3-expires-middleware.js
-init_index_browser2();
-var s3ExpiresMiddleware = (config) => {
-  return (next, context) => async (args) => {
-    const result = await next(args);
-    const { response } = result;
-    if (HttpResponse.isInstance(response)) {
-      if (response.headers.expires) {
-        response.headers.expiresstring = response.headers.expires;
-        try {
-          parseRfc7231DateTime(response.headers.expires);
-        } catch (e2) {
-          context.logger?.warn(`AWS SDK Warning for ${context.clientName}::${context.commandName} response parsing (${response.headers.expires}): ${e2}`);
-          delete response.headers.expires;
-        }
-      }
-    }
-    return result;
-  };
-};
-var s3ExpiresMiddlewareOptions = {
-  tags: ["S3"],
-  name: "s3ExpiresMiddleware",
-  override: true,
-  relation: "after",
-  toMiddleware: "deserializerMiddleware"
-};
-var getS3ExpiresMiddlewarePlugin = (clientConfig) => ({
-  applyToStack: (clientStack) => {
-    clientStack.addRelativeTo(s3ExpiresMiddleware(clientConfig), s3ExpiresMiddlewareOptions);
-  }
-});
 
 // node_modules/@smithy/signature-v4/dist-es/SignatureV4.js
 init_index_browser2();
@@ -8695,7 +7977,7 @@ var getPayloadHash = async ({ headers, body }, hashConstructor) => {
 
 // node_modules/@smithy/signature-v4/dist-es/headerUtil.js
 init_index_browser2();
-var hasHeader2 = (soughtHeader, headers) => {
+var hasHeader = (soughtHeader, headers) => {
   soughtHeader = soughtHeader.toLowerCase();
   for (const headerName in headers) {
     if (!hasOwn(headers, headerName))
@@ -8847,7 +8129,7 @@ var SignatureV4 = class extends SignatureV4Base {
       request.headers[TOKEN_HEADER] = credentials.sessionToken;
     }
     const payloadHash = await getPayloadHash(request, this.sha256);
-    if (!hasHeader2(SHA256_HEADER, request.headers) && this.applyChecksum) {
+    if (!hasHeader(SHA256_HEADER, request.headers) && this.applyChecksum) {
       request.headers[SHA256_HEADER] = payloadHash;
     }
     const canonicalHeaders = getCanonicalHeaders(request, unsignableHeaders, signableHeaders);
@@ -9152,36 +8434,6 @@ var getThrow200ExceptionsPlugin = (config) => ({
 
 // node_modules/@aws-sdk/core/dist-es/submodules/util/util-arn-parser/arn.js
 var validate = (str) => typeof str === "string" && str.indexOf("arn:") === 0 && str.split(":").length >= 6;
-
-// node_modules/@aws-sdk/core/dist-es/submodules/util/util-format-url/format-url.js
-function formatUrl(request) {
-  const { port, query } = request;
-  let { protocol, path, hostname } = request;
-  if (protocol && protocol.slice(-1) !== ":") {
-    protocol += ":";
-  }
-  if (port) {
-    hostname += `:${port}`;
-  }
-  if (path && path.charAt(0) !== "/") {
-    path = `/${path}`;
-  }
-  let queryString = query ? buildQueryString(query) : "";
-  if (queryString && queryString[0] !== "?") {
-    queryString = `?${queryString}`;
-  }
-  let auth = "";
-  if (request.username != null || request.password != null) {
-    const username = request.username ?? "";
-    const password = request.password ?? "";
-    auth = `${username}:${password}@`;
-  }
-  let fragment = "";
-  if (request.fragment) {
-    fragment = `#${request.fragment}`;
-  }
-  return `${protocol}//${auth}${hostname}${path}${queryString}${fragment}`;
-}
 
 // node_modules/@aws-sdk/middleware-sdk-s3/dist-es/submodules/s3/middleware-region-redirect/bucket-endpoint-middleware.js
 function bucketEndpointMiddleware(options) {
@@ -10207,71 +9459,8 @@ var getAddExpectContinuePlugin = (options) => ({
   }
 });
 
-// node_modules/@aws-sdk/middleware-sdk-s3/dist-es/submodules/s3/middleware-ssec/middleware-ssec.js
-function ssecMiddleware(options) {
-  return (next) => async (args) => {
-    const input = { ...args.input };
-    const properties = [
-      {
-        target: "SSECustomerKey",
-        hash: "SSECustomerKeyMD5"
-      },
-      {
-        target: "CopySourceSSECustomerKey",
-        hash: "CopySourceSSECustomerKeyMD5"
-      }
-    ];
-    for (const prop of properties) {
-      const value = input[prop.target];
-      if (value) {
-        let valueForHash;
-        if (typeof value === "string") {
-          if (isValidBase64EncodedSSECustomerKey(value, options)) {
-            valueForHash = options.base64Decoder(value);
-          } else {
-            valueForHash = options.utf8Decoder(value);
-            input[prop.target] = options.base64Encoder(valueForHash);
-          }
-        } else {
-          valueForHash = ArrayBuffer.isView(value) ? new Uint8Array(value.buffer, value.byteOffset, value.byteLength) : new Uint8Array(value);
-          input[prop.target] = options.base64Encoder(valueForHash);
-        }
-        const hash = new options.md5();
-        hash.update(valueForHash);
-        input[prop.hash] = options.base64Encoder(await hash.digest());
-      }
-    }
-    return next({
-      ...args,
-      input
-    });
-  };
-}
-var ssecMiddlewareOptions = {
-  name: "ssecMiddleware",
-  step: "initialize",
-  tags: ["SSE"],
-  override: true
-};
-var getSsecPlugin = (config) => ({
-  applyToStack: (clientStack) => {
-    clientStack.add(ssecMiddleware(config), ssecMiddlewareOptions);
-  }
-});
-function isValidBase64EncodedSSECustomerKey(str, options) {
-  const base64Regex = /^(?:[A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
-  if (!base64Regex.test(str))
-    return false;
-  try {
-    const decodedBytes = options.base64Decoder(str);
-    return decodedBytes.length === 32;
-  } catch {
-    return false;
-  }
-}
-
 // node_modules/@aws-sdk/middleware-sdk-s3/dist-es/submodules/s3/index.browser.js
-var no7 = Symbol.for("node-only");
+var no6 = Symbol.for("node-only");
 
 // node_modules/@aws-sdk/client-s3/dist-es/S3Client.js
 init_index_browser();
@@ -10553,7 +9742,7 @@ function bindCallerConfig(config, credentialsProvider) {
 var DEFAULT_DISABLE_CLOCK_SKEW_CORRECTION = false;
 
 // node_modules/@aws-sdk/core/dist-es/submodules/httpAuthSchemes/index.browser.js
-var no8 = Symbol.for("node-only");
+var no7 = Symbol.for("node-only");
 var resolveAwsSdkSigV4Config = bindResolveAwsSdkSigV4Config(DEFAULT_DISABLE_CLOCK_SKEW_CORRECTION);
 
 // node_modules/@aws-sdk/client-s3/dist-es/auth/httpAuthSchemeProvider.js
@@ -10616,7 +9805,7 @@ var P = "sigv4a";
 var Q = "{url#scheme}://{url#authority}{url#normalizedPath}{uri_encoded_bucket}";
 var R = "https://s3.{partitionResult#dnsSuffix}/{uri_encoded_bucket}";
 var S2 = "https://s3.{partitionResult#dnsSuffix}";
-var T3 = { [aw]: "UseFIPS" };
+var T2 = { [aw]: "UseFIPS" };
 var U = { [aw]: "UseDualStack" };
 var V = { [aw]: "Bucket" };
 var W = { "fn": v, [ax]: [{ [aw]: k }, G] };
@@ -10648,7 +9837,7 @@ var _data = {
   conditions: [
     [d, ap],
     [e, [{ [aw]: "Accelerate" }, b]],
-    [e, [T3, b]],
+    [e, [T2, b]],
     [e, [U, b]],
     [d, aq],
     [d, as],
@@ -10664,7 +9853,7 @@ var _data = {
     [f, [W, "aws-cn"]],
     [p, [U, ".dualstack", i], "_s3e_ds"],
     [q, [{ [aw]: n(2) }, c]],
-    [p, [T3, "-fips", i], "_s3e_fips"],
+    [p, [T2, "-fips", i], "_s3e_fips"],
     [p, [{ fn: g, [ax]: [{ [aw]: "DisableS3ExpressSessionAuth" }, c] }, s, "sigv4-s3express"], "_s3e_auth"],
     [t, [V, c]],
     ["parseURL", aq, u],
@@ -12681,25 +11870,12 @@ var commonParams = {
 
 // node_modules/@aws-sdk/client-s3/dist-es/commandBuilder.js
 var command = makeBuilder(commonParams, "AmazonS3", "S3Client", getEndpointPlugin);
-var _ep0 = {
-  Bucket: { type: "contextParams", name: "Bucket" },
-  Key: { type: "contextParams", name: "Key" }
-};
 var _ep4 = {
   DisableS3ExpressSessionAuth: { type: "staticContextParams", value: true },
   Bucket: { type: "contextParams", name: "Bucket" }
 };
 var _mw0 = (Command2, cs, config, o2) => [
   getThrow200ExceptionsPlugin(config)
-];
-var _mw7 = (Command2, cs, config, o2) => [
-  getFlexibleChecksumsPlugin(config, {
-    requestChecksumRequired: false,
-    requestValidationModeMember: "ChecksumMode",
-    responseAlgorithms: ["CRC64NVME", "CRC32", "CRC32C", "SHA256", "SHA1", "SHA512", "MD5", "XXHASH64", "XXHASH3", "XXHASH128"]
-  }),
-  getSsecPlugin(config),
-  getS3ExpiresMiddlewarePlugin(config)
 ];
 
 // node_modules/@aws-sdk/client-s3/dist-es/schemas/schemas_0.js
@@ -18834,16 +18010,16 @@ var Sha1Js = class _Sha1Js {
   hashBufferWith(state, data, offset) {
     const w2 = this.w ??= new Int32Array(80);
     let s0 = state[0], s1 = state[1], s2 = state[2], s3 = state[3], s4 = state[4];
-    for (let t8 = 0; t8 < 16; ++t8) {
-      w2[t8] = (data[offset + t8 * 4] & 255) << 24 | (data[offset + t8 * 4 + 1] & 255) << 16 | (data[offset + t8 * 4 + 2] & 255) << 8 | data[offset + t8 * 4 + 3] & 255;
+    for (let t2 = 0; t2 < 16; ++t2) {
+      w2[t2] = (data[offset + t2 * 4] & 255) << 24 | (data[offset + t2 * 4 + 1] & 255) << 16 | (data[offset + t2 * 4 + 2] & 255) << 8 | data[offset + t2 * 4 + 3] & 255;
     }
-    for (let t8 = 16; t8 < 80; ++t8) {
-      const x2 = w2[t8 - 3] ^ w2[t8 - 8] ^ w2[t8 - 14] ^ w2[t8 - 16];
-      w2[t8] = x2 << 1 | x2 >>> 31;
+    for (let t2 = 16; t2 < 80; ++t2) {
+      const x2 = w2[t2 - 3] ^ w2[t2 - 8] ^ w2[t2 - 14] ^ w2[t2 - 16];
+      w2[t2] = x2 << 1 | x2 >>> 31;
     }
-    for (let t8 = 0; t8 < 80; ++t8) {
-      const r2 = t8 < 20 ? 0 : t8 < 40 ? 1 : t8 < 60 ? 2 : 3;
-      const temp = ((s0 << 5 | s0 >>> 27) + (r2 === 0 ? s1 & s2 ^ ~s1 & s3 : r2 === 2 ? s1 & s2 ^ s1 & s3 ^ s2 & s3 : s1 ^ s2 ^ s3) | 0) + (s4 + (K3[r2] + w2[t8] | 0) | 0) | 0;
+    for (let t2 = 0; t2 < 80; ++t2) {
+      const r2 = t2 < 20 ? 0 : t2 < 40 ? 1 : t2 < 60 ? 2 : 3;
+      const temp = ((s0 << 5 | s0 >>> 27) + (r2 === 0 ? s1 & s2 ^ ~s1 & s3 : r2 === 2 ? s1 & s2 ^ s1 & s3 ^ s2 & s3 : s1 ^ s2 ^ s3) | 0) + (s4 + (K3[r2] + w2[t2] | 0) | 0) | 0;
       s4 = s3;
       s3 = s2;
       s2 = s1 << 30 | s1 >>> 2;
@@ -18859,7 +18035,7 @@ var Sha1Js = class _Sha1Js {
 };
 
 // node_modules/@aws-sdk/checksums/dist-es/submodules/sha/index.browser.js
-var no9 = Symbol.for("node-only");
+var no8 = Symbol.for("node-only");
 
 // node_modules/@aws-sdk/client-s3/dist-es/runtimeConfig.shared.js
 init_index_browser3();
@@ -19025,138 +18201,10 @@ var S3Client = class extends Client {
   }
 };
 
-// node_modules/@aws-sdk/client-s3/dist-es/commands/GetObjectCommand.js
-var GetObjectCommand = class extends command(_ep0, _mw7, "GetObject", GetObject$) {
-};
-
-// node_modules/@aws-sdk/s3-request-presigner/dist-es/getSignedUrl.js
-init_index_browser();
-
-// node_modules/@aws-sdk/s3-request-presigner/dist-es/constants.js
-var UNSIGNED_PAYLOAD2 = "UNSIGNED-PAYLOAD";
-var SHA256_HEADER2 = "X-Amz-Content-Sha256";
-
-// node_modules/@aws-sdk/s3-request-presigner/dist-es/presigner.js
-var S3RequestPresigner = class {
-  signer;
-  constructor(options) {
-    const resolvedOptions = {
-      service: options.signingName || options.service || "s3",
-      uriEscapePath: options.uriEscapePath || false,
-      applyChecksum: options.applyChecksum || false,
-      ...options
-    };
-    this.signer = new SignatureV4MultiRegion(resolvedOptions);
-  }
-  presign(requestToSign, { unsignableHeaders = /* @__PURE__ */ new Set(), hoistableHeaders = /* @__PURE__ */ new Set(), unhoistableHeaders = /* @__PURE__ */ new Set(), ...options } = {}) {
-    this.prepareRequest(requestToSign, {
-      unsignableHeaders,
-      unhoistableHeaders,
-      hoistableHeaders
-    });
-    return this.signer.presign(requestToSign, {
-      expiresIn: 900,
-      unsignableHeaders,
-      unhoistableHeaders,
-      ...options
-    });
-  }
-  presignWithCredentials(requestToSign, credentials, { unsignableHeaders = /* @__PURE__ */ new Set(), hoistableHeaders = /* @__PURE__ */ new Set(), unhoistableHeaders = /* @__PURE__ */ new Set(), ...options } = {}) {
-    this.prepareRequest(requestToSign, {
-      unsignableHeaders,
-      unhoistableHeaders,
-      hoistableHeaders
-    });
-    return this.signer.presignWithCredentials(requestToSign, credentials, {
-      expiresIn: 900,
-      unsignableHeaders,
-      unhoistableHeaders,
-      ...options
-    });
-  }
-  prepareRequest(requestToSign, { unsignableHeaders = /* @__PURE__ */ new Set(), unhoistableHeaders = /* @__PURE__ */ new Set(), hoistableHeaders = /* @__PURE__ */ new Set() } = {}) {
-    unsignableHeaders.add("content-type");
-    Object.keys(requestToSign.headers).map((header) => header.toLowerCase()).filter((header) => header.startsWith("x-amz-server-side-encryption")).forEach((header) => {
-      if (!hoistableHeaders.has(header)) {
-        unhoistableHeaders.add(header);
-      }
-    });
-    requestToSign.headers[SHA256_HEADER2] = UNSIGNED_PAYLOAD2;
-    const currentHostHeader = requestToSign.headers.host;
-    const port = requestToSign.port;
-    const expectedHostHeader = `${requestToSign.hostname}${requestToSign.port != null ? ":" + port : ""}`;
-    if (!currentHostHeader || currentHostHeader === requestToSign.hostname && requestToSign.port != null) {
-      requestToSign.headers.host = expectedHostHeader;
-    }
-  }
-};
-
-// node_modules/@aws-sdk/s3-request-presigner/dist-es/getSignedUrl.js
-var getSignedUrl = async (client, command2, options = {}) => {
-  let s3Presigner;
-  let region;
-  if (typeof client.config.endpointProvider === "function") {
-    const endpointV2 = await getEndpointFromInstructions(command2.input, command2.constructor, client.config);
-    const authScheme = endpointV2.properties?.authSchemes?.[0];
-    if (authScheme?.name === "sigv4a") {
-      region = authScheme?.signingRegionSet?.join(",");
-    } else {
-      region = authScheme?.signingRegion;
-    }
-    s3Presigner = new S3RequestPresigner({
-      ...client.config,
-      signingName: authScheme?.signingName,
-      region: async () => region
-    });
-  } else {
-    s3Presigner = new S3RequestPresigner(client.config);
-  }
-  const presignInterceptMiddleware = (next, context) => async (args) => {
-    const { request } = args;
-    if (!HttpRequest.isInstance(request)) {
-      throw new Error("Request to be presigned is not an valid HTTP request.");
-    }
-    delete request.headers["amz-sdk-invocation-id"];
-    delete request.headers["amz-sdk-request"];
-    delete request.headers["x-amz-user-agent"];
-    let presigned2;
-    const presignerOptions = {
-      ...options,
-      signingRegion: options.signingRegion ?? context["signing_region"] ?? region,
-      signingService: options.signingService ?? context["signing_service"]
-    };
-    if (context.s3ExpressIdentity) {
-      presigned2 = await s3Presigner.presignWithCredentials(request, context.s3ExpressIdentity, presignerOptions);
-    } else {
-      presigned2 = await s3Presigner.presign(request, presignerOptions);
-    }
-    return {
-      response: {},
-      output: {
-        $metadata: { httpStatusCode: 200 },
-        presigned: presigned2
-      }
-    };
-  };
-  const middlewareName = "presignInterceptMiddleware";
-  const clientStack = client.middlewareStack.clone();
-  clientStack.addRelativeTo(presignInterceptMiddleware, {
-    name: middlewareName,
-    relation: "before",
-    toMiddleware: "awsAuthMiddleware",
-    override: true
-  });
-  const handler = command2.resolveMiddleware(clientStack, client.config, {});
-  const { output } = await handler({ input: command2.input });
-  const { presigned } = output;
-  return formatUrl(presigned);
-};
-
 // src/cloudflare-worker.ts
 var R2_ACCOUNT_ID = "b90a671a7d91009c9f0dd8e690f0c446";
 var R2_ACCESS_KEY_ID = "55bc954863afa10f8b64441d1068bffc";
 var R2_SECRET_ACCESS_KEY = "24dcd73108b450b53eb12e2a0152a610f135cea14c60f114c69b89a088bc680e";
-var R2_BUCKET_NAME = "noxishub";
 var r2Client = new S3Client({
   region: "auto",
   endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
@@ -19165,16 +18213,9 @@ var r2Client = new S3Client({
     secretAccessKey: R2_SECRET_ACCESS_KEY
   }
 });
-async function generateDownloadUrl(fileName = "Noxis Setup 13.0.1.exe", expiresIn = 900) {
-  const command2 = new GetObjectCommand({
-    Bucket: R2_BUCKET_NAME,
-    Key: fileName
-  });
-  return getSignedUrl(r2Client, command2, { expiresIn });
-}
 function generateLicenseKey(tier) {
-  const t8 = tier.toUpperCase();
-  const prefix = t8.startsWith("ELIT") ? "ELIT" : t8.startsWith("LITE") ? "LITE" : "PROP";
+  const t2 = tier.toUpperCase();
+  const prefix = t2.startsWith("ELIT") ? "ELIT" : t2.startsWith("LITE") ? "LITE" : "PROP";
   const seg = () => {
     const chars2 = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
     let res = "";
@@ -19189,49 +18230,44 @@ var cloudflare_worker_default = {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname.startsWith("/updates/")) {
-      const key = decodeURIComponent(url.pathname.replace(/^\//, ""));
+      const publicR2Url = `https://pub-8c464d0d92ff44abbf70c58c362ad258.r2.dev${url.pathname}`;
       try {
-        const command2 = new GetObjectCommand({
-          Bucket: R2_BUCKET_NAME,
-          Key: key
+        const r2Resp = await fetch(publicR2Url, {
+          method: request.method,
+          headers: request.headers
         });
-        const res = await r2Client.send(command2);
-        const headers = {
-          "Access-Control-Allow-Origin": "*",
-          "Cache-Control": "no-cache"
-        };
-        if (key.endsWith(".yml") || key.endsWith(".yaml") || key.endsWith(".json")) {
-          const body = await res.Body?.transformToString();
-          headers["Content-Type"] = "text/yaml; charset=utf-8";
-          return new Response(body, { headers });
-        }
-        if (key.endsWith(".exe")) {
-          headers["Content-Type"] = "application/x-msdownload";
-        } else if (key.endsWith(".blockmap")) {
-          headers["Content-Type"] = "application/octet-stream";
-        }
-        if (res.ContentLength) {
-          headers["Content-Length"] = String(res.ContentLength);
-        }
-        const stream = res.Body?.transformToWebStream?.() || res.Body;
-        return new Response(stream, { headers });
+        const newHeaders = new Headers(r2Resp.headers);
+        newHeaders.set("Access-Control-Allow-Origin", "*");
+        newHeaders.set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+        newHeaders.set("Access-Control-Allow-Headers", "*");
+        newHeaders.set("Accept-Ranges", "bytes");
+        newHeaders.set("Cache-Control", "no-cache");
+        return new Response(r2Resp.body, {
+          status: r2Resp.status,
+          statusText: r2Resp.statusText,
+          headers: newHeaders
+        });
       } catch (err) {
-        return new Response("Update file not found: " + (err?.message || ""), { status: 404 });
+        return new Response("Update streaming error: " + (err?.message || ""), { status: 502 });
       }
     }
     if (url.pathname === "/api/download-software" || url.pathname.startsWith("/api/download-software") || url.pathname === "/api/download" || url.pathname.startsWith("/api/download") || url.pathname.startsWith("/download/stable")) {
       try {
-        const fileParam = url.searchParams.get("fileName") || "Noxis Setup 13.0.1.exe";
-        const downloadUrl = await generateDownloadUrl(fileParam, 900);
-        const redirect = url.searchParams.get("redirect") === "true" || url.pathname.startsWith("/download/stable");
+        const format2 = url.searchParams.get("format");
+        const isZip = format2 === "zip" || url.searchParams.get("zip") === "true";
+        const targetFile = isZip ? "Noxis-Setup-14.0.33.zip" : "Noxis Hub Setup 14.0.33.exe";
+        const downloadUrl = `https://pub-8c464d0d92ff44abbf70c58c362ad258.r2.dev/updates/stable/${encodeURIComponent(targetFile)}`;
+        const redirect = url.searchParams.get("redirect") === "true" || url.pathname.startsWith("/download/stable") || isZip;
         if (redirect) {
           return Response.redirect(downloadUrl, 302);
         }
         return new Response(JSON.stringify({
           success: true,
           downloadUrl,
+          version: "14.0.33",
+          fileName: targetFile,
           tier: "TRIAL_ELITE",
-          expiresInSeconds: 900,
+          expiresInSeconds: 3600,
           timestamp: (/* @__PURE__ */ new Date()).toISOString()
         }), {
           headers: {
