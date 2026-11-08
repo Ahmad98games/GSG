@@ -203,6 +203,7 @@ electron_1.contextBridge.exposeInMainWorld('electronAPI', {
         electron_1.ipcRenderer.on('ipc:khata-updated', listener);
         return () => electron_1.ipcRenderer.removeListener('ipc:khata-updated', listener);
     },
+    broadcastChange: (resource = 'khata', table) => electron_1.ipcRenderer.invoke('bridge:broadcastChange', { resource, table }),
     // ── Power-cut recovery signal ───────────────────────────────────────────────
     onPowerCutDetected: (callback) => {
         const listener = (_, data) => callback(data);

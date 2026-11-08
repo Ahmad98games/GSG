@@ -197,7 +197,7 @@ async function syncPartyToSupabase(p, defaultBusinessId) {
 }
 function getSqlite() {
     try {
-        return client_1.db.$client || null;
+        return global.__noxisDb || client_1.db.$client || null;
     }
     catch {
         return null;
@@ -432,6 +432,24 @@ function attachMobileBridge(httpServer, customPort) {
                         return;
                     }
                 }
+                // 2.5 Broadcast change to all mobile devices
+                if (req.method === 'POST' && pathname === '/api/broadcast') {
+                    let b = '';
+                    req.on('data', (chunk) => { b += chunk; });
+                    req.on('end', () => {
+                        try {
+                            const p = JSON.parse(b);
+                            broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: p.resource || 'khata', table: p.table });
+                            res.writeHead(200, { 'Content-Type': 'application/json' });
+                            res.end(JSON.stringify({ ok: true }));
+                        }
+                        catch {
+                            res.writeHead(200, { 'Content-Type': 'application/json' });
+                            res.end(JSON.stringify({ ok: true }));
+                        }
+                    });
+                    return;
+                }
                 // 3. Direct REST Push Fallback (/api/sync)
                 if (req.method === 'POST' && pathname === '/api/sync') {
                     let body = '';
@@ -504,6 +522,7 @@ function attachMobileBridge(httpServer, customPort) {
                 res.writeHead(302, { Location: `http://${hostIp}:${targetPort}/workstation` });
                 res.end();
             });
+            serverInstance?.on('error', (err) => console.warn('[Bridge] HTTP Server port error:', err.message));
             serverInstance?.listen(port, '0.0.0.0', () => {
                 console.log(`[Bridge] Mobile Bridge HTTP & WebSocket Server listening on port ${port}`);
             });

@@ -292,6 +292,20 @@ export function KhataEntryModal({
         } catch {}
       }
 
+      if (typeof window !== 'undefined') {
+        try {
+          const api = (window as any).electronAPI || (window as any).electron;
+          if (api?.broadcastChange) {
+            api.broadcastChange('khata', 'ledger_entries');
+            api.broadcastChange('parties', 'parties');
+          }
+          fetch('http://127.0.0.1:7447/api/broadcast', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ resource: 'khata' })
+          }).catch(() => {});
+        } catch {}
+      }
       clearDraft();
       reset();
       onSuccess(`Transaction ${txRef} posted successfully`);

@@ -152,7 +152,7 @@ async function syncPartyToSupabase(p: any, defaultBusinessId?: string | null) {
 
 function getSqlite(): any {
   try {
-    return (db as any).$client || null;
+    return (global as any).__noxisDb || (db as any).$client || null;
   } catch {
     return null;
   }
@@ -430,6 +430,24 @@ export function attachMobileBridge(httpServer?: Server, customPort?: number): We
           }
         }
 
+        // 2.5 Broadcast change to all mobile devices
+        if (req.method === 'POST' && pathname === '/api/broadcast') {
+          let b = '';
+          req.on('data', (chunk: any) => { b += chunk; });
+          req.on('end', () => {
+            try {
+              const p = JSON.parse(b);
+              broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: p.resource || 'khata', table: p.table });
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ ok: true }));
+            } catch {
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ ok: true }));
+            }
+          });
+          return;
+        }
+
         // 3. Direct REST Push Fallback (/api/sync)
         if (req.method === 'POST' && pathname === '/api/sync') {
           let body = '';
@@ -514,6 +532,7 @@ export function attachMobileBridge(httpServer?: Server, customPort?: number): We
         res.end();
       });
 
+      serverInstance?.on('error', (err: any) => console.warn('[Bridge] HTTP Server port error:', err.message));
       serverInstance?.listen(port, '0.0.0.0', () => {
         console.log(`[Bridge] Mobile Bridge HTTP & WebSocket Server listening on port ${port}`);
       });

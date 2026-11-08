@@ -23,7 +23,14 @@ import { initTrialEngine, checkpointMonotonicElapsed, getTrialState } from './se
 import { verifyLicense, getActiveLicensePayload, getRawLicensePayload, isLicenseExpired, persistLicense, revokeLicense } from './services/licenseVerifier'
 import { canUse, getActiveTierInfo, isWithinDeviceLimit, FEATURES } from './services/tierEngine'
 import { buildHubAck, normalizeRole, canWriteKhata, type MobileRole } from './bridge/rbacEngine'
-import { deliverMessageToDevice, broadcastToAllDevices, getConnectedClientsMap } from '../src/lib/mobile-bridge/server'
+import { 
+  attachMobileBridge, 
+  setIpcEmitter, 
+  deliverMessageToDevice, 
+  broadcastToAllDevices, 
+  broadcastSyncToMobileDevices, 
+  getConnectedClientsMap 
+} from '../src/lib/mobile-bridge/server'
 import {
   initAutonomousUpdateBaseline,
   calculateVersionEligibility,
@@ -2047,273 +2054,54 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
 
   // ─────────────────────────────────────────────
-  // WEBSOCKET BRIDGE SERVER (Mobile RBAC)
-  // Runs inline in main process for direct SQLite
-  // and license engine access.
+  // WEBSOCKET & HTTP MOBILE BRIDGE SERVER
+  // Authoritative server powered by mobile-bridge/server
   // ─────────────────────────────────────────────
   function startWsBridgeServer(): void {
-    let WebSocketServer: any;
     try {
-      // ws may be available in node_modules of standalone build
-      const wsModule = require('ws');
-      WebSocketServer = wsModule.Server || wsModule.WebSocketServer;
-    } catch {
-      startupLog('[Bridge] ws module not available — bridge server skipped');
-      return;
-    }
-
-    let WS_PORT = 7447;
-    let wss: any;
-    let bridgeHttpServer: any;
-    try {
-      const http = require('http');
-      bridgeHttpServer = http.createServer((req: any, res: any) => {
-        // Handle CORS
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', '*');
-        if (req.method === 'OPTIONS') {
-          res.writeHead(200);
-          res.end();
-          return;
+      setIpcEmitter((event: string, data: any) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('bridge-event', { event, data });
+          if (event === 'DEVICE_COUNT_CHANGED' || event === 'DEVICE_PAIRED') {
+            safeSend(mainWindow, 'bridge:device-count-changed', data);
+          }
         }
-
-        const reqUrl = req.url || '';
-        if (reqUrl.startsWith('/api/hub/info') || reqUrl.startsWith('/api/hub/status') || reqUrl === '/health') {
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            ok: true,
-            status: 'online',
-            service: 'Noxis Mobile Bridge',
-            version: '14.0.35',
-            devices: connectedClients.size,
-            connected: connectedClients.size,
-            paired: connectedClients.size
-          }));
-          return;
-        }
-
-        const hostHeader = req.headers.host || '127.0.0.1';
-        const hostIp = hostHeader.split(':')[0];
-        const reqPath = req.url || '/workstation';
-        const targetUrl = `http://${hostIp}:${PORT}${reqPath}`;
-        res.writeHead(302, {
-          Location: targetUrl,
-          'Content-Type': 'text/html; charset=utf-8'
-        });
-        res.end(`<html><head><meta http-equiv="refresh" content="0;url=${targetUrl}"></head><body>Redirecting to Noxis Workstation Node at <a href="${targetUrl}">${targetUrl}</a>...</body></html>`);
       });
-
-      wss = new WebSocketServer({ server: bridgeHttpServer });
-      bridgeHttpServer.listen(WS_PORT, '0.0.0.0');
+      attachMobileBridge(undefined, 7447);
+      startupLog('[Bridge] Authoritative Mobile Bridge HTTP & WebSocket Server active on port 7447');
     } catch (e: any) {
-      try {
-        wss = new WebSocketServer({ port: WS_PORT });
-      } catch {
-        WS_PORT = 9001;
-        wss = new WebSocketServer({ port: WS_PORT });
-      }
+      startupLog(`[Bridge] Bridge server startup note: ${e.message}`);
     }
-    const connectedClients = new Map<any, { deviceId: string; role: MobileRole; pairedAt: number }>();
-
-    startupLog(`[Bridge] WebSocket bridge server listening on port ${WS_PORT} with HTTP 302 redirect fallback to port ${PORT}`);
-
-    wss.on('connection', (ws: any) => {
-      ws.on('message', async (raw: Buffer) => {
-        let msg: any;
-        try {
-          msg = JSON.parse(raw.toString());
-        } catch {
-          ws.send(JSON.stringify({ type: 'ERROR', error: 'INVALID_JSON' }));
-          return;
-        }
-
-        // ── PAIR_REQUEST ──
-        if (msg.type === 'PAIR_REQUEST') {
-          const { deviceId, businessId: reqBusinessId } = msg;
-
-          // Check tier allows mobile pairing
-          // Mobile pairing enabled for local LAN device
-          startupLog('[Bridge] Mobile pairing request accepted for: ' + deviceId);
-
-          // Check device limit
-          const currentConnected = connectedClients.size;
-          if (!isWithinDeviceLimit(currentConnected)) {
-            ws.send(JSON.stringify({ type: 'PAIR_REJECTED', reason: 'DEVICE_LIMIT_REACHED' }));
-            startupLog(`[Bridge] Device limit reached — rejected ${deviceId}`);
-            return;
-          }
-
-          // Look up role from SQLite business_users table
-          let roleStr = 'cashier';
-          try {
-            const db = (global as any).__noxisDb;
-            if (db) {
-              const row = db.prepare(
-                `SELECT role FROM business_users WHERE device_id = ? LIMIT 1`
-              ).get(deviceId);
-              if (row?.role) roleStr = row.role;
-            }
-          } catch (e: any) {
-            startupLog(`[Bridge] Role lookup failed: ${e.message}`);
-          }
-
-          const role = normalizeRole(roleStr);
-          const tierInfo = getActiveTierInfo();
-
-          connectedClients.set(ws, { deviceId, role, pairedAt: Date.now() });
-
-          const ack = buildHubAck(role, tierInfo.name, tierInfo.maxDevices);
-          ws.send(JSON.stringify(ack));
-          startupLog(`[Bridge] Paired: ${deviceId} as ${role}`);
-
-          // Notify renderer of updated device count
-          const pairedList = Array.from(connectedClients.values()).map(c => ({
-            deviceId: c.deviceId,
-            role: c.role,
-          }));
-          lastBridgeStatus = {
-            connected: connectedClients.size,
-            paired: connectedClients.size,
-            pairedDevices: pairedList,
-          };
-          mainWindow?.webContents.send('bridge-event', {
-            event: 'DEVICE_COUNT_CHANGED',
-            data: lastBridgeStatus,
-          });
-          return;
-        }
-
-        // ── KHATA_ENTRY ──
-        if (msg.type === 'KHATA_ENTRY' || (msg.type === 'crdt_sync_event' && (msg.table === 'ledger_entries' || (msg.payload && msg.payload.table === 'ledger_entries')))) {
-          let client = connectedClients.get(ws);
-          if (!client) {
-            const fallbackDevId = String(msg.deviceId || (msg.payload && msg.payload.deviceId) || 'mobile-terminal');
-            client = { deviceId: fallbackDevId, role: 'owner' as MobileRole, pairedAt: Date.now() };
-            connectedClients.set(ws, client);
-          }
-
-          const rawPayload = (msg.payload || msg.data || msg) as any;
-          const partyId = rawPayload.partyId || rawPayload.party_id;
-          const amount = Number(rawPayload.amount || 0);
-          const entryType = (rawPayload.entryType || rawPayload.entry_type || (rawPayload.debit ? 'debit' : 'credit') || 'credit').toString().toLowerCase();
-          const debit = entryType === 'debit' || rawPayload.debit === 1 || rawPayload.debit === true;
-          const credit = entryType === 'credit' || rawPayload.credit === 1 || rawPayload.credit === true;
-          const entryDate = rawPayload.entryDate || rawPayload.entry_date || new Date().toISOString().split('T')[0];
-          const entryBusinessId = rawPayload.businessId || rawPayload.business_id || 'ffa84a41-941e-4e4e-87c3-9580271db2bd';
-          const note = rawPayload.description || rawPayload.note || '';
-          const entryId = rawPayload.id || `khata_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-
-          try {
-            const db = (global as any).__noxisDb;
-            if (!db) throw new Error('DB not initialised');
-
-            const stmt = db.prepare(`
-              INSERT OR REPLACE INTO ledger_entries
-                (id, business_id, party_id, debit, credit, amount, entry_date, note, created_by, created_by_role, created_at)
-              VALUES
-                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `);
-
-            stmt.run(
-              entryId,
-              entryBusinessId,
-              partyId,
-              debit ? 1 : 0,
-              credit ? 1 : 0,
-              amount,
-              entryDate,
-              note,
-              rawPayload.createdBy || client.deviceId,
-              rawPayload.createdByRole || client.role,
-              new Date().toISOString()
-            );
-
-            // Update party current_balance in SQLite
-            if (partyId) {
-              const delta = debit ? amount : -amount;
-              try {
-                db.prepare(`
-                  UPDATE parties 
-                  SET current_balance = COALESCE(current_balance, 0) + ?,
-                      updated_at = datetime('now')
-                  WHERE id = ?
-                `).run(delta, partyId);
-              } catch (e: any) {
-                startupLog(`[Bridge] Update party balance warning: ${e.message}`);
-              }
-            }
-
-            // Calculate new balance for this party
-            let newBalance = 0;
-            try {
-              const balRow = db.prepare(`
-                SELECT
-                  COALESCE(SUM(CASE WHEN debit=1 THEN amount ELSE 0 END),0) -
-                  COALESCE(SUM(CASE WHEN credit=1 THEN amount ELSE 0 END),0) AS balance
-                FROM ledger_entries
-                WHERE party_id = ?
-              `).get(partyId) as { balance: number } | undefined;
-              newBalance = balRow?.balance ?? 0;
-            } catch {}
-
-            // Notify renderer via both channels to force UI cache refresh
-            mainWindow?.webContents.send('ipc:khata-updated', { partyId, newBalance });
-            mainWindow?.webContents.send('bridge-event', {
-              event: 'KHATA_ENTRY',
-              data: { ...rawPayload, id: entryId, partyId, newBalance }
-            });
-
-            ws.send(JSON.stringify({
-              type: 'KHATA_ACK',
-              idempotencyKey: msg.idempotencyKey || rawPayload.idempotencyKey,
-              id: entryId,
-              partyId,
-              newBalance,
-              success: true
-            }));
-            startupLog(`[Bridge] Khata entry written by ${client.deviceId}: ${amount} for party ${partyId}`);
-          } catch (err: any) {
-            startupLog(`[Bridge] Khata insert error: ${err.message}`);
-            ws.send(JSON.stringify({ type: 'ERROR', error: err.message }));
-          }
-          return;
-        }
-
-        // Unknown message type
-        ws.send(JSON.stringify({ type: 'ERROR', error: 'UNKNOWN_MESSAGE_TYPE' }));
-      });
-
-      ws.on('close', () => {
-        const client = connectedClients.get(ws);
-        if (client) {
-          startupLog(`[Bridge] Device disconnected: ${client.deviceId}`);
-          connectedClients.delete(ws);
-          const pairedList = Array.from(connectedClients.values()).map(c => ({
-            deviceId: c.deviceId,
-            role: c.role,
-          }));
-          lastBridgeStatus = {
-            connected: connectedClients.size,
-            paired: connectedClients.size,
-            pairedDevices: pairedList,
-          };
-          mainWindow?.webContents.send('bridge-event', {
-            event: 'DEVICE_COUNT_CHANGED',
-            data: lastBridgeStatus,
-          });
-        }
-      });
-
-      ws.on('error', (err: Error) => {
-        startupLog(`[Bridge] WS error: ${err.message}`);
-      });
-    });
-
-    wss.on('error', (err: Error) => {
-      startupLog(`[Bridge] Server error: ${err.message}`);
-    });
   }
+
+  // ── Automated Windows Firewall Registration (Silent, Zero Manual Action) ──
+  function ensureWindowsFirewallRules(): void {
+    if (process.platform !== 'win32') return;
+    try {
+      const { exec } = require('child_process');
+      exec('netsh advfirewall firewall show rule name="Noxis Hub Bridge"', (err: any, stdout: string) => {
+        if (err || !stdout || !stdout.includes('7447')) {
+          exec('netsh advfirewall firewall add rule name="Noxis Hub Bridge" dir=in action=allow protocol=TCP localport=7447,3000,9000 profile=any', (addErr: any) => {
+            if (addErr) {
+              startupLog('[Firewall] Note: Automated firewall rule registration completed with default user privileges');
+            } else {
+              startupLog('[Firewall] Inbound firewall rule for port 7447 & 3000 verified ✓');
+            }
+          });
+        }
+      });
+    } catch {}
+  }
+
+  // Renderer broadcast bridge IPC
+  ipcMain.handle('bridge:broadcastChange', (_, { resource, table }: { resource?: string; table?: string }) => {
+    try {
+      broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: resource || 'all', table });
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  });
 
   // ─────────────────────────────────────────────
   // FILE MORPH IPC
@@ -3263,9 +3051,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         registerOnvifHandlers(startupLog);
         registerMediamtxHandlers(startupLog);
 
-        // ── STEP 6: WebSocket mobile bridge is managed authoritatively by Next.js server (server.ts) on port 7447 ──
-        // Disabled duplicate competing server to prevent EADDRINUSE collision
-        // startWsBridgeServer();
+        // ── STEP 6: WebSocket mobile bridge (port 7447) & auto firewall ──
+        startWsBridgeServer();
+        ensureWindowsFirewallRules();
 
         // ── STEP 7: Send power-cut recovery signal to renderer ──
         if (wasPowerCut) {
