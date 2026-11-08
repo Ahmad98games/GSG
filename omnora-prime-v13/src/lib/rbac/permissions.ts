@@ -117,8 +117,21 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ],
 
   viewer: [
+    // Full view-only visibility: can browse and inspect entire system
+    'view:revenue',
+    'view:costs',
+    'view:party_balances',
+    'view:invoices',
     'view:karigars',
+    'view:karigar_pii',
     'view:inventory',
+    'view:inventory_costs',
+    'view:parties',
+    'view:reports_basic',
+    'view:reports_financial',
+    'view:reports_payroll',
+    'view:cctv',
+    // Strictly NO create, edit, delete, or system settings permissions
   ],
 }
 

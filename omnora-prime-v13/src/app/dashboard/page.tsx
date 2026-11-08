@@ -141,26 +141,12 @@ export default function OwnerDashboard() {
   const [activeTab, setActiveTab] = useState<'overview' | 'people' | 'finance' | 'stock'>('overview')
   const { role, isOwner, can, cannot, roleLabel, currentUser } = usePermissions()
 
-  const allowedTabs = useMemo(() => {
-    const tabs: Array<['overview' | 'people' | 'finance' | 'stock', string]> = [
-      ['overview', 'Overview'],
-    ]
-    if (isOwner || role === 'manager' || role === 'supervisor') {
-      tabs.push(['people', 'People'])
-    }
-    if (isOwner || role === 'manager' || role === 'accountant') {
-      tabs.push(['finance', 'Finance'])
-    }
-    tabs.push(['stock', 'Stock'])
-    return tabs
-  }, [isOwner, role])
-
-  // Automatically enforce view restrictions
-  useEffect(() => {
-    if (!allowedTabs.some(([t]) => t === activeTab)) {
-      setActiveTab('overview')
-    }
-  }, [allowedTabs, activeTab])
+  const allowedTabs: Array<['overview' | 'people' | 'finance' | 'stock', string]> = [
+    ['overview', 'Overview'],
+    ['people', 'People'],
+    ['finance', 'Finance'],
+    ['stock', 'Stock'],
+  ]
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -334,7 +320,16 @@ export default function OwnerDashboard() {
     enableAutoRefresh()
     loadDashboard()
     const interval = setInterval(loadDashboard, 300000)
-    return () => clearInterval(interval)
+
+    const handleUserSwitched = () => {
+      loadDashboard()
+    }
+    window.addEventListener('noxis-user-switched', handleUserSwitched)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('noxis-user-switched', handleUserSwitched)
+    }
   }, [loadDashboard])
 
   const formatCurrency = (n: number | null | undefined) => {

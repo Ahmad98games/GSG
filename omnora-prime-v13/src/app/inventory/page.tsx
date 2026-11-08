@@ -37,6 +37,7 @@ import { useToast } from "@/hooks/useToast";
 import { humanizeError } from "@/lib/utils/errors";
 import { emitSkuPriceSignal } from "@/lib/network/signalCollector";
 import { PersonaEngine } from "@/lib/persona/PersonaEngine";
+import { usePermissions } from "@/hooks/usePermissions";
 
 import { motion, AnimatePresence } from "framer-motion";
 import EmptyState from "@/components/ui/EmptyState"; // Keep if needed for subcomponents, but we'll import from StateViews
@@ -179,6 +180,7 @@ export default function InventoryPage() {
 
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const { isViewer, can } = usePermissions();
   const isAutoPartsMode = industry.key === 'auto';
 
   // State
@@ -330,6 +332,14 @@ export default function InventoryPage() {
     placeholderData: (prev) => prev,
     staleTime: 60 * 1000,
   });
+
+  useEffect(() => {
+    const handleUserSwitched = () => {
+      refetchSkus();
+    };
+    window.addEventListener('noxis-user-switched', handleUserSwitched);
+    return () => window.removeEventListener('noxis-user-switched', handleUserSwitched);
+  }, [refetchSkus]);
 
   // Floor Voice Operations — use stable refs to avoid re-render loops
   const speakRef = React.useRef<(text: string) => void>(() => {});
@@ -667,78 +677,88 @@ export default function InventoryPage() {
                   />
                </div>
                
-              <div className="flex items-center gap-3">
-                 <Link 
-                   href="/inventory/import"
-                   className="flex items-center space-x-2 px-4 py-2 border border-electric-blue/30 text-electric-blue text-[10px] uppercase tracking-widest font-bold hover:bg-electric-blue/5 transition-all"
-                 >
-                     <Upload size={14} />
-                     <span className="hidden sm:inline">Import</span>
-                 </Link>
-               </div>
+              {!isViewer ? (
+                <>
+                  <div className="flex items-center gap-3">
+                    <Link 
+                      href="/inventory/import"
+                      className="flex items-center space-x-2 px-4 py-2 border border-electric-blue/30 text-electric-blue text-[10px] uppercase tracking-widest font-bold hover:bg-electric-blue/5 transition-all"
+                    >
+                      <Upload size={14} />
+                      <span className="hidden sm:inline">Import</span>
+                    </Link>
+                  </div>
 
-               <div className="flex items-center space-x-3 w-full md:w-auto">
-                  <button 
-                    onClick={() => setIsAddModalOpen(true)}
-                    className="flex items-center space-x-2 px-4 py-2 bg-electric-blue text-onyx text-[10px] uppercase tracking-widest font-bold hover:brightness-110 transition-all shadow-lg"
-                  >
+                  <div className="flex items-center space-x-3 w-full md:w-auto">
+                    <button 
+                      onClick={() => setIsAddModalOpen(true)}
+                      className="flex items-center space-x-2 px-4 py-2 bg-electric-blue text-onyx text-[10px] uppercase tracking-widest font-bold hover:brightness-110 transition-all shadow-lg"
+                    >
                       <Plus size={14} />
                       <span>Add SKU</span>
-                  </button>
+                    </button>
 
-                  <button 
-                    onClick={() => {
-                      if (selectedSku) {
-                        setAdjustingSKU(selectedSku);
-                        setSelectedSku(null);
-                      } else if (skus.length > 0) {
-                        setAdjustingSKU(skus[0]);
-                      } else {
-                        toast.info('No products available to adjust');
-                      }
-                    }}
-                    className="flex items-center space-x-2 px-4 py-2 border border-white/10 text-white text-[10px] uppercase tracking-widest font-bold hover:bg-white/5 transition-all"
-                  >
+                    <button 
+                      onClick={() => {
+                        if (selectedSku) {
+                          setAdjustingSKU(selectedSku);
+                          setSelectedSku(null);
+                        } else if (skus.length > 0) {
+                          setAdjustingSKU(skus[0]);
+                        } else {
+                          toast.info('No products available to adjust');
+                        }
+                      }}
+                      className="flex items-center space-x-2 px-4 py-2 border border-white/10 text-white text-[10px] uppercase tracking-widest font-bold hover:bg-white/5 transition-all"
+                    >
                       <Zap size={14} />
                       <span>Quick Adjust</span>
-                  </button>
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] uppercase font-mono font-bold rounded">
+                  Read-Only View
+                </div>
+              )}
 
-                  <select 
-                    value={categoryFilter}
-                    onChange={(e) => setCategoryFilter(e.target.value)}
-                    className="bg-onyx border border-white/5 px-4 py-2 text-[10px] uppercase font-bold text-gray-400 outline-none focus:border-electric-blue/50"
-                  >
-                     {categories.map(cat => <option key={cat} value={cat}>{cat === "All" ? "All Categories" : cat}</option>)}
-                  </select>
+              <div className="flex items-center space-x-3 w-full md:w-auto">
+                <select 
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="bg-onyx border border-white/5 px-4 py-2 text-[10px] uppercase font-bold text-gray-400 outline-none focus:border-electric-blue/50"
+                >
+                  {categories.map(cat => <option key={cat} value={cat}>{cat === "All" ? "All Categories" : cat}</option>)}
+                </select>
 
-                  <select 
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="bg-onyx border border-white/5 px-4 py-2 text-[10px] uppercase font-bold text-gray-400 outline-none focus:border-electric-blue/50"
-                  >
-                     <option value="All">All Status</option>
-                     <option value="In Stock">In Stock</option>
-                     <option value="Low Stock">Low Stock</option>
-                     <option value="Out of Stock">Out of Stock</option>
-                  </select>
+                <select 
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="bg-onyx border border-white/5 px-4 py-2 text-[10px] uppercase font-bold text-gray-400 outline-none focus:border-electric-blue/50"
+                >
+                  <option value="All">All Status</option>
+                  <option value="In Stock">In Stock</option>
+                  <option value="Low Stock">Low Stock</option>
+                  <option value="Out of Stock">Out of Stock</option>
+                </select>
 
-                  <button 
-                    onClick={handleExportCSV}
-                    className="p-2 border border-white/5 text-gray-500 hover:text-white hover:bg-white/5 transition-all"
-                    title="Export CSV"
-                  >
-                     <Download size={16} />
-                  </button>
+                <button 
+                  onClick={handleExportCSV}
+                  className="p-2 border border-white/5 text-gray-500 hover:text-white hover:bg-white/5 transition-all"
+                  title="Export CSV"
+                >
+                  <Download size={16} />
+                </button>
 
-                  <button onClick={exportToExcel}
-                    className="flex items-center gap-1.5
-                      px-3 py-1.5 text-xs font-medium
-                      border border-white/10 text-gray-400
-                      hover:border-white/20 hover:text-white
-                      transition-colors">
-                    ↓ Export Excel
-                  </button>
-               </div>
+                <button onClick={exportToExcel}
+                  className="flex items-center gap-1.5
+                    px-3 py-1.5 text-xs font-medium
+                    border border-white/10 text-gray-400
+                    hover:border-white/20 hover:text-white
+                    transition-colors">
+                  ↓ Export Excel
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1255,6 +1275,7 @@ const TableActions = React.memo(function TableActions({
   const supabase = createClient();
   const queryClient = useQueryClient();
   const { profile } = useBusinessProfile();
+  const { isViewer } = usePermissions();
   const toast = useToast();
 
   useEffect(() => {
@@ -1267,6 +1288,10 @@ const TableActions = React.memo(function TableActions({
 
   const handleDelete = async (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    if (isViewer) {
+      toast.error('Action Blocked', 'View-Only users cannot delete SKUs');
+      return;
+    }
     if (!confirm(`Permanently delete ${sku.name}?`)) return;
     try {
       const bizId = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null);
@@ -1358,30 +1383,38 @@ const TableActions = React.memo(function TableActions({
                   <span>View Details</span>
                 </button>
               )}
-              <button
-                onClick={(e) => { 
-                  e.stopPropagation(); 
-                  e.preventDefault(); 
-                  setOpen(false); 
-                  onEdit(); 
-                }}
-                className="w-full px-4 py-2.5 text-left text-[11px] uppercase font-bold text-gray-300 hover:text-white hover:bg-white/10 flex items-center space-x-3 cursor-pointer transition-colors"
-              >
-                <Edit size={14} className="text-[#60A5FA]" />
-                <span>Modify / Edit SKU</span>
-              </button>
-              <button 
-                onClick={(e) => { 
-                  e.stopPropagation(); 
-                  e.preventDefault(); 
-                  setOpen(false); 
-                  onAdjust(); 
-                }} 
-                className="w-full px-4 py-2.5 text-left text-[11px] uppercase font-bold text-gray-300 hover:text-white hover:bg-white/10 flex items-center space-x-3 cursor-pointer transition-colors"
-              >
-                <History size={14} className="text-emerald-400" />
-                <span>Adjust Stock</span>
-              </button>
+              {!isViewer ? (
+                <>
+                  <button
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      e.preventDefault(); 
+                      setOpen(false); 
+                      onEdit(); 
+                    }}
+                    className="w-full px-4 py-2.5 text-left text-[11px] uppercase font-bold text-gray-300 hover:text-white hover:bg-white/10 flex items-center space-x-3 cursor-pointer transition-colors"
+                  >
+                    <Edit size={14} className="text-[#60A5FA]" />
+                    <span>Modify / Edit SKU</span>
+                  </button>
+                  <button 
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      e.preventDefault(); 
+                      setOpen(false); 
+                      onAdjust(); 
+                    }} 
+                    className="w-full px-4 py-2.5 text-left text-[11px] uppercase font-bold text-gray-300 hover:text-white hover:bg-white/10 flex items-center space-x-3 cursor-pointer transition-colors"
+                  >
+                    <History size={14} className="text-emerald-400" />
+                    <span>Adjust Stock</span>
+                  </button>
+                </>
+              ) : (
+                <div className="px-4 py-2 text-[10px] uppercase font-bold text-amber-500/80 bg-amber-500/5">
+                  Editing Locked (View-Only)
+                </div>
+              )}
               {onPrintLabel && (
                 <button 
                   onClick={(e) => { 
@@ -1416,17 +1449,19 @@ const TableActions = React.memo(function TableActions({
                   <span>Low Stock Alert</span>
                 </button>
               )}
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  handleDelete(e);
-                }} 
-                className="w-full px-4 py-2.5 text-left text-[11px] uppercase font-bold text-red-400 hover:bg-red-500/10 flex items-center space-x-3 cursor-pointer transition-colors"
-              >
-                <Trash2 size={14} />
-                <span>Delete SKU</span>
-              </button>
+              {!isViewer && (
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    handleDelete(e);
+                  }} 
+                  className="w-full px-4 py-2.5 text-left text-[11px] uppercase font-bold text-red-400 hover:bg-red-500/10 flex items-center space-x-3 cursor-pointer transition-colors"
+                >
+                  <Trash2 size={14} />
+                  <span>Delete SKU</span>
+                </button>
+              )}
             </div>
          </div>
        )}

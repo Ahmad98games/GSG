@@ -31,6 +31,7 @@ import { SummaryCard } from "@/components/ui/SummaryCard";
 import { UpgradeGate } from "@/components/license/UpgradeGate";
 import * as XLSX from 'xlsx';
 import { useToast } from "@/hooks/useToast";
+import { usePermissions } from "@/hooks/usePermissions";
 import { humanizeError } from "@/lib/utils/errors";
 import { emitWageSignal } from "@/lib/network/signalCollector";
 import { 
@@ -186,6 +187,7 @@ const RegisterKarigarModal = forwardRef<
   const { t } = useIndustryConfig();
   const supabase = createClient();
   const toast = useToast();
+  const { isViewer } = usePermissions();
   const queryClient = useQueryClient();
 
   const handleAddGrade = async () => {
@@ -845,6 +847,7 @@ function LogProductionModal({ karigar, batches = [], onClose, onSaved, onLog }: 
 // --- Main Component ---
 
 export default function KarigarsPage() {
+  const { isViewer } = usePermissions();
   const { profile } = useBusinessProfile();
   const { t, features, fmt } = useIndustryConfig();
   const workerTerm = t.worker;
@@ -1416,13 +1419,19 @@ export default function KarigarsPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-             <button 
-               onClick={() => registerModalRef.current?.open()}
-               className="flex items-center space-x-2 px-4 py-2 bg-electric-blue text-onyx text-sm font-semibold rounded-sm hover:brightness-110 transition-all shadow-lg"
-             >
-                <UserPlus size={14} />
-                <span>Register {workerTerm}</span>
-             </button>
+             {!isViewer ? (
+               <button 
+                 onClick={() => registerModalRef.current?.open()}
+                 className="flex items-center space-x-2 px-4 py-2 bg-electric-blue text-onyx text-sm font-semibold rounded-sm hover:brightness-110 transition-all shadow-lg"
+               >
+                  <UserPlus size={14} />
+                  <span>Register {workerTerm}</span>
+               </button>
+             ) : (
+               <div className="px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] uppercase font-mono font-bold rounded">
+                 Read-Only View
+               </div>
+             )}
           </div>
         </div>
            {/* Summary Bar */}

@@ -32,6 +32,7 @@ import { useBusinessProfile } from '@/hooks/useBusinessProfile'
 import { useLicense } from '@/hooks/useLicense'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { usePermissions } from '@/hooks/usePermissions'
 import { useConversionTrigger } from '@/hooks/useConversionTrigger'
 import { useFormDraft }
   from '@/hooks/useFormDraft'
@@ -436,9 +437,14 @@ export default function POSPage() {
 
   const queryClient = useQueryClient()
   const { currentUser } = useCurrentUser()
+  const { isViewer } = usePermissions()
 
   const completeSale = useCallback(
     async () => {
+    if (isViewer) {
+      toast.warning('Action Blocked', 'View-Only staff cannot complete sales or modify transactions.')
+      return
+    }
     if (cart.items.length === 0) return
 
     const { valid, errors } =
@@ -1423,7 +1429,8 @@ export default function POSPage() {
               onClick={completeSale}
               disabled={
                 completing ||
-                cart.items.length === 0
+                cart.items.length === 0 ||
+                isViewer
               }
               className="w-full py-4 flex
                 items-center justify-center

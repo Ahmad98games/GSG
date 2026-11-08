@@ -27,6 +27,7 @@ import { ErrorState, EmptyState as NewEmptyState } from "@/components/ui/StateVi
 import { useDebounce } from "@/hooks/useDebounce";
 import * as XLSX from 'xlsx';
 import { useToast } from "@/hooks/useToast";
+import { usePermissions } from "@/hooks/usePermissions";
 
 export default function InvoiceListPage() {
   const router = useRouter();
@@ -36,6 +37,7 @@ export default function InvoiceListPage() {
   const supabase = createClient();
   const queryClient = useQueryClient();
   const toast = useToast();
+  const { isViewer } = usePermissions();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -268,13 +270,19 @@ export default function InvoiceListPage() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
              </div>
-             <button 
-               onClick={() => router.push('/invoices/new')}
-               className="flex items-center space-x-2 px-4 py-2 bg-electric-blue text-onyx text-sm font-semibold rounded-sm hover:brightness-110 transition-all shadow-lg"
-             >
-                <Plus size={14} />
-                <span>{`New ${t.invoice}`}</span>
-             </button>
+             {!isViewer ? (
+               <button 
+                 onClick={() => router.push('/invoices/new')}
+                 className="flex items-center space-x-2 px-4 py-2 bg-electric-blue text-onyx text-sm font-semibold rounded-sm hover:brightness-110 transition-all shadow-lg"
+               >
+                  <Plus size={14} />
+                  <span>{`New ${t.invoice}`}</span>
+               </button>
+             ) : (
+               <div className="px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] uppercase font-mono font-bold rounded">
+                 Read-Only View
+               </div>
+             )}
           </div>
         </div>
 

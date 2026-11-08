@@ -32,6 +32,7 @@ import CreditRiskBadge from "@/components/invoices/CreditRiskBadge";
 import { useDebounce } from "@/hooks/useDebounce";
 import { FieldError } from "@/components/ui/StateViews";
 import { useToast } from "@/hooks/useToast";
+import { usePermissions } from "@/hooks/usePermissions";
 
 import { CURRENCIES, formatCurrency, CurrencyCode } from '@/lib/currency/currencyEngine';
 import { GlobalErrorBoundary } from '@/components/ui/GlobalErrorBoundary';
@@ -63,6 +64,29 @@ export type InvoiceFormValues = z.infer<typeof invoiceSchema>;
 
 export default function NewInvoicePage() {
   const router = useRouter();
+  const { isViewer } = usePermissions();
+
+  if (isViewer) {
+    return (
+      <div className="min-h-screen bg-[#0F1113] flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-[#1A1D21] border border-amber-500/30 p-8 rounded text-center space-y-4 shadow-2xl">
+          <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto">
+            <ShieldCheck size={24} />
+          </div>
+          <h2 className="text-lg font-bold text-white tracking-wide">View-Only Operator Access</h2>
+          <p className="text-xs text-gray-400 leading-relaxed">
+            Your current staff account has Read-Only permissions. Creating new invoices or modifying financial ledgers is locked.
+          </p>
+          <button
+            onClick={() => router.push('/invoices')}
+            className="w-full py-2.5 bg-electric-blue text-onyx font-bold text-xs uppercase tracking-wider rounded hover:brightness-110 transition-all"
+          >
+            Back to Invoices Registry
+          </button>
+        </div>
+      </div>
+    );
+  }
   const queryClient = useQueryClient();
   const { t, region, fmt } = useIndustryConfig();
   const { profile } = useBusinessProfile();

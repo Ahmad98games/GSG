@@ -433,23 +433,12 @@ export default React.memo(function IndustrialSidebar() {
       })
     }
 
-        const filterByRole = (items: SidebarNavItem[]): SidebarNavItem[] => {
+    const filterByRole = (items: SidebarNavItem[]): SidebarNavItem[] => {
       if (isOwner) return items
       return items.filter((item) => {
-        if (effectiveRole === 'viewer') {
-          const allowed = ['dashboard', 'inventory', 'stock', 'reports', 'analytics', 'network', 'intelligence']
-          return allowed.includes(item.id)
-        }
-        if (effectiveRole === 'supervisor') {
-          const allowed = ['dashboard', 'production', 'karigars', 'workers', 'payroll', 'dispatch', 'stock', 'inventory', 'network', 'weight-entry']
-          return allowed.includes(item.id)
-        }
-        if (effectiveRole === 'accountant') {
-          const forbidden = ['configuration', 'production', 'yield', 'cctv', 'hardware']
-          return !forbidden.includes(item.id)
-        }
-        if (effectiveRole === 'manager') {
-          return item.id !== 'configuration'
+        // System Settings & user administration is strictly reserved for Account Owner
+        if (item.id === 'configuration') {
+          return isOwner
         }
         return true
       })

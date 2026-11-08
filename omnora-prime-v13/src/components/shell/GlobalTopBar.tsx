@@ -43,6 +43,12 @@ export default React.memo(function GlobalTopBar() {
   const { isOwner, currentUser, roleLabel } = usePermissions()
   const [isSwitchUserOpen, setIsSwitchUserOpen] = useState(false)
 
+  useEffect(() => {
+    const handleOpen = () => setIsSwitchUserOpen(true)
+    window.addEventListener('open-user-switch', handleOpen)
+    return () => window.removeEventListener('open-user-switch', handleOpen)
+  }, [])
+
   const [updateReady, setUpdateReady] = useState(false)
   const [updateVersion, setUpdateVersion] = useState('')
 

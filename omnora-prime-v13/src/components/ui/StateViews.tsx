@@ -1,4 +1,5 @@
 import React from 'react'
+import { usePermissions } from '@/hooks/usePermissions'
 
 // Error state — network or server failure
 export function ErrorState({
@@ -47,6 +48,8 @@ export function EmptyState({
   description?: string
   action?: { label: string, href?: string, onClick?: () => void }
 }) {
+  const { isViewer } = usePermissions()
+
   return (
     <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
       {icon && (
@@ -63,16 +66,22 @@ export function EmptyState({
         </p>
       )}
       {action && (
-        action.href ? (
-          <a href={action.href}
-            className="text-xs font-medium text-[#60A5FA] hover:text-blue-300 transition-colors">
-            {action.label} →
-          </a>
+        !isViewer ? (
+          action.href ? (
+            <a href={action.href}
+              className="text-xs font-medium text-[#60A5FA] hover:text-blue-300 transition-colors">
+              {action.label} →
+            </a>
+          ) : (
+            <button onClick={action.onClick}
+              className="text-xs font-medium text-[#60A5FA] hover:text-blue-300 transition-colors cursor-pointer">
+              {action.label} →
+            </button>
+          )
         ) : (
-          <button onClick={action.onClick}
-            className="text-xs font-medium text-[#60A5FA] hover:text-blue-300 transition-colors cursor-pointer">
-            {action.label} →
-          </button>
+          <span className="text-xs font-semibold text-amber-400 bg-amber-500/10 px-3 py-1 rounded border border-amber-500/20">
+            Read-Only View
+          </span>
         )
       )}
     </div>

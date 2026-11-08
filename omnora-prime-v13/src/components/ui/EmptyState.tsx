@@ -2,8 +2,10 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePersona } from '@/hooks/usePersona';
+import { usePermissions } from '@/hooks/usePermissions';
 import { getEmptyStateMessage, PageContext } from '@/lib/emptyStateMessages';
 import { format } from 'date-fns';
+import { ShieldAlert } from 'lucide-react';
 
 export function EmptyState({
   icon: Icon,
@@ -23,6 +25,7 @@ export function EmptyState({
   };
 }) {
   const { persona, businessId } = usePersona();
+  const { isViewer } = usePermissions();
   
   const context = React.useMemo(() => {
     const now = new Date();
@@ -61,20 +64,26 @@ export function EmptyState({
 
       {action && (
         <div className="mt-6">
-          {action.href ? (
-            <Link 
-              href={action.href}
-              className="px-4 py-2 border border-electric-blue text-electric-blue text-sm rounded-sm hover:bg-electric-blue/5 transition-all"
-            >
-              {finalActionLabel}
-            </Link>
+          {!isViewer ? (
+            action.href ? (
+              <Link 
+                href={action.href}
+                className="px-4 py-2 border border-electric-blue text-electric-blue text-sm rounded-sm hover:bg-electric-blue/5 transition-all"
+              >
+                {finalActionLabel}
+              </Link>
+            ) : (
+              <button 
+                onClick={action.onClick}
+                className="px-4 py-2 border border-electric-blue text-electric-blue text-sm rounded-sm hover:bg-electric-blue/5 transition-all"
+              >
+                {finalActionLabel}
+              </button>
+            )
           ) : (
-            <button 
-              onClick={action.onClick}
-              className="px-4 py-2 border border-electric-blue text-electric-blue text-sm rounded-sm hover:bg-electric-blue/5 transition-all"
-            >
-              {finalActionLabel}
-            </button>
+            <span className="px-3.5 py-1.5 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 font-semibold rounded inline-flex items-center gap-1.5">
+              <ShieldAlert size={14} /> Read-Only View (Creating Locked)
+            </span>
           )}
         </div>
       )}

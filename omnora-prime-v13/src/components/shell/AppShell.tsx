@@ -49,6 +49,8 @@ import { NoxisSessionRecoveryModal } from '@/components/shell/NoxisSessionRecove
 import { useWorkstationHeartbeat } from '@/hooks/useWorkstationHeartbeat';
 import { useAccessControl } from '@/hooks/useAccessControl';
 import BannedLockdownModal from '@/components/license/BannedLockdownModal';
+import { usePermissions } from "@/hooks/usePermissions";
+import { useToast } from "@/hooks/useToast";
 
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -58,6 +60,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = React.useState(false);
   const [showWelcomeGuide, setShowWelcomeGuide] = React.useState(false);
   const { isBanned, banReason, hwid: banHwid, userName: banUser, brandName: banBrand, recheck: recheckBan } = useAccessControl();
+  const { isViewer, roleLabel, currentUser } = usePermissions();
+  const toast = useToast();
 
   React.useEffect(() => {
     const handleOpenGuide = () => setShowWelcomeGuide(true);
@@ -311,6 +315,95 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   
+  // Impenetrable Read-Only Guard: Intercept any and all DOM actions that create, edit, or delete data
+  React.useEffect(() => {
+    if (!isViewer || typeof window === 'undefined') return;
+
+    const handleIntercept = (e: MouseEvent | SubmitEvent) => {
+      const target = (e.target as HTMLElement)?.closest?.('button, a, input[type="submit"], [role="button"]') as HTMLElement | null;
+      if (!target) return;
+
+      const text = (target.textContent || '').trim().toLowerCase();
+      const title = (target.getAttribute('title') || '').toLowerCase();
+      const ariaLabel = (target.getAttribute('aria-label') || '').toLowerCase();
+      const className = (target.className || '').toString().toLowerCase();
+      const combined = `${text} ${title} ${ariaLabel} ${className}`;
+
+      // Whitelist of permitted view, search, export and navigation actions:
+      const isAllowed = 
+        combined.includes('close') || 
+        combined.includes('cancel') || 
+        combined.includes('dismiss') || 
+        combined.includes('export') || 
+        combined.includes('download') || 
+        combined.includes('print') || 
+        combined.includes('excel') || 
+        combined.includes('csv') || 
+        combined.includes('search') || 
+        combined.includes('filter') || 
+        combined.includes('refresh') || 
+        combined.includes('switch') || 
+        combined.includes('operator') || 
+        combined.includes('details') || 
+        combined.includes('inspect') || 
+        combined.includes('view') || 
+        combined.includes('overview') || 
+        combined.includes('finance') || 
+        combined.includes('people') || 
+        combined.includes('stock') || 
+        combined.includes('next') || 
+        combined.includes('prev') || 
+        combined.includes('back') ||
+        combined.includes('copy') ||
+        combined.includes('help') ||
+        combined.includes('theme') ||
+        combined.includes('sidebar') ||
+        target.tagName === 'INPUT' ||
+        target.tagName === 'SELECT' ||
+        (target.tagName === 'A' && !combined.includes('new') && !combined.includes('add') && !combined.includes('delete') && !combined.includes('edit'));
+
+      if (isAllowed) return;
+
+      // Disallowed modification keywords:
+      const isDisallowed =
+        e.type === 'submit' ||
+        target.getAttribute('type') === 'submit' ||
+        combined.includes('add') ||
+        combined.includes('new') ||
+        combined.includes('create') ||
+        combined.includes('save') ||
+        combined.includes('update') ||
+        combined.includes('delete') ||
+        combined.includes('remove') ||
+        combined.includes('adjust') ||
+        combined.includes('import') ||
+        combined.includes('pay') ||
+        combined.includes('disburse') ||
+        combined.includes('post') ||
+        combined.includes('checkout') ||
+        combined.includes('charge') ||
+        combined.includes('complete sale') ||
+        combined.includes('reset') ||
+        combined.includes('trash');
+
+      if (isDisallowed) {
+        e.preventDefault();
+        e.stopPropagation();
+        toast.warning(
+          'Action Blocked (View-Only Mode)',
+          'Your account is in View-Only mode. Creating, editing, or deleting records is locked.'
+        );
+      }
+    };
+
+    window.addEventListener('click', handleIntercept, true);
+    window.addEventListener('submit', handleIntercept, true);
+    return () => {
+      window.removeEventListener('click', handleIntercept, true);
+      window.removeEventListener('submit', handleIntercept, true);
+    };
+  }, [isViewer, toast]);
+
   if (!mounted) {
     return (
       <>
@@ -510,6 +603,29 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               className="text-zinc-400 hover:text-white px-2 py-1 rounded text-[11px] bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
             >
               Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isViewer && (
+        <div className="bg-[#1c1308] border-b border-amber-500/40 px-4 py-2 flex items-center justify-between text-xs font-mono z-[75] shadow-lg sticky top-0 print:hidden animate-fadeIn">
+          <div className="flex items-center gap-2.5 text-amber-300">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            <span className="font-bold uppercase tracking-wider text-amber-200">View-Only Mode:</span>
+            <span className="text-zinc-200 font-semibold">{currentUser?.name || 'Staff Member'} ({roleLabel})</span>
+            <span className="text-amber-300/90 bg-amber-950/70 px-2 py-0.5 rounded border border-amber-500/30 text-[10px] font-sans font-medium">
+              Browse & Audit Mode Active — Creating, editing, and deleting records is strictly locked
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('open-user-switch'));
+              }}
+              className="px-2.5 py-1 rounded text-[11px] bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 font-semibold transition-colors cursor-pointer"
+            >
+              Switch Operator
             </button>
           </div>
         </div>

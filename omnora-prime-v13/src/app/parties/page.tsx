@@ -26,6 +26,7 @@ import { ErrorState, EmptyState } from "@/components/ui/StateViews";
 import { useDebounce } from "@/hooks/useDebounce";
 import * as XLSX from 'xlsx';
 import { useToast } from "@/hooks/useToast";
+import { usePermissions } from "@/hooks/usePermissions";
 import { SharePortalButton } from "@/components/parties/SharePortalButton";
 import { humanizeError } from "@/lib/utils/errors";
 import { AddPartyModal } from '@/components/parties/AddPartyModal';
@@ -59,6 +60,7 @@ export default function PartiesPage() {
   const toast = useToast();
 
   const router = useRouter();
+  const { isViewer } = usePermissions();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingParty, setEditingParty] = useState<Party | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -372,13 +374,19 @@ export default function PartiesPage() {
                   </button>
                 ))}
              </div>
-             <button 
-               onClick={() => setIsModalOpen(true)}
-               className="flex items-center space-x-2 px-4 py-2 bg-electric-blue text-onyx text-sm font-semibold rounded-sm hover:brightness-110 shadow-lg"
-             >
-                <UserPlus size={14} />
-                <span>Add New Party</span>
-             </button>
+             {!isViewer ? (
+              <button 
+                onClick={() => setIsModalOpen(true)}
+                className="flex items-center space-x-2 px-4 py-2 bg-electric-blue text-onyx text-sm font-semibold rounded-sm hover:brightness-110 shadow-lg"
+              >
+                 <UserPlus size={14} />
+                 <span>Add New Party</span>
+              </button>
+             ) : (
+               <div className="px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] uppercase font-mono font-bold rounded">
+                 Read-Only View
+               </div>
+             )}
              <Link
                href="/parties/reminders"
                className="flex items-center gap-2 px-3 py-2 border border-[#25D366]/25 text-[#25D366] text-xs font-semibold hover:bg-[#25D366]/10 transition-colors rounded-sm"
