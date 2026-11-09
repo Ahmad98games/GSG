@@ -245,6 +245,19 @@ export default function KhataPage() {
         } catch {}
       }
 
+      // Check local SQLite /api/khata for instant 0ms retrieval of entries synced from mobile bridge
+      let sqliteEntries: any[] = [];
+      try {
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 1200);
+        const res = await fetch(`/api/khata?business_id=${businessId}&limit=200`, { signal: ctrl.signal });
+        clearTimeout(tid);
+        if (res.ok) {
+          const list = await res.json();
+          if (Array.isArray(list)) sqliteEntries = list;
+        }
+      } catch {}
+
       let remoteEntries: any[] = [];
       try {
         const { data, error } = await supabase
@@ -271,7 +284,7 @@ export default function KhataPage() {
       const partyMap = new Map<string, any>(parties.map(p => [p.id, p]));
 
       const map = new Map<string, any>();
-      [...localEntries, ...remoteEntries].forEach((entry: any) => {
+      [...localEntries, ...sqliteEntries, ...remoteEntries].forEach((entry: any) => {
         const key = entry.id || `${entry.tx_ref}_${entry.entry_type}_${entry.account_id}`;
         if (!map.has(key)) {
           const acc = accMap.get(entry.account_id);

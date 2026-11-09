@@ -298,61 +298,73 @@ export default React.memo(function GlobalTopBar() {
   const [bridgeDeviceCount, setBridgeDeviceCount] = useState<number | null>(null);
 
   const refreshDeviceCount = async () => {
-    // 1. Query /api/hub/devices REST API (authoritative live count from SQLite & Bridge)
+    // 1. Check Electron IPC bridge status first (direct memory from main process)
+    if ((window as any).electronAPI && typeof (window as any).electronAPI.getBridgeStatus === 'function') {
+      try {
+        const status = await (window as any).electronAPI.getBridgeStatus();
+        const pCount = typeof status?.paired === 'number' ? status.paired : (typeof status?.connected === 'number' ? status.connected : null);
+        if (pCount !== null && pCount > 0) {
+          setBridgeDeviceCount(pCount);
+          return;
+        }
+      } catch (err) {}
+    }
+
+    // 2. Query port 7447 /api/hub/info directly (Bridge HTTP server authoritative count)
+    try {
+      const res7447 = await fetch('http://127.0.0.1:7447/api/hub/info');
+      if (res7447.ok) {
+        const data7447 = await res7447.json();
+        const paired = typeof data7447?.pairedDevices === 'number' ? data7447.pairedDevices : (typeof data7447?.connectedDevices === 'number' ? data7447.connectedDevices : null);
+        if (paired !== null) {
+          setBridgeDeviceCount(paired);
+          return;
+        }
+      }
+    } catch {}
+
+    // 3. Fallback: Query /api/hub/devices REST API (authoritative live count from SQLite & Bridge)
     try {
       const res = await fetch('/api/hub/devices');
       if (res.ok) {
         const data = await res.json();
         const devices = Array.isArray(data) ? data : (data?.devices || []);
         const activeNodes = devices.filter((d: any) => d.isActive === 1 || d.isLive);
-        if (activeNodes.length > 0) {
-          setBridgeDeviceCount(activeNodes.length);
-          return;
-        }
+        setBridgeDeviceCount(activeNodes.length);
+        return;
       }
     } catch {}
 
-    // 2. Query port 7447 directly
-    try {
-      const res7447 = await fetch('http://127.0.0.1:7447/api/hub/devices');
-      if (res7447.ok) {
-        const data7447 = await res7447.json();
-        if (typeof data7447?.paired === 'number') {
-          setBridgeDeviceCount(data7447.paired);
-          return;
-        }
-      }
-    } catch {}
-
-    // 3. Check Electron IPC bridge status
-    if ((window as any).electronAPI && typeof (window as any).electronAPI.getBridgeStatus === 'function') {
-      try {
-        const status = await (window as any).electronAPI.getBridgeStatus();
-        if (status && typeof status.paired === 'number') {
-          setBridgeDeviceCount(status.paired);
-          return;
-        }
-      } catch (err) {
-        // Fallback
-      }
-    }
     setBridgeDeviceCount(0);
   };
 
   useEffect(() => {
     refreshDeviceCount();
 
-    // 4s poll for snappy live device count sync
-    const pollInterval = setInterval(refreshDeviceCount, 4000);
+    // 3s poll for snappy live device count sync
+    const pollInterval = setInterval(refreshDeviceCount, 3000);
 
-    const handleCustomRefresh = () => refreshDeviceCount();
+    const handleCustomRefresh = (e?: any) => {
+      const count = e?.detail?.connectedDevices ?? e?.detail?.paired ?? null;
+      if (typeof count === 'number') {
+        setBridgeDeviceCount(count);
+      }
+      refreshDeviceCount();
+    };
+
     window.addEventListener('noxis:device_count_changed', handleCustomRefresh);
+    window.addEventListener('noxis:mobile-event', (e: any) => {
+      const ev = e?.detail?.type;
+      if (ev === 'DEVICE_COUNT_CHANGED' || ev === 'DEVICE_PAIRED' || ev === 'DEVICE_UNPAIRED' || ev === 'DEVICE_CONNECTED') {
+        handleCustomRefresh(e);
+      }
+    });
     window.addEventListener('focus', handleCustomRefresh);
 
     let bc: BroadcastChannel | null = null;
     try {
       bc = new BroadcastChannel('noxis_bridge_channel');
-      bc.onmessage = (ev) => {
+      bc.onmessage = () => {
         refreshDeviceCount();
       };
     } catch {}
@@ -364,15 +376,25 @@ export default React.memo(function GlobalTopBar() {
       if (eventType === 'DEVICE_PAIRED') {
         const devLabel = payload?.data?.deviceLabel || payload?.deviceLabel || 'Mobile Terminal';
         toast.success(`Mobile Connected: ${devLabel}`);
+        const count = payload?.data?.connectedDevices ?? payload?.connectedDevices ?? payload?.data?.paired ?? payload?.paired;
+        if (typeof count === 'number') setBridgeDeviceCount(count);
         refreshDeviceCount();
       }
       if (eventType === 'DEVICE_UNPAIRED' || eventType === 'DEVICE_DISCONNECTED') {
         const devLabel = payload?.data?.deviceLabel || payload?.deviceLabel || 'Mobile Terminal';
         toast.info(`Mobile Disconnected: ${devLabel}`);
+        const count = payload?.data?.connectedDevices ?? payload?.connectedDevices ?? payload?.data?.paired ?? payload?.paired;
+        if (typeof count === 'number') setBridgeDeviceCount(count);
         refreshDeviceCount();
       }
       if (eventType === 'DEVICE_COUNT_CHANGED') {
-        const count = typeof payload?.paired === 'number' ? payload.paired : (typeof payload?.data?.paired === 'number' ? payload.data.paired : null);
+        const count = typeof payload?.paired === 'number'
+          ? payload.paired
+          : (typeof payload?.data?.paired === 'number'
+            ? payload.data.paired
+            : (typeof payload?.data?.connectedDevices === 'number'
+              ? payload.data.connectedDevices
+              : null));
         if (count !== null) setBridgeDeviceCount(count);
         refreshDeviceCount();
       }
@@ -389,28 +411,43 @@ export default React.memo(function GlobalTopBar() {
         }
         queryClient.invalidateQueries({ queryKey: ['ledger_entries'] });
         queryClient.invalidateQueries({ queryKey: ['parties'] });
+        queryClient.invalidateQueries({ queryKey: ['parties_registry'] });
         queryClient.invalidateQueries({ queryKey: ['dashboard'] });
         queryClient.invalidateQueries({ queryKey: ['dashboard_kpis'] });
       }
       if (eventType === 'INVOICE_CREATED' || eventType === 'INVOICE_UPDATED') {
         queryClient.invalidateQueries({ queryKey: ['invoices'] });
         queryClient.invalidateQueries({ queryKey: ['parties'] });
+        queryClient.invalidateQueries({ queryKey: ['parties_registry'] });
         queryClient.invalidateQueries({ queryKey: ['dashboard'] });
         queryClient.invalidateQueries({ queryKey: ['dashboard_kpis'] });
       }
       if (eventType === 'PARTY_CREATED' || eventType === 'PARTY_UPDATED') {
+        queryClient.invalidateQueries({ queryKey: ['parties_registry'] });
         queryClient.invalidateQueries({ queryKey: ['parties'] });
         queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       }
-      if (eventType === 'WORKER_CREATED' || eventType === 'KARIGAR_CREATED') {
+      if (eventType === 'WORKER_CREATED' || eventType === 'KARIGAR_CREATED' || eventType === 'WORKER_UPDATED') {
         queryClient.invalidateQueries({ queryKey: ['karigars'] });
+        queryClient.invalidateQueries({ queryKey: ['workers'] });
         queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       }
+      if (eventType === 'STOCK_UPDATED' || eventType === 'SKU_CREATED') {
+        queryClient.invalidateQueries({ queryKey: ['inventory'] });
+        queryClient.invalidateQueries({ queryKey: ['skus'] });
+      }
+      refreshDeviceCount();
+    };
+
+    const handleDeviceCountChanged = (_: any, data: any) => {
+      const count = data?.connectedDevices ?? data?.paired ?? (typeof data === 'number' ? data : null);
+      if (typeof count === 'number') setBridgeDeviceCount(count);
       refreshDeviceCount();
     };
 
     if ((window as any).electronAPI && typeof (window as any).electronAPI.on === 'function') {
       (window as any).electronAPI.on('bridge-event', handleBridgeEvent);
+      (window as any).electronAPI.on('bridge:device-count-changed', handleDeviceCountChanged);
     }
 
     return () => {
@@ -421,10 +458,11 @@ export default React.memo(function GlobalTopBar() {
       if ((window as any).electronAPI && typeof (window as any).electronAPI.off === 'function') {
         try {
           (window as any).electronAPI.off('bridge-event', handleBridgeEvent);
+          (window as any).electronAPI.off('bridge:device-count-changed', handleDeviceCountChanged);
         } catch {}
       }
     };
-  }, [queryClient]);
+  }, [queryClient, toast]);
 
   // 4. Alerts Query
   const { data: alerts = [] } = useQuery({

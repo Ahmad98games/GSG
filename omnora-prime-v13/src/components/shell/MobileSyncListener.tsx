@@ -17,7 +17,8 @@ export function MobileSyncListener() {
     pendingKeysRef.current.clear()
     for (const key of keys) {
       try {
-        queryClient.invalidateQueries({ queryKey: [key] })
+        queryClient.invalidateQueries({ queryKey: [key], refetchType: 'active' })
+        queryClient.refetchQueries({ queryKey: [key], type: 'active' }).catch(() => {})
       } catch {}
     }
   }, [queryClient])
@@ -25,44 +26,79 @@ export function MobileSyncListener() {
   const queueInvalidation = useCallback((keys: string[]) => {
     keys.forEach(k => pendingKeysRef.current.add(k))
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
-    debounceTimerRef.current = setTimeout(flushInvalidations, 250)
+    debounceTimerRef.current = setTimeout(flushInvalidations, 150)
   }, [flushInvalidations])
 
   const invalidateForEvent = useCallback((eventType: string, data?: any) => {
     try {
       switch (eventType) {
         case 'INVOICE_CREATED':
-          queueInvalidation(['invoices', 'dashboard-summary', 'dashboard-kpis'])
+        case 'INVOICE_UPDATED':
+          queueInvalidation(['invoices', 'invoice', 'dashboard-summary', 'dashboard-kpis'])
           break
         case 'PARTY_CREATED':
-          queueInvalidation(['parties', 'khata', 'ledger_entries'])
+        case 'PARTY_UPDATED':
+          queueInvalidation(['parties_registry', 'parties', 'party', 'khata', 'ledger_entries', 'dashboard-summary', 'dashboard-kpis'])
           break
         case 'WORKER_CREATED':
-          queueInvalidation(['karigars', 'workers'])
+        case 'WORKER_UPDATED':
+        case 'KARIGAR_CREATED':
+        case 'KARIGAR_UPDATED':
+          queueInvalidation(['karigars', 'workers', 'karigar_grades', 'attendance_today', 'dashboard-summary', 'dashboard-kpis'])
+          break
+        case 'STOCK_UPDATED':
+        case 'SKU_CREATED':
+        case 'SKU_UPDATED':
+          queueInvalidation(['inventory', 'skus', 'sku', 'dashboard-summary'])
           break
         case 'ATTENDANCE_LOGGED':
           queueInvalidation(['attendance', 'attendance_today', 'karigars'])
           break
         case 'ADVANCE_GIVEN':
-          queueInvalidation(['peshgi', 'advances', 'ledger_entries'])
+          queueInvalidation(['peshgi', 'advances', 'karigars', 'ledger_entries'])
           break
         case 'PRODUCTION_LOGGED':
-          queueInvalidation(['production', 'production_log'])
+          queueInvalidation(['production', 'production_log', 'production-logs', 'karigars'])
           break
         case 'KHATA_ENTRY':
+        case 'KHATA_ENTRY_CREATED':
         case 'KHATA_UPDATED':
         case 'PAYMENT_RECEIVED':
-          queueInvalidation(['ledger_entries', 'parties', 'dashboard-kpis'])
+          queueInvalidation(['ledger_entries', 'parties_registry', 'parties', 'accounts', 'dashboard-summary', 'dashboard-kpis'])
           break
         case 'DEVICE_COUNT_CHANGED':
         case 'DEVICE_CONNECTED':
-          queueInvalidation(['devices', 'hub_devices'])
+        case 'DEVICE_PAIRED':
+        case 'DEVICE_UNPAIRED':
+        case 'DEVICE_DISCONNECTED':
+          queueInvalidation(['devices', 'hub_devices', 'connected-devices'])
+          window.dispatchEvent(new CustomEvent('noxis:device_count_changed', { detail: data }))
           break
         case 'DATA_INVALIDATED':
           if (data?.resource) {
-            queueInvalidation([data.resource])
+            const r = String(data.resource)
+            if (r === 'parties' || r === 'party') {
+              queueInvalidation(['parties_registry', 'parties', 'party', 'khata', 'ledger_entries'])
+            } else if (r === 'inventory' || r === 'skus') {
+              queueInvalidation(['inventory', 'skus', 'sku'])
+            } else if (r === 'karigars' || r === 'workers') {
+              queueInvalidation(['karigars', 'workers', 'karigar_grades'])
+            } else if (r === 'invoices' || r === 'invoice') {
+              queueInvalidation(['invoices', 'invoice'])
+            } else if (r === 'khata' || r === 'ledger' || r === 'ledger_entries') {
+              queueInvalidation(['ledger_entries', 'parties_registry', 'parties', 'accounts'])
+            } else {
+              queueInvalidation([r])
+            }
           } else {
-            queueInvalidation(['invoices', 'parties', 'karigars'])
+            queueInvalidation([
+              'parties_registry', 'parties', 'party',
+              'inventory', 'skus', 'sku',
+              'karigars', 'workers', 'karigar_grades',
+              'invoices', 'invoice',
+              'ledger_entries', 'accounts',
+              'dashboard-summary', 'dashboard-kpis'
+            ])
           }
           break
         case 'WORKFLOW_ALERT':

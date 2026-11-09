@@ -943,12 +943,11 @@ export default function KarigarsPage() {
         clearTimeout(localTid);
         if (localRes.ok) {
           const localJson = await localRes.json();
-          if (Array.isArray(localJson?.data)) {
-            localJson.data.forEach((item: any) => {
-              const key = item.id || item.karigar_code || item.name;
-              if (key) mergedMap.set(key, item);
-            });
-          }
+          const list = Array.isArray(localJson) ? localJson : (Array.isArray(localJson?.data) ? localJson.data : []);
+          list.forEach((item: any) => {
+            const key = item.id || item.karigar_code || item.name;
+            if (key) mergedMap.set(key, item);
+          });
         }
       } catch (sqErr) {
         console.warn('[Karigars] Local SQLite /api/karigars fetch error:', sqErr);

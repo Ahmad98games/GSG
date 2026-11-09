@@ -194,12 +194,11 @@ export default function PartiesPage() {
         clearTimeout(tid);
         if (localRes.ok) {
           const localJson = await localRes.json();
-          if (localJson?.data && Array.isArray(localJson.data)) {
-            localJson.data.forEach((p: any) => {
-              const key = p.id || p.name;
-              if (key) mergedMap.set(key, p);
-            });
-          }
+          const list = Array.isArray(localJson) ? localJson : (Array.isArray(localJson?.data) ? localJson.data : []);
+          list.forEach((p: any) => {
+            const key = p.id || p.name;
+            if (key) mergedMap.set(key, p);
+          });
         }
       } catch {}
 
