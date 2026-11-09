@@ -1874,8 +1874,22 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                     }
                 }
             });
-            (0, server_1.attachMobileBridge)(undefined, 7447);
-            startupLog('[Bridge] Authoritative Mobile Bridge HTTP & WebSocket Server active on port 7447');
+            // In standalone Electron architecture, the nextServer utilityProcess authoritative worker
+            // handles port 7447 and bridges via parentPort IPC. Only attach in main if not already running.
+            const net = require('net');
+            const testSock = net.createConnection({ port: 7447, host: '127.0.0.1' }, () => {
+                testSock.destroy();
+                startupLog('[Bridge] Mobile WebSocket Bridge already active on port 7447 via nextServer worker ✓');
+            });
+            testSock.on('error', () => {
+                try {
+                    (0, server_1.attachMobileBridge)(undefined, 7447);
+                    startupLog('[Bridge] Authoritative Mobile Bridge HTTP & WebSocket Server active on port 7447');
+                }
+                catch (e) {
+                    startupLog(`[Bridge] Bridge server startup note: ${e.message}`);
+                }
+            });
         }
         catch (e) {
             startupLog(`[Bridge] Bridge server startup note: ${e.message}`);
@@ -2364,8 +2378,11 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 (0, trialEngine_1.checkpointMonotonicElapsed)();
             }, 30000);
             process.on('uncaughtException', (error) => {
-                if (error && error.message && error.message.includes('Object has been destroyed')) {
-                    startupLog(`[Suppressed non-fatal destroyed window exception] ${error.message}`);
+                if (error && error.message && (error.message.includes('Object has been destroyed') ||
+                    error.message.includes('EADDRINUSE') ||
+                    error.message.includes('ECONNRESET') ||
+                    error.message.includes('EPIPE'))) {
+                    startupLog(`[Suppressed non-fatal exception] ${error.message}`);
                     return;
                 }
                 startupLog(`[CRITICAL] ${error.message}`);

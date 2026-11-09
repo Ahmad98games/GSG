@@ -548,7 +548,7 @@ export function attachMobileBridge(httpServer?: Server, customPort?: number): We
         res.end();
       });
 
-      serverInstance?.on('error', (err: any) => console.warn('[Bridge] HTTP Server port error:', err.message));
+      serverInstance?.on('error', (err: any) => console.warn('[Bridge] HTTP Server port notice (handled):', err.message));
       serverInstance?.listen(port, '0.0.0.0', () => {
         console.log(`[Bridge] Mobile Bridge HTTP & WebSocket Server listening on port ${port}`);
       });
@@ -559,6 +559,10 @@ export function attachMobileBridge(httpServer?: Server, customPort?: number): We
 
   const options: any = serverInstance ? { server: serverInstance } : { port };
   wss = new WebSocketServer(options);
+
+  wss.on('error', (err: any) => {
+    console.warn('[Bridge] WebSocket Server notice (handled):', err?.message || err);
+  });
 
   wss.on('connection', (ws, req) => {
     const clientId = randomUUID();
