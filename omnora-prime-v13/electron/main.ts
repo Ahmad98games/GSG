@@ -2768,6 +2768,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         startupLog(`[Electron] Active development server detected on http://127.0.0.1:${PORT}. Connecting directly.`);
         createSplashWindow();
         await createMainWindow();
+        startWsBridgeServer();
+        ensureWindowsFirewallRules();
         return;
       }
 
