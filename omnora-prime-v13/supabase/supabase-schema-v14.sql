@@ -143,42 +143,135 @@ GRANT SELECT ON active_trials_view TO anon, authenticated, service_role;
 
 -- 6. ADMIN STORED PROCEDURES
 
--- Ban workstation
-CREATE OR REPLACE FUNCTION ban_workstation(p_key text, p_reason text DEFAULT 'Violated terms of service')
+-- Ban workstation (supports Phone number, HWID, or License Key)
+CREATE OR REPLACE FUNCTION ban_workstation(p_key text, p_reason text DEFAULT 'You cannot use this software. Please pay for the license to continue.')
 RETURNS json AS $$
 DECLARE
-  v_row licenses%ROWTYPE;
+  v_clean_phone text;
+  v_phone_last7 text;
+  v_count int := 0;
+  v_keys text[];
+  v_hwids text[];
 BEGIN
+  v_clean_phone := regexp_replace(p_key, '[^0-9]', '', 'g');
+  IF length(v_clean_phone) >= 7 THEN
+    v_phone_last7 := right(v_clean_phone, 7);
+  ELSE
+    v_phone_last7 := 'NOMATCH___';
+  END IF;
+
+  -- Collect matching license_keys and hwids
+  SELECT 
+    coalesce(array_agg(license_key), ARRAY[]::text[]),
+    coalesce(array_agg(coalesce(hwid, 'N/A')), ARRAY[]::text[])
+  INTO v_keys, v_hwids
+  FROM licenses
+  WHERE 
+    license_key = p_key 
+    OR hwid = p_key 
+    OR hwid ILIKE '%' || p_key || '%'
+    OR notes ILIKE '%' || p_key || '%'
+    OR customer_phone = p_key 
+    OR customer_whatsapp = p_key
+    OR regexp_replace(COALESCE(customer_phone, ''), '[^0-9]', '', 'g') = v_clean_phone
+    OR regexp_replace(COALESCE(customer_whatsapp, ''), '[^0-9]', '', 'g') = v_clean_phone
+    OR (length(v_phone_last7) >= 7 AND (customer_phone ILIKE '%' || v_phone_last7 OR customer_whatsapp ILIKE '%' || v_phone_last7));
+
+  -- Update ALL matching workstations to banned/deactivated
   UPDATE licenses
   SET is_deactivated = true,
+      is_active = false,
       notes = COALESCE(notes, '') || ' | BANNED: ' || p_reason || ' (' || now()::text || ')'
-  WHERE license_key = p_key OR hwid = p_key OR customer_phone = p_key OR customer_whatsapp = p_key
-  RETURNING * INTO v_row;
+  WHERE 
+    license_key = p_key 
+    OR hwid = p_key 
+    OR hwid ILIKE '%' || p_key || '%'
+    OR notes ILIKE '%' || p_key || '%'
+    OR customer_phone = p_key 
+    OR customer_whatsapp = p_key
+    OR regexp_replace(COALESCE(customer_phone, ''), '[^0-9]', '', 'g') = v_clean_phone
+    OR regexp_replace(COALESCE(customer_whatsapp, ''), '[^0-9]', '', 'g') = v_clean_phone
+    OR (length(v_phone_last7) >= 7 AND (customer_phone ILIKE '%' || v_phone_last7 OR customer_whatsapp ILIKE '%' || v_phone_last7));
   
-  IF FOUND THEN
-    RETURN json_build_object('success', true, 'message', 'Workstation banned successfully', 'key', v_row.license_key);
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+
+  IF v_count > 0 THEN
+    RETURN json_build_object(
+      'success', true, 
+      'message', 'Workstation(s) banned successfully', 
+      'banned_count', v_count,
+      'keys', v_keys,
+      'hwids', v_hwids,
+      'matched_input', p_key
+    );
   ELSE
-    RETURN json_build_object('success', false, 'message', 'Workstation not found');
+    RETURN json_build_object(
+      'success', false, 
+      'message', 'No workstation found matching input: ' || p_key,
+      'banned_count', 0
+    );
   END IF;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Unban workstation
+-- Unban workstation (supports Phone number, HWID, or License Key)
 CREATE OR REPLACE FUNCTION unban_workstation(p_key text)
 RETURNS json AS $$
 DECLARE
-  v_row licenses%ROWTYPE;
+  v_clean_phone text;
+  v_phone_last7 text;
+  v_count int := 0;
+  v_keys text[];
+  v_hwids text[];
 BEGIN
+  v_clean_phone := regexp_replace(p_key, '[^0-9]', '', 'g');
+  IF length(v_clean_phone) >= 7 THEN
+    v_phone_last7 := right(v_clean_phone, 7);
+  ELSE
+    v_phone_last7 := 'NOMATCH___';
+  END IF;
+
+  SELECT 
+    coalesce(array_agg(license_key), ARRAY[]::text[]),
+    coalesce(array_agg(coalesce(hwid, 'N/A')), ARRAY[]::text[])
+  INTO v_keys, v_hwids
+  FROM licenses
+  WHERE 
+    license_key = p_key 
+    OR hwid = p_key 
+    OR hwid ILIKE '%' || p_key || '%'
+    OR customer_phone = p_key 
+    OR customer_whatsapp = p_key
+    OR regexp_replace(COALESCE(customer_phone, ''), '[^0-9]', '', 'g') = v_clean_phone
+    OR regexp_replace(COALESCE(customer_whatsapp, ''), '[^0-9]', '', 'g') = v_clean_phone
+    OR (length(v_phone_last7) >= 7 AND (customer_phone ILIKE '%' || v_phone_last7 OR customer_whatsapp ILIKE '%' || v_phone_last7));
+
   UPDATE licenses
   SET is_deactivated = false,
+      is_active = true,
       notes = COALESCE(notes, '') || ' | UNBANNED: Restored by admin (' || now()::text || ')'
-  WHERE license_key = p_key OR hwid = p_key OR customer_phone = p_key OR customer_whatsapp = p_key
-  RETURNING * INTO v_row;
+  WHERE 
+    license_key = p_key 
+    OR hwid = p_key 
+    OR hwid ILIKE '%' || p_key || '%'
+    OR customer_phone = p_key 
+    OR customer_whatsapp = p_key
+    OR regexp_replace(COALESCE(customer_phone, ''), '[^0-9]', '', 'g') = v_clean_phone
+    OR regexp_replace(COALESCE(customer_whatsapp, ''), '[^0-9]', '', 'g') = v_clean_phone
+    OR (length(v_phone_last7) >= 7 AND (customer_phone ILIKE '%' || v_phone_last7 OR customer_whatsapp ILIKE '%' || v_phone_last7));
   
-  IF FOUND THEN
-    RETURN json_build_object('success', true, 'message', 'Workstation unbanned successfully', 'key', v_row.license_key);
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+
+  IF v_count > 0 THEN
+    RETURN json_build_object(
+      'success', true, 
+      'message', 'Workstation(s) unbanned successfully', 
+      'unbanned_count', v_count,
+      'keys', v_keys,
+      'hwids', v_hwids
+    );
   ELSE
-    RETURN json_build_object('success', false, 'message', 'Workstation not found');
+    RETURN json_build_object('success', false, 'message', 'No workstation found matching: ' || p_key);
   END IF;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

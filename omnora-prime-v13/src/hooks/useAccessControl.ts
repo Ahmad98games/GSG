@@ -28,9 +28,9 @@ export function useAccessControl() {
   const syncAndCheck = useCallback(async (currentHwid?: string, force = false) => {
     if (typeof window === 'undefined') return;
 
-    // Throttle checks to once every 60 seconds unless forced
+    // Throttle checks to once every 8 seconds unless forced
     const now = Date.now();
-    if (!force && (now - lastSyncTimeRef.current < 60000 || isSyncingRef.current)) {
+    if (!force && (now - lastSyncTimeRef.current < 8000 || isSyncingRef.current)) {
       return;
     }
     isSyncingRef.current = true;
@@ -127,27 +127,35 @@ export function useAccessControl() {
         if (typeof navigator !== 'undefined' && navigator.onLine) {
           const supabase = createClient();
           const cleanHwid = targetHwid.trim().toUpperCase();
-          const { data: lic } = await supabase
+          let orQuery = `hwid.eq.${cleanHwid},license_key.eq.${cleanHwid}`;
+          if (ph) {
+            const cleanPh = ph.trim().replace(/[\s-]/g, '');
+            const phLast7 = cleanPh.length >= 7 ? cleanPh.slice(-7) : cleanPh;
+            if (phLast7) {
+              orQuery += `,customer_whatsapp.ilike.%${phLast7}%,customer_phone.ilike.%${phLast7}%`;
+            }
+          }
+          const { data: lics } = await supabase
             .from('licenses')
             .select('*')
-            .or(`hwid.eq.${cleanHwid},license_key.eq.${cleanHwid}`)
-            .maybeSingle();
+            .or(orQuery);
 
-          if (lic) {
-            const isBannedDirect = Boolean(lic.is_deactivated || lic.is_active === false);
+          if (lics && lics.length > 0) {
+            const isBannedDirect = lics.some((l: any) => Boolean(l.is_deactivated === true || l.is_active === false));
             setIsBanned(isBannedDirect);
             if (isBannedDirect) {
-              setBanReason('Access to this workstation has been restricted by the administrator.');
+              setBanReason('You cannot use this software. Please pay for the license to continue. (Contact Administrator via WhatsApp: +92 326 4742678)');
               localStorage.setItem('noxis_banned', 'true');
             } else {
               localStorage.removeItem('noxis_banned');
-              if (lic.tier) {
+              const activeLic = lics.find((l: any) => !l.is_deactivated && l.is_active !== false) || lics[0];
+              if (activeLic?.tier) {
                 const normTier: 'lite' | 'pro' | 'elite' =
-                  String(lic.tier).toLowerCase() === 'elite' ? 'elite' :
-                  String(lic.tier).toLowerCase() === 'pro' ? 'pro' : 'lite';
+                  String(activeLic.tier).toLowerCase() === 'elite' ? 'elite' :
+                  String(activeLic.tier).toLowerCase() === 'pro' ? 'pro' : 'lite';
                 const curTier = useTierStore.getState().tier;
                 if (curTier !== normTier) {
-                  useTierStore.getState().setTier(normTier, lic.expires_at, lic.is_trial);
+                  useTierStore.getState().setTier(normTier, activeLic.expires_at, activeLic.is_trial);
                 }
                 localStorage.setItem('noxis_tier', normTier);
               }
@@ -167,14 +175,14 @@ export function useAccessControl() {
   }, [hwid]);
 
   useEffect(() => {
-    syncAndCheck();
+    syncAndCheck(undefined, true);
 
-    // Check periodically every 5 minutes when online
+    // Fast reactive polling every 12 seconds when online
     const interval = setInterval(() => {
       if (typeof navigator !== 'undefined' && navigator.onLine) {
         syncAndCheck();
       }
-    }, 300000);
+    }, 12000);
 
     const onOnline = () => syncAndCheck(undefined, true);
     window.addEventListener('online', onOnline);

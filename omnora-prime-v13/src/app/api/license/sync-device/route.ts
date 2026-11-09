@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 
     const supabase = getSupabase();
 
-    // 1. Check if a license exists matching this HWID, phone, or brand
+    // 1. Check if ANY license exists matching this HWID, phone, or brand
     const { data: allLicenses } = await supabase
       .from('licenses')
       .select('*')
@@ -45,14 +45,15 @@ export async function POST(req: NextRequest) {
 
     const phoneLast7 = cleanPhone.length >= 7 ? cleanPhone.slice(-7) : '';
 
-    const existing = (allLicenses || []).find((lic: any) => {
+    // Find all matching licenses for this device or phone
+    const matching = (allLicenses || []).filter((lic: any) => {
       const licHwid = (lic.hwid || '').trim().toUpperCase();
       const licKey = (lic.license_key || '').trim().toUpperCase();
       const licPhone = String(lic.customer_whatsapp || lic.customer_phone || '').replace(/[\s-]/g, '');
       const notes = (lic.notes || '').toUpperCase();
 
-      // Direct HWID match
-      if (licHwid && licHwid === cleanHwid) return true;
+      // Direct HWID or key match
+      if (licHwid && (licHwid === cleanHwid || cleanHwid.includes(licHwid) || licHwid.includes(cleanHwid))) return true;
       if (licKey && licKey === cleanHwid) return true;
       if (notes.includes(cleanHwid)) return true;
 
@@ -70,9 +71,13 @@ export async function POST(req: NextRequest) {
       return false;
     });
 
+    // Check if ANY license for this machine OR phone number is banned
+    const isBanned = matching.some((lic: any) => Boolean(lic.is_deactivated === true || lic.is_active === false));
+
+    const existing = matching[0];
+
     if (existing) {
       // Machine already registered in Supabase
-      const isBanned = Boolean(existing.is_deactivated || existing.is_active === false);
       
       // Update latest device telemetry, keeping user/brand info fresh
       const existingNotes = existing.notes || '';
@@ -96,6 +101,18 @@ export async function POST(req: NextRequest) {
       const months = existing.months || 1;
       const billingCycle = isTrial ? 'trial' : (months === 12 ? 'yearly' : months >= 99 ? 'lifetime' : 'monthly');
 
+      // If banned on phone or machine, synchronize is_deactivated across ALL matching rows
+      if (isBanned) {
+        for (const m of matching) {
+          if (!m.is_deactivated || m.is_active) {
+            await supabase
+              .from('licenses')
+              .update({ is_deactivated: true, is_active: false })
+              .eq('id', m.id);
+          }
+        }
+      }
+
       await supabase
         .from('licenses')
         .update({
@@ -117,7 +134,7 @@ export async function POST(req: NextRequest) {
         isTrial,
         months,
         billingCycle,
-        banReason: isBanned ? 'Access to this workstation has been restricted by the administrator.' : null,
+        banReason: isBanned ? 'You cannot use this software. Please pay for the license to continue. (Contact Administrator via WhatsApp: +92 326 4742678)' : null,
         licenseKey: newKey,
         expiresAt: existing.expires_at,
         customerName: displayName,
@@ -200,34 +217,41 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const hwid = searchParams.get('hwid');
+    const phone = searchParams.get('phone');
 
-    if (!hwid) {
-      return NextResponse.json({ error: 'hwid required' }, { status: 400 });
+    if (!hwid && !phone) {
+      return NextResponse.json({ error: 'hwid or phone required' }, { status: 400 });
     }
 
-    const cleanHwid = hwid.trim().toUpperCase();
+    const cleanHwid = (hwid || '').trim().toUpperCase();
+    let cleanPhone = String(phone || '').trim().replace(/[\s-]/g, '');
+    if (cleanPhone.startsWith('0')) cleanPhone = '92' + cleanPhone.slice(1);
+    const phoneLast7 = cleanPhone.length >= 7 ? cleanPhone.slice(-7) : '';
+
     const supabase = getSupabase();
 
     const { data: allLicenses } = await supabase
       .from('licenses')
       .select('*');
 
-    const match = (allLicenses || []).find((lic: any) => {
+    const matches = (allLicenses || []).filter((lic: any) => {
       const licHwid = (lic.hwid || '').trim().toUpperCase();
       const licKey = (lic.license_key || '').trim().toUpperCase();
+      const licPhone = String(lic.customer_whatsapp || lic.customer_phone || '').replace(/[\s-]/g, '');
       const notes = (lic.notes || '').toUpperCase();
-      return (
-        (licHwid && licHwid === cleanHwid) ||
-        (licKey && licKey === cleanHwid) ||
-        notes.includes(cleanHwid)
-      );
+      
+      if (cleanHwid && (licHwid === cleanHwid || licHwid.includes(cleanHwid) || cleanHwid.includes(licHwid))) return true;
+      if (cleanHwid && (licKey === cleanHwid || notes.includes(cleanHwid))) return true;
+      if (phoneLast7 && licPhone && (licPhone === cleanPhone || licPhone.endsWith(phoneLast7))) return true;
+      return false;
     });
 
-    if (!match) {
+    if (matches.length === 0) {
       return NextResponse.json({ registered: false, isBanned: false, status: 'unknown' });
     }
 
-    const isBanned = Boolean(match.is_deactivated || match.is_active === false);
+    const isBanned = matches.some((m: any) => Boolean(m.is_deactivated === true || m.is_active === false));
+    const match = matches[0];
 
     return NextResponse.json({
       registered: true,
@@ -237,7 +261,8 @@ export async function GET(req: NextRequest) {
       expiresAt: match.expires_at,
       customerName: match.customer_name,
       notes: match.notes,
-      licenseKey: match.license_key
+      licenseKey: match.license_key,
+      banReason: isBanned ? 'You cannot use this software. Please pay for the license to continue. (Contact Administrator via WhatsApp: +92 326 4742678)' : null
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message, isBanned: false }, { status: 500 });
