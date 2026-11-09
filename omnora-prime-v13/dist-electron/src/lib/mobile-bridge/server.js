@@ -217,6 +217,18 @@ const TIER_LIMITS = {
 };
 const ipRateLimits = new Map();
 function isIpQuarantined(ip) {
+    // Never quarantine private LAN or loopback addresses
+    if (!ip ||
+        ip === 'unknown' ||
+        ip.includes('127.0.0.1') ||
+        ip.includes('::1') ||
+        ip.includes('192.168.') ||
+        ip.includes('10.') ||
+        ip.includes('172.') ||
+        ip.startsWith('::ffff:192.168.') ||
+        ip.startsWith('::ffff:127.0.0.1')) {
+        return false;
+    }
     const entry = ipRateLimits.get(ip);
     if (!entry)
         return false;
@@ -690,6 +702,7 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
         case 'PAIR_REQUEST': {
             const rawDeviceId = String(msg.deviceId ?? '');
             const rawLabel = String(msg.deviceLabel ?? msg.label ?? 'Mobile Device').slice(0, 80);
+            console.log(`[Bridge] Received PAIR_REQUEST from IP ${client.clientIp}: deviceId=${rawDeviceId}, label=${rawLabel}`);
             // 1. Validate deviceId format
             if (!DEVICE_ID_RE.test(rawDeviceId)) {
                 recordFailedAttempt(client.clientIp);
