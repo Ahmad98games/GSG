@@ -566,10 +566,34 @@ export function attachMobileBridge(httpServer?: Server, customPort?: number): We
                 broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'parties', table: 'ledger_entries' });
               } else if (item.table === 'invoices' && item.payload && sqlite) {
                 const inv = item.payload;
+                const invId = inv.id || randomUUID();
                 sqlite.prepare(`
                   INSERT OR REPLACE INTO invoices (id, business_id, invoice_number, invoice_type, party_id, party_name, invoice_date, status, total_amount, balance_due, created_at, updated_at)
                   VALUES (?, ?, ?, 'invoice', ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-                `).run(inv.id || randomUUID(), inv.business_id || bizId, inv.invoice_no || inv.invoice_number || 'INV', inv.party_id || null, inv.party_name || null, inv.invoice_date || new Date().toISOString(), mapInvoiceStatus(inv.status), Number(inv.total ?? inv.total_amount ?? 0), Number(inv.balance_due ?? inv.total ?? 0));
+                `).run(invId, inv.business_id || bizId, inv.invoice_no || inv.invoice_number || 'INV', inv.party_id || null, inv.party_name || null, inv.invoice_date || new Date().toISOString(), mapInvoiceStatus(inv.status), Number(inv.total ?? inv.total_amount ?? 0), Number(inv.balance_due ?? inv.total ?? 0));
+                
+                const items = Array.isArray(inv.items) ? inv.items : [];
+                if (items.length > 0) {
+                  for (const it of items) {
+                    try {
+                      sqlite.prepare(`
+                        INSERT OR REPLACE INTO invoice_items (id, invoice_id, business_id, sku_id, description, quantity, unit, unit_price, total_price)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                      `).run(
+                        it.id || randomUUID(),
+                        invId,
+                        inv.business_id || bizId,
+                        it.sku_id || null,
+                        it.description || 'Item',
+                        Number(it.quantity || it.qty || 1),
+                        it.unit || 'Piece',
+                        Number(it.unit_price || 0),
+                        Number(it.total_price || (it.quantity || it.qty || 1) * (it.unit_price || 0))
+                      );
+                    } catch {}
+                  }
+                }
+
                 syncInvoiceToSupabase(inv, bizId);
                 broadcastToHubRenderer('INVOICE_CREATED', inv);
                 broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'invoices' });
