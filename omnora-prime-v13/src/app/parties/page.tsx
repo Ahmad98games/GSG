@@ -243,15 +243,36 @@ export default function PartiesPage() {
   });
 
   useEffect(() => {
+    const handleMobileSyncEvent = (e: any) => {
+      const type = e?.detail?.type;
+      const data = e?.detail?.data;
+      if (
+        type === 'PARTY_CREATED' ||
+        type === 'PARTY_UPDATED' ||
+        (type === 'crdt_sync_event' && data?.table === 'parties') ||
+        (type === 'DATA_INVALIDATED' && (!data?.resource || data?.resource === 'parties' || data?.resource === 'party'))
+      ) {
+        queryClient.invalidateQueries({ queryKey: ['parties_registry'] });
+        queryClient.invalidateQueries({ queryKey: ['parties'] });
+        refetchParties();
+      }
+    };
+    window.addEventListener('noxis:mobile-event', handleMobileSyncEvent);
+
+    let unsubscribe: (() => void) | undefined;
     if (typeof window !== 'undefined' && (window as any).electronAPI?.onPartyUpdated) {
-      const unsubscribe = (window as any).electronAPI.onPartyUpdated(() => {
-        queryClient.invalidateQueries({ queryKey: ['parties_registry'] })
-        queryClient.invalidateQueries({ queryKey: ['parties'] })
-        refetchParties()
-      })
-      return () => { if (typeof unsubscribe === 'function') unsubscribe(); }
+      unsubscribe = (window as any).electronAPI.onPartyUpdated(() => {
+        queryClient.invalidateQueries({ queryKey: ['parties_registry'] });
+        queryClient.invalidateQueries({ queryKey: ['parties'] });
+        refetchParties();
+      });
     }
-  }, [refetchParties, queryClient])
+
+    return () => {
+      window.removeEventListener('noxis:mobile-event', handleMobileSyncEvent);
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, [refetchParties, queryClient]);
 
   const debouncedSearch = useDebounce(searchTerm, 300);
 

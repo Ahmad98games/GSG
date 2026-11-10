@@ -1010,8 +1010,33 @@ export default function KarigarsPage() {
       return undefined;
     },
     placeholderData: (prev) => prev,
-    staleTime: 60 * 1000,
+    staleTime: 1000,
   });
+
+  useEffect(() => {
+    const handleMobileSyncEvent = (e: any) => {
+      const type = e?.detail?.type;
+      const data = e?.detail?.data;
+      if (
+        type === 'WORKER_CREATED' ||
+        type === 'WORKER_UPDATED' ||
+        type === 'KARIGAR_CREATED' ||
+        type === 'KARIGAR_UPDATED' ||
+        type === 'ATTENDANCE_LOGGED' ||
+        type === 'ADVANCE_GIVEN' ||
+        type === 'PRODUCTION_LOGGED' ||
+        (type === 'crdt_sync_event' && (data?.table === 'karigars' || data?.table === 'workers' || data?.table === 'attendance_logs' || data?.table === 'production_logs' || data?.table === 'peshgi_transactions')) ||
+        (type === 'DATA_INVALIDATED' && (!data?.resource || data?.resource === 'karigars' || data?.resource === 'workers' || data?.resource === 'attendance_today'))
+      ) {
+        queryClient.invalidateQueries({ queryKey: ['karigars'] });
+        queryClient.invalidateQueries({ queryKey: ['workers'] });
+        queryClient.invalidateQueries({ queryKey: ['attendance_today'] });
+        refetchKarigars();
+      }
+    };
+    window.addEventListener('noxis:mobile-event', handleMobileSyncEvent);
+    return () => window.removeEventListener('noxis:mobile-event', handleMobileSyncEvent);
+  }, [refetchKarigars, queryClient]);
 
   const { data: attendanceToday = [] } = useQuery({
     queryKey: ['attendance_today', profile?.id],

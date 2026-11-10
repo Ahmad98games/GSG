@@ -26,12 +26,36 @@ export function MobileSyncListener() {
   const queueInvalidation = useCallback((keys: string[]) => {
     keys.forEach(k => pendingKeysRef.current.add(k))
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
-    debounceTimerRef.current = setTimeout(flushInvalidations, 150)
+    debounceTimerRef.current = setTimeout(flushInvalidations, 30)
   }, [flushInvalidations])
 
   const invalidateForEvent = useCallback((eventType: string, data?: any) => {
     try {
       switch (eventType) {
+        case 'crdt_sync_event':
+        case 'crdt_sync': {
+          const t = String(data?.table || '').toLowerCase()
+          if (t === 'skus' || t === 'inventory') {
+            queueInvalidation(['inventory', 'skus', 'sku', 'dashboard-summary'])
+          } else if (t === 'karigars' || t === 'workers') {
+            queueInvalidation(['karigars', 'workers', 'karigar_grades', 'attendance_today', 'dashboard-summary', 'dashboard-kpis'])
+          } else if (t === 'invoices') {
+            queueInvalidation(['invoices', 'invoice', 'dashboard-summary', 'dashboard-kpis'])
+          } else if (t === 'parties') {
+            queueInvalidation(['parties_registry', 'parties', 'party', 'khata', 'ledger_entries', 'dashboard-summary', 'dashboard-kpis'])
+          } else if (t === 'ledger_entries' || t === 'khata') {
+            queueInvalidation(['ledger_entries', 'khata', 'parties_registry', 'parties', 'accounts', 'dashboard-summary', 'dashboard-kpis'])
+          } else if (t === 'attendance' || t === 'attendance_logs') {
+            queueInvalidation(['attendance', 'attendance_today', 'karigars'])
+          } else if (t === 'peshgi_transactions' || t === 'advances') {
+            queueInvalidation(['peshgi', 'advances', 'karigars', 'ledger_entries'])
+          } else if (t === 'production_logs') {
+            queueInvalidation(['production', 'production_log', 'production-logs', 'karigars'])
+          } else if (t) {
+            queueInvalidation([t])
+          }
+          break
+        }
         case 'INVOICE_CREATED':
         case 'INVOICE_UPDATED':
           queueInvalidation(['invoices', 'invoice', 'dashboard-summary', 'dashboard-kpis'])
@@ -117,23 +141,26 @@ export function MobileSyncListener() {
   useEffect(() => {
     const electronAPI = (window as any).electronAPI
 
-    const handleBridgeEvent = (
-      _: any,
-      payload: { event: string; data: any }
-    ) => {
-      const eventType = payload?.event
-      const data = payload?.data
+    const handleBridgeEvent = (...args: any[]) => {
+      let payload = args[0]
+      if (args.length > 1 && args[1] !== undefined) {
+        payload = args[1]
+      }
+      const eventType = payload?.event || payload?.type || (typeof payload === 'string' ? payload : undefined)
+      const data = payload?.data !== undefined ? payload.data : payload
 
-      invalidateForEvent(eventType, data)
+      if (eventType) {
+        invalidateForEvent(eventType, data)
 
-      window.dispatchEvent(
-        new CustomEvent('noxis:mobile-event', {
-          detail: {
-            type: eventType,
-            data,
-          },
-        })
-      )
+        window.dispatchEvent(
+          new CustomEvent('noxis:mobile-event', {
+            detail: {
+              type: eventType,
+              data,
+            },
+          })
+        )
+      }
     }
 
     if (electronAPI?.onBridgeEvent) {

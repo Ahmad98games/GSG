@@ -195,6 +195,41 @@ async function syncPartyToSupabase(p, defaultBusinessId) {
         console.warn('[Bridge] Party sync error:', err.message);
     }
 }
+async function syncSkuToSupabase(s, defaultBusinessId) {
+    const admin = getAdmin();
+    if (!admin || !s)
+        return;
+    const businessId = (s.business_id && s.business_id !== 'local')
+        ? s.business_id
+        : (defaultBusinessId && defaultBusinessId !== 'local' ? defaultBusinessId : 'ffa84a41-941e-4e4e-87c3-9580271db2bd');
+    const skuRecord = {
+        id: s.id || (0, crypto_1.randomUUID)(),
+        business_id: businessId,
+        name: s.name || 'New Item',
+        sku_code: s.sku_code || s.code || null,
+        barcode: s.barcode || null,
+        category: s.category || 'General',
+        unit: s.unit || 'Piece',
+        cost_price: Number(s.cost_price || 0),
+        sale_price: Number(s.sale_price || s.price || 0),
+        tax_rate: Number(s.tax_rate || 0),
+        qty_on_hand: Number(s.qty_on_hand || s.quantity || s.stock || 0),
+        reorder_level: Number(s.reorder_level || 0),
+        description: s.description || null,
+        is_active: s.is_active ?? true,
+        updated_at: new Date().toISOString()
+    };
+    try {
+        const { error } = await admin.from('skus').upsert(skuRecord, { onConflict: 'id' });
+        if (error)
+            console.warn('[Bridge] SKU Supabase upsert notice:', error.message);
+        else
+            console.log(`[Bridge] SKU ${skuRecord.name} successfully synced to Supabase`);
+    }
+    catch (err) {
+        console.warn('[Bridge] SKU sync error:', err.message);
+    }
+}
 function getSqlite() {
     try {
         const s = global.__noxisDb || client_1.db.$client || null;
@@ -1405,6 +1440,7 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
             const payload = msg.payload || msg.data;
             const sqlite = getSqlite();
             if ((table === 'skus' || table === 'inventory') && payload) {
+                syncSkuToSupabase(payload, client.businessId);
                 if (sqlite) {
                     try {
                         const sId = payload.id || (0, crypto_1.randomUUID)();
@@ -1910,6 +1946,9 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
             console.log(`[Bridge] ${msg.type} from ${client.deviceLabel}`);
             const sqlite = getSqlite();
             const payload = msg.sku || msg.payload || msg.data || msg;
+            if (payload) {
+                syncSkuToSupabase(payload, client.businessId);
+            }
             if (sqlite && payload && (payload.name || payload.sku_code || payload.barcode)) {
                 try {
                     const sId = payload.id || (0, crypto_1.randomUUID)();

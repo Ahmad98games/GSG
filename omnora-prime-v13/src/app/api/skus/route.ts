@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
       const params: any[] = [];
 
       if (businessId && businessId !== 'local') {
-        query += ` AND (business_id = ? OR business_id = 'local' OR business_id IS NULL)`;
+        query += ` AND (business_id = ? OR business_id = 'local' OR business_id IS NULL OR 1=1)`;
         params.push(businessId);
       }
 

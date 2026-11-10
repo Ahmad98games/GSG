@@ -43,9 +43,9 @@ export async function GET(req: NextRequest) {
             p.current_balance AS party_balance
           FROM ledger_entries l
           LEFT JOIN parties p ON p.id = l.party_id
-          WHERE (l.business_id = ? OR l.business_id = 'local' OR ? = 'local' OR ? = '' OR ? IS NULL OR l.business_id IS NULL)
+          WHERE (l.business_id = ? OR l.business_id = 'local' OR l.business_id IS NULL OR 1=1)
         `;
-        const params: any[] = [businessId || 'local', businessId || 'local', businessId || '', businessId];
+        const params: any[] = [businessId || 'local'];
 
         if (partyId) {
           query += ` AND l.party_id = ?`;
@@ -80,3 +80,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+

@@ -150,6 +150,40 @@ async function syncPartyToSupabase(p: any, defaultBusinessId?: string | null) {
   }
 }
 
+async function syncSkuToSupabase(s: any, defaultBusinessId?: string | null) {
+  const admin = getAdmin();
+  if (!admin || !s) return;
+  const businessId = (s.business_id && s.business_id !== 'local')
+    ? s.business_id
+    : (defaultBusinessId && defaultBusinessId !== 'local' ? defaultBusinessId : 'ffa84a41-941e-4e4e-87c3-9580271db2bd');
+
+  const skuRecord: any = {
+    id: s.id || randomUUID(),
+    business_id: businessId,
+    name: s.name || 'New Item',
+    sku_code: s.sku_code || s.code || null,
+    barcode: s.barcode || null,
+    category: s.category || 'General',
+    unit: s.unit || 'Piece',
+    cost_price: Number(s.cost_price || 0),
+    sale_price: Number(s.sale_price || s.price || 0),
+    tax_rate: Number(s.tax_rate || 0),
+    qty_on_hand: Number(s.qty_on_hand || s.quantity || s.stock || 0),
+    reorder_level: Number(s.reorder_level || 0),
+    description: s.description || null,
+    is_active: s.is_active ?? true,
+    updated_at: new Date().toISOString()
+  };
+
+  try {
+    const { error } = await admin.from('skus').upsert(skuRecord, { onConflict: 'id' });
+    if (error) console.warn('[Bridge] SKU Supabase upsert notice:', error.message);
+    else console.log(`[Bridge] SKU ${skuRecord.name} successfully synced to Supabase`);
+  } catch (err: any) {
+    console.warn('[Bridge] SKU sync error:', err.message);
+  }
+}
+
 function getSqlite(): any {
   try {
     const s = (global as any).__noxisDb || (db as any).$client || null;
@@ -1478,6 +1512,7 @@ async function handleMessage(
       const sqlite = getSqlite();
 
       if ((table === 'skus' || table === 'inventory') && payload) {
+        syncSkuToSupabase(payload, client.businessId);
         if (sqlite) {
           try {
             const sId = payload.id || randomUUID();
@@ -2188,6 +2223,9 @@ async function handleMessage(
       console.log(`[Bridge] ${msg.type} from ${client.deviceLabel}`);
       const sqlite = getSqlite();
       const payload: any = (msg as any).sku || (msg as any).payload || (msg as any).data || msg;
+      if (payload) {
+        syncSkuToSupabase(payload, client.businessId);
+      }
       if (sqlite && payload && (payload.name || payload.sku_code || payload.barcode)) {
         try {
           const sId = payload.id || randomUUID();

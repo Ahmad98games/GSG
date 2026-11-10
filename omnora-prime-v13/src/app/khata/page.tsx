@@ -149,7 +149,7 @@ export default function KhataPage() {
       return [];
     },
     enabled: !!businessId,
-    staleTime: 60_000,
+    staleTime: 1000,
   });
 
   // 2. PARTIES QUERY
@@ -217,7 +217,7 @@ export default function KhataPage() {
       return [];
     },
     enabled: !!businessId,
-    staleTime: 60_000,
+    staleTime: 1000,
   });
 
   // 3. LEDGER ENTRIES QUERY
@@ -317,10 +317,10 @@ export default function KhataPage() {
       return [];
     },
     enabled: !!businessId,
-    staleTime: 30_000,
+    staleTime: 1000,
   });
 
-  // Real-time listener for party events
+  // Real-time listener for mobile and party events
   useEffect(() => {
     const handlePartyEvent = (e: any) => {
       const partyData = e.detail;
@@ -334,13 +334,34 @@ export default function KhataPage() {
       queryClient.invalidateQueries({ queryKey: ['parties_registry'] });
     };
 
+    const handleMobileSyncEvent = (e: any) => {
+      const type = e?.detail?.type;
+      const data = e?.detail?.data;
+      if (
+        type === 'KHATA_ENTRY' ||
+        type === 'KHATA_UPDATED' ||
+        type === 'PAYMENT_RECEIVED' ||
+        type === 'PARTY_CREATED' ||
+        type === 'PARTY_UPDATED' ||
+        (type === 'crdt_sync_event' && (data?.table === 'ledger_entries' || data?.table === 'parties' || data?.table === 'khata')) ||
+        (type === 'DATA_INVALIDATED' && (!data?.resource || data?.resource === 'khata' || data?.resource === 'ledger_entries' || data?.resource === 'parties'))
+      ) {
+        queryClient.invalidateQueries({ queryKey: ['ledger_entries'] });
+        queryClient.invalidateQueries({ queryKey: ['parties'] });
+        queryClient.invalidateQueries({ queryKey: ['parties_registry'] });
+        refetchEntries();
+      }
+    };
+
     window.addEventListener('noxis:party-added', handlePartyEvent);
     window.addEventListener('noxis:party-updated', handlePartyEvent);
+    window.addEventListener('noxis:mobile-event', handleMobileSyncEvent);
     return () => {
       window.removeEventListener('noxis:party-added', handlePartyEvent);
       window.removeEventListener('noxis:party-updated', handlePartyEvent);
+      window.removeEventListener('noxis:mobile-event', handleMobileSyncEvent);
     };
-  }, [businessId, queryClient]);
+  }, [businessId, queryClient, refetchEntries]);
 
   // Group ledger entries by tx_ref
   const groupedTransactions = useMemo(() => {

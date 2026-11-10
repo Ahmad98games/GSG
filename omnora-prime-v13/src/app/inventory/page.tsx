@@ -330,8 +330,28 @@ export default function InventoryPage() {
       return undefined;
     },
     placeholderData: (prev) => prev,
-    staleTime: 60 * 1000,
+    staleTime: 1000,
   });
+
+  useEffect(() => {
+    const handleMobileSyncEvent = (e: any) => {
+      const type = e?.detail?.type;
+      const data = e?.detail?.data;
+      if (
+        type === 'STOCK_UPDATED' ||
+        type === 'SKU_CREATED' ||
+        type === 'SKU_UPDATED' ||
+        (type === 'crdt_sync_event' && (data?.table === 'skus' || data?.table === 'inventory')) ||
+        (type === 'DATA_INVALIDATED' && (!data?.resource || data?.resource === 'inventory' || data?.resource === 'skus'))
+      ) {
+        queryClient.invalidateQueries({ queryKey: ['inventory'] });
+        queryClient.invalidateQueries({ queryKey: ['skus'] });
+        refetchSkus();
+      }
+    };
+    window.addEventListener('noxis:mobile-event', handleMobileSyncEvent);
+    return () => window.removeEventListener('noxis:mobile-event', handleMobileSyncEvent);
+  }, [refetchSkus, queryClient]);
 
   useEffect(() => {
     const handleUserSwitched = () => {

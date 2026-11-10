@@ -141,8 +141,27 @@ export default function InvoiceListPage() {
         return applyFilters(localInvoices);
       }
     },
-    enabled: (debouncedSearch.length >= 2 || debouncedSearch.length === 0)
+    enabled: (debouncedSearch.length >= 2 || debouncedSearch.length === 0),
+    staleTime: 1000,
   });
+
+  React.useEffect(() => {
+    const handleMobileSyncEvent = (e: any) => {
+      const type = e?.detail?.type;
+      const data = e?.detail?.data;
+      if (
+        type === 'INVOICE_CREATED' ||
+        type === 'INVOICE_UPDATED' ||
+        (type === 'crdt_sync_event' && data?.table === 'invoices') ||
+        (type === 'DATA_INVALIDATED' && (!data?.resource || data?.resource === 'invoices' || data?.resource === 'invoice'))
+      ) {
+        queryClient.invalidateQueries({ queryKey: ['invoices'] });
+        refetchInvoices();
+      }
+    };
+    window.addEventListener('noxis:mobile-event', handleMobileSyncEvent);
+    return () => window.removeEventListener('noxis:mobile-event', handleMobileSyncEvent);
+  }, [refetchInvoices, queryClient]);
 
   React.useEffect(() => {
     if (!invoices || !profile) return;

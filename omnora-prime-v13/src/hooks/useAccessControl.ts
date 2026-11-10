@@ -177,19 +177,41 @@ export function useAccessControl() {
   useEffect(() => {
     syncAndCheck(undefined, true);
 
-    // Fast reactive polling every 12 seconds when online
+    // Fast reactive polling every 10 seconds when online
     const interval = setInterval(() => {
       if (typeof navigator !== 'undefined' && navigator.onLine) {
         syncAndCheck();
       }
-    }, 12000);
+    }, 10000);
 
     const onOnline = () => syncAndCheck(undefined, true);
     window.addEventListener('online', onOnline);
 
+    // Commercial-grade live push: Instant (sub-second) reaction to ban/unban via Supabase Realtime
+    let channel: any = null;
+    try {
+      const supabase = createClient();
+      channel = supabase
+        .channel('realtime_license_monitor')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'licenses' },
+          () => {
+            syncAndCheck(undefined, true);
+          }
+        )
+        .subscribe();
+    } catch {}
+
     return () => {
       clearInterval(interval);
       window.removeEventListener('online', onOnline);
+      if (channel) {
+        try {
+          const supabase = createClient();
+          supabase.removeChannel(channel);
+        } catch {}
+      }
     };
   }, [syncAndCheck]);
 

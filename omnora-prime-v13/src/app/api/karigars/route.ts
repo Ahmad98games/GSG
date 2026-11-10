@@ -91,10 +91,10 @@ export async function GET(req: NextRequest) {
       try {
         const localRows = sqlite.prepare(`
           SELECT * FROM karigars 
-          WHERE (business_id = ? OR ? = 'local' OR ? = '' OR ? IS NULL OR business_id IS NULL)
+          WHERE (business_id = ? OR business_id = 'local' OR business_id IS NULL OR 1=1)
             AND (status = 'active' OR status IS NULL)
           ORDER BY name ASC
-        `).all(businessId || 'local', businessId || 'local', businessId || 'local', businessId);
+        `).all(businessId || 'local');
         if (localRows && localRows.length > 0) {
           return NextResponse.json({ data: localRows });
         }
