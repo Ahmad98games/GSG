@@ -18,7 +18,7 @@ export function useAccessControl() {
   const { profile } = useBusinessProfile();
   const userName = profile?.owner_name || (typeof window !== 'undefined' ? localStorage.getItem('noxis_lead_name') : '') || 'Store Owner';
   const brandName = profile?.business_name || (typeof window !== 'undefined' ? localStorage.getItem('noxis_lead_business') : '') || 'My Business';
-  const phone = profile?.phone || (typeof window !== 'undefined' ? localStorage.getItem('noxis_lead_phone') : '') || '';
+  const phone = profile?.phone || profile?.owner_phone || (typeof window !== 'undefined' ? (localStorage.getItem('noxis_lead_phone') || localStorage.getItem('user_phone') || localStorage.getItem('business_phone')) : '') || '';
 
   const isSyncingRef = useRef(false);
   const lastSyncTimeRef = useRef(0);
@@ -28,9 +28,9 @@ export function useAccessControl() {
   const syncAndCheck = useCallback(async (currentHwid?: string, force = false) => {
     if (typeof window === 'undefined') return;
 
-    // Throttle checks to once every 8 seconds unless forced
+    // Fast check throttle: 4 seconds unless forced
     const now = Date.now();
-    if (!force && (now - lastSyncTimeRef.current < 8000 || isSyncingRef.current)) {
+    if (!force && (now - lastSyncTimeRef.current < 4000 || isSyncingRef.current)) {
       return;
     }
     isSyncingRef.current = true;
@@ -128,12 +128,10 @@ export function useAccessControl() {
           const supabase = createClient();
           const cleanHwid = targetHwid.trim().toUpperCase();
           let orQuery = `hwid.eq.${cleanHwid},license_key.eq.${cleanHwid}`;
-          if (ph) {
-            const cleanPh = ph.trim().replace(/[\s-]/g, '');
-            const phLast7 = cleanPh.length >= 7 ? cleanPh.slice(-7) : cleanPh;
-            if (phLast7) {
-              orQuery += `,customer_whatsapp.ilike.%${phLast7}%,customer_phone.ilike.%${phLast7}%`;
-            }
+          const cleanPh = (ph || '').trim().replace(/[\s-]/g, '');
+          const phLast7 = cleanPh.length >= 7 ? cleanPh.slice(-7) : cleanPh;
+          if (phLast7) {
+            orQuery += `,customer_whatsapp.ilike.%${phLast7}%,customer_phone.ilike.%${phLast7}%`;
           }
           const { data: lics } = await supabase
             .from('licenses')
@@ -141,7 +139,24 @@ export function useAccessControl() {
             .or(orQuery);
 
           if (lics && lics.length > 0) {
-            const isBannedDirect = lics.some((l: any) => Boolean(l.is_deactivated === true || l.is_active === false));
+            let isBannedDirect = lics.some((l: any) => Boolean(l.is_deactivated === true || l.is_active === false));
+
+            // If not directly banned yet, check if any phone linked to this machine's record is banned
+            if (!isBannedDirect) {
+              const rowWithPhone = lics.find((l: any) => l.customer_whatsapp || l.customer_phone);
+              const linkedPhone = String(rowWithPhone?.customer_whatsapp || rowWithPhone?.customer_phone || '').replace(/[\s-]/g, '');
+              const linked7 = linkedPhone.length >= 7 ? linkedPhone.slice(-7) : '';
+              if (linked7) {
+                const { data: phoneLics } = await supabase
+                  .from('licenses')
+                  .select('*')
+                  .or(`customer_whatsapp.ilike.%${linked7}%,customer_phone.ilike.%${linked7}%`);
+                if (phoneLics && phoneLics.some((l: any) => Boolean(l.is_deactivated === true || l.is_active === false))) {
+                  isBannedDirect = true;
+                }
+              }
+            }
+
             setIsBanned(isBannedDirect);
             if (isBannedDirect) {
               setBanReason('You cannot use this software. Please pay for the license to continue. (Contact Administrator via WhatsApp: +92 326 4742678)');
@@ -177,15 +192,22 @@ export function useAccessControl() {
   useEffect(() => {
     syncAndCheck(undefined, true);
 
-    // Fast reactive polling every 10 seconds when online
+    // Fast reactive polling every 5 seconds when online
     const interval = setInterval(() => {
       if (typeof navigator !== 'undefined' && navigator.onLine) {
         syncAndCheck();
       }
-    }, 10000);
+    }, 5000);
 
-    const onOnline = () => syncAndCheck(undefined, true);
-    window.addEventListener('online', onOnline);
+    const onWakeOrFocus = () => syncAndCheck(undefined, true);
+    window.addEventListener('online', onWakeOrFocus);
+    window.addEventListener('focus', onWakeOrFocus);
+    const onVisibilityChange = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        syncAndCheck(undefined, true);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
     // Commercial-grade live push: Instant (sub-second) reaction to ban/unban via Supabase Realtime
     let channel: any = null;
@@ -205,7 +227,9 @@ export function useAccessControl() {
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener('online', onOnline);
+      window.removeEventListener('online', onWakeOrFocus);
+      window.removeEventListener('focus', onWakeOrFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
       if (channel) {
         try {
           const supabase = createClient();

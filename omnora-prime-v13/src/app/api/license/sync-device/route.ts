@@ -45,8 +45,8 @@ export async function POST(req: NextRequest) {
 
     const phoneLast7 = cleanPhone.length >= 7 ? cleanPhone.slice(-7) : '';
 
-    // Find all matching licenses for this device or phone
-    const matching = (allLicenses || []).filter((lic: any) => {
+    // Pass 1: Direct matches by HWID, license key, caller phone, or notes
+    const directMatches = (allLicenses || []).filter((lic: any) => {
       const licHwid = (lic.hwid || '').trim().toUpperCase();
       const licKey = (lic.license_key || '').trim().toUpperCase();
       const licPhone = String(lic.customer_whatsapp || lic.customer_phone || '').replace(/[\s-]/g, '');
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
 
       // Direct HWID or key match
       if (licHwid && (licHwid === cleanHwid || cleanHwid.includes(licHwid) || licHwid.includes(cleanHwid))) return true;
-      if (licKey && licKey === cleanHwid) return true;
+      if (licKey && (licKey === cleanHwid || licKey === `HWID-${cleanHwid.slice(-8)}`)) return true;
       if (notes.includes(cleanHwid)) return true;
 
       // Phone match (full or last 7 digits)
@@ -71,7 +71,48 @@ export async function POST(req: NextRequest) {
       return false;
     });
 
-    // Check if ANY license for this machine OR phone number is banned
+    // Pass 2: Extract all known phone numbers linked to this machine
+    const associatedPhoneSet = new Set<string>();
+    if (cleanPhone) associatedPhoneSet.add(cleanPhone);
+    if (phoneLast7) associatedPhoneSet.add(phoneLast7);
+
+    for (const lic of directMatches) {
+      const p1 = String(lic.customer_whatsapp || '').trim().replace(/[\s-]/g, '');
+      const p2 = String(lic.customer_phone || '').trim().replace(/[\s-]/g, '');
+      if (p1.length >= 7) {
+        associatedPhoneSet.add(p1);
+        associatedPhoneSet.add(p1.slice(-7));
+      }
+      if (p2.length >= 7) {
+        associatedPhoneSet.add(p2);
+        associatedPhoneSet.add(p2.slice(-7));
+      }
+    }
+
+    // Pass 3: Expand matching list to ANY license sharing the same phone number
+    const matchingMap = new Map<string, any>();
+    for (const lic of directMatches) {
+      matchingMap.set(lic.id, lic);
+    }
+
+    for (const lic of (allLicenses || [])) {
+      if (matchingMap.has(lic.id)) continue;
+      const p1 = String(lic.customer_whatsapp || '').trim().replace(/[\s-]/g, '');
+      const p2 = String(lic.customer_phone || '').trim().replace(/[\s-]/g, '');
+      for (const known of associatedPhoneSet) {
+        if (
+          (p1 && (p1 === known || (known.length >= 7 && p1.endsWith(known)))) ||
+          (p2 && (p2 === known || (known.length >= 7 && p2.endsWith(known))))
+        ) {
+          matchingMap.set(lic.id, lic);
+          break;
+        }
+      }
+    }
+
+    const matching = Array.from(matchingMap.values());
+
+    // Check if ANY license for this machine OR linked phone number is banned
     const isBanned = matching.some((lic: any) => Boolean(lic.is_deactivated === true || lic.is_active === false));
 
     const existing = matching[0];
