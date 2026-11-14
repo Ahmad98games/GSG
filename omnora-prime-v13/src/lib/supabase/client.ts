@@ -182,3 +182,36 @@ export function shouldSync(): boolean {
   if (typeof window === 'undefined') return false;
   return localStorage.getItem('noxis_cloud_sync') !== 'false';
 }
+
+/**
+ * Bulletproof Supabase / Network Query Latency Fallback.
+ * If the cloud promise takes longer than ms (default 3000ms),
+ * or rejects due to network disruption, silently fall back to cached local SQLite data.
+ */
+export async function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number = 3000,
+  fallback: T | (() => Promise<T> | T)
+): Promise<T> {
+  let timer: any;
+  const timeoutPromise = new Promise<T>((resolve) => {
+    timer = setTimeout(async () => {
+      console.warn(`[SupabaseFallback] Query exceeded ${ms}ms threshold — resolving with local cache fallback.`);
+      const val = typeof fallback === 'function' ? await (fallback as any)() : fallback;
+      resolve(val);
+    }, ms);
+  });
+
+  return Promise.race([
+    promise.then((res) => {
+      clearTimeout(timer);
+      return res;
+    }).catch(async (err) => {
+      clearTimeout(timer);
+      console.warn(`[SupabaseFallback] Query failed (${err?.message || err}) — falling back to local cache.`);
+      return typeof fallback === 'function' ? await (fallback as any)() : fallback;
+    }),
+    timeoutPromise
+  ]);
+}
+

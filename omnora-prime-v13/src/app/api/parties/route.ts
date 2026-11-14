@@ -143,31 +143,89 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { operation = 'create', payload, party_id, parties: bulkParties } = body;
 
-    if (operation === 'sync' || operation === 'bulk_upsert') {
+    if (operation === 'sync' || operation === 'bulk_upsert' || operation === 'bulk_import') {
       const list = Array.isArray(bulkParties) ? bulkParties : (Array.isArray(payload) ? payload : []);
       const sqlite = (db as any).$client;
       if (sqlite && list.length > 0) {
         try {
-          const insertStmt = sqlite.prepare(`
-            INSERT OR REPLACE INTO parties (id, business_id, name, party_type, phone, address, current_balance, is_active, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          try { sqlite.exec("ALTER TABLE parties ADD COLUMN city TEXT;"); } catch {}
+          try { sqlite.exec("ALTER TABLE parties ADD COLUMN opening_balance REAL DEFAULT 0;"); } catch {}
+          try { sqlite.exec("ALTER TABLE parties ADD COLUMN balance_nature TEXT DEFAULT 'receivable';"); } catch {}
+          try { sqlite.exec("ALTER TABLE parties ADD COLUMN cnic_or_ntn TEXT;"); } catch {}
+
+          const insertPartyStmt = sqlite.prepare(`
+            INSERT OR REPLACE INTO parties (
+              id, business_id, name, party_type, phone, address, city,
+              opening_balance, current_balance, balance_nature, cnic_or_ntn,
+              is_active, created_at, updated_at
+            ) VALUES (
+              ?, ?, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?,
+              ?, ?, ?
+            )
           `);
-          for (const p of list) {
-            if (p && p.name && !String(p.name).startsWith('Mobile Added UUID Test Party')) {
-              insertStmt.run(
-                p.id || randomUUID(),
-                p.business_id || 'local',
-                p.name,
-                p.party_type || 'customer',
-                p.phone || null,
-                p.address || null,
-                Number(p.current_balance || 0),
-                p.is_active !== false ? 1 : 0,
-                p.created_at || new Date().toISOString(),
-                new Date().toISOString()
-              );
+
+          const insertLedgerStmt = sqlite.prepare(`
+            INSERT OR REPLACE INTO ledger_entries (
+              id, business_id, party_id, account_code, entry_type,
+              entry_date, description, debit, credit, reference,
+              source_table, created_by
+            ) VALUES (
+              ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?,
+              ?, ?
+            )
+          `);
+
+          const runTx = sqlite.transaction((partiesList: any[]) => {
+            for (const p of partiesList) {
+              if (p && p.name && !String(p.name).startsWith('Mobile Added UUID Test Party')) {
+                const partyId = p.id || `pty_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+                const balance = Number(p.opening_balance || p.current_balance || p.balance || 0);
+                const nature = p.balance_nature || (balance < 0 ? 'payable' : 'receivable');
+                const absBalance = Math.abs(balance);
+                const bId = p.business_id || 'local';
+
+                insertPartyStmt.run(
+                  partyId,
+                  bId,
+                  p.name,
+                  p.party_type || (nature === 'payable' ? 'supplier' : 'customer'),
+                  p.phone || null,
+                  p.address || null,
+                  p.city || null,
+                  absBalance,
+                  balance,
+                  nature,
+                  p.cnic_or_ntn || null,
+                  p.is_active !== false ? 1 : 0,
+                  p.created_at || new Date().toISOString(),
+                  new Date().toISOString()
+                );
+
+                // If non-zero opening balance, create initial ledger entry
+                if (absBalance > 0) {
+                  const isDebit = nature === 'receivable';
+                  insertLedgerStmt.run(
+                    `led_op_${partyId}`,
+                    bId,
+                    partyId,
+                    '1000-OPENING',
+                    'opening_balance',
+                    new Date().toISOString().split('T')[0],
+                    'Migrated Opening Balance from External Accounting System',
+                    isDebit ? absBalance : 0,
+                    isDebit ? 0 : absBalance,
+                    'MIGRATION-IMPORT',
+                    'parties',
+                    'Migration Engine'
+                  );
+                }
+              }
             }
-          }
+          });
+
+          runTx(list);
         } catch (syncErr: any) {
           console.warn('[API Parties] Bulk sync error:', syncErr.message);
         }

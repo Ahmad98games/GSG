@@ -165,13 +165,15 @@ export function initAutonomousUpdateBaseline(currentVersion?: string): VersionPo
         )
       `).run()
 
-      sqlite.prepare(`
-        INSERT INTO license_telemetry (id, hwid, baseline_installation_version, license_tier, recorded_at, updated_at)
-        VALUES (1, ?, ?, ?, datetime('now'), datetime('now'))
-        ON CONFLICT(id) DO UPDATE SET
-          license_tier = excluded.license_tier,
-          updated_at = datetime('now')
-      `).run(hwid, baseline, activeTier)
+      sqlite.transaction(() => {
+        sqlite.prepare(`
+          INSERT INTO license_telemetry (id, hwid, baseline_installation_version, license_tier, recorded_at, updated_at)
+          VALUES (1, ?, ?, ?, datetime('now'), datetime('now'))
+          ON CONFLICT(id) DO UPDATE SET
+            license_tier = excluded.license_tier,
+            updated_at = datetime('now')
+        `).run(hwid, baseline, activeTier);
+      })();
     }
   } catch {
     // Non-fatal if sqlite is still initializing

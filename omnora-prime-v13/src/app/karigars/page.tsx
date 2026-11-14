@@ -10,6 +10,7 @@ const isElectronApp = typeof window !== 'undefined' && (
 import React, { useMemo, useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { createClient } from "@/lib/supabase/client";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { useIndustryConfig } from "@/hooks/useIndustryConfig";
@@ -29,7 +30,6 @@ import EmptyState from "@/components/ui/EmptyState";
 import DataFreshness from "@/components/ui/DataFreshness";
 import { SummaryCard } from "@/components/ui/SummaryCard";
 import { UpgradeGate } from "@/components/license/UpgradeGate";
-import * as XLSX from 'xlsx';
 import { useToast } from "@/hooks/useToast";
 import { usePermissions } from "@/hooks/usePermissions";
 import { humanizeError } from "@/lib/utils/errors";
@@ -1231,12 +1231,13 @@ export default function KarigarsPage() {
     };
   }, [karigars, attendanceToday]);
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     if (!karigars || karigars.length === 0) {
       toast.error('No data to export')
       return
     }
     
+    const XLSX = await import('xlsx');
     const data = karigars.map((k: Karigar) => ({
       'Karigar Code': k.karigar_code,
       'Name': k.name,
@@ -1428,6 +1429,13 @@ export default function KarigarsPage() {
   });
 
   const { rows } = table.getRowModel();
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => tableContainerRef.current,
+    estimateSize: () => 44,
+    overscan: 12,
+  });
 
   return (
     <UpgradeGate feature="karigars">
@@ -1546,7 +1554,7 @@ export default function KarigarsPage() {
            </div>
 
            {/* Main Registry Table */}
-           <div className="bg-surface border border-white/5 flex-1 overflow-x-auto overflow-y-auto max-h-[calc(100vh-200px)]">
+           <div ref={tableContainerRef} className="bg-surface border border-white/5 flex-1 overflow-x-auto overflow-y-auto max-h-[calc(100vh-200px)]">
               {isLoading && karigars.length === 0 ? (
                 <div className="p-20 space-y-4">
                    {[1,2,3,4,5].map(i => <div key={i} className="h-12 bg-white/[0.02] animate-pulse" />)}
@@ -1574,9 +1582,39 @@ export default function KarigarsPage() {
                       ))}
                    </thead>
                    <tbody>
-                      {rows.map((row) => (
-                        <KarigarRow key={row.id} row={row} />
-                      ))}
+                      {rowVirtualizer.getVirtualItems().length > 0 ? (
+                        <>
+                          {rowVirtualizer.getVirtualItems()[0]?.start > 0 && (
+                            <tr>
+                              <td
+                                style={{ height: `${rowVirtualizer.getVirtualItems()[0].start}px` }}
+                                colSpan={columns.length}
+                              />
+                            </tr>
+                          )}
+                          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                            const row = rows[virtualRow.index];
+                            if (!row) return null;
+                            return (
+                              <KarigarRow key={row.id} row={row} />
+                            );
+                          })}
+                          {rowVirtualizer.getTotalSize() - (rowVirtualizer.getVirtualItems()[rowVirtualizer.getVirtualItems().length - 1]?.end || 0) > 0 && (
+                            <tr>
+                              <td
+                                style={{
+                                  height: `${rowVirtualizer.getTotalSize() - (rowVirtualizer.getVirtualItems()[rowVirtualizer.getVirtualItems().length - 1]?.end || 0)}px`
+                                }}
+                                colSpan={columns.length}
+                              />
+                            </tr>
+                          )}
+                        </>
+                      ) : (
+                        rows.map((row) => (
+                          <KarigarRow key={row.id} row={row} />
+                        ))
+                      )}
                    </tbody>
                 </table>
               )}

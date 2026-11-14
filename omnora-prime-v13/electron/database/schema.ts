@@ -1,10 +1,14 @@
 export const NOXIS_SCHEMA = `
 PRAGMA journal_mode = WAL;
 PRAGMA synchronous = NORMAL;
-PRAGMA cache_size = -65536;
+PRAGMA cache_size = -64000;
 PRAGMA temp_store = MEMORY;
 PRAGMA mmap_size = 268435456;
+PRAGMA page_size = 4096;
+PRAGMA wal_autocheckpoint = 1000;
+PRAGMA busy_timeout = 5000;
 PRAGMA foreign_keys = ON;
+PRAGMA optimize;
 
 -- CORE BUSINESS
 CREATE TABLE IF NOT EXISTS business_profiles (

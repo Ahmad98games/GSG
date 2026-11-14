@@ -25,6 +25,7 @@ interface HardwareInfo {
 
 export default function GeneralSettingsPage() {
   const [isElectron, setIsElectron] = useState<boolean>(false)
+  const [memoryInfo, setMemoryInfo] = useState<{ heapUsed: number; heapTotal: number; external: number; rss: number } | null>(null)
   const [autoStartEnabled, setAutoStartEnabledState] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('noxis_autostart_pref') === 'true'
@@ -124,6 +125,14 @@ export default function GeneralSettingsPage() {
           if (hw && !hw.error) {
             setHardwareInfo(hw)
           }
+        }
+
+        // 5. Host memory breakdown (Heap, Total, RSS, External)
+        if (api?.system?.getMemoryInfo) {
+          try {
+            const mem = await api.system.getMemoryInfo()
+            if (mem) setMemoryInfo(mem)
+          } catch {}
         }
       } catch (e) {
         console.error('Failed to load system settings:', e)
@@ -447,6 +456,11 @@ export default function GeneralSettingsPage() {
                 </p>
                 <p className="text-[11px] text-gray-400 mt-1">
                   Uptime: {hardwareInfo.uptimeHours} hrs · Process Heap: {hardwareInfo.processMemoryMB} MB
+                  {memoryInfo && (
+                    <span className="block mt-1 font-mono text-[10px] text-slate-400">
+                      Heap: <span className="text-emerald-400 font-bold">{memoryInfo.heapUsed}MB</span> / {memoryInfo.heapTotal}MB · RSS: <span className="text-cyan-400 font-bold">{memoryInfo.rss}MB</span> · Ext: {memoryInfo.external}MB
+                    </span>
+                  )}
                 </p>
               </div>
             </div>

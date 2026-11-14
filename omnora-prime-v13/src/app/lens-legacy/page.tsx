@@ -39,7 +39,8 @@ export default function LensPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
-  const { getLensScansRemaining, tier } = useTierStore()
+  const getLensScansRemaining = useTierStore(s => s.getLensScansRemaining)
+  const tier = useTierStore(s => s.tier)
   const toast = useToast()
 
   // Subscribe to realtime mobile scans

@@ -41,7 +41,7 @@ interface WhatsAppConfig {
 }
 
 export default function WhatsAppSettingsPage() {
-  const { tier } = useTierStore();
+  const tier = useTierStore(s => s.tier);
   const toast = useToast();
   const { profile } = useBusinessProfile();
   const supabase = createClient();

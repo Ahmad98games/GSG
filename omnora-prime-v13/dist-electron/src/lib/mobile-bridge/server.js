@@ -1824,14 +1824,16 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
                 const todayStr = adv.transaction_date || new Date().toISOString().split('T')[0];
                 const amt = Number(adv.amount || 0);
                 try {
-                    sqlite.prepare(`
-            INSERT OR REPLACE INTO peshgi_transactions (id, business_id, karigar_id, transaction_type, amount, transaction_date, description, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-          `).run(advId, adv.business_id || client.businessId || 'local', adv.karigar_id, 'advance', amt, todayStr, adv.description || adv.notes || 'Mobile Advance', new Date().toISOString());
-                    sqlite.prepare(`
-            UPDATE karigars SET peshgi_balance = COALESCE(peshgi_balance, 0) + ?, updated_at = ?
-            WHERE id = ?
-          `).run(amt, new Date().toISOString(), adv.karigar_id);
+                    sqlite.transaction(() => {
+                        sqlite.prepare(`
+              INSERT OR REPLACE INTO peshgi_transactions (id, business_id, karigar_id, transaction_type, amount, transaction_date, description, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(advId, adv.business_id || client.businessId || 'local', adv.karigar_id, 'advance', amt, todayStr, adv.description || adv.notes || 'Mobile Advance', new Date().toISOString());
+                        sqlite.prepare(`
+              UPDATE karigars SET peshgi_balance = COALESCE(peshgi_balance, 0) + ?, updated_at = ?
+              WHERE id = ?
+            `).run(amt, new Date().toISOString(), adv.karigar_id);
+                    })();
                 }
                 catch (e) {
                     console.warn('[Bridge] Local advance insert error:', e.message);
@@ -1887,25 +1889,28 @@ async function handleMessage(clientId, msg, ws, pairingTimeout) {
                 const entryDate = payload.entryDate || payload.entry_date || new Date().toISOString();
                 const description = payload.description || '';
                 const reference = payload.reference || '';
-                // 1. Direct SQLite insertion
+                // 1. Direct SQLite insertion wrapped in transaction
                 if (sqlite) {
                     try {
-                        sqlite.prepare(`
-              INSERT OR REPLACE INTO ledger_entries (
-                id, business_id, party_id, entry_type, entry_date, description,
-                debit, credit, reference, created_by, created_by_role, device_id, created_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `).run(entryId, businessId, partyId, entryType.toLowerCase(), entryDate, description, debit, credit, reference, payload.createdBy || client.deviceLabel || 'Mobile Device', payload.createdByRole || 'owner', client.deviceId || null, new Date().toISOString());
-                        // Update party balance in SQLite
-                        if (partyId) {
-                            const balChange = entryType === 'DEBIT' ? amount : -amount;
+                        const saveLedgerTx = sqlite.transaction(() => {
                             sqlite.prepare(`
-                UPDATE parties 
-                SET current_balance = COALESCE(current_balance, 0) + ?,
-                    updated_at = datetime('now')
-                WHERE id = ?
-              `).run(balChange, partyId);
-                        }
+                INSERT OR REPLACE INTO ledger_entries (
+                  id, business_id, party_id, entry_type, entry_date, description,
+                  debit, credit, reference, created_by, created_by_role, device_id, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              `).run(entryId, businessId, partyId, entryType.toLowerCase(), entryDate, description, debit, credit, reference, payload.createdBy || client.deviceLabel || 'Mobile Device', payload.createdByRole || 'owner', client.deviceId || null, new Date().toISOString());
+                            // Update party balance in SQLite
+                            if (partyId) {
+                                const balChange = entryType === 'DEBIT' ? amount : -amount;
+                                sqlite.prepare(`
+                  UPDATE parties 
+                  SET current_balance = COALESCE(current_balance, 0) + ?,
+                      updated_at = datetime('now')
+                  WHERE id = ?
+                `).run(balChange, partyId);
+                            }
+                        });
+                        saveLedgerTx();
                         console.log(`[Bridge] Successfully inserted KHATA_ENTRY to local SQLite: ${entryId} for party ${partyId}`);
                     }
                     catch (sqlErr) {

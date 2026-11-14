@@ -140,9 +140,13 @@ export default function GlobalSearch() {
   }, [])
 
   useEffect(() => {
+    let timer: NodeJS.Timeout | null = null
     if (open) {
-      setTimeout(() => inputRef.current?.focus(), 50)
+      timer = setTimeout(() => inputRef.current?.focus(), 50)
       if (!query) search('')
+    }
+    return () => {
+      if (timer) clearTimeout(timer)
     }
   }, [open])
 

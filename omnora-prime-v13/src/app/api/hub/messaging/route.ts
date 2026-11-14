@@ -69,24 +69,26 @@ export async function POST(req: NextRequest) {
     const sqlite = (db as any).$client;
     if (sqlite) {
       try {
-        sqlite.prepare(`
-          INSERT OR REPLACE INTO hub_messages (id, business_id, sender_type, sender_device_id, sender_name, recipient_type, recipient_device_id, recipient_role, message_text, message_type, priority, is_read, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(
-          messageRecord.id,
-          messageRecord.business_id,
-          messageRecord.sender_type,
-          messageRecord.sender_device_id,
-          messageRecord.sender_name,
-          messageRecord.recipient_type,
-          messageRecord.recipient_device_id,
-          messageRecord.recipient_role,
-          messageRecord.message_text,
-          messageRecord.message_type,
-          messageRecord.priority,
-          messageRecord.is_read,
-          messageRecord.created_at
-        );
+        sqlite.transaction(() => {
+          sqlite.prepare(`
+            INSERT OR REPLACE INTO hub_messages (id, business_id, sender_type, sender_device_id, sender_name, recipient_type, recipient_device_id, recipient_role, message_text, message_type, priority, is_read, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            messageRecord.id,
+            messageRecord.business_id,
+            messageRecord.sender_type,
+            messageRecord.sender_device_id,
+            messageRecord.sender_name,
+            messageRecord.recipient_type,
+            messageRecord.recipient_device_id,
+            messageRecord.recipient_role,
+            messageRecord.message_text,
+            messageRecord.message_type,
+            messageRecord.priority,
+            messageRecord.is_read,
+            messageRecord.created_at
+          );
+        })();
       } catch (insertErr: any) {
         console.warn('[API Messaging] SQLite insert warning:', insertErr.message);
       }

@@ -76,8 +76,11 @@ interface StoreSchema {
   baseline_tier: 'lite' | 'pro' | 'elite'
   installation_hwid: string
 
-  // Power-cut recovery
+  // Power-cut recovery & Window Persistence
   exit_flag: string              // 'running' | 'clean'
+  windowBounds: { x: number; y: number; width: number; height: number }
+  isMaximized: boolean
+  crash_marker: { crashedAt: number; lastRoute: string } | null
 }
 
 const store: any = new (ElectronStore as any)({
@@ -124,8 +127,11 @@ const store: any = new (ElectronStore as any)({
     baseline_installation_version: '',
     baseline_tier: 'elite',
     installation_hwid: '',
-    // Power-cut
+    // Power-cut & Window state
     exit_flag: 'clean',
+    windowBounds: { x: 100, y: 100, width: 1400, height: 900 },
+    isMaximized: false,
+    crash_marker: null,
   },
 })
 
@@ -451,4 +457,70 @@ export function getInstallationHWID(): string {
 export function setInstallationHWID(hwid: string): void {
   store.set('installation_hwid', hwid)
 }
+
+// ── WINDOW STATE & CRASH PERSISTENCE ──
+
+export function getSavedWindowState(): {
+  windowBounds?: { x: number; y: number; width: number; height: number }
+  isMaximized: boolean
+  lastRoute: string
+} {
+  return {
+    windowBounds: store.get('windowBounds'),
+    isMaximized: !!store.get('isMaximized'),
+    lastRoute: getLastRoute(),
+  }
+}
+
+export function saveWindowState(state: {
+  windowBounds?: { x: number; y: number; width: number; height: number }
+  isMaximized?: boolean
+  lastRoute?: string
+}) {
+  if (state.windowBounds) store.set('windowBounds', state.windowBounds)
+  if (typeof state.isMaximized === 'boolean') store.set('isMaximized', state.isMaximized)
+  if (state.lastRoute) saveLastRoute(state.lastRoute)
+}
+
+export function setCrashMarker(marker: { crashedAt: number; lastRoute: string } | null) {
+  store.set('crash_marker', marker)
+}
+
+export function getCrashMarker(): { crashedAt: number; lastRoute: string } | null {
+  return store.get('crash_marker') || null
+}
+
+// ── HARDWARE SETTINGS PERSISTENCE ──
+
+export interface HardwareSettings {
+  thermalPrinter: string
+  paperSize: '80mm' | '58mm'
+  scaleCOMPort: string
+}
+
+export function getHardwareSettings(): HardwareSettings {
+  return {
+    thermalPrinter: store.get('hardware_thermalPrinter') || store.get('config_thermal_printer') || '',
+    paperSize: (store.get('hardware_paperSize') || store.get('config_thermal_width') || '80mm') as '80mm' | '58mm',
+    scaleCOMPort: store.get('hardware_scaleCOMPort') || store.get('config_scale_com_port') || '',
+  }
+}
+
+export function saveHardwareSettings(settings: Partial<HardwareSettings>): HardwareSettings {
+  if (settings.thermalPrinter !== undefined) {
+    store.set('hardware_thermalPrinter', settings.thermalPrinter)
+    store.set('config_thermal_printer', settings.thermalPrinter)
+  }
+  if (settings.paperSize !== undefined) {
+    store.set('hardware_paperSize', settings.paperSize)
+    store.set('config_thermal_width', settings.paperSize)
+  }
+  if (settings.scaleCOMPort !== undefined) {
+    store.set('hardware_scaleCOMPort', settings.scaleCOMPort)
+    store.set('config_scale_com_port', settings.scaleCOMPort)
+  }
+  return getHardwareSettings()
+}
+
+
 

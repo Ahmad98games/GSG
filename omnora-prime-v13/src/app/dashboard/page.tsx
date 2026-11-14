@@ -121,7 +121,7 @@ export default function OwnerDashboard() {
     navigator.userAgent.toLowerCase().includes('electron')
   )
   const { t, features, fmt, fmtCompact } = useIndustryConfig()
-  const { tier: activeTier } = useTierStore()
+  const activeTier = useTierStore(s => s.tier)
   const [data, setData] = useState<DashboardData | null>(() => {
     if (typeof window !== 'undefined') {
       try {

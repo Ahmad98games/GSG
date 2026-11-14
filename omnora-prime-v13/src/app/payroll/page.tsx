@@ -14,7 +14,6 @@ import { useIndustryConfig } from "@/hooks/useIndustryConfig";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { createClient } from "@/lib/supabase/client";
 import { FeedbackModal } from "@/components/ui/FeedbackModal";
-import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/useToast";
 
 import { cn } from "@/lib/utils";
@@ -28,6 +27,8 @@ import { TableSkeleton } from "@/components/ui/TableSkeleton";
 import { SummaryCard } from "@/components/ui/SummaryCard";
 import { UpgradeGate } from "@/components/license/UpgradeGate";
 import { Can } from "@/components/rbac/Can";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { DraftRecoveryBanner } from "@/components/DraftRecoveryBanner";
 
 const runPayrollSchema = z.object({
   period_label: z.string().min(1, "Period name is required"),
@@ -222,6 +223,7 @@ export default function PayrollPage() {
         'Status': s.is_finalized ? 'Finalized' : 'Draft'
       }));
       
+      const XLSX = await import('xlsx');
       const ws = XLSX.utils.json_to_sheet(formatted);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Payroll Slips');
@@ -262,6 +264,7 @@ export default function PayrollPage() {
         'Reference': s.karigar?.karigar_code || s.karigar_code || 'WAGE',
       }));
 
+      const XLSX = await import('xlsx');
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Bank Transfer');
@@ -390,6 +393,12 @@ export default function PayrollPage() {
     <UpgradeGate feature="payroll">
       <div className="min-h-screen bg-noxis-bg text-slate-200 p-6 lg:p-10 font-inter">
       <main className="max-w-[1600px] mx-auto space-y-8">
+        {/* Payroll Auto-Recovery Banner */}
+        <DraftRecoveryBanner
+          draftKey="payroll-run"
+          onRecover={() => setIsRunModalOpen(true)}
+          onDiscard={() => {}}
+        />
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6">
           <div>
             <div className="flex items-center gap-2">
@@ -736,10 +745,28 @@ function RunPayrollModal({ onClose, onSuccess }: { onClose: () => void, onSucces
     pay_type: 'all'
   });
 
-  const { register, handleSubmit, formState: { errors } } = useForm<RunPayrollValues>({
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<RunPayrollValues>({
     resolver: zodResolver(runPayrollSchema),
     defaultValues: cycleConfig
   });
+
+  const payrollDraftData = useMemo(() => ({ cycleConfig, activeStep, workersPreview }), [cycleConfig, activeStep, workersPreview]);
+  const { getDraft, clearDraft } = useFormDraft('payroll-run', payrollDraftData);
+
+  useEffect(() => {
+    getDraft().then((draft) => {
+      if (draft && typeof draft === 'object') {
+        if (draft.cycleConfig) {
+          setCycleConfig(draft.cycleConfig);
+          reset(draft.cycleConfig);
+        }
+        if (draft.activeStep) setActiveStep(draft.activeStep);
+        if (Array.isArray(draft.workersPreview) && draft.workersPreview.length > 0) {
+          setWorkersPreview(draft.workersPreview);
+        }
+      }
+    });
+  }, [getDraft, reset]);
 
   // Prepare worker wages preview
   const handleProceedToReview = async (values: RunPayrollValues) => {
@@ -955,6 +982,7 @@ function RunPayrollModal({ onClose, onSuccess }: { onClose: () => void, onSucces
         localStorage.setItem(`noxis_cached_slips_${period.id}`, JSON.stringify(slips));
       }
 
+      clearDraft();
       onSuccess(`Cycle Executed: Generated ${slips.length} payslips totaling Rs. ${totalPayroll.toLocaleString('en-PK')}.`);
     } catch (err: any) {
       alert(`Payroll Generation Failed: ${err.message}`);

@@ -246,10 +246,14 @@ export function CommandPalette() {
   }, [open, results, selectedIndex, execute])
 
   useEffect(() => {
+    let timer: NodeJS.Timeout | null = null
     if (open) {
-      setTimeout(() => inputRef.current?.focus(), 50)
+      timer = setTimeout(() => inputRef.current?.focus(), 50)
     }
     setSelectedIndex(0)
+    return () => {
+      if (timer) clearTimeout(timer)
+    }
   }, [open, query])
 
   if (!open || typeof document === 'undefined') return null

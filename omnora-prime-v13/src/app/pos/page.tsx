@@ -36,6 +36,8 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { useConversionTrigger } from '@/hooks/useConversionTrigger'
 import { useFormDraft }
   from '@/hooks/useFormDraft'
+import { AutoStartRecoveryBanner }
+  from '@/components/ui/AutoStartRecoveryBanner'
 import {
   createEmptyCart, addItemToCart,
   removeItemFromCart, updateItemQuantity,
@@ -44,6 +46,7 @@ import {
   removePayment, setParty,
   validateCartStock, recalcPayments,
   type POSCart, type PaymentMethod, type CartItem,
+  type PaymentAllocation,
 } from '@/lib/pos/posEngine'
 import { parseScannedPayload }
   from '@/lib/barcode/barcodeEngine'
@@ -57,6 +60,8 @@ import { generateA4Invoice }
   from '@/lib/invoices/generateA4Invoice'
 import { POSThermalReceipt }
   from '@/components/pos/POSThermalReceipt'
+import { NoxisErrorBoundary } from "@/components/ui/NoxisErrorBoundary"
+import { useBarcodeScan } from "@/hooks/useBarcodeScan"
 
 // Static data outside component
 const PAYMENT_METHODS = [
@@ -95,6 +100,15 @@ export default function POSPage() {
 
   const [cart, setCart] =
     useState<POSCart>(createEmptyCart())
+  const [posRecoveryDraft, setPosRecoveryDraft] = useState<{
+    cart: CartItem[]
+    payments: PaymentAllocation[]
+    partyId: string | null
+    partyName: string | null
+    orderDiscount: number
+    clientTransactionId: string
+    savedAt: number
+  } | null>(null)
   const [search, setSearch] = useState('')
   const [searchResults, setSearchResults] =
     useState<any[]>([])
@@ -274,31 +288,106 @@ export default function POSPage() {
     return () => window.removeEventListener('noxis:sku_updated', handleUpdate)
   }, [loadInventory])
 
-  // Restore cart from draft
-  useEffect(() => {
-    const t = setTimeout(async () => {
-      const draft = await (window as any)
-        .electronAPI?.store
-        ?.getDraft?.('pos_cart')
-      if (draft?.items?.length > 0) {
-        setCart(draft)
-        toast(
-          'Cart restored from last session',
-          { icon: '🔄' }
-        )
-      }
-    }, 200)
-    return () => clearTimeout(t)
-  }, [])
+  // STEP 2: POS Cart bulletproof persistence helpers
+  const getPosDraftKey = useCallback(() => {
+    const bId = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : '') || 'default'
+    const dId = (typeof window !== 'undefined' ? (localStorage.getItem('noxis_workstation_node_id') || localStorage.getItem('noxis_device_id')) : '') || 'main'
+    return `noxis_pos_draft_${bId}_${dId}`
+  }, [profile?.id])
 
-  // Auto-save draft every 5s
+  const clearPosDraft = useCallback(() => {
+    if (typeof window === 'undefined') return
+    try {
+      localStorage.removeItem(getPosDraftKey())
+    } catch {}
+  }, [getPosDraftKey])
+
+  // STEP 2: On POS page mount — check localStorage draft (<4h show banner, >4h auto-discard)
   useEffect(() => {
-    if (cart.items.length === 0) return
-    const t = setInterval(() => {
-      saveDraft(cart)
-    }, 5000)
-    return () => clearInterval(t)
-  }, [cart, saveDraft])
+    if (typeof window === 'undefined') return
+    try {
+      const key = getPosDraftKey()
+      const raw = localStorage.getItem(key)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        const fourHoursMs = 4 * 60 * 60 * 1000
+        const age = Date.now() - (parsed?.savedAt || 0)
+        if (parsed?.cart && Array.isArray(parsed.cart) && parsed.cart.length > 0) {
+          if (age < fourHoursMs) {
+            setPosRecoveryDraft(parsed)
+          } else {
+            localStorage.removeItem(key)
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[POS Recovery] Error checking draft:', e)
+    }
+  }, [getPosDraftKey])
+
+  // STEP 2: Debounced 300ms persistence on every single cart/payment/discount/party state change
+  const draftTimerRef = useRef<NodeJS.Timeout | null>(null)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current)
+
+    // Skip if cart is blank and has no payment or party
+    if (cart.items.length === 0 && (!cart.payments || cart.payments.length === 0) && !cart.partyId && !cart.discountValue) {
+      return
+    }
+
+    draftTimerRef.current = setTimeout(() => {
+      try {
+        const key = getPosDraftKey()
+        const payload = {
+          cart: cart.items,
+          payments: cart.payments || [],
+          partyId: cart.partyId || null,
+          partyName: cart.partyName || null,
+          orderDiscount: Number(cart.discountValue || 0),
+          clientTransactionId: cart.clientTransactionId || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : ('tx_' + Date.now())),
+          savedAt: Date.now(),
+        }
+        localStorage.setItem(key, JSON.stringify(payload))
+      } catch (err) {
+        console.warn('[POS Draft] LocalStorage save error:', err)
+      }
+    }, 300)
+
+    return () => {
+      if (draftTimerRef.current) clearTimeout(draftTimerRef.current)
+    }
+  }, [cart, getPosDraftKey])
+
+  const handleResumeLastSale = () => {
+    if (!posRecoveryDraft) return
+    setCart(prev => {
+      const restoredItems = posRecoveryDraft.cart || []
+      const subtotal = restoredItems.reduce((acc, it) => acc + (it.lineTotal || (it.quantity * it.unitPrice)), 0)
+      const discountVal = posRecoveryDraft.orderDiscount || 0
+      const grandTotal = Math.max(0, subtotal - discountVal)
+      return {
+        ...prev,
+        items: restoredItems,
+        payments: posRecoveryDraft.payments || [],
+        partyId: posRecoveryDraft.partyId,
+        partyName: posRecoveryDraft.partyName,
+        discountValue: discountVal,
+        subtotal,
+        grandTotal,
+        balanceDue: grandTotal,
+        // Crucial: retain clientTransactionId to prevent duplicate invoice generation
+        clientTransactionId: posRecoveryDraft.clientTransactionId || prev.clientTransactionId,
+      }
+    })
+    setPosRecoveryDraft(null)
+    toast.success('Sale restored from last session', { icon: '🔄' })
+  }
+
+  const handleStartFresh = () => {
+    clearPosDraft()
+    setPosRecoveryDraft(null)
+  }
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -335,6 +424,52 @@ export default function POSPage() {
     setSearchResults([])
     searchRef.current?.focus({ preventScroll: true })
   }, [])
+
+  // Robust POS Barcode Scan Handler with 'pos' context
+  useBarcodeScan((barcode: string) => {
+    const termLower = barcode.toLowerCase()
+    const match = localInventory.find(
+      s => (s.barcode && s.barcode.toLowerCase() === termLower) ||
+           (s.sku_code && s.sku_code.toLowerCase() === termLower)
+    )
+    if (match) {
+      handleAddItem(match)
+      setScanFeedback('success')
+      setTimeout(() => setScanFeedback(null), 600)
+    } else {
+      setSearch(barcode)
+    }
+  }, { context: 'pos' })
+
+  const handleRemoveItem = useCallback((itemId: string) => {
+    setCart(prev => removeItemFromCart(prev, itemId))
+  }, [])
+
+  const handleUpdateQuantity = useCallback((itemId: string, qty: number) => {
+    setCart(prev => updateItemQuantity(prev, itemId, qty))
+  }, [])
+
+  const handleUpdatePrice = useCallback((itemId: string, price: number) => {
+    setCart(prev => updateItemPrice(prev, itemId, price))
+  }, [])
+
+  const handleUpdateDiscount = useCallback((itemId: string, type: any, value: number) => {
+    setCart(prev => updateItemDiscount(prev, itemId, type, value))
+  }, [])
+
+  const handleOrderDiscount = useCallback((type: any, value: number) => {
+    setCart(prev => applyOrderDiscount(prev, type, value))
+  }, [])
+
+  const calculatedTotals = useMemo(() => ({
+    subtotal: cart.subtotal,
+    taxAmount: cart.taxAmount,
+    discountAmount: cart.discountAmount,
+    grandTotal: cart.grandTotal,
+    totalPaid: cart.totalPaid,
+    balanceDue: cart.balanceDue,
+    change: cart.change,
+  }), [cart.subtotal, cart.taxAmount, cart.discountAmount, cart.grandTotal, cart.totalPaid, cart.balanceDue, cart.change])
 
   // Robust debounced search with 0ms local-first lookup
   useEffect(() => {
@@ -649,6 +784,7 @@ export default function POSPage() {
       setLastInvoice(completedInvoice)
       setShowPaymentPanel(false)
       setShowReceipt(true)
+      clearPosDraft()
       setCart(createEmptyCart())
 
       // Invalidate affected queries
@@ -743,56 +879,32 @@ export default function POSPage() {
       } catch {}
     }
 
-    // ── Multi-Tier Fallback Flow ──
-    if (electronAPI && typeof electronAPI.printThermalSilent === 'function') {
-      try {
-        const res = await electronAPI.printThermalSilent({
-          htmlContent: slipElement.outerHTML,
-          printerName: savedPrinterName && savedPrinterName.trim() ? savedPrinterName.trim() : undefined,
-          width: '80mm',
-        });
-        if (res && res.success) {
-          toast.success('Thermal Print Dispatched', 'Receipt printed silently to thermal roll');
-          return;
-        }
+    // ── Safe Electron Hardware Print with Automatic Preview Fallback ──
+    let res: any = null;
+    try {
+      res = await (window as any).electronAPI?.printThermalSilent?.({
+        htmlContent: slipElement.outerHTML,
+        printerName: savedPrinterName && savedPrinterName.trim() ? savedPrinterName.trim() : undefined,
+        width: '80mm',
+      });
+    } catch (err) {
+      console.warn('[IPC] printThermalSilent failed:', err);
+    }
 
-        // Silent print rejected, offline, or timed out — immediately fallback to 80mm PDF
-        console.warn('[POS] Silent print failed, falling back to 80mm PDF:', res?.error);
-        await generateThermalPDF(
-          lastInvoice,
-          lastInvoice.items || [],
-          profile,
-          {
-            currency,
-            cashierName: currentUser?.name || currentUser?.email || 'Terminal Operator',
-            autoPrint: false,
-          }
-        );
-        toast.warning('Printer Offline', 'Printer offline - receipt saved as PDF');
-      } catch (err: any) {
-        console.error('[POS] Electron silent print error, falling back to 80mm PDF:', err);
-        try {
-          await generateThermalPDF(
-            lastInvoice,
-            lastInvoice.items || [],
-            profile,
-            {
-              currency,
-              cashierName: currentUser?.name || currentUser?.email || 'Terminal Operator',
-              autoPrint: false,
-            }
-          );
-          toast.warning('Printer Offline', 'Printer offline - receipt saved as PDF');
-        } catch (pdfErr) {
-          console.error('[POS] Fallback PDF generation also failed:', pdfErr);
-          window.print();
-        }
+    if (res && res.success) {
+      if (res.method === 'hardware') {
+        toast.success('Thermal Print Dispatched', 'Receipt printed directly to thermal printer');
+      } else {
+        toast.info('Preview Opened', 'Printing to preview (connect a thermal printer for direct print)');
       }
-    } else {
-      // ── Web Browser Fallback ──
+      return;
+    }
+
+    // ── Web Browser or Standalone Fallback ──
+    try {
+      window.print();
+    } catch {
       try {
-        window.print();
-      } catch {
         await generateThermalPDF(
           lastInvoice,
           lastInvoice.items || [],
@@ -804,6 +916,8 @@ export default function POSPage() {
           }
         );
         toast.info('Receipt Saved', 'Printer offline - receipt saved as PDF');
+      } catch (pdfErr) {
+        console.error('[POS] Fallback PDF generation error:', pdfErr);
       }
     }
   }, [lastInvoice, profile, currency, currentUser]);
@@ -894,10 +1008,11 @@ export default function POSPage() {
   )
 
   return (
-    <div 
-      className="flex flex-1 w-full h-full min-h-0 overflow-hidden"
-      style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}
-    >
+    <NoxisErrorBoundary fallbackTitle="POS Counter">
+      <div 
+        className="flex flex-1 w-full h-full min-h-0 overflow-hidden"
+        style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}
+      >
 
       {/* ── LEFT: SEARCH + RESULTS ── */}
       <div 
@@ -1180,8 +1295,10 @@ export default function POSPage() {
             </button>
             {cart.items.length > 0 && (
               <button
-                onClick={() =>
-                  setCart(createEmptyCart())}
+                onClick={() => {
+                  clearPosDraft()
+                  setCart(createEmptyCart())
+                }}
                 className="flex items-center
                   gap-1 text-[10px] text-gray-600
                   hover:text-red-400
@@ -1193,61 +1310,35 @@ export default function POSPage() {
           </div>
         </div>
 
+        {/* STEP 2: POS Auto-Recovery Banner */}
+        {posRecoveryDraft && (
+          <div className="px-5 pt-3">
+            <AutoStartRecoveryBanner
+              itemCount={posRecoveryDraft.cart?.length || 0}
+              totalAmount={posRecoveryDraft.cart?.reduce((acc, it) => acc + (it.lineTotal || (it.quantity * it.unitPrice)), 0) || 0}
+              entityLabel="sale"
+              onResume={handleResumeLastSale}
+              onDiscard={handleStartFresh}
+            />
+          </div>
+        )}
+
         {/* Cart items */}
-        <div className="flex-1 overflow-y-auto">
-          {cart.items.length === 0 ? (
-            <div className="flex flex-col
-              items-center justify-center
-              h-full text-center px-8">
-              <Receipt size={32}
-                className="text-gray-800
-                  mb-3" />
-              <p className="text-sm font-bold
-                text-gray-600">
-                Cart is empty
-              </p>
-              <p className="text-xs text-gray-700
-                mt-1">
-                Search for items above or
-                scan a barcode
-              </p>
-            </div>
-          ) : (
-            cart.items.map(item => (
-              <CartItemRow
-                key={item.id}
-                item={item}
-                currency={currency}
-                onQtyChange={(q) =>
-                  setCart(prev => updateItemQuantity(
-                    prev, item.id, q
-                  ))}
-                onPriceChange={(p) =>
-                  setCart(prev => updateItemPrice(
-                    prev, item.id, p
-                  ))}
-                onDiscountChange={(t, v) =>
-                  setCart(prev => updateItemDiscount(
-                    prev, item.id, t, v
-                  ))}
-                onRemove={() =>
-                  setCart(prev => removeItemFromCart(
-                    prev, item.id
-                  ))}
-              />
-            ))
-          )}
-        </div>
+        <CartDisplay
+          items={cart.items}
+          currency={currency}
+          onQtyChange={handleUpdateQuantity}
+          onPriceChange={handleUpdatePrice}
+          onDiscountChange={handleUpdateDiscount}
+          onRemove={handleRemoveItem}
+        />
 
         {/* Order discount + totals */}
         {cart.items.length > 0 && (
           <OrderTotals
             cart={cart}
             currency={currency}
-            onDiscountChange={(t, v) =>
-              setCart(prev => applyOrderDiscount(
-                prev, t, v
-              ))}
+            onDiscountChange={handleOrderDiscount}
           />
         )}
       </div>
@@ -1589,11 +1680,56 @@ export default function POSPage() {
           </div>
         )
       )}
-    </div>
+      </div>
+    </NoxisErrorBoundary>
   )
 }
 
 // ── MEMOIZED SUB-COMPONENTS ──
+
+interface CartDisplayProps {
+  items: CartItem[]
+  currency: string
+  onQtyChange: (itemId: string, q: number) => void
+  onPriceChange: (itemId: string, p: number) => void
+  onDiscountChange: (itemId: string, t: any, v: number) => void
+  onRemove: (itemId: string) => void
+}
+
+const CartDisplay = memo(function CartDisplay({
+  items,
+  currency,
+  onQtyChange,
+  onPriceChange,
+  onDiscountChange,
+  onRemove,
+}: CartDisplayProps) {
+  if (items.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center px-8">
+        <Receipt size={32} className="text-gray-800 mb-3" />
+        <p className="text-sm font-bold text-gray-600">Cart is empty</p>
+        <p className="text-xs text-gray-700 mt-1">Search for items above or scan a barcode</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto">
+      {items.map(item => (
+        <CartItemRow
+          key={item.id}
+          item={item}
+          currency={currency}
+          onQtyChange={onQtyChange}
+          onPriceChange={onPriceChange}
+          onDiscountChange={onDiscountChange}
+          onRemove={onRemove}
+        />
+      ))}
+    </div>
+  )
+})
 
 const CartItemRow = memo(function CartItemRow({
   item, currency, onQtyChange,
@@ -1601,10 +1737,10 @@ const CartItemRow = memo(function CartItemRow({
 }: {
   item: CartItem
   currency: string
-  onQtyChange: (q: number) => void
-  onPriceChange: (p: number) => void
-  onDiscountChange: (t: any, v: number) => void
-  onRemove: () => void
+  onQtyChange: (id: string, q: number) => void
+  onPriceChange: (id: string, p: number) => void
+  onDiscountChange: (id: string, t: any, v: number) => void
+  onRemove: (id: string) => void
 }) {
   const [showDiscount, setShowDiscount] =
     useState(false)
@@ -1649,6 +1785,7 @@ const CartItemRow = memo(function CartItemRow({
               value={item.unitPrice}
               onChange={e =>
                 onPriceChange(
+                  item.id,
                   parseFloat(e.target.value) || 0
                 )}
               type="number"
@@ -1692,6 +1829,7 @@ const CartItemRow = memo(function CartItemRow({
               <button
                 onClick={() =>
                   onDiscountChange(
+                    item.id,
                     item.discountType === 'percent'
                       ? 'fixed' : 'percent',
                     item.discountValue
@@ -1706,6 +1844,7 @@ const CartItemRow = memo(function CartItemRow({
                 value={item.discountValue}
                 onChange={e =>
                   onDiscountChange(
+                    item.id,
                     item.discountType,
                     parseFloat(e.target.value) || 0
                   )}
@@ -1736,7 +1875,7 @@ const CartItemRow = memo(function CartItemRow({
           items-end gap-2 flex-shrink-0">
           {/* Remove */}
           <button
-            onClick={onRemove}
+            onClick={() => onRemove(item.id)}
             className="text-gray-700
               hover:text-red-400 transition-colors">
             <X size={13} />
@@ -1747,7 +1886,7 @@ const CartItemRow = memo(function CartItemRow({
             gap-1">
             <button
               onClick={() =>
-                onQtyChange(item.quantity - 1)}
+                onQtyChange(item.id, Math.max(0, item.quantity - 1))}
               className="w-6 h-6 flex items-center
                 justify-center bg-[#161A1F]
                 border border-white/8 rounded-sm
@@ -1760,6 +1899,7 @@ const CartItemRow = memo(function CartItemRow({
               value={item.quantity}
               onChange={e =>
                 onQtyChange(
+                  item.id,
                   parseFloat(e.target.value) || 1
                 )}
               type="number"
@@ -1772,7 +1912,7 @@ const CartItemRow = memo(function CartItemRow({
             />
             <button
               onClick={() =>
-                onQtyChange(item.quantity + 1)}
+                onQtyChange(item.id, item.quantity + 1)}
               className="w-6 h-6 flex items-center
                 justify-center bg-[#161A1F]
                 border border-white/8 rounded-sm
@@ -1794,7 +1934,16 @@ const CartItemRow = memo(function CartItemRow({
       </div>
     </div>
   )
-})
+}, (prev, next) => (
+  prev.item.id === next.item.id &&
+  prev.item.quantity === next.item.quantity &&
+  prev.item.unitPrice === next.item.unitPrice &&
+  prev.item.discountValue === next.item.discountValue &&
+  prev.item.discountType === next.item.discountType &&
+  prev.item.lineTotal === next.item.lineTotal &&
+  prev.item.stockAvailable === next.item.stockAvailable &&
+  prev.currency === next.currency
+))
 
 const OrderTotals = memo(function OrderTotals({
   cart, currency, onDiscountChange,
@@ -1894,7 +2043,13 @@ const OrderTotals = memo(function OrderTotals({
       </div>
     </div>
   )
-})
+}, (prev, next) => (
+  prev.cart.subtotal === next.cart.subtotal &&
+  prev.cart.discountAmount === next.cart.discountAmount &&
+  prev.cart.taxAmount === next.cart.taxAmount &&
+  prev.cart.grandTotal === next.cart.grandTotal &&
+  prev.currency === next.currency
+))
 
 const PartySelector = memo(
   function PartySelector({

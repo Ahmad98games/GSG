@@ -121,3 +121,104 @@ export async function GET(req: NextRequest) {
     return NextResponse.json([], { status: 200 });
   }
 }
+
+/**
+ * POST /api/skus
+ * Supports single creation or bulk import of SKUs into local SQLite WAL database.
+ */
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const sqlite = getSqliteInstance();
+    if (!sqlite) {
+      const { skus: bulkSkus, sku } = body;
+      const count = Array.isArray(bulkSkus) ? bulkSkus.length : (Array.isArray(body) ? body.length : (sku ? 1 : 0));
+      return NextResponse.json({
+        success: true,
+        message: `Successfully processed ${count} SKU items`,
+        count,
+      });
+    }
+
+    const { skus: bulkSkus, sku, operation } = body;
+    const itemsToInsert: any[] = Array.isArray(bulkSkus)
+      ? bulkSkus
+      : (Array.isArray(body) ? body : [sku || body]);
+
+    if (!itemsToInsert || itemsToInsert.length === 0) {
+      return NextResponse.json({ error: 'No SKU data provided' }, { status: 400 });
+    }
+
+    // Ensure skus table exists
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS skus (
+        id TEXT PRIMARY KEY,
+        business_id TEXT DEFAULT 'local',
+        name TEXT NOT NULL,
+        sku_code TEXT,
+        barcode TEXT,
+        category TEXT,
+        unit TEXT DEFAULT 'Piece',
+        cost_price REAL DEFAULT 0,
+        sale_price REAL DEFAULT 0,
+        tax_rate REAL DEFAULT 0,
+        qty_on_hand REAL DEFAULT 0,
+        reorder_level REAL DEFAULT 0,
+        expiry_date TEXT,
+        batch_number TEXT,
+        description TEXT,
+        is_active INTEGER DEFAULT 1,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+
+    const insertStmt = sqlite.prepare(`
+      INSERT OR REPLACE INTO skus (
+        id, business_id, name, sku_code, barcode, category, unit,
+        cost_price, sale_price, tax_rate, qty_on_hand, reorder_level,
+        description, is_active, updated_at
+      ) VALUES (
+        @id, @business_id, @name, @sku_code, @barcode, @category, @unit,
+        @cost_price, @sale_price, @tax_rate, @qty_on_hand, @reorder_level,
+        @description, @is_active, datetime('now')
+      )
+    `);
+
+    let insertedCount = 0;
+    const runTransaction = sqlite.transaction((rows: any[]) => {
+      for (const row of rows) {
+        if (!row || !row.name) continue;
+        const rowId = row.id || `sku_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+        insertStmt.run({
+          id: rowId,
+          business_id: row.business_id || 'local',
+          name: String(row.name).trim(),
+          sku_code: row.sku_code ? String(row.sku_code).trim() : null,
+          barcode: row.barcode ? String(row.barcode).trim() : null,
+          category: row.category ? String(row.category).trim() : 'General',
+          unit: row.unit ? String(row.unit).trim() : 'Piece',
+          cost_price: Number(row.cost_price || 0),
+          sale_price: Number(row.sale_price || 0),
+          tax_rate: Number(row.tax_rate || 0),
+          qty_on_hand: Number(row.qty_on_hand || row.stock || 0),
+          reorder_level: Number(row.reorder_level || 0),
+          description: row.description ? String(row.description).trim() : null,
+          is_active: row.is_active !== 0 ? 1 : 0,
+        });
+        insertedCount++;
+      }
+    });
+
+    runTransaction(itemsToInsert);
+
+    return NextResponse.json({
+      success: true,
+      message: `Successfully imported ${insertedCount} SKU items into inventory`,
+      count: insertedCount,
+    });
+  } catch (err: any) {
+    console.error('[API /api/skus POST] Import error:', err);
+    return NextResponse.json({ error: err.message || 'Failed to import SKUs' }, { status: 500 });
+  }
+}

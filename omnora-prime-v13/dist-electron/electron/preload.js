@@ -41,6 +41,10 @@ electron_1.contextBridge.exposeInMainWorld('electronAPI', {
     getHwid: () => electron_1.ipcRenderer.invoke('license:getHWID'),
     fetchScaleWeight: () => electron_1.ipcRenderer.invoke('fetchScaleWeight'),
     getScaleStatus: () => electron_1.ipcRenderer.invoke('scale:get-status'),
+    retryScaleConnect: () => electron_1.ipcRenderer.invoke('scale:retry-connect'),
+    getHardwareSettings: () => electron_1.ipcRenderer.invoke('hardware:getSettings'),
+    saveHardwareSettings: (settings) => electron_1.ipcRenderer.invoke('hardware:saveSettings', settings),
+    openThermalPreview: (payload) => electron_1.ipcRenderer.invoke('print:open-preview', payload),
     onScaleWeight: (callback) => {
         const listener = (_, data) => callback(data);
         electron_1.ipcRenderer.on('scale:weight-stream', listener);
@@ -179,6 +183,7 @@ electron_1.contextBridge.exposeInMainWorld('electronAPI', {
         getKeepAwake: () => electron_1.ipcRenderer.invoke('system:getKeepAwake'),
         setKeepAwake: (enabled) => electron_1.ipcRenderer.invoke('system:setKeepAwake', enabled),
         getHardwareInfo: () => electron_1.ipcRenderer.invoke('system:getHardwareInfo'),
+        getMemoryInfo: () => electron_1.ipcRenderer.invoke('system:getMemoryInfo'),
     },
     // ── Licensing & HWID ────────────────────────────────────────────────────────
     license: {

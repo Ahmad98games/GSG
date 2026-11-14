@@ -93,7 +93,14 @@ export default React.memo(function IndustrialSidebar() {
   const { role: permissionsRole, isOwner, currentUser, roleLabel } = usePermissions()
   const effectiveRole = permissionsRole || staffRole || 'owner'
   const { nav, features, industry } = useIndustryConfig()
-  const { mode: businessMode, flags: modeFlags } = useBusinessModeStore()
+  const businessMode = useBusinessModeStore(s => s.mode)
+  const modeFlags = useBusinessModeStore(s => s.flags)
+  const cachedLogoRef = React.useRef<string | null>(null)
+  const currentLogo = profile?.logo_url || profile?.avatar_url || (typeof window !== 'undefined' ? (localStorage.getItem('noxis_logo') || '') : '')
+  if (currentLogo && !cachedLogoRef.current) {
+    cachedLogoRef.current = currentLogo
+  }
+  const displayLogo = cachedLogoRef.current || currentLogo
   const [mounted, setMounted] = useState(false)
   const [isProductionModalOpen, setIsProductionModalOpen] = useState(false)
   const supabase = createClient()

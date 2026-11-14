@@ -1,50 +1,59 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.applyProductionPragmas = applyProductionPragmas;
+/**
+ * Noxis Hub — SQLite WAL Performance & Crash Safety Pragmas
+ * Applied in exact required order every time the database opens.
+ */
 function applyProductionPragmas(sqlite) {
-    // Set 10-second busy timeout to wait for locks instead of throwing SQLITE_ERROR
-    try {
-        sqlite.pragma('busy_timeout = 10000');
-    }
-    catch { }
-    // WAL mode: concurrent reads during writes
+    // 1. WAL mode: readers never block writers, writers never block readers. Power cut safe.
     try {
         sqlite.pragma('journal_mode = WAL');
     }
     catch { }
-    // Synchronous NORMAL: safe + fast
+    // 2. synchronous NORMAL: data safe on power cut, 3x faster than FULL.
     try {
         sqlite.pragma('synchronous = NORMAL');
     }
     catch { }
-    // 64MB cache
+    // 3. cache_size -64000: 64MB page cache in memory. Hot data never hits disk.
     try {
-        sqlite.pragma('cache_size = -65536');
+        sqlite.pragma('cache_size = -64000');
     }
     catch { }
-    // Memory-mapped I/O: 256MB
-    try {
-        sqlite.pragma('mmap_size = 268435456');
-    }
-    catch { }
-    // Temp tables in memory
+    // 4. temp_store MEMORY: temp tables in RAM not disk.
     try {
         sqlite.pragma('temp_store = MEMORY');
     }
     catch { }
-    // Foreign keys enforced
+    // 5. mmap_size 268435456: 256MB memory mapped IO. OS-level reads, zero syscall overhead.
     try {
-        sqlite.pragma('foreign_keys = ON');
+        sqlite.pragma('mmap_size = 268435456');
     }
     catch { }
-    // Page size optimized for SSD
+    // 6. page_size 4096: Optimized filesystem block size.
     try {
         sqlite.pragma('page_size = 4096');
     }
     catch { }
-    // Auto-checkpoint WAL at 1000 pages
+    // 7. wal_autocheckpoint 1000: WAL file folds back into main DB every 1000 pages.
     try {
         sqlite.pragma('wal_autocheckpoint = 1000');
+    }
+    catch { }
+    // 8. busy_timeout 5000: Instead of SQLITE_BUSY crash, wait 5 seconds and retry.
+    try {
+        sqlite.pragma('busy_timeout = 5000');
+    }
+    catch { }
+    // 9. foreign_keys ON: Foreign keys strictly enforced.
+    try {
+        sqlite.pragma('foreign_keys = ON');
+    }
+    catch { }
+    // 10. optimize: Updates internal query planner statistics.
+    try {
+        sqlite.pragma('optimize');
     }
     catch { }
 }

@@ -1,7 +1,7 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { RotateCcw, X, CheckCircle2 } from 'lucide-react'
-import { isMeaningfulDraftData } from '@/hooks/useFormDraft'
+import React, { useState, useEffect } from 'react'
+import { isMeaningfulDraftData, DRAFT_REGISTRY } from '@/hooks/useFormDraft'
+import { AutoStartRecoveryBanner } from '@/components/ui/AutoStartRecoveryBanner'
 
 export function DraftRecoveryBanner({
   draftKey,
@@ -51,50 +51,35 @@ export function DraftRecoveryBanner({
 
   if (!draftFound) return null
 
+  const items = Array.isArray(draftData?.items) ? draftData.items : (Array.isArray(draftData?.cart) ? draftData.cart : [])
+  const itemCount = items.length || 0
+  const totalAmount = items.reduce((acc: number, it: any) => {
+    const q = Number(it.quantity || it.qty || 1)
+    const p = Number(it.unit_price || it.price || it.unitPrice || 0)
+    return acc + (it.lineTotal || it.line_total || (q * p))
+  }, 0) || Number(draftData?.total_amount || draftData?.total || draftData?.amount || 0)
+
   return (
-    <div className="flex items-center justify-between p-3 mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg shadow-sm animate-in fade-in duration-200">
-      <div className="flex items-center gap-2.5">
-        <div className="w-7 h-7 rounded-md bg-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
-          <RotateCcw size={14} className="animate-spin-slow" />
-        </div>
-        <div>
-          <p className="text-xs font-bold text-amber-400">
-            Unsaved Work Restored / Preserved
-          </p>
-          <p className="text-[10px] text-zinc-400">
-            Recovered from unexpected shutdown. Continue your entry or discard to start fresh.
-          </p>
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => {
-            if (draftData) onRecover(draftData)
-            setDraftFound(false)
-          }}
-          className="text-xs font-bold text-amber-300 px-3 py-1.5 bg-amber-500/20 border border-amber-500/40 rounded hover:bg-amber-500/30 transition-colors cursor-pointer"
-        >
-          Re-apply Draft
-        </button>
-        <button
-          type="button"
-          onClick={async () => {
-            try {
-              localStorage.removeItem('noxis_draft_' + draftKey)
-              if (typeof window !== 'undefined' && (window as any).electronAPI?.store?.clearFormDraft) {
-                await (window as any).electronAPI.store.clearFormDraft(draftKey)
-              }
-            } catch {}
-            onDiscard()
-            setDraftFound(false)
-          }}
-          className="text-xs font-medium text-zinc-400 hover:text-red-400 px-2 py-1.5 rounded hover:bg-red-500/10 transition-colors flex items-center gap-1 cursor-pointer"
-        >
-          <X size={13} />
-          <span>Discard</span>
-        </button>
-      </div>
-    </div>
+    <AutoStartRecoveryBanner
+      itemCount={itemCount > 0 ? itemCount : undefined}
+      totalAmount={totalAmount > 0 ? totalAmount : undefined}
+      entityLabel={draftKey.replace('-new', '').replace('_', ' ')}
+      onResume={() => {
+        if (draftData) onRecover(draftData)
+        setDraftFound(false)
+      }}
+      onDiscard={async () => {
+        try {
+          localStorage.removeItem('noxis_draft_' + draftKey)
+          if (typeof window !== 'undefined' && (window as any).electronAPI?.store?.clearFormDraft) {
+            await (window as any).electronAPI.store.clearFormDraft(draftKey)
+          }
+        } catch {}
+        onDiscard()
+        setDraftFound(false)
+      }}
+    />
   )
 }
+
+export default DraftRecoveryBanner

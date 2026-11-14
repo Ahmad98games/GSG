@@ -48,6 +48,9 @@ import { PublicNavProvider } from '@/components/shell/PublicNavbar';
 import { NoxisSessionRecoveryModal } from '@/components/shell/NoxisSessionRecoveryModal';
 import { useWorkstationHeartbeat } from '@/hooks/useWorkstationHeartbeat';
 import { useAccessControl } from '@/hooks/useAccessControl';
+import { RenderProfiler } from '@/components/providers/RenderProfiler';
+import { NoxisErrorBoundary } from '@/components/ui/NoxisErrorBoundary';
+import { DemoModeBanner } from '@/components/ui/DemoModeBanner';
 import BannedLockdownModal from '@/components/license/BannedLockdownModal';
 import { usePermissions } from "@/hooks/usePermissions";
 import { useToast } from "@/hooks/useToast";
@@ -56,7 +59,8 @@ import { useToast } from "@/hooks/useToast";
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { license } = useLicenseValidation();
   const pathname = usePathname();
-  const { isConfigured: isBusinessModeConfigured, setMode } = useBusinessModeStore();
+  const isBusinessModeConfigured = useBusinessModeStore(s => s.isConfigured);
+  const setMode = useBusinessModeStore(s => s.setMode);
   const [mounted, setMounted] = React.useState(false);
   const [showWelcomeGuide, setShowWelcomeGuide] = React.useState(false);
   const { isBanned, banReason, hwid: banHwid, userName: banUser, brandName: banBrand, recheck: recheckBan } = useAccessControl();
@@ -69,7 +73,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('open-welcome-guide', handleOpenGuide);
   }, []);
   const { isCollapsed } = useSidebarState();
-  const { isRTL } = useLanguageStore();
+  const isRTL = useLanguageStore(s => s.isRTL);
   const { profile } = useBusinessProfile();
 
   // First-run detection: User needs mode selection if they haven't configured their business mode
@@ -100,11 +104,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [showIntro, setShowIntro] = React.useState(false);
   const [introChecked, setIntroChecked] = React.useState(false);
 
-  const { language, setLanguage, isRTL: storeIsRTL } = useLanguageStore();
+  const language = useLanguageStore(s => s.language);
+  const setLanguage = useLanguageStore(s => s.setLanguage);
   const locale = useNoxisLocale().locale;
 
   // Trial state reads and caching
-  const { isTrial, expiresAt } = useTierStore();
+  const isTrial = useTierStore(s => s.isTrial);
+  const expiresAt = useTierStore(s => s.expiresAt);
   const [dismissedExpired, setDismissedExpired] = React.useState(false);
   const [showHwidModal, setShowHwidModal] = React.useState(false);
   const [isExporting, setIsExporting] = React.useState(false);
@@ -505,7 +511,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           "flex-1 w-full",
           pathname?.startsWith('/pos') ? "flex flex-col min-h-0 overflow-hidden" : "overflow-y-auto"
         )}>
-          {children}
+          <RenderProfiler id="App-Portal">
+            {children}
+          </RenderProfiler>
         </main>
       </div>
     );
@@ -523,7 +531,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         {isElectron && <TitleBar />}
         <ToastContainer />
         <main className="flex-1 w-full flex items-center justify-center relative overflow-hidden">
-          {children}
+          <RenderProfiler id="App-Lock">
+            {children}
+          </RenderProfiler>
         </main>
       </div>
     );
@@ -542,7 +552,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       return (
         <>
           <ToastContainer />
-          {children}
+          <RenderProfiler id="App-Auth">
+            {children}
+          </RenderProfiler>
         </>
       );
     }
@@ -550,7 +562,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return (
       <PublicNavProvider>
         <ToastContainer />
-        {children}
+        <RenderProfiler id="App-Public">
+          {children}
+        </RenderProfiler>
       </PublicNavProvider>
     );
   }
@@ -631,6 +645,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
       
+      <DemoModeBanner />
       <TopUrgencyBanner />
       <ExpiryBanner />
       <UpdateBanner />
@@ -708,7 +723,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <Suspense fallback={<PageSkeleton />}>
             <PageTransition>
-              {children}
+              <RenderProfiler id="App-Main">
+                <NoxisErrorBoundary>
+                  {children}
+                </NoxisErrorBoundary>
+              </RenderProfiler>
             </PageTransition>
           </Suspense>
         </div>

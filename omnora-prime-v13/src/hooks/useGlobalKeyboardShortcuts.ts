@@ -32,6 +32,20 @@ export function useGlobalKeyboardShortcuts() {
       // Ctrl + Shift + shortcuts
       if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
         switch (e.key.toLowerCase()) {
+          case 'd': {
+            e.preventDefault()
+            const isDemo = typeof window !== 'undefined' && localStorage.getItem('noxis_demo_mode_active') === 'true'
+            if (isDemo) {
+              import('@/lib/demo/demoSeed').then(({ clearDemoData }) => {
+                clearDemoData().then(() => router.refresh())
+              })
+            } else {
+              import('@/lib/demo/demoSeed').then(({ loadDemoData }) => {
+                loadDemoData().then(() => router.refresh())
+              })
+            }
+            return
+          }
           case 'p':
             e.preventDefault()
             router.push('/parties')

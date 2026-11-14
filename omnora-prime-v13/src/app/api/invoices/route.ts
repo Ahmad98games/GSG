@@ -467,145 +467,168 @@ export async function POST(req: NextRequest) {
             )
           `);
 
-          // Insert or replace invoice
-          try {
-            sqlite.prepare(`
-              INSERT OR REPLACE INTO invoices (
-                id, business_id, invoice_number, invoice_no, invoice_type, party_id, party_name, party_phone,
-                invoice_date, due_date, status, subtotal, discount_amount, discount_percent,
-                tax_amount, tax_rate, total_amount, amount_paid, balance_due, notes, created_at, updated_at
-              )
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `).run(
-              invoiceId,
-              invoice.business_id,
-              invNumber,
-              invNumber,
-              invoice.invoice_type || 'invoice',
-              invoice.party_id || null,
-              invoice.party_name || null,
-              invoice.party_phone || null,
-              invDate,
-              invoice.due_date || null,
-              invoice.status || 'posted',
-              invSubtotal,
-              invDiscount,
-              invDiscountPct,
-              invTax,
-              invTaxRate,
-              invTotal,
-              invPaid,
-              invBalance,
-              invoice.notes || '',
-              new Date().toISOString(),
-              new Date().toISOString()
-            );
-          } catch {
-            sqlite.prepare(`
-              INSERT OR REPLACE INTO invoices (
-                id, business_id, invoice_number, invoice_type, party_id, party_name, party_phone,
-                invoice_date, due_date, status, subtotal, discount_amount, discount_percent,
-                tax_amount, tax_rate, total_amount, amount_paid, balance_due, notes, created_at, updated_at
-              )
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `).run(
-              invoiceId,
-              invoice.business_id,
-              invNumber,
-              invoice.invoice_type || 'invoice',
-              invoice.party_id || null,
-              invoice.party_name || null,
-              invoice.party_phone || null,
-              invDate,
-              invoice.due_date || null,
-              invoice.status || 'posted',
-              invSubtotal,
-              invDiscount,
-              invDiscountPct,
-              invTax,
-              invTaxRate,
-              invTotal,
-              invPaid,
-              invBalance,
-              invoice.notes || '',
-              new Date().toISOString(),
-              new Date().toISOString()
-            );
-          }
+          // Transactionally write invoice, items, SKU deductions, and party balance
+          const persistInvoiceTx = sqlite.transaction(() => {
+            // Auto-link or auto-create party if party_name provided but party_id missing
+            if (!invoice.party_id && invoice.party_name) {
+              try {
+                const existingParty = sqlite.prepare('SELECT id FROM parties WHERE LOWER(name) = LOWER(?) LIMIT 1').get(invoice.party_name);
+                if (existingParty && existingParty.id) {
+                  invoice.party_id = existingParty.id;
+                } else {
+                  const newPartyId = 'pty_' + randomUUID().slice(0, 8);
+                  sqlite.prepare(`
+                    INSERT OR IGNORE INTO parties (id, business_id, name, party_type, phone, current_balance, is_active, created_at, updated_at)
+                    VALUES (?, ?, ?, 'customer', ?, 0, 1, datetime('now'), datetime('now'))
+                  `).run(newPartyId, invoice.business_id, invoice.party_name, invoice.party_phone || null);
+                  invoice.party_id = newPartyId;
+                }
+              } catch (partyErr) {
+                console.warn('[API Invoices] Auto-party linkage note:', partyErr);
+              }
+            }
 
-          // Insert line items
-          if (Array.isArray(items) && items.length > 0) {
-            const insertItemStmt = sqlite.prepare(`
-              INSERT OR REPLACE INTO invoice_items (
-                id, invoice_id, business_id, sku_id, description, quantity, unit, unit_price, total_price, discount_percent
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `);
-
-            for (const it of items) {
-              const qty = Number(it.quantity ?? it.qty ?? 1);
-              const unitPrice = Number(it.unit_price ?? 0);
-              const totalPrice = Number(it.total_price ?? it.line_total ?? (qty * unitPrice));
-              insertItemStmt.run(
-                it.id || randomUUID(),
+            // Insert or replace invoice
+            try {
+              sqlite.prepare(`
+                INSERT OR REPLACE INTO invoices (
+                  id, business_id, invoice_number, invoice_no, invoice_type, party_id, party_name, party_phone,
+                  invoice_date, due_date, status, subtotal, discount_amount, discount_percent,
+                  tax_amount, tax_rate, total_amount, amount_paid, balance_due, notes, created_at, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              `).run(
                 invoiceId,
                 invoice.business_id,
-                it.sku_id || null,
-                it.description || 'Item',
-                qty,
-                it.unit || 'Piece',
-                unitPrice,
-                totalPrice,
-                Number(it.discount_percent || 0)
+                invNumber,
+                invNumber,
+                invoice.invoice_type || 'invoice',
+                invoice.party_id || null,
+                invoice.party_name || null,
+                invoice.party_phone || null,
+                invDate,
+                invoice.due_date || null,
+                invoice.status || 'posted',
+                invSubtotal,
+                invDiscount,
+                invDiscountPct,
+                invTax,
+                invTaxRate,
+                invTotal,
+                invPaid,
+                invBalance,
+                invoice.notes || '',
+                new Date().toISOString(),
+                new Date().toISOString()
+              );
+            } catch {
+              sqlite.prepare(`
+                INSERT OR REPLACE INTO invoices (
+                  id, business_id, invoice_number, invoice_type, party_id, party_name, party_phone,
+                  invoice_date, due_date, status, subtotal, discount_amount, discount_percent,
+                  tax_amount, tax_rate, total_amount, amount_paid, balance_due, notes, created_at, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              `).run(
+                invoiceId,
+                invoice.business_id,
+                invNumber,
+                invoice.invoice_type || 'invoice',
+                invoice.party_id || null,
+                invoice.party_name || null,
+                invoice.party_phone || null,
+                invDate,
+                invoice.due_date || null,
+                invoice.status || 'posted',
+                invSubtotal,
+                invDiscount,
+                invDiscountPct,
+                invTax,
+                invTaxRate,
+                invTotal,
+                invPaid,
+                invBalance,
+                invoice.notes || '',
+                new Date().toISOString(),
+                new Date().toISOString()
               );
             }
-          }
 
-          // Deduct quantities in local SQLite skus & sku_cache
-          if (Array.isArray(sku_deductions) && sku_deductions.length > 0) {
-            const deductSkuStmt = sqlite.prepare(`
-              UPDATE skus 
-              SET qty_on_hand = MAX(0, COALESCE(qty_on_hand, 0) - ?),
-                  updated_at = datetime('now')
-              WHERE id = ? OR sku_code = ?
-            `);
-            let deductCacheStmt = null;
-            try {
-              deductCacheStmt = sqlite.prepare(`
-                UPDATE sku_cache 
-                SET qty_on_hand = CAST(MAX(0, CAST(COALESCE(qty_on_hand, '0') AS REAL) - ?) AS TEXT),
-                    last_synced_at = datetime('now')
-                WHERE sku_id = ? OR sku_code = ?
+            // Insert line items
+            if (Array.isArray(items) && items.length > 0) {
+              const insertItemStmt = sqlite.prepare(`
+                INSERT OR REPLACE INTO invoice_items (
+                  id, invoice_id, business_id, sku_id, description, quantity, unit, unit_price, total_price, discount_percent
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
               `);
-            } catch {}
 
-            for (const it of sku_deductions) {
-              const qtyToDeduct = Number(it.qty ?? it.quantity ?? 0);
-              const targetId = String(it.sku_id || it.id || '');
-              const targetCode = String(it.sku_code || targetId);
-              if (targetId && qtyToDeduct > 0) {
-                try {
-                  deductSkuStmt.run(qtyToDeduct, targetId, targetCode);
-                } catch (e) {
-                  console.warn('[API Invoices] deductSkuStmt error:', e);
-                }
-                if (deductCacheStmt) {
+              for (const it of items) {
+                const qty = Number(it.quantity ?? it.qty ?? 1);
+                const unitPrice = Number(it.unit_price ?? 0);
+                const totalPrice = Number(it.total_price ?? it.line_total ?? (qty * unitPrice));
+                insertItemStmt.run(
+                  it.id || randomUUID(),
+                  invoiceId,
+                  invoice.business_id,
+                  it.sku_id || null,
+                  it.description || 'Item',
+                  qty,
+                  it.unit || 'Piece',
+                  unitPrice,
+                  totalPrice,
+                  Number(it.discount_percent || 0)
+                );
+              }
+            }
+
+            // Deduct quantities in local SQLite skus & sku_cache
+            if (Array.isArray(sku_deductions) && sku_deductions.length > 0) {
+              const deductSkuStmt = sqlite.prepare(`
+                UPDATE skus 
+                SET qty_on_hand = MAX(0, COALESCE(qty_on_hand, 0) - ?),
+                    updated_at = datetime('now')
+                WHERE id = ? OR sku_code = ?
+              `);
+              let deductCacheStmt: any = null;
+              try {
+                deductCacheStmt = sqlite.prepare(`
+                  UPDATE sku_cache 
+                  SET qty_on_hand = CAST(MAX(0, CAST(COALESCE(qty_on_hand, '0') AS REAL) - ?) AS TEXT),
+                      last_synced_at = datetime('now')
+                  WHERE sku_id = ? OR sku_code = ?
+                `);
+              } catch {}
+
+              for (const it of sku_deductions) {
+                const qtyToDeduct = Number(it.qty ?? it.quantity ?? 0);
+                const targetId = String(it.sku_id || it.id || '');
+                const targetCode = String(it.sku_code || targetId);
+                if (targetId && qtyToDeduct > 0) {
                   try {
-                    deductCacheStmt.run(qtyToDeduct, targetId, targetCode);
+                    deductSkuStmt.run(qtyToDeduct, targetId, targetCode);
                   } catch (e) {
-                    console.warn('[API Invoices] deductCacheStmt error:', e);
+                    console.warn('[API Invoices] deductSkuStmt error:', e);
+                  }
+                  if (deductCacheStmt) {
+                    try {
+                      deductCacheStmt.run(qtyToDeduct, targetId, targetCode);
+                    } catch (e) {
+                      console.warn('[API Invoices] deductCacheStmt error:', e);
+                    }
                   }
                 }
               }
             }
-          }
 
-          // Update local party balance
-          if (invoice.party_id && party_balance_increment !== 0) {
-            try {
-              sqlite.prepare('UPDATE parties SET current_balance = COALESCE(current_balance, 0) + ? WHERE id = ?')
-                .run(Number(party_balance_increment), invoice.party_id);
-            } catch {}
-          }
+            // Update local party balance
+            if (invoice.party_id && party_balance_increment !== 0) {
+              try {
+                sqlite.prepare('UPDATE parties SET current_balance = COALESCE(current_balance, 0) + ? WHERE id = ?')
+                  .run(Number(party_balance_increment), invoice.party_id);
+              } catch {}
+            }
+          });
+          persistInvoiceTx();
         }
       } catch (sqErr: any) {
         console.warn('[API Invoices] Local SQLite write warning:', sqErr.message);
@@ -721,7 +744,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         success: true,
         invoice_id: invoiceId,
+        id: invoiceId,
         invoice_no: invNumber,
+        invoice: {
+          id: invoiceId,
+          invoice_number: invNumber,
+          party_id: invoice.party_id,
+          party_name: invoice.party_name,
+          total_amount: invTotal,
+          status: invoice.status || 'draft',
+        }
       });
     }
 

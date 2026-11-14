@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { motion } from "framer-motion";
 import { 
   Plus, Search, Filter, 
@@ -25,7 +26,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { ErrorState, EmptyState as NewEmptyState } from "@/components/ui/StateViews";
 import { useDebounce } from "@/hooks/useDebounce";
-import * as XLSX from 'xlsx';
 import { useToast } from "@/hooks/useToast";
 import { usePermissions } from "@/hooks/usePermissions";
 
@@ -185,13 +185,21 @@ export default function InvoiceListPage() {
   }, [invoices, profile]);
 
   const items = invoices || [];
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: items.length,
+    getScrollElement: () => tableContainerRef.current,
+    estimateSize: () => 64,
+    overscan: 10,
+  });
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     if (!invoices || invoices.length === 0) {
       toast.error('No data to export')
       return
     }
     
+    const XLSX = await import('xlsx');
     const data = invoices.map((inv: any) => ({
       'Invoice No': inv.invoice_no,
       'Issue Date': inv.issue_date || inv.created_at?.split('T')[0],
@@ -358,7 +366,7 @@ export default function InvoiceListPage() {
               }}
             />
           ) : (
-            <div className="bg-[#1A1D21] border border-white/5 overflow-y-auto max-h-[calc(100vh-280px)]">
+            <div ref={tableContainerRef} className="bg-[#1A1D21] border border-white/5 overflow-y-auto max-h-[calc(100vh-280px)]">
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-[#0F1113] table-header border-b border-white/5 sticky top-0 z-10">
@@ -371,9 +379,39 @@ export default function InvoiceListPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.03]">
-                  {items.map((inv: any) => (
-                    <InvoiceRow key={inv.id} inv={inv} />
-                  ))}
+                  {rowVirtualizer.getVirtualItems().length > 0 ? (
+                    <>
+                      {rowVirtualizer.getVirtualItems()[0]?.start > 0 && (
+                        <tr>
+                          <td
+                            style={{ height: `${rowVirtualizer.getVirtualItems()[0].start}px` }}
+                            colSpan={6}
+                          />
+                        </tr>
+                      )}
+                      {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                        const inv = items[virtualRow.index];
+                        if (!inv) return null;
+                        return (
+                          <InvoiceRow key={inv.id} inv={inv} />
+                        );
+                      })}
+                      {rowVirtualizer.getTotalSize() - (rowVirtualizer.getVirtualItems()[rowVirtualizer.getVirtualItems().length - 1]?.end || 0) > 0 && (
+                        <tr>
+                          <td
+                            style={{
+                              height: `${rowVirtualizer.getTotalSize() - (rowVirtualizer.getVirtualItems()[rowVirtualizer.getVirtualItems().length - 1]?.end || 0)}px`
+                            }}
+                            colSpan={6}
+                          />
+                        </tr>
+                      )}
+                    </>
+                  ) : (
+                    items.map((inv: any) => (
+                      <InvoiceRow key={inv.id} inv={inv} />
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -384,7 +422,7 @@ export default function InvoiceListPage() {
   );
 }
 
-function InvoiceRow({ inv }: { inv: any }) {
+const InvoiceRow = React.memo(function InvoiceRow({ inv }: { inv: any }) {
   const controls = useRowHighlight(inv.status);
   const { t, region, fmt, fmtDate } = useIndustryConfig();
   const router = useRouter();
@@ -530,4 +568,9 @@ function InvoiceRow({ inv }: { inv: any }) {
       </td>
     </motion.tr>
   );
-}
+}, (prev, next) => (
+  prev.inv?.id === next.inv?.id &&
+  prev.inv?.status === next.inv?.status &&
+  prev.inv?.balance_due === next.inv?.balance_due &&
+  prev.inv?.total_amount === next.inv?.total_amount
+));

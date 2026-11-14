@@ -44,7 +44,7 @@ const CAMERA_BRANDS = [
 export default function CameraSettings({ isOpen, onClose, cameras, tierLimit, onUpdate }: CameraSettingsProps) {
   const { businessId } = usePersona();
   const toast = useToast();
-  const { canAddCamera } = useTierStore();
+  const canAddCamera = useTierStore(s => s.canAddCamera);
   const [isAdding, setIsAdding] = useState(false);
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
 

@@ -73,7 +73,9 @@ export function createEmptyCart(): POSCart {
     balanceDue: 0,
     change: 0,
     notes: '',
-    clientTransactionId: undefined,
+    clientTransactionId: typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : ('tx_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9)),
   }
 }
 
@@ -250,11 +252,37 @@ export function setParty(
   })
 }
 
-// ── CALCULATION FUNCTIONS ──
+// ── CALCULATION FUNCTIONS (PURE & MEMOIZED) ──
+
+const lineCalcCache = new Map<string, { discountAmount: number; taxAmount: number; lineTotal: number }>()
+
+// Auto-clean calculation cache every 30 seconds to ensure 10+ hr zero memory leak
+if (typeof setInterval !== 'undefined') {
+  setInterval(() => {
+    if (lineCalcCache.size > 0) {
+      lineCalcCache.clear()
+    }
+  }, 30_000)
+}
+
+export function clearCalcCache() {
+  lineCalcCache.clear()
+}
 
 function recalcLine(
   item: CartItem
 ): CartItem {
+  const cacheKey = `${item.unitPrice}_${item.quantity}_${item.discountType}_${item.discountValue}_${item.taxRate}`
+  const cached = lineCalcCache.get(cacheKey)
+  if (cached) {
+    return {
+      ...item,
+      discountAmount: cached.discountAmount,
+      taxAmount: cached.taxAmount,
+      lineTotal: cached.lineTotal,
+    }
+  }
+
   const gross = item.unitPrice * item.quantity
   let discountAmount = 0
   if (item.discountType === 'percent') {
@@ -270,14 +298,20 @@ function recalcLine(
     afterDiscount * (item.taxRate / 100)
   const lineTotal = afterDiscount + taxAmount
 
+  const result = {
+    discountAmount: Math.round(discountAmount * 100) / 100,
+    taxAmount: Math.round(taxAmount * 100) / 100,
+    lineTotal: Math.round(lineTotal * 100) / 100,
+  }
+
+  if (lineCalcCache.size > 500) {
+    lineCalcCache.clear()
+  }
+  lineCalcCache.set(cacheKey, result)
+
   return {
     ...item,
-    discountAmount:
-      Math.round(discountAmount * 100) / 100,
-    taxAmount:
-      Math.round(taxAmount * 100) / 100,
-    lineTotal:
-      Math.round(lineTotal * 100) / 100,
+    ...result,
   }
 }
 

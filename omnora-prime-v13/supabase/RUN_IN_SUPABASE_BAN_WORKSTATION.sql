@@ -157,3 +157,4 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Test run on your number right now:
 -- SELECT ban_workstation('923264742678');
+

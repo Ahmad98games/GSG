@@ -7,7 +7,7 @@ import { useBusinessProfile } from '@/hooks/useBusinessProfile';
 import { createClient } from '@/lib/supabase/client';
 
 export function MobileAppBanner() {
-  const { tier } = useTierStore();
+  const tier = useTierStore(s => s.tier);
   const { profile } = useBusinessProfile();
   const supabase = createClient();
 

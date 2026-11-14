@@ -14,8 +14,6 @@ import { WhatsAppSender, WhatsAppTemplates } from "@/lib/whatsapp/WhatsAppSender
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
-import * as XLSX from "xlsx";
-import { jsPDF } from "jspdf";
 import { generatePayslipPDF } from "@/lib/payroll/generatePayslip";
 import { 
   CreditCard, Download, MessageCircle, 
@@ -360,6 +358,7 @@ export default function PayrollPeriodDetailPage() {
             'Reference': s.karigar?.karigar_code || '',
          }));
 
+         const XLSX = await import('xlsx');
          const ws = XLSX.utils.json_to_sheet(rows);
          const wb = XLSX.utils.book_new();
          XLSX.utils.book_append_sheet(wb, ws, "Bank Transfer");

@@ -327,11 +327,15 @@ export default function MessagingPage() {
     async (deviceId: string) => {
       if (!editLabel.trim()) return
 
-      await (window as any).electronAPI?.messaging?.renameDevice({
-        deviceId,
-        newLabel: editLabel.trim(),
-        deviceRole: editRole,
-      })
+      try {
+        await (window as any).electronAPI?.messaging?.renameDevice?.({
+          deviceId,
+          newLabel: editLabel.trim(),
+          deviceRole: editRole,
+        })
+      } catch (ipcErr) {
+        console.warn('[IPC] renameDevice failed:', ipcErr)
+      }
 
       setDevices(prev => prev.map(d =>
         d.device_id === deviceId

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -18,6 +18,8 @@ import { useToast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
 import Decimal from "decimal.js";
 import { useRouter } from "next/navigation";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { DraftRecoveryBanner } from "@/components/DraftRecoveryBanner";
 
 // --- Components ---
 
@@ -84,6 +86,40 @@ function NewOrderModal({
   const [items, setItems] = useState<OrderLineItem[]>([
     { description: '', quantity: 1, unit: 'Piece', unit_price: 0, total_price: 0 }
   ]);
+
+  const orderDraftData = {
+    orderNumber,
+    orderDate,
+    expectedDate,
+    status,
+    partyId,
+    isWalkIn,
+    walkInName,
+    walkInPhone,
+    notes,
+    discount,
+    items,
+  };
+  const { getDraft, clearDraft } = useFormDraft('order-new', orderDraftData, isOpen);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    getDraft().then((draft) => {
+      if (draft && typeof draft === 'object') {
+        if (draft.orderNumber) setOrderNumber(draft.orderNumber);
+        if (draft.orderDate) setOrderDate(draft.orderDate);
+        if (draft.expectedDate) setExpectedDate(draft.expectedDate);
+        if (draft.status) setStatus(draft.status);
+        if (draft.partyId) setPartyId(draft.partyId);
+        if (typeof draft.isWalkIn === 'boolean') setIsWalkIn(draft.isWalkIn);
+        if (draft.walkInName) setWalkInName(draft.walkInName);
+        if (draft.walkInPhone) setWalkInPhone(draft.walkInPhone);
+        if (draft.notes) setNotes(draft.notes);
+        if (typeof draft.discount === 'number') setDiscount(draft.discount);
+        if (Array.isArray(draft.items) && draft.items.length > 0) setItems(draft.items);
+      }
+    });
+  }, [isOpen, getDraft]);
 
   // Fetch Parties (Customers) - Multi-tiered resilient query: Local SQLite API -> Supabase -> Local Cache
   const { data: parties = [] } = useQuery({
@@ -281,6 +317,7 @@ function NewOrderModal({
       }
 
       toast.success('Sales Order Created', `Order ${payload.order_number} has been logged.`);
+      clearDraft();
       onSuccess(json.order);
       onClose();
     } catch (err: any) {
@@ -1033,6 +1070,13 @@ export default function SalesOrdersPage() {
         </header>
 
         <div className="p-8 max-w-[1600px] mx-auto w-full space-y-8">
+          {/* STEP 6: Order Auto-Recovery Banner */}
+          <DraftRecoveryBanner
+            draftKey="order-new"
+            onRecover={() => setIsNewOrderOpen(true)}
+            onDiscard={() => {}}
+          />
+
           {/* SUMMARY STAT CARDS */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-[#1A1D21] border border-white/5 p-4 flex items-center justify-between">

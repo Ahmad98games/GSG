@@ -45,8 +45,10 @@ const MODE_COLORS: Record<BusinessMode, { accent: string; border: string; bg: st
 }
 
 export default function BusinessModeSelector() {
-  const { setMode } = useBusinessModeStore()
-  const { setTier, isTrial, tier } = useTierStore()
+  const setMode = useBusinessModeStore(s => s.setMode)
+  const setTier = useTierStore(s => s.setTier)
+  const isTrial = useTierStore(s => s.isTrial)
+  const tier = useTierStore(s => s.tier)
 
   const [step, setStep] = useState<1 | 2>(1)
   const [selectedMode, setSelectedMode] = useState<BusinessMode>('textile')

@@ -65,7 +65,16 @@ export default React.memo(function GlobalTopBar() {
     return cleanup
   }, [])
 
-  const { currentBranchId, currentBranchName, setBranch, clearBranch } = useBranchStore()
+  const currentBranchId = useBranchStore(s => s.currentBranchId)
+  const currentBranchName = useBranchStore(s => s.currentBranchName)
+  const setBranch = useBranchStore(s => s.setBranch)
+  const clearBranch = useBranchStore(s => s.clearBranch)
+  const cachedTopBarLogoRef = React.useRef<string | null>(null)
+  const currentTopBarLogo = profile?.logo_url || profile?.avatar_url || (typeof window !== 'undefined' ? (localStorage.getItem('noxis_logo') || '') : '')
+  if (currentTopBarLogo && !cachedTopBarLogoRef.current) {
+    cachedTopBarLogoRef.current = currentTopBarLogo
+  }
+  const displayTopBarLogo = cachedTopBarLogoRef.current || currentTopBarLogo
 
   const { data: branches = [] } = useQuery({
     queryKey: ['branches', profile?.id],

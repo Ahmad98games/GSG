@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/useToast';
 import { humanizeError } from '@/lib/utils/errors';
 import { KarigarGradeBadge } from '@/components/karigars/KarigarGradeBadge';
 import { getGradeInfo } from '@/lib/karigars/gradeSystem';
+import { useFormDraft } from '@/hooks/useFormDraft';
 
 export default function KarigarDetailPage() {
   const params = useParams();
@@ -1119,10 +1120,22 @@ function AdvancePeshgiModal({ karigar, onClose, onSaved }: { karigar: any, onClo
   const toast = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { fmt } = usePersona();
-  const { register, handleSubmit, watch: watchAdvance } = useForm<z.infer<typeof advanceSchema>>({
+  const { register, handleSubmit, watch: watchAdvance, setValue } = useForm<z.infer<typeof advanceSchema>>({
     resolver: zodResolver(advanceSchema),
     defaultValues: { reason: 'Medical' }
   });
+
+  const watchValues = watchAdvance();
+  const { getDraft, clearDraft } = useFormDraft(`peshgi-disbursal-${karigar?.id || 'default'}`, watchValues);
+
+  useEffect(() => {
+    getDraft().then((draft) => {
+      if (draft && draft.amount) {
+        setValue('amount', draft.amount);
+        if (draft.reason) setValue('reason', draft.reason);
+      }
+    });
+  }, [getDraft, setValue]);
 
   const onSubmit = async (values: z.infer<typeof advanceSchema>) => {
     setIsSubmitting(true);
@@ -1172,6 +1185,7 @@ function AdvancePeshgiModal({ karigar, onClose, onSaved }: { karigar: any, onClo
       };
 
       onSaved(newEntry);
+      clearDraft();
       toast.success(`Peshgi advance of ${profile?.currency || 'PKR'} ${values.amount} issued successfully`);
     } catch (err: unknown) {
       toast.error("Transaction failed", humanizeError(err, 'issue advance'));

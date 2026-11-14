@@ -112,7 +112,7 @@ export default function SettingsLayout({
         if (s?.updateAvailable || s?.updateDownloaded) {
           setUpdateAvailable(true)
         }
-      })
+      }).catch(() => {})
       const unsub = (window as any).electronAPI.onUpdateStatus?.((s: any) => {
         if (s?.status === 'available' || s?.status === 'ready') {
           setUpdateAvailable(true)

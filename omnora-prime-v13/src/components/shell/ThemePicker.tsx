@@ -14,15 +14,13 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/useToast";
 
 export default function ThemePicker({ hideTrigger = false }: { hideTrigger?: boolean }) {
-  const { 
-    activeThemeId, 
-    setTheme, 
-    isPanelOpen, 
-    setIsPanelOpen,
-    customAccentColor,
-    customFinancialColor,
-    setCustomColors
-  } = useThemeStore();
+  const activeThemeId = useThemeStore(s => s.activeThemeId);
+  const setTheme = useThemeStore(s => s.setTheme);
+  const isPanelOpen = useThemeStore(s => s.isPanelOpen);
+  const setIsPanelOpen = useThemeStore(s => s.setIsPanelOpen);
+  const customAccentColor = useThemeStore(s => s.customAccentColor);
+  const customFinancialColor = useThemeStore(s => s.customFinancialColor);
+  const setCustomColors = useThemeStore(s => s.setCustomColors);
   const { profile, setProfile } = useBusinessProfile();
   const { toast } = useToast();
   const [hoveredThemeId, setHoveredThemeId] = useState<ThemeId | null>(null);

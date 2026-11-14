@@ -59,16 +59,18 @@ export async function POST(req: NextRequest) {
     const keyHash = crypto.createHash('sha256').update(rawToken).digest('hex');
     const id = 'key_' + Date.now().toString(36);
 
-    sqlite.prepare(`
-      INSERT INTO api_keys (id, business_id, name, key_prefix, key_hash, scopes, total_requests, is_active, created_at)
-      VALUES (?, 'local', ?, ?, ?, ?, 0, 1, datetime('now'))
-    `).run(
-      id,
-      name,
-      prefix,
-      keyHash,
-      JSON.stringify(scopes)
-    );
+    sqlite.transaction(() => {
+      sqlite.prepare(`
+        INSERT INTO api_keys (id, business_id, name, key_prefix, key_hash, scopes, total_requests, is_active, created_at)
+        VALUES (?, 'local', ?, ?, ?, ?, 0, 1, datetime('now'))
+      `).run(
+        id,
+        name,
+        prefix,
+        keyHash,
+        JSON.stringify(scopes)
+      );
+    })();
 
     return NextResponse.json({
       success: true,
@@ -99,7 +101,9 @@ export async function DELETE(req: NextRequest) {
   if (!id) return NextResponse.json({ error: 'Key id required' }, { status: 400 });
 
   try {
-    sqlite.prepare('UPDATE api_keys SET is_active = 0 WHERE id = ?').run(id);
+    sqlite.transaction(() => {
+      sqlite.prepare('UPDATE api_keys SET is_active = 0 WHERE id = ?').run(id);
+    })();
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

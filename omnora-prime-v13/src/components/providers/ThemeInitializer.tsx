@@ -3,7 +3,9 @@ import { useEffect } from 'react'
 import { useThemeStore, applyThemeToDOM } from '@/stores/themeStore'
 
 export function ThemeInitializer() {
-  const { activeTheme, customAccentColor, customFinancialColor } = useThemeStore()
+  const activeTheme = useThemeStore(s => s.activeTheme)
+  const customAccentColor = useThemeStore(s => s.customAccentColor)
+  const customFinancialColor = useThemeStore(s => s.customFinancialColor)
   
   useEffect(() => {
     applyThemeToDOM(activeTheme, customAccentColor, customFinancialColor)

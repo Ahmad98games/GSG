@@ -92,9 +92,13 @@ const TABS = [
 export default function SettingsPage() {
    const { isCollapsed } = useSidebarState();
    const { profile, setProfile } = useBusinessProfile();
-   const { mode, setMode } = useThemeStore();
+   const mode = useThemeStore(s => s.mode);
+   const setMode = useThemeStore(s => s.setMode);
    const supabase = createClient();
-   const { tier: currentTier, expiresAt: tierExpiresAt, isTrial: tierIsTrial, setTier } = useTierStore();
+   const currentTier = useTierStore(s => s.tier);
+   const tierExpiresAt = useTierStore(s => s.expiresAt);
+   const tierIsTrial = useTierStore(s => s.isTrial);
+   const setTier = useTierStore(s => s.setTier);
    const { success: toastSuccess, error: toastError, warning: toastWarning, info: toastInfo } = useToast();
   
   const [isLoading, setIsLoading] = useState(true);
@@ -245,12 +249,12 @@ export default function SettingsPage() {
     if (typeof window !== 'undefined' && (window as any).electronAPI?.autostart) {
       (window as any).electronAPI.autostart.get().then((val: any) => {
         setAutoStartEnabled(val && typeof val === 'object' ? val.enabled : !!val);
-      });
+      }).catch(() => {});
     }
 
     // Fetch HWID for display in settings
     if (typeof window !== 'undefined' && (window as any).electronAPI?.license?.getHWID) {
-      (window as any).electronAPI.license.getHWID().then((id: string) => setHwid((id || '').toUpperCase()));
+      (window as any).electronAPI.license.getHWID().then((id: string) => setHwid((id || '').toUpperCase())).catch(() => {});
     }
   }, []);
 
@@ -267,7 +271,11 @@ export default function SettingsPage() {
  
   const handleToggleAutoStart = async (val: boolean) => {
     if (typeof window !== 'undefined' && (window as any).electronAPI?.autostart) {
-      await (window as any).electronAPI.autostart.set(val);
+      try {
+        await (window as any).electronAPI.autostart.set(val);
+      } catch (e) {
+        console.warn('[IPC] autostart.set error:', e);
+      }
       setAutoStartEnabled(val);
       toastSuccess(
         val ? 'Auto-start enabled' : 'Auto-start disabled',

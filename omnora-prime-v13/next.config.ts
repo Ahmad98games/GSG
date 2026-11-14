@@ -91,7 +91,6 @@ const nextConfig: NextConfig = {
       '@tanstack/react-table',
       '@tanstack/react-virtual',
       '@tanstack/react-query',
-      'react-hot-toast',
     ],
   },
 
@@ -148,6 +147,18 @@ const nextConfig: NextConfig = {
             name: 'lucide',
             chunks: 'all',
             priority: 20,
+          },
+          heavyExports: {
+            test: /[\\/]node_modules[\\/](xlsx|jspdf|pdfkit|html2canvas)/,
+            name: 'heavy-exports',
+            chunks: 'async',
+            priority: 35,
+          },
+          vendors: {
+            test: /[\\/]node_modules[\\/]/,
+            name: 'vendor',
+            chunks: 'all',
+            priority: 10,
           },
         },
       },

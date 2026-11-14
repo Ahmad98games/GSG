@@ -39,7 +39,8 @@ export default function ProfitLossPage() {
   const toast = useToast();
   
   const supabase = createClient();
-  const { currentBranchId, currentBranchName } = useBranchStore();
+  const currentBranchId = useBranchStore(s => s.currentBranchId);
+  const currentBranchName = useBranchStore(s => s.currentBranchName);
 
   const defaultStart = useMemo(() => {
     const d = new Date();

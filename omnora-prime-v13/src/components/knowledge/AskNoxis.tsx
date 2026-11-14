@@ -38,7 +38,13 @@ export default function AskNoxis() {
   const router = useRouter()
 
   useEffect(() => {
-    if (isOpen) setTimeout(() => inputRef.current?.focus(), 100)
+    let timer: NodeJS.Timeout | null = null
+    if (isOpen) {
+      timer = setTimeout(() => inputRef.current?.focus(), 100)
+    }
+    return () => {
+      if (timer) clearTimeout(timer)
+    }
   }, [isOpen])
 
   useEffect(() => {

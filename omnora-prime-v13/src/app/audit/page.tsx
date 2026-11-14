@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { createClient } from '@/lib/supabase/client'
 import { useBusinessProfile } from '@/hooks/useBusinessProfile'
 import { Can } from '@/components/rbac/Can'
@@ -283,6 +284,14 @@ export default function AuditPage() {
     })
   }, [logs, searchTerm, categoryFilter, startDate, endDate])
 
+  const auditListContainerRef = useRef<HTMLDivElement>(null)
+  const rowVirtualizer = useVirtualizer({
+    count: filteredLogs.length,
+    getScrollElement: () => auditListContainerRef.current,
+    estimateSize: () => 80,
+    overscan: 8,
+  })
+
   // CSV Export handler
   const handleExportCSV = () => {
     if (filteredLogs.length === 0) return
@@ -470,8 +479,13 @@ export default function AuditPage() {
             </button>
           </div>
         ) : (
-          <div className="space-y-3">
-            {filteredLogs.map((log: any) => {
+          <div ref={auditListContainerRef} className="overflow-y-auto max-h-[calc(100vh-280px)] space-y-3 pr-1">
+            {rowVirtualizer.getVirtualItems().length > 0 && rowVirtualizer.getVirtualItems()[0]?.start > 0 && (
+              <div style={{ height: `${rowVirtualizer.getVirtualItems()[0].start}px` }} />
+            )}
+            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              const log = filteredLogs[virtualRow.index]
+              if (!log) return null
               const meta = ACTION_METADATA[log.action] || {
                 label: (log.action || 'Event').replace('.', ' '),
                 color: '#9CA3AF',
@@ -603,6 +617,9 @@ export default function AuditPage() {
                 </div>
               )
             })}
+            {rowVirtualizer.getVirtualItems().length > 0 && (rowVirtualizer.getTotalSize() - (rowVirtualizer.getVirtualItems()[rowVirtualizer.getVirtualItems().length - 1]?.end || 0) > 0) && (
+              <div style={{ height: `${rowVirtualizer.getTotalSize() - (rowVirtualizer.getVirtualItems()[rowVirtualizer.getVirtualItems().length - 1]?.end || 0)}px` }} />
+            )}
           </div>
         )}
       </main>

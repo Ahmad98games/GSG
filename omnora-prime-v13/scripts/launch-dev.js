@@ -7,7 +7,7 @@ const appRoot = path.resolve(__dirname, '..');
 const env = { ...process.env };
 delete env.ELECTRON_RUN_AS_NODE;
 
-const child = spawn(electronBinary, ['.'], {
+const child = spawn(electronBinary, ['--expose-gc', '.'], {
   cwd: appRoot,
   env,
   stdio: 'inherit'

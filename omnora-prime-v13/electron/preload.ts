@@ -42,6 +42,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getHwid: () => ipcRenderer.invoke('license:getHWID'),
   fetchScaleWeight: () => ipcRenderer.invoke('fetchScaleWeight'),
   getScaleStatus: () => ipcRenderer.invoke('scale:get-status'),
+  retryScaleConnect: () => ipcRenderer.invoke('scale:retry-connect'),
+  getHardwareSettings: () => ipcRenderer.invoke('hardware:getSettings'),
+  saveHardwareSettings: (settings: any) => ipcRenderer.invoke('hardware:saveSettings', settings),
+  openThermalPreview: (payload: { htmlContent: string; width?: string }) => ipcRenderer.invoke('print:open-preview', payload),
   onScaleWeight: (callback: (data: { weight: number; unit: string; raw: string; port?: string; timestamp?: number }) => void) => {
     const listener = (_: any, data: any) => callback(data);
     ipcRenderer.on('scale:weight-stream', listener);
@@ -221,6 +225,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('system:setKeepAwake', enabled),
     getHardwareInfo: () =>
       ipcRenderer.invoke('system:getHardwareInfo'),
+    getMemoryInfo: () =>
+      ipcRenderer.invoke('system:getMemoryInfo'),
   },
 
   // ── Licensing & HWID ────────────────────────────────────────────────────────

@@ -1,3 +1,4 @@
+import { NoxisErrorBoundary } from '@/components/ui/NoxisErrorBoundary';
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -15,7 +16,8 @@ import Link from 'next/link';
 export default function CCTVPage() {
   const supabase = createClient();
   const { profile } = useBusinessProfile();
-  const { limits, tier } = useTierStore();
+  const limits = useTierStore(s => s.limits);
+  const tier = useTierStore(s => s.tier);
   const { effectiveTier, isTrial } = useLicense();
   const queryClient = useQueryClient();
   const [showWizard, setShowWizard] = useState(false);

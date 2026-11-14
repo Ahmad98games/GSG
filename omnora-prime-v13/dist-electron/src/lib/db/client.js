@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.db = void 0;
+exports.db = exports.sqliteQueryCache = void 0;
 exports.setTestDb = setTestDb;
 const path_1 = __importDefault(require("path"));
 const logger_1 = require("../logger");
@@ -60,6 +60,18 @@ function getDbPath() {
 let _db = null;
 function setTestDb(instance) {
     _db = instance;
+}
+// ── IN-MEMORY QUERY CACHE (With 60s TTL & 30s Cleanup Interval) ──
+exports.sqliteQueryCache = new Map();
+if (typeof setInterval !== 'undefined') {
+    setInterval(() => {
+        const now = Date.now();
+        for (const [key, value] of exports.sqliteQueryCache.entries()) {
+            if (now - value.ts > 60_000) {
+                exports.sqliteQueryCache.delete(key);
+            }
+        }
+    }, 30_000);
 }
 exports.db = new Proxy({}, {
     get(target, prop) {
@@ -465,6 +477,30 @@ exports.db = new Proxy({}, {
                         (0, pragmas_1.applyProductionPragmas)(sqlite);
                     }
                     catch { }
+                    // STEP 4: Startup WAL integrity check & passive drain
+                    try {
+                        const integrityResult = sqlite.pragma('integrity_check');
+                        if (integrityResult && integrityResult[0]?.integrity_check !== 'ok') {
+                            console.error('[DB] Startup integrity check failure detail:', integrityResult);
+                            // Trigger auto-recovery / notification — do NOT crash silently
+                            if (typeof window !== 'undefined') {
+                                window.dispatchEvent(new CustomEvent('db-corruption-detected', { detail: integrityResult }));
+                            }
+                        }
+                        else {
+                            console.log('[DB] Startup integrity_check passed: ok');
+                        }
+                    }
+                    catch (intErr) {
+                        console.error('[DB] Startup integrity check exception:', intErr?.message);
+                    }
+                    try {
+                        const walResult = sqlite.pragma('wal_checkpoint(PASSIVE)');
+                        console.log('[DB] Startup wal_checkpoint(PASSIVE) drained:', walResult);
+                    }
+                    catch (walErr) {
+                        console.warn('[DB] Non-critical startup wal_checkpoint warning:', walErr?.message);
+                    }
                 }
                 // Apply encryption key if present
                 if (dbKey) {

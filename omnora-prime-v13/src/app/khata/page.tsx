@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
@@ -27,6 +27,7 @@ import { AddPartyModal } from '@/components/parties/AddPartyModal';
 import { EditPartyModal } from '@/components/parties/EditPartyModal';
 import { ChequeManagementTab } from '@/components/khata/ChequeManagementTab';
 import { KhataService } from '@/lib/khata/KhataService';
+import { NoxisErrorBoundary } from '@/components/ui/NoxisErrorBoundary';
 
 // --- Types ---
 
@@ -499,12 +500,12 @@ export default function KhataPage() {
   }, [rawEntries, groupedTransactions]);
 
   // Handle Printing Thermal / PDF Slip Preview
-  const handlePrint = (tx: GroupedTransaction) => {
+  const handlePrint = useCallback((tx: GroupedTransaction) => {
     setPrintingTx(tx);
-  };
+  }, []);
 
   // WhatsApp Reminder Generator
-  const sendWhatsAppReminder = (tx: GroupedTransaction) => {
+  const sendWhatsAppReminder = useCallback((tx: GroupedTransaction) => {
     const rawPhone = tx.party_phone ? tx.party_phone.replace(/[^0-9]/g, '') : '';
     const phone = rawPhone.startsWith('92') ? rawPhone : `92${rawPhone.replace(/^0/, '')}`;
     const businessName = profile?.business_name || 'Noxis Hub';
@@ -517,7 +518,12 @@ export default function KhataPage() {
 
     const waUrl = phone ? `https://wa.me/${phone}?text=${message}` : `https://wa.me/?text=${message}`;
     window.open(waUrl, '_blank');
-  };
+  }, [profile?.business_name]);
+
+  const handleVoidTx = useCallback((tx: GroupedTransaction) => {
+    setDeletingTx(tx);
+    setIsPinModalOpen(true);
+  }, []);
 
   // Execute Revert / Void Transaction
   const executeRevertTransaction = async () => {
@@ -573,7 +579,8 @@ export default function KhataPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0E14] text-slate-300 font-sans selection:bg-white/10 selection:text-white">
+    <NoxisErrorBoundary fallbackTitle="Khata Entries">
+      <div className="min-h-screen bg-[#0B0E14] text-slate-300 font-sans selection:bg-white/10 selection:text-white">
       {/* Voucher Slip Preview & Print Modal */}
       {printingTx && (
         <LedgerReceipt
@@ -766,75 +773,15 @@ export default function KhataPage() {
                       </>
                     ) : (
                       <>
-                        {paginatedTransactions.map(tx => {
-                          const isMoneyIn = tx.debitAmount > 0;
-                          const amount = tx.debitAmount || tx.creditAmount;
-                          const isReversed = tx.status === 'reversed';
-
-                          return (
-                            <tr key={tx.tx_ref} className={cn('h-10 border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors duration-100', isReversed && 'opacity-40 line-through')}>
-                              <td className="px-3.5 py-2 text-slate-400 font-mono tabular-nums text-[11px] whitespace-nowrap">
-                                {(() => {
-                                  try {
-                                    return tx.date ? format(new Date(tx.date), 'dd MMM yyyy, HH:mm') : '—';
-                                  } catch {
-                                    return '—';
-                                  }
-                                })()}
-                              </td>
-                              <td className="px-3.5 py-2">
-                                <span className="font-medium text-slate-200 block truncate max-w-[180px]">{tx.party}</span>
-                                {tx.party_phone && <span className="text-[10px] text-slate-500 font-mono tabular-nums">{tx.party_phone}</span>}
-                              </td>
-                              <td className="px-3.5 py-2 whitespace-nowrap">
-                                <span className={cn(
-                                  'px-1.5 py-0.5 rounded-[4px] text-[10px] font-mono border',
-                                  isMoneyIn
-                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                    : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                                )}>
-                                  {isMoneyIn ? 'Money In' : 'Money Out'}
-                                </span>
-                              </td>
-                              <td className="px-3.5 py-2 text-slate-300 max-w-xs truncate">{tx.description}</td>
-                              <td className="px-3.5 py-2 text-[11px] text-slate-400 font-mono tabular-nums">
-                                <div>Dr: {tx.debitAccount}</div>
-                                <div>Cr: {tx.creditAccount}</div>
-                              </td>
-                              <td className={cn('px-3.5 py-2 text-right font-mono tabular-nums text-xs font-medium', isMoneyIn ? 'text-emerald-400' : 'text-slate-200')}>
-                                PKR {amount.toLocaleString()}
-                              </td>
-                              <td className="px-3.5 py-2 text-right font-mono tabular-nums text-xs text-slate-400">
-                                PKR {(tx.runningBalance || 0).toLocaleString()}
-                              </td>
-                              <td className="px-3.5 py-2 text-center whitespace-nowrap">
-                                <div className="flex items-center justify-center gap-1">
-                                  <button
-                                    onClick={() => sendWhatsAppReminder(tx)}
-                                    title="Send WhatsApp Summary"
-                                    className="p-1 rounded-[4px] text-slate-400 hover:text-emerald-400 hover:bg-white/[0.04] transition-colors duration-100 cursor-pointer"
-                                  >
-                                    <MessageSquare size={14} strokeWidth={1.5} />
-                                  </button>
-                                  <button
-                                    onClick={() => handlePrint(tx)}
-                                    title="Print Voucher Slip"
-                                    className="p-1 rounded-[4px] text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] transition-colors duration-100 cursor-pointer"
-                                  >
-                                    <Printer size={14} strokeWidth={1.5} />
-                                  </button>
-                                  <button
-                                    onClick={() => { setDeletingTx(tx); setIsPinModalOpen(true); }}
-                                    title="Void &amp; Revert Transaction"
-                                    className="p-1 rounded-[4px] text-slate-400 hover:text-rose-400 hover:bg-white/[0.04] transition-colors duration-100 cursor-pointer"
-                                  >
-                                    <Trash2 size={14} strokeWidth={1.5} />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
+                        {paginatedTransactions.map(tx => (
+                          <LedgerRow
+                            key={tx.tx_ref}
+                            tx={tx}
+                            onWhatsApp={sendWhatsAppReminder}
+                            onPrint={handlePrint}
+                            onVoid={handleVoidTx}
+                          />
+                        ))}
 
                         {/* Empty canvas mitigation: subtle muted placeholder grid lines if records < 6 */}
                         {paginatedTransactions.length < 6 && (
@@ -1125,6 +1072,93 @@ export default function KhataPage() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+      </div>
+    </NoxisErrorBoundary>
   );
 }
+
+interface LedgerRowProps {
+  tx: any;
+  onWhatsApp: (tx: any) => void;
+  onPrint: (tx: any) => void;
+  onVoid: (tx: any) => void;
+}
+
+const LedgerRow = React.memo(function LedgerRow({
+  tx,
+  onWhatsApp,
+  onPrint,
+  onVoid,
+}: LedgerRowProps) {
+  const isMoneyIn = tx.debitAmount > 0;
+  const amount = tx.debitAmount || tx.creditAmount;
+  const isReversed = tx.status === 'reversed';
+
+  return (
+    <tr className={cn('h-10 border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors duration-100', isReversed && 'opacity-40 line-through')}>
+      <td className="px-3.5 py-2 text-slate-400 font-mono tabular-nums text-[11px] whitespace-nowrap">
+        {(() => {
+          try {
+            return tx.date ? format(new Date(tx.date), 'dd MMM yyyy, HH:mm') : '—';
+          } catch {
+            return '—';
+          }
+        })()}
+      </td>
+      <td className="px-3.5 py-2">
+        <span className="font-medium text-slate-200 block truncate max-w-[180px]">{tx.party}</span>
+        {tx.party_phone && <span className="text-[10px] text-slate-500 font-mono tabular-nums">{tx.party_phone}</span>}
+      </td>
+      <td className="px-3.5 py-2 whitespace-nowrap">
+        <span className={cn(
+          'px-1.5 py-0.5 rounded-[4px] text-[10px] font-mono border',
+          isMoneyIn
+            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+            : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+        )}>
+          {isMoneyIn ? 'Money In' : 'Money Out'}
+        </span>
+      </td>
+      <td className="px-3.5 py-2 text-slate-300 max-w-xs truncate">{tx.description}</td>
+      <td className="px-3.5 py-2 text-[11px] text-slate-400 font-mono tabular-nums">
+        <div>Dr: {tx.debitAccount}</div>
+        <div>Cr: {tx.creditAccount}</div>
+      </td>
+      <td className={cn('px-3.5 py-2 text-right font-mono tabular-nums text-xs font-medium', isMoneyIn ? 'text-emerald-400' : 'text-slate-200')}>
+        PKR {amount.toLocaleString()}
+      </td>
+      <td className="px-3.5 py-2 text-right font-mono tabular-nums text-xs text-slate-400">
+        PKR {(tx.runningBalance || 0).toLocaleString()}
+      </td>
+      <td className="px-3.5 py-2 text-center whitespace-nowrap">
+        <div className="flex items-center justify-center gap-1">
+          <button
+            onClick={() => onWhatsApp(tx)}
+            title="Send WhatsApp Summary"
+            className="p-1 rounded-[4px] text-slate-400 hover:text-emerald-400 hover:bg-white/[0.04] transition-colors duration-100 cursor-pointer"
+          >
+            <MessageSquare size={14} strokeWidth={1.5} />
+          </button>
+          <button
+            onClick={() => onPrint(tx)}
+            title="Print Voucher Slip"
+            className="p-1 rounded-[4px] text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] transition-colors duration-100 cursor-pointer"
+          >
+            <Printer size={14} strokeWidth={1.5} />
+          </button>
+          <button
+            onClick={() => onVoid(tx)}
+            title="Void & Revert Transaction"
+            className="p-1 rounded-[4px] text-slate-400 hover:text-rose-400 hover:bg-white/[0.04] transition-colors duration-100 cursor-pointer"
+          >
+            <Trash2 size={14} strokeWidth={1.5} />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}, (prev, next) => (
+  prev.tx?.tx_ref === next.tx?.tx_ref &&
+  prev.tx?.status === next.tx?.status &&
+  prev.tx?.runningBalance === next.tx?.runningBalance
+));

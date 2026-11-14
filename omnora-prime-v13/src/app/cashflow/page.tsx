@@ -20,7 +20,6 @@ import {
 } from "recharts";
 import { cn } from "@/lib/utils";
 import { format, addDays } from "date-fns";
-import * as XLSX from "xlsx";
 
 interface CashflowSource {
   type: 'invoice' | 'purchase_order' | 'payroll' | 'other' | 'adjustment';
@@ -328,8 +327,9 @@ export default function CashFlowForecastPage() {
     }
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (forecast.length === 0) return;
+    const XLSX = await import('xlsx');
     const rows = forecast.map(d => ({
       'Date': d.forecast_date,
       'Projected Inflow (PKR)': d.expected_inflows,

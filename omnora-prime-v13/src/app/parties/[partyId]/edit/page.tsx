@@ -298,8 +298,12 @@ export default function EditPartyPage() {
 
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('noxis:party-updated', { detail: mergedParty }))
-        if ((window as any).electronAPI?.party?.notifyUpdate) {
-          ;(window as any).electronAPI.party.notifyUpdate({ partyId, ...mergedParty })
+        try {
+          if ((window as any).electronAPI?.party?.notifyUpdate) {
+            ;(window as any).electronAPI.party.notifyUpdate({ partyId, ...mergedParty })
+          }
+        } catch (e) {
+          console.warn('[IPC] notifyUpdate error:', e);
         }
       }
 

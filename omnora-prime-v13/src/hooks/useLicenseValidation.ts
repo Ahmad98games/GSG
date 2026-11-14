@@ -80,12 +80,17 @@ export function useLicenseValidation() {
         setLicense(cached);
         setLoading(false);
 
+        let revalTimer: NodeJS.Timeout | null = null;
         const isStale = Date.now() > cached.cacheExpires;
         if (isStale && !validatedRef.current && !cached.key?.includes('ELITE') && !cached.key?.includes('PERPETUAL')) {
-          setTimeout(() => {
+          revalTimer = setTimeout(() => {
             silentRevalidate(cached.key);
           }, 5000);
         }
+
+        return () => {
+          if (revalTimer) clearTimeout(revalTimer);
+        };
 
       } catch {
         const trialExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();

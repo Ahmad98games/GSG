@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Can } from "@/components/rbac/Can";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -24,7 +25,6 @@ import * as z from "zod";
 import { KpiCardSkeleton, CardGridSkeleton } from "@/components/ui/Skeleton";
 import { ErrorState, EmptyState } from "@/components/ui/StateViews";
 import { useDebounce } from "@/hooks/useDebounce";
-import * as XLSX from 'xlsx';
 import { useToast } from "@/hooks/useToast";
 import { usePermissions } from "@/hooks/usePermissions";
 import { SharePortalButton } from "@/components/parties/SharePortalButton";
@@ -106,8 +106,12 @@ export default function PartiesPage() {
 
       // 3. Dispatch events
       window.dispatchEvent(new CustomEvent('noxis:party-updated', { detail: { ...party, is_blocked: newBlockedState } }));
-      if ((window as any).electronAPI?.party?.notifyUpdate) {
-        ;(window as any).electronAPI.party.notifyUpdate({ partyId: party.id, is_blocked: newBlockedState });
+      try {
+        if ((window as any).electronAPI?.party?.notifyUpdate) {
+          ;(window as any).electronAPI.party.notifyUpdate({ partyId: party.id, is_blocked: newBlockedState });
+        }
+      } catch (e) {
+        console.warn('[IPC] notifyUpdate error:', e);
       }
     }
 
@@ -285,6 +289,22 @@ export default function PartiesPage() {
     });
   }, [parties, debouncedSearch, filterType]);
 
+  const partiesContainerRef = useRef<HTMLDivElement>(null);
+  const chunkedParties = useMemo(() => {
+    const chunks: Party[][] = [];
+    for (let i = 0; i < filteredParties.length; i += 3) {
+      chunks.push(filteredParties.slice(i, i + 3));
+    }
+    return chunks;
+  }, [filteredParties]);
+
+  const gridVirtualizer = useVirtualizer({
+    count: chunkedParties.length,
+    getScrollElement: () => partiesContainerRef.current,
+    estimateSize: () => 240,
+    overscan: 4,
+  });
+
   const stats = useMemo<Stats>(() => {
     const totalReceivable = parties
       .filter((p: Party) => p.current_balance > 0)
@@ -301,12 +321,13 @@ export default function PartiesPage() {
 
   const items = filteredParties || [];
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     if (!parties || parties.length === 0) {
       toast.error('No data to export')
       return
     }
     
+    const XLSX = await import('xlsx');
     const data = parties.map((party: Party) => ({
       'Party Name': party.name,
       'Classification': party.party_type,
@@ -466,20 +487,34 @@ export default function PartiesPage() {
                    <p className="mt-4 uppercase tracking-[0.2em] text-[10px]">No parties matched criteria</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredParties.map((party: Party) => (
-                    <PartyCard 
-                      key={party.id} 
-                      party={party} 
-                      fmt={fmt} 
-                      onView={() => router.push(`/parties/${party.id}`)}
-                      openMenu={openMenu}
-                      setOpenMenu={setOpenMenu}
-                      onToggleBlock={() => handleToggleBlock(party)}
-                      onEdit={() => setEditingParty(party)}
-                      onDelete={() => handleDeleteParty(party)}
-                    />
-                  ))}
+                <div ref={partiesContainerRef} className="overflow-y-auto max-h-[calc(100vh-280px)] space-y-6 pr-1">
+                  {gridVirtualizer.getVirtualItems().length > 0 && gridVirtualizer.getVirtualItems()[0]?.start > 0 && (
+                    <div style={{ height: `${gridVirtualizer.getVirtualItems()[0].start}px` }} />
+                  )}
+                  {gridVirtualizer.getVirtualItems().map((virtualRow) => {
+                    const rowParties = chunkedParties[virtualRow.index];
+                    if (!rowParties) return null;
+                    return (
+                      <div key={virtualRow.index} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {rowParties.map((party: Party) => (
+                          <PartyCard 
+                            key={party.id} 
+                            party={party} 
+                            fmt={fmt} 
+                            onView={() => router.push(`/parties/${party.id}`)}
+                            openMenu={openMenu}
+                            setOpenMenu={setOpenMenu}
+                            onToggleBlock={() => handleToggleBlock(party)}
+                            onEdit={() => setEditingParty(party)}
+                            onDelete={() => handleDeleteParty(party)}
+                          />
+                        ))}
+                      </div>
+                    );
+                  })}
+                  {gridVirtualizer.getVirtualItems().length > 0 && (gridVirtualizer.getTotalSize() - (gridVirtualizer.getVirtualItems()[gridVirtualizer.getVirtualItems().length - 1]?.end || 0) > 0) && (
+                    <div style={{ height: `${gridVirtualizer.getTotalSize() - (gridVirtualizer.getVirtualItems()[gridVirtualizer.getVirtualItems().length - 1]?.end || 0)}px` }} />
+                  )}
                 </div>
               )}
             </div>
@@ -690,4 +725,11 @@ const PartyCard = React.memo(function PartyCard({
        </div>
     </motion.div>
   );
-});
+}, (prev, next) => (
+  prev.party?.id === next.party?.id &&
+  prev.party?.current_balance === next.party?.current_balance &&
+  prev.party?.is_blocked === next.party?.is_blocked &&
+  prev.party?.name === next.party?.name &&
+  prev.party?.phone === next.party?.phone &&
+  prev.openMenu === next.openMenu
+));

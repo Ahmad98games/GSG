@@ -12,7 +12,6 @@ import { usePersona } from "@/hooks/usePersona";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
-import * as XLSX from "xlsx";
 
 // --- Types ---
 
@@ -247,8 +246,9 @@ export default function MandiRateTrackerPage() {
     refetch();
   };
 
-  const handleExportRatesExcel = () => {
+  const handleExportRatesExcel = async () => {
     if (processed.history.length === 0) return;
+    const XLSX = await import('xlsx');
     const rows = processed.history.map(r => ({
       'Date': r.rate_date,
       'Commodity': r.commodity,

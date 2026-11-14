@@ -17,6 +17,7 @@ import Script from "next/script";
 import ElectronMotionWrapper from "@/components/providers/ElectronMotionWrapper";
 import { SyncProvider } from '@/providers/SyncProvider';
 import { MobileSyncListener } from '@/components/shell/MobileSyncListener';
+import { StartupOptimizer } from '@/components/shell/StartupOptimizer';
 import { OMNORA_ORGANIZATION_SCHEMA, NOXIS_SOFTWARE_SCHEMA } from '@/components/StructuredData';
 
 export const metadata: Metadata = {
@@ -140,6 +141,12 @@ export default async function RootLayout({
   return (
     <html lang={locale} dir={direction} suppressHydrationWarning>
       <head>
+        <script
+          id="boot-start"
+          dangerouslySetInnerHTML={{
+            __html: `window.__bootStart = Date.now();`
+          }}
+        />
         <link rel="icon" href="/favicon.ico" type="image/x-icon" />
         <link rel="apple-touch-icon" href="/favicon.ico" />
         <script
@@ -257,6 +264,7 @@ export default async function RootLayout({
                     <ThemeInitializer />
                     <GlobalErrorBoundary>
                       <AppShell>
+                        <StartupOptimizer />
                         {children}
                         <AskNoxis />
                         <MobileSyncListener />

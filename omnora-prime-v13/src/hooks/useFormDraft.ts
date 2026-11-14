@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 const DRAFT_PREFIX = 'noxis_draft_'
 
@@ -19,7 +19,7 @@ export const DRAFT_REGISTRY: Record<string, { label: string; route: string; getS
     label: 'POS Register (Active Cart)',
     route: '/pos',
     getSummary: (d) => {
-      const items = Array.isArray(d) ? d : (d?.items || [])
+      const items = Array.isArray(d) ? d : (d?.items || d?.cart || [])
       const count = items.reduce((acc: number, item: any) => acc + (item.quantity || item.qty || 1), 0)
       const total = items.reduce((acc: number, item: any) => acc + (Number(item.price || item.unit_price || 0) * (item.quantity || item.qty || 1)), 0)
       return {
@@ -70,6 +70,13 @@ export const DRAFT_REGISTRY: Record<string, { label: string; route: string; getS
       preview: `Bill to: ${d?.party_search || d?.customer_name || (d?.party_id ? 'Customer' : 'Pending')} · ${d?.items?.length || 0} line items`
     })
   },
+  'order-new': {
+    label: 'Customer Sales Order',
+    route: '/orders',
+    getSummary: (d) => ({
+      preview: `Order: ${d?.customer_name || 'Customer'} · ${d?.items?.length || 0} items`
+    })
+  },
   'recurring-invoice-new': {
     label: 'Recurring Order Template',
     route: '/invoices/recurring/new',
@@ -90,6 +97,20 @@ export const DRAFT_REGISTRY: Record<string, { label: string; route: string; getS
     getSummary: (d) => ({
       preview: `Supplier bill · ${d?.items?.length || 0} items`
     })
+  },
+  'peshgi-disbursal': {
+    label: 'Peshgi Advance Disbursal',
+    route: '/karigars',
+    getSummary: (d) => ({
+      preview: `Advance · PKR ${Number(d?.amount || 0).toLocaleString()} ${d?.notes ? `(${d.notes})` : ''}`
+    })
+  },
+  'payroll-run': {
+    label: 'Payroll Processing Run',
+    route: '/payroll',
+    getSummary: (d) => ({
+      preview: `Payroll batch · ${d?.periodName || 'Active Period'}`
+    })
   }
 }
 
@@ -100,9 +121,10 @@ export const DRAFT_REGISTRY: Record<string, { label: string; route: string; getS
 export function isMeaningfulDraftData(key: string, data: any): boolean {
   if (!data || typeof data !== 'object') return false
 
-  if (key === 'invoice-new' || key === 'recurring-invoice-new') {
+  if (key === 'invoice-new' || key === 'recurring-invoice-new' || key === 'order-new') {
     const hasParty = !!(data.party_id && String(data.party_id).trim() !== '') || 
-                     !!(data.party_search && String(data.party_search).trim() !== '')
+                     !!(data.party_search && String(data.party_search).trim() !== '') ||
+                     !!(data.customer_name && String(data.customer_name).trim() !== '')
     const items = Array.isArray(data.items) ? data.items : []
     const hasItems = items.some((i: any) => 
       (i.description && String(i.description).trim() !== '') ||
@@ -115,7 +137,7 @@ export function isMeaningfulDraftData(key: string, data: any): boolean {
   }
 
   if (key === 'pos_cart') {
-    const items = Array.isArray(data) ? data : (data?.items || [])
+    const items = Array.isArray(data) ? data : (data?.items || data?.cart || [])
     return items.length > 0
   }
 
@@ -150,6 +172,14 @@ export function isMeaningfulDraftData(key: string, data: any): boolean {
            !!(data.notes && String(data.notes).trim() !== '')
   }
 
+  if (key === 'peshgi-disbursal') {
+    return Number(data.amount) > 0 || !!(data.notes && String(data.notes).trim() !== '')
+  }
+
+  if (key === 'payroll-run') {
+    return !!data.periodName || (Array.isArray(data.selectedIds) && data.selectedIds.length > 0)
+  }
+
   // Fallback: check if any non-boilerplate field is populated
   const boilerplate = [
     'currency', 'payment_terms', 'exchange_rate', 'issue_date', 
@@ -166,14 +196,35 @@ export function isMeaningfulDraftData(key: string, data: any): boolean {
   return false
 }
 
+export type FormDraftTuple<T> = [
+  T,
+  (valueOrUpdater: T | ((prev: T) => T)) => void,
+  () => void
+] & {
+  state: T
+  setState: (valueOrUpdater: T | ((prev: T) => T)) => void
+  clearDraft: () => void
+  getDraft: () => Promise<T | null>
+  saveDraft: (data: any) => Promise<void>
+}
+
+/**
+ * Universal Global Form Draft System
+ * Takes a draftKey string and an initial state.
+ * Returns [state, setState, clearDraft] (with dual-compatibility object helpers).
+ * Writes to localStorage with 300ms debounce on every state change.
+ * On mount it checks localStorage and restores if found.
+ */
 export function useFormDraft<T = any>(
   key: string,
-  data?: T,
+  initialState?: T,
   enabled = true
-) {
+): FormDraftTuple<T> {
+  const [state, setInternalState] = useState<T>(initialState as T)
+  const isMountedRef = useRef(false)
   const saveTimer = useRef<any>(null)
-  const latestDataRef = useRef<T | undefined>(data)
-  latestDataRef.current = data
+  const latestStateRef = useRef<T>(state)
+  latestStateRef.current = state
 
   const isElectron =
     typeof window !== 'undefined' &&
@@ -183,10 +234,7 @@ export function useFormDraft<T = any>(
   const flushImmediately = useCallback((d: any) => {
     if (!d || typeof d !== 'object') return
     if (Object.keys(d as any).length === 0) return
-    if (!isMeaningfulDraftData(key, d)) {
-      // Guard against initial default blank forms overwriting saved drafts!
-      return
-    }
+    if (!isMeaningfulDraftData(key, d)) return
 
     // 1. LocalStorage mirror for zero-loss recovery
     if (typeof window !== 'undefined') {
@@ -201,80 +249,79 @@ export function useFormDraft<T = any>(
     }
   }, [key, isElectron])
 
-  // Fast 1200ms debounce auto-save
+  // On mount: check localStorage and restore if found (< 24 hours)
   useEffect(() => {
-    if (!enabled || !data || typeof data !== 'object') return
-    if (Object.keys(data as any).length === 0) return
-    if (!isMeaningfulDraftData(key, data)) return
+    if (!enabled || typeof window === 'undefined') return
+
+    const restoreDraft = async () => {
+      let found: any = null
+
+      // Check LocalStorage first
+      try {
+        const raw = localStorage.getItem(DRAFT_PREFIX + key)
+        if (raw) {
+          const parsed = JSON.parse(raw)
+          if (parsed?.data && Date.now() - (parsed.savedAt || 0) < 86400000) {
+            if (isMeaningfulDraftData(key, parsed.data)) {
+              found = parsed.data
+            }
+          }
+        }
+      } catch {}
+
+      // Fallback: check Electron Store
+      if (!found && isElectron) {
+        try {
+          const store = (window as any).electronAPI?.store
+          const d = store?.getFormDraft ? await store.getFormDraft(key) : null
+          if (d && isMeaningfulDraftData(key, d)) {
+            found = d
+          }
+        } catch {}
+      }
+
+      if (found) {
+        setInternalState(found)
+      }
+      isMountedRef.current = true
+    }
+
+    restoreDraft()
+  }, [key, enabled, isElectron])
+
+  // 300ms debounce auto-save on every state change
+  useEffect(() => {
+    if (!enabled || !isMountedRef.current) return
+    if (!state || typeof state !== 'object') return
+    if (Object.keys(state as any).length === 0) return
+    if (!isMeaningfulDraftData(key, state)) return
 
     if (saveTimer.current) {
       clearTimeout(saveTimer.current)
     }
 
     saveTimer.current = setTimeout(() => {
-      flushImmediately(data)
-    }, 1200)
+      flushImmediately(state)
+    }, 300)
 
     return () => {
       if (saveTimer.current) {
         clearTimeout(saveTimer.current)
       }
     }
-  }, [data, key, enabled, flushImmediately])
+  }, [state, key, enabled, flushImmediately])
 
   // Emergency flush on beforeunload / window crash / power cut
   useEffect(() => {
     if (typeof window === 'undefined') return
     const handleUnload = () => {
-      if (latestDataRef.current) {
-        flushImmediately(latestDataRef.current)
+      if (latestStateRef.current) {
+        flushImmediately(latestStateRef.current)
       }
     }
     window.addEventListener('beforeunload', handleUnload)
     return () => window.removeEventListener('beforeunload', handleUnload)
   }, [flushImmediately])
-
-  const saveDraft = useCallback(async (draftData: any) => {
-    flushImmediately(draftData)
-  }, [flushImmediately])
-
-  const getDraft = useCallback(async (): Promise<T | null> => {
-    // 1. Check Electron Store first
-    if (isElectron) {
-      const store = (window as any).electronAPI?.store
-      try {
-        const d = store?.getFormDraft ? await store.getFormDraft(key) : (store?.getDraft ? await store.getDraft(key) : null)
-        if (d && isMeaningfulDraftData(key, d)) return d as T
-      } catch {}
-    }
-
-    // 2. Fallback to LocalStorage
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem(DRAFT_PREFIX + key)
-        if (raw) {
-          const parsed = JSON.parse(raw)
-          // Valid up to 7 days
-          if (parsed?.data && Date.now() - (parsed.savedAt || 0) < 86400000 * 7) {
-            if (isMeaningfulDraftData(key, parsed.data)) {
-              return parsed.data as T
-            }
-          }
-        }
-      } catch {}
-    }
-
-    // 3. Fallback to raw Electron store data if it existed
-    if (isElectron) {
-      const store = (window as any).electronAPI?.store
-      try {
-        const d = store?.getFormDraft ? await store.getFormDraft(key) : (store?.getDraft ? await store.getDraft(key) : null)
-        if (d && typeof d === 'object') return d as T
-      } catch {}
-    }
-
-    return null
-  }, [key, isElectron])
 
   const clearDraft = useCallback(async () => {
     // Clear from LocalStorage
@@ -290,9 +337,43 @@ export function useFormDraft<T = any>(
         await (window as any).electronAPI.store.clearFormDraft(key)
       } catch {}
     }
-  }, [key, isElectron])
 
-  return { getDraft, clearDraft, saveDraft }
+    if (initialState !== undefined) {
+      setInternalState(initialState)
+    }
+  }, [key, isElectron, initialState])
+
+  const saveDraft = useCallback(async (draftData: any) => {
+    flushImmediately(draftData)
+  }, [flushImmediately])
+
+  const getDraft = useCallback(async (): Promise<T | null> => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem(DRAFT_PREFIX + key)
+        if (raw) {
+          const parsed = JSON.parse(raw)
+          if (parsed?.data && Date.now() - (parsed.savedAt || 0) < 86400000) {
+            return parsed.data as T
+          }
+        }
+      } catch {}
+    }
+    return null
+  }, [key])
+
+  const setState = useCallback((val: T | ((prev: T) => T)) => {
+    setInternalState(val)
+  }, [])
+
+  const tuple = [state, setState, clearDraft] as any
+  tuple.state = state
+  tuple.setState = setState
+  tuple.clearDraft = clearDraft
+  tuple.getDraft = getDraft
+  tuple.saveDraft = saveDraft
+
+  return tuple
 }
 
 /**
@@ -303,7 +384,6 @@ export async function getAllActiveDrafts(): Promise<SavedDraftInfo[]> {
   const now = Date.now()
   const maxAge = 86400000 * 7 // 7 days
 
-  // 1. Scan from LocalStorage
   if (typeof window !== 'undefined') {
     try {
       for (let i = 0; i < localStorage.length; i++) {
@@ -335,7 +415,6 @@ export async function getAllActiveDrafts(): Promise<SavedDraftInfo[]> {
     } catch {}
   }
 
-  // 2. Scan from Electron Store
   if (typeof window !== 'undefined' && (window as any).electronAPI?.store?.getAllFormDrafts) {
     try {
       const electronDrafts = await (window as any).electronAPI.store.getAllFormDrafts()

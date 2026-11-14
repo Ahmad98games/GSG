@@ -20,7 +20,7 @@ export function FeedbackModal({
   isOpen, onClose, trigger = 'manual'
 }: FeedbackModalProps) {
   const { profile } = useBusinessProfile()
-  const { tier } = useTierStore()
+  const tier = useTierStore(s => s.tier)
   const supabase = createClient()
   
   const [step, setStep] =

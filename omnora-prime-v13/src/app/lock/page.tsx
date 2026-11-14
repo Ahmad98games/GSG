@@ -296,12 +296,12 @@ export default function LockPage() {
     }
 
     // Valid credentials — disable old PIN and wipe lock state
-    await (window as any).electronAPI?.store.disableAppLock()
-    if ((window as any).electronAPI?.store?.clearLockAttempts) {
-      await (window as any).electronAPI.store.clearLockAttempts()
-    }
-    if ((window as any).electronAPI?.store?.setLocked) {
-      await (window as any).electronAPI.store.setLocked(false)
+    try {
+      await (window as any).electronAPI?.store?.disableAppLock?.()
+      await (window as any).electronAPI?.store?.clearLockAttempts?.()
+      await (window as any).electronAPI?.store?.setLocked?.(false)
+    } catch (ipcErr) {
+      console.warn('[IPC] Lock reset failed gracefully:', ipcErr)
     }
 
     sessionStorage.removeItem('noxis_locked')

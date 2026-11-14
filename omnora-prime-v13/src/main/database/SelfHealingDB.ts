@@ -81,20 +81,30 @@ export class SelfHealingDB {
         verbose: process.env.NODE_ENV === 'development' ? console.log : undefined,
       });
 
-      // Configure WAL and high-resiliency durability settings
+      // Configure WAL and high-resiliency durability settings in exact required order
       this.db.pragma('journal_mode = WAL');
       this.db.pragma('synchronous = NORMAL');
-      this.db.pragma('busy_timeout = 10000');
+      this.db.pragma('cache_size = -64000');
+      this.db.pragma('temp_store = MEMORY');
+      this.db.pragma('mmap_size = 268435456');
+      this.db.pragma('page_size = 4096');
+      this.db.pragma('wal_autocheckpoint = 1000');
+      this.db.pragma('busy_timeout = 5000');
       this.db.pragma('foreign_keys = ON');
+      this.db.pragma('optimize');
 
-      // 1. Pre-Flight Integrity Check
-      const isHealthy = this.runIntegrityChecks();
-      if (!isHealthy) {
-        this.log('WARN', 'INTEGRITY_FAIL', 'Pre-flight integrity check failed. Initiating recovery.');
+      // 1. Pre-Flight Startup Integrity Check
+      const integrityResult = this.db.pragma('integrity_check') as Array<{ integrity_check: string }>;
+      if (!integrityResult || integrityResult[0]?.integrity_check !== 'ok') {
+        this.log('CRITICAL', 'INTEGRITY_FAIL', 'Startup integrity check failed. Initiating automatic recovery.', { detail: integrityResult });
         this.recoverFromCorruption();
       } else {
         this.log('INFO', 'HEALTH_OK', 'Database passed pre-flight integrity verification.');
       }
+
+      // Drain any leftover WAL from previous session
+      const walResult = this.db.pragma('wal_checkpoint(PASSIVE)');
+      this.log('INFO', 'WAL_DRAIN', 'Leftover WAL drained passively at startup.', { walResult });
     } catch (err: any) {
       this.log('ERROR', 'CONNECT_FAIL', `Failed to open database: ${err.message}`, { error: String(err) });
       this.recoverFromLockOrCrash(err);

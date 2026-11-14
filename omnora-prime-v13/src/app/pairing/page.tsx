@@ -125,14 +125,18 @@ export default function PairingPage() {
         if (data?.url) {
           setTunnelUrl(data.url);
         }
+      }).catch((err: any) => {
+        console.warn('[IPC] getTunnelUrl error:', err);
       });
 
       // Listen for tunnel becoming ready dynamically
-      electronAPI.onTunnelReady?.((data: any) => {
-        if (data?.url) {
-          setTunnelUrl(data.url);
-        }
-      });
+      try {
+        electronAPI.onTunnelReady?.((data: any) => {
+          if (data?.url) {
+            setTunnelUrl(data.url);
+          }
+        });
+      } catch (e) {}
     }
   }, []);
 

@@ -5,11 +5,13 @@ import { motion } from "framer-motion";
 import { 
   Info, Shield, ExternalLink, Mail, 
   Globe, Code2, Cpu, Database, 
-  Layers, Smartphone, Braces, Terminal
+  Layers, Smartphone, Braces, Terminal,
+  Sparkles, Trash2, CheckCircle2, Loader2, AlertCircle
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { loadDemoData, clearDemoData } from "@/lib/demo/demoSeed";
 
 import { useSidebarState } from "@/hooks/useSidebarState";
 
@@ -24,9 +26,11 @@ export default function AboutPage() {
   const [hwid, setHwid] = React.useState<string>('');
 
   React.useEffect(() => {
-    if (typeof window !== 'undefined' && (window as any).electronAPI?.license?.getHWID) {
-      (window as any).electronAPI.license.getHWID().then((id: string) => setHwid((id || '').toUpperCase()));
-    }
+    try {
+      if (typeof window !== 'undefined' && (window as any).electronAPI?.license?.getHWID) {
+        (window as any).electronAPI.license.getHWID().then((id: string) => setHwid((id || '').toUpperCase())).catch(() => {});
+      }
+    } catch {}
   }, []);
 
   return (
@@ -138,6 +142,56 @@ export default function AboutPage() {
                   Ahmad leads product and engineering at Omnora Labs. With 5.5 years across web development, game development, and digital media, he brings a unique perspective to industrial software — building tools that are as fast and intuitive as consumer apps but as reliable as enterprise systems.
                 </p>
               </div>
+            </div>
+          </section>
+
+          {/* SECTION: Live Demo & Presentation Engine */}
+          <section className="bg-[#0D1017] border border-amber-500/20 rounded-md p-6 space-y-6 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                    <Sparkles size={14} />
+                  </div>
+                  <h3 className="text-xs font-black uppercase tracking-widest text-white">Live Demo Sandbox</h3>
+                </div>
+                <p className="text-[11px] text-gray-400">
+                  Instant realistic factory dataset for customer demos & walkthroughs (Al-Madina Textile Mills, Faisalabad).
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 self-start sm:self-auto bg-black/40 border border-white/10 px-2.5 py-1 rounded text-[10px] font-mono text-gray-400">
+                <span>Shortcut:</span>
+                <kbd className="text-amber-300 font-bold">Ctrl</kbd>+<kbd className="text-amber-300 font-bold">Shift</kbd>+<kbd className="text-amber-300 font-bold">D</kbd>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+              <div className="p-3 bg-black/20 rounded border border-white/5">
+                <p className="text-lg font-black text-amber-400">10</p>
+                <p className="text-[9px] uppercase font-bold text-gray-500 tracking-wider">Textile SKUs</p>
+              </div>
+              <div className="p-3 bg-black/20 rounded border border-white/5">
+                <p className="text-lg font-black text-emerald-400">5</p>
+                <p className="text-[9px] uppercase font-bold text-gray-500 tracking-wider">Clients & Vendors</p>
+              </div>
+              <div className="p-3 bg-black/20 rounded border border-white/5">
+                <p className="text-lg font-black text-cyan-400">8</p>
+                <p className="text-[9px] uppercase font-bold text-gray-500 tracking-wider">Karigars & Staff</p>
+              </div>
+              <div className="p-3 bg-black/20 rounded border border-white/5">
+                <p className="text-lg font-black text-indigo-400">20</p>
+                <p className="text-[9px] uppercase font-bold text-gray-500 tracking-wider">Invoices & Khata</p>
+              </div>
+            </div>
+
+            <DemoActions />
+
+            <div className="p-3 rounded bg-amber-500/5 border border-amber-500/10 flex items-start gap-2.5">
+              <Shield size={14} className="text-amber-400 shrink-0 mt-0.5" />
+              <p className="text-[10px] text-gray-400 leading-relaxed">
+                <strong className="text-amber-200">Non-Destructive Guarantee:</strong> Demo mode uses isolated identifiers prefixed with <code className="text-amber-300">demo_</code>. Clearing demo data leaves all genuine factory transactions completely untouched.
+              </p>
             </div>
           </section>
 
@@ -382,6 +436,102 @@ function ContactLink({ icon: Icon, label, email }: { icon: any, label: string, e
         <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest">{label}</p>
         <a href={`mailto:${email}`} className="text-[10px] text-gray-400 font-bold hover:text-white transition-colors">{email}</a>
       </div>
+    </div>
+  );
+}
+
+function DemoActions() {
+  const [loading, setLoading] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [active, setActive] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setActive(localStorage.getItem('noxis_demo_mode_active') === 'true');
+    }
+  }, []);
+
+  const handleLoad = async () => {
+    setLoading(true);
+    setMessage(null);
+    try {
+      const res = await loadDemoData();
+      if (res.success) {
+        setActive(true);
+        setMessage('Al-Madina Textile Mills demo data loaded successfully.');
+      } else {
+        setMessage('Failed: ' + res.message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClear = async () => {
+    setClearing(true);
+    setMessage(null);
+    try {
+      const res = await clearDemoData();
+      if (res.success) {
+        setActive(false);
+        setMessage('Demo data removed cleanly.');
+      } else {
+        setMessage('Failed: ' + res.message);
+      }
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={handleLoad}
+          disabled={loading || clearing}
+          className="px-5 py-2.5 rounded bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-lg disabled:opacity-50"
+        >
+          {loading ? (
+            <>
+              <Loader2 size={14} className="animate-spin" />
+              <span>Loading Demo Data...</span>
+            </>
+          ) : (
+            <>
+              <Sparkles size={14} />
+              <span>Load Demo Data</span>
+            </>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleClear}
+          disabled={loading || clearing}
+          className="px-5 py-2.5 rounded bg-white/5 hover:bg-rose-500/20 active:scale-95 border border-white/10 hover:border-rose-500/30 text-gray-300 hover:text-rose-200 font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+        >
+          {clearing ? (
+            <>
+              <Loader2 size={14} className="animate-spin" />
+              <span>Clearing...</span>
+            </>
+          ) : (
+            <>
+              <Trash2 size={14} />
+              <span>Clear Demo Data</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {message && (
+        <div className="p-2.5 rounded bg-white/5 border border-white/10 flex items-center gap-2 text-xs text-gray-300">
+          <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />
+          <span>{message}</span>
+        </div>
+      )}
     </div>
   );
 }

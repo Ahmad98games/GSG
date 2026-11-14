@@ -412,7 +412,9 @@ export default function UpdatesPage() {
     } catch {}
 
     // 4. Listen for real-time background update events
-    const cleanup = (window as any).electronAPI.onUpdateStatus((data: any) => {
+    let cleanup: any = undefined;
+    try {
+      cleanup = (window as any).electronAPI?.onUpdateStatus?.((data: any) => {
       if (data.isGated || data.status === 'gated') {
         handleGated(data)
         return
@@ -442,7 +444,8 @@ export default function UpdatesPage() {
       if (data.status === 'up-to-date' || data.status === 'available' || data.status === 'ready') {
         setLastCheckedAt(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
       }
-    })
+    });
+    } catch {}
 
     return () => {
       if (typeof cleanup === 'function') cleanup()
@@ -478,7 +481,7 @@ export default function UpdatesPage() {
     }
 
     try {
-      const res = await (window as any).electronAPI.checkForUpdates(testTargetVersion)
+      const res = await (window as any).electronAPI?.checkForUpdates?.(testTargetVersion)
       if (res?.isGated || res?.status === 'gated') {
         setGatedDetails({
           targetVersion: res.targetVersion || testTargetVersion || 'v16.0.0',
@@ -508,7 +511,7 @@ export default function UpdatesPage() {
       total: 0,
     }))
     try {
-      await (window as any).electronAPI.downloadUpdate()
+      await (window as any).electronAPI?.downloadUpdate?.()
     } catch (err: any) {
       setUpdateState((prev) => ({ ...prev, status: 'error', message: err.message }))
     }
@@ -517,7 +520,7 @@ export default function UpdatesPage() {
   const installUpdate = () => {
     if (!isElectron) return
     setUpdateState((prev) => ({ ...prev, status: 'installing' }))
-    ;(window as any).electronAPI.installUpdate()
+    try { (window as any).electronAPI?.installUpdate?.() } catch {}
   }
 
   const handleChannelChange = async (newChannel: 'stable' | 'beta') => {

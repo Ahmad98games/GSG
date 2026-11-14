@@ -258,7 +258,7 @@ export default function OnboardingPage() {
   const router = useRouter();
   const toast = useToast();
   const supabase = createClient();
-  const { setThemeByIndustry } = useThemeStore();
+  const setThemeByIndustry = useThemeStore(s => s.setThemeByIndustry);
 
   const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm<SetupFormValues>({
     resolver: zodResolver(setupSchema),

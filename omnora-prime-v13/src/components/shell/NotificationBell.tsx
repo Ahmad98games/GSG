@@ -9,7 +9,11 @@ import { cn } from '@/lib/utils'
 
 export function NotificationBell() {
   const router = useRouter()
-  const { notifications, markRead, markAllRead, remove, clearAll } = useNotificationStore()
+  const notifications = useNotificationStore(s => s.notifications)
+  const markRead = useNotificationStore(s => s.markRead)
+  const markAllRead = useNotificationStore(s => s.markAllRead)
+  const remove = useNotificationStore(s => s.remove)
+  const clearAll = useNotificationStore(s => s.clearAll)
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 

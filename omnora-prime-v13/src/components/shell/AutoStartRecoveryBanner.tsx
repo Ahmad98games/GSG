@@ -7,6 +7,7 @@ export function AutoStartRecoveryBanner() {
   const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
+    let timer: NodeJS.Timeout | null = null
     const check = async () => {
       if (!(window as any).electronAPI?.app) return
 
@@ -14,11 +15,14 @@ export function AutoStartRecoveryBanner() {
 
       if (autostarted && !dismissed) {
         // Small delay so UI renders first
-        setTimeout(() => setShow(true), 1500)
+        timer = setTimeout(() => setShow(true), 1500)
       }
     }
 
     check()
+    return () => {
+      if (timer) clearTimeout(timer)
+    }
   }, [dismissed])
 
   if (!show || dismissed) return null

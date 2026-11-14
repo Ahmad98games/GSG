@@ -42,7 +42,13 @@ type BranchFormValues = z.infer<typeof branchSchema>;
 export default function BranchesPage() {
   const router = useRouter();
   const { tier, isLoading: isLicenseLoading } = useLicense();
-  const { branches, fetchBranches, createBranch, updateBranch, suspendBranch, archiveBranch, isLoading: isBranchLoading } = useBranchStore();
+  const branches = useBranchStore(s => s.branches);
+  const fetchBranches = useBranchStore(s => s.fetchBranches);
+  const createBranch = useBranchStore(s => s.createBranch);
+  const updateBranch = useBranchStore(s => s.updateBranch);
+  const suspendBranch = useBranchStore(s => s.suspendBranch);
+  const archiveBranch = useBranchStore(s => s.archiveBranch);
+  const isBranchLoading = useBranchStore(s => s.isLoading);
   const { profile } = useBusinessProfile();
   const { t } = usePersona();
 
@@ -313,7 +319,8 @@ interface BranchFormPanelProps {
 function BranchFormPanel({ branch, hqExists, onClose, onSuspend, onArchive }: BranchFormPanelProps) {
   const { t } = usePersona();
   const { profile } = useBusinessProfile();
-  const { createBranch, updateBranch } = useBranchStore();
+  const createBranch = useBranchStore(s => s.createBranch);
+  const updateBranch = useBranchStore(s => s.updateBranch);
   
   const { register, handleSubmit, formState: { errors, isSubmitting }, watch, setValue } = useForm<BranchFormValues>({
     resolver: zodResolver(branchSchema),

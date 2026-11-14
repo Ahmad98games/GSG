@@ -92,6 +92,12 @@ exports.getBaselineTier = getBaselineTier;
 exports.setBaselineTier = setBaselineTier;
 exports.getInstallationHWID = getInstallationHWID;
 exports.setInstallationHWID = setInstallationHWID;
+exports.getSavedWindowState = getSavedWindowState;
+exports.saveWindowState = saveWindowState;
+exports.setCrashMarker = setCrashMarker;
+exports.getCrashMarker = getCrashMarker;
+exports.getHardwareSettings = getHardwareSettings;
+exports.saveHardwareSettings = saveHardwareSettings;
 const electron_store_1 = __importDefault(require("electron-store"));
 const crypto = __importStar(require("crypto"));
 const os = __importStar(require("os"));
@@ -157,8 +163,11 @@ const store = new electron_store_1.default({
         baseline_installation_version: '',
         baseline_tier: 'elite',
         installation_hwid: '',
-        // Power-cut
+        // Power-cut & Window state
         exit_flag: 'clean',
+        windowBounds: { x: 100, y: 100, width: 1400, height: 900 },
+        isMaximized: false,
+        crash_marker: null,
     },
 });
 exports.default = store;
@@ -410,4 +419,48 @@ function getInstallationHWID() {
 }
 function setInstallationHWID(hwid) {
     store.set('installation_hwid', hwid);
+}
+// ── WINDOW STATE & CRASH PERSISTENCE ──
+function getSavedWindowState() {
+    return {
+        windowBounds: store.get('windowBounds'),
+        isMaximized: !!store.get('isMaximized'),
+        lastRoute: getLastRoute(),
+    };
+}
+function saveWindowState(state) {
+    if (state.windowBounds)
+        store.set('windowBounds', state.windowBounds);
+    if (typeof state.isMaximized === 'boolean')
+        store.set('isMaximized', state.isMaximized);
+    if (state.lastRoute)
+        saveLastRoute(state.lastRoute);
+}
+function setCrashMarker(marker) {
+    store.set('crash_marker', marker);
+}
+function getCrashMarker() {
+    return store.get('crash_marker') || null;
+}
+function getHardwareSettings() {
+    return {
+        thermalPrinter: store.get('hardware_thermalPrinter') || store.get('config_thermal_printer') || '',
+        paperSize: (store.get('hardware_paperSize') || store.get('config_thermal_width') || '80mm'),
+        scaleCOMPort: store.get('hardware_scaleCOMPort') || store.get('config_scale_com_port') || '',
+    };
+}
+function saveHardwareSettings(settings) {
+    if (settings.thermalPrinter !== undefined) {
+        store.set('hardware_thermalPrinter', settings.thermalPrinter);
+        store.set('config_thermal_printer', settings.thermalPrinter);
+    }
+    if (settings.paperSize !== undefined) {
+        store.set('hardware_paperSize', settings.paperSize);
+        store.set('config_thermal_width', settings.paperSize);
+    }
+    if (settings.scaleCOMPort !== undefined) {
+        store.set('hardware_scaleCOMPort', settings.scaleCOMPort);
+        store.set('config_scale_com_port', settings.scaleCOMPort);
+    }
+    return getHardwareSettings();
 }

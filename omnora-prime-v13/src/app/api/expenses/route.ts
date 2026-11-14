@@ -165,23 +165,25 @@ export async function POST(req: NextRequest) {
     const finalDate = expense_date || new Date().toISOString().slice(0, 10);
     const finalAmount = Number(amount);
 
-    sqlite.prepare(`
-      INSERT INTO expenses (
-        id, business_id, category, description, amount, expense_date,
-        payment_method, party_id, party_name, reference, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-    `).run(
-      id,
-      business_id,
-      category,
-      description,
-      finalAmount,
-      finalDate,
-      payment_method,
-      party_id || null,
-      party_name || null,
-      reference || notes || null
-    );
+    sqlite.transaction(() => {
+      sqlite.prepare(`
+        INSERT INTO expenses (
+          id, business_id, category, description, amount, expense_date,
+          payment_method, party_id, party_name, reference, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      `).run(
+        id,
+        business_id,
+        category,
+        description,
+        finalAmount,
+        finalDate,
+        payment_method,
+        party_id || null,
+        party_name || null,
+        reference || notes || null
+      );
+    })();
 
     return NextResponse.json({
       success: true,
@@ -211,7 +213,9 @@ export async function DELETE(req: NextRequest) {
     }
 
     ensureExpensesTable(sqlite);
-    sqlite.prepare(`DELETE FROM expenses WHERE id = ?`).run(id);
+    sqlite.transaction(() => {
+      sqlite.prepare(`DELETE FROM expenses WHERE id = ?`).run(id);
+    })();
 
     return NextResponse.json({ success: true, message: 'Expense deleted' });
   } catch (err: any) {

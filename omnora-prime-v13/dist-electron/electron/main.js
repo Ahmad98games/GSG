@@ -65,8 +65,10 @@ const companionAppCacher_1 = require("./services/companionAppCacher");
 // ── Store ─────────────────────────────────────────────────────────────────────
 const store_1 = __importStar(require("./store"));
 // ─────────────────────────────────────────────
-// 0. GLOBAL REFERENCES
+// 0. GLOBAL REFERENCES & STARTUP PROFILING
 // ─────────────────────────────────────────────
+const t0 = Date.now();
+console.log('[BOOT] Process started');
 try {
     // Write to userData if packaged, or to cwd if dev — never use a hardcoded path
     const debugPath = electron_1.app.isPackaged
@@ -1519,10 +1521,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             const { db } = require('../src/lib/db/client');
             const sqlite = db?.$client;
             if (sqlite) {
-                sqlite.prepare(`
-          INSERT OR REPLACE INTO hub_messages (id, business_id, sender_type, sender_device_id, sender_name, recipient_type, recipient_device_id, recipient_role, message_text, message_type, priority, is_read, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(newMsg.id, newMsg.business_id, newMsg.sender_type, null, newMsg.sender_name, newMsg.recipient_type, newMsg.recipient_device_id, newMsg.recipient_role, newMsg.message_text, newMsg.message_type, newMsg.priority, newMsg.is_read, newMsg.created_at);
+                sqlite.transaction(() => {
+                    sqlite.prepare(`
+            INSERT OR REPLACE INTO hub_messages (id, business_id, sender_type, sender_device_id, sender_name, recipient_type, recipient_device_id, recipient_role, message_text, message_type, priority, is_read, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(newMsg.id, newMsg.business_id, newMsg.sender_type, null, newMsg.sender_name, newMsg.recipient_type, newMsg.recipient_device_id, newMsg.recipient_role, newMsg.message_text, newMsg.message_type, newMsg.priority, newMsg.is_read, newMsg.created_at);
+                })();
             }
         }
         catch (err) {
@@ -1613,11 +1617,13 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         try {
             const sqlite = global.__noxisDb;
             if (sqlite) {
-                sqlite.prepare(`
-          UPDATE authorized_devices 
-          SET device_label = ?, label = ?, device_role = ?
-          WHERE device_id = ? OR node_id = ?
-        `).run(newLabel, newLabel, deviceRole || 'general', deviceId, deviceId);
+                sqlite.transaction(() => {
+                    sqlite.prepare(`
+            UPDATE authorized_devices 
+            SET device_label = ?, label = ?, device_role = ?
+            WHERE device_id = ? OR node_id = ?
+          `).run(newLabel, newLabel, deviceRole || 'general', deviceId, deviceId);
+                })();
             }
         }
         catch (e) {
@@ -1990,6 +1996,25 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             return null;
         }
     });
+    // ── HARDWARE SETTINGS PERSISTENCE ──
+    electron_1.ipcMain.handle('hardware:getSettings', () => {
+        try {
+            return (0, store_1.getHardwareSettings)();
+        }
+        catch (e) {
+            console.error('[Hardware] getSettings error:', e);
+            return { thermalPrinter: '', paperSize: '80mm', scaleCOMPort: '' };
+        }
+    });
+    electron_1.ipcMain.handle('hardware:saveSettings', (_, settings) => {
+        try {
+            return (0, store_1.saveHardwareSettings)(settings);
+        }
+        catch (e) {
+            console.error('[Hardware] saveSettings error:', e);
+            return (0, store_1.getHardwareSettings)();
+        }
+    });
     // ── AUTH PERSISTENCE ──
     electron_1.ipcMain.handle('store:saveSession', (_, session) => {
         (0, store_1.saveSession)(session);
@@ -2128,6 +2153,46 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             };
         }
     });
+    electron_1.ipcMain.handle('system:getMemoryInfo', () => {
+        const memory = process.memoryUsage();
+        return {
+            heapUsed: Math.round(memory.heapUsed / 1024 / 1024),
+            heapTotal: Math.round(memory.heapTotal / 1024 / 1024),
+            external: Math.round(memory.external / 1024 / 1024),
+            rss: Math.round(memory.rss / 1024 / 1024),
+        };
+    });
+    // ── MEMORY WATCHDOG (Factory 10+ Hour Stability) ───────────────────
+    const MEMORY_WARNING_MB = 500;
+    const MEMORY_CRITICAL_MB = 800;
+    setInterval(() => {
+        try {
+            const heapUsed = process.memoryUsage().heapUsed / 1024 / 1024;
+            if (heapUsed > MEMORY_CRITICAL_MB) {
+                if (global.gc) {
+                    try {
+                        global.gc();
+                    }
+                    catch { }
+                }
+                console.error(`[MEMORY] Critical: ${heapUsed.toFixed(0)}MB heap used`);
+                mainWindow?.webContents?.send('system:memory-warning', {
+                    level: 'critical',
+                    mb: Math.round(heapUsed),
+                });
+            }
+            else if (heapUsed > MEMORY_WARNING_MB) {
+                console.warn(`[MEMORY] Warning: ${heapUsed.toFixed(0)}MB heap used`);
+                mainWindow?.webContents?.send('system:memory-warning', {
+                    level: 'warning',
+                    mb: Math.round(heapUsed),
+                });
+            }
+        }
+        catch (err) {
+            console.warn('[MEMORY] Watchdog check error caught:', err?.message);
+        }
+    }, 60_000);
     electron_1.ipcMain.handle('sync:getLastSyncAt', () => {
         return (0, store_1.getLastSyncAt)();
     });
@@ -2150,9 +2215,13 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             : path.join(__dirname, '../../build/icon.ico');
         startupLog(`[Icon] Main Path: ${iconPath}`);
         startupLog(`[Icon] Main Exists: ${fs.existsSync(iconPath)}`);
+        const savedWindowState = (0, store_1.getSavedWindowState)();
+        const b = savedWindowState.windowBounds;
         mainWindow = new electron_1.BrowserWindow({
-            width: 1400,
-            height: 900,
+            x: b?.x,
+            y: b?.y,
+            width: b?.width || 1400,
+            height: b?.height || 900,
             minWidth: 1024,
             minHeight: 768,
             show: false, // hidden until fully loaded
@@ -2160,7 +2229,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             titleBarStyle: 'hidden',
             transparent: false,
             backgroundColor: '#070809',
-            center: true,
+            center: !b,
             webPreferences: {
                 nodeIntegration: false,
                 contextIsolation: true,
@@ -2177,6 +2246,27 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             },
             icon: iconPath,
         });
+        if (savedWindowState.isMaximized) {
+            mainWindow.maximize();
+        }
+        const persistCurrentBounds = () => {
+            if (!mainWindow || mainWindow.isDestroyed())
+                return;
+            try {
+                const isMax = mainWindow.isMaximized();
+                const curBounds = isMax ? mainWindow.getNormalBounds() : mainWindow.getBounds();
+                (0, store_1.saveWindowState)({
+                    windowBounds: { x: curBounds.x, y: curBounds.y, width: curBounds.width, height: curBounds.height },
+                    isMaximized: isMax,
+                    lastRoute: (0, store_1.getLastRoute)(),
+                });
+            }
+            catch { }
+        };
+        mainWindow.on('resize', persistCurrentBounds);
+        mainWindow.on('move', persistCurrentBounds);
+        mainWindow.on('close', persistCurrentBounds);
+        console.log(`[BOOT] Window created: ${Date.now() - t0}ms`);
         // Track load retries for transient failures
         let loadRetries = 0;
         mainWindow.webContents.on('did-fail-load', (_e, errorCode, errorDesc) => {
@@ -2371,8 +2461,41 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             // ── TRIAL ENGINE INIT (Non-blocking local first) ─────────────────
             const dbPath = path.join(electron_1.app.getPath('userData'), 'NOXIS-local.db');
             (0, trialEngine_1.initTrialEngine)(dbPath);
+            console.log(`[BOOT] SQLite ready: ${Date.now() - t0}ms`);
             const trialState = (0, trialEngine_1.getTrialState)();
             startupLog(`[Trial] Status: ${trialState.status} | DaysLeft: ${trialState.daysLeft}`);
+            // ── WAL FILE SIZE MONITORING & CHECKPOINT RESTART ───────────────
+            setInterval(() => {
+                try {
+                    const walCandidates = [
+                        dbPath + '-wal',
+                        path.join(electron_1.app.getPath('userData'), 'noxis.sqlite-wal'),
+                    ];
+                    for (const walPath of walCandidates) {
+                        if (fs.existsSync(walPath)) {
+                            const walSize = fs.statSync(walPath).size;
+                            const walMB = walSize / 1024 / 1024;
+                            if (walMB > 50) {
+                                console.warn(`[WAL] File ${walPath} is ${walMB.toFixed(1)}MB — forcing checkpoint`);
+                                let DatabaseModule = null;
+                                try {
+                                    const sqlitePath = path.join(process.cwd(), 'node_modules', 'better-sqlite3-multiple-ciphers');
+                                    DatabaseModule = require(sqlitePath);
+                                }
+                                catch {
+                                    DatabaseModule = require('better-sqlite3');
+                                }
+                                const activeDb = new DatabaseModule(walPath.replace(/-wal$/, ''), { timeout: 5000 });
+                                activeDb.pragma('wal_checkpoint(RESTART)');
+                                activeDb.close();
+                            }
+                        }
+                    }
+                }
+                catch (walErr) {
+                    console.warn('[WAL] Error during WAL maintenance check:', walErr?.message);
+                }
+            }, 60 * 60 * 1000);
             // ── TRIAL HEARTBEAT (30s monotonic checkpoint) ───────────────────
             trialHeartbeatInterval = setInterval(() => {
                 (0, trialEngine_1.checkpointMonotonicElapsed)();
@@ -2385,26 +2508,55 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                     startupLog(`[Suppressed non-fatal exception] ${error.message}`);
                     return;
                 }
-                startupLog(`[CRITICAL] ${error.message}`);
-                if (error.stack)
-                    startupLog(error.stack);
+                const timestamp = Date.now();
+                const crashLogDir = path.join(electron_1.app.getPath('userData'), 'logs');
                 try {
-                    electron_1.dialog.showErrorBox('Noxis Hub Crashed', `Unexpected error:\n\n${error.message}\n\n` +
-                        `Log: ${logPath}\n\n` +
-                        `WhatsApp: +92 326 4742678`);
+                    if (!fs.existsSync(crashLogDir))
+                        fs.mkdirSync(crashLogDir, { recursive: true });
+                    const crashFile = path.join(crashLogDir, `crash_${timestamp}.log`);
+                    fs.writeFileSync(crashFile, `[Crash at ${new Date(timestamp).toISOString()}]\n${error?.stack || error?.message || String(error)}\n`, 'utf8');
                 }
                 catch { }
-                // Clean up child processes before exiting on crash
+                startupLog(`[CRITICAL] Uncaught exception: ${error?.message}`);
+                if (error?.stack)
+                    startupLog(error.stack);
+                // Record crash marker in electron-store
+                try {
+                    (0, store_1.setCrashMarker)({ crashedAt: timestamp, lastRoute: (0, store_1.getLastRoute)() });
+                }
+                catch { }
+                // Non-silent recovery dialog
+                try {
+                    electron_1.dialog.showMessageBoxSync({
+                        type: 'error',
+                        title: 'Noxis Hub Error Recovery',
+                        message: 'Noxis had an unexpected error. Your data is safe. Restarting...',
+                        buttons: ['OK'],
+                    });
+                }
+                catch { }
+                // Clean up child processes and auto-relaunch
                 Promise.all([
                     killProcess(visionProcess, 'Vision Engine'),
                     killProcess(nextServer, 'Next.js Server'),
-                ]).then(() => {
-                    electron_1.app.exit(1);
-                }).catch(() => {
-                    electron_1.app.exit(1);
+                    tunnelProcess ? killProcess(tunnelProcess, 'Cloudflare Tunnel') : Promise.resolve(),
+                ]).finally(() => {
+                    setTimeout(() => {
+                        electron_1.app.relaunch();
+                        electron_1.app.exit(0);
+                    }, 2000);
                 });
             });
             process.on('unhandledRejection', (reason) => {
+                const timestamp = Date.now();
+                const crashLogDir = path.join(electron_1.app.getPath('userData'), 'logs');
+                try {
+                    if (!fs.existsSync(crashLogDir))
+                        fs.mkdirSync(crashLogDir, { recursive: true });
+                    const rejFile = path.join(crashLogDir, `rejection_${timestamp}.log`);
+                    fs.writeFileSync(rejFile, `[Unhandled Rejection at ${new Date(timestamp).toISOString()}]\n${reason instanceof Error ? reason.stack : String(reason)}\n`, 'utf8');
+                }
+                catch { }
                 startupLog(`[CRITICAL] Unhandled rejection: ${reason}`);
                 Sentry.captureException(reason instanceof Error ? reason : new Error(String(reason)));
             });
@@ -2760,13 +2912,19 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 setTimeout(() => {
                     spawnVisionEngine();
                 }, 8000);
-                // ── STEP 5: Register CCTV / ONVIF IPC handlers ──
-                // Registered after window is created so startupLog is fully available
-                (0, onvifService_1.registerOnvifHandlers)(startupLog);
-                (0, mediamtxService_1.registerMediamtxHandlers)(startupLog);
-                // ── STEP 6: WebSocket mobile bridge (port 7447) & auto firewall ──
-                startWsBridgeServer();
-                ensureWindowsFirewallRules();
+                // ── STEP 5 & 6: Non-blocking deferred loading (2000ms after window reveals) ──
+                setTimeout(() => {
+                    try {
+                        (0, onvifService_1.registerOnvifHandlers)(startupLog);
+                        (0, mediamtxService_1.registerMediamtxHandlers)(startupLog);
+                        startWsBridgeServer();
+                        ensureWindowsFirewallRules();
+                        console.log(`[BOOT] Bridge ready: ${Date.now() - t0}ms`);
+                    }
+                    catch (deferErr) {
+                        startupLog(`[Deferred Startup] Notice: ${deferErr?.message}`);
+                    }
+                }, 2000);
                 // ── STEP 7: Send power-cut recovery signal to renderer ──
                 if (wasPowerCut) {
                     setTimeout(() => {
@@ -2829,9 +2987,58 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 visionProcess = null;
                 nextServer = null;
                 tunnelProcess = null;
+                // STEP 3: WAL checkpoint on clean shutdown (folds WAL completely into main DB)
+                performShutdownWalCheckpoint();
                 startupLog('[Electron] Shutdown complete ✓');
                 electron_1.app.quit();
             });
         }
+        else {
+            performShutdownWalCheckpoint();
+        }
     });
+    electron_1.app.on('will-quit', () => {
+        performShutdownWalCheckpoint();
+    });
+    function performShutdownWalCheckpoint() {
+        try {
+            const candidates = [
+                path.join(electron_1.app.getPath('userData'), 'noxis-local.db'),
+                path.join(electron_1.app.getPath('userData'), 'NOXIS-local.db'),
+                path.join(electron_1.app.getPath('userData'), 'noxis.sqlite'),
+            ];
+            const targetDb = candidates.find(c => fs.existsSync(c));
+            if (targetDb) {
+                let DatabaseModule = null;
+                try {
+                    const sqlitePath = electron_1.app.isPackaged
+                        ? path.join(process.resourcesPath, 'better-sqlite3-multiple-ciphers')
+                        : 'better-sqlite3-multiple-ciphers';
+                    DatabaseModule = require(sqlitePath);
+                }
+                catch {
+                    try {
+                        DatabaseModule = require('better-sqlite3');
+                    }
+                    catch { }
+                }
+                if (DatabaseModule) {
+                    const closingDb = new DatabaseModule(targetDb, { timeout: 5000 });
+                    const dbKey = process.env.ELECTRON_DB_KEY || '';
+                    if (dbKey) {
+                        try {
+                            closingDb.pragma(`key = '${dbKey}'`);
+                        }
+                        catch { }
+                    }
+                    closingDb.pragma('wal_checkpoint(TRUNCATE)');
+                    closingDb.close();
+                    startupLog('[SQLite] Clean shutdown: wal_checkpoint(TRUNCATE) folded WAL into main DB ✓');
+                }
+            }
+        }
+        catch (ckptErr) {
+            startupLog(`[SQLite] Shutdown checkpoint notice: ${ckptErr?.message}`);
+        }
+    }
 }

@@ -16,7 +16,12 @@ import { cn } from '@/lib/utils';
  * Design: Electric Slate v9.0
  */
 export default function BranchSwitcher() {
-  const { branches, activeBranch, activeBranchId, setActiveBranch, fetchBranches, isLoading } = useBranchStore();
+  const branches = useBranchStore(s => s.branches);
+  const activeBranch = useBranchStore(s => s.activeBranch);
+  const activeBranchId = useBranchStore(s => s.activeBranchId);
+  const setActiveBranch = useBranchStore(s => s.setActiveBranch);
+  const fetchBranches = useBranchStore(s => s.fetchBranches);
+  const isLoading = useBranchStore(s => s.isLoading);
   const { profile } = useBusinessProfile();
   const { t } = usePersona();
   const [isOpen, setIsOpen] = useState(false);

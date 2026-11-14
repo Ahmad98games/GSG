@@ -192,7 +192,7 @@ const DEFAULT_PRESET_WORKFLOWS = [
 ]
 
 export default function WorkflowsPage() {
-  const { tier } = useTierStore()
+  const tier = useTierStore(s => s.tier)
   const supabase = createClient()
   const { profile } = useBusinessProfile()
   const queryClient = useQueryClient()

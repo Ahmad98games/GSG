@@ -1111,10 +1111,12 @@ afterAll(async () => {
 beforeEach(async () => {
   resetSupabaseStore();
 
-  // Truncate non-persistent tables
-  await testDb.run(sql`DELETE FROM sync_queue`);
-  await testDb.run(sql`DELETE FROM mesh_messages`);
-  await testDb.run(sql`DELETE FROM tcp_sessions`);
+  // Truncate non-persistent tables within an explicit transaction
+  await testDb.transaction(async (tx: any) => {
+    await tx.run(sql`DELETE FROM sync_queue`);
+    await tx.run(sql`DELETE FROM mesh_messages`);
+    await tx.run(sql`DELETE FROM tcp_sessions`);
+  });
 
   // Reset SKU quantities to seeded values
   await testDb.update(schema.skuCache)

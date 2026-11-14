@@ -10,6 +10,7 @@ import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Link from "next/link";
 import { useQuery, useQueryClient, QueryClient } from "@tanstack/react-query";
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { useOptimisticMutation } from '@/hooks/useOptimisticMutation';
 import { Can } from "@/components/rbac/Can";
 import { createClient } from "@/lib/supabase/client";
@@ -32,7 +33,6 @@ import { useIndustryConfig } from "@/hooks/useIndustryConfig";
 import { useBarcodeScan } from "@/hooks/useBarcodeScan";
 import ForecastBadge from "@/components/intelligence/ForecastBadge";
 import { useFloorVoice } from "@/hooks/useFloorVoice";
-import * as XLSX from 'xlsx';
 import { useToast } from "@/hooks/useToast";
 import { humanizeError } from "@/lib/utils/errors";
 import { emitSkuPriceSignal } from "@/lib/network/signalCollector";
@@ -418,7 +418,7 @@ export default function InventoryPage() {
     }
   }, [skus]);
 
-  useBarcodeScan(handleBarcodeScan);
+  useBarcodeScan(handleBarcodeScan, { context: 'inventory' });
 
   const { mutate: adjustStock } = useOptimisticMutation<any, any>({
     queryKey: ['inventory', profile?.id],
@@ -604,6 +604,13 @@ export default function InventoryPage() {
     }
   });
   const { rows } = table.getRowModel();
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => tableContainerRef.current,
+    estimateSize: () => 44,
+    overscan: 12,
+  });
 
   // CSV Export
   const handleExportCSV = () => {
@@ -624,12 +631,13 @@ export default function InventoryPage() {
     document.body.removeChild(link);
   };
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     if (!skus || skus.length === 0) {
       toast.error('No data to export')
       return
     }
     
+    const XLSX = await import('xlsx');
     const data = skus.map((sku: SKU) => ({
       'SKU Code': sku.sku_code,
       'Product Name': sku.name,
@@ -784,7 +792,7 @@ export default function InventoryPage() {
 
           {/* Table Container */}
           <div className="w-full">
-            <div className="bg-surface border border-white/5 overflow-x-auto max-h-[700px] relative scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/5">
+            <div ref={tableContainerRef} className="bg-surface border border-white/5 overflow-x-auto max-h-[700px] relative scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/5">
                {skusLoading && skus.length === 0 ? (
                  <div className="h-64 flex flex-col items-center justify-center space-y-2">
                     <div className="flex items-center space-x-3">
@@ -825,13 +833,47 @@ export default function InventoryPage() {
                           ))}
                         </thead>
                         <tbody className="divide-y divide-white/[0.04]">
-                          {rows.map((row) => (
-                            <SKURow
-                              key={row.id}
-                              row={row}
-                              onSelect={() => setSelectedSku(row.original)}
-                            />
-                          ))}
+                          {rowVirtualizer.getVirtualItems().length > 0 ? (
+                            <>
+                              {rowVirtualizer.getVirtualItems()[0]?.start > 0 && (
+                                <tr>
+                                  <td
+                                    style={{ height: `${rowVirtualizer.getVirtualItems()[0].start}px` }}
+                                    colSpan={columns.length}
+                                  />
+                                </tr>
+                              )}
+                              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                                const row = rows[virtualRow.index];
+                                if (!row) return null;
+                                return (
+                                  <SKURow
+                                    key={row.id}
+                                    row={row}
+                                    onSelect={() => setSelectedSku(row.original)}
+                                  />
+                                );
+                              })}
+                              {rowVirtualizer.getTotalSize() - (rowVirtualizer.getVirtualItems()[rowVirtualizer.getVirtualItems().length - 1]?.end || 0) > 0 && (
+                                <tr>
+                                  <td
+                                    style={{
+                                      height: `${rowVirtualizer.getTotalSize() - (rowVirtualizer.getVirtualItems()[rowVirtualizer.getVirtualItems().length - 1]?.end || 0)}px`
+                                    }}
+                                    colSpan={columns.length}
+                                  />
+                                </tr>
+                              )}
+                            </>
+                          ) : (
+                            rows.map((row) => (
+                              <SKURow
+                                key={row.id}
+                                row={row}
+                                onSelect={() => setSelectedSku(row.original)}
+                              />
+                            ))
+                          )}
                         </tbody>
                     </table>
                     

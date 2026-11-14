@@ -34,6 +34,20 @@ export function setTestDb(instance: any) {
   _db = instance;
 }
 
+// ── IN-MEMORY QUERY CACHE (With 60s TTL & 30s Cleanup Interval) ──
+export const sqliteQueryCache = new Map<string, { data: any; ts: number }>();
+
+if (typeof setInterval !== 'undefined') {
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, value] of sqliteQueryCache.entries()) {
+      if (now - value.ts > 60_000) {
+        sqliteQueryCache.delete(key);
+      }
+    }
+  }, 30_000);
+}
+
 export const db = new Proxy({} as Record<string, any>, {
   get(target, prop) {
     if (!_db) {
@@ -441,6 +455,29 @@ export const db = new Proxy({} as Record<string, any>, {
         // Apply busy_timeout & WAL pragmas immediately after opening connection to prevent database lock crashes
         if (dbPath !== ':memory:') {
           try { applyProductionPragmas(sqlite); } catch {}
+
+          // STEP 4: Startup WAL integrity check & passive drain
+          try {
+            const integrityResult: any = sqlite.pragma('integrity_check');
+            if (integrityResult && integrityResult[0]?.integrity_check !== 'ok') {
+              console.error('[DB] Startup integrity check failure detail:', integrityResult);
+              // Trigger auto-recovery / notification — do NOT crash silently
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('db-corruption-detected', { detail: integrityResult }));
+              }
+            } else {
+              console.log('[DB] Startup integrity_check passed: ok');
+            }
+          } catch (intErr: any) {
+            console.error('[DB] Startup integrity check exception:', intErr?.message);
+          }
+
+          try {
+            const walResult = sqlite.pragma('wal_checkpoint(PASSIVE)');
+            console.log('[DB] Startup wal_checkpoint(PASSIVE) drained:', walResult);
+          } catch (walErr: any) {
+            console.warn('[DB] Non-critical startup wal_checkpoint warning:', walErr?.message);
+          }
         }
 
         // Apply encryption key if present

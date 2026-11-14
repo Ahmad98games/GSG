@@ -1,3 +1,4 @@
+import { NoxisErrorBoundary } from '@/components/ui/NoxisErrorBoundary';
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'

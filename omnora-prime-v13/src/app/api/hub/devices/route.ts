@@ -130,7 +130,9 @@ export async function DELETE() {
   try {
     const sqlite = getSqliteInstance();
     if (sqlite) {
-      sqlite.prepare('DELETE FROM authorized_devices').run();
+      sqlite.transaction(() => {
+        sqlite.prepare('DELETE FROM authorized_devices').run();
+      })();
     } else {
       await db.delete(schema.authorizedDevices);
     }
@@ -153,16 +155,18 @@ export async function POST(req: Request) {
     const sqlite = getSqliteInstance();
     if (sqlite) {
       try {
-        sqlite.prepare(`
-          INSERT INTO authorized_devices (node_id, mesh_key, label, is_active, business_id, device_id, device_label, last_seen, is_revoked, created_at)
-          VALUES (?, '', ?, 1, 'local', ?, ?, datetime('now'), 0, datetime('now'))
-          ON CONFLICT(node_id) DO UPDATE SET
-            device_label = excluded.device_label,
-            label = excluded.label,
-            last_seen = excluded.last_seen,
-            is_active = 1,
-            is_revoked = 0
-        `).run(rawDeviceId, rawLabel, rawDeviceId, rawLabel);
+        sqlite.transaction(() => {
+          sqlite.prepare(`
+            INSERT INTO authorized_devices (node_id, mesh_key, label, is_active, business_id, device_id, device_label, last_seen, is_revoked, created_at)
+            VALUES (?, '', ?, 1, 'local', ?, ?, datetime('now'), 0, datetime('now'))
+            ON CONFLICT(node_id) DO UPDATE SET
+              device_label = excluded.device_label,
+              label = excluded.label,
+              last_seen = excluded.last_seen,
+              is_active = 1,
+              is_revoked = 0
+          `).run(rawDeviceId, rawLabel, rawDeviceId, rawLabel);
+        })();
       } catch (dbErr: any) {
         console.warn('[API/devices] SQLite upsert warning:', dbErr.message);
       }

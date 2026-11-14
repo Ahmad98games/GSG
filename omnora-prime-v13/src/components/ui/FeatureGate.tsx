@@ -15,7 +15,8 @@ interface FeatureGateProps {
 export function FeatureGate({
   feature, children, fallback
 }: FeatureGateProps) {
-  const { hasFeature, tier } = useTierStore()
+  const hasFeature = useTierStore(s => s.hasFeature)
+  const tier = useTierStore(s => s.tier)
   
   if (hasFeature(feature)) {
     return <>{children}</>

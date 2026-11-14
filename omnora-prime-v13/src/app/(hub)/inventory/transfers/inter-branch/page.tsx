@@ -66,7 +66,8 @@ interface IBTRecord {
 
 export default function InterBranchTransferPage() {
   const { t } = usePersona();
-  const { activeBranchId, branches } = useBranchStore();
+  const activeBranchId = useBranchStore(s => s.activeBranchId);
+  const branches = useBranchStore(s => s.branches);
   const { profile } = useBusinessProfile();
   const { tier, isLoading: isLicenseLoading } = useLicense();
   const supabase = createClient();

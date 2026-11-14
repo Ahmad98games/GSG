@@ -47,15 +47,17 @@ export async function POST(req: NextRequest) {
     // 1. Mark as revoked in SQLite (or delete if it's the test device)
     const sqlite = (db as any).$client;
     if (sqlite) {
-      if (targetId.startsWith('DEVICE_TEST_') || targetId === 'DEVICE_TEST_12345678') {
-        sqlite.prepare(`DELETE FROM authorized_devices WHERE node_id = ? OR device_id = ?`).run(targetId, targetId);
-      } else {
-        sqlite.prepare(`
-          UPDATE authorized_devices 
-          SET is_revoked = 1, is_active = 0, last_seen = ? 
-          WHERE node_id = ? OR device_id = ?
-        `).run(new Date().toISOString(), targetId, targetId);
-      }
+      sqlite.transaction(() => {
+        if (targetId.startsWith('DEVICE_TEST_') || targetId === 'DEVICE_TEST_12345678') {
+          sqlite.prepare(`DELETE FROM authorized_devices WHERE node_id = ? OR device_id = ?`).run(targetId, targetId);
+        } else {
+          sqlite.prepare(`
+            UPDATE authorized_devices 
+            SET is_revoked = 1, is_active = 0, last_seen = ? 
+            WHERE node_id = ? OR device_id = ?
+          `).run(new Date().toISOString(), targetId, targetId);
+        }
+      })();
     } else {
       await db
         .update(schema.authorizedDevices)

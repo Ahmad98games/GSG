@@ -11,7 +11,7 @@ interface TierBadgeProps {
 }
 
 export function TierBadge({ className, showIcon = true }: TierBadgeProps) {
-  const { tier } = useTierStore();
+  const tier = useTierStore(s => s.tier);
 
   const configs = {
     lite: {

@@ -27,7 +27,7 @@ export function ClientI18nProvider({
   initialLocale: string;
   initialMessages: any;
 }) {
-  const { language } = useLanguageStore();
+  const language = useLanguageStore(s => s.language);
   const [messages, setMessages] = useState<any>(initialMessages);
   const [locale, setLocale] = useState(initialLocale);
   const [isMounted, setIsMounted] = useState(false);

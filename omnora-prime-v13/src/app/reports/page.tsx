@@ -1,3 +1,4 @@
+import { NoxisErrorBoundary } from '@/components/ui/NoxisErrorBoundary';
 "use client";
 
 import React, { useState, useMemo } from "react";
@@ -46,7 +47,8 @@ export default function ReportsHubPage() {
   const { taxLabel, fmt, businessId } = usePersona();
   const { profile } = useBusinessProfile();
   const supabase = createClient();
-  const { currentBranchId, currentBranchName } = useBranchStore();
+  const currentBranchId = useBranchStore(s => s.currentBranchId);
+  const currentBranchName = useBranchStore(s => s.currentBranchName);
 
   const [timeframe, setTimeframe] = useState<TimeframeKey>('all_time');
 
