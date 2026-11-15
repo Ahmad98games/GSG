@@ -199,6 +199,9 @@ export default function PartiesPage() {
         if (localRes.ok) {
           const localJson = await localRes.json();
           const list = Array.isArray(localJson) ? localJson : (Array.isArray(localJson?.data) ? localJson.data : []);
+          if (list.length > 0) {
+            setLastFetchedAt(new Date());
+          }
           list.forEach((p: any) => {
             const key = p.id || p.name;
             if (key) mergedMap.set(key, p);
@@ -240,9 +243,12 @@ export default function PartiesPage() {
         try { localStorage.setItem(`noxis_cached_parties_${businessId}`, JSON.stringify(mergedList)); } catch {}
       }
 
+      if (mergedList.length > 0) {
+        setLastFetchedAt(new Date());
+      }
       return mergedList.length > 0 ? mergedList : cachedData;
     },
-    enabled: !!businessId,
+    enabled: true,
     staleTime: 1000,
   });
 
@@ -487,16 +493,15 @@ export default function PartiesPage() {
                    <p className="mt-4 uppercase tracking-[0.2em] text-[10px]">No parties matched criteria</p>
                 </div>
               ) : (
-                <div ref={partiesContainerRef} className="overflow-y-auto max-h-[calc(100vh-280px)] space-y-6 pr-1">
-                  {gridVirtualizer.getVirtualItems().length > 0 && gridVirtualizer.getVirtualItems()[0]?.start > 0 && (
-                    <div style={{ height: `${gridVirtualizer.getVirtualItems()[0].start}px` }} />
-                  )}
-                  {gridVirtualizer.getVirtualItems().map((virtualRow) => {
-                    const rowParties = chunkedParties[virtualRow.index];
-                    if (!rowParties) return null;
+                <div ref={partiesContainerRef} className="space-y-6 pr-1">
+                  {(gridVirtualizer.getVirtualItems().length > 0
+                    ? gridVirtualizer.getVirtualItems().map(vr => ({ index: vr.index, row: chunkedParties[vr.index] }))
+                    : chunkedParties.map((row, idx) => ({ index: idx, row }))
+                  ).map(({ index, row }) => {
+                    if (!row) return null;
                     return (
-                      <div key={virtualRow.index} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {rowParties.map((party: Party) => (
+                      <div key={index} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {row.map((party: Party) => (
                           <PartyCard 
                             key={party.id} 
                             party={party} 
@@ -512,9 +517,6 @@ export default function PartiesPage() {
                       </div>
                     );
                   })}
-                  {gridVirtualizer.getVirtualItems().length > 0 && (gridVirtualizer.getTotalSize() - (gridVirtualizer.getVirtualItems()[gridVirtualizer.getVirtualItems().length - 1]?.end || 0) > 0) && (
-                    <div style={{ height: `${gridVirtualizer.getTotalSize() - (gridVirtualizer.getVirtualItems()[gridVirtualizer.getVirtualItems().length - 1]?.end || 0)}px` }} />
-                  )}
                 </div>
               )}
             </div>

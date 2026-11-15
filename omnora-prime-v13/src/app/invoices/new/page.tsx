@@ -865,36 +865,80 @@ export default function NewInvoicePage() {
                     type="text"
                     value={watch("party_search") || ""}
                     onChange={e => {
-                      setValue("party_search", e.target.value);
-                      if (e.target.value === "") setValue("party_id", "");
+                      const val = e.target.value;
+                      setValue("party_search", val);
+                      if (val !== selectedParty?.name) {
+                        setValue("party_id", "");
+                      }
                     }}
                     placeholder={`Search ${t.customer.toLowerCase()} name...`}
                     className="industrial-field"
                   />
-                  {debouncedPartySearch.length > 0 && !watch("party_id") && (
-                    <div className="absolute top-full left-0 right-0 bg-[#1A1D21] border border-white/10 z-50 max-h-48 overflow-y-auto shadow-2xl">
-                      {parties
-                        .filter(p => !String(p.name).startsWith('Mobile Added UUID') && (
-                          p.name.toLowerCase().includes(debouncedPartySearch.toLowerCase()) ||
+                  {debouncedPartySearch.length > 0 && (!watch("party_id") || watch("party_search") !== selectedParty?.name) && (
+                    <div className="absolute top-full left-0 right-0 bg-[#1A1D21] border border-white/10 z-50 max-h-60 overflow-y-auto shadow-2xl">
+                      {(() => {
+                        const matched = parties.filter(p => !String(p.name).startsWith('Mobile Added UUID') && (
+                          (p.name && p.name.toLowerCase().includes(debouncedPartySearch.toLowerCase())) ||
                           (p.phone && p.phone.includes(debouncedPartySearch))
-                        ))
-                        .map(p => (
-                          <div
-                            key={p.id}
-                            onClick={() => {
-                              setValue("party_id", p.id, { shouldValidate: true, shouldDirty: true });
-                              setValue("party_search", p.name, { shouldValidate: true, shouldDirty: true });
-                            }}
-                            className="px-4 py-2.5 text-xs hover:bg-white/5 cursor-pointer flex justify-between items-center border-b border-white/5"
-                          >
-                            <span>{p.name}</span>
-                            {p.current_balance > 0 && (
-                              <span className="text-[9px] text-red-400 font-mono">
-                                Owes {p.current_balance}
-                              </span>
-                            )}
-                          </div>
-                        ))}
+                        ));
+
+                        return (
+                          <>
+                            {matched.map(p => (
+                              <div
+                                key={p.id}
+                                onClick={() => {
+                                  setValue("party_id", p.id, { shouldValidate: true, shouldDirty: true });
+                                  setValue("party_search", p.name, { shouldValidate: true, shouldDirty: true });
+                                }}
+                                className="px-4 py-2.5 text-xs hover:bg-white/5 cursor-pointer flex justify-between items-center border-b border-white/5"
+                              >
+                                <div>
+                                  <span className="font-semibold text-white">{p.name}</span>
+                                  {p.phone && <span className="ml-2 text-[10px] text-gray-400 font-mono">({p.phone})</span>}
+                                </div>
+                                {Number(p.current_balance || 0) > 0 && (
+                                  <span className="text-[9px] text-red-400 font-mono">
+                                    Owes PKR {Number(p.current_balance).toLocaleString()}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+
+                            <div
+                              onClick={async () => {
+                                const newName = debouncedPartySearch.trim();
+                                if (!newName) return;
+                                try {
+                                  const newId = 'party-' + Date.now().toString(36);
+                                  const newParty = {
+                                    id: newId,
+                                    business_id: profile?.id || 'local',
+                                    name: newName,
+                                    party_type: 'customer',
+                                    current_balance: 0,
+                                  };
+                                  await fetch('/api/parties', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ operation: 'create', payload: newParty })
+                                  });
+                                  setParties(prev => [newParty, ...prev]);
+                                  setValue("party_id", newId, { shouldValidate: true, shouldDirty: true });
+                                  setValue("party_search", newName, { shouldValidate: true, shouldDirty: true });
+                                  toast.success(`Customer "${newName}" created and linked`);
+                                } catch (e) {
+                                  console.error('Quick customer create failed:', e);
+                                }
+                              }}
+                              className="px-4 py-3 text-xs text-blue-400 hover:bg-blue-500/10 cursor-pointer flex items-center justify-between border-t border-white/10"
+                            >
+                              <span>+ Add &quot;{debouncedPartySearch}&quot; as New Customer</span>
+                              <span className="text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded font-mono">Quick Add (Offline)</span>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>

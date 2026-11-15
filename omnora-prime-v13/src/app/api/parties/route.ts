@@ -238,16 +238,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Party name is required' }, { status: 400 });
       }
 
-      let data: any = null;
-      try {
-        const res = await supabase.from('parties').insert(payload).select().single();
-        if (res.error) throw res.error;
-        data = res.data;
-      } catch (err: any) {
-        console.warn('[API Parties] Supabase create error (using local):', err.message);
-      }
-
-      const pId = data?.id || payload.id || randomUUID();
+      const pId = payload.id || randomUUID();
       const sqlite = (db as any).$client;
       if (sqlite) {
         try {
@@ -271,23 +262,28 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      // Non-blocking background sync to cloud
+      (async () => {
+        try {
+          await supabase.from('parties').insert({ ...payload, id: pId });
+        } catch (err: any) {
+          console.warn('[API Parties] Supabase background sync skipped (offline):', err.message);
+        }
+      })();
+
       try {
         broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'parties' });
         broadcastSyncToMobileDevices('PARTY_CREATED', { name: payload.name, party_type: payload.party_type });
-        broadcastToHubRenderer('PARTY_CREATED', { name: payload.name, party_type: payload.party_type, party: data || { id: pId, ...payload } });
+        broadcastToHubRenderer('PARTY_CREATED', { name: payload.name, party_type: payload.party_type, party: { id: pId, ...payload } });
       } catch {}
 
-      return NextResponse.json({ success: true, data: data || { id: pId, ...payload } });
+      return NextResponse.json({ success: true, data: { id: pId, ...payload } });
     }
 
     if (operation === 'update') {
       if (!party_id || !payload) {
         return NextResponse.json({ error: 'party_id and payload are required' }, { status: 400 });
       }
-
-      try {
-        await supabase.from('parties').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', party_id);
-      } catch {}
 
       const sqlite = (db as any).$client;
       if (sqlite) {
@@ -298,6 +294,13 @@ export async function POST(req: NextRequest) {
           `).run(payload.name || null, payload.phone || null, payload.address || null, new Date().toISOString(), party_id);
         } catch {}
       }
+
+      // Non-blocking background sync to cloud
+      (async () => {
+        try {
+          await supabase.from('parties').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', party_id);
+        } catch {}
+      })();
 
       try {
         broadcastSyncToMobileDevices('DATA_INVALIDATED', { resource: 'parties' });

@@ -31,7 +31,9 @@ export function createClient() {
     };
 
     const fetchWithTimeout = (url: any, options: any = {}) => {
-      if (typeof navigator !== 'undefined' && !navigator.onLine && (window as any).__noxis_wan_online === false) {
+      const isExplicitlyOffline = (typeof navigator !== 'undefined' && !navigator.onLine) ||
+        (typeof window !== 'undefined' && (window as any).__noxis_wan_online === false);
+      if (isExplicitlyOffline) {
         return Promise.reject(new TypeError('Failed to fetch (Offline)'));
       }
       const urlStr = typeof url === 'string' ? url : (url?.url || '');

@@ -29,6 +29,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface ParsedItem {
   id?: string;
@@ -55,6 +56,7 @@ interface ParsedParty {
 export function DataMigrationStudio() {
   const { t } = useTranslation();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'whatsapp' | 'sku' | 'tally'>('whatsapp');
   const [successMsg, setSuccessMsg] = useState<{ text: string; link?: string; linkLabel?: string } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -316,6 +318,10 @@ export function DataMigrationStudio() {
 
       const createdInvoiceId = data.invoice_id || data.invoice?.id || data.id || invNo;
       
+      // Invalidate React Query & update local storage caches immediately
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['parties'] });
+
       setSavedInvoiceResult({
         id: createdInvoiceId,
         invoice_number: data.invoice_no || invNo,
@@ -492,6 +498,17 @@ export function DataMigrationStudio() {
         throw new Error(data.error || 'Failed to import SKUs');
       }
 
+      // Invalidate React Query & refresh local state
+      queryClient.invalidateQueries({ queryKey: ['skus'] });
+      queryClient.invalidateQueries({ queryKey: ['quick_modal_batches'] });
+      try {
+        const updated = await fetch('/api/skus').then(r => r.json());
+        if (Array.isArray(updated)) {
+          setDbSkus(updated);
+          localStorage.setItem('noxis_cached_skus', JSON.stringify(updated));
+        }
+      } catch {}
+
       setSuccessMsg({
         text: `Successfully imported ${preview.length} SKUs into active local inventory! Real-time SQLite WAL committed.`,
         link: '/inventory',
@@ -628,6 +645,17 @@ export function DataMigrationStudio() {
       if (!res.ok || data.error) {
         throw new Error(data.error || 'Failed to import parties');
       }
+
+      // Invalidate React Query & refresh local state
+      queryClient.invalidateQueries({ queryKey: ['parties'] });
+      queryClient.invalidateQueries({ queryKey: ['khata'] });
+      try {
+        const updated = await fetch('/api/parties').then(r => r.json());
+        if (updated?.data && Array.isArray(updated.data)) {
+          setDbParties(updated.data);
+          localStorage.setItem('noxis_cached_parties', JSON.stringify(updated.data));
+        }
+      } catch {}
 
       setSuccessMsg({
         text: `Successfully imported ${tallyRows.length} accounts and opening balances into Khata & Parties ledger! Opening ledger journal entries created.`,

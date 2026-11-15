@@ -102,6 +102,8 @@ export default React.memo(function IndustrialSidebar() {
   }
   const displayLogo = cachedLogoRef.current || currentLogo
   const [mounted, setMounted] = useState(false)
+  const [logoError, setLogoError] = useState(false)
+  const [avatarError, setAvatarError] = useState(false)
   const [isProductionModalOpen, setIsProductionModalOpen] = useState(false)
   const supabase = createClient()
 
@@ -566,11 +568,12 @@ export default React.memo(function IndustrialSidebar() {
                   borderStyle: 'solid'
                 }}
               >
-                {((profile?.logo_url || profile?.avatar_url) || (typeof window !== 'undefined' && localStorage.getItem('noxis_logo'))) ? (
+                {(displayLogo && !logoError) ? (
                   <img
-                    src={profile?.logo_url || profile?.avatar_url || (typeof window !== 'undefined' ? (localStorage.getItem('noxis_logo') || '') : '')}
+                    src={displayLogo}
                     alt={profile?.business_name || "Brand Logo"}
                     className="w-full h-full object-contain p-0.5"
+                    onError={() => setLogoError(true)}
                   />
                 ) : (
                   <div className="w-full h-full bg-slate-900 flex items-center justify-center">
@@ -686,8 +689,8 @@ export default React.memo(function IndustrialSidebar() {
                     color: 'var(--color-text, #cbd5e1)'
                   }}
                 >
-                  {profile?.avatar_url ? (
-                    <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                  {profile?.avatar_url && !avatarError ? (
+                    <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" onError={() => setAvatarError(true)} />
                   ) : (
                     <span>{(profile?.owner_name || profile?.business_name || 'A')[0].toUpperCase()}</span>
                   )}
