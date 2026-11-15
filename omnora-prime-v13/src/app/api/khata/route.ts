@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
             p.current_balance AS party_balance
           FROM ledger_entries l
           LEFT JOIN parties p ON p.id = l.party_id
-          WHERE (l.business_id = ? OR l.business_id = 'local' OR l.business_id IS NULL OR 1=1)
+          WHERE (l.business_id = ? OR l.business_id = 'local')
         `;
         const params: any[] = [businessId || 'local'];
 

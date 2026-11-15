@@ -15,6 +15,7 @@ function getSqlite() {
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
+    const businessId = searchParams.get('business_id') || 'local';
     const passNo = searchParams.get('gate_pass_no');
     const invoiceId = searchParams.get('invoice_id');
     const limit = Math.min(200, parseInt(searchParams.get('limit') || '100', 10));
@@ -27,8 +28,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(pass || null, { status: 200 });
     }
 
-    let query = 'SELECT * FROM gate_passes WHERE 1=1';
-    const params: any[] = [];
+    let query = 'SELECT * FROM gate_passes WHERE (business_id = ? OR business_id = "local" OR ? = "local")';
+    const params: any[] = [businessId, businessId];
 
     if (invoiceId) {
       query += ' AND invoice_id = ?';

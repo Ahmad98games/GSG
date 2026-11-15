@@ -113,9 +113,9 @@ export async function GET(req: NextRequest) {
         (SELECT COUNT(*) FROM purchase_order_items poi WHERE poi.po_id = po.id) as item_count
       FROM purchase_orders po
       LEFT JOIN parties p ON po.supplier_id = p.id
-      WHERE 1=1
+      WHERE (po.business_id = ? OR po.business_id = 'local' OR ? = 'local')
     `;
-    const params: any[] = [];
+    const params: any[] = [businessId || 'local', businessId || 'local'];
 
     if (status && status !== 'all') {
       query += ` AND po.status = ?`;

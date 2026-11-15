@@ -4,6 +4,7 @@ import {
   useRef, memo, useMemo,
 } from 'react'
 import { useRouter } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import { useToastStore } from '@/hooks/useToast'
 
@@ -62,6 +63,7 @@ import { POSThermalReceipt }
   from '@/components/pos/POSThermalReceipt'
 import { NoxisErrorBoundary } from "@/components/ui/NoxisErrorBoundary"
 import { useBarcodeScan } from "@/hooks/useBarcodeScan"
+import { playPosBeep } from "@/lib/sound/posSound"
 
 // Static data outside component
 const PAYMENT_METHODS = [
@@ -126,6 +128,18 @@ export default function POSPage() {
     useState(false)
   const [scanFeedback, setScanFeedback] =
     useState<'success' | 'error' | null>(null)
+  const [scannedItemHUD, setScannedItemHUD] = useState<{
+    notFound?: boolean;
+    name?: string;
+    sku_code?: string;
+    barcode?: string;
+    sale_price?: number;
+    unit?: string;
+    qty_on_hand?: number;
+    quantityInCart?: number;
+    timestamp: number;
+  } | null>(null)
+  const hudTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   const searchRef = useRef<HTMLInputElement>(null)
   const searchTimeout = useRef<any>(null)
@@ -425,21 +439,53 @@ export default function POSPage() {
     searchRef.current?.focus({ preventScroll: true })
   }, [])
 
-  // Robust POS Barcode Scan Handler with 'pos' context
+  const triggerBarcodeScanFeedback = useCallback((match: any | null, rawCode?: string) => {
+    if (hudTimerRef.current) clearTimeout(hudTimerRef.current)
+    if (match) {
+      playPosBeep('success')
+      setScanFeedback('success')
+      const existing = cart.items.find(i => i.skuId === match.id)
+      const newQty = (existing?.quantity || 0) + 1
+      setScannedItemHUD({
+        name: match.name,
+        sku_code: match.sku_code,
+        barcode: match.barcode || match.sku_code || rawCode,
+        sale_price: Number(match.sale_price || 0),
+        unit: match.unit || 'pcs',
+        qty_on_hand: Number(match.qty_on_hand || 0),
+        quantityInCart: newQty,
+        timestamp: Date.now()
+      })
+      handleAddItem(match)
+    } else {
+      playPosBeep('error')
+      setScanFeedback('error')
+      setScannedItemHUD({
+        notFound: true,
+        barcode: rawCode || '',
+        timestamp: Date.now()
+      })
+    }
+    hudTimerRef.current = setTimeout(() => {
+      setScannedItemHUD(null)
+      setScanFeedback(null)
+    }, 2800)
+  }, [cart.items, handleAddItem])
+
+  // Robust POS Barcode Scan Handler with 'pos' context and hardware sound
   useBarcodeScan((barcode: string) => {
-    const termLower = barcode.toLowerCase()
+    const termLower = barcode.toLowerCase().trim()
     const match = localInventory.find(
       s => (s.barcode && s.barcode.toLowerCase() === termLower) ||
            (s.sku_code && s.sku_code.toLowerCase() === termLower)
     )
     if (match) {
-      handleAddItem(match)
-      setScanFeedback('success')
-      setTimeout(() => setScanFeedback(null), 600)
+      triggerBarcodeScanFeedback(match, barcode)
     } else {
+      triggerBarcodeScanFeedback(null, barcode)
       setSearch(barcode)
     }
-  }, { context: 'pos' })
+  }, { context: 'pos', allowInInputs: true })
 
   const handleRemoveItem = useCallback((itemId: string) => {
     setCart(prev => removeItemFromCart(prev, itemId))
@@ -1041,9 +1087,23 @@ export default function POSPage() {
                 flex-shrink-0" />
             <input
               ref={searchRef}
+              data-barcode-target="true"
               value={search}
               onChange={e =>
                 setSearch(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && search.trim()) {
+                  const termLower = search.trim().toLowerCase()
+                  const match = localInventory.find(
+                    s => (s.barcode && s.barcode.toLowerCase() === termLower) ||
+                         (s.sku_code && s.sku_code.toLowerCase() === termLower)
+                  )
+                  if (match) {
+                    e.preventDefault()
+                    triggerBarcodeScanFeedback(match, search.trim())
+                  }
+                }
+              }}
               placeholder="Search or scan barcode... [F2]"
               className="flex-1 bg-transparent
                 text-white text-sm outline-none
@@ -1064,6 +1124,66 @@ export default function POSPage() {
               className="text-gray-700
                 flex-shrink-0" />
           </div>
+
+          {/* Scanned Product HUD Banner */}
+          <AnimatePresence>
+            {scannedItemHUD && (
+              <motion.div
+                initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                className={`mt-3 p-3 rounded border flex items-center justify-between gap-3 shadow-xl transition-all duration-200 ${
+                  scannedItemHUD.notFound
+                    ? 'bg-red-500/15 border-red-500/40 text-red-200 shadow-red-950/30'
+                    : 'bg-emerald-500/15 border-emerald-500/50 text-emerald-100 shadow-emerald-950/30 ring-1 ring-emerald-500/30'
+                }`}
+              >
+                {scannedItemHUD.notFound ? (
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400">
+                      <AlertTriangle size={18} />
+                    </div>
+                    <div>
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-red-400">Barcode Not Found</div>
+                      <div className="text-xs font-mono text-gray-300">Code: {scannedItemHUD.barcode}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded bg-emerald-500/25 border border-emerald-500/60 flex items-center justify-center text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.4)]">
+                      <Barcode size={20} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/30 text-emerald-200 border border-emerald-500/40 font-bold">
+                          {scannedItemHUD.sku_code || 'SCANNED'}
+                        </span>
+                        <span className="text-sm font-bold text-white tracking-wide">
+                          {scannedItemHUD.name}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2.5 text-[11px] text-gray-300 mt-1">
+                        <span>Price: <strong className="text-white">Rs. {Number(scannedItemHUD.sale_price || 0).toLocaleString()}</strong></span>
+                        <span className="text-gray-500">•</span>
+                        <span>Stock: <strong className="text-emerald-400">{scannedItemHUD.qty_on_hand} {scannedItemHUD.unit}</strong></span>
+                        <span className="text-gray-500">•</span>
+                        <span className="text-emerald-300 font-bold bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                          +1 Added (In Cart: {scannedItemHUD.quantityInCart})
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <button 
+                  onClick={() => setScannedItemHUD(null)}
+                  className="p-1 text-gray-400 hover:text-white rounded hover:bg-white/5 transition-colors cursor-pointer"
+                  title="Dismiss"
+                >
+                  <X size={14} />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Low stock warnings */}
           {lowStockItems.length > 0 && (

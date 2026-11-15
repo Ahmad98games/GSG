@@ -122,7 +122,7 @@ export async function GET(req: NextRequest) {
 
         let localRows = sqlite.prepare(`
           SELECT * FROM karigars 
-          WHERE (business_id = ? OR business_id = 'local' OR business_id IS NULL OR 1=1)
+          WHERE (business_id = ? OR business_id = 'local')
             AND (status = 'active' OR status IS NULL)
           ORDER BY name ASC
         `).all(businessId || 'local');
@@ -136,7 +136,7 @@ export async function GET(req: NextRequest) {
           for (const w of defaultFactoryWorkers) {
             insStmt.run(w);
           }
-          localRows = sqlite.prepare(`SELECT * FROM karigars ORDER BY name ASC`).all();
+          localRows = sqlite.prepare(`SELECT * FROM karigars WHERE (business_id = ? OR business_id = 'local') ORDER BY name ASC`).all(businessId || 'local');
         }
 
         if (localRows && localRows.length > 0) {

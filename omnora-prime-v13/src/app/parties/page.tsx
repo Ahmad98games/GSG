@@ -209,12 +209,13 @@ export default function PartiesPage() {
         }
       } catch {}
 
-      try {
-        const cloudPromise = supabase
-          .from('parties')
-          .select('*')
-          .eq('business_id', businessId)
-          .order('name');
+      if (businessId && businessId !== '00000000-0000-0000-0000-000000000000' && businessId !== 'local') {
+        try {
+          const cloudPromise = supabase
+            .from('parties')
+            .select('*')
+            .eq('business_id', businessId)
+            .order('name');
         const timeoutPromise = new Promise<{ data: null; error: any }>((resolve) =>
           setTimeout(() => resolve({ data: null, error: new Error('Remote query timed out') }), 1500)
         );
@@ -234,8 +235,9 @@ export default function PartiesPage() {
             }).catch(() => {});
           } catch {}
         }
-      } catch (err) {
-        console.warn('[Parties] Query failed, using cached data:', err);
+        } catch (err) {
+          console.warn('[Parties] Query failed, using cached data:', err);
+        }
       }
 
       const mergedList = Array.from(mergedMap.values());

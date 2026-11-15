@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
 
         const localRows = sqlite.prepare(`
           SELECT * FROM parties 
-          WHERE (business_id = ? OR business_id = 'local' OR business_id IS NULL OR 1=1)
+          WHERE (business_id = ? OR business_id = 'local')
             AND (is_active = 1 OR is_active IS NULL)
             AND (name NOT LIKE 'Mobile Added UUID Test Party%')
           ORDER BY name ASC
@@ -93,11 +93,18 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Only query Supabase if businessId is a valid, non-default UUID
+    const isUuid = (val: string | null | undefined): boolean => {
+      if (!val) return false;
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+    };
+
+    if (!businessId || businessId === 'local' || businessId === '00000000-0000-0000-0000-000000000000' || !isUuid(businessId)) {
+      return NextResponse.json({ data: [] });
+    }
+
     try {
-      let query = supabase.from('parties').select('*').order('name');
-      if (businessId) {
-        query = query.eq('business_id', businessId);
-      }
+      let query = supabase.from('parties').select('*').eq('business_id', businessId).order('name');
 
       const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Party query timeout')), 1500));
       const res: any = await Promise.race([query, timeoutPromise]);

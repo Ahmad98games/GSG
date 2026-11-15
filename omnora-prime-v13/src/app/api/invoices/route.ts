@@ -345,6 +345,7 @@ export async function GET(req: NextRequest) {
     }
 
     // ── LIST RETRIEVAL ──
+    const businessId = (searchParams.get('business_id') || '').trim();
     let query = `
       SELECT 
         i.id,
@@ -370,9 +371,9 @@ export async function GET(req: NextRequest) {
         COALESCE(i.created_at, datetime('now')) AS created_at
       FROM invoices i
       LEFT JOIN parties p ON p.id = i.party_id
-      WHERE 1=1
+      WHERE (i.business_id = ? OR i.business_id = 'local' OR ? = 'local')
     `;
-    const params: any[] = [];
+    const params: any[] = [businessId || 'local', businessId || 'local'];
 
     if (status !== 'all') {
       query += ` AND i.status = ?`;

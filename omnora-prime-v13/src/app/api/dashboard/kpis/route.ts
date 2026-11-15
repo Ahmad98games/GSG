@@ -60,30 +60,30 @@ export async function GET(req: Request) {
 
       if (tableExists('invoices') || tableExists('karigars') || tableExists('sku_cache') || tableExists('skus')) {
         const attendanceRow = tableExists('attendance_logs')
-          ? client.prepare("SELECT count(*) as count FROM attendance_logs WHERE (business_id = ? OR ? = '00000000-0000-0000-0000-000000000000' OR 1=1) AND attendance_date = ? AND status = 'present'").get(biz, biz, today)
+          ? client.prepare("SELECT count(*) as count FROM attendance_logs WHERE (business_id = ? OR business_id = 'local') AND attendance_date = ? AND status = 'present'").get(biz, biz, today)
           : { count: 0 }
 
         let karigarsList: any[] = []
         if (tableExists('karigars')) {
           try {
-            karigarsList = client.prepare("SELECT id, name, status, karigar_code FROM karigars WHERE (business_id = ? OR ? = '00000000-0000-0000-0000-000000000000' OR 1=1)").all(biz, biz)
+            karigarsList = client.prepare("SELECT id, name, status, karigar_code FROM karigars WHERE (business_id = ? OR business_id = 'local')").all(biz, biz)
           } catch {}
         }
 
         const invoicesMonthRows = tableExists('invoices')
-          ? client.prepare("SELECT id, invoice_number, subtotal, total_amount as total, status, created_at, party_name FROM invoices WHERE (business_id = ? OR ? = '00000000-0000-0000-0000-000000000000' OR 1=1) AND created_at >= ?").all(biz, biz, monthStart)
+          ? client.prepare("SELECT id, invoice_number, subtotal, total_amount as total, status, created_at, party_name FROM invoices WHERE (business_id = ? OR business_id = 'local') AND created_at >= ?").all(biz, biz, monthStart)
           : []
 
         const receivablesRows = tableExists('invoices')
-          ? client.prepare("SELECT due_date, created_at, balance_due, party_name, invoice_number FROM invoices WHERE (business_id = ? OR ? = '00000000-0000-0000-0000-000000000000' OR 1=1) AND balance_due > 0").all(biz, biz)
+          ? client.prepare("SELECT due_date, created_at, balance_due, party_name, invoice_number FROM invoices WHERE (business_id = ? OR business_id = 'local') AND balance_due > 0").all(biz, biz)
           : []
 
         let stockRows: any[] = []
         let lowStockCount = 0
         if (tableExists('skus')) {
           try {
-            stockRows = client.prepare("SELECT id, sku_code, name, qty_on_hand, cost_price, sale_price, unit, category, reorder_level FROM skus WHERE (business_id = ? OR ? = '00000000-0000-0000-0000-000000000000' OR 1=1) AND is_active = 1").all(biz, biz)
-            const low = client.prepare("SELECT count(*) as count FROM skus WHERE (business_id = ? OR ? = '00000000-0000-0000-0000-000000000000' OR 1=1) AND is_active = 1 AND qty_on_hand <= reorder_level").get(biz, biz)
+            stockRows = client.prepare("SELECT id, sku_code, name, qty_on_hand, cost_price, sale_price, unit, category, reorder_level FROM skus WHERE (business_id = ? OR business_id = 'local') AND is_active = 1").all(biz, biz)
+            const low = client.prepare("SELECT count(*) as count FROM skus WHERE (business_id = ? OR business_id = 'local') AND is_active = 1 AND qty_on_hand <= reorder_level").get(biz, biz)
             lowStockCount = low?.count || 0
           } catch {}
         }
@@ -96,33 +96,33 @@ export async function GET(req: Request) {
         }
 
         const dispatchRow = tableExists('dispatch_orders')
-          ? client.prepare("SELECT count(*) as count FROM dispatch_orders WHERE (business_id = ? OR ? = '00000000-0000-0000-0000-000000000000' OR 1=1) AND status IN ('pending', 'packed')").get(biz, biz)
+          ? client.prepare("SELECT count(*) as count FROM dispatch_orders WHERE (business_id = ? OR business_id = 'local') AND status IN ('pending', 'packed')").get(biz, biz)
           : { count: 0 }
 
         const purchaseRow = tableExists('purchase_orders')
-          ? client.prepare("SELECT count(*) as count FROM purchase_orders WHERE (business_id = ? OR ? = '00000000-0000-0000-0000-000000000000' OR 1=1) AND status IN ('draft', 'sent')").get(biz, biz)
+          ? client.prepare("SELECT count(*) as count FROM purchase_orders WHERE (business_id = ? OR business_id = 'local') AND status IN ('draft', 'sent')").get(biz, biz)
           : { count: 0 }
 
         const payrollRows = tableExists('payroll_slips')
-          ? client.prepare("SELECT net_pay FROM payroll_slips WHERE (business_id = ? OR ? = '00000000-0000-0000-0000-000000000000' OR 1=1) AND created_at >= ?").all(biz, biz, monthStart)
+          ? client.prepare("SELECT net_pay FROM payroll_slips WHERE (business_id = ? OR business_id = 'local') AND created_at >= ?").all(biz, biz, monthStart)
           : []
 
         const recentInvoicesRows = tableExists('invoices')
-          ? client.prepare("SELECT id, invoice_number, status, created_at, total_amount, party_name FROM invoices WHERE (business_id = ? OR ? = '00000000-0000-0000-0000-000000000000' OR 1=1) ORDER BY created_at DESC LIMIT 5").all(biz, biz)
+          ? client.prepare("SELECT id, invoice_number, status, created_at, total_amount, party_name FROM invoices WHERE (business_id = ? OR business_id = 'local') ORDER BY created_at DESC LIMIT 5").all(biz, biz)
           : []
 
         const recentAttendanceRows = tableExists('attendance_logs')
-          ? client.prepare("SELECT karigar_id, status, attendance_date as log_date FROM attendance_logs WHERE (business_id = ? OR ? = '00000000-0000-0000-0000-000000000000' OR 1=1) AND attendance_date = ? LIMIT 10").all(biz, biz, today)
+          ? client.prepare("SELECT karigar_id, status, attendance_date as log_date FROM attendance_logs WHERE (business_id = ? OR business_id = 'local') AND attendance_date = ? LIMIT 10").all(biz, biz, today)
           : []
 
         const promisesRows = tableExists('payment_promises')
-          ? client.prepare("SELECT id, promise_date, status, amount FROM payment_promises WHERE (business_id = ? OR ? = '00000000-0000-0000-0000-000000000000' OR 1=1) AND status = 'pending' ORDER BY promise_date ASC LIMIT 5").all(biz, biz)
+          ? client.prepare("SELECT id, promise_date, status, amount FROM payment_promises WHERE (business_id = ? OR business_id = 'local') AND status = 'pending' ORDER BY promise_date ASC LIMIT 5").all(biz, biz)
           : []
 
         let ledgerRows: any[] = []
         if (tableExists('ledger_entries')) {
           try {
-            ledgerRows = client.prepare("SELECT entry_type, amount, party_name FROM ledger_entries WHERE (business_id = ? OR ? = '00000000-0000-0000-0000-000000000000' OR 1=1)").all(biz, biz)
+            ledgerRows = client.prepare("SELECT entry_type, amount, party_name FROM ledger_entries WHERE (business_id = ? OR business_id = 'local')").all(biz, biz)
           } catch {
             ledgerRows = []
           }

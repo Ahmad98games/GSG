@@ -25,6 +25,7 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
+  const businessId = (searchParams.get('business_id') || '').trim();
   const status = searchParams.get('status') || 'all';
   const limit = Math.min(200, parseInt(searchParams.get('limit') || '50', 10));
 
@@ -47,9 +48,9 @@ export async function GET(req: NextRequest) {
         i.balance_due,
         i.created_at
       FROM invoices i
-      WHERE 1=1
+      WHERE (i.business_id = ? OR i.business_id = 'local' OR ? = 'local')
     `;
-    const params: any[] = [];
+    const params: any[] = [businessId || 'local', businessId || 'local'];
     if (status !== 'all') {
       query += ` AND i.status = ?`;
       params.push(status);

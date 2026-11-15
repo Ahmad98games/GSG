@@ -136,17 +136,17 @@ type AdjustStockValues = z.infer<typeof adjustStockSchema>;
 
 
 const SKURow = React.memo(
-  function SKURow({ row, onSelect }: { row: any; onSelect: () => void }) {
+  function SKURow({ row, onSelect }: { row: any; onSelect: (sku: SKU) => void }) {
     if (!row) return null;
     return (
       <tr
-        key={row.id}
+        key={row.original?.id || row.id}
         onClick={(e) => {
           const target = e.target as HTMLElement;
           if (target.closest('button') || target.closest('a') || target.closest('[data-no-row-select]')) {
             return;
           }
-          onSelect();
+          onSelect(row.original);
         }}
         className="border-b border-white/4 hover:bg-white/[0.02] transition-colors cursor-pointer"
       >
@@ -168,8 +168,7 @@ const SKURow = React.memo(
         ))}
       </tr>
     );
-  },
-  (prevProps, nextProps) => prevProps?.row?.original === nextProps?.row?.original
+  }
 );
 
 export default function InventoryPage() {
@@ -848,9 +847,9 @@ export default function InventoryPage() {
                                 if (!row) return null;
                                 return (
                                   <SKURow
-                                    key={row.id}
+                                    key={row.original?.id || row.id}
                                     row={row}
-                                    onSelect={() => setSelectedSku(row.original)}
+                                    onSelect={(sku) => setSelectedSku(sku)}
                                   />
                                 );
                               })}
@@ -868,9 +867,9 @@ export default function InventoryPage() {
                           ) : (
                             rows.map((row) => (
                               <SKURow
-                                key={row.id}
+                                    key={row.original?.id || row.id}
                                 row={row}
-                                onSelect={() => setSelectedSku(row.original)}
+                                onSelect={(sku) => setSelectedSku(sku)}
                               />
                             ))
                           )}
@@ -1333,7 +1332,9 @@ const TableActions = React.memo(function TableActions({
   onPrintLabel?: () => void
 }) {
   const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
   const queryClient = useQueryClient();
   const { profile } = useBusinessProfile();
@@ -1341,12 +1342,39 @@ const TableActions = React.memo(function TableActions({
   const toast = useToast();
 
   useEffect(() => {
+    if (!open) return;
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (buttonRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setOpen(false);
     };
-    if (open) document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    const handleDismiss = () => setOpen(false);
+
+    document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('scroll', handleDismiss, true);
+    window.addEventListener('resize', handleDismiss);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('scroll', handleDismiss, true);
+      window.removeEventListener('resize', handleDismiss);
+    };
   }, [open]);
+
+  const toggleOpen = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!open && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const menuWidth = 224;
+      const left = Math.max(10, rect.right - menuWidth);
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const top = spaceBelow < 260 ? Math.max(10, rect.top - 245) : rect.bottom + 6;
+      setMenuPosition({ top, left });
+      setOpen(true);
+    } else {
+      setOpen(false);
+    }
+  };
 
   const handleDelete = async (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -1363,7 +1391,6 @@ const TableActions = React.memo(function TableActions({
       const { error } = await supabase.from('skus').delete().eq('id', sku.id);
 
       if (error) {
-        // If foreign key constraint prevents hard deletion, archive cleanly
         if (error.code === '23503' || error.message?.toLowerCase().includes('violates foreign key')) {
           const { error: archiveError } = await supabase.from('skus').update({ is_active: false }).eq('id', sku.id);
           if (archiveError) throw archiveError;
@@ -1408,22 +1435,26 @@ const TableActions = React.memo(function TableActions({
   };
 
   return (
-    <div className="relative flex justify-end" ref={containerRef} data-no-row-select>
+    <div className="relative flex justify-end" data-no-row-select>
        <button 
-        onClick={(e) => { 
-          e.stopPropagation(); 
-          e.preventDefault(); 
-          setOpen(!open); 
-        }}
+        ref={buttonRef}
+        onClick={toggleOpen}
         className="p-2 text-gray-400 hover:text-white transition-colors cursor-pointer rounded hover:bg-white/5 active:scale-95"
         title="More actions"
        >
           <MoreVertical size={16} />
        </button>
 
-       {open && (
+       {open && menuPosition && typeof document !== 'undefined' && createPortal(
          <div 
-           className="absolute right-0 top-10 w-56 bg-[#121418] border border-white/10 shadow-2xl z-50 py-1.5 rounded-md divide-y divide-white/5 backdrop-blur-xl"
+           ref={menuRef}
+           style={{
+             position: 'fixed',
+             top: `${menuPosition.top}px`,
+             left: `${menuPosition.left}px`,
+             zIndex: 999999,
+           }}
+           className="w-56 bg-[#131722] border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.95)] py-1.5 rounded-md divide-y divide-white/10"
            onClick={(e) => {
              e.stopPropagation();
              e.preventDefault();
@@ -1439,7 +1470,7 @@ const TableActions = React.memo(function TableActions({
                     setOpen(false); 
                     onView(); 
                   }}
-                  className="w-full px-4 py-2.5 text-left text-[11px] uppercase font-bold text-gray-300 hover:text-white hover:bg-white/10 flex items-center space-x-3 cursor-pointer transition-colors"
+                  className="w-full px-4 py-2.5 text-left text-[11px] uppercase font-bold text-gray-200 hover:text-white hover:bg-white/10 flex items-center space-x-3 cursor-pointer transition-colors"
                 >
                   <Eye size={14} className="text-[#60A5FA]" />
                   <span>View Details</span>
@@ -1454,7 +1485,7 @@ const TableActions = React.memo(function TableActions({
                       setOpen(false); 
                       onEdit(); 
                     }}
-                    className="w-full px-4 py-2.5 text-left text-[11px] uppercase font-bold text-gray-300 hover:text-white hover:bg-white/10 flex items-center space-x-3 cursor-pointer transition-colors"
+                    className="w-full px-4 py-2.5 text-left text-[11px] uppercase font-bold text-gray-200 hover:text-white hover:bg-white/10 flex items-center space-x-3 cursor-pointer transition-colors"
                   >
                     <Edit size={14} className="text-[#60A5FA]" />
                     <span>Modify / Edit SKU</span>
@@ -1466,7 +1497,7 @@ const TableActions = React.memo(function TableActions({
                       setOpen(false); 
                       onAdjust(); 
                     }} 
-                    className="w-full px-4 py-2.5 text-left text-[11px] uppercase font-bold text-gray-300 hover:text-white hover:bg-white/10 flex items-center space-x-3 cursor-pointer transition-colors"
+                    className="w-full px-4 py-2.5 text-left text-[11px] uppercase font-bold text-gray-200 hover:text-white hover:bg-white/10 flex items-center space-x-3 cursor-pointer transition-colors"
                   >
                     <History size={14} className="text-emerald-400" />
                     <span>Adjust Stock</span>
@@ -1485,7 +1516,7 @@ const TableActions = React.memo(function TableActions({
                     setOpen(false); 
                     onPrintLabel(); 
                   }} 
-                  className="w-full px-4 py-2.5 text-left text-[11px] uppercase font-bold text-gray-300 hover:text-white hover:bg-white/10 flex items-center space-x-3 cursor-pointer transition-colors"
+                  className="w-full px-4 py-2.5 text-left text-[11px] uppercase font-bold text-gray-200 hover:text-white hover:bg-white/10 flex items-center space-x-3 cursor-pointer transition-colors"
                 >
                   <Barcode size={14} className="text-purple-400" />
                   <span>Print Barcode Label</span>
@@ -1525,7 +1556,8 @@ const TableActions = React.memo(function TableActions({
                 </button>
               )}
             </div>
-         </div>
+         </div>,
+         document.body
        )}
     </div>
   );

@@ -41,6 +41,7 @@ function ensureExpensesTable(sqlite: any) {
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
+    const businessId = searchParams.get('business_id') || 'local';
     const category = searchParams.get('category');
     const search = (searchParams.get('search') || '').trim().toLowerCase();
     const limit = Math.min(250, parseInt(searchParams.get('limit') || '100', 10));
@@ -55,8 +56,8 @@ export async function GET(req: NextRequest) {
 
     ensureExpensesTable(sqlite);
 
-    let query = `SELECT * FROM expenses WHERE 1=1`;
-    const params: any[] = [];
+    let query = `SELECT * FROM expenses WHERE (business_id = ? OR business_id = 'local' OR ? = 'local')`;
+    const params: any[] = [businessId || 'local', businessId || 'local'];
 
     if (category && category !== 'all') {
       query += ` AND category = ?`;
