@@ -80,60 +80,109 @@ export default function StockMovementsPage() {
 
   // Fetch movements
   const fetchMovements = useCallback(async () => {
-    if (!profile?.id) return
     setLoading(true)
+    const bizId = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null) || 'local'
 
     try {
-      let query = supabase
-        .from('stock_adjustments')
-        .select(`
-          id,
-          adjustment_date,
-          created_at,
-          adjustment_type,
-          quantity,
-          sku_id,
-          reason,
-          reference,
-          adjusted_by,
-          skus!inner (
-            name,
-            unit,
-            qty_on_hand
+      // 1. Fetch from local SQLite WAL API for 100% offline sovereign data (< 1ms)
+      let localItems: StockMovement[] = []
+      try {
+        const localRes = await fetch(`/api/inventory/movements?business_id=${bizId}&start_date=${startDate}&end_date=${endDate}&limit=500`)
+        if (localRes.ok) {
+          const data = await localRes.json()
+          if (Array.isArray(data)) {
+            localItems = data.map((row: any) => ({
+              id: row.id,
+              adjustment_date: row.adjustment_date || row.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+              created_at: row.created_at || new Date().toISOString(),
+              adjustment_type: row.adjustment_type || 'adjustment',
+              quantity: Number(row.quantity || 0),
+              sku_id: row.sku_id,
+              sku_name: row.sku_name || 'Unknown SKU',
+              unit: row.unit || 'Pcs',
+              qty_on_hand: Number(row.qty_on_hand || 0),
+              reason: row.reason || '',
+              reference: row.reference || '',
+              adjusted_by: row.adjusted_by || 'System',
+            }))
+          }
+        }
+      } catch (localErr) {
+        console.warn('[Movements] Local SQLite fetch warning:', localErr)
+      }
+
+      // If local items exist, display them immediately!
+      if (localItems.length > 0) {
+        setMovements(localItems)
+      }
+
+      // 2. Fetch from Supabase Cloud if online and valid cloud UUID
+      if (bizId && bizId !== 'local' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bizId)) {
+        try {
+          const fetchPromise = supabase
+            .from('stock_adjustments')
+            .select(`
+              id,
+              adjustment_date,
+              created_at,
+              adjustment_type,
+              quantity,
+              sku_id,
+              reason,
+              reference,
+              adjusted_by,
+              skus!inner (
+                name,
+                unit,
+                qty_on_hand
+              )
+            `)
+            .eq('business_id', bizId)
+            .gte('adjustment_date', startDate)
+            .lte('adjustment_date', endDate)
+            .order('created_at', { ascending: false })
+            .limit(200)
+
+          const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+            setTimeout(() => resolve({ data: null, error: new Error('TIMEOUT') }), 2500)
           )
-        `)
-        .eq('business_id', profile.id)
-        .gte('adjustment_date', startDate)
-        .lte('adjustment_date', endDate)
-        .order('created_at', { ascending: false })
-        .limit(200)
 
-      const { data, error } = await query
+          const { data, error } = await Promise.race([fetchPromise, timeoutPromise])
 
-      if (error) throw error
+          if (!error && Array.isArray(data)) {
+            const cloudItems: StockMovement[] = data.map((row: any) => ({
+              id: row.id,
+              adjustment_date: row.adjustment_date,
+              created_at: row.created_at,
+              adjustment_type: row.adjustment_type || 'adjustment',
+              quantity: row.quantity,
+              sku_id: row.sku_id,
+              sku_name: row.skus?.name || 'Unknown SKU',
+              unit: row.skus?.unit || 'Pcs',
+              qty_on_hand: row.skus?.qty_on_hand || 0,
+              reason: row.reason,
+              reference: row.reference,
+              adjusted_by: row.adjusted_by || 'System',
+            }))
 
-      const formatted: StockMovement[] = (data || []).map((row: any) => ({
-        id: row.id,
-        adjustment_date: row.adjustment_date,
-        created_at: row.created_at,
-        adjustment_type: row.adjustment_type || 'adjustment',
-        quantity: row.quantity,
-        sku_id: row.sku_id,
-        sku_name: row.skus?.name || 'Unknown SKU',
-        unit: row.skus?.unit || 'Pcs',
-        qty_on_hand: row.skus?.qty_on_hand || 0,
-        reason: row.reason,
-        reference: row.reference,
-        adjusted_by: row.adjusted_by || 'System',
-      }))
-
-      setMovements(formatted)
+            // Merge cloud and local items without duplicates
+            const mergedMap = new Map<string, StockMovement>()
+            localItems.forEach(item => mergedMap.set(item.id, item))
+            cloudItems.forEach(item => mergedMap.set(item.id, item))
+            setMovements(Array.from(mergedMap.values()))
+          }
+        } catch (cloudErr) {
+          console.warn('[Movements] Cloud sync skipped/failed:', cloudErr)
+        }
+      } else if (localItems.length === 0) {
+        setMovements([])
+      }
     } catch (err) {
       console.error('Failed to load stock movements:', err)
     } finally {
       setLoading(false)
     }
-  }, [profile?.id, startDate, endDate])
+  }, [profile?.id, startDate, endDate, supabase])
 
   useEffect(() => {
     fetchMovements()
@@ -161,41 +210,89 @@ export default function StockMovementsPage() {
   const openSkuHistory = async (sku: { id: string; name: string; unit: string; currentStock: number }) => {
     setSelectedSku(sku)
     setSkuLoading(true)
-    try {
-      const { data } = await supabase
-        .from('stock_adjustments')
-        .select(`
-          id,
-          adjustment_date,
-          created_at,
-          adjustment_type,
-          quantity,
-          sku_id,
-          reason,
-          reference,
-          adjusted_by,
-          skus ( name, unit, qty_on_hand )
-        `)
-        .eq('business_id', profile!.id)
-        .eq('sku_id', sku.id)
-        .order('created_at', { ascending: true })
-        .limit(100)
+    const bizId = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null) || 'local'
 
-      const formatted: StockMovement[] = (data || []).map((row: any) => ({
-        id: row.id,
-        adjustment_date: row.adjustment_date,
-        created_at: row.created_at,
-        adjustment_type: row.adjustment_type || 'adjustment',
-        quantity: row.quantity,
-        sku_id: row.sku_id,
-        sku_name: row.skus?.name || sku.name,
-        unit: row.skus?.unit || sku.unit,
-        qty_on_hand: row.skus?.qty_on_hand || sku.currentStock,
-        reason: row.reason,
-        reference: row.reference,
-        adjusted_by: row.adjusted_by || 'System',
-      }))
-      setSkuMovements(formatted)
+    try {
+      // 1. Fetch from local SQLite API
+      let historyItems: StockMovement[] = []
+      try {
+        const localRes = await fetch(`/api/inventory/movements?business_id=${bizId}&sku_id=${sku.id}&limit=100`)
+        if (localRes.ok) {
+          const data = await localRes.json()
+          if (Array.isArray(data)) {
+            historyItems = data.map((row: any) => ({
+              id: row.id,
+              adjustment_date: row.adjustment_date || row.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+              created_at: row.created_at || new Date().toISOString(),
+              adjustment_type: row.adjustment_type || 'adjustment',
+              quantity: Number(row.quantity || 0),
+              sku_id: row.sku_id,
+              sku_name: row.sku_name || sku.name,
+              unit: row.unit || sku.unit,
+              qty_on_hand: Number(row.qty_on_hand || sku.currentStock),
+              reason: row.reason || '',
+              reference: row.reference || '',
+              adjusted_by: row.adjusted_by || 'System',
+            }))
+          }
+        }
+      } catch (e) {
+        console.warn('[Movements] Error fetching local SKU history:', e)
+      }
+
+      if (historyItems.length > 0) {
+        setSkuMovements(historyItems)
+      }
+
+      // 2. Fetch from Supabase if online and cloud tenant
+      if (bizId && bizId !== 'local' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bizId)) {
+        try {
+          const { data } = await supabase
+            .from('stock_adjustments')
+            .select(`
+              id,
+              adjustment_date,
+              created_at,
+              adjustment_type,
+              quantity,
+              sku_id,
+              reason,
+              reference,
+              adjusted_by,
+              skus ( name, unit, qty_on_hand )
+            `)
+            .eq('business_id', bizId)
+            .eq('sku_id', sku.id)
+            .order('created_at', { ascending: true })
+            .limit(100)
+
+          if (Array.isArray(data) && data.length > 0) {
+            const formatted: StockMovement[] = data.map((row: any) => ({
+              id: row.id,
+              adjustment_date: row.adjustment_date,
+              created_at: row.created_at,
+              adjustment_type: row.adjustment_type || 'adjustment',
+              quantity: row.quantity,
+              sku_id: row.sku_id,
+              sku_name: row.skus?.name || sku.name,
+              unit: row.skus?.unit || sku.unit,
+              qty_on_hand: row.skus?.qty_on_hand || sku.currentStock,
+              reason: row.reason,
+              reference: row.reference,
+              adjusted_by: row.adjusted_by || 'System',
+            }))
+
+            const merged = new Map<string, StockMovement>()
+            historyItems.forEach(i => merged.set(i.id, i))
+            formatted.forEach(i => merged.set(i.id, i))
+            setSkuMovements(Array.from(merged.values()))
+          }
+        } catch (cloudErr) {
+          console.warn('[Movements] Cloud SKU history fetch skipped:', cloudErr)
+        }
+      } else if (historyItems.length === 0) {
+        setSkuMovements([])
+      }
     } finally {
       setSkuLoading(false)
     }

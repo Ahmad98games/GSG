@@ -617,6 +617,25 @@ export async function POST(req: NextRequest) {
                       console.warn('[API Invoices] deductCacheStmt error:', e);
                     }
                   }
+
+                  // Log deduction into stock_adjustments audit log
+                  try {
+                    const adjId = `adj_sale_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+                    sqlite.prepare(`
+                      INSERT INTO stock_adjustments (
+                        id, business_id, sku_id, adjustment_type, quantity,
+                        reason, reference, adjusted_by, adjustment_date, created_at
+                      ) VALUES (?, ?, ?, 'sale', ?, 'Invoice Sale', ?, 'POS / Billing', date('now'), datetime('now'))
+                    `).run(
+                      adjId,
+                      invoice.business_id || 'local',
+                      targetId,
+                      -qtyToDeduct,
+                      invoice.invoice_number || invoiceId
+                    );
+                  } catch (adjErr) {
+                    // Non-fatal if table doesn't exist yet
+                  }
                 }
               }
             }

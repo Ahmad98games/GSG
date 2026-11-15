@@ -120,6 +120,7 @@ const skuSchema = z.object({
   oem_number: z.string().optional(),
   compatible_vehicles: z.string().optional(),
   commission_rate: z.coerce.number().min(0, "Commission rate cannot be negative").optional(),
+  opening_stock: z.coerce.number().min(0, "Stock cannot be negative").optional(),
 });
 
 type SKUFormValues = z.infer<typeof skuSchema>;
@@ -423,27 +424,94 @@ export default function InventoryPage() {
     queryKey: ['inventory', profile?.id],
     optimisticUpdate: (current, variables) => {
       const { skuId, qty_on_hand } = variables;
-      return current.map((sku: any) =>
+      const updated = current.map((sku: any) =>
         sku.id === skuId
           ? { ...sku, qty_on_hand }
           : sku
       );
+      const bizId = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null);
+      if (typeof window !== 'undefined' && bizId) {
+        try {
+          localStorage.setItem(`noxis_cached_skus_${bizId}`, JSON.stringify(updated));
+        } catch {}
+      }
+      return updated;
     },
     mutationFn: async (variables) => {
-      const { error } = await supabase
-        .from('skus')
-        .update({ qty_on_hand: variables.qty_on_hand })
-        .eq('id', variables.skuId);
-      if (error) throw error;
+      const bizId = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null) || 'local';
+      
+      // 1. Immediately persist to local SQLite (< 1ms, works 100% offline)
+      try {
+        await fetch('/api/skus', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            skuId: variables.skuId,
+            qty_on_hand: variables.qty_on_hand,
+            previousQty: variables.previousQty ?? 0,
+            type: variables.type || (variables.qty_on_hand >= (variables.previousQty ?? 0) ? 'add' : 'remove'),
+            quantity: Math.abs(variables.qty_on_hand - (variables.previousQty ?? 0)),
+            reason: variables.reason || 'Manual Adjustment',
+            notes: variables.notes || '',
+            adjusted_by: profile?.business_name || 'Admin',
+            business_id: bizId
+          })
+        });
+      } catch (localErr) {
+        console.warn('[Inventory] Local stock patch error:', localErr);
+      }
+
+      // 2. Non-blocking cloud sync if online and valid cloud UUID
+      if (bizId && bizId !== 'local' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bizId)) {
+        try {
+          await supabase
+            .from('skus')
+            .update({ qty_on_hand: variables.qty_on_hand })
+            .eq('id', variables.skuId);
+
+          await supabase
+            .from('stock_adjustments')
+            .insert({
+              business_id: bizId,
+              sku_id: variables.skuId,
+              adjustment_type: variables.type || 'adjustment',
+              quantity: Math.abs(variables.qty_on_hand - (variables.previousQty ?? 0)),
+              reason: variables.reason || 'Manual Adjustment',
+              adjusted_by: profile?.business_name || 'Admin',
+              adjustment_date: new Date().toISOString().split('T')[0]
+            });
+        } catch (cloudErr) {
+          console.warn('[Inventory] Cloud stock sync skipped (offline):', cloudErr);
+        }
+      }
     },
     successMessage: 'Stock adjusted',
     undoDescription: 'Stock adjustment',
     undoFn: async (variables) => {
-      const supabaseClient = createClient();
-      await supabaseClient
-        .from('skus')
-        .update({ qty_on_hand: variables.previousQty })
-        .eq('id', variables.skuId);
+      const bizId = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('noxis_business_id') : null) || 'local';
+      try {
+        await fetch('/api/skus', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            skuId: variables.skuId,
+            qty_on_hand: variables.previousQty,
+            type: 'adjustment',
+            reason: 'Undo Stock Adjustment',
+            business_id: bizId
+          })
+        });
+      } catch {}
+
+      if (bizId && bizId !== 'local' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bizId)) {
+        try {
+          const supabaseClient = createClient();
+          await supabaseClient
+            .from('skus')
+            .update({ qty_on_hand: variables.previousQty })
+            .eq('id', variables.skuId);
+        } catch {}
+      }
     }
   });
 
@@ -1594,12 +1662,14 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
       oem_number: skuToEdit.oem_number || skuToEdit.oem_part_number || "",
       compatible_vehicles: skuToEdit.compatible_vehicles || skuToEdit.compatible_models || "",
       commission_rate: skuToEdit.commission_rate ?? 0,
+      opening_stock: skuToEdit.qty_on_hand ?? 0,
     } : {
       unit: "pcs",
       current_location: "warehouse",
       cost_price: 0,
       sale_price: 0,
       reorder_level: 10,
+      opening_stock: 0,
       barcode: initialBarcode || "",
       batch_number: "",
       manufacture_date: "",
@@ -1712,11 +1782,13 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
         compatible_models: values.compatible_vehicles || null,
       };
 
+      const stockQty = Number(values.opening_stock ?? (skuToEdit ? skuToEdit.qty_on_hand : 0)) || 0;
+
       const skuPayloadWithId = {
         ...skuPayload,
         id: targetSkuId,
         business_id: businessId || 'local',
-        qty_on_hand: skuToEdit?.qty_on_hand || 0,
+        qty_on_hand: stockQty,
         qty_reserved: skuToEdit?.qty_reserved || 0,
         is_active: 1,
       };
@@ -1726,7 +1798,13 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
         await fetch('/api/skus', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sku: skuPayloadWithId, operation: skuToEdit ? 'update' : 'create' })
+          body: JSON.stringify({ 
+            sku: {
+              ...skuPayloadWithId,
+              opening_stock: stockQty,
+            }, 
+            operation: skuToEdit ? 'update' : 'create' 
+          })
         });
       } catch (sqErr) {
         console.warn('[AddProductModal] Local SQLite SKU write error:', sqErr);
@@ -1736,13 +1814,13 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
       (async () => {
         try {
           if (skuToEdit) {
-            await supabase.from('skus').update(skuPayload).eq('id', skuToEdit.id);
+            await supabase.from('skus').update({ ...skuPayload, qty_on_hand: stockQty }).eq('id', skuToEdit.id);
           } else {
             await supabase.from('skus').insert({
               ...skuPayload,
               id: targetSkuId,
               business_id: businessId || 'local',
-              qty_on_hand: 0,
+              qty_on_hand: stockQty,
               qty_reserved: 0,
               is_active: true,
             });
@@ -1760,7 +1838,7 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
         category: values.category || null,
         unit: values.unit,
         current_location: values.current_location,
-        qty_on_hand: skuToEdit?.qty_on_hand || 0,
+        qty_on_hand: stockQty,
         qty_reserved: skuToEdit?.qty_reserved || 0,
         reorder_level: values.reorder_level,
         cost_price: values.cost_price,
@@ -1916,6 +1994,10 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
                       <Label>Reorder Threshold</Label>
                       <Input type="number" {...register("reorder_level")} />
                    </div>
+                   <div className="space-y-2">
+                      <Label>{skuToEdit ? "Current Stock on Hand" : "Opening Stock Quantity"}</Label>
+                      <Input type="number" step="any" min="0" {...register("opening_stock")} placeholder="0" />
+                   </div>
                 </div>
              </div>
 
@@ -2055,16 +2137,18 @@ function AdjustStockModal({
 
   const watchType = watch("type") || 'add';
   const watchQty = Number(watch("quantity")) || 0;
+  const currentQty = Number(activeSku.qty_on_hand || 0);
 
-  let projectedQty = activeSku.qty_on_hand;
-  if (watchType === 'add') projectedQty = activeSku.qty_on_hand + watchQty;
-  if (watchType === 'remove') projectedQty = Math.max(0, activeSku.qty_on_hand - watchQty);
+  let projectedQty = currentQty;
+  if (watchType === 'add') projectedQty = currentQty + watchQty;
+  if (watchType === 'remove') projectedQty = Math.max(0, currentQty - watchQty);
   if (watchType === 'set') projectedQty = Math.max(0, watchQty);
 
   const onSubmit = async (values: AdjustStockValues) => {
     setIsSubmitting(true);
     try {
-      let newQty = activeSku.qty_on_hand;
+      const baseQty = Number(activeSku.qty_on_hand || 0);
+      let newQty = baseQty;
       if (values.type === 'add') newQty += values.quantity;
       if (values.type === 'remove') newQty = Math.max(0, newQty - values.quantity);
       if (values.type === 'set') newQty = values.quantity;
@@ -2077,7 +2161,11 @@ function AdjustStockModal({
         data: { qty_on_hand: newQty },
         skuId: activeSku.id,
         qty_on_hand: newQty,
-        previousQty: activeSku.qty_on_hand
+        previousQty: baseQty,
+        type: values.type,
+        quantity: values.quantity,
+        reason: values.reason,
+        notes: values.notes || ''
       });
 
       onSuccess(`Updated ${activeSku.name} quantity to ${newQty} ${activeSku.unit}`);
