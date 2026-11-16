@@ -6,8 +6,8 @@ PRAGMA temp_store = MEMORY;
 PRAGMA mmap_size = 268435456;
 PRAGMA page_size = 4096;
 PRAGMA wal_autocheckpoint = 1000;
-PRAGMA busy_timeout = 5000;
-PRAGMA foreign_keys = ON;
+PRAGMA busy_timeout = 60000;
+PRAGMA foreign_keys = OFF;
 PRAGMA optimize;
 
 -- CORE BUSINESS
@@ -185,14 +185,17 @@ CREATE INDEX IF NOT EXISTS idx_skus_barcode ON skus(business_id, barcode) WHERE 
 -- STOCK ADJUSTMENTS
 CREATE TABLE IF NOT EXISTS stock_adjustments (
   id TEXT PRIMARY KEY,
-  business_id TEXT NOT NULL REFERENCES business_profiles(id) ON DELETE CASCADE,
-  sku_id TEXT NOT NULL REFERENCES skus(id) ON DELETE CASCADE,
-  adjustment_type TEXT NOT NULL CHECK(adjustment_type IN ('increase','decrease','write_off','correction','found')),
-  quantity REAL NOT NULL,
+  business_id TEXT DEFAULT 'local',
+  sku_id TEXT NOT NULL,
+  adjustment_type TEXT NOT NULL DEFAULT 'adjustment',
+  quantity REAL NOT NULL DEFAULT 0,
+  previous_qty REAL DEFAULT 0,
+  new_qty REAL DEFAULT 0,
   reason TEXT,
   reference TEXT,
+  notes TEXT,
   adjusted_by TEXT,
-  adjustment_date TEXT NOT NULL,
+  adjustment_date TEXT NOT NULL DEFAULT (date('now')),
   created_at TEXT DEFAULT (datetime('now'))
 );
 

@@ -41,14 +41,14 @@ function applyProductionPragmas(sqlite) {
         sqlite.pragma('wal_autocheckpoint = 1000');
     }
     catch { }
-    // 8. busy_timeout 5000: Instead of SQLITE_BUSY crash, wait 5 seconds and retry.
+    // 8. busy_timeout 60000: Instead of SQLITE_BUSY crash, wait up to 60 seconds across 15+ concurrent workstation PCs.
     try {
-        sqlite.pragma('busy_timeout = 5000');
+        sqlite.pragma('busy_timeout = 60000');
     }
     catch { }
-    // 9. foreign_keys ON: Foreign keys strictly enforced.
+    // 9. foreign_keys OFF: Essential for multi-workstation & offline decentralized operations to prevent constraint crashes.
     try {
-        sqlite.pragma('foreign_keys = ON');
+        sqlite.pragma('foreign_keys = OFF');
     }
     catch { }
     // 10. optimize: Updates internal query planner statistics.

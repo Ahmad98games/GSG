@@ -78,13 +78,23 @@ export async function GET(req: NextRequest) {
           sqlite.prepare("DELETE FROM parties WHERE name LIKE 'Mobile Added UUID Test Party%'").run();
         } catch {}
 
-        const localRows = sqlite.prepare(`
-          SELECT * FROM parties 
-          WHERE (business_id = ? OR business_id = 'local')
-            AND (is_active = 1 OR is_active IS NULL)
-            AND (name NOT LIKE 'Mobile Added UUID Test Party%')
-          ORDER BY name ASC
-        `).all(businessId || 'local');
+        let localRows: any[] = [];
+        if (businessId && businessId !== 'local' && businessId !== 'undefined' && businessId !== '00000000-0000-0000-0000-000000000000') {
+          localRows = sqlite.prepare(`
+            SELECT * FROM parties 
+            WHERE (business_id = ? OR business_id = 'local' OR business_id = '00000000-0000-0000-0000-000000000000' OR business_id IS NULL)
+              AND (is_active = 1 OR is_active IS NULL)
+              AND (name NOT LIKE 'Mobile Added UUID Test Party%')
+            ORDER BY name ASC
+          `).all(businessId);
+        } else {
+          localRows = sqlite.prepare(`
+            SELECT * FROM parties 
+            WHERE (is_active = 1 OR is_active IS NULL)
+              AND (name NOT LIKE 'Mobile Added UUID Test Party%')
+            ORDER BY name ASC
+          `).all();
+        }
         if (localRows && localRows.length > 0) {
           return NextResponse.json({ data: localRows });
         }

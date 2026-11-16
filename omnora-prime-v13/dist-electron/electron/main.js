@@ -134,6 +134,7 @@ let isCustomDownloading = false;
 let customTransferred = 0;
 let customTotal = 0;
 let isQuittingForUpdate = false;
+let isAppShuttingDown = false;
 // ─────────────────────────────────────────────
 // 1. LOGGER
 // ─────────────────────────────────────────────
@@ -2840,12 +2841,49 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 }
                 catch { }
                 startupLog(`[Next.js] Last buffered output:\n${serverLog.slice(-1000)}`);
-                if (code !== 0) {
-                    serverCrashError = `Server process exited with code ${code}.\n${serverLog.slice(-500) || '(Check server-stderr.log in application data directory)'}`;
-                    destroySplash();
-                    electron_1.dialog.showErrorBox('Server Crashed', `Server exited with code ${code}.\n\nLast server output:\n${serverLog.slice(-500) || '(no output — see server-stderr.log in userData folder)'}`);
-                }
+                const wasAppRunning = !!mainWindow && !mainWindow.isDestroyed();
                 nextServer = null;
+                if (code !== 0 && !isAppShuttingDown && !isQuittingForUpdate) {
+                    serverCrashError = `Server process exited with code ${code}.\n${serverLog.slice(-500) || '(Check server-stderr.log in application data directory)'}`;
+                    if (!wasAppRunning) {
+                        destroySplash();
+                        electron_1.dialog.showErrorBox('Server Crashed', `Server exited with code ${code}.\n\nLast server output:\n${serverLog.slice(-500) || '(no output — see server-stderr.log in userData folder)'}`);
+                    }
+                    else {
+                        startupLog(`[Next.js] Server process exited with code ${code} while app was active. Self-healing restart in progress...`);
+                        setTimeout(() => {
+                            if (!isAppShuttingDown && !isQuittingForUpdate && !nextServer) {
+                                try {
+                                    startupLog('[Next.js] Auto-recovering utilityProcess server...');
+                                    nextServer = electron_1.utilityProcess.fork(normalizedServerPath, [], {
+                                        cwd: path.dirname(normalizedServerPath),
+                                        env: {
+                                            ...process.env,
+                                            PORT: String(PORT),
+                                            NODE_ENV: 'production',
+                                            HOSTNAME: '0.0.0.0',
+                                            ELECTRON_USER_DATA: userDataPath,
+                                            ELECTRON_RESOURCES: resourcesPath,
+                                            ELECTRON_ENV: 'true',
+                                            NEXT_PUBLIC_PLATFORM: 'electron',
+                                            IS_NOXIS_HUB_HOST: 'true',
+                                            NODE_PATH: [
+                                                sqlitePath,
+                                                path.join(resourcesPath, 'standalone', 'node_modules'),
+                                                path.join(resourcesPath, 'node_modules'),
+                                                process.env.NODE_PATH || '',
+                                            ].filter(Boolean).join(path.delimiter),
+                                        },
+                                        stdio: ['ignore', 'pipe', 'pipe'],
+                                    });
+                                }
+                                catch (recErr) {
+                                    startupLog(`[Next.js] Auto-recovery spawn failed: ${recErr?.message}`);
+                                }
+                            }
+                        }, 1000);
+                    }
+                }
             });
             // ── STEP 3: Create main window (loads silently) ──
             // Splash stays visible while this loads.
@@ -2953,6 +2991,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     electron_1.app.on('window-all-closed', () => electron_1.app.quit());
     // Cleanup on quit
     electron_1.app.on('before-quit', (event) => {
+        isAppShuttingDown = true;
         // ── Graceful exit: stop trial heartbeat, checkpoint, mark clean ──
         if (trialHeartbeatInterval) {
             clearInterval(trialHeartbeatInterval);

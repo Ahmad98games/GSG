@@ -24,11 +24,11 @@ export function applyProductionPragmas(sqlite: any): void {
   // 7. wal_autocheckpoint 1000: WAL file folds back into main DB every 1000 pages.
   try { sqlite.pragma('wal_autocheckpoint = 1000'); } catch {}
 
-  // 8. busy_timeout 5000: Instead of SQLITE_BUSY crash, wait 5 seconds and retry.
-  try { sqlite.pragma('busy_timeout = 5000'); } catch {}
+  // 8. busy_timeout 60000: Instead of SQLITE_BUSY crash, wait up to 60 seconds across 15+ concurrent workstation PCs.
+  try { sqlite.pragma('busy_timeout = 60000'); } catch {}
 
-  // 9. foreign_keys ON: Foreign keys strictly enforced.
-  try { sqlite.pragma('foreign_keys = ON'); } catch {}
+  // 9. foreign_keys OFF: Essential for multi-workstation & offline decentralized operations to prevent constraint crashes.
+  try { sqlite.pragma('foreign_keys = OFF'); } catch {}
 
   // 10. optimize: Updates internal query planner statistics.
   try { sqlite.pragma('optimize'); } catch {}

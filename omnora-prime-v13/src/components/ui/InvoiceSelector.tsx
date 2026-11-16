@@ -22,19 +22,24 @@ export default function InvoiceSelector({ businessId, onSelect }: InvoiceSelecto
       // 1. Instant synchronous read from localStorage cache (0ms, 100% offline)
       if (typeof window !== 'undefined') {
         try {
-          const keys = [
-            `noxis_cached_invoices_${businessId || 'local'}`,
-            'noxis_cached_invoices_local',
-            'noxis_cached_invoices'
-          ];
-          for (const k of keys) {
-            const raw = localStorage.getItem(k);
-            if (raw) {
-              const parsed = JSON.parse(raw);
-              if (Array.isArray(parsed)) {
-                parsed.forEach((inv: any) => {
-                  if (inv?.id) invoiceMap.set(inv.id, inv);
-                });
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && (key.startsWith('noxis_cached_invoices') || key.startsWith('noxis_invoices'))) {
+              const raw = localStorage.getItem(key);
+              if (raw) {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) {
+                  parsed.forEach((inv: any) => {
+                    if (inv?.id) {
+                      invoiceMap.set(inv.id, {
+                        ...inv,
+                        invoice_no: inv.invoice_number || inv.invoice_no || inv.id,
+                        total: inv.total_amount ?? inv.total ?? 0,
+                        party_name: inv.party_name || inv.party?.name || 'Walk-in Customer',
+                      });
+                    }
+                  });
+                }
               }
             }
           }
@@ -48,8 +53,9 @@ export default function InvoiceSelector({ businessId, onSelect }: InvoiceSelecto
       // 2. Fetch from local SQLite WAL API (< 1ms, zero internet needed)
       try {
         const ctrl = new AbortController();
-        const tid = setTimeout(() => ctrl.abort(), 1200);
-        const res = await fetch(`/api/invoices?limit=200`, { signal: ctrl.signal });
+        const tid = setTimeout(() => ctrl.abort(), 6000);
+        const bId = businessId || 'local';
+        const res = await fetch(`/api/invoices?business_id=${bId}&limit=200`, { signal: ctrl.signal });
         clearTimeout(tid);
         if (res.ok) {
           const json = await res.json();

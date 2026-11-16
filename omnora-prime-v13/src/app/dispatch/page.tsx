@@ -78,7 +78,7 @@ export default function DispatchCenterPage() {
     // 2. Fetch from local SQLite WAL API (< 1ms, 100% offline)
     try {
       const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), 1200);
+      const tid = setTimeout(() => ctrl.abort(), 6000);
       const localRes = await fetch(`/api/dispatch?business_id=${profile?.id || 'local'}`, { signal: ctrl.signal });
       clearTimeout(tid);
       if (localRes.ok) {

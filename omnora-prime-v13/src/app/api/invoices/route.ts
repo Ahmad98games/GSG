@@ -624,8 +624,8 @@ export async function POST(req: NextRequest) {
                     sqlite.prepare(`
                       INSERT INTO stock_adjustments (
                         id, business_id, sku_id, adjustment_type, quantity,
-                        reason, reference, adjusted_by, adjustment_date, created_at
-                      ) VALUES (?, ?, ?, 'sale', ?, 'Invoice Sale', ?, 'POS / Billing', date('now'), datetime('now'))
+                        previous_qty, new_qty, reason, reference, notes, adjusted_by, adjustment_date, created_at
+                      ) VALUES (?, ?, ?, 'sale', ?, 0, 0, 'Invoice Sale', ?, '', 'POS / Billing', date('now'), datetime('now'))
                     `).run(
                       adjId,
                       invoice.business_id || 'local',
@@ -634,7 +634,7 @@ export async function POST(req: NextRequest) {
                       invoice.invoice_number || invoiceId
                     );
                   } catch (adjErr) {
-                    // Non-fatal if table doesn't exist yet
+                    // Non-fatal
                   }
                 }
               }

@@ -193,8 +193,9 @@ export default function PartiesPage() {
       // Check local SQLite first for 0ms offline retrieval
       try {
         const ctrl = new AbortController();
-        const tid = setTimeout(() => ctrl.abort(), 1200);
-        const localRes = await fetch(`/api/parties?business_id=${businessId}`, { signal: ctrl.signal });
+        const tid = setTimeout(() => ctrl.abort(), 6000);
+        const bId = businessId && businessId !== 'undefined' ? businessId : 'local';
+        const localRes = await fetch(`/api/parties?business_id=${bId}`, { signal: ctrl.signal });
         clearTimeout(tid);
         if (localRes.ok) {
           const localJson = await localRes.json();
