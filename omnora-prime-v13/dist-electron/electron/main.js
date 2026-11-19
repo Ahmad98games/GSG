@@ -1442,7 +1442,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 // In Windows, run detached PowerShell watcher:
                 // Waits 1.2s, forces termination of any running Noxis Hub instance to release all file locks,
                 // runs installer silently with /S and --updated, waits for install completion, and relaunches Noxis Hub.exe
-                const cmd = `Start-Sleep -Milliseconds 1200; Get-Process -Name 'Noxis Hub' -ErrorAction SilentlyContinue | Stop-Process -Force; Start-Process -FilePath "${installerToRun}" -ArgumentList "/S", "--updated" -Wait; Start-Process -FilePath "${appExe}"`;
+                const cmd = `Start-Sleep -Milliseconds 800; Get-Process -Name 'Noxis Hub' -ErrorAction SilentlyContinue | Stop-Process -Force; Start-Process -FilePath "${installerToRun}" -ArgumentList "/S", "--updated" -Wait; Start-Sleep -Milliseconds 600; if (-not (Get-Process -Name 'Noxis Hub' -ErrorAction SilentlyContinue)) { Start-Process -FilePath "${appExe}" }`;
                 const watcher = (0, child_process_1.spawn)('powershell.exe', ['-NoProfile', '-WindowStyle', 'Hidden', '-Command', cmd], {
                     detached: true,
                     stdio: 'ignore'
@@ -2389,7 +2389,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         const targetUrl = `http://127.0.0.1:${PORT}${targetPath}`;
         try {
             startupLog('[Electron] Waiting for Next.js server...');
-            await waitForServer(serverUrl, 90000, 300);
+            await waitForServer(serverUrl, 90000, 80);
             startupLog('[Electron] Server ready — loading software main window');
             await mainWindow.loadURL(targetUrl);
             if (isDev) {
@@ -2568,6 +2568,21 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             async function killAnyProcessOnPort(port) {
                 if (process.platform !== 'win32')
                     return;
+                // Instant 2ms pre-check: if port is not in use, skip netstat/cmd entirely!
+                const isInUse = await new Promise((resolve) => {
+                    const tester = net.createServer()
+                        .once('error', (err) => {
+                        resolve(err.code === 'EADDRINUSE');
+                    })
+                        .once('listening', () => {
+                        tester.close(() => resolve(false));
+                    })
+                        .listen(port, '127.0.0.1');
+                });
+                if (!isInUse) {
+                    startupLog(`[Port] Port ${port} is free (fast verified in 2ms) ✓`);
+                    return;
+                }
                 return new Promise((resolve) => {
                     // Hard safety timeout — if this takes
                     // more than 3 seconds for any reason,

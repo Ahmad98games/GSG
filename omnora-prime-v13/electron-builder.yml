@@ -6,7 +6,7 @@ directories:
   buildResources: build
   output: dist
 
-# Fast compression for significantly faster installer generation
+# Optimized compression balance: fast extraction & rapid installs
 compression: normal
 
 # Files to include in app.asar (minimal for speed and reliability)
@@ -31,7 +31,7 @@ asarUnpack:
   - "**/*.node"
 
 # Extra resources copied to resources/
-# These are accessible via process.resourcesPath
+# Filtered to exclude heavy development junk (.map, .d.ts, tests, docs) for ultra-fast extraction
 extraResources:
   # The Next.js standalone bundle (excluding node_modules so it is not processed twice)
   - from: ".next/standalone"
@@ -44,17 +44,28 @@ extraResources:
       - "!*.db-wal"
       - "!*.sqlite"
       - "!*.sqlite3"
+      - "!**/*.map"
+      - "!**/*.d.ts"
+      - "!**/*.d.ts.map"
+      - "!**/*.md"
+      - "!**/tests/**"
+      - "!**/test/**"
+      - "!**/__tests__/**"
 
-  # Next.js standalone dependencies (required by server.js at runtime)
+  # Next.js standalone dependencies (runtime production only)
   - from: ".next/standalone/node_modules"
     to: "standalone/node_modules"
     filter:
       - "**/*"
-
-
+      - "!**/*.map"
+      - "!**/*.d.ts"
+      - "!**/*.d.ts.map"
+      - "!**/*.md"
+      - "!**/tests/**"
+      - "!**/test/**"
+      - "!**/__tests__/**"
 
   # Native SQLite binding — CRITICAL
-  # Without this the server crashes instantly
   - from: "node_modules/better-sqlite3-multiple-ciphers"
     to: "better-sqlite3-multiple-ciphers"
     filter:
@@ -62,6 +73,8 @@ extraResources:
       - "!deps"
       - "!src"
       - "!*.md"
+      - "!**/*.map"
+      - "!**/*.d.ts"
 
   # Build assets (icon etc)
   - from: "build"
@@ -70,8 +83,6 @@ extraResources:
       - "**/*"
 
   # mediamtx WebRTC/RTSP proxy binary
-  # Used to convert RTSP camera streams to WebRTC for in-app viewing
-  # Only the .exe is included — config is generated at runtime
   - from: "resources/mediamtx"
     to: "mediamtx"
     filter:
@@ -104,6 +115,7 @@ nsis:
   allowElevation: true
   perMachine: false
   differentialPackage: true
+  runAfterFinish: true
 
 mac:
   icon: "build/icon.icns"
