@@ -70,16 +70,22 @@ export default function BranchesPage() {
   }
 
   useEffect(() => {
-    if (profile?.id) {
-      fetchBranches(profile.id);
-    }
+    fetchBranches(profile?.id || 'local');
   }, [profile?.id, fetchBranches]);
+
+  const getBranchText = (key: string, fallback: string) => {
+    const val = t(key, fallback);
+    if (!val || val === key || String(val).startsWith('branches.')) {
+      return fallback;
+    }
+    return val;
+  };
 
   const columnHelper = createColumnHelper<Branch>();
 
   const columns =  useMemo (() => [
     columnHelper.accessor('code', {
-      header: () => <span className="text-[10px] uppercase tracking-widest text-gray-500">{t('branches.col_code') || 'Code'}</span>,
+      header: () => <span className="text-[10px] uppercase tracking-widest text-gray-500">{getBranchText('branches.col_code', 'Code')}</span>,
       cell: info => (
         <span className="font-mono text-sandstone-gold font-bold tracking-wider">
           {info.getValue()}
@@ -87,7 +93,7 @@ export default function BranchesPage() {
       ),
     }),
     columnHelper.accessor('name', {
-      header: () => <span className="text-[10px] uppercase tracking-widest text-gray-500">{t('branches.col_name') || 'Name'}</span>,
+      header: () => <span className="text-[10px] uppercase tracking-widest text-gray-500">{getBranchText('branches.col_name', 'Name')}</span>,
       cell: info => (
         <div className="flex items-center space-x-2">
           <span className="text-sm font-medium text-white">{info.getValue()}</span>
@@ -98,19 +104,19 @@ export default function BranchesPage() {
       ),
     }),
     columnHelper.accessor('city', {
-      header: () => <span className="text-[10px] uppercase tracking-widest text-gray-500">{t('branches.col_city') || 'City'}</span>,
+      header: () => <span className="text-[10px] uppercase tracking-widest text-gray-500">{getBranchText('branches.col_city', 'City')}</span>,
       cell: info => <span className="text-xs text-gray-400">{info.getValue()}</span>,
     }),
     columnHelper.accessor('manager_user_id', {
-      header: () => <span className="text-[10px] uppercase tracking-widest text-gray-500">{t('branches.col_manager') || 'Manager'}</span>,
+      header: () => <span className="text-[10px] uppercase tracking-widest text-gray-500">{getBranchText('branches.col_manager', 'Manager')}</span>,
       cell: info => (
         <span className="text-xs text-gray-500 italic">
-          {info.getValue() ? t('branches.assigned') || 'Assigned' : t('branches.unassigned') || 'Unassigned'}
+          {info.getValue() ? getBranchText('branches.assigned', 'Assigned') : getBranchText('branches.unassigned', 'Unassigned')}
         </span>
       ),
     }),
     columnHelper.accessor('status', {
-      header: () => <span className="text-[10px] uppercase tracking-widest text-gray-500">{t('branches.col_status') || 'Status'}</span>,
+      header: () => <span className="text-[10px] uppercase tracking-widest text-gray-500">{getBranchText('branches.col_status', 'Status')}</span>,
       cell: info => {
         const status = info.getValue();
         return (
@@ -167,11 +173,11 @@ export default function BranchesPage() {
       <div className="flex items-center justify-between border-b border-white/5 pb-8">
         <div>
           <h1 className="text-2xl font-black text-white uppercase tracking-[0.2em]">
-            {t('branches.title') || 'Site & Branch Management'}
+            {getBranchText('branches.title', 'Site & Branch Management')}
           </h1>
           <p className="text-xs text-gray-500 mt-2 uppercase tracking-widest flex items-center">
             <span className="font-mono text-sandstone-gold font-bold text-base mr-2">{branches.length}</span> 
-            {t('branches.of_max') || 'of 10 operational branches active'}
+            {getBranchText('branches.of_max', 'of 10 operational branches active')}
           </p>
         </div>
         <button
@@ -183,7 +189,7 @@ export default function BranchesPage() {
           className="flex items-center space-x-3 px-8 py-3 bg-electric-blue text-onyx text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white hover:text-electric-blue disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-500 shadow-xl shadow-electric-blue/10"
         >
           <Plus size={16} />
-          <span>{t('branches.btn_new') || 'Deploy New Branch'}</span>
+          <span>{getBranchText('branches.btn_new', 'Deploy New Branch')}</span>
         </button>
       </div>
 
@@ -191,9 +197,9 @@ export default function BranchesPage() {
       <div className="bg-surface border border-white/5 overflow-hidden">
         {branches.length === 0 ? (
           <IndustrialEmptyState 
-            title={t('branches.empty_title') || 'No Active Branches'}
-            description={t('branches.empty_desc') || 'Initialize your industrial network by deploying your first branch or headquarters.'}
-            actionLabel={t('branches.btn_new') || 'Deploy Branch'}
+            title={getBranchText('branches.empty_title', 'No Active Branches')}
+            description={getBranchText('branches.empty_desc', 'Initialize your industrial network by deploying your first branch or headquarters.')}
+            actionLabel={getBranchText('branches.btn_new', 'Deploy Branch')}
             onAction={() => setIsSlideOverOpen(true)}
           />
         ) : (
@@ -342,7 +348,7 @@ function BranchFormPanel({ branch, hqExists, onClose, onSuspend, onArchive }: Br
     if (branch) {
       await updateBranch(branch.id, data);
     } else {
-      await createBranch({ ...data, business_id: profile!.id, status: 'active' } as any);
+      await createBranch({ ...data, business_id: profile?.id || 'local', status: 'active' } as any);
     }
     onClose();
   };
