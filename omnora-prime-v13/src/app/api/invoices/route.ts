@@ -423,9 +423,20 @@ export async function POST(req: NextRequest) {
     } = body;
 
     if (operation === 'create') {
-      if (!invoice || !invoice.business_id) {
-        return NextResponse.json({ error: 'Invoice data and business_id are required' }, { status: 400 });
+      if (!invoice) {
+        return NextResponse.json({ error: 'Invoice data is required' }, { status: 400 });
       }
+      invoice.business_id = invoice.business_id || 'local';
+
+      // Normalize status to prevent SQLite CHECK constraint failures
+      let cleanStatus = String(invoice.status || 'posted').toLowerCase();
+      if (cleanStatus === 'issued' || cleanStatus === 'finalized' || cleanStatus === 'active') {
+        cleanStatus = 'posted';
+      }
+      if (!['draft', 'posted', 'paid', 'partial', 'overdue', 'void'].includes(cleanStatus)) {
+        cleanStatus = 'posted';
+      }
+      invoice.status = cleanStatus;
 
       const invoiceId = invoice.id || randomUUID();
       const invNumber = invoice.invoice_number || invoice.invoice_no || `INV-${Date.now().toString().slice(-6)}`;

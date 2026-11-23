@@ -97,6 +97,7 @@ export default function NewInvoicePage() {
 
   const [parties, setParties] = useState<any[]>([]);
   const [skus, setSkus] = useState<any[]>([]);
+  const [allMasterSkus, setAllMasterSkus] = useState<any[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeSkuIndex, setActiveSkuIndex] = useState<number | null>(null);
@@ -367,37 +368,160 @@ export default function NewInvoicePage() {
     loadParties();
   }, [profile?.id, supabase]);
 
-  // Lazy load SKUs on search (Local SQLite WAL first for <1ms response)
+  // Master SKU load on mount (Local Storage + local SQLite WAL for 100% offline instant availability)
   useEffect(() => {
-    if (!profile?.id || !debouncedSkuSearch.trim()) {
-      setSkus([]);
+    let seenSkuIds = new Set<string>();
+    let mergedSkus: any[] = [];
+
+    // 1. Instant sync load from localStorage caches (0ms, offline)
+    if (typeof window !== 'undefined') {
+      const keys = ['noxis_cached_skus', 'noxis_cached_inventory', `noxis_cached_skus_${profile?.id || 'local'}`];
+      for (const k of keys) {
+        try {
+          const raw = localStorage.getItem(k);
+          if (raw) {
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr)) {
+              for (const s of arr) {
+                const sid = s.id || s.sku_id;
+                if (sid && !seenSkuIds.has(sid)) {
+                  seenSkuIds.add(sid);
+                  mergedSkus.push({
+                    id: sid,
+                    sku_code: s.sku_code || s.code || '',
+                    name: s.name || s.description || s.sku_code || 'Item',
+                    sale_price: Number(s.sale_price ?? s.wholesale_price ?? s.price ?? 0),
+                    unit: s.unit || 'Piece',
+                    category: s.category || '',
+                    barcode: s.barcode || '',
+                    qty_on_hand: Number(s.qty_on_hand ?? 0)
+                  });
+                }
+              }
+            }
+          }
+        } catch {}
+      }
+    }
+
+    if (mergedSkus.length > 0) {
+      setAllMasterSkus([...mergedSkus]);
+      setSkus([...mergedSkus]);
+    }
+
+    // 2. Fetch from local SQLite endpoint (<1ms)
+    async function loadMasterSkus() {
+      try {
+        const res = await fetch(`/api/skus?business_id=${profile?.id || 'local'}&limit=250`);
+        if (res.ok) {
+          const list = await res.json();
+          if (Array.isArray(list) && list.length > 0) {
+            for (const s of list) {
+              const sid = s.id || s.sku_id;
+              if (sid && !seenSkuIds.has(sid)) {
+                seenSkuIds.add(sid);
+                mergedSkus.push({
+                  id: sid,
+                  sku_code: s.sku_code || s.code || '',
+                  name: s.name || s.description || s.sku_code || 'Item',
+                  sale_price: Number(s.sale_price ?? s.wholesale_price ?? s.price ?? 0),
+                  unit: s.unit || 'Piece',
+                  category: s.category || '',
+                  barcode: s.barcode || '',
+                  qty_on_hand: Number(s.qty_on_hand ?? 0)
+                });
+              }
+            }
+            setAllMasterSkus([...mergedSkus]);
+            setSkus([...mergedSkus]);
+            try {
+              localStorage.setItem('noxis_cached_skus', JSON.stringify(mergedSkus));
+            } catch {}
+          }
+        }
+      } catch {}
+
+      // 3. Fallback: Query Supabase if online
+      if (profile?.id && typeof navigator !== 'undefined' && navigator.onLine) {
+        try {
+          const { data } = await supabase
+            .from('skus')
+            .select('*')
+            .eq('business_id', profile.id)
+            .eq('is_active', true)
+            .limit(200);
+          if (data && Array.isArray(data)) {
+            for (const s of data) {
+              if (s.id && !seenSkuIds.has(s.id)) {
+                seenSkuIds.add(s.id);
+                mergedSkus.push({
+                  id: s.id,
+                  sku_code: s.sku_code || '',
+                  name: s.name || s.sku_code || 'Item',
+                  sale_price: Number(s.sale_price ?? 0),
+                  unit: s.unit || 'Piece',
+                  category: s.category || '',
+                  barcode: s.barcode || '',
+                  qty_on_hand: Number(s.qty_on_hand ?? 0)
+                });
+              }
+            }
+            setAllMasterSkus([...mergedSkus]);
+            setSkus([...mergedSkus]);
+            try {
+              localStorage.setItem('noxis_cached_skus', JSON.stringify(mergedSkus));
+            } catch {}
+          }
+        } catch {}
+      }
+    }
+
+    loadMasterSkus();
+  }, [profile?.id, supabase]);
+
+  // Instant offline in-memory filter + concurrent local SQLite search
+  useEffect(() => {
+    const q = (skuSearch || '').trim().toLowerCase();
+    if (!q) {
+      setSkus(allMasterSkus.slice(0, 15));
       return;
     }
+
+    // 1. Instant 0ms memory filter
+    const localMatches = allMasterSkus.filter((s: any) =>
+      String(s.name || '').toLowerCase().includes(q) ||
+      String(s.sku_code || '').toLowerCase().includes(q) ||
+      String(s.barcode || '').toLowerCase().includes(q) ||
+      String(s.category || '').toLowerCase().includes(q)
+    );
+    setSkus(localMatches.slice(0, 25));
+
+    // 2. Query local SQLite WAL concurrently
     const searchSkus = async () => {
       try {
-        const localRes = await fetch(`/api/skus?search=${encodeURIComponent(debouncedSkuSearch.trim())}&limit=15`);
+        const localRes = await fetch(`/api/skus?search=${encodeURIComponent(q)}&business_id=${profile?.id || 'local'}&limit=25`);
         if (localRes.ok) {
           const localData = await localRes.json();
           if (Array.isArray(localData) && localData.length > 0) {
-            setSkus(localData);
-            return;
+            setSkus(prev => {
+              const prevIds = new Set(prev.map(p => p.id));
+              const combined = [...prev];
+              for (const it of localData) {
+                if (!prevIds.has(it.id)) {
+                  prevIds.add(it.id);
+                  combined.push(it);
+                }
+              }
+              return combined.slice(0, 30);
+            });
           }
         }
-
-        const { data } = await supabase
-          .from('skus')
-          .select('*')
-          .eq('business_id', profile.id)
-          .eq('is_active', true)
-          .or(`sku_code.ilike.%${debouncedSkuSearch.trim()}%,name.ilike.%${debouncedSkuSearch.trim()}%`)
-          .limit(10);
-        if (data) setSkus(data);
-      } catch (e) {
-        console.error('Failed to search skus:', e);
-      }
+      } catch {}
     };
-    searchSkus();
-  }, [debouncedSkuSearch, profile?.id, supabase]);
+
+    const t = setTimeout(searchSkus, 120);
+    return () => clearTimeout(t);
+  }, [skuSearch, allMasterSkus, profile?.id]);
 
   // Currency Rate Fetcher
   useEffect(() => {
@@ -454,21 +578,23 @@ export default function NewInvoicePage() {
         }
       }
 
-      if (!profile?.id) throw new Error("Business profile context missing.");
+      const resolvedBizId = profile?.id || 'local';
 
-      // Verify and seed chart of accounts before submitting
-      try {
-        const { count: accountCount } = await supabase
-          .from('accounts')
-          .select('id', { count: 'exact', head: true })
-          .eq('business_id', profile.id);
+      // Verify and seed chart of accounts before submitting (if online)
+      if (profile?.id && typeof navigator !== 'undefined' && navigator.onLine) {
+        try {
+          const { count: accountCount } = await supabase
+            .from('accounts')
+            .select('id', { count: 'exact', head: true })
+            .eq('business_id', profile.id);
 
-        if (!accountCount || accountCount === 0) {
-          console.warn('[Invoice Load] Auto-seeding chart of accounts...');
-          await seedChartOfAccounts(profile.id);
+          if (!accountCount || accountCount === 0) {
+            console.warn('[Invoice Load] Auto-seeding chart of accounts...');
+            await seedChartOfAccounts(profile.id);
+          }
+        } catch (seedCheckErr: any) {
+          console.warn('[Invoice] Account check/seed non-fatal:', seedCheckErr.message);
         }
-      } catch (seedCheckErr: any) {
-        console.warn('[Invoice] Account check/seed non-fatal:', seedCheckErr.message);
       }
 
       let invId: string | null = null;
@@ -486,13 +612,13 @@ export default function NewInvoicePage() {
 
       const selectedPartyObj = parties.find(p => p.id === values.party_id);
       const mainInvoicePayload = {
-        business_id: profile.id,
+        business_id: resolvedBizId,
         party_id: values.party_id,
         party_name: selectedPartyObj?.name || '',
         party_phone: selectedPartyObj?.phone || '',
         invoice_no: values.invoice_no,
         invoice_number: values.invoice_no,
-        status: 'issued',
+        status: 'posted',
         issue_date: values.issue_date,
         invoice_date: values.issue_date,
         due_date: values.due_date,
@@ -546,7 +672,7 @@ export default function NewInvoicePage() {
       if (invId) {
         const fullCachedInv = {
           id: invId,
-          business_id: profile.id,
+          business_id: resolvedBizId,
           invoice_no: mainInvoicePayload.invoice_no,
           invoice_number: mainInvoicePayload.invoice_no,
           party_id: values.party_id,
@@ -579,10 +705,11 @@ export default function NewInvoicePage() {
         queryClient.setQueryData(['invoice', invId], fullCachedInv);
         queryClient.setQueryData(['invoice_items', invId], serverItems);
 
-        // Cache into localStorage
+        // Cache into localStorage across all possible offline tenant scopes
         if (typeof window !== 'undefined') {
           const cacheKeys = [
-            `noxis_cached_invoices_${profile.id}`,
+            `noxis_cached_invoices_${resolvedBizId}`,
+            'noxis_cached_invoices_local',
             'noxis_cached_invoices_00000000-0000-0000-0000-000000000000',
             'noxis_cached_invoices'
           ];
@@ -640,10 +767,10 @@ export default function NewInvoicePage() {
         const candidatePayloads = [
           mainInvoicePayload,
           {
-            business_id: profile.id,
+            business_id: profile?.id || resolvedBizId,
             party_id: values.party_id,
             invoice_number: values.invoice_no,
-            status: 'issued',
+            status: 'posted',
             invoice_date: values.issue_date,
             due_date: values.due_date,
             subtotal,

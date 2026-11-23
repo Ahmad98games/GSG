@@ -9,7 +9,14 @@ import * as crypto from 'crypto';
 import { execFile } from 'child_process';
 import * as net from 'net';
 import { autoUpdater } from 'electron-updater'
+import { HttpExecutor } from 'builder-util-runtime'
 import log from 'electron-log'
+
+class CustomNodeHttpExecutor extends HttpExecutor<any> {
+  createRequest(options: any, callback: any): any {
+    return (options.protocol === 'http:' ? http.request : https.request)(options, callback);
+  }
+}
 import * as os from 'os'
 import { release } from 'os'
 import { deriveDbKey } from '../src/lib/security/dbKeyManager'
@@ -143,6 +150,12 @@ autoUpdater.setFeedURL({
   url: 'https://noxishub.app/updates/stable',
   useMultipleRangeRequest: false,
 } as any)
+
+try {
+  (autoUpdater as any).httpExecutor = new CustomNodeHttpExecutor();
+} catch (heErr: any) {
+  startupLog(`[Update] Note on httpExecutor: ${heErr.message}`);
+}
 
 // Track update state for IPC
 let updateAvailable = false;
@@ -877,8 +890,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     const fileName = latestUpdateInfo.files?.[0]?.url || `Noxis Hub Setup ${targetVersion}.exe`;
     const encodedFileName = encodeURIComponent(fileName);
     const candidateUrls = [
-      `https://pub-8c464d0d92ff44abbf70c58c362ad258.r2.dev/updates/stable/${encodedFileName}`,
       `https://noxishub.app/updates/stable/${encodedFileName}`,
+      `https://pub-286ee06e23214732ba6d2136dfffa107.r2.dev/updates/stable/${encodedFileName}`,
       `https://download.omnora.com/updates/stable/${encodedFileName}`
     ];
     let downloadUrl = candidateUrls[0];
@@ -1426,8 +1439,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   registerScaleService(() => mainWindow);
 
   const executeUpdateCheck = async (simulateTargetVersion?: string) => {
+    const policy = getVersionPolicy();
     try {
-      const policy = getVersionPolicy();
 
       // If simulateTargetVersion passed (useful for simulated tests or UI checks)
       if (simulateTargetVersion) {
@@ -1506,6 +1519,48 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
       return { status: 'checking', policy };
     } catch (err: any) {
+      startupLog(`[Update] autoUpdater check notice: ${err.message}, attempting direct manifest fallback...`);
+      try {
+        const manifestData = await new Promise<string>((resolve, reject) => {
+          https.get('https://noxishub.app/updates/stable/latest.yml', (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => resolve(data));
+          }).on('error', reject);
+        });
+        const versionMatch = manifestData.match(/version:\s*([^\r\n]+)/);
+        if (versionMatch && versionMatch[1]) {
+          const remoteVersion = versionMatch[1].trim();
+          const currentVer = app.getVersion() || '14.0.41';
+          if (remoteVersion !== currentVer) {
+            const eligibility = calculateVersionEligibility(
+              policy.baselineVersion,
+              policy.tier,
+              remoteVersion
+            );
+            latestUpdateInfo = {
+              version: remoteVersion,
+              files: [{ url: `Noxis Hub Setup ${remoteVersion}.exe` }],
+              path: `Noxis Hub Setup ${remoteVersion}.exe`
+            };
+            updateAvailable = true;
+            const payload = {
+              status: 'available',
+              updateAvailable: true,
+              isGated: !eligibility.allowed,
+              version: remoteVersion,
+              policy,
+            };
+            mainWindow?.webContents.send('update-available', latestUpdateInfo);
+            mainWindow?.webContents.send('update-status', payload);
+            return payload;
+          } else {
+            return { status: 'up-to-date', updateAvailable: false, policy };
+          }
+        }
+      } catch (fallbackErr: any) {
+        startupLog(`[Update] Direct manifest fallback notice: ${fallbackErr.message}`);
+      }
       return {
         status: 'error',
         message: err.message,
@@ -1629,9 +1684,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       try {
         const appExe = process.execPath;
         // In Windows, run detached PowerShell watcher:
-        // Waits 1.2s, forces termination of any running Noxis Hub instance to release all file locks,
-        // runs installer silently with /S and --updated, waits for install completion, and relaunches Noxis Hub.exe
-        const cmd = `Start-Sleep -Milliseconds 800; Get-Process -Name 'Noxis Hub' -ErrorAction SilentlyContinue | Stop-Process -Force; Start-Process -FilePath "${installerToRun}" -ArgumentList "/S", "--updated" -Wait; Start-Sleep -Milliseconds 600; if (-not (Get-Process -Name 'Noxis Hub' -ErrorAction SilentlyContinue)) { Start-Process -FilePath "${appExe}" }`;
+        // Waits 800ms, forces termination of any running Noxis Hub & helper processes to release all file locks,
+        // runs installer silently with /S and --updated, waits for install completion, and immediately relaunches Noxis Hub.exe
+        const cmd = `Start-Sleep -Milliseconds 800; Get-Process | Where-Object { $_.Path -like "*Noxis Hub*" -or $_.ProcessName -eq "Noxis Hub" } | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Process -FilePath "${installerToRun}" -ArgumentList "/S", "--updated" -Wait; Start-Sleep -Milliseconds 800; if (-not (Get-Process -Name 'Noxis Hub' -ErrorAction SilentlyContinue)) { Start-Process -FilePath "${appExe}" }`;
         const watcher = spawn('powershell.exe', ['-NoProfile', '-WindowStyle', 'Hidden', '-Command', cmd], {
           detached: true,
           stdio: 'ignore'

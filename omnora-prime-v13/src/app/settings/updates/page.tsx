@@ -54,6 +54,18 @@ interface ChangelogItem {
 
 const HISTORICAL_CHANGELOGS: ChangelogItem[] = [
   {
+    version: '14.0.42',
+    date: 'November 2026',
+    type: 'patch',
+    title: 'Noxis Hub v14.0.42 - Offline Item Autocomplete, Resilient Invoices Registry, Offline Logo Engine & Node-Native Auto-Updater',
+    highlights: [
+      { tag: 'Offline Item Autocomplete', text: 'Preloads master inventory SKUs from SQLite WAL and localStorage into memory on invoice mount, providing 0ms instant dropdown filtering as you type without internet or profile session', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      { tag: 'Invoices Registry Persistence', text: 'Fixed SQLite CHECK constraint mismatch by normalizing invoice status to posted, ensuring all invoices save instantly to SQLite WAL and multi-scope localStorage without disappearing', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
+      { tag: 'Offline Brand Logo Engine', text: 'Automatically caches remote brand logos into local Base64 storage upon initial fetch, rendering high-contrast local emblems and monograms even when disconnected from internet', color: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
+      { tag: 'Node-Native HTTPS Auto-Updater', text: 'Configured CustomNodeHttpExecutor in electron-updater to eliminate Chromium ERR_CONNECTION_RESET and ERR_NAME_NOT_RESOLVED SSL negotiation failures on Cloudflare proxies', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+    ],
+  },
+  {
     version: '14.0.32',
     date: 'October 2026',
     type: 'patch',

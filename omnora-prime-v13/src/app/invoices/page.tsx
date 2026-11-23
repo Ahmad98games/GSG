@@ -48,15 +48,32 @@ export default function InvoiceListPage() {
   const { data: invoices, isLoading, error: invoicesError, refetch: refetchInvoices } = useQuery({
     queryKey: ['invoices', businessId, debouncedSearch, statusFilter],
     queryFn: async () => {
-      // 1. Read local cache
+      // 1. Read local cache across all local tenant scopes
       let localInvoices: any[] = [];
+      const seenLocalIds = new Set<string>();
       if (typeof window !== 'undefined') {
-        const cacheKey = `noxis_cached_invoices_${businessId}`;
-        const raw = localStorage.getItem(cacheKey);
-        if (raw) {
+        const cacheKeys = [
+          businessId ? `noxis_cached_invoices_${businessId}` : null,
+          'noxis_cached_invoices_local',
+          'noxis_cached_invoices_00000000-0000-0000-0000-000000000000',
+          'noxis_cached_invoices'
+        ].filter(Boolean) as string[];
+
+        for (const k of cacheKeys) {
           try {
-            const parsed = JSON.parse(raw);
-            if (Array.isArray(parsed)) localInvoices = parsed;
+            const raw = localStorage.getItem(k);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (Array.isArray(parsed)) {
+                for (const inv of parsed) {
+                  const key = inv.id || inv.invoice_no || inv.invoice_number;
+                  if (key && !seenLocalIds.has(key)) {
+                    seenLocalIds.add(key);
+                    localInvoices.push(inv);
+                  }
+                }
+              }
+            }
           } catch {}
         }
       }
@@ -67,7 +84,9 @@ export default function InvoiceListPage() {
           const q = debouncedSearch.toLowerCase();
           res = res.filter((inv: any) =>
             (inv.invoice_no && inv.invoice_no.toLowerCase().includes(q)) ||
-            (inv.party?.name && inv.party.name.toLowerCase().includes(q))
+            (inv.invoice_number && inv.invoice_number.toLowerCase().includes(q)) ||
+            (inv.party?.name && inv.party.name.toLowerCase().includes(q)) ||
+            (inv.party_name && inv.party_name.toLowerCase().includes(q))
           );
         }
         if (statusFilter !== 'all') {
@@ -76,27 +95,39 @@ export default function InvoiceListPage() {
         return res;
       };
 
-      // 1. First attempt: Query master local SQLite endpoint (/api/invoices) for 0ms offline invoices
+      // 2. Query master local SQLite endpoint (/api/invoices) for 0ms offline invoices
       try {
-        const localRes = await fetch(`/api/invoices?search=${encodeURIComponent(debouncedSearch)}&status=${encodeURIComponent(statusFilter)}&limit=150`);
+        const localRes = await fetch(`/api/invoices?search=${encodeURIComponent(debouncedSearch)}&status=${encodeURIComponent(statusFilter)}&business_id=${businessId || 'local'}&limit=200`);
         if (localRes.ok) {
           const localList = await localRes.json();
           if (Array.isArray(localList)) {
-            setLastFetchedAt(new Date());
-            if (typeof window !== 'undefined' && !debouncedSearch && statusFilter === 'all') {
-              try {
-                localStorage.setItem(`noxis_cached_invoices_${businessId}`, JSON.stringify(localList));
-              } catch {}
+            // Merge with local cached invoices so newly saved offline bills appear immediately
+            const mergedList = [...localList];
+            const existingKeys = new Set(localList.map((x: any) => x.id || x.invoice_no || x.invoice_number));
+            for (const item of localInvoices) {
+              const key = item.id || item.invoice_no || item.invoice_number;
+              if (key && !existingKeys.has(key)) {
+                existingKeys.add(key);
+                mergedList.push(item);
+              }
             }
-            return localList;
+            if (mergedList.length > 0) {
+              setLastFetchedAt(new Date());
+              if (typeof window !== 'undefined' && !debouncedSearch && statusFilter === 'all') {
+                try {
+                  localStorage.setItem(`noxis_cached_invoices_${businessId || 'local'}`, JSON.stringify(mergedList));
+                } catch {}
+              }
+              return applyFilters(mergedList);
+            }
           }
         }
       } catch (localErr) {
         // Fall back to localInvoices or Supabase
       }
 
-      // If offline and local API didn't return items, immediately return local cached invoices
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      // If offline or local cache exists, immediately return local cached invoices
+      if (localInvoices.length > 0 || (typeof navigator !== 'undefined' && !navigator.onLine)) {
         return applyFilters(localInvoices);
       }
 

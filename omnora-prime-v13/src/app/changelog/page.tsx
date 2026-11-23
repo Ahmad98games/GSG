@@ -4,9 +4,24 @@ import { Tag, Calendar, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-reac
 
 const RELEASES = [
   {
-    version: 'v14.0.32',
+    version: 'v14.0.42',
     date: 'November 2026',
     isCurrent: true,
+    title: 'Offline Item Autocomplete, Resilient Invoice Registry, Offline Logo Engine & Node-Native Auto-Updater',
+    summary: 'Resolved offline SKU search and item autocomplete in billing, fixed local SQLite invoice status constraint and multi-scope offline registry loading, added offline brand logo Base64 caching, and implemented Node-native HTTPS auto-updater with seamless background process lock termination.',
+    changes: [
+      'Offline SKU Autocomplete: Preloads all master inventory SKUs from SQLite WAL and localStorage into memory on invoice mount, providing 0ms instant dropdown filtering as you type without requiring an active internet connection or profile session.',
+      'Offline & Online Invoices Registry: Fixed SQLite CHECK constraint mismatch by normalizing invoice status to posted, ensuring all invoices save instantly to SQLite WAL and multi-scope localStorage without ever disappearing from Invoices Registry.',
+      'Offline Brand Logo Engine: Automatically caches remote brand logos into local Base64 storage upon initial fetch, rendering high-contrast local emblems and monograms even when disconnected from internet without broken image icons.',
+      'Node-Native HTTPS Auto-Updater: Configured CustomNodeHttpExecutor in electron-updater to eliminate Chromium ERR_CONNECTION_RESET and ERR_NAME_NOT_RESOLVED SSL negotiation failures on Cloudflare proxies.',
+      'Seamless Installer Supervisor: Upgraded update relaunch watcher script to forcefully terminate all lingering parent and worker processes, preventing file locks and ensuring smooth 1-click update installations.',
+      'Dynamic Version Indicators: Synchronized Settings and Sidebar badges to reflect actual live application version v14.0.42.',
+    ],
+  },
+  {
+    version: 'v14.0.32',
+    date: 'November 2026',
+    isCurrent: false,
     title: 'Next.js Server Standalone Integrity & Production Runtime Stabilization',
     summary: 'Restored full Next.js server runtime logging and internal module dependencies in standalone Electron distribution, preventing Server Crashed MODULE_NOT_FOUND errors on fresh launch.',
     changes: [

@@ -69,12 +69,37 @@ export default React.memo(function GlobalTopBar() {
   const currentBranchName = useBranchStore(s => s.currentBranchName)
   const setBranch = useBranchStore(s => s.setBranch)
   const clearBranch = useBranchStore(s => s.clearBranch)
-  const cachedTopBarLogoRef = React.useRef<string | null>(null)
-  const currentTopBarLogo = profile?.logo_url || profile?.avatar_url || (typeof window !== 'undefined' ? (localStorage.getItem('noxis_logo') || '') : '')
-  if (currentTopBarLogo && !cachedTopBarLogoRef.current) {
-    cachedTopBarLogoRef.current = currentTopBarLogo
-  }
-  const displayTopBarLogo = cachedTopBarLogoRef.current || currentTopBarLogo
+  const [logoLoadError, setLogoLoadError] = useState(false)
+
+  // Auto-cache remote brand logo into Base64 for 100% offline resilience
+  useEffect(() => {
+    const rawUrl = profile?.logo_url || profile?.avatar_url
+    if (!rawUrl || typeof window === 'undefined') return
+    setLogoLoadError(false)
+
+    if (rawUrl.startsWith('data:image')) {
+      try { localStorage.setItem('noxis_cached_logo_base64', rawUrl) } catch {}
+      return
+    }
+
+    if (navigator.onLine && rawUrl.startsWith('http')) {
+      fetch(rawUrl, { mode: 'cors' })
+        .then(res => res.blob())
+        .then(blob => {
+          const reader = new FileReader()
+          reader.onloadend = () => {
+            if (typeof reader.result === 'string') {
+              try { localStorage.setItem('noxis_cached_logo_base64', reader.result) } catch {}
+            }
+          }
+          reader.readAsDataURL(blob)
+        })
+        .catch(() => {})
+    }
+  }, [profile?.logo_url, profile?.avatar_url])
+
+  const offlineCachedLogo = typeof window !== 'undefined' ? (localStorage.getItem('noxis_cached_logo_base64') || localStorage.getItem('noxis_logo') || '') : ''
+  const displayTopBarLogo = (!logoLoadError && (profile?.logo_url || profile?.avatar_url)) ? (profile?.logo_url || profile?.avatar_url) : offlineCachedLogo
 
   const { data: branches = [] } = useQuery({
     queryKey: ['branches', profile?.id],
@@ -803,14 +828,17 @@ export default React.memo(function GlobalTopBar() {
                   color: 'var(--color-text, #cbd5e1)'
                 }}
               >
-                {(profile?.logo_url || profile?.avatar_url || (typeof window !== 'undefined' && localStorage.getItem('noxis_logo'))) ? (
+                {displayTopBarLogo && !logoLoadError ? (
                   <img
-                    src={profile?.logo_url || profile?.avatar_url || (typeof window !== 'undefined' ? (localStorage.getItem('noxis_logo') || '') : '')}
-                    alt="Brand"
+                    src={displayTopBarLogo}
+                    alt={profile?.business_name || 'Brand'}
                     className="w-full h-full object-contain p-0.5"
+                    onError={() => setLogoLoadError(true)}
                   />
                 ) : (
-                  (profile?.owner_name || profile?.business_name || 'G')[0].toUpperCase()
+                  <span className="font-bold text-[10px] font-mono text-slate-200">
+                    {(profile?.owner_name || profile?.business_name || 'N')[0].toUpperCase()}
+                  </span>
                 )}
               </div>
               <div className="text-left hidden md:block">

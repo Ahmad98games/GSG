@@ -95,16 +95,17 @@ export default React.memo(function IndustrialSidebar() {
   const { nav, features, industry } = useIndustryConfig()
   const businessMode = useBusinessModeStore(s => s.mode)
   const modeFlags = useBusinessModeStore(s => s.flags)
-  const cachedLogoRef = React.useRef<string | null>(null)
-  const currentLogo = profile?.logo_url || profile?.avatar_url || (typeof window !== 'undefined' ? (localStorage.getItem('noxis_logo') || '') : '')
-  if (currentLogo && !cachedLogoRef.current) {
-    cachedLogoRef.current = currentLogo
-  }
-  const displayLogo = cachedLogoRef.current || currentLogo
   const [mounted, setMounted] = useState(false)
   const [logoError, setLogoError] = useState(false)
   const [avatarError, setAvatarError] = useState(false)
   const [isProductionModalOpen, setIsProductionModalOpen] = useState(false)
+  const cachedLogoRef = React.useRef<string | null>(null)
+  const offlineLogo = typeof window !== 'undefined' ? (localStorage.getItem('noxis_cached_logo_base64') || localStorage.getItem('noxis_logo') || '') : ''
+  const currentLogo = profile?.logo_url || profile?.avatar_url || offlineLogo
+  if (currentLogo && !cachedLogoRef.current) {
+    cachedLogoRef.current = currentLogo
+  }
+  const displayLogo = (!logoError && (cachedLogoRef.current || currentLogo)) || offlineLogo
   const supabase = createClient()
 
   // Tenant monogram fallback (e.g., "MB" for "My Business")
@@ -546,7 +547,7 @@ export default React.memo(function IndustrialSidebar() {
                   borderStyle: 'solid'
                 }}
               >
-                {`v${process.env.NEXT_PUBLIC_APP_VERSION || '14.0.32'}`}
+                {`v${process.env.NEXT_PUBLIC_APP_VERSION || '14.0.42'}`}
               </span>
             )}
           </div>
