@@ -415,7 +415,7 @@ export function attachMobileBridge(httpServer?: Server, customPort?: number): We
             maxDevices: profile?.maxDevices || 50,
             connectedDevices: getPairedCount(),
             pairedDevices: getPairedCount(),
-            version: '14.0.35'
+            version: '14.0.42'
           }));
           return;
         }

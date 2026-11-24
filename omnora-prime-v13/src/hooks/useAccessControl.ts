@@ -81,7 +81,7 @@ export function useAccessControl() {
           userName: uName,
           businessName: bName,
           phone: ph,
-          appVersion: process.env.NEXT_PUBLIC_APP_VERSION || '14.0.35'
+          appVersion: process.env.NEXT_PUBLIC_APP_VERSION || '14.0.42'
         })
       });
 
