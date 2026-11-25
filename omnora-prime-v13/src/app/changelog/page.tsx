@@ -4,9 +4,23 @@ import { Tag, Calendar, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-reac
 
 const RELEASES = [
   {
-    version: 'v14.0.42',
+    version: 'v14.0.43',
     date: 'November 2026',
     isCurrent: true,
+    title: 'System Hardening Release, Garment Sizing Matrix (14–44), App Lock Rewrite & Display Zoom Fix',
+    summary: 'Complete Garment Sizing Matrix (14–44) for Garments & Textile modes, CCTV fully removed, Zero Data Loss SQLite WAL 512MB mmap + 30m watchdog, App Lock rewrite (idle timer, minimize-to-lock, Ctrl+L), single-window launch guard, modern NSIS installer, and working Reset to 100% (Ctrl+0) zoom bar.',
+    changes: [
+      'Garment Sizing Matrix (Sizes 14–44): Parent-variant model for Garments & Textile modes with one-click presets (Infant 14–20, Kids 22–32, Teen 34–36, Adult 38–44, Full 14–44), unique variant SKUs/barcodes, expandable inventory size breakdown, keyboard-navigable POS Size Pill Selector, and per-size offline stock deduction & thermal receipt printing.',
+      'Zero Data Loss Engine: 512MB SQLite mmap_size, 500-page WAL autocheckpoint, 30-minute WAL size watchdog, clean shutdown truncation, and crash-safe recovery.',
+      'App Lock Rewrite: Real Zustand-backed idle auto-lock timer, instant minimize-to-lock via Electron IPC, Ctrl+L shortcut, auto-focused 4-dot PIN overlay, and 30-second lockout protection.',
+      'Single Window & Display Scale Fix: Eliminated double-window spawns and fixed Reset to 100% (Ctrl+0) zoom pill button.',
+      'CCTV Subsystem Removed: Removed all CCTV/ONVIF/MediaMTX modules, sidebar links, and binary weight for faster startup and cleaner UI.',
+    ],
+  },
+  {
+    version: 'v14.0.42',
+    date: 'November 2026',
+    isCurrent: false,
     title: 'Offline Item Autocomplete, Resilient Invoice Registry, Offline Logo Engine & Node-Native Auto-Updater',
     summary: 'Resolved offline SKU search and item autocomplete in billing, fixed local SQLite invoice status constraint and multi-scope offline registry loading, added offline brand logo Base64 caching, and implemented Node-native HTTPS auto-updater with seamless background process lock termination.',
     changes: [

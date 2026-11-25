@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 
 // â”€â”€ ALL BACKEND CONSTANTS PRESERVED â”€â”€
-const DOWNLOAD_ZIP_URL = '/api/download-software?format=zip&trial=true&redirect=true';
+const DOWNLOAD_EXE_URL = '/api/download-software?trial=true&redirect=true';
 const CLOUDFLARE_APK_URL = 'https://pub-8c464d0d92ff44abbf70c58c362ad258.r2.dev/noxis-preview.apk';
 const APK_DOWNLOAD_URL = '/api/download-apk';
 const WHATSAPP_SUPPORT_URL = 'https://wa.me/923264742678?text=Salam%20Omnora,%20I%20have%20installed%20Noxis%20Hub%20and%20want%20to%20activate%20my%20license.%20My%20Machine%20ID%20is:%20';
@@ -116,6 +116,7 @@ export default function DownloadPage() {
   const [city, setCity] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showApkQr, setShowApkQr] = useState(false);
+  const [showSmartScreenNotice, setShowSmartScreenNotice] = useState(false);
   const [targetPlatform, setTargetPlatform] = useState<'windows' | 'android'>('windows');
 
   // â”€â”€ HANDLER PRESERVED EXACTLY â”€â”€
@@ -184,14 +185,59 @@ export default function DownloadPage() {
       localStorage.setItem('noxis_lead_platform', targetPlatform);
     }
 
-    window.location.href = targetPlatform === 'android' ? CLOUDFLARE_APK_URL : DOWNLOAD_ZIP_URL;
     setShowModal(false);
     setSubmitting(false);
+
+    if (targetPlatform === 'android') {
+      window.location.href = CLOUDFLARE_APK_URL;
+    } else {
+      setShowSmartScreenNotice(true);
+    }
   };
 
   return (
     <div className="min-h-screen bg-[#030712] text-slate-300 selection:bg-[#08EBF6]/20 selection:text-white">
       <PublicNavbar />
+
+      {/* Windows Security Notice Modal */}
+      {showSmartScreenNotice && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-amber-500/30 bg-[#0D1015] p-6 shadow-2xl">
+            <div className="flex items-center gap-3 text-amber-400 mb-3">
+              <ShieldCheck size={22} />
+              <h3 className="text-base font-black text-white">Windows Security Notice</h3>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed mb-4">
+              When your download completes, Windows may show a security warning because Noxis Hub is new software. This is normal for any new Windows application.
+            </p>
+            <ol className="space-y-2 text-xs text-slate-300 bg-white/[0.03] border border-white/10 rounded-xl p-4 mb-5 list-decimal list-inside">
+              <li>Click the downloaded <strong className="text-white">Noxis Hub Setup.exe</strong> file</li>
+              <li>If Windows shows <strong className="text-amber-300">&quot;Windows protected your PC&quot;</strong></li>
+              <li>Click <strong className="text-white">&quot;More info&quot;</strong></li>
+              <li>Click <strong className="text-emerald-400">&quot;Run anyway&quot;</strong></li>
+            </ol>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowSmartScreenNotice(false)}
+                className="px-4 py-2.5 rounded-xl border border-white/10 text-xs font-bold text-slate-400 hover:text-white cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSmartScreenNotice(false);
+                  window.location.href = DOWNLOAD_EXE_URL;
+                }}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-[#08EBF6] hover:bg-[#06d0da] text-black text-xs font-black uppercase tracking-wider cursor-pointer transition-colors"
+              >
+                Got it — Start Download
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
           HERO
@@ -205,7 +251,7 @@ export default function DownloadPage() {
         <div className="flex justify-center mb-8">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[11px] font-mono text-zinc-400 tracking-wider">
             <div className="w-1.5 h-1.5 rounded-full bg-[#08EBF6] animate-pulse" />
-            Version 14.0.42 — Production Stable Release
+            Version 14.0.43 — Production Stable Release
           </div>
         </div>
 

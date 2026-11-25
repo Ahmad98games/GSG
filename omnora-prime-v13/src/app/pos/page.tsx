@@ -64,6 +64,9 @@ import { POSThermalReceipt }
 import { NoxisErrorBoundary } from "@/components/ui/NoxisErrorBoundary"
 import { useBarcodeScan } from "@/hooks/useBarcodeScan"
 import { playPosBeep } from "@/lib/sound/posSound"
+import { useIndustryConfig } from "@/hooks/useIndustryConfig"
+import { SizeSelectorModal } from "@/components/pos/SizeSelectorModal"
+import { parseSizeVariants, type SizeVariant } from "@/lib/garments/sizingMatrix"
 
 // Static data outside component
 const PAYMENT_METHODS = [
@@ -97,6 +100,7 @@ export default function POSPage() {
   const supabase = createClient()
   const router = useRouter()
   const { profile } = useBusinessProfile()
+  const { isGarmentsMode } = useIndustryConfig()
   const { can, effectiveTier } = useLicense()
   const { onSaleComplete } = useConversionTrigger()
 
@@ -126,6 +130,7 @@ export default function POSPage() {
     useState<any>(null)
   const [showPaymentPanel, setShowPaymentPanel] =
     useState(false)
+  const [sizePickerSku, setSizePickerSku] = useState<any | null>(null)
   const [scanFeedback, setScanFeedback] =
     useState<'success' | 'error' | null>(null)
   const [scannedItemHUD, setScannedItemHUD] = useState<{
@@ -431,24 +436,52 @@ export default function POSPage() {
       window.removeEventListener('keydown', handler)
   }, [cart.items.length, lastInvoice])
 
-  const handleAddItem = useCallback(
-    (sku: any) => {
-    setCart(prev => addItemToCart(prev, sku))
+  const handleSelectSizeVariant = useCallback((variant: SizeVariant) => {
+    if (!sizePickerSku) return
+    if (Number(variant.stockQty || 0) <= 0) {
+      toast.warning(`Size ${variant.size} is out of stock`)
+      return
+    }
+    const variantSkuPayload = {
+      ...sizePickerSku,
+      name: `${sizePickerSku.name} (Size ${variant.size})`,
+      sale_price: Number(variant.salePrice || sizePickerSku.sale_price || 0),
+      qty_on_hand: Number(variant.stockQty || 0),
+      barcode: variant.barcode || sizePickerSku.barcode,
+      variantId: variant.id,
+      size: variant.size,
+      variantSku: variant.sku,
+    }
+    setCart(prev => addItemToCart(prev, variantSkuPayload))
+    setSizePickerSku(null)
     setSearch('')
     setSearchResults([])
     searchRef.current?.focus({ preventScroll: true })
-  }, [])
+  }, [sizePickerSku])
+
+  const handleAddItem = useCallback(
+    (sku: any) => {
+      const variants = parseSizeVariants(sku?.size_variants)
+      if ((isGarmentsMode || sku?.has_size_matrix) && variants.length > 0 && !sku?.variantId) {
+        setSizePickerSku({ ...sku, size_variants: variants })
+        return
+      }
+      setCart(prev => addItemToCart(prev, sku))
+      setSearch('')
+      setSearchResults([])
+      searchRef.current?.focus({ preventScroll: true })
+    }, [isGarmentsMode])
 
   const triggerBarcodeScanFeedback = useCallback((match: any | null, rawCode?: string) => {
     if (hudTimerRef.current) clearTimeout(hudTimerRef.current)
     if (match) {
       playPosBeep('success')
       setScanFeedback('success')
-      const existing = cart.items.find(i => i.skuId === match.id)
+      const existing = cart.items.find(i => i.skuId === match.id && (i.variantId || '') === (match.variantId || ''))
       const newQty = (existing?.quantity || 0) + 1
       setScannedItemHUD({
         name: match.name,
-        sku_code: match.sku_code,
+        sku_code: match.variantSku || match.sku_code,
         barcode: match.barcode || match.sku_code || rawCode,
         sale_price: Number(match.sale_price || 0),
         unit: match.unit || 'pcs',
@@ -472,9 +505,40 @@ export default function POSPage() {
     }, 2800)
   }, [cart.items, handleAddItem])
 
-  // Robust POS Barcode Scan Handler with 'pos' context and hardware sound
+  // Robust POS Barcode Scan Handler with 'pos' context, size variant lookup, and hardware sound
   useBarcodeScan((barcode: string) => {
     const termLower = barcode.toLowerCase().trim()
+
+    // 1. Check Size Variants first for 1-scan exact size billing (e.g. Suit #405 — Size 24)
+    for (const parent of localInventory) {
+      const variants = parseSizeVariants(parent?.size_variants)
+      if (variants.length > 0) {
+        const vMatch = variants.find(
+          v => (v.barcode && v.barcode.toLowerCase() === termLower) ||
+               (v.sku && v.sku.toLowerCase() === termLower)
+        )
+        if (vMatch) {
+          if (Number(vMatch.stockQty || 0) <= 0) {
+            playPosBeep('error')
+            toast.warning(`Size ${vMatch.size} of ${parent.name} is out of stock`)
+            return
+          }
+          triggerBarcodeScanFeedback({
+            ...parent,
+            name: `${parent.name} (Size ${vMatch.size})`,
+            sale_price: Number(vMatch.salePrice || parent.sale_price || 0),
+            qty_on_hand: Number(vMatch.stockQty || 0),
+            barcode: vMatch.barcode || parent.barcode,
+            variantId: vMatch.id,
+            size: vMatch.size,
+            variantSku: vMatch.sku,
+          }, barcode)
+          return
+        }
+      }
+    }
+
+    // 2. Fallback to parent SKU / barcode match
     const match = localInventory.find(
       s => (s.barcode && s.barcode.toLowerCase() === termLower) ||
            (s.sku_code && s.sku_code.toLowerCase() === termLower)
@@ -726,35 +790,65 @@ export default function POSPage() {
           if (localJson.invoice_id) finalInvoiceId = localJson.invoice_id
           if (localJson.invoice_no) finalInvoiceNumber = localJson.invoice_no
         }
+
+        // Deduct exact SizeVariant stock in local SQLite WAL
+        const variantDeductions = cart.items
+          .filter(i => i.variantId || i.size !== undefined)
+          .map(i => ({
+            skuId: i.skuId,
+            variantId: i.variantId,
+            size: i.size,
+            quantity: Number(i.quantity) || 1,
+            reference: finalInvoiceNumber,
+          }))
+        if (variantDeductions.length > 0) {
+          fetch('/api/skus', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              operation: 'deduct_variants',
+              items: variantDeductions,
+            }),
+          }).catch(() => {})
+        }
       } catch (localErr) {
         console.warn('[POS] Local invoice creation notice, proceeding:', localErr)
       }
 
       // ── STEP 2: IMMEDIATELY DECREMENT IN-MEMORY POS STOCK & LOCAL CACHE ──
-      setLocalInventory(prev => prev.map(sku => {
-        const sold = cart.items.find(i => i.skuId === sku.id || (sku.sku_code && (i as any).skuCode === sku.sku_code))
-        if (sold) {
-          const currentQty = Number(sku.qty_on_hand) || 0
-          const deductedQty = Math.max(0, currentQty - (Number(sold.quantity) || 1))
-          return { ...sku, qty_on_hand: deductedQty }
+      const applyDeductionToSku = (sku: any) => {
+        const soldItems = cart.items.filter(
+          i => i.skuId === sku.id || (sku.sku_code && (i as any).skuCode === sku.sku_code)
+        )
+        if (soldItems.length === 0) return sku
+
+        const variants = parseSizeVariants(sku.size_variants)
+        if (variants.length > 0 && soldItems.some(i => i.variantId || i.size !== undefined)) {
+          const nextVariants = variants.map(v => {
+            const matchedSold = soldItems.filter(
+              i => (i.variantId && i.variantId === v.id) || (i.size !== undefined && Number(i.size) === Number(v.size))
+            )
+            if (matchedSold.length === 0) return v
+            const soldSum = matchedSold.reduce((acc, it) => acc + (Number(it.quantity) || 1), 0)
+            return { ...v, stockQty: Math.max(0, Number(v.stockQty || 0) - soldSum) }
+          })
+          const newTotal = nextVariants.reduce((acc, v) => acc + Number(v.stockQty || 0), 0)
+          return { ...sku, qty_on_hand: newTotal, size_variants: nextVariants }
         }
-        return sku
-      }))
+
+        const totalSoldQty = soldItems.reduce((acc, it) => acc + (Number(it.quantity) || 1), 0)
+        const currentQty = Number(sku.qty_on_hand) || 0
+        return { ...sku, qty_on_hand: Math.max(0, currentQty - totalSoldQty) }
+      }
+
+      setLocalInventory(prev => prev.map(applyDeductionToSku))
 
       if (typeof window !== 'undefined' && profile?.id) {
         try {
           const cacheKey = `noxis_cached_skus_${profile.id}`
           const cached = JSON.parse(localStorage.getItem(cacheKey) || '[]')
           if (Array.isArray(cached) && cached.length > 0) {
-            const updated = cached.map((sku: any) => {
-              const sold = cart.items.find(i => i.skuId === sku.id || (sku.sku_code && (i as any).skuCode === sku.sku_code))
-              if (sold) {
-                const currentQty = Number(sku.qty_on_hand) || 0
-                const deductedQty = Math.max(0, currentQty - (Number(sold.quantity) || 1))
-                return { ...sku, qty_on_hand: deductedQty }
-              }
-              return sku
-            })
+            const updated = cached.map(applyDeductionToSku)
             localStorage.setItem(cacheKey, JSON.stringify(updated))
           }
         } catch {}
@@ -1254,6 +1348,11 @@ export default function POSPage() {
                       text-gray-600">
                       {sku.sku_code}
                     </span>
+                    {isGarmentsMode && parseSizeVariants(sku.size_variants).length > 0 && (
+                      <span className="text-[9px] font-bold text-cyan-300 bg-cyan-500/15 border border-cyan-500/30 px-1.5 rounded-sm">
+                        {parseSizeVariants(sku.size_variants).length} SIZES
+                      </span>
+                    )}
                     {isLow && (
                       <span className="text-[9px]
                         font-bold text-amber-400
@@ -1774,6 +1873,16 @@ export default function POSPage() {
           </div>
         </div>
       )}
+
+      {/* ── GARMENT SIZE PILL SELECTOR MODAL (14–44) ── */}
+      <SizeSelectorModal
+        isOpen={Boolean(sizePickerSku)}
+        product={sizePickerSku}
+        variants={sizePickerSku ? parseSizeVariants(sizePickerSku.size_variants) : []}
+        currency={currency}
+        onClose={() => setSizePickerSku(null)}
+        onSelectVariant={handleSelectSizeVariant}
+      />
 
       {/* ── ROOT-LEVEL THERMAL PRINT SLIP (ALWAYS READY FOR F9 & PRINT) ── */}
       {mounted && typeof document !== 'undefined' && lastInvoice ? (

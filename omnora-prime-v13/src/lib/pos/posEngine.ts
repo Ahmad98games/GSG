@@ -27,6 +27,9 @@ export interface CartItem {
   stockAvailable: number
   barcode?: string
   priceTier?: string
+  variantId?: string
+  size?: number
+  variantSku?: string
 }
 
 export interface PaymentAllocation {
@@ -89,12 +92,15 @@ export function addItemToCart(
     tax_rate: number
     qty_on_hand: number
     barcode?: string
+    variantId?: string
+    size?: number
+    variantSku?: string
   },
   quantity: number = 1,
   priceTier?: string
 ): POSCart {
   const existing = cart.items.findIndex(
-    i => i.skuId === sku.id
+    i => i.skuId === sku.id && (i.variantId || '') === (sku.variantId || '')
   )
 
   if (existing >= 0) {
@@ -127,6 +133,9 @@ export function addItemToCart(
     stockAvailable: sku.qty_on_hand,
     barcode: sku.barcode,
     priceTier,
+    variantId: sku.variantId,
+    size: sku.size,
+    variantSku: sku.variantSku,
   })
 
   return recalcCart({

@@ -2,10 +2,14 @@ import { useMemo } from 'react'
 import { useBusinessProfile } from '@/hooks/useBusinessProfile'
 import { getIndustryConfig, IndustryConfig } from '@/lib/industry/configs'
 import { getRegionConfig, RegionConfig } from '@/lib/industry/regionConfigs'
+import { useBusinessModeStore } from '@/stores/businessModeStore'
+import { isGarmentSizingMode } from '@/lib/garments/sizingMatrix'
 
 export interface NoxisPersona {
   industry: IndustryConfig
   region: RegionConfig
+  businessMode: 'garments' | 'general'
+  isGarmentsMode: boolean
 
   // Convenience shortcuts
   t: IndustryConfig['terms']
@@ -32,6 +36,7 @@ export interface NoxisPersona {
 
 export function useIndustryConfig(): NoxisPersona {
   const { profile } = useBusinessProfile()
+  const storeMode = useBusinessModeStore(s => s.mode)
 
   return useMemo(() => {
     const industry = getIndustryConfig(
@@ -158,9 +163,14 @@ export function useIndustryConfig(): NoxisPersona {
       return digits
     }
 
+    const isGarmentsMode = isGarmentSizingMode(industry.key, storeMode) || isGarmentSizingMode((profile as any)?.business_mode, storeMode)
+    const businessMode: 'garments' | 'general' = isGarmentsMode ? 'garments' : 'general'
+
     return {
       industry,
       region,
+      businessMode,
+      isGarmentsMode,
       t: industry.terms,
       nav: industry.sidebar,
       features: industry.features,
@@ -177,8 +187,10 @@ export function useIndustryConfig(): NoxisPersona {
   }, [
     profile?.industry_key,
     profile?.industry_type,
+    (profile as any)?.business_mode,
     profile?.country_code,
     profile?.tax_label,
     profile?.tax_rate,
+    storeMode,
   ])
 }

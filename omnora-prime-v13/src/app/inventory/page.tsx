@@ -28,6 +28,8 @@ import {
   Copy, ExternalLink, Printer, ArrowRight
 } from "lucide-react";
 import { UniversalLabelGenerator } from "@/components/common/UniversalLabelGenerator";
+import { GarmentSizeMatrixEditor } from "@/components/inventory/GarmentSizeMatrixEditor";
+import { type SizeVariant, parseSizeVariants, computeParentTotals } from "@/lib/garments/sizingMatrix";
 import { sendWhatsAppAlert, ALERT_TEMPLATES } from "@/lib/whatsapp/alertEngine";
 import { useIndustryConfig } from "@/hooks/useIndustryConfig";
 import { useBarcodeScan } from "@/hooks/useBarcodeScan";
@@ -94,6 +96,9 @@ interface SKU {
   commission_rate?: number | null;
   oem_part_number?: string | null;
   compatible_models?: string | null;
+  // Garment Sizing Matrix (14-44)
+  has_size_matrix?: boolean;
+  size_variants?: SizeVariant[];
 }
 
 const columnHelper = createColumnHelper<SKU>();
@@ -137,37 +142,118 @@ type AdjustStockValues = z.infer<typeof adjustStockSchema>;
 
 
 const SKURow = React.memo(
-  function SKURow({ row, onSelect }: { row: any; onSelect: (sku: SKU) => void }) {
+  function SKURow({
+    row,
+    onSelect,
+    isGarmentsMode,
+    isExpanded,
+    onToggleExpand,
+    onPrintVariant,
+  }: {
+    row: any;
+    onSelect: (sku: SKU) => void;
+    isGarmentsMode?: boolean;
+    isExpanded?: boolean;
+    onToggleExpand?: (skuId: string) => void;
+    onPrintVariant?: (sku: SKU, variant: SizeVariant) => void;
+  }) {
     if (!row) return null;
+    const sku: SKU = row.original;
+    const variants = useMemo(() => parseSizeVariants(sku?.size_variants), [sku?.size_variants]);
+    const showMatrix = Boolean(isGarmentsMode && variants.length > 0);
     return (
-      <tr
-        key={row.original?.id || row.id}
-        onClick={(e) => {
-          const target = e.target as HTMLElement;
-          if (target.closest('button') || target.closest('a') || target.closest('[data-no-row-select]')) {
-            return;
-          }
-          onSelect(row.original);
-        }}
-        className="border-b border-white/4 hover:bg-white/[0.02] transition-colors cursor-pointer"
-      >
-        {row.getVisibleCells().map((cell: any) => (
-          <td
-            key={cell.id}
-            onClick={(e) => {
-              if (cell.column.id === 'actions') {
-                e.stopPropagation();
-              }
-            }}
-            className="px-4 py-2.5 text-sm text-gray-200 border-b border-white/[0.04]"
-          >
-            {flexRender(
-              cell.column.columnDef.cell,
-              cell.getContext()
-            )}
-          </td>
-        ))}
-      </tr>
+      <>
+        <tr
+          key={row.original?.id || row.id}
+          onClick={(e) => {
+            const target = e.target as HTMLElement;
+            if (target.closest('button') || target.closest('a') || target.closest('[data-no-row-select]')) {
+              return;
+            }
+            onSelect(row.original);
+          }}
+          className="border-b border-white/4 hover:bg-white/[0.02] transition-colors cursor-pointer"
+        >
+          {row.getVisibleCells().map((cell: any) => (
+            <td
+              key={cell.id}
+              onClick={(e) => {
+                if (cell.column.id === 'actions') {
+                  e.stopPropagation();
+                }
+              }}
+              className="px-4 py-2.5 text-sm text-gray-200 border-b border-white/[0.04]"
+            >
+              {flexRender(
+                cell.column.columnDef.cell,
+                cell.getContext()
+              )}
+            </td>
+          ))}
+        </tr>
+        {showMatrix && isExpanded && (
+          <tr className="bg-[#0B0E11]/90 border-b border-cyan-500/20">
+            <td colSpan={row.getVisibleCells().length} className="px-6 py-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-cyan-400">
+                  <Layers size={13} />
+                  <span>Size Matrix Breakdown ({variants.length} Sizes)</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onToggleExpand?.(sku.id)}
+                  className="text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-white cursor-pointer"
+                >
+                  Collapse
+                </button>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
+                {variants.map((v) => {
+                  const qty = Number(v.stockQty || 0);
+                  const isOut = qty <= 0;
+                  const isLow = !isOut && qty <= Number(sku.reorder_level || 5);
+                  return (
+                    <div
+                      key={v.id}
+                      className={`rounded-lg border px-2.5 py-2 text-xs ${
+                        isOut
+                          ? 'border-red-500/25 bg-red-500/5'
+                          : isLow
+                          ? 'border-amber-500/30 bg-amber-500/10'
+                          : 'border-white/10 bg-[#14181F]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-xs font-black text-white">Sz {v.size}</span>
+                        <span
+                          className={`font-mono text-[10px] font-bold ${
+                            isOut ? 'text-red-400' : isLow ? 'text-amber-300' : 'text-emerald-400'
+                          }`}
+                        >
+                          {isOut ? 'OUT' : `${qty} pcs`}
+                        </span>
+                      </div>
+                      <div className="mt-1 flex items-center justify-between text-[10px] text-slate-400">
+                        <span className="font-mono">Rs.{Number(v.salePrice || 0).toLocaleString()}</span>
+                        {onPrintVariant && (
+                          <button
+                            type="button"
+                            onClick={() => onPrintVariant(sku, v)}
+                            title={`Print barcode for Size ${v.size}`}
+                            className="text-slate-400 hover:text-cyan-300 cursor-pointer"
+                          >
+                            <Printer size={11} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </td>
+          </tr>
+        )}
+      </>
     );
   }
 );
@@ -175,7 +261,7 @@ const SKURow = React.memo(
 export default function InventoryPage() {
   const { profile } = useBusinessProfile();
   const { t, fmt, term } = usePersona();
-  const { industry, features } = useIndustryConfig();
+  const { industry, features, isGarmentsMode } = useIndustryConfig();
   const toast = useToast();
 
   const supabase = createClient();
@@ -184,6 +270,10 @@ export default function InventoryPage() {
   const isAutoPartsMode = industry.key === 'auto';
 
   // State
+  const [expandedSkuIds, setExpandedSkuIds] = useState<Record<string, boolean>>({});
+  const toggleExpandSku = (skuId: string) => {
+    setExpandedSkuIds(prev => ({ ...prev, [skuId]: !prev[skuId] }));
+  };
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -582,13 +672,31 @@ export default function InventoryPage() {
       header: () => <div className="text-right">On Hand</div>,
       cell: (info) => {
         const qty = Number(info.getValue());
+        const variants = isGarmentsMode ? parseSizeVariants(info.row.original.size_variants) : [];
+        const isExp = Boolean(expandedSkuIds[info.row.original.id]);
         return (
-          <FinancialAmount 
-            value={qty} 
-            isQuantity 
-            unit={info.row.original.unit} 
-            useGold={false}
-          />
+          <div className="flex flex-col items-end gap-1">
+            <FinancialAmount 
+              value={qty} 
+              isQuantity 
+              unit={info.row.original.unit} 
+              useGold={false}
+            />
+            {isGarmentsMode && variants.length > 0 && (
+              <button
+                type="button"
+                data-no-row-select
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleExpandSku(info.row.original.id);
+                }}
+                className="inline-flex items-center gap-1 rounded bg-cyan-500/15 border border-cyan-500/30 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-cyan-300 hover:bg-cyan-500/25 cursor-pointer"
+              >
+                <Layers size={10} />
+                {variants.length} sizes {isExp ? '▲' : '▼'}
+              </button>
+            )}
+          </div>
         );
       },
     }),
@@ -656,7 +764,7 @@ export default function InventoryPage() {
   // fmt is intentionally excluded — it is NOT used in column definitions (only in voice intents)
   // Including fmt caused infinite re-renders since fmt ref changes on every usePersona() call
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [profile?.id]);
+  ], [profile?.id, isGarmentsMode, expandedSkuIds]);
 
   const table = useReactTable({
     data: filteredData,
@@ -918,6 +1026,18 @@ export default function InventoryPage() {
                                     key={row.original?.id || row.id}
                                     row={row}
                                     onSelect={(sku) => setSelectedSku(sku)}
+                                    isGarmentsMode={isGarmentsMode}
+                                    isExpanded={Boolean(expandedSkuIds[row.original?.id])}
+                                    onToggleExpand={toggleExpandSku}
+                                    onPrintVariant={(sku, v) => {
+                                      setPrintingSku({
+                                        ...sku,
+                                        name: `${sku.name} (Size ${v.size})`,
+                                        sku_code: v.sku || sku.sku_code,
+                                        barcode: v.barcode || sku.barcode,
+                                        sale_price: v.salePrice || sku.sale_price,
+                                      });
+                                    }}
                                   />
                                 );
                               })}
@@ -935,9 +1055,21 @@ export default function InventoryPage() {
                           ) : (
                             rows.map((row) => (
                               <SKURow
-                                    key={row.original?.id || row.id}
+                                key={row.original?.id || row.id}
                                 row={row}
                                 onSelect={(sku) => setSelectedSku(sku)}
+                                isGarmentsMode={isGarmentsMode}
+                                isExpanded={Boolean(expandedSkuIds[row.original?.id])}
+                                onToggleExpand={toggleExpandSku}
+                                onPrintVariant={(sku, v) => {
+                                  setPrintingSku({
+                                    ...sku,
+                                    name: `${sku.name} (Size ${v.size})`,
+                                    sku_code: v.sku || sku.sku_code,
+                                    barcode: v.barcode || sku.barcode,
+                                    sale_price: v.salePrice || sku.sale_price,
+                                  });
+                                }}
                               />
                             ))
                           )}
@@ -1633,9 +1765,11 @@ const TableActions = React.memo(function TableActions({
 
 function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { onClose: () => void, onSuccess: (msg: string) => void, initialBarcode?: string, skuToEdit?: SKU }) {
   const { profile } = useBusinessProfile();
-  const { features } = useIndustryConfig();
+  const { features, isGarmentsMode } = useIndustryConfig();
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const [sizeVariants, setSizeVariants] = useState<SizeVariant[]>(() => parseSizeVariants(skuToEdit?.size_variants));
+  const [enableSizeMatrix, setEnableSizeMatrix] = useState<boolean>(() => Boolean(skuToEdit?.has_size_matrix || (skuToEdit?.size_variants && skuToEdit.size_variants.length > 0)));
   const toast = useToast();
   const [imagePreview, setImagePreview] = useState<string | null>(skuToEdit?.thumbnail_url || null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -1761,6 +1895,14 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
         }
       }
 
+      const hasMatrix = Boolean(isGarmentsMode && enableSizeMatrix && sizeVariants.length > 0);
+      const matrixTotals = hasMatrix ? computeParentTotals(sizeVariants, Number(values.reorder_level) || 5) : null;
+      const finalVariants = hasMatrix
+        ? sizeVariants.map(v => ({ ...v, parentProductId: targetSkuId }))
+        : [];
+      const effectiveCost = (Number(values.cost_price) || 0) > 0 ? Number(values.cost_price) : (matrixTotals?.avgCostPrice || 0);
+      const effectiveSale = (Number(values.sale_price) || 0) > 0 ? Number(values.sale_price) : (matrixTotals?.maxSalePrice || 0);
+
       // 1. Clean Database payload matching Supabase schema precisely
       const skuPayload = {
         sku_code: values.sku_code,
@@ -1768,8 +1910,8 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
         unit: values.unit || 'pcs',
         category: values.category || null,
         current_location: (values.current_location || 'warehouse').toLowerCase(),
-        cost_price: Number(values.cost_price) || 0,
-        sale_price: Number(values.sale_price) || 0,
+        cost_price: effectiveCost,
+        sale_price: effectiveSale,
         reorder_level: Number(values.reorder_level) || 0,
         barcode: values.barcode || null,
         description: values.description || null,
@@ -1782,7 +1924,9 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
         compatible_models: values.compatible_vehicles || null,
       };
 
-      const stockQty = Number(values.opening_stock ?? (skuToEdit ? skuToEdit.qty_on_hand : 0)) || 0;
+      const stockQty = hasMatrix && matrixTotals
+        ? matrixTotals.totalStock
+        : (Number(values.opening_stock ?? (skuToEdit ? skuToEdit.qty_on_hand : 0)) || 0);
 
       const skuPayloadWithId = {
         ...skuPayload,
@@ -1791,6 +1935,8 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
         qty_on_hand: stockQty,
         qty_reserved: skuToEdit?.qty_reserved || 0,
         is_active: 1,
+        has_size_matrix: hasMatrix,
+        size_variants: finalVariants,
       };
 
       // 1. Write to local SQLite WAL (< 1ms, works 100% offline)
@@ -1841,13 +1987,15 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
         qty_on_hand: stockQty,
         qty_reserved: skuToEdit?.qty_reserved || 0,
         reorder_level: values.reorder_level,
-        cost_price: values.cost_price,
-        sale_price: values.sale_price,
+        cost_price: effectiveCost,
+        sale_price: effectiveSale,
         barcode: values.barcode || null,
         thumbnail_url: finalThumbnailUrl,
         is_active: true,
         batch_number: values.batch_number || null,
         expiry_date: values.expiry_date || null,
+        has_size_matrix: hasMatrix,
+        size_variants: finalVariants,
         manufacture_date: values.manufacture_date || null,
         requires_batch_tracking: values.requires_batch_tracking ?? false,
         oem_number: values.oem_number || null,
@@ -2067,6 +2215,36 @@ function AddProductModal({ onClose, onSuccess, initialBarcode, skuToEdit }: { on
                    </div>
                 </div>
              </div>
+
+             {/* Garment Sizing Matrix (Strictly scoped for Garments & Textile modes) */}
+             {isGarmentsMode && (
+               <div className="space-y-4">
+                 <div className="flex items-center justify-between">
+                   <SectionHeader icon={Layers} label="Garment Sizing Matrix (14–44)" />
+                   <label className="inline-flex items-center gap-2 text-xs font-bold text-cyan-300 cursor-pointer select-none">
+                     <input
+                       type="checkbox"
+                       checked={enableSizeMatrix}
+                       onChange={(e) => setEnableSizeMatrix(e.target.checked)}
+                       className="h-4 w-4 accent-cyan-400 rounded cursor-pointer"
+                     />
+                     Enable Size Variants (14 to 44)
+                   </label>
+                 </div>
+                 {enableSizeMatrix && (
+                   <GarmentSizeMatrixEditor
+                     parentProductId={skuToEdit?.id || 'draft'}
+                     parentSkuCode={watch("sku_code") || 'ART'}
+                     parentName={watch("name") || 'Garment Article'}
+                     baseCostPrice={Number(watchCostPrice) || 0}
+                     baseSalePrice={Number(watchSalePrice) || 0}
+                     variants={sizeVariants}
+                     onChange={setSizeVariants}
+                     currency={profile?.currency || 'Rs.'}
+                   />
+                 )}
+               </div>
+             )}
 
              {/* Image Upload */}
              <div className="space-y-6">

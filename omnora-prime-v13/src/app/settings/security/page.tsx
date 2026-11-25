@@ -8,6 +8,7 @@ import {
   Minimize2, RefreshCw, Key
 } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
+import { useLockStore } from '@/stores/lockStore'
 
 async function hashPin(pin: string): Promise<string> {
   const encoder = new TextEncoder()
@@ -158,6 +159,8 @@ export default function SecuritySettingsPage() {
             sessionStorage.removeItem('noxis_locked')
           }
 
+          useLockStore.getState().setHasPinConfigured(true)
+          useLockStore.getState().unlock()
           setLockEnabled(true)
           setPhase('idle')
           setNewPin('')
@@ -216,6 +219,8 @@ export default function SecuritySettingsPage() {
       sessionStorage.removeItem('noxis_locked')
     }
 
+    useLockStore.getState().setHasPinConfigured(false)
+    useLockStore.getState().unlock()
     setLockEnabled(false)
     setPhase('idle')
     setOldPin('')
@@ -227,6 +232,7 @@ export default function SecuritySettingsPage() {
   // Timeout change
   const handleTimeoutChange = async (minutes: number) => {
     setTimeoutVal(minutes)
+    useLockStore.getState().setAutoLockMinutes(minutes)
     const api = (window as any).electronAPI
     if (api?.store?.setLockTimeout) {
       try { await api.store.setLockTimeout(minutes) } catch {}
@@ -241,6 +247,7 @@ export default function SecuritySettingsPage() {
   const handleToggleMinimize = () => {
     const nextVal = !lockOnMinimize
     setLockOnMinimize(nextVal)
+    useLockStore.getState().setLockOnMinimize(nextVal)
     if (typeof window !== 'undefined') {
       localStorage.setItem('noxis_lock_on_minimize', String(nextVal))
     }
@@ -257,6 +264,7 @@ export default function SecuritySettingsPage() {
       localStorage.setItem('noxis_locked', 'true')
       sessionStorage.setItem('noxis_locked', 'true')
     }
+    useLockStore.getState().lock()
     const api = (window as any).electronAPI
     if (api?.store?.setLocked) {
       try { await api.store.setLocked(true) } catch {}

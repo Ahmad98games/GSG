@@ -9,23 +9,23 @@ export function applyProductionPragmas(sqlite: any): void {
   // 2. synchronous NORMAL: data safe on power cut, 3x faster than FULL.
   try { sqlite.pragma('synchronous = NORMAL'); } catch {}
 
-  // 3. cache_size -64000: 64MB page cache in memory. Hot data never hits disk.
-  try { sqlite.pragma('cache_size = -64000'); } catch {}
+  // 3. cache_size -65536: 64MB page cache in memory. Hot data never hits disk.
+  try { sqlite.pragma('cache_size = -65536'); } catch {}
 
   // 4. temp_store MEMORY: temp tables in RAM not disk.
   try { sqlite.pragma('temp_store = MEMORY'); } catch {}
 
-  // 5. mmap_size 268435456: 256MB memory mapped IO. OS-level reads, zero syscall overhead.
-  try { sqlite.pragma('mmap_size = 268435456'); } catch {}
+  // 5. mmap_size 536870912: 512MB memory mapped IO. OS-level reads, zero syscall overhead.
+  try { sqlite.pragma('mmap_size = 536870912'); } catch {}
 
   // 6. page_size 4096: Optimized filesystem block size.
   try { sqlite.pragma('page_size = 4096'); } catch {}
 
-  // 7. wal_autocheckpoint 1000: WAL file folds back into main DB every 1000 pages.
-  try { sqlite.pragma('wal_autocheckpoint = 1000'); } catch {}
+  // 7. wal_autocheckpoint 500: WAL file folds back into main DB every 500 pages.
+  try { sqlite.pragma('wal_autocheckpoint = 500'); } catch {}
 
-  // 8. busy_timeout 60000: Instead of SQLITE_BUSY crash, wait up to 60 seconds across 15+ concurrent workstation PCs.
-  try { sqlite.pragma('busy_timeout = 60000'); } catch {}
+  // 8. busy_timeout 8000: Wait up to 8 seconds on SQLITE_BUSY instead of crashing.
+  try { sqlite.pragma('busy_timeout = 8000'); } catch {}
 
   // 9. foreign_keys OFF: Essential for multi-workstation & offline decentralized operations to prevent constraint crashes.
   try { sqlite.pragma('foreign_keys = OFF'); } catch {}

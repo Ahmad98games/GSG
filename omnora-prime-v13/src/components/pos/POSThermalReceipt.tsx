@@ -218,6 +218,7 @@ export function POSThermalReceipt({
                 <div key={idx} className="space-y-0.5 pos-item-row">
                   <div className="font-bold text-[11px] uppercase leading-tight">
                     {item.name || item.sku_code || 'Product Item'}
+                    {item.size && !String(item.name || '').includes(`Size ${item.size}`) ? ` (Size ${item.size})` : ''}
                   </div>
                   <div className="flex justify-between text-[10px] text-zinc-800">
                     <span className="text-zinc-600">

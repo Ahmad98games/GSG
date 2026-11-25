@@ -56,8 +56,6 @@ class CustomNodeHttpExecutor extends builder_util_runtime_1.HttpExecutor {
 const os = __importStar(require("os"));
 const os_1 = require("os");
 const dbKeyManager_1 = require("../src/lib/security/dbKeyManager");
-const onvifService_1 = require("./services/onvifService");
-const mediamtxService_1 = require("./services/mediamtxService");
 const thermalPrintService_1 = require("./services/thermalPrintService");
 const scaleService_1 = require("./services/scaleService");
 // ── Licensing & Security ──────────────────────────────────────────────────────
@@ -452,15 +450,7 @@ function killProcess(child, name) {
 // ─────────────────────────────────────────────
 const gotTheLock = electron_1.app.requestSingleInstanceLock();
 if (!gotTheLock) {
-    if (electron_1.app.isPackaged) {
-        electron_1.app.on('ready', () => {
-            electron_1.dialog.showErrorBox('Noxis Hub Already Running', 'An instance of Noxis Hub is already active.\n\nCheck your system tray or Task Manager and close it first.');
-            electron_1.app.quit();
-        });
-    }
-    else {
-        electron_1.app.quit();
-    }
+    electron_1.app.quit();
 }
 else {
     electron_1.app.on('second-instance', () => {
@@ -1233,6 +1223,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.setZoomLevel(0);
             mainWindow.webContents.setZoomFactor(1.0);
+            mainWindow.webContents.send('noxis:zoom-reset');
             startupLog('[Zoom] Reset display scale to 100% (Ctrl+0)');
             return 1.0;
         }
@@ -1456,7 +1447,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 tunnelProcess.kill();
                 tunnelProcess = null;
             }
-            (0, mediamtxService_1.stopMediamtx)();
         }
         catch { }
         // 3. Mark exit flag as clean so power-cut recovery does not false-trigger
@@ -2263,6 +2253,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     // splash fades out and main slides in.
     // ─────────────────────────────────────────────
     async function createMainWindow() {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            if (mainWindow.isMinimized())
+                mainWindow.restore();
+            mainWindow.focus();
+            return;
+        }
         const iconPath = electron_1.app.isPackaged
             ? path.join(process.resourcesPath, 'build', 'icon.ico')
             : path.join(__dirname, '../../build/icon.ico');
@@ -2319,6 +2315,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         mainWindow.on('resize', persistCurrentBounds);
         mainWindow.on('move', persistCurrentBounds);
         mainWindow.on('close', persistCurrentBounds);
+        mainWindow.on('minimize', () => {
+            safeSend(mainWindow, 'window:minimized');
+        });
+        mainWindow.on('closed', () => {
+            mainWindow = null;
+        });
         console.log(`[BOOT] Window created: ${Date.now() - t0}ms`);
         // Track load retries for transient failures
         let loadRetries = 0;
@@ -2358,6 +2360,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                         mainWindow.webContents.setZoomLevel(0);
                         mainWindow.webContents.setZoomFactor(1.0);
                         mainWindow.webContents.send('app:zoom-changed', 1.0);
+                        mainWindow.webContents.send('noxis:zoom-reset');
                         startupLog('[Display] Hotkey Ctrl+0 pressed: display zoom reset to 100%');
                     }
                 }
@@ -3013,6 +3016,21 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 }, 6000);
                 setTimeout(() => {
                     startMemoryMonitor();
+                    // WAL file size watchdog (checks every 30 minutes)
+                    setInterval(() => {
+                        try {
+                            const userDataDb = path.join(electron_1.app.getPath('userData'), 'noxis-local.db');
+                            const walPath = userDataDb + '-wal';
+                            if (fs.existsSync(walPath)) {
+                                const walMB = fs.statSync(walPath).size / 1024 / 1024;
+                                if (walMB > 30) {
+                                    startupLog(`[WAL] Watchdog: ${walMB.toFixed(1)}MB — forcing RESTART checkpoint`);
+                                    performShutdownWalCheckpoint();
+                                }
+                            }
+                        }
+                        catch { }
+                    }, 30 * 60 * 1000);
                 }, 10000);
                 setTimeout(() => {
                     spawnVisionEngine();
@@ -3020,8 +3038,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 // ── STEP 5 & 6: Non-blocking deferred loading (2000ms after window reveals) ──
                 setTimeout(() => {
                     try {
-                        (0, onvifService_1.registerOnvifHandlers)(startupLog);
-                        (0, mediamtxService_1.registerMediamtxHandlers)(startupLog);
                         startWsBridgeServer();
                         ensureWindowsFirewallRules();
                         console.log(`[BOOT] Bridge ready: ${Date.now() - t0}ms`);
@@ -3088,7 +3104,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
                 killProcess(nextServer, 'Next.js Server'),
                 tunnelProcess ? killProcess(tunnelProcess, 'Cloudflare Tunnel') : Promise.resolve(),
             ]).then(() => {
-                (0, mediamtxService_1.stopMediamtx)();
                 (0, scaleService_1.stopScaleService)();
                 visionProcess = null;
                 nextServer = null;

@@ -68,7 +68,7 @@ export default {
       }
     }
 
-    // 1. API: Instant Software Download (Direct CDN Delivery for v14.0.42)
+    // 1. API: Instant Software Download (Direct CDN Delivery for v14.0.43)
     if (
       url.pathname === '/api/download-software' ||
       url.pathname.startsWith('/api/download-software') ||
@@ -79,7 +79,7 @@ export default {
       try {
         const format = url.searchParams.get('format');
         const isZip = format === 'zip' || url.searchParams.get('zip') === 'true';
-        const targetFile = isZip ? 'Noxis-Setup-14.0.42.zip' : 'Noxis Hub Setup 14.0.42.exe';
+        const targetFile = isZip ? 'Noxis-Setup-14.0.43.zip' : 'Noxis Hub Setup 14.0.43.exe';
         const downloadUrl = `https://pub-8c464d0d92ff44abbf70c58c362ad258.r2.dev/updates/stable/${encodeURIComponent(targetFile)}`;
         const redirect = url.searchParams.get('redirect') === 'true' || url.pathname.startsWith('/download/stable') || isZip;
 
@@ -90,7 +90,7 @@ export default {
         return new Response(JSON.stringify({
           success: true,
           downloadUrl,
-          version: '14.0.42',
+          version: '14.0.43',
           fileName: targetFile,
           tier: 'TRIAL_ELITE',
           expiresInSeconds: 3600,

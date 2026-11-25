@@ -39,6 +39,20 @@ const bridgeListeners = new Map();
 electron_1.contextBridge.exposeInMainWorld('electronAPI', {
     getAppDataPath: () => electron_1.ipcRenderer.invoke('get-app-data-path'),
     getHwid: () => electron_1.ipcRenderer.invoke('license:getHWID'),
+    resetZoom: () => electron_1.ipcRenderer.invoke('app:reset-zoom'),
+    zoomIn: () => electron_1.ipcRenderer.invoke('app:zoom-in'),
+    zoomOut: () => electron_1.ipcRenderer.invoke('app:zoom-out'),
+    getZoomFactor: () => electron_1.ipcRenderer.invoke('app:get-zoom-factor'),
+    onZoomReset: (callback) => {
+        const listener = () => callback();
+        electron_1.ipcRenderer.on('noxis:zoom-reset', listener);
+        return () => electron_1.ipcRenderer.removeListener('noxis:zoom-reset', listener);
+    },
+    onWindowMinimized: (callback) => {
+        const listener = () => callback();
+        electron_1.ipcRenderer.on('window:minimized', listener);
+        return () => electron_1.ipcRenderer.removeListener('window:minimized', listener);
+    },
     fetchScaleWeight: () => electron_1.ipcRenderer.invoke('fetchScaleWeight'),
     getScaleStatus: () => electron_1.ipcRenderer.invoke('scale:get-status'),
     retryScaleConnect: () => electron_1.ipcRenderer.invoke('scale:retry-connect'),
@@ -255,26 +269,8 @@ electron_1.contextBridge.exposeInMainWorld('electronWindow', {
     checkForUpdates: () => electron_1.ipcRenderer.invoke('check-for-updates'),
     installUpdate: () => electron_1.ipcRenderer.invoke('install-update')
 });
-// ── CCTV / Camera Management API ──────────────────────────────────────────
-electron_1.contextBridge.exposeInMainWorld('cctv', {
-    // Discover cameras on the local network (ONVIF WS-Discovery + TCP scan)
-    discover: () => electron_1.ipcRenderer.invoke('cctv:discover'),
-    // Fetch full camera details via ONVIF after user provides credentials
-    getDetails: (params) => electron_1.ipcRenderer.invoke('cctv:getDetails', params),
-    // Encrypt password before saving to database (never store plaintext)
-    encryptPassword: (password) => electron_1.ipcRenderer.invoke('cctv:encryptPassword', password),
-    // Quick connectivity test (returns boolean)
-    testConnection: (params) => electron_1.ipcRenderer.invoke('cctv:testConnection', params),
-    // Grab a still image snapshot from a camera
-    getSnapshot: (params) => electron_1.ipcRenderer.invoke('cctv:getSnapshot', params),
-    // Start mediamtx WebRTC streams for the active camera list
-    startStreams: (cameras) => electron_1.ipcRenderer.invoke('cctv:startStreams', cameras),
-    // Get the WebRTC URL for a specific camera
-    getWebRtcUrl: (cameraId) => electron_1.ipcRenderer.invoke('cctv:getWebRtcUrl', cameraId),
-    // Stop all mediamtx streams
-    stopStreams: () => electron_1.ipcRenderer.invoke('cctv:stopStreams'),
-    // Check if mediamtx is currently running
-    isStreamingActive: () => electron_1.ipcRenderer.invoke('cctv:isStreamingActive'),
+// ── App Display & Power-Cut Recovery Controls ──────────────────────────────────
+electron_1.contextBridge.exposeInMainWorld('appControls', {
     // Display Scale & Zoom (Ctrl+0 reset)
     resetZoom: () => electron_1.ipcRenderer.invoke('app:reset-zoom'),
     zoomIn: () => electron_1.ipcRenderer.invoke('app:zoom-in'),

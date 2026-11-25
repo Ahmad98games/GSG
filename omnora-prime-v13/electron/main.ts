@@ -20,8 +20,6 @@ class CustomNodeHttpExecutor extends HttpExecutor<any> {
 import * as os from 'os'
 import { release } from 'os'
 import { deriveDbKey } from '../src/lib/security/dbKeyManager'
-import { registerOnvifHandlers } from './services/onvifService'
-import { registerMediamtxHandlers, stopMediamtx } from './services/mediamtxService'
 import { registerThermalPrintHandlers } from './services/thermalPrintService'
 import { registerScaleService, stopScaleService } from './services/scaleService'
 // ── Licensing & Security ──────────────────────────────────────────────────────
@@ -548,17 +546,7 @@ function killProcess(child: ChildProcess | UtilityProcess | null, name: string):
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
-  if (app.isPackaged) {
-    app.on('ready', () => {
-      dialog.showErrorBox(
-        'Noxis Hub Already Running',
-        'An instance of Noxis Hub is already active.\n\nCheck your system tray or Task Manager and close it first.'
-      );
-      app.quit();
-    });
-  } else {
-    app.quit();
-  }
+  app.quit();
 } else {
 
   app.on('second-instance', () => {
@@ -1404,6 +1392,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.setZoomLevel(0);
       mainWindow.webContents.setZoomFactor(1.0);
+      mainWindow.webContents.send('noxis:zoom-reset');
       startupLog('[Zoom] Reset display scale to 100% (Ctrl+0)');
       return 1.0;
     }
@@ -1646,7 +1635,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       if (nextServer) { (nextServer as any).kill(); nextServer = null; }
       if (visionProcess) { (visionProcess as any).kill(); visionProcess = null; }
       if (tunnelProcess) { (tunnelProcess as any).kill(); tunnelProcess = null; }
-      stopMediamtx();
     } catch {}
 
     // 3. Mark exit flag as clean so power-cut recovery does not false-trigger
@@ -2496,6 +2484,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   // splash fades out and main slides in.
   // ─────────────────────────────────────────────
   async function createMainWindow(): Promise<void> {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+      return;
+    }
+
     const iconPath = app.isPackaged
       ? path.join(process.resourcesPath, 'build', 'icon.ico')
       : path.join(__dirname, '../../build/icon.ico');
@@ -2555,6 +2549,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     mainWindow.on('resize', persistCurrentBounds);
     mainWindow.on('move', persistCurrentBounds);
     mainWindow.on('close', persistCurrentBounds);
+    mainWindow.on('minimize', () => {
+      safeSend(mainWindow, 'window:minimized');
+    });
+    mainWindow.on('closed', () => {
+      mainWindow = null;
+    });
 
     console.log(`[BOOT] Window created: ${Date.now() - t0}ms`);
 
@@ -2602,6 +2602,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
             mainWindow.webContents.setZoomLevel(0);
             mainWindow.webContents.setZoomFactor(1.0);
             mainWindow.webContents.send('app:zoom-changed', 1.0);
+            mainWindow.webContents.send('noxis:zoom-reset');
             startupLog('[Display] Hotkey Ctrl+0 pressed: display zoom reset to 100%');
           }
         } else if (input.key === '-' || input.code === 'Minus' || input.code === 'NumpadSubtract') {
@@ -3329,6 +3330,20 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
         setTimeout(() => {
           startMemoryMonitor();
+          // WAL file size watchdog (checks every 30 minutes)
+          setInterval(() => {
+            try {
+              const userDataDb = path.join(app.getPath('userData'), 'noxis-local.db');
+              const walPath = userDataDb + '-wal';
+              if (fs.existsSync(walPath)) {
+                const walMB = fs.statSync(walPath).size / 1024 / 1024;
+                if (walMB > 30) {
+                  startupLog(`[WAL] Watchdog: ${walMB.toFixed(1)}MB — forcing RESTART checkpoint`);
+                  performShutdownWalCheckpoint();
+                }
+              }
+            } catch {}
+          }, 30 * 60 * 1000);
         }, 10000);
 
         setTimeout(() => {
@@ -3338,8 +3353,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         // ── STEP 5 & 6: Non-blocking deferred loading (2000ms after window reveals) ──
         setTimeout(() => {
           try {
-            registerOnvifHandlers(startupLog);
-            registerMediamtxHandlers(startupLog);
             startWsBridgeServer();
             ensureWindowsFirewallRules();
             console.log(`[BOOT] Bridge ready: ${Date.now() - t0}ms`);
@@ -3412,7 +3425,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         killProcess(nextServer, 'Next.js Server'),
         tunnelProcess ? killProcess(tunnelProcess, 'Cloudflare Tunnel') : Promise.resolve(),
       ]).then(() => {
-        stopMediamtx();
         stopScaleService();
         visionProcess = null;
         nextServer = null;

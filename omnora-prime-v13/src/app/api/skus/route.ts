@@ -11,6 +11,30 @@ function getSqliteInstance() {
   }
 }
 
+function ensureSizeMatrixColumns(sqlite: any) {
+  try {
+    const cols = sqlite.prepare("PRAGMA table_info(skus)").all() as Array<{ name: string }>;
+    const names = new Set(cols.map((c: any) => c.name));
+    if (!names.has('has_size_matrix')) {
+      sqlite.exec("ALTER TABLE skus ADD COLUMN has_size_matrix INTEGER DEFAULT 0");
+    }
+    if (!names.has('size_variants')) {
+      sqlite.exec("ALTER TABLE skus ADD COLUMN size_variants TEXT DEFAULT '[]'");
+    }
+  } catch {}
+}
+
+function parseVariantsJson(raw: any): any[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  try {
+    const parsed = JSON.parse(String(raw));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 /**
  * GET /api/skus
  * Returns all active inventory items directly from local SQLite database (WAL mode),
@@ -34,6 +58,7 @@ export async function GET(req: NextRequest) {
     // Check if skus table exists
     const tableExists = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='skus'").get();
     if (tableExists) {
+      ensureSizeMatrixColumns(sqlite);
       let query = `
         SELECT 
           id, 
@@ -50,7 +75,9 @@ export async function GET(req: NextRequest) {
           COALESCE(tax_rate, 0) AS tax_rate, 
           COALESCE(qty_on_hand, 0) AS qty_on_hand, 
           COALESCE(reorder_level, 0) AS reorder_level, 
-          COALESCE(is_active, 1) AS is_active
+          COALESCE(is_active, 1) AS is_active,
+          COALESCE(has_size_matrix, 0) AS has_size_matrix,
+          COALESCE(size_variants, '[]') AS size_variants
         FROM skus
         WHERE is_active = 1
       `;
@@ -62,17 +89,29 @@ export async function GET(req: NextRequest) {
       }
 
       if (barcode) {
-        query += ` AND barcode = ?`;
-        params.push(barcode);
+        query += ` AND (barcode = ? OR size_variants LIKE ?)`;
+        params.push(barcode, `%${barcode}%`);
       } else if (search) {
-        query += ` AND (name LIKE ? OR sku_code LIKE ? OR barcode LIKE ?)`;
-        params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+        query += ` AND (name LIKE ? OR sku_code LIKE ? OR barcode LIKE ? OR size_variants LIKE ?)`;
+        params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
       }
 
       query += ` ORDER BY name ASC LIMIT ?`;
       params.push(limit);
 
-      items = sqlite.prepare(query).all(...params);
+      const rawItems = sqlite.prepare(query).all(...params);
+      items = rawItems.map((row: any) => {
+        const variants = parseVariantsJson(row.size_variants);
+        const matchedVariant = barcode
+          ? variants.find((v: any) => v.barcode === barcode || v.sku === barcode)
+          : undefined;
+        return {
+          ...row,
+          has_size_matrix: Boolean(row.has_size_matrix) || variants.length > 0,
+          size_variants: variants,
+          ...(matchedVariant ? { matched_variant: matchedVariant } : {}),
+        };
+      });
     }
 
     // Fallback: check sku_cache if skus table returned 0 items
@@ -189,15 +228,73 @@ export async function POST(req: NextRequest) {
       );
     `);
 
+    ensureSizeMatrixColumns(sqlite);
+
+    // Handle atomic variant stock deduction from POS / Invoice checkout
+    if (operation === 'deduct_variants' && Array.isArray(body.items)) {
+      const deductTx = sqlite.transaction((deductions: Array<{ skuId: string; variantId?: string; size?: number; quantity: number; reference?: string }>) => {
+        const updatedParents: any[] = [];
+        for (const d of deductions) {
+          if (!d.skuId || !d.quantity) continue;
+          const row = sqlite.prepare("SELECT id, business_id, qty_on_hand, size_variants, has_size_matrix FROM skus WHERE id = ?").get(d.skuId) as any;
+          if (!row) continue;
+
+          const variants = parseVariantsJson(row.size_variants);
+          if (variants.length > 0 && (d.variantId || d.size !== undefined)) {
+            let matched = false;
+            const nextVariants = variants.map((v: any) => {
+              const isMatch = (d.variantId && v.id === d.variantId) || (d.size !== undefined && Number(v.size) === Number(d.size));
+              if (isMatch) {
+                matched = true;
+                const nextQty = Math.max(0, Number(v.stockQty || 0) - Number(d.quantity || 0));
+                return { ...v, stockQty: nextQty };
+              }
+              return v;
+            });
+            if (matched) {
+              const newTotal = nextVariants.reduce((sum: number, v: any) => sum + Number(v.stockQty || 0), 0);
+              sqlite.prepare("UPDATE skus SET size_variants = ?, qty_on_hand = ?, updated_at = datetime('now') WHERE id = ?")
+                .run(JSON.stringify(nextVariants), newTotal, row.id);
+              updatedParents.push({ id: row.id, qty_on_hand: newTotal, size_variants: nextVariants });
+              try {
+                sqlite.prepare(`
+                  INSERT INTO stock_adjustments (id, business_id, sku_id, adjustment_type, quantity, previous_qty, new_qty, reason, reference, notes, adjusted_by)
+                  VALUES (?, ?, ?, 'sale', ?, ?, ?, 'POS Sale (Size Variant)', ?, ?, 'POS')
+                `).run(
+                  `adj_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+                  row.business_id || 'local',
+                  row.id,
+                  -Math.abs(Number(d.quantity || 0)),
+                  Number(row.qty_on_hand || 0),
+                  newTotal,
+                  d.reference || null,
+                  `Size ${d.size || ''} sold`
+                );
+              } catch {}
+            }
+          } else {
+            const prevQty = Number(row.qty_on_hand || 0);
+            const newTotal = Math.max(0, prevQty - Number(d.quantity || 0));
+            sqlite.prepare("UPDATE skus SET qty_on_hand = ?, updated_at = datetime('now') WHERE id = ?").run(newTotal, row.id);
+            updatedParents.push({ id: row.id, qty_on_hand: newTotal });
+          }
+        }
+        return updatedParents;
+      });
+
+      const updated = deductTx(body.items);
+      return NextResponse.json({ success: true, updated });
+    }
+
     const upsertStmt = sqlite.prepare(`
       INSERT INTO skus (
         id, business_id, name, sku_code, barcode, category, unit,
         cost_price, sale_price, tax_rate, qty_on_hand, reorder_level,
-        description, is_active, updated_at
+        description, is_active, has_size_matrix, size_variants, updated_at
       ) VALUES (
         @id, @business_id, @name, @sku_code, @barcode, @category, @unit,
         @cost_price, @sale_price, @tax_rate, @qty_on_hand, @reorder_level,
-        @description, @is_active, datetime('now')
+        @description, @is_active, @has_size_matrix, @size_variants, datetime('now')
       )
       ON CONFLICT(id) DO UPDATE SET
         business_id = excluded.business_id,
@@ -216,6 +313,8 @@ export async function POST(req: NextRequest) {
         reorder_level = excluded.reorder_level,
         description = COALESCE(excluded.description, skus.description),
         is_active = excluded.is_active,
+        has_size_matrix = excluded.has_size_matrix,
+        size_variants = excluded.size_variants,
         updated_at = datetime('now')
     `);
 
@@ -236,8 +335,13 @@ export async function POST(req: NextRequest) {
       for (const row of rows) {
         if (!row || !row.name) continue;
         const rowId = row.id || `sku_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-        const hasExplicitQty = (row.qty_on_hand !== undefined && row.qty_on_hand !== null) || (row.stock !== undefined && row.stock !== null) || (row.opening_stock !== undefined && row.opening_stock !== null) ? 1 : 0;
-        const qtyValue = Number(row.qty_on_hand ?? row.stock ?? row.opening_stock ?? 0);
+        const sizeVariantsArr = parseVariantsJson(row.size_variants || row.variants);
+        const hasSizeMatrix = Boolean(row.has_size_matrix) || sizeVariantsArr.length > 0;
+        const variantTotalQty = sizeVariantsArr.length > 0
+          ? sizeVariantsArr.reduce((acc: number, v: any) => acc + Number(v.stockQty || 0), 0)
+          : null;
+        const hasExplicitQty = (variantTotalQty !== null) || (row.qty_on_hand !== undefined && row.qty_on_hand !== null) || (row.stock !== undefined && row.stock !== null) || (row.opening_stock !== undefined && row.opening_stock !== null) ? 1 : 0;
+        const qtyValue = variantTotalQty !== null ? variantTotalQty : Number(row.qty_on_hand ?? row.stock ?? row.opening_stock ?? 0);
 
         // Check if item already exists to determine if opening stock or update
         const existingItem = sqlite.prepare("SELECT qty_on_hand FROM skus WHERE id = ?").get(rowId) as { qty_on_hand: number } | undefined;
@@ -258,6 +362,8 @@ export async function POST(req: NextRequest) {
           reorder_level: Number(row.reorder_level || 0),
           description: row.description ? String(row.description).trim() : null,
           is_active: row.is_active !== 0 ? 1 : 0,
+          has_size_matrix: hasSizeMatrix ? 1 : 0,
+          size_variants: JSON.stringify(sizeVariantsArr),
           has_explicit_qty: hasExplicitQty,
         });
 

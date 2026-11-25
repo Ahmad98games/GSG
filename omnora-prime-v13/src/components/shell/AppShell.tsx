@@ -54,11 +54,15 @@ import { DemoModeBanner } from '@/components/ui/DemoModeBanner';
 import BannedLockdownModal from '@/components/license/BannedLockdownModal';
 import { usePermissions } from "@/hooks/usePermissions";
 import { useToast } from "@/hooks/useToast";
+import { useLockTimer } from "@/hooks/useLockTimer";
+import { useLockStore } from "@/stores/lockStore";
+import { AppLock } from "@/components/AppLock";
 
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { license } = useLicenseValidation();
   const pathname = usePathname();
+  useLockTimer();
   const isBusinessModeConfigured = useBusinessModeStore(s => s.isConfigured);
   const setMode = useBusinessModeStore(s => s.setMode);
   const [mounted, setMounted] = React.useState(false);
@@ -210,25 +214,41 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       const localLocked = localStorage.getItem('noxis_locked') === 'true';
 
       let electronLocked = false;
+      let pinEnabled = useLockStore.getState().hasPinConfigured;
       const api = (window as any).electronAPI;
       if (api?.store) {
         try {
-          const isL = await api.store.isLocked?.();
+          const [isL, isEnabled] = await Promise.all([
+            api.store.isLocked?.(),
+            api.store.isAppLockEnabled?.(),
+          ]);
           electronLocked = Boolean(isL);
+          pinEnabled = Boolean(isEnabled);
+          useLockStore.getState().setHasPinConfigured(pinEnabled);
         } catch {}
       }
 
-      if (
-        (sessionLocked || localLocked || electronLocked) &&
-        pathname &&
-        !pathname.startsWith('/lock') &&
-        !pathname.startsWith('/login')
-      ) {
-        window.location.replace('/lock');
+      if (pinEnabled && (sessionLocked || localLocked || electronLocked)) {
+        useLockStore.getState().lock();
       }
     };
 
     enforceLockBarrier();
+
+    // Lock on Electron window minimize
+    const cleanupMinimize = (window as any).electronAPI?.onWindowMinimized?.(() => {
+      const state = useLockStore.getState();
+      if (state.lockOnMinimize && state.hasPinConfigured) {
+        state.lock();
+        try {
+          (window as any).electronAPI?.store?.setLocked?.(true);
+        } catch {}
+      }
+    });
+
+    return () => {
+      if (typeof cleanupMinimize === 'function') cleanupMinimize();
+    };
   }, [pathname]);
 
   React.useEffect(() => {
@@ -747,6 +767,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <PlanCompletionUpgradeModal />
       <ActivationCelebration />
       <OfflineIndicator />
+      <AppLock />
 
       {isBanned && (
         <BannedLockdownModal
@@ -779,45 +800,66 @@ function ZoomSafetyPill() {
   const [isZoomedOut, setIsZoomedOut] = useState(false);
 
   useEffect(() => {
-    const checkZoom = () => {
-      if (typeof window !== 'undefined') {
-        const ratio = window.outerWidth / window.innerWidth;
-        if (ratio < 0.82) {
-          setIsZoomedOut(true);
-        } else {
-          setIsZoomedOut(false);
+    const checkZoom = async () => {
+      if (typeof window === 'undefined') return;
+      try {
+        const api = (window as any).electronAPI || (window as any).appControls;
+        if (api?.getZoomFactor) {
+          const zf = await api.getZoomFactor();
+          if (typeof zf === 'number' && zf < 0.92) {
+            setIsZoomedOut(true);
+            return;
+          }
         }
+      } catch {}
+      const ratio = window.outerWidth / window.innerWidth;
+      if (ratio < 0.82) {
+        setIsZoomedOut(true);
+      } else {
+        setIsZoomedOut(false);
       }
     };
 
+    const handleReset = () => setIsZoomedOut(false);
     window.addEventListener('resize', checkZoom);
-    window.addEventListener('noxis:zoom-reset', () => setIsZoomedOut(false));
+    window.addEventListener('noxis:zoom-reset', handleReset);
+    const cleanupIpc = (window as any).electronAPI?.onZoomReset?.(handleReset);
     checkZoom();
 
     return () => {
       window.removeEventListener('resize', checkZoom);
+      window.removeEventListener('noxis:zoom-reset', handleReset);
+      if (typeof cleanupIpc === 'function') cleanupIpc();
     };
   }, []);
 
   if (!isZoomedOut) return null;
 
+  const handleResetClick = async () => {
+    try {
+      if ((window as any).electronAPI?.resetZoom) {
+        await (window as any).electronAPI.resetZoom();
+      } else if ((window as any).appControls?.resetZoom) {
+        await (window as any).appControls.resetZoom();
+      }
+    } catch {}
+    document.documentElement.style.zoom = '100%';
+    document.body.style.zoom = '100%';
+    window.dispatchEvent(new CustomEvent('noxis:zoom-reset'));
+    setIsZoomedOut(false);
+  };
+
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[999] bg-[#0F172A] border border-white/10 shadow-2xl px-4 py-2 rounded-full flex items-center gap-3 text-xs text-white print:hidden no-print">
       <span className="text-amber-400 font-bold">🔍 Display Shrunken / Zoomed Out</span>
       <button
-        onClick={() => {
-          if ((window as any).electronAPI?.resetZoom) {
-            (window as any).electronAPI.resetZoom();
-          }
-          document.documentElement.style.zoom = '100%';
-          document.body.style.zoom = '100%';
-          setIsZoomedOut(false);
-        }}
+        type="button"
+        onClick={handleResetClick}
         className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-full text-[11px] transition-colors shadow-sm cursor-pointer"
       >
         Reset to 100% (Ctrl+0)
       </button>
-      <button onClick={() => setIsZoomedOut(false)} className="text-zinc-400 hover:text-white text-xs ml-1">✕</button>
+      <button type="button" onClick={() => setIsZoomedOut(false)} className="text-zinc-400 hover:text-white text-xs ml-1 cursor-pointer">✕</button>
     </div>
   );
 }

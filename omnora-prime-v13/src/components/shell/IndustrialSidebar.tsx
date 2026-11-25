@@ -66,6 +66,8 @@ import { TierBadge } from '../ui/TierBadge'
 import { TrialCountdownBanner } from '@/components/trial/TrialCountdownBanner'
 import { useBusinessModeStore } from '@/stores/businessModeStore'
 
+const ENABLE_CCTV = false
+
 interface SidebarNavItem {
   id: string
   label: string
@@ -334,12 +336,12 @@ export default React.memo(function IndustrialSidebar() {
 
     // 3. SYSTEM & TELEMETRY MODULE
     const systemItems: SidebarNavItem[] = [
-      {
+      ...(ENABLE_CCTV ? [{
         id: 'cctv',
         label: 'CCTV Feeds',
         href: '/cctv',
         icon: Video,
-      },
+      }] : []),
       {
         id: 'messaging',
         label: 'Messaging Hub',
@@ -404,7 +406,7 @@ export default React.memo(function IndustrialSidebar() {
 
       return items.filter((item) => {
         // Always show these core items regardless of mode
-        const alwaysShow = ['dashboard', 'pos', 'inventory', 'configuration', 'reports', 'cctv', 'pairing', 'messaging', 'intelligence', 'orders', 'import', 'cashflow', 'mandi']
+        const alwaysShow = ['dashboard', 'pos', 'inventory', 'configuration', 'reports', 'pairing', 'messaging', 'intelligence', 'orders', 'import', 'cashflow', 'mandi']
         if (alwaysShow.includes(item.id)) return true
 
         // Ensure active industry-specific operational features are never stripped out

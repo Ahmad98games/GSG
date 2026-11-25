@@ -1765,15 +1765,7 @@ export default function SettingsPage() {
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="p-6 bg-white/5 border border-white/10 rounded-xl space-y-2">
-                        <span className="text-[10px] uppercase font-bold text-gray-500">Camera Nodes</span>
-                        <div className="text-2xl font-black text-white font-mono">
-                          {currentTier === 'elite' ? '20' : currentTier === 'pro' ? '8' : '2'}
-                        </div>
-                        <p className="text-[10px] text-slate-500 uppercase tracking-tighter">Simultaneous CCTV feeds</p>
-                      </div>
-
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="p-6 bg-white/5 border border-white/10 rounded-xl space-y-2">
                         <span className="text-[10px] uppercase font-bold text-gray-500">Mobile Handshakes</span>
                         <div className="text-2xl font-black text-white font-mono">
